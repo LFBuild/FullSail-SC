@@ -37,7 +37,7 @@ module full_sail::fullsail_token {
             minter: tx_context::sender(ctx)
         };
 
-        transfer::transfer(manager, tx_context::sender(ctx));
+        transfer::share_object(manager);
         transfer::public_freeze_object(metadata);
     }
 
@@ -58,9 +58,39 @@ module full_sail::fullsail_token {
         coin::burn(authority, coin)
     }
 
+    // transfer
+    public(package) fun transfer(
+        coin: &mut Coin<FULLSAIL_TOKEN>, 
+        amount: u64,
+        recipient: address,
+        ctx: &mut TxContext
+    ) {
+        let coin_to_send = coin::split(coin, amount, ctx);
+        transfer::public_transfer(coin_to_send, recipient);
+    }
+
+    public(package) fun freeze_transfers(coin: Coin<FULLSAIL_TOKEN>) {
+        transfer::public_freeze_object(coin);
+    }
+
+    // --- public view functions ---
     // balance
     public fun balance(coin: &Coin<FULLSAIL_TOKEN>): u64 {
         coin::value(coin)
+    }
+
+    public fun total_supply(manager: &FullSailManager): u64 {
+        coin::total_supply(&manager.cap)
+    }
+
+    // --- tests funcs ---
+    #[test_only]
+    public fun init_for_testing(ctx: &mut TxContext) {
+        init( FULLSAIL_TOKEN{}, ctx);
+    }
+
+    public(package) fun cap(manager: &mut FullSailManager): &mut TreasuryCap<FULLSAIL_TOKEN> {
+        &mut manager.cap
     }
 }
 
