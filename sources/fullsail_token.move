@@ -1,9 +1,5 @@
 module full_sail::fullsail_token {
     use sui::coin::{Self, Coin, TreasuryCap};
-    
-    //friend fullsail::voting_escrow;
-    //friend fullsail::minter;
-    //friend fullsail::vote_manager;
 
     // --- structs ---
     // OTW
@@ -18,11 +14,11 @@ module full_sail::fullsail_token {
 
     // init
     fun init(
-        witness: FULLSAIL_TOKEN, 
+        otw: FULLSAIL_TOKEN, 
         ctx: &mut TxContext
     ) {
         let (treasury_cap, metadata) = coin::create_currency(
-            witness,
+            otw,
             18, // decimals
             b"SAIL", // symbol
             b"FullSail", // name
@@ -69,6 +65,7 @@ module full_sail::fullsail_token {
         transfer::public_transfer(coin_to_send, recipient);
     }
 
+    // freeze transfer
     public(package) fun freeze_transfers(coin: Coin<FULLSAIL_TOKEN>) {
         transfer::public_freeze_object(coin);
     }
@@ -79,6 +76,7 @@ module full_sail::fullsail_token {
         coin::value(coin)
     }
 
+    // total supply
     public fun total_supply(manager: &FullSailManager): u64 {
         coin::total_supply(&manager.cap)
     }
