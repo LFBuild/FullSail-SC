@@ -5,15 +5,16 @@ module full_sail::coin_wrapper {
     use std::type_name;
     use sui::dynamic_object_field;
 
-    // Error constants
+    // --- errors ---
     const E_ALREADY_INITIALIZED: u64 = 1;
     const E_NOT_INITIALIZED: u64 = 2;
 
-    public struct WrappedCoinType has drop {}
+    // --- structs ---
+    public struct COIN_WRAPPER has drop {}
 
     public struct WrappedAssetData has store {
-        metadata: CoinMetadata<WrappedCoinType>,
-        treasury_cap: TreasuryCap<WrappedCoinType>,
+        metadata: CoinMetadata<COIN_WRAPPER>,
+        treasury_cap: TreasuryCap<COIN_WRAPPER>,
         original_coin_type: String,
     }
 
@@ -28,7 +29,7 @@ module full_sail::coin_wrapper {
     }
 
     // init
-    fun init(ctx: &mut TxContext) {
+    fun init(_otw: COIN_WRAPPER, ctx: &mut TxContext) {
         let admin_cap = WrapperStoreCap {
             id: object::new(ctx)
         };
@@ -45,7 +46,7 @@ module full_sail::coin_wrapper {
 
     public fun register_coin<CoinType>(
         _cap: &WrapperStoreCap,
-        otw: WrappedCoinType,
+        otw: COIN_WRAPPER,
         store: &mut WrapperStore,
         ctx: &mut TxContext
     ) {
@@ -55,7 +56,8 @@ module full_sail::coin_wrapper {
         assert!(!table::contains(&store.coin_to_wrapper, coin_type_name), E_ALREADY_INITIALIZED);
 
         // create the new wrapped coin
-        let (treasury_cap, metadata) = coin::create_currency<WrappedCoinType>(
+        //let witness = get_witness();
+        let (treasury_cap, metadata) = coin::create_currency<COIN_WRAPPER>(
             otw, 
             9, // decimals
             b"WRAPPED", // symbol
@@ -83,7 +85,7 @@ module full_sail::coin_wrapper {
         store: &mut WrapperStore,
         coin_in: Coin<CoinType>,
         ctx: &mut TxContext
-    ): Coin<WrappedCoinType> {
+    ): Coin<COIN_WRAPPER> {
         let coin_type = type_name::get<CoinType>();
         let coin_type_name = coin_type.into_string();
         assert!(is_supported(store, &coin_type_name), E_NOT_INITIALIZED);
@@ -92,7 +94,7 @@ module full_sail::coin_wrapper {
         let wrapped_data = table::borrow_mut(&mut store.coin_to_wrapper, coin_type_name);
 
         // store original coin
-        transfer::public_transfer(coin_in, object::uid_to_address(&store.id));
+        dynamic_object_field::add(&mut store.id, coin_type_name, coin_in);
 
         // mint wrapped coin
         let wrapped_coin = coin::mint(&mut wrapped_data.treasury_cap, amount, ctx);
@@ -103,7 +105,7 @@ module full_sail::coin_wrapper {
     // unwrap
     public fun unwrap<CoinType>(
         store: &mut WrapperStore,
-        wrapped_coin: Coin<WrappedCoinType>,
+        wrapped_coin: Coin<COIN_WRAPPER>,
     ): Coin<CoinType> {
         let coin_type = type_name::get<CoinType>();
         let coin_type_name = coin_type.into_string();
@@ -114,10 +116,10 @@ module full_sail::coin_wrapper {
         // burn wrapped coin
         coin::burn(&mut wrapped_data.treasury_cap, wrapped_coin);
 
-        let stored_coin = dynamic_object_field::remove<String, Coin<CoinType>>(
-            &mut store.id, 
-            coin_type_name
-        );
+        //let exists = sui::dynamic_field::exists_<String>(&store.id, coin_type_name);
+        //assert!(exists, 1);
+
+        let stored_coin = dynamic_object_field::remove<String, Coin<CoinType>>(&mut store.id, coin_type_name);
 
         stored_coin
     }
@@ -138,5 +140,31 @@ module full_sail::coin_wrapper {
     public fun get_wrapper<CoinType>(store: &WrapperStore): &WrappedAssetData {
         let coin_type_name = type_name::get<CoinType>().into_string();
         table::borrow(&store.coin_to_wrapper, coin_type_name)
+    }
+
+    // --- tests funcs ---
+    #[test_only]
+    public fun init_for_testing(ctx: &mut TxContext) {
+        init(COIN_WRAPPER {}, ctx);
+    }
+
+    #[test_only]
+    public fun register_coin_for_testing<COIN_WRAPPER>(        
+        cap: &WrapperStoreCap,
+        store: &mut WrapperStore,
+        ctx: &mut TxContext
+    ) {
+        let otw = create_witness();
+        register_coin<COIN_WRAPPER>(cap, otw,  store, ctx);
+    }
+
+    #[test_only]
+    public(package) fun get_original_coin_type(wcoin_type: &WrappedAssetData): String {
+        wcoin_type.original_coin_type
+    }
+
+    #[test_only]
+    public fun create_witness(): COIN_WRAPPER {
+        COIN_WRAPPER {}
     }
 }
