@@ -29,7 +29,7 @@ module full_sail::coin_wrapper {
     }
 
     // init
-    fun init(_otw: COIN_WRAPPER, ctx: &mut TxContext) {
+    public(package) fun initialize(_otw: COIN_WRAPPER, ctx: &mut TxContext) {
         let admin_cap = WrapperStoreCap {
             id: object::new(ctx)
         };
@@ -145,7 +145,7 @@ module full_sail::coin_wrapper {
     // --- tests funcs ---
     #[test_only]
     public fun init_for_testing(ctx: &mut TxContext) {
-        init(COIN_WRAPPER {}, ctx);
+        initialize(COIN_WRAPPER {}, ctx);
     }
 
     #[test_only]
