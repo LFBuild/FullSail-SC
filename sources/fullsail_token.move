@@ -70,12 +70,13 @@ module full_sail::fullsail_token {
         transfer::public_freeze_object(coin);
     }
 
-    public(package) fun withdraw(
-        manager: &mut FullSailManager,
-        amount: u64,
+    public fun withdraw(
+        manager: &mut FullSailManager, 
+        amount: u64, 
         ctx: &mut TxContext
     ): Coin<FULLSAIL_TOKEN> {
-        coin::mint(&mut manager.cap, amount, ctx)
+        let coin = mint(&mut manager.cap, amount, ctx);
+        coin
     }
 
     // --- public view functions ---

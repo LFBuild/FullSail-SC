@@ -46,8 +46,9 @@ module full_sail::voting_escrow {
         rebases: Table<u64, u64>,
     }
 
-    public struct VeFullSailToken<phantom FULLSAIL_TOKEN> has key {
+    public struct VeFullSailToken<phantom FULLSAIL_TOKEN> has key, store {
         id: UID,
+        owner: address,
         locked_amount: u64,
         end_epoch: u64,
         snapshots: vector<TokenSnapshot>,
@@ -118,7 +119,6 @@ module full_sail::voting_escrow {
 
     public fun withdraw(
         account: address,
-        manager: &mut FullSailManager,
         ve_token: VeFullSailToken<FULLSAIL_TOKEN>, 
         collection: &VeFullSailCollection,
         clock: &Clock,
@@ -127,19 +127,27 @@ module full_sail::voting_escrow {
         let claimable = claimable_rebase(&ve_token, collection, clock);
         assert!(claimable == 0, E_PENDING_REBASE);
         
-        let coins = fullsail_token::withdraw(manager, balance::value(&ve_token.locked_coins), ctx);
-        
         assert!(tx_context::sender(ctx) == account, E_NOT_OWNER);
         assert!(ve_token.end_epoch <= epoch::now(clock), E_EPOCH_NOT_ENDED);
 
         let VeFullSailToken {
             id,
+            owner: _,
             locked_amount: _,
             end_epoch,
             snapshots,
             next_rebase_epoch: _,
-            locked_coins
+            mut locked_coins,
         } = ve_token;    
+
+        let amount = balance::value(&locked_coins);
+
+        //let coins = fullsail_token::withdraw(manager, amount, ctx);
+        let coins = coin::take(&mut locked_coins, amount, ctx);
+        
+        let empty_balance = balance::withdraw_all(&mut locked_coins);
+
+        balance::destroy_zero(empty_balance);
         object::delete(id);
 
         destroy_snapshots(snapshots);
@@ -147,6 +155,24 @@ module full_sail::voting_escrow {
         
         assert!(end_epoch <= epoch::now(clock), E_EPOCH_NOT_ENDED);
         coins
+    }
+
+    public entry fun withdraw_entry (
+        account: address,
+        ve_token: VeFullSailToken<FULLSAIL_TOKEN>,
+        collection: &VeFullSailCollection,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let withdrawn_coins = withdraw(
+            account,
+            ve_token,
+            collection,
+            clock,
+            ctx
+        );
+
+        transfer::public_transfer(withdrawn_coins, account)
     }
 
     public fun destroy_snapshots(mut snapshots: vector<TokenSnapshot>) {
@@ -164,6 +190,32 @@ module full_sail::voting_escrow {
         clock: &Clock
     ): u64 {
         claimable_rebase_internal(ve_token, collection, clock)
+    }
+
+    public entry fun claim_rebase(
+        account: address,
+        ve_token: &mut VeFullSailToken<FULLSAIL_TOKEN>,
+        collection: &mut VeFullSailCollection,
+        manager: &mut FullSailManager,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert!(tx_context::sender(ctx) == account, E_NOT_OWNER);
+        
+        let claimable = claimable_rebase_internal(ve_token, collection, clock);
+        
+        if (claimable > 0) {
+            let rebase_coins = fullsail_token::withdraw(manager, claimable, ctx);
+            
+            increase_amount_rebase(
+                ve_token,
+                rebase_coins,
+                collection,
+                clock,
+            );
+            
+            ve_token.next_rebase_epoch = epoch::now(clock);
+        }
     }
 
     fun claimable_rebase_internal(
@@ -289,9 +341,10 @@ module full_sail::voting_escrow {
 
         let end_epoch = epoch::now(clock) + lock_duration;
         
-        // Create veToken
+        // create veToken
         let mut ve_token = VeFullSailToken {
             id: object::new(ctx),
+            owner: ctx.sender(),
             locked_amount: amount,
             end_epoch,
             snapshots: vector::empty(),
@@ -521,21 +574,24 @@ module full_sail::voting_escrow {
         target_token: &mut VeFullSailToken<FULLSAIL_TOKEN>,
         collection: &mut VeFullSailCollection,
         clock: &Clock,
+        ctx: &TxContext
     ) {
         let source_rebase = claimable_rebase(&source_token, collection, clock);
         let target_rebase = claimable_rebase(target_token, collection, clock);
         assert!(source_rebase == 0 && target_rebase == 0, E_PENDING_REBASE);
 
-        let transfer_amount = balance::value(&source_token.locked_coins);
+        assert!(tx_context::sender(ctx) == account, E_NOT_OWNER);
+        assert!(source_token.owner == account, E_NOT_OWNER);
+        assert!(target_token.owner == account, E_NOT_OWNER);
 
-        assert!(object::id_address(&source_token) == account, E_NOT_OWNER);
-        assert!(object::id_address(target_token) == account, E_NOT_OWNER);
+        let transfer_amount = balance::value(&source_token.locked_coins);
 
         let source_end_epoch = source_token.end_epoch;
         let source_snapshots = source_token.snapshots;
 
         let VeFullSailToken {
             id,
+            owner: _,
             locked_amount: _,
             end_epoch: _,
             snapshots: _,
@@ -619,11 +675,18 @@ module full_sail::voting_escrow {
         clock: &Clock,
         ctx: &mut TxContext
     ): vector<VeFullSailToken<FULLSAIL_TOKEN>> {
-        assert!(object::id_address(&ve_token) == account, E_NOT_OWNER);
+        assert!(tx_context::sender(ctx) == account, E_NOT_OWNER);
+        assert!(ve_token.owner == account, E_NOT_OWNER);
         
-
         let claimable = claimable_rebase(&ve_token, collection, clock);
         assert!(claimable == 0, E_PENDING_REBASE);
+
+        let mut amounts_copy = vector::empty();
+        let mut i = 0;
+        while (i < vector::length(&split_amounts)) {
+            vector::push_back(&mut amounts_copy, *vector::borrow(&split_amounts, i));
+            i = i + 1;
+        };
 
         let mut total_split_amount = 0;
         vector::reverse(&mut split_amounts);
@@ -641,6 +704,7 @@ module full_sail::voting_escrow {
 
         let VeFullSailToken {
             id,
+            owner: _,
             locked_amount: _,
             end_epoch: _,
             snapshots,
@@ -650,9 +714,6 @@ module full_sail::voting_escrow {
 
         let balance_to_split = locked_coins;
         
-        object::delete(id);
-        destroy_snapshots(snapshots);
-
         let mut current_epoch = epoch::now(clock);
         while (current_epoch < end_epoch) {
             let manifested_supply = &mut collection.unscaled_total_voting_power_per_epoch;
@@ -665,13 +726,12 @@ module full_sail::voting_escrow {
         let remaining_lockup = end_epoch - epoch::now(clock);
         
         let mut new_ve_tokens = vector::empty<VeFullSailToken<FULLSAIL_TOKEN>>();
-        vector::reverse(&mut split_amounts);
-        let mut split_amounts_length = vector::length(&split_amounts);
-
-        let mut coins_to_split = coin::from_balance(balance_to_split, ctx);
         
-        while (split_amounts_length > 0) {
-            let split_amount = vector::pop_back(&mut split_amounts);
+        let mut coins_to_split = coin::from_balance(balance_to_split, ctx);
+
+        vector::reverse(&mut amounts_copy);
+        while (!vector::is_empty(&amounts_copy)) {
+            let split_amount = vector::pop_back(&mut amounts_copy);
             if (coin::value(&coins_to_split) > split_amount) {
                 let split_coin = coin::split(&mut coins_to_split, split_amount, ctx);
                 let mut new_ve_token = create_lock_with(
@@ -685,10 +745,8 @@ module full_sail::voting_escrow {
                 update_snapshots(&mut new_ve_token, split_amount, end_epoch, clock);
                 vector::push_back(&mut new_ve_tokens, new_ve_token);
             };
-            split_amounts_length = split_amounts_length - 1;
         };
-        
-        vector::destroy_empty(split_amounts);
+        vector::destroy_empty(amounts_copy);
         
         let final_ve_token = create_lock_with(
             coins_to_split,
@@ -699,6 +757,9 @@ module full_sail::voting_escrow {
             ctx
         );
         vector::push_back(&mut new_ve_tokens, final_ve_token);
+        
+        object::delete(id);
+        destroy_snapshots(snapshots);
         
         new_ve_tokens
     }
@@ -722,23 +783,38 @@ module full_sail::voting_escrow {
         }
     }
 
-    public entry fun withdraw_entry(
-        account: address,
-        ve_token: VeFullSailToken<FULLSAIL_TOKEN>,
-        manager: &mut FullSailManager,
-        collection: &VeFullSailCollection,
-        clock: &Clock,
-        ctx: &mut TxContext
-    ) {
-        let withdrawn_coins = withdraw(
-            account,
-            manager,
-            ve_token,
-            collection,
-            clock,
-            ctx
-        );
+    // --- test helpers ---
+    #[test_only]
+    public fun init_for_testing(ctx: &mut TxContext) {
+        init(VOTING_ESCROW {}, ctx)
+    }
 
-        transfer::public_transfer(withdrawn_coins, account)
+    #[test_only]
+    public(package) fun next_rebase_epoch(ve_token: &VeFullSailToken<FULLSAIL_TOKEN>): u64{
+        ve_token.next_rebase_epoch
+    }
+
+    #[test_only]
+    public(package) fun add_fake_rebases(
+        collection: &mut VeFullSailCollection, 
+        epoch_number: u64, 
+        rebase_amount: u64, 
+        total_voting_power: u128
+    ) {
+        // add rebase amount for the epoch
+        if (!table::contains(&collection.rebases, epoch_number)) {
+            table::add(&mut collection.rebases, epoch_number, rebase_amount);
+        } else {
+            let rebase = table::borrow_mut(&mut collection.rebases, epoch_number);
+            *rebase = rebase_amount;
+        };
+
+        // add total voting power for the epoch
+        if (!table::contains(&collection.unscaled_total_voting_power_per_epoch, epoch_number)) {
+            table::add(&mut collection.unscaled_total_voting_power_per_epoch, epoch_number, total_voting_power);
+        } else {
+            let power = table::borrow_mut(&mut collection.unscaled_total_voting_power_per_epoch, epoch_number);
+            *power = total_voting_power;
+        };
     }
 }
