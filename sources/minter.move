@@ -134,4 +134,9 @@ module full_sail::minter {
         minter.team_account = minter.pending_team_account;
         minter.pending_team_account = @0x0;
     }
+
+    #[test_only]
+    public fun init_for_testing(ctx: &mut TxContext, treasury_cap: &mut TreasuryCap<FULLSAIL_TOKEN>, collection: &mut VeFullSailCollection, clock: &Clock): VeFullSailToken<FULLSAIL_TOKEN> {
+        initialize(MINTER {}, ctx, treasury_cap, collection, clock)
+    }
 }
