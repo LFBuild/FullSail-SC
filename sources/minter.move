@@ -1,14 +1,11 @@
 module full_sail::minter {
-    use sui::table::{Self, Table};
-    use sui::coin::{Self, Coin, TreasuryCap, CoinMetadata};
+    use sui::coin::{Self, Coin, TreasuryCap};
     use sui::clock::Clock;
-    use sui::dynamic_object_field;
-    use std::ascii::String;
-    use std::type_name;
+    use std::u64;
 
     use full_sail::fullsail_token::{Self, FULLSAIL_TOKEN, FullSailManager};
     use full_sail::epoch;
-    use full_sail::voting_escrow::{Self, VeFullSailCollection};
+    use full_sail::voting_escrow::{Self, VeFullSailCollection, VeFullSailToken};
 
     // --- errors ---
     const E_NOT_OWNER: u64 = 1;
@@ -17,6 +14,7 @@ module full_sail::minter {
     const E_MAX_LOCK_TIME: u64 = 4;
 
     // --- structs ---
+    // otw
     public struct MINTER has drop {}
 
     public struct MinterConfig has key {
@@ -32,10 +30,12 @@ module full_sail::minter {
         id: UID
     }
 
-    public(package) fun initialize(otw: MINTER, ctx: &mut TxContext, treasury_cap: &mut TreasuryCap<FULLSAIL_TOKEN>, collection: &mut VeFullSailCollection, clock: &Clock) {
+    #[lint_allow(self_transfer)]
+    public(package) fun initialize(_otw: MINTER, ctx: &mut TxContext, treasury_cap: &mut TreasuryCap<FULLSAIL_TOKEN>, collection: &mut VeFullSailCollection, clock: &Clock): VeFullSailToken<FULLSAIL_TOKEN> {
+        let recipient = tx_context::sender(ctx);
         let minter_config = MinterConfig{
             id                         : object::new(ctx),
-            team_account               : @full_sail,
+            team_account               : recipient,
             pending_team_account       : @0x0,
             team_emission_rate_bps     : 30,
             weekly_emission_amount     : 150000000000000,
@@ -43,14 +43,16 @@ module full_sail::minter {
         };
         transfer::share_object(minter_config);
         
-        let initial_mint_amount = fullsail_token::mint(
+        let mut initial_mint_amount = fullsail_token::mint(
             treasury_cap, 
             100000000000000000, 
             ctx
         );
-        
-        voting_escrow::create_lock_with(initial_mint_amount, voting_escrow::max_lockup_epochs(), @full_sail, collection, clock, ctx);
-        transfer::public_transfer(initial_mint_amount, @full_sail);
+
+        let transfer_coin = coin::split<FULLSAIL_TOKEN>(&mut initial_mint_amount, 100000000000000000 / 5, ctx);
+        transfer::public_transfer(transfer_coin, recipient);
+        let ve_token = voting_escrow::create_lock_with(initial_mint_amount, voting_escrow::max_lockup_epochs(), recipient, collection, clock, ctx);
+        ve_token
     }
 
     public fun mint(minter: &mut MinterConfig, manager: &FullSailManager, collection: &VeFullSailCollection, treasury_cap: &mut TreasuryCap<FULLSAIL_TOKEN>, clock: &Clock, ctx: &mut TxContext) : (Coin<FULLSAIL_TOKEN>, Coin<FULLSAIL_TOKEN>) {
@@ -60,16 +62,17 @@ module full_sail::minter {
         let weekly_emission = minter.weekly_emission_amount;
         let basis_points = 10000;
         assert!(basis_points != 0, E_ZERO_TOTAL_POWER);
-        let minted_tokens = fullsail_token::mint(treasury_cap, weekly_emission, ctx);
-        primary_fungible_store::deposit(minter.team_account, fungible_asset::extract(&mut minted_tokens, (((weekly_emission as u128) * (minter.team_emission_rate_bps as u128) / (basis_points as u128)) as u64)));
+        let mut minted_tokens = fullsail_token::mint(treasury_cap, weekly_emission, ctx);
+        let transfer_coin = coin::split<FULLSAIL_TOKEN>(&mut minted_tokens, (((weekly_emission as u128) * (minter.team_emission_rate_bps as u128) / (basis_points as u128)) as u64), ctx);
+        transfer::public_transfer(transfer_coin, minter.team_account);
         let additional_minted_tokens = if (rebase_amount == 0) {
-            fungible_asset::zero<CellanaToken>(fullsail_token::token())
+            coin::zero<FULLSAIL_TOKEN>(ctx)
         } else {
             fullsail_token::mint(treasury_cap, (rebase_amount as u64), ctx)
         };
         let reduction_rate_bps = 10000;
         assert!(reduction_rate_bps != 0, E_ZERO_TOTAL_POWER);
-        minter.weekly_emission_amount = math64::max((((weekly_emission as u128) * ((10000 - 100) as u128) / (reduction_rate_bps as u128)) as u64), min_weekly_emission(manager));
+        minter.weekly_emission_amount = u64::max((((weekly_emission) * ((10000 - 100)) / (reduction_rate_bps))), min_weekly_emission(manager));
         minter.last_emission_update_epoch = current_epoch;
         (minted_tokens, additional_minted_tokens)
     }
