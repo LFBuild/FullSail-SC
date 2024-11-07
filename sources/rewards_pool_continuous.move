@@ -47,8 +47,36 @@ module full_sail::rewards_pool_continuous {
         stakes: Table<address, u64>,
     }
 
-    public fun initialize(_otw: REWARD_POOL_CONTINUOUS, duration: u64, ctx: &mut TxContext) {
-        let admin_cap = 
+    public fun initialize(metadata: CoinMetadata<FULLSAIL_TOKEN>, duration: u64, ctx: &mut TxContext): RewardsPool {
+        assert!(duration > 0, E_NOT_OWNER);
+        let new_rewards_pool = RewardsPool {
+            id: object::new(ctx),
+            reward_per_token_stored    : 0,
+            user_reward_per_token_paid : table::new<address, u128>(ctx),
+            last_update_time           : 0,
+            reward_rate                : 0,
+            reward_duration            : duration,
+            reward_period_finish       : 0,
+            rewards                    : table::new<address, u64>(ctx),
+            total_stake                : 0,
+            stakes                     : table::new<address, u64>(ctx),
+        };
+        transfer::transfer(new_rewards_pool, tx_context::sender(ctx));
+        transfer::public_transfer(metadata, @0x1);
+
+        let new_rewards_pool = RewardsPool {
+            id: object::new(ctx),
+            reward_per_token_stored    : 0,
+            user_reward_per_token_paid : table::new<address, u128>(ctx),
+            last_update_time           : 0,
+            reward_rate                : 0,
+            reward_duration            : duration,
+            reward_period_finish       : 0,
+            rewards                    : table::new<address, u64>(ctx),
+            total_stake                : 0,
+            stakes                     : table::new<address, u64>(ctx),
+        };        
+        new_rewards_pool
     }
 
     public fun add_rewards(pool: &mut RewardsPool, coin: &mut Coin<FULLSAIL_TOKEN>, clock: &Clock, ctx: &mut TxContext) {
@@ -98,7 +126,7 @@ module full_sail::rewards_pool_continuous {
         let _default_stake_value = 0;
         let _default_reward_value = 0;
         let scale_factor = 100000000;
-        assert!(scale_factor != 0, 14);
+        assert!(scale_factor != 0, E_ZERO_TOTAL_POWER);
         let _user_rewards = 0;
         (((((*table::borrow(&pool_ref.stakes, user_address) as u128) as u256) * ((reward_per_token_internal(pool_ref, clock) - *table::borrow(&pool_ref.user_reward_per_token_paid, user_address)) as u256) / (scale_factor as u256)) as u128) as u64) + *table::borrow(&pool_ref.rewards, user_address)
     }
@@ -107,7 +135,11 @@ module full_sail::rewards_pool_continuous {
         claimable_internal(user_address, pool, clock)
     }
 
-    public fun reward_per_token(pool: &mut RewardsPool, clock: &Clock) : u128 {
+    public fun current_reward_period_finish(pool: &RewardsPool) : u64 {
+        pool.reward_period_finish
+    }
+
+    public fun reward_per_token(pool: &RewardsPool, clock: &Clock) : u128 {
         reward_per_token_internal(pool, clock)
     }
 
@@ -116,10 +148,50 @@ module full_sail::rewards_pool_continuous {
         let mut adjusted_reward = stored_reward;
         let total_stake_amount = pool_ref.total_stake;
         if (total_stake_amount > 0) {
-            assert!(total_stake_amount != 0, 14);
+            assert!(total_stake_amount != 0, E_ZERO_TOTAL_POWER);
             adjusted_reward = stored_reward + (((((std::u64::min(clock::timestamp_ms(clock), pool_ref.reward_period_finish) - pool_ref.last_update_time) as u128) as u256) * (pool_ref.reward_rate as u256) / (total_stake_amount as u256)) as u128);
         };
         adjusted_reward
+    }
+
+    public fun reward_rate(pool: &RewardsPool) : u128 {
+        pool.reward_rate / 100000000
+    }
+
+
+    public fun stake(user_address: address, pool: &mut RewardsPool, stake_amount: u64, clock: &Clock) {
+        update_reward(user_address, pool, clock);
+        let pool_ref = pool;
+        let user_stake_amount = table::borrow_mut<address, u64>(&mut pool_ref.stakes, user_address);
+        *user_stake_amount = *user_stake_amount + stake_amount;
+        pool_ref.total_stake = pool_ref.total_stake + (stake_amount as u128);
+    }
+
+    public fun stake_balance(user_address: address, pool: &mut RewardsPool): u64 {
+        *table::borrow<address, u64>(&pool.stakes, user_address)
+    }
+
+    public fun total_stake(pool: &RewardsPool) : u128 {
+        pool.total_stake
+    }
+
+    public fun total_unclaimed_rewards(pool: RewardsPool) : u64 {
+        coin::balance<RewardsPool>(pool)
+        coin::value<FULLSAIL_TOKEN>()
+    }
+
+    public fun unstake(user_address: address, pool: &mut RewardsPool, stake_amount: u64, clock: &Clock) {
+        update_reward(user_address, pool, clock);
+        let pool_ref = pool;
+        assert!(table::contains<address, u64>(&pool_ref.stakes, user_address), E_MIN_LOCK_TIME);
+        let user_stake_amount = table::borrow_mut<address, u64>(&mut pool_ref.stakes, user_address);
+        assert!(stake_amount > 0 && stake_amount <= *user_stake_amount, E_INSUFFICIENT_BALANCE);
+        *user_stake_amount = *user_stake_amount - stake_amount;
+        pool_ref.total_stake = pool_ref.total_stake - (stake_amount as u128);
+        if (*user_stake_amount == 0) {
+            table::remove<address, u64>(&mut pool_ref.stakes, user_address);
+            table::remove<address, u128>(&mut pool_ref.user_reward_per_token_paid, user_address);
+        };
     }
 
     public fun update_reward(user_address: address, pool: &mut RewardsPool, clock: &Clock) {
