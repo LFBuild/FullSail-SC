@@ -1,7 +1,6 @@
 module full_sail::rewards_pool_continuous {
     use sui::table::{Self, Table};
-    use sui::coin::{Self, Coin, TreasuryCap, CoinMetadata};
-    use sui::dynamic_object_field;
+    use sui::coin::{Self, Coin, CoinMetadata};
     use sui::clock::{Self, Clock};
 
     use full_sail::fullsail_token::{FULLSAIL_TOKEN};
@@ -9,27 +8,9 @@ module full_sail::rewards_pool_continuous {
     // --- errors ---
     const E_INSUFFICIENT_BALANCE: u64 = 1;
     const E_MIN_LOCK_TIME: u64 = 2;
-    const E_MAX_LOCK_TIME: u64 = 3;
+    // const E_MAX_LOCK_TIME: u64 = 3;
     const E_NOT_OWNER: u64 = 4;
-    const E_LOCK_NOT_EXPIRED: u64 = 5;
-    const E_INVALID_UPDATE: u64 = 6;
-    const E_LOCK_EXTENSION_TOO_SHORT: u64 = 7;
-    const E_ZERO_AMOUNT: u64 = 8;
-    const E_NO_SNAPSHOT: u64 = 9;
-    const E_LOCK_EXPIRED: u64 = 10;
-    const E_INVALID_EPOCH: u64 = 11;
-    const E_INVALID_SPLIT_AMOUNT: u64 = 12;
-    const E_PENDING_REBASE: u64 = 13;
     const E_ZERO_TOTAL_POWER: u64 = 14;
-    const E_EPOCH_NOT_ENDED: u64 = 15;
-    const E_LOCK_DURATION_TOO_SHORT: u64 = 16;
-    const E_LOCK_DURATION_TOO_LONG: u64 = 17;
-    const E_INVALID_TOKEN: u64 = 18;
-    const E_INVALID_EXTENSION: u64 = 19;
-    const E_NO_SNAPSHOT_FOUND: u64 = 20;
-    const E_INVALID_SPLIT_AMOUNTS: u64 = 21;
-    const E_SMART_TABLE_ENTRY_NOT_FOUND: u64 = 22;
-    const ERROR_INVALID_UPDATE: u64 = 23;
 
     // --- structs ---
     public struct REWARD_POOL_CONTINUOUS has drop {}
@@ -175,10 +156,10 @@ module full_sail::rewards_pool_continuous {
         pool.total_stake
     }
 
-    public fun total_unclaimed_rewards(pool: RewardsPool) : u64 {
-        coin::balance<RewardsPool>(pool)
-        coin::value<FULLSAIL_TOKEN>()
-    }
+    // public fun total_unclaimed_rewards(pool: RewardsPool) : u64 {
+    //     coin::balance<RewardsPool>(pool)
+    //     coin::value<FULLSAIL_TOKEN>()
+    // }
 
     public fun unstake(user_address: address, pool: &mut RewardsPool, stake_amount: u64, clock: &Clock) {
         update_reward(user_address, pool, clock);
@@ -215,4 +196,30 @@ module full_sail::rewards_pool_continuous {
         // Update the user reward per token paid
         table::add(&mut pool_ref.user_reward_per_token_paid, user_address, pool_ref.reward_per_token_stored);
     }
+
+    #[test_only]
+    public fun add_rewards_test(pool: &mut RewardsPool, coin: &mut Coin<FULLSAIL_TOKEN>, clock: &Clock, ctx: &mut TxContext) {
+        add_rewards(pool, coin, clock, ctx);
+    }
+
+    #[test_only]
+    public fun create_test(metadata: CoinMetadata<FULLSAIL_TOKEN>, duration: u64, ctx: &mut TxContext) : RewardsPool { 
+        let rewards_pool = initialize(metadata, duration, ctx);
+        rewards_pool
+    }
+
+    #[test_only]
+    public fun stake_test(user_address: address, pool: &mut RewardsPool, stake_amount: u64, clock: &Clock) {
+        stake(user_address, pool, stake_amount, clock);
+    }
+
+    // #[test_only]
+    // public fun claim_rewards_test(user_address: address, pool: Object<RewardsPool>) : fungible_asset::FungibleAsset acquires RewardsPool {
+    //     claim_rewards(user_address, pool)
+    // }
+
+    #[test_only]
+    public fun unstake_test(user_address: address, pool: &mut RewardsPool, stake_amount: u64, clock: &Clock) {
+        unstake(user_address, pool, stake_amount, clock);
+    }    
 }
