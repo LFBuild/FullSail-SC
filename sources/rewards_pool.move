@@ -5,7 +5,6 @@ module full_sail::rewards_pool {
     use sui::coin::{Self, Coin, TreasuryCap, CoinMetadata};
     use sui::package;
     use sui::dynamic_field;
-    use sui::vec_map::{Self, VecMap};
 
     use full_sail::liquidity_pool;
     use full_sail::epoch;
@@ -29,6 +28,53 @@ module full_sail::rewards_pool {
     public struct REWARDS_POOL has drop {}
 
     public struct EpochRewards<phantom BaseType> has store {
-        total_amounts: Table<CoinMetadata<BaseType>, u64>
+        reward_tokens: vector<CoinMetadata<BaseType>>,
+        reward_tokens_amounts: vector<u64>,
+        non_default_reward_tokens_count: u64,
+        pool_total_coins: u64,
+        pool_total_shares: u128,
+        pool_shares: Table<address, u128>,
+    }
+
+    public struct RewardStore<phantom BaseType> has store {
+        store: Balance<BaseType>,
+    }
+
+    public struct RewardsPool<phantom BaseType> has key {
+        id: UID,
+        epoch_rewards: Table<u64, EpochRewards<BaseType>>,
+        reward_tokens: vector<CoinMetadata<BaseType>>,
+        reward_stores: vector<RewardStore<BaseType>>,
+        default_reward_tokens: vector<CoinMetadata<BaseType>>,
+    }
+
+    public fun create<BaseType>(mut reward_tokens_list: vector<CoinMetadata<BaseType>>, ctx: &mut TxContext): ID {
+        let mut new_reward_tokens = vector::empty<CoinMetadata<BaseType>>();
+        let mut new_reward_stores = vector::empty<RewardStore<BaseType>>();
+        let rewards_pool_id = object::new(ctx);
+
+        vector::reverse<CoinMetadata<BaseType>>(&mut reward_tokens_list);
+        let mut reward_tokens_length = vector::length<CoinMetadata<BaseType>>(&reward_tokens_list);
+        while(reward_tokens_length > 0) {
+            let reward_token = vector::pop_back<CoinMetadata<BaseType>>(&mut reward_tokens_list);
+            let reward_store = RewardStore<BaseType> {
+                store: balance::zero<BaseType>(),
+            };
+            vector::push_back<CoinMetadata<BaseType>>(&mut new_reward_tokens, reward_token);
+            vector::push_back<RewardStore<BaseType>>(&mut new_reward_stores, reward_store);
+            reward_tokens_length = reward_tokens_length - 1;
+        };
+        vector::destroy_empty<CoinMetadata<BaseType>>(reward_tokens_list);
+        let rewards_pool = RewardsPool {
+            id: rewards_pool_id,
+            epoch_rewards: table::new<u64, EpochRewards<BaseType>>(ctx),
+            reward_tokens: new_reward_tokens,
+            reward_stores: new_reward_stores,
+            default_reward_tokens: vector::empty<CoinMetadata<BaseType>>(),
+        };
+
+        let pool_id = object::id(&rewards_pool);
+        transfer::share_object(rewards_pool);
+        pool_id
     }
 }
