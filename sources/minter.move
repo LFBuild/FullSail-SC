@@ -1,5 +1,5 @@
 module full_sail::minter {
-    use sui::coin::{Self, Coin, TreasuryCap};
+    use sui::coin::{Self, Coin};
     use sui::clock::Clock;
     use std::u64;
 
@@ -139,7 +139,6 @@ module full_sail::minter {
 
     #[test_only]
     public fun init_for_testing(ctx: &mut TxContext, manager: &mut FullSailManager, collection: &mut VeFullSailCollection, clock: &Clock): VeFullSailToken<FULLSAIL_TOKEN> {
-        let treasury_cap = fullsail_token::cap(manager);
         initialize(MINTER {}, ctx, manager, collection, clock)
     }
 }
