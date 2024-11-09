@@ -26,10 +26,6 @@ module full_sail::minter {
         last_emission_update_epoch: u64,
     }
 
-    public struct AdminCap has key {
-        id: UID
-    }
-
     #[lint_allow(self_transfer)]
     public fun initialize(_otw: MINTER, ctx: &mut TxContext, manager: &mut FullSailManager, collection: &mut VeFullSailCollection, clock: &Clock): VeFullSailToken<FULLSAIL_TOKEN> {
         let recipient = tx_context::sender(ctx);
@@ -56,7 +52,7 @@ module full_sail::minter {
         ve_token
     }
 
-    public fun mint(minter: &mut MinterConfig, manager: &mut FullSailManager, collection: &VeFullSailCollection, clock: &Clock, ctx: &mut TxContext) : (Coin<FULLSAIL_TOKEN>, Coin<FULLSAIL_TOKEN>) {
+    public fun mint(minter: &mut MinterConfig, manager: &mut FullSailManager, collection: &VeFullSailCollection, clock: &Clock, ctx: &mut TxContext): (Coin<FULLSAIL_TOKEN>, Coin<FULLSAIL_TOKEN>) {
         let rebase_amount = current_rebase(minter, manager, collection, clock);
         let current_epoch = epoch::now(clock);
         assert!(current_epoch >= minter.last_emission_update_epoch + 1, E_MAX_LOCK_TIME);
