@@ -117,7 +117,7 @@ module full_sail::coin_wrapper {
         // burn wrapped coin
         coin::burn(&mut wrapped_data.treasury_cap, wrapped_coin);
 
-        let exists = sui::dynamic_field::exists_<String>(&store.id, coin_type_name);
+        let exists = sui::dynamic_object_field::exists_<String>(&store.id, coin_type_name);
         assert!(exists, 1);
 
         let stored_coin = dynamic_object_field::remove<String, Coin<CoinType>>(&mut store.id, coin_type_name);
