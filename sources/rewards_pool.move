@@ -1,13 +1,9 @@
 module full_sail::rewards_pool {
-    use std::ascii::String;
     use sui::table::{Self, Table};
     use sui::balance::{Self, Balance};
-    use sui::coin::{Self, Coin, TreasuryCap, CoinMetadata};
-    use sui::package;
     use sui::clock::Clock;
-    use sui::dynamic_field;
+    use sui::coin::{CoinMetadata};
 
-    use full_sail::liquidity_pool;
     use full_sail::epoch;
 
     // --- addresses ---
@@ -15,11 +11,12 @@ module full_sail::rewards_pool {
 
     // --- errors ---
     const E_SHAREHOLDER_NOT_FOUND: u64 = 1;
-    const EINSUFFICIENT_SHARES: u64 = 2;
+    const E_INSUFFICIENT_SHARES: u64 = 2;
     const E_POOL_TOTAL_COINS_OVERFLOW: u64 = 3;
     const E_POOL_TOTAL_SHARES_OVERFLOW: u64 = 4;
     const E_SHAREHOLDER_SHARES_OVERFLOW: u64 = 5;
     const E_INVALID_EPOCH: u64 = 6;
+    const E_EXIT_NON_DEFAULT_REWARD_TOKENS: u64 = 7;
 
     const MAX_U64: u64 = 18446744073709551615;
     const MAX_U128: u128 = 340282366920938463463374607431768211455;
@@ -44,7 +41,7 @@ module full_sail::rewards_pool {
     public struct RewardsPool<phantom BaseType> has key {
         id: UID,
         epoch_rewards: Table<u64, EpochRewards<BaseType>>,
-        reward_tokens: vector<CoinMetadata<BaseType>>,
+        reward_stores_tokens: vector<CoinMetadata<BaseType>>,
         reward_stores: vector<RewardStore<BaseType>>,
         default_reward_tokens: vector<CoinMetadata<BaseType>>,
     }
@@ -69,7 +66,7 @@ module full_sail::rewards_pool {
         let rewards_pool = RewardsPool {
             id: rewards_pool_id,
             epoch_rewards: table::new<u64, EpochRewards<BaseType>>(ctx),
-            reward_tokens: new_reward_tokens,
+            reward_stores_tokens: new_reward_tokens,
             reward_stores: new_reward_stores,
             default_reward_tokens: vector::empty<CoinMetadata<BaseType>>(),
         };
@@ -79,7 +76,118 @@ module full_sail::rewards_pool {
         pool_id
     }
 
-    public fun default_reward_tokens<BaseType>(rewards_pool: &mut RewardsPool<BaseType>): &vector<CoinMetadata<BaseType>> {
+    fun is_in_vector<T>(data_vector: &vector<T>, element: &T): (bool, u64) {
+        let mut index = 0;
+        while(index <= vector::length<T>(data_vector)) {
+            let el = vector::borrow<T>(data_vector, index);
+            if(el == element) {
+                return (true, index)
+            };
+            index = index + 1;
+        };
+        (false, 0)
+    }
+
+    public fun add_rewards<BaseType>(rewards_pool: &mut RewardsPool<BaseType>, add_rewards_metadata: &mut vector<CoinMetadata<BaseType>>, add_rewards: &mut vector<Balance<BaseType>>, epoch_id: u64, ctx: &mut TxContext) {
+        let default_reward_tokens = &rewards_pool.default_reward_tokens;
+        vector::reverse<CoinMetadata<BaseType>>(add_rewards_metadata);
+        vector::reverse<Balance<BaseType>>(add_rewards);
+        let mut length = vector::length<Balance<BaseType>>(add_rewards);
+        while(length > 0) {
+            if(balance::value(vector::borrow<Balance<BaseType>>(add_rewards, vector::length<Balance<BaseType>>(add_rewards) - 1)) == 0) {
+                balance::destroy_zero(vector::pop_back<Balance<BaseType>>(add_rewards));
+            } else {
+                let (epoch_rewards, reward_stores_tokens, reward_stores) = (
+                    &mut rewards_pool.epoch_rewards,
+                    &mut rewards_pool.reward_stores_tokens,
+                    &mut rewards_pool.reward_stores,
+                );
+                if(!table::contains<u64, EpochRewards<BaseType>>(epoch_rewards, epoch_id)) {
+                    let new_epoch_rewards = EpochRewards<BaseType> {
+                        reward_tokens: vector::empty<CoinMetadata<BaseType>>(),
+                        reward_tokens_amounts: vector::empty<u64>(),
+                        non_default_reward_tokens_count: 0,
+                        pool_total_coins: 0,
+                        pool_total_shares: 0,
+                        pool_shares: table::new<address, u128>(ctx),
+                    };
+                    table::add<u64, EpochRewards<BaseType>>(epoch_rewards, epoch_id, new_epoch_rewards);
+                };
+                let epoch_reward_one = table::borrow_mut<u64, EpochRewards<BaseType>>(epoch_rewards, epoch_id);
+                let reward_tokens = &mut epoch_reward_one.reward_tokens;
+                let reward_tokens_amounts = &mut epoch_reward_one.reward_tokens_amounts;
+                let add_metadata = vector::pop_back<CoinMetadata<BaseType>>(add_rewards_metadata);
+
+                if(!vector::contains<CoinMetadata<BaseType>>(reward_tokens, &add_metadata)) {
+                    if(!vector::contains<CoinMetadata<BaseType>>(default_reward_tokens, &add_metadata)) {
+                        let non_default_reward_tokens_count = &mut epoch_reward_one.non_default_reward_tokens_count;
+                        assert!(*non_default_reward_tokens_count < 15, E_EXIT_NON_DEFAULT_REWARD_TOKENS);
+                        *non_default_reward_tokens_count = *non_default_reward_tokens_count + 1;
+                    };
+                    // vector::push_back<CoinMetadata<BaseType>>(reward_tokens, add_metadata);
+                    vector::push_back<u64>(reward_tokens_amounts, 0);
+                };
+
+                if(!vector::contains<CoinMetadata<BaseType>>(reward_stores_tokens, &add_metadata)) {
+                    let reward_store = RewardStore {
+                        store: balance::zero<BaseType>(),
+                    };
+                    // vector::push_back<CoinMetadata<BaseType>>(reward_stores_tokens, add_metadata);
+                    vector::push_back<RewardStore<BaseType>>(reward_stores, reward_store);
+                };
+                let (result, pos) = is_in_vector<CoinMetadata<BaseType>>(reward_stores_tokens, &add_metadata);
+                transfer::public_transfer(add_metadata, DEFAULT_ADMIN);
+                if(result == true) {
+                    let reward_store = vector::borrow_mut<RewardStore<BaseType>>(reward_stores, pos);
+                    let store = &mut reward_store.store;
+                    let add_reward = vector::pop_back<Balance<BaseType>>(add_rewards);
+                    balance::join<BaseType>(store, add_reward);
+                }
+            };
+            length = length - 1;
+        };
+    }
+
+    public fun claim_rewards<BaseType>(user_address: address, rewards_pool: &mut RewardsPool<BaseType>, epoch_id: u64, clock: &Clock): vector<Balance<BaseType>> {
+        assert!(epoch_id < epoch::now(clock), E_INVALID_EPOCH);
+        let epoch_reward_one = table::borrow_mut<u64, EpochRewards<BaseType>>(&mut rewards_pool.epoch_rewards, epoch_id);
+        let reward_tokens = &mut epoch_reward_one.reward_tokens;
+        let reward_tokens_amounts = &mut epoch_reward_one.reward_tokens_amounts;
+        let reward_stores_tokens = &rewards_pool.reward_stores_tokens;
+        let reward_stores = &mut rewards_pool.reward_stores;
+        let mut claimed_assets = vector::empty<Balance<BaseType>>();
+        vector::reverse<CoinMetadata<BaseType>>(reward_tokens);
+        vector::reverse<u64>(reward_tokens_amounts);
+        let mut reward_tokens_length = vector::length<u64>(reward_tokens_amounts);
+        let shares = table::borrow<address, u128>(&epoch_reward_one.pool_shares, user_address);
+        while(reward_tokens_length > 0) {
+            let reward_token_amount = vector::pop_back<u64>(reward_tokens_amounts);
+            let rewards_amount = reward_token_amount * (*shares as u64) / (epoch_reward_one.pool_total_shares as u64);
+            let reward_token = vector::pop_back<CoinMetadata<BaseType>>(reward_tokens);
+            let (_, pos) = is_in_vector(reward_stores_tokens, &reward_token);
+            transfer::public_transfer(reward_token, DEFAULT_ADMIN);
+            let reward_store = vector::borrow_mut<RewardStore<BaseType>>(reward_stores, pos);
+            if(rewards_amount == 0) {
+                vector::push_back<Balance<BaseType>>(&mut claimed_assets, balance::zero<BaseType>());
+            } else {
+                vector::push_back<Balance<BaseType>>(&mut claimed_assets, balance::withdraw_all(&mut reward_store.store));
+            };
+            reward_tokens_length = reward_tokens_length - 1;
+        };
+        
+        let redeemed_coins;
+        if(epoch_reward_one.pool_total_coins == 0 || epoch_reward_one.pool_total_shares == 0) {
+            redeemed_coins = 0;
+        } else {
+            redeemed_coins = (*shares as u64) * epoch_reward_one.pool_total_coins / (epoch_reward_one.pool_total_shares as u64);
+        };
+        epoch_reward_one.pool_total_coins = epoch_reward_one.pool_total_coins - redeemed_coins;
+        epoch_reward_one.pool_total_shares = epoch_reward_one.pool_total_shares - (*shares as u128);
+        table::remove(&mut epoch_reward_one.pool_shares, user_address);
+        claimed_assets
+    }
+
+    public fun default_reward_tokens<BaseType>(rewards_pool: &RewardsPool<BaseType>): &vector<CoinMetadata<BaseType>> {
         &rewards_pool.default_reward_tokens
     }
 
@@ -117,7 +225,7 @@ module full_sail::rewards_pool {
         let epoch_reward = table::borrow_mut<u64, EpochRewards<BaseType>>(&mut rewards_pool.epoch_rewards, current_epoch);
         assert!(table::contains<address, u128>(&epoch_reward.pool_shares, user_address), E_SHAREHOLDER_NOT_FOUND);
         let shares = table::borrow_mut<address, u128>(&mut epoch_reward.pool_shares, user_address);
-        assert!(*shares >= amount as u128, EINSUFFICIENT_SHARES);
+        assert!(*shares >= amount as u128, E_INSUFFICIENT_SHARES);
         if(amount == 0) return 0;
         let redeemed_coins;
         if(epoch_reward.pool_total_coins == 0 || epoch_reward.pool_total_shares == 0) {
@@ -176,11 +284,12 @@ module full_sail::rewards_pool {
         assert!(epoch_id <= epoch::now(clock), E_INVALID_EPOCH);
         let epoch_reward = table::borrow<u64, EpochRewards<BaseType>>(&rewards_pool.epoch_rewards, epoch_id);
         let mut claimable_rewards_amounts = vector::empty<u64>();
-        let index = 0;
+        let mut index = 0;
         let shares = table::borrow<address, u128>(&epoch_reward.pool_shares, user_address);
         while(index < vector::length<u64>(&epoch_reward.reward_tokens_amounts)) {
             let rewards = *vector::borrow<u64>(&epoch_reward.reward_tokens_amounts, index) * (*shares as u64) / (epoch_reward.pool_total_shares as u64);
             vector::push_back<u64>(&mut claimable_rewards_amounts, rewards);
+            index = index + 1;
         };
         (reward_tokens(rewards_pool, epoch_id), claimable_rewards_amounts)
     }
