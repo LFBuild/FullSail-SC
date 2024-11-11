@@ -245,4 +245,246 @@ module full_sail::liquidity_pool_test {
         
         ts::end(scenario_val);
     }
+
+    // test claim fees
+    #[test]
+    fun test_claim_fees() {
+        let mut scenario_val = ts::begin(OWNER);
+        let scenario = &mut scenario_val;
+        
+        setup(scenario);
+        
+        next_tx(scenario, OWNER);
+        {
+            let mut configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
+            let base_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
+            let quote_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
+            
+            liquidity_pool::create<USDT, SUI>(
+                &base_metadata,
+                &quote_metadata,
+                &mut configs,
+                false,
+                ts::ctx(scenario)
+            );
+            
+            ts::return_shared(configs);
+            ts::return_immutable(base_metadata);
+            ts::return_immutable(quote_metadata);
+        };
+        
+        next_tx(scenario, OWNER);
+        {
+            let mut fees = ts::take_shared<FeesAccounting>(scenario);
+            let mut pool = ts::take_shared<LiquidityPool<USDT, SUI>>(scenario);
+            let base_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
+            let quote_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
+            
+            let base_coin = coin::mint_for_testing<USDT>(100000, ts::ctx(scenario));
+            let quote_coin = coin::mint_for_testing<SUI>(100000, ts::ctx(scenario));
+            
+            liquidity_pool::mint_lp(
+                &mut pool,
+                &mut fees,
+                &base_metadata,
+                &quote_metadata,
+                base_coin,
+                quote_coin,    
+                false,
+                ts::ctx(scenario)
+            );
+            
+            ts::return_shared(pool);
+            ts::return_shared(fees);
+            ts::return_immutable(base_metadata);
+            ts::return_immutable(quote_metadata);
+        };
+        
+        // some swaps to generate fees
+        next_tx(scenario, OWNER);
+        {
+            let configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
+            let mut fees = ts::take_shared<FeesAccounting>(scenario);
+            let mut pool = ts::take_shared<LiquidityPool<USDT, SUI>>(scenario);
+            let base_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
+            let quote_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
+            
+            // 10k USDT -> SUI swap
+            let coin_in = coin::mint_for_testing<USDT>(10000, ts::ctx(scenario));
+            let coin_out = liquidity_pool::swap(
+                &mut pool,
+                &configs,
+                &mut fees,
+                &base_metadata,
+                &quote_metadata,
+                coin_in,
+                ts::ctx(scenario)
+            );
+            
+            transfer::public_transfer(coin_out, OWNER);
+            
+            // verify fees were collected
+            let (base_fees, quote_fees) = liquidity_pool::gauge_claimable_fees(&pool);
+            assert!(base_fees == 10, 0); // 1% of 10000
+            assert!(quote_fees == 0, 1);   // no quote fees yet
+            
+            ts::return_shared(pool);
+            ts::return_shared(configs);
+            ts::return_shared(fees);
+            ts::return_immutable(base_metadata);
+            ts::return_immutable(quote_metadata);
+        };
+        
+        next_tx(scenario, OWNER);
+        {
+            let mut pool = ts::take_shared<LiquidityPool<USDT, SUI>>(scenario);
+            
+            let (initial_base_fees, initial_quote_fees) = liquidity_pool::gauge_claimable_fees(&pool);
+            assert!(initial_base_fees == 10, 2); // 1% of 10000 USDT
+            assert!(initial_quote_fees == 0, 3);
+            
+            // claim fees
+            let (base_fee_coin, quote_fee_coin) = liquidity_pool::claim_fees(
+                &mut pool,
+                ts::ctx(scenario)
+            );
+            
+            // verify claimed amounts
+            assert!(coin::value(&base_fee_coin) == 10, 4); // USDT fees claimed
+            assert!(coin::value(&quote_fee_coin) == 0, 5);  // no SUI fees to claim
+            
+            // verify fees were deducted from pool
+            let (final_base_fees, final_quote_fees) = liquidity_pool::gauge_claimable_fees(&pool);
+            assert!(final_base_fees == 0, 6); // USDT fees claimed
+            assert!(final_quote_fees == 0, 7); // SUI fees
+            
+            // clean up fee coins
+            transfer::public_transfer(base_fee_coin, OWNER);
+            transfer::public_transfer(quote_fee_coin, OWNER);
+            
+            ts::return_shared(pool);
+        };
+        
+        // verify claiming again yields zero
+        next_tx(scenario, OWNER);
+        {
+            let mut pool = ts::take_shared<LiquidityPool<USDT, SUI>>(scenario);
+            
+            let (base_fee_coin, quote_fee_coin) = liquidity_pool::claim_fees(
+                &mut pool,
+                ts::ctx(scenario)
+            );
+            
+            // verify zero fees claimed
+            assert!(coin::value(&base_fee_coin) == 0, 8);
+            assert!(coin::value(&quote_fee_coin) == 0, 9);
+            
+            transfer::public_transfer(base_fee_coin, OWNER);
+            transfer::public_transfer(quote_fee_coin, OWNER);
+            
+            ts::return_shared(pool);
+        };
+        
+        ts::end(scenario_val);
+    }
+
+    #[test]
+    fun test_burn() {
+        let mut scenario_val = ts::begin(OWNER);
+        let scenario = &mut scenario_val;
+        
+        setup(scenario);
+        
+        next_tx(scenario, OWNER);
+        {
+            let mut configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
+            let base_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
+            let quote_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
+            
+            liquidity_pool::create<USDT, SUI>(
+                &base_metadata,
+                &quote_metadata,
+                &mut configs,
+                false,
+                ts::ctx(scenario)
+            );
+            
+            ts::return_shared(configs);
+            ts::return_immutable(base_metadata);
+            ts::return_immutable(quote_metadata);
+        };
+        
+        next_tx(scenario, OWNER);
+        {
+            let mut fees = ts::take_shared<FeesAccounting>(scenario);
+            let mut pool = ts::take_shared<LiquidityPool<USDT, SUI>>(scenario);
+            let base_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
+            let quote_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
+            
+            let initial_base = 100000;
+            let initial_quote = 100000;
+            
+            let base_coin = coin::mint_for_testing<USDT>(initial_base, ts::ctx(scenario));
+            let quote_coin = coin::mint_for_testing<SUI>(initial_quote, ts::ctx(scenario));
+            
+            let liquidity_amount = liquidity_pool::mint_lp(
+                &mut pool,
+                &mut fees,
+                &base_metadata,
+                &quote_metadata,
+                base_coin,
+                quote_coin,    
+                false,
+                ts::ctx(scenario)
+            );
+            
+            let (base_reserve, quote_reserve) = liquidity_pool::pool_reserves(&pool);
+            assert!(base_reserve == initial_base, 0);
+            assert!(quote_reserve == initial_quote, 1);
+            assert!(liquidity_amount == 99000, 2);
+            
+            ts::return_shared(pool);
+            ts::return_shared(fees);
+            ts::return_immutable(base_metadata);
+            ts::return_immutable(quote_metadata);
+        };
+        
+        // Test burn
+        next_tx(scenario, OWNER);
+        {
+            let mut pool = ts::take_shared<LiquidityPool<USDT, SUI>>(scenario);
+            
+            let burn_amount = 50000; // burn about half the liquidity
+            
+            // calculate expected amounts
+            let (base_reserve, quote_reserve) = liquidity_pool::pool_reserves(&pool);
+            let total_supply = liquidity_pool::total_supply(&pool);
+            
+            let expected_base = (((burn_amount as u128) * (base_reserve as u128)) / total_supply) as u64;
+            let expected_quote = (((burn_amount as u128) * (quote_reserve as u128)) / total_supply) as u64;
+            
+            // burn LP tokens
+            let (base_coin, quote_coin) = liquidity_pool::burn(
+                &mut pool,
+                burn_amount,
+                ts::ctx(scenario)
+            );
+            
+            // verify received amounts
+            assert!(coin::value(&base_coin) == expected_base, 3);
+            assert!(coin::value(&quote_coin) == expected_quote, 4);
+            
+            // verify final reserves
+            let (final_base, final_quote) = liquidity_pool::pool_reserves(&pool);
+            assert!(final_base == base_reserve - expected_base, 5);
+            assert!(final_quote == quote_reserve - expected_quote, 6);
+            
+            transfer::public_transfer(base_coin, OWNER);
+            transfer::public_transfer(quote_coin, OWNER);
+            
+            ts::return_shared(pool);
+        };
+        
+        ts::end(scenario_val);
+    }
 }
