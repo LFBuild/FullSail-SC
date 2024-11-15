@@ -119,6 +119,11 @@ module full_sail::minter {
         minter.weekly_emission_amount
     }
 
+    public fun set_weekly_emission(minter: &mut MinterConfig, new_weekly_emission, ctx: &mut TxContext) {
+        assert!(tx_context::sender(ctx) == minter.team_account, E_NOT_OWNER);
+        minter.weekly_emission_amount = new_weekly_emission;
+    }
+
     public fun current_rebase(minter: &MinterConfig, manager: &FullSailManager, collection: &VeFullSailCollection, clock: &Clock): u128 {
         let weekly_emission = current_weekly_emission(minter);
         let total_voting_power = voting_escrow::total_voting_power(collection, clock);
