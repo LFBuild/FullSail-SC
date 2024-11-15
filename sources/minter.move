@@ -119,7 +119,7 @@ module full_sail::minter {
         minter.weekly_emission_amount
     }
 
-    public fun set_weekly_emission(minter: &mut MinterConfig, new_weekly_emission, ctx: &mut TxContext) {
+    public fun set_weekly_emission(minter: &mut MinterConfig, new_weekly_emission: u64, ctx: &mut TxContext) {
         assert!(tx_context::sender(ctx) == minter.team_account, E_NOT_OWNER);
         minter.weekly_emission_amount = new_weekly_emission;
     }
