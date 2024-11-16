@@ -325,13 +325,13 @@ module full_sail::liquidity_pool {
     }
 
     public fun liquidity_pool<BaseType, QuoteType>(
-        pool_id: &UID, 
+        pool_id: &mut UID, 
         base_metadata: &CoinMetadata<BaseType>, 
         quote_metadata: &CoinMetadata<QuoteType>,
         is_stable: bool
-    ): &LiquidityPool<BaseType, QuoteType> {
+    ): &mut LiquidityPool<BaseType, QuoteType> {
         let pool_name = pool_name(base_metadata, quote_metadata, is_stable);
-        dynamic_field::borrow(pool_id, pool_name)
+        dynamic_field::borrow_mut(pool_id, pool_name)
     }
     
     public fun pool_name<BaseType, QuoteType>(
