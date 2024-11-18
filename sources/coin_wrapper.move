@@ -1,9 +1,10 @@
 module full_sail::coin_wrapper {
     use sui::table::{Self, Table};
     use sui::coin::{Self, Coin, TreasuryCap, CoinMetadata};
+    use sui::dynamic_object_field;
+    use std::string;
     use std::ascii::String;
     use std::type_name;
-    use sui::dynamic_object_field;
 
     // --- errors ---
     const E_ALREADY_INITIALIZED: u64 = 1;
@@ -116,8 +117,8 @@ module full_sail::coin_wrapper {
         // burn wrapped coin
         coin::burn(&mut wrapped_data.treasury_cap, wrapped_coin);
 
-        //let exists = sui::dynamic_field::exists_<String>(&store.id, coin_type_name);
-        //assert!(exists, 1);
+        let exists = sui::dynamic_object_field::exists_<String>(&store.id, coin_type_name);
+        assert!(exists, 1);
 
         let stored_coin = dynamic_object_field::remove<String, Coin<CoinType>>(&mut store.id, coin_type_name);
 
@@ -140,6 +141,20 @@ module full_sail::coin_wrapper {
     public fun get_wrapper<CoinType>(store: &WrapperStore): &WrappedAssetData {
         let coin_type_name = type_name::get<CoinType>().into_string();
         table::borrow(&store.coin_to_wrapper, coin_type_name)
+    }
+
+    public fun format_fungible_asset(id: ID): String {
+        let bytes = object::id_to_bytes(&id);
+
+        string::to_ascii(string::utf8(bytes))
+    }
+
+    public fun get_original(store: &WrapperStore, metadata_id: ID) : String {
+        if (is_wrapper(store, metadata_id)) {
+            get_coin_type(store, metadata_id)
+        } else {
+            format_fungible_asset(metadata_id)
+        }
     }
 
     // --- tests funcs ---
