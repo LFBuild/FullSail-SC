@@ -96,7 +96,6 @@ module full_sail::fullsail_token {
         init( FULLSAIL_TOKEN{}, ctx);
     }
 
-    #[test_only]
     public(package) fun cap(manager: &mut FullSailManager): &mut TreasuryCap<FULLSAIL_TOKEN> {
         &mut manager.cap
     }
