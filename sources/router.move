@@ -6,7 +6,7 @@ module full_sail::router {
     use sui::package;
     use sui::dynamic_field;
     use full_sail::coin_wrapper::{Self, WrapperStore};
-    use full_sail::liquidity_pool::{Self, LiquidityPool, FeesAccounting, LiquidityPoolConfigs, LPToken};
+    use full_sail::liquidity_pool::{Self, LiquidityPool, FeesAccounting, LiquidityPoolConfigs};
 
     // --- addresses ---
     const DEFAULT_ADMIN: address = @0x123;
@@ -193,7 +193,6 @@ module full_sail::router {
         metadata_a: &CoinMetadata<BaseType>,
         metadata_b: &CoinMetadata<QuoteType>,
         is_stable: bool,
-        lp_token: Coin<LPToken>, 
         lp_amount: u64, 
         min_amount_a: u64,
         min_amount_b: u64,
@@ -201,7 +200,6 @@ module full_sail::router {
     ): (Coin<BaseType>, Coin<QuoteType>) {
         let (coin_in, coin_out) = liquidity_pool::burn<BaseType, QuoteType>(
             liquidity_pool::liquidity_pool(pool_id, metadata_a, metadata_b, is_stable),
-            lp_token,
             lp_amount,
             ctx
         );

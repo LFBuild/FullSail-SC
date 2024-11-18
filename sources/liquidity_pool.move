@@ -2,7 +2,7 @@ module full_sail::liquidity_pool {
     use std::ascii::String;
     use sui::table::{Self, Table};
     use sui::balance::{Self, Balance};
-    use sui::coin::{Self, Coin, TreasuryCap, CoinMetadata};
+    use sui::coin::{Self, Coin, CoinMetadata};
     use sui::package;
     use sui::dynamic_field;
     use full_sail::coin_wrapper::{Self, WrapperStore};
@@ -35,19 +35,12 @@ module full_sail::liquidity_pool {
         claimable_quote: Table<address, u128>
     }
 
-    public struct LPToken has drop {}
-
-    public struct LPTokenCap has store {
-        treasury_cap: TreasuryCap<LPToken>
-    }
-
     public struct LiquidityPool<phantom BaseType, phantom QuoteType> has key, store {
         id: UID,
         base_balance: Balance<BaseType>,
         quote_balance: Balance<QuoteType>,
         base_fees: Balance<BaseType>,
         quote_fees: Balance<QuoteType>,
-        lp_token_cap: LPTokenCap,
         swap_fee_bps: u64,
         is_stable: bool
     }
@@ -87,9 +80,8 @@ module full_sail::liquidity_pool {
             id: object::new(ctx)
         };
 
-        transfer::transfer(admin_cap, DEFAULT_ADMIN);
-        
         transfer::share_object(configs);
+        transfer::transfer(admin_cap, DEFAULT_ADMIN);
 
         let publisher = package::claim(otw, ctx);
         transfer::public_transfer(publisher, tx_context::sender(ctx));
@@ -417,25 +409,27 @@ module full_sail::liquidity_pool {
 
     public fun burn<BaseType, QuoteType>(
         pool: &mut LiquidityPool<BaseType, QuoteType>,
-        mut lp_token: Coin<LPToken>,
+        //base_metadata: &CoinMetadata<BaseType>,
+        //quote_metadata: &CoinMetadata<QuoteType>,
         lp_amount: u64,
         ctx: &mut TxContext
     ): (Coin<BaseType>, Coin<QuoteType>) {
-        assert!(lp_amount > 0, E_INSUFFICIENT_BALANCE);
-
-        let burned_lp = coin::split(&mut lp_token, lp_amount, ctx);
-
-        let lp_amount = coin::value(&burned_lp);
-        coin::burn( &mut pool.lp_token_cap.treasury_cap, burned_lp);
-
-        coin::destroy_zero(lp_token);
-
         let (withdraw_amount_1, withdraw_amount_2) = liquidity_amounts(pool, lp_amount);
         assert!(withdraw_amount_1 > 0 && withdraw_amount_2 > 0, E_MAX_LOCK_TIME);
-
+        
         let withdrawn_asset_1 = coin::take(&mut pool.base_balance, withdraw_amount_1, ctx);
         let withdrawn_asset_2 = coin::take(&mut pool.quote_balance, withdraw_amount_2, ctx);
-
+        
+        /*let ordered_withdrawn_asset_1;
+        let ordered_withdrawn_asset_2;
+        if (!is_sorted(base_metadata, quote_metadata)) {
+            ordered_withdrawn_asset_1 = withdrawn_asset_2;
+            ordered_withdrawn_asset_2 = withdrawn_asset_1;
+        } else {
+            ordered_withdrawn_asset_1 = withdrawn_asset_1;
+            ordered_withdrawn_asset_2 = withdrawn_asset_2;
+        };*/
+        
         (withdrawn_asset_1, withdrawn_asset_2)
     }
 
@@ -443,15 +437,24 @@ module full_sail::liquidity_pool {
         pool: &LiquidityPool<BaseType, QuoteType>,
         total_liquidity: u64
     ): (u64, u64) {
-        let total_supply = pool.lp_token_cap.treasury_cap.total_supply();
+        // Get current token balances from pool
         let base_reserve = balance::value(&pool.base_balance);
         let quote_reserve = balance::value(&pool.quote_balance);
-
+        
+        // Get total supply
+        let total_supply = (base_reserve + quote_reserve);
         assert!(total_supply != 0, E_ZERO_TOTAL_POWER);
-
-        let amount_1 = (total_liquidity as u128) * (base_reserve as u128) / (total_supply as u128);
-        let amount_2 = (total_liquidity as u128) * (quote_reserve as u128) / (total_supply as u128);
-
+        
+        // Calculate proportional amounts
+        let amount_1 = (((total_liquidity as u128) * 
+                        (base_reserve as u128)) / 
+                        (total_supply as u128));
+                        
+        let amount_2 = (((total_liquidity as u128) * 
+                        (quote_reserve as u128)) / 
+                        (total_supply as u128));
+        
+        // Return amounts cast back to u64
         ((amount_1 as u64), (amount_2 as u64))
     }
 
@@ -495,25 +498,7 @@ module full_sail::liquidity_pool {
         ctx: &mut TxContext
     ): ID {
         if (!is_sorted(base_metadata, quote_metadata)) {
-            return create( base_metadata, quote_metadata, configs,  is_stable, ctx)
-        };
-
-        let pool_name = pool_name(base_metadata, quote_metadata, is_stable);
-
-        let pool_id = object::new(ctx);
-
-        let (treasury_cap, metadata) = coin::create_currency(
-            LPToken { },  // One-time witness for LP token
-            8, // decimals
-            b"LP", // symbol
-            pool_name, // name
-            b"FullSail Liquidity Pool Token", // description
-            option::none(), // url
-            ctx
-        );
-
-        let lp_token_cap = LPTokenCap {
-            treasury_cap 
+            return create(quote_metadata, base_metadata, configs, is_stable, ctx)
         };
 
         let fee_bps = if (is_stable) {
@@ -522,17 +507,18 @@ module full_sail::liquidity_pool {
             configs.volatile_fee_bps
         };
 
+        // Create the pool
         let liquidity_pool = LiquidityPool<BaseType, QuoteType> {
-            id: pool_id,
+            id: object::new(ctx),
             base_balance: balance::zero<BaseType>(),
             quote_balance: balance::zero<QuoteType>(),
             base_fees: balance::zero<BaseType>(),
             quote_fees: balance::zero<QuoteType>(),
-            lp_token_cap: lp_token_cap,
             swap_fee_bps: fee_bps,
             is_stable,
         };
 
+        // Create fees accounting
         let fees_accounting = FeesAccounting {
             id: object::new(ctx),
             total_fees_base: 0,
@@ -543,13 +529,14 @@ module full_sail::liquidity_pool {
             claimable_quote: table::new<address, u128>(ctx)
         };
 
-        transfer::share_object(fees_accounting);
-        transfer::public_transfer(metadata, tx_context::sender(ctx));
-
         let liquidity_pool_id = object::id(&liquidity_pool);
+        
+        // Add pool ID to configs BEFORE sharing
         vector::push_back(&mut configs.all_pools, liquidity_pool_id);
 
-        transfer::share_object(liquidity_pool);
+        // Share objects explicitly
+        transfer::share_object(fees_accounting);
+        transfer::share_object(liquidity_pool); // Make sure pool is shared
 
         liquidity_pool_id
     }
@@ -637,7 +624,7 @@ module full_sail::liquidity_pool {
 
         let base_reserve = balance::value(&pool.base_balance);
         let quote_reserve = balance::value(&pool.quote_balance);
-        let total_supply = coin::total_supply(&pool.lp_token_cap.treasury_cap);
+        let total_supply = base_reserve + quote_reserve;
 
         if (total_supply == 0) {
             ((std::u64::sqrt((amount_base) * (amount_quote)) as u64)) - 1000
@@ -646,16 +633,18 @@ module full_sail::liquidity_pool {
             assert!(quote_reserve != 0, E_ZERO_TOTAL_POWER);
 
             std::u64::min(
-                (((amount_base as u128) * (total_supply as u128) / (base_reserve as u128)) as u64),
-                (((amount_quote as u128) * (total_supply as u128) / (quote_reserve as u128)) as u64)
+                ((amount_base as u128) * (total_supply as u128) / (base_reserve as u128)) as u64,
+                ((amount_quote as u128) * (total_supply as u128) / (quote_reserve as u128)) as u64
             )
         }
     }
 
-    public fun lp_token_supply<BaseType, QuoteType>(
+    public fun total_supply<BaseType, QuoteType>(
         pool: &LiquidityPool<BaseType, QuoteType>
-    ): u64 {
-        coin::total_supply(&pool.lp_token_cap.treasury_cap)
+    ): u128 {
+        let base_reserve = (balance::value(&pool.base_balance) as u128);
+        let quote_reserve = (balance::value(&pool.quote_balance) as u128);
+        base_reserve + quote_reserve
     }
 
     public fun min_liquidity(): u64 {
@@ -671,7 +660,7 @@ module full_sail::liquidity_pool {
         input_quote_coin: Coin<QuoteType>,
         is_stable: bool,
         ctx: &mut TxContext
-    ): Coin<LPToken> {
+    ): u64 {
         if (!is_sorted(base_metadata, quote_metadata)) {
             return mint_lp(
                 pool,
@@ -689,38 +678,34 @@ module full_sail::liquidity_pool {
         let amount_quote = coin::value(&input_quote_coin);
         assert!(amount_base > 0 && amount_quote > 0, E_INSUFFICIENT_BALANCE);
 
-        let total_supply = coin::total_supply(&pool.lp_token_cap.treasury_cap);
         let base_reserve = balance::value(&pool.base_balance);
         let quote_reserve = balance::value(&pool.quote_balance);
+        let total_supply = base_reserve + quote_reserve;
 
         let liquidity_out = if (total_supply == 0) {
-            let min_liquidity_coin = coin::mint(&mut pool.lp_token_cap.treasury_cap, 1000, ctx);
-            transfer::public_transfer(min_liquidity_coin, @0x0);
-            
-            ((std::u64::sqrt((amount_base) * (amount_quote)) as u64) - 1000)
+            ((std::u64::sqrt((amount_base) * (amount_quote)) as u64)) - 1000
         } else {
             assert!(base_reserve != 0, E_ZERO_TOTAL_POWER);
             assert!(quote_reserve != 0, E_ZERO_TOTAL_POWER);
-
             std::u64::min(
-                ((amount_base * total_supply / base_reserve) as u64),
-                ((amount_quote * total_supply / quote_reserve) as u64)
+                ((amount_base as u128) * (total_supply as u128) / (base_reserve as u128)) as u64,
+                ((amount_quote as u128) * (total_supply as u128) / (quote_reserve as u128)) as u64
             )
         };
 
         assert!(liquidity_out > 0, E_MIN_LOCK_TIME);
 
+        // Add tokens to pool
         let base_balance = coin::into_balance(input_base_coin);
         let quote_balance = coin::into_balance(input_quote_coin);
         balance::join(&mut pool.base_balance, base_balance);
         balance::join(&mut pool.quote_balance, quote_balance);
 
-        let minted_lp = coin::mint(&mut pool.lp_token_cap.treasury_cap, liquidity_out, ctx);
+        // Update fees accounting
+        fees_accounting.total_fees_base = fees_accounting.total_fees_base;
+        fees_accounting.total_fees_quote = fees_accounting.total_fees_quote;
 
-        fees_accounting.total_fees_base = fees_accounting.total_fees_base; 
-        fees_accounting.total_fees_quote = fees_accounting.total_fees_quote; 
-
-        minted_lp
+        liquidity_out
     }
 
     public fun pool_reserve<BaseType, QuoteType>(
@@ -883,24 +868,22 @@ module full_sail::liquidity_pool {
         pool.swap_fee_bps
     }
 
-    public entry fun transfer(
-        lp_token: &mut Coin<LPToken>,
-        recipient: address,
-        amount: u64,
-        ctx: &mut TxContext
-    ) {
-        assert!(amount > 0, E_INSUFFICIENT_BALANCE);
-        
-        let transfer_coin = coin::split(lp_token, amount, ctx);
-        
-        transfer::public_transfer(transfer_coin, recipient);
-    }
-
     public entry fun update_claimable_fees<BaseType, QuoteType>(
         _account: address,
         _pool: &mut LiquidityPool<BaseType, QuoteType>,
         _ctx: &mut TxContext
     ) {
         abort 0
+    }
+
+    // --- test helpers ---
+    #[test_only]
+    public fun init_for_testing(ctx: &mut TxContext) {
+        init(LIQUIDITY_POOL {}, ctx)
+    } 
+
+    #[test_only]
+    public(package) fun configs_id(configs: &LiquidityPoolConfigs): &UID {
+        &configs.id
     }
 }
