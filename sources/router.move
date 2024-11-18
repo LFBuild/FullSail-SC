@@ -16,7 +16,7 @@ module full_sail::router {
     const E_ZERO_RESERVE: u64 = 2;
     const E_VECTOR_LENGTH_MISMATCH: u64 = 3;
     const E_NOT_OWNER: u64 = 4;
-    const E_INVALID_UPDATE: u64 = 6;
+    const E_INSUFFICIENT_BALANCE: u64 = 6;
     const E_ZERO_AMOUNT: u64 = 7;
     const E_ZERO_TOTAL_POWER: u64 = 8;
     const E_SAME_TOKEN: u64 = 9;
@@ -138,7 +138,6 @@ module full_sail::router {
     }
 
     fun exact_deposit<BaseType>(recipient: address, metadata: &CoinMetadata<BaseType>, asset: Coin<BaseType>) {
-        let deposit_amount = coin::value(&asset);
         transfer::public_transfer(asset, recipient);
     }
 
@@ -208,5 +207,44 @@ module full_sail::router {
         );
         assert!(coin::value(&coin_in) >= min_amount_a && coin::value(&coin_out) >= min_amount_b, E_INSUFFICIENT_OUTPUT_AMOUNT);
         (coin_in, coin_out)
+    }
+
+    public fun swap_router<BaseType, QuoteType>(
+        pool_id: &mut UID, 
+        amount_in: Coin<BaseType>, 
+        token_in: &CoinMetadata<BaseType>, 
+        intermediary_tokens: &mut vector<CoinMetadata<BaseType>>,
+        configs: &LiquidityPoolConfigs,
+        fees_accounting: &mut FeesAccounting, 
+        min_output_amount: u64,
+        is_stable: &mut vector<bool>,
+        ctx: &mut TxContext
+    ): Coin<BaseType> {
+        assert!(vector::length(intermediary_tokens) == vector::length(is_stable), E_VECTOR_LENGTH_MISMATCH);
+        vector::reverse(intermediary_tokens);
+        vector::reverse(is_stable);
+
+        let mut token_count = vector::length(intermediary_tokens);
+        let mut current_amount = amount_in;
+        while(token_count > 0) {
+            let next_token = vector::pop_back(intermediary_tokens);
+            let coin_in = current_amount;
+            let amount_out = swap<BaseType, BaseType>(
+                pool_id, 
+                coin_in, 
+                min_output_amount,
+                configs,
+                fees_accounting,
+                token_in, 
+                &next_token, 
+                vector::pop_back(is_stable),
+                ctx
+            );
+            current_amount = amount_out;
+            token_count = token_count - 1; 
+            transfer::public_transfer(next_token, @0x0);
+        };
+        assert!(coin::value(&current_amount) >= min_output_amount, E_INSUFFICIENT_BALANCE);
+        current_amount
     }
 }
