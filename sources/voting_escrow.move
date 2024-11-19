@@ -24,6 +24,7 @@ module full_sail::voting_escrow {
     const E_NO_SNAPSHOT_FOUND: u64 = 10;
     const E_INVALID_SPLIT_AMOUNTS: u64 = 11;
     const E_TABLE_ENTRY_NOT_FOUND: u64 = 12;
+    const E_INVALID_EPOCH: u64 = 13;
 
     // --- collection specific constants ---
     const COLLECTION_NAME: vector<u8> = b"FullSail Voting Tokens";
@@ -216,6 +217,17 @@ module full_sail::voting_escrow {
             
             ve_token.next_rebase_epoch = epoch::now(clock);
         }
+    }
+
+    public fun add_rebase(
+        collection: &mut VeFullSailCollection,
+        amount: u64,
+        epoch_number: u64,
+        clock: &Clock,
+    ) {
+        assert!(epoch_number < epoch::now(clock), E_INVALID_EPOCH);
+        assert!(amount > 0, E_ZERO_AMOUNT);
+        table::add(&mut collection.rebases, epoch_number, amount);
     }
 
     fun claimable_rebase_internal(
@@ -795,26 +807,12 @@ module full_sail::voting_escrow {
     }
 
     #[test_only]
-    public(package) fun add_fake_rebases(
+    public(package) fun add_fake_rebase(
         collection: &mut VeFullSailCollection, 
         epoch_number: u64, 
-        rebase_amount: u64, 
-        total_voting_power: u128
+        rebase_amount: u64,
+        clock: &Clock,
     ) {
-        // add rebase amount for the epoch
-        if (!table::contains(&collection.rebases, epoch_number)) {
-            table::add(&mut collection.rebases, epoch_number, rebase_amount);
-        } else {
-            let rebase = table::borrow_mut(&mut collection.rebases, epoch_number);
-            *rebase = rebase_amount;
-        };
-
-        // add total voting power for the epoch
-        if (!table::contains(&collection.unscaled_total_voting_power_per_epoch, epoch_number)) {
-            table::add(&mut collection.unscaled_total_voting_power_per_epoch, epoch_number, total_voting_power);
-        } else {
-            let power = table::borrow_mut(&mut collection.unscaled_total_voting_power_per_epoch, epoch_number);
-            *power = total_voting_power;
-        };
+        add_rebase(collection, rebase_amount, epoch_number, clock)
     }
 }
