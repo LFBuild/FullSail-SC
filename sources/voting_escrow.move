@@ -24,6 +24,7 @@ module full_sail::voting_escrow {
     const E_NO_SNAPSHOT_FOUND: u64 = 10;
     const E_INVALID_SPLIT_AMOUNTS: u64 = 11;
     const E_TABLE_ENTRY_NOT_FOUND: u64 = 12;
+    const E_EPOCH_NOT_FOUND: u64 = 13;
 
     // --- collection specific constants ---
     const COLLECTION_NAME: vector<u8> = b"FullSail Voting Tokens";
@@ -769,6 +770,19 @@ module full_sail::voting_escrow {
         clock: &Clock,
     ): u128 {
         total_voting_power_at(collection, epoch::now(clock))
+    }
+
+    public fun set_rebase_at_specified_epoch(
+        account: address,
+        collection: &mut VeFullSailCollection,
+        epoch_number: u64,
+        rebase_amount: u64,
+        ctx: &mut TxContext
+    ) {
+        assert!(tx_context::sender(ctx) == account, E_NOT_OWNER);
+        assert!(table::contains(&collection.rebases, epoch_number), E_EPOCH_NOT_FOUND);
+        let rebase = table::borrow_mut(&mut collection.rebases, epoch_number);
+        *rebase = rebase_amount;
     }
 
     public fun total_voting_power_at(
