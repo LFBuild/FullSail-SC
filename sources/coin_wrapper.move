@@ -125,6 +125,16 @@ module full_sail::coin_wrapper {
         stored_coin
     }
 
+    public fun format_fungible_asset(id: ID): String {
+        let bytes = object::id_to_bytes(&id);
+
+        string::to_ascii(string::utf8(bytes))
+    }
+
+    public fun format_coin<T>(): String {
+        type_name::get<T>().into_string()
+    }
+
     // --- public view functions ---
     public fun is_supported(store: &mut WrapperStore, coin_type: &String): bool {
         table::contains(&store.coin_to_wrapper, *coin_type)
@@ -138,15 +148,9 @@ module full_sail::coin_wrapper {
         *table::borrow(&store.wrapper_to_coin, metadata_id)
     }
 
-    public fun get_wrapper<CoinType>(store: &WrapperStore): &WrappedAssetData {
+    public fun get_wrapper<CoinType>(store: &WrapperStore): &CoinMetadata<COIN_WRAPPER> {
         let coin_type_name = type_name::get<CoinType>().into_string();
-        table::borrow(&store.coin_to_wrapper, coin_type_name)
-    }
-
-    public fun format_fungible_asset(id: ID): String {
-        let bytes = object::id_to_bytes(&id);
-
-        string::to_ascii(string::utf8(bytes))
+        &table::borrow(&store.coin_to_wrapper, coin_type_name).metadata
     }
 
     public fun get_original(store: &WrapperStore, metadata_id: ID) : String {
@@ -176,6 +180,12 @@ module full_sail::coin_wrapper {
     #[test_only]
     public(package) fun get_original_coin_type(wcoin_type: &WrappedAssetData): String {
         wcoin_type.original_coin_type
+    }
+    
+    #[test_only]
+    public fun get_wrapped_data<CoinType>(store: &WrapperStore): &WrappedAssetData {
+        let coin_type_name = type_name::get<CoinType>().into_string();
+        table::borrow(&store.coin_to_wrapper, coin_type_name)
     }
 
     #[test_only]

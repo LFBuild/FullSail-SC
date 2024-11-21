@@ -69,8 +69,8 @@ module full_sail::coin_wrapper_test {
             assert!(coin_wrapper::is_supported(&mut registry, &usdc_type), E_REGISTRATION_FAILED);
 
             // get wrapped asset data and verify it exists
-            let usdt_wrapper = coin_wrapper::get_wrapper<USDT>(&registry);
-            let usdc_wrapper = coin_wrapper::get_wrapper<USDC>(&registry);
+            let usdt_wrapper = coin_wrapper::get_wrapped_data<USDT>(&registry);
+            let usdc_wrapper = coin_wrapper::get_wrapped_data<USDC>(&registry);
             
             // verify original coin types match
             assert!(coin_wrapper::get_original_coin_type(usdt_wrapper) == usdt_type, E_INCORRECT_ORIGINAL_COIN_TYPE);
