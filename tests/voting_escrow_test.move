@@ -529,11 +529,11 @@ module full_sail::voting_escrow_test {
             let current_epoch = epoch::now(&clock);
             
             // setup rebase state for previous epoch
-            voting_escrow::add_fake_rebases(
+            voting_escrow::add_fake_rebase(
                 &mut collection,
                 initial_next_rebase, // use token's next_rebase_epoch
                 100, // rebase amount
-                (AMOUNT * LOCK_DURATION) as u128 // total voting power
+                &clock // total voting power
             );
             
             // verify there is claimable amount before claiming
