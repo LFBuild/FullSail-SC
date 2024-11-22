@@ -1,6 +1,7 @@
 module full_sail::gauge {
-    use full_sail::rewards_pool_continuous::{Self, RewardsPool, REWARD_POOL_CONTINUOUS};
+    use full_sail::rewards_pool_continuous::{Self, RewardsPool};
     use full_sail::liquidity_pool::{Self, LiquidityPool};
+    use full_sail::fullsail_token::{FULLSAIL_TOKEN};
 
     use sui::coin::{Coin};
     use sui::balance::{Balance};
@@ -34,12 +35,12 @@ module full_sail::gauge {
         liquidity_pool::claim_fees(liquidity_pool, ctx)
     }
 
-    public fun add_rewards<BaseType, QuoteType>(gauge: &mut Gauge<BaseType, QuoteType>, balance: Balance<REWARD_POOL_CONTINUOUS>, clock: &Clock) {
+    public fun add_rewards<BaseType, QuoteType>(gauge: &mut Gauge<BaseType, QuoteType>, balance: Balance<FULLSAIL_TOKEN>, clock: &Clock) {
         let rewards_pool = rewards_pool(gauge);
         rewards_pool_continuous::add_rewards(rewards_pool, balance, clock);
     }
 
-    public fun claim_rewards<BaseType, QuoteType>(gauge: &mut Gauge<BaseType, QuoteType>, ctx: &mut TxContext, clock: &Clock) : Balance<REWARD_POOL_CONTINUOUS> {
+    public fun claim_rewards<BaseType, QuoteType>(gauge: &mut Gauge<BaseType, QuoteType>, ctx: &mut TxContext, clock: &Clock) : Balance<FULLSAIL_TOKEN> {
         let rewards_pool = rewards_pool(gauge);
         rewards_pool_continuous::claim_rewards(tx_context::sender(ctx), rewards_pool, clock)
     }
@@ -49,20 +50,19 @@ module full_sail::gauge {
         rewards_pool_continuous::claimable_rewards(user_address, rewards_pool, clock)
     }
 
-    // public fun create<BaseType, QuoteType>(liquidity_pool: LiquidityPool<BaseType, QuoteType>, ctx: &mut TxContext) : Gauge<BaseType, QuoteType> {
-    //     let v0 = temp::package_manager::get_signer();
-    //     let v1 = sui::object::create_object_from_account(&v0);
-    //     let v2 = &v1;
-    //     sui::fungible_asset::create_store<temp::liquidity_pool::LiquidityPool>(v2, arg0);
-    //     let v3 = sui::object::generate_signer(v2);
-    //     let v4 = Gauge{
-    //         rewards_pool   : temp::rewards_pool_continuous::create(sui::object::convert<temp::cellana_token::CellanaToken, sui::fungible_asset::Metadata>(temp::cellana_token::token()), rewards_duration()),
-    //         extend_ref     : sui::object::generate_extend_ref(v2),
-    //         liquidity_pool : arg0,
-    //     };
-    //     move_to<Gauge>(&v3, v4);
-    //     sui::object::object_from_constructor_ref<Gauge>(v2)
-    // }
+    public fun create<BaseType, QuoteType>(liquidity_pool: LiquidityPool<BaseType, QuoteType>, ctx: &mut TxContext): Gauge<BaseType, QuoteType> {
+        let gauge = Gauge {
+            id: object::new(ctx),
+            rewards_pool: rewards_pool_continuous::create(rewards_duration(), ctx),
+            liquidity_pool: liquidity_pool,
+        };
+        gauge
+    }
+
+    public fun transfer_gauge<BaseType, QuoteType>(gauge: Gauge<BaseType, QuoteType>, ctx: &mut TxContext) {
+        let sender = tx_context::sender(ctx);
+        transfer::public_transfer(gauge, sender);
+    }
 
     public fun stake<BaseType, QuoteType>(gauge: &mut Gauge<BaseType, QuoteType>, amount: u64, ctx: &mut TxContext, clock: &Clock) {
         // let liquidity_pool = liquidity_pool(gauge);
@@ -95,7 +95,7 @@ module full_sail::gauge {
         &mut gauge.rewards_pool
     }
 
-    // public fun stake_token<BaseType, QuoteType>(gauge: &mut Gauge<BaseType, QuoteType>) : CoinMetadata<REWARD_POOL_CONTINUOUS> {
+    // public fun stake_token<BaseType, QuoteType>(gauge: &mut Gauge<BaseType, QuoteType>) : CoinMetadata<FULLSAIL_TOKEN> {
     //     sui::object::convert<temp::liquidity_pool::LiquidityPool, sui::fungible_asset::Metadata>(borrow_global<Gauge>(sui::object::object_address<Gauge>(&arg0)).liquidity_pool)
     // }
 
@@ -109,5 +109,20 @@ module full_sail::gauge {
         let rewards_pool = rewards_pool(gauge);
         rewards_pool_continuous::unstake(sender, rewards_pool, amount, clock);
         event::emit(UnstakeEvent { lp: sender, amount: amount })
+    }
+
+    #[test_only]
+    public fun create_test<BaseType, QuoteType>(pool: LiquidityPool<BaseType, QuoteType>, ctx: &mut TxContext): Gauge<BaseType, QuoteType> {
+        create(pool, ctx)
+    }
+
+    #[test_only]
+    public fun unstake_lp_test<BaseType, QuoteType>(gauge: &mut Gauge<BaseType, QuoteType>, amount: u64, ctx: &mut TxContext, clock: &Clock) {
+        unstake_lp(gauge, amount, ctx, clock);
+    }
+
+    #[test_only]
+    public fun claim_rewards_test<BaseType, QuoteType>(gauge: &mut Gauge<BaseType, QuoteType>, ctx: &mut TxContext, clock: &Clock): Balance<FULLSAIL_TOKEN> {
+        claim_rewards(gauge, ctx, clock)
     }
 }
