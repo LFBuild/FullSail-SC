@@ -3,6 +3,7 @@ module full_sail::gauge {
     use full_sail::liquidity_pool::{Self, LiquidityPool};
     use full_sail::fullsail_token::{FULLSAIL_TOKEN};
 
+    use std::debug;
     use sui::coin::{Coin};
     use sui::balance::{Balance};
     use sui::clock::{Clock};
@@ -50,13 +51,14 @@ module full_sail::gauge {
         rewards_pool_continuous::claimable_rewards(user_address, rewards_pool, clock)
     }
 
-    public fun create<BaseType, QuoteType>(liquidity_pool: LiquidityPool<BaseType, QuoteType>, ctx: &mut TxContext): Gauge<BaseType, QuoteType> {
+    public fun create<BaseType, QuoteType>(liquidity_pool: LiquidityPool<BaseType, QuoteType>, ctx: &mut TxContext) {
         let gauge = Gauge {
             id: object::new(ctx),
             rewards_pool: rewards_pool_continuous::create(rewards_duration(), ctx),
             liquidity_pool: liquidity_pool,
         };
-        gauge
+        transfer::share_object(gauge);
+        debug::print(&b"this is the after create gauge")
     }
 
     public fun transfer_gauge<BaseType, QuoteType>(gauge: Gauge<BaseType, QuoteType>, ctx: &mut TxContext) {
@@ -112,8 +114,8 @@ module full_sail::gauge {
     }
 
     #[test_only]
-    public fun create_test<BaseType, QuoteType>(pool: LiquidityPool<BaseType, QuoteType>, ctx: &mut TxContext): Gauge<BaseType, QuoteType> {
-        create(pool, ctx)
+    public fun create_test<BaseType, QuoteType>(pool: LiquidityPool<BaseType, QuoteType>, ctx: &mut TxContext) {
+        create(pool, ctx);
     }
 
     #[test_only]
