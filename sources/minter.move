@@ -52,7 +52,7 @@ module full_sail::minter {
         ve_token
     }
 
-    public fun mint(minter: &mut MinterConfig, manager: &mut FullSailManager, collection: &VeFullSailCollection, clock: &Clock, ctx: &mut TxContext): (Coin<FULLSAIL_TOKEN>, Coin<FULLSAIL_TOKEN>) {
+    public(package) fun mint(minter: &mut MinterConfig, manager: &mut FullSailManager, collection: &VeFullSailCollection, clock: &Clock, ctx: &mut TxContext): (Coin<FULLSAIL_TOKEN>, Coin<FULLSAIL_TOKEN>) {
         let rebase_amount = current_rebase(minter, manager, collection, clock);
         let current_epoch = epoch::now(clock);
         assert!(current_epoch >= minter.last_emission_update_epoch + 1, E_MAX_LOCK_TIME);

@@ -24,6 +24,7 @@ module full_sail::router {
 
     public fun swap<BaseType, QuoteType>(
         pool_id: &mut UID,
+        // pool: &mut LiquidityPool<BaseType, QuoteType>,
         input_coin: Coin<BaseType>,
         min_output_amount: u64,
         configs: &LiquidityPoolConfigs,
@@ -154,6 +155,20 @@ module full_sail::router {
         // vote_manager::create_gauge_internal(pool);
     }
 
+    // public entry fun create_pool_both_coins<BaseType, QuoteType>(
+    //     configs: &mut LiquidityPoolConfigs,
+    //     is_stable: bool,
+    //     store: &WrapperStore,
+    //     ctx: &mut TxContext
+    // ) {
+    //     let pool = liquidity_pool::create<BaseType, QuoteType>(
+    //         coin_wrapper::get_wrapper<Basetype>(store),
+    //         coin_wrapper::get_wrapper<QuoteType>(store),
+    //         configs,
+    //         is_stable,
+    //     )
+    // }
+
     public fun quote_liquidity<BaseType, QuoteType>(
         pool_id: &mut UID,
         base_metadata: &CoinMetadata<BaseType>, 
@@ -278,8 +293,96 @@ module full_sail::router {
         (coin_in, coin_out)
     }
 
-    public fun swap_router<BaseType, QuoteType>(
+    public fun redeemable_liquidity<BaseType, QuoteType>(
         pool_id: &mut UID, 
+        base_metadata: &CoinMetadata<BaseType>,
+        quote_metadata: &CoinMetadata<QuoteType>,
+        is_stable: bool,
+        liquidity_amount: u64
+    ): (u64, u64) {
+        liquidity_pool::liquidity_amounts<BaseType, QuoteType>(
+            liquidity_pool::liquidity_pool(
+                pool_id,
+                base_metadata,
+                quote_metadata,
+                is_stable
+            ),
+            liquidity_amount
+        )
+    }
+
+    public fun remove_liquidity<BaseType, QuoteType>(
+        _base_metadata: &CoinMetadata<BaseType>,
+        _quote_metadata: &CoinMetadata<QuoteType>,
+        _is_stable: bool,
+        _liquidity_amount: u64,
+        _min_input_amount: u64,
+        _min_output_amount: u64,
+        _ctx: &mut TxContext
+    ): (Coin<BaseType>, Coin<QuoteType>) {
+        abort 0
+    }
+
+    public fun remove_liquidity_both_coins<BaseType, QuoteType>(
+        _is_stable: bool,
+        _liquidity_amount: u64,
+        _min_input_amount: u64,
+        _min_output_amount: u64,
+        _ctx: &mut TxContext
+    ): (Coin<BaseType>, Coin<QuoteType>) {
+        abort 0
+    }
+
+    public entry fun remove_liquidity_both_coins_entry<BaseType, QuoteType>(
+        _is_stable: bool,
+        _liquidity_amount: u64,
+        _min_input_amount: u64,
+        _min_output_amount: u64,
+        _recipient: address,
+        _ctx: &mut TxContext
+    ): (&Coin<BaseType>, &Coin<QuoteType>) {
+        abort 0
+    }
+
+    public fun remove_liquidity_coin<BaseType, QuoteType>(
+        _quote_metadata: &CoinMetadata<QuoteType>,
+        _is_stable: bool,
+        _liquidity_amount: u64,
+        _min_input_amount: u64,
+        _min_output_amount: u64,
+        _ctx: &mut TxContext
+    ): (Coin<BaseType>, Coin<QuoteType>) {
+        abort 0
+    }
+
+    public entry fun remove_liquidity_coin_entry<BaseType, QuoteType>(
+        _quote_metadata: &CoinMetadata<QuoteType>,
+        _is_stable: bool,
+        _liquidity_amount: u64,
+        _min_input_amount: u64,
+        _min_output_amount: u64,
+        _recipient: address,
+        _ctx: &mut TxContext
+    ): (&Coin<BaseType>, &Coin<QuoteType>) {
+        abort 0
+    }
+
+    public fun remove_liquidity_entry<BaseType, QuoteType>(
+        _base_metadata: &CoinMetadata<BaseType>,
+        _quote_metadata: &CoinMetadata<QuoteType>,
+        _is_stable: bool,
+        _liquidity_amount: u64,
+        _min_input_amount: u64,
+        _min_output_amount: u64,
+        _recipient: address,
+        _ctx: &mut TxContext
+    ): (&Coin<BaseType>, &Coin<QuoteType>) {
+        abort 0
+    }
+
+    public fun swap_router<BaseType, QuoteType>(
+        pool_id: &mut UID,
+        pool: &mut LiquidityPool<BaseType, QuoteType>, 
         input_amount: Coin<BaseType>, 
         token_in: &CoinMetadata<BaseType>, 
         intermediary_tokens: &mut vector<CoinMetadata<BaseType>>,
@@ -315,5 +418,58 @@ module full_sail::router {
         };
         assert!(coin::value(&current_amount) >= min_output_amount, E_INSUFFICIENT_OUTPUT_AMOUNT);
         current_amount
+    }
+
+    public fun swap_asset_for_coin<BaseType, QuoteType>(
+        // pool: LiquidityPool<BaseType, QuoteType>,
+        pool_id: &mut UID,
+        input_coin: Coin<BaseType>,
+        min_output_amount: u64,
+        configs: &LiquidityPoolConfigs,
+        fees_accounting: &mut FeesAccounting,
+        base_metadata: &CoinMetadata<BaseType>,
+        quote_metadata: &CoinMetadata<QuoteType>,
+        is_stable: bool,
+        ctx: &mut TxContext
+    ): Coin<QuoteType> {
+        swap(
+            pool_id, 
+            input_coin, 
+            min_output_amount, 
+            configs, 
+            fees_accounting, 
+            base_metadata, 
+            quote_metadata, 
+            is_stable, 
+            ctx
+        )
+    }
+
+    public entry fun swap_asset_for_coin_entry<BaseType, QuoteType>(
+        pool_id: &mut UID,
+        input_coin: Coin<BaseType>,
+        min_output_amount: u64,
+        configs: &LiquidityPoolConfigs,
+        fees_accounting: &mut FeesAccounting,
+        base_metadata: &CoinMetadata<BaseType>,
+        quote_metadata: &CoinMetadata<QuoteType>,
+        is_stable: bool,
+        recipient: address,
+        ctx: &mut TxContext
+    ): {
+        exact_deposit(
+            recipient, 
+            swap_asset_for_coin(
+                pool_id, 
+                input_coin, 
+                min_output_amount, 
+                configs, 
+                fees_accounting, 
+                base_metadata, 
+                quote_metadata, 
+                is_stable, 
+                ctx
+            )
+        );
     }
 }
