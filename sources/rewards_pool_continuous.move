@@ -2,6 +2,7 @@ module full_sail::rewards_pool_continuous {
     use sui::table::{Self, Table};
     use sui::clock::{Self, Clock};
     use sui::balance::{Self, Balance};
+    use full_sail::fullsail_token::{FULLSAIL_TOKEN};
     
     // --- errors ---
     const E_INSUFFICIENT_BALANCE: u64 = 1;
@@ -11,11 +12,10 @@ module full_sail::rewards_pool_continuous {
     const E_ZERO_TOTAL_POWER: u64 = 14;
 
     // --- structs ---
-    public struct REWARD_POOL_CONTINUOUS has drop {}
 
     public struct RewardsPool has key, store {
         id: UID,
-        rewards_balance: Balance<REWARD_POOL_CONTINUOUS>,
+        rewards_balance: Balance<FULLSAIL_TOKEN>,
         reward_per_token_stored: u128,
         user_reward_per_token_paid: Table<address, u128>,
         last_update_time: u64,
@@ -28,7 +28,7 @@ module full_sail::rewards_pool_continuous {
     }
 
     #[allow(unused_variable)]
-    public fun add_rewards(pool: &mut RewardsPool, balance: Balance<REWARD_POOL_CONTINUOUS>, clock: &Clock) {
+    public fun add_rewards(pool: &mut RewardsPool, balance: Balance<FULLSAIL_TOKEN>, clock: &Clock) {
         // Update the rewards for the pool
         update_reward(@0x0, pool, clock);
         
@@ -36,7 +36,7 @@ module full_sail::rewards_pool_continuous {
         let asset_amount = balance::value(&balance);
         let updated_amount = balance::join(&mut pool.rewards_balance, balance);
         // Deposit the asset into the rewards pool
-        // transfer::public_transfer<REWARD_POOL_CONTINUOUS>(updated_balance, @0x1);
+        // transfer::public_transfer<FULLSAIL_TOKEN>(updated_balance, @0x1);
         // Get the current time
         let current_time = clock::timestamp_ms(clock);
         
@@ -56,7 +56,7 @@ module full_sail::rewards_pool_continuous {
         pool_ref.last_update_time = current_time;
     }
 
-    public fun claim_rewards(user_address: address, pool: &mut RewardsPool, clock: &Clock) : Balance<REWARD_POOL_CONTINUOUS> {
+    public fun claim_rewards(user_address: address, pool: &mut RewardsPool, clock: &Clock) : Balance<FULLSAIL_TOKEN> {
         update_reward(user_address, pool, clock);
         let pool_ref = pool;
         let default_reward_value = 0;
@@ -93,11 +93,11 @@ module full_sail::rewards_pool_continuous {
         claimable_internal(user_address, pool, clock)
     }
 
-    public fun create(duration: u64, ctx: &mut TxContext) {
+    public fun create(duration: u64, ctx: &mut TxContext): RewardsPool {
         assert!(duration > 0, E_NOT_OWNER);
         let new_rewards_pool = RewardsPool {
             id: object::new(ctx),
-            rewards_balance: balance::zero<REWARD_POOL_CONTINUOUS>(),
+            rewards_balance: balance::zero<FULLSAIL_TOKEN>(),
             reward_per_token_stored    : 0,
             user_reward_per_token_paid : table::new<address, u128>(ctx),
             last_update_time           : 0,
@@ -109,6 +109,20 @@ module full_sail::rewards_pool_continuous {
             stakes                     : table::new<address, u64>(ctx),
         };
         transfer::share_object(new_rewards_pool);
+        let new_rewards_pool = RewardsPool {
+            id: object::new(ctx),
+            rewards_balance: balance::zero<FULLSAIL_TOKEN>(),
+            reward_per_token_stored    : 0,
+            user_reward_per_token_paid : table::new<address, u128>(ctx),
+            last_update_time           : 0,
+            reward_rate                : 0,
+            reward_duration            : duration,
+            reward_period_finish       : 0,
+            rewards                    : table::new<address, u64>(ctx),
+            total_stake                : 0,
+            stakes                     : table::new<address, u64>(ctx),
+        };
+        new_rewards_pool
     }
 
     public fun current_reward_period_finish(pool: &RewardsPool) : u64 {
@@ -195,13 +209,13 @@ module full_sail::rewards_pool_continuous {
     }
 
     #[test_only]
-    public fun add_rewards_test(pool: &mut RewardsPool, balance: Balance<REWARD_POOL_CONTINUOUS>, clock: &Clock) {
+    public fun add_rewards_test(pool: &mut RewardsPool, balance: Balance<FULLSAIL_TOKEN>, clock: &Clock) {
         add_rewards(pool, balance, clock);
     }
 
     #[test_only]
-    public fun create_test(duration: u64, ctx: &mut TxContext) { 
-        create(duration, ctx);
+    public fun create_test(duration: u64, ctx: &mut TxContext): RewardsPool { 
+        create(duration, ctx)
     }
 
     #[test_only]
@@ -210,7 +224,7 @@ module full_sail::rewards_pool_continuous {
     }
 
     #[test_only]
-    public fun claim_rewards_test(user_address: address, pool: &mut RewardsPool, clock: &Clock) : Balance<REWARD_POOL_CONTINUOUS> {
+    public fun claim_rewards_test(user_address: address, pool: &mut RewardsPool, clock: &Clock) : Balance<FULLSAIL_TOKEN> {
         claim_rewards(user_address, pool, clock)
     }
 
