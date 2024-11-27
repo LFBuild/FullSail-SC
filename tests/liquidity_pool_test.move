@@ -2,8 +2,6 @@
 module full_sail::liquidity_pool_test {
     use sui::test_scenario::{Self as ts, next_tx, Scenario};
     use sui::coin::{Self, CoinMetadata};
-    use sui::transfer;
-    use sui::object::{Self};
     
     // --- modules ---
     use full_sail::liquidity_pool::{Self, LiquidityPoolConfigs, LiquidityPool, FeesAccounting};
