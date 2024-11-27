@@ -5,8 +5,8 @@ module full_sail::rewards_pool_continuous_tests {
     use sui::clock;
     use std::debug;
     use sui::balance::{Balance};
-
-    use full_sail::rewards_pool_continuous::{Self, REWARD_POOL_CONTINUOUS, RewardsPool};
+    use full_sail::fullsail_token::{FULLSAIL_TOKEN};
+    use full_sail::rewards_pool_continuous::{Self, RewardsPool};
 
     // --- addresses ---
     const OWNER : address = @0xab;
@@ -15,8 +15,8 @@ module full_sail::rewards_pool_continuous_tests {
         let mut scenario_val = ts::begin(OWNER);
         let scenario = &mut scenario_val;
 
-        rewards_pool_continuous::create(10000, scenario.ctx());
-
+        let rewards_pool = rewards_pool_continuous::create(10000, scenario.ctx());
+        transfer::public_transfer(rewards_pool, @0x01);
         ts::end(scenario_val);
     }
 
@@ -29,8 +29,8 @@ module full_sail::rewards_pool_continuous_tests {
         {
             let _mint_amount = 1000;
             let mut rewards_pool = ts::take_shared<RewardsPool>(scenario);
-            let rewards_token = coin::mint_for_testing<REWARD_POOL_CONTINUOUS>(_mint_amount, ts::ctx(scenario));
-            let rewards_balance = coin::into_balance<REWARD_POOL_CONTINUOUS>(rewards_token);
+            let rewards_token = coin::mint_for_testing<FULLSAIL_TOKEN>(_mint_amount, ts::ctx(scenario));
+            let rewards_balance = coin::into_balance<FULLSAIL_TOKEN>(rewards_token);
             let clock = clock::create_for_testing(ts::ctx(scenario));
 
             rewards_pool_continuous::add_rewards_test(&mut rewards_pool, rewards_balance, &clock);
@@ -91,7 +91,7 @@ module full_sail::rewards_pool_continuous_tests {
 
     #[test]
     #[expected_failure]
-    public fun claim_rewards_test() : Balance<REWARD_POOL_CONTINUOUS> {
+    public fun claim_rewards_test() : Balance<FULLSAIL_TOKEN> {
         setup();
         let mut scenario_val = ts::begin(OWNER);
         let scenario = &mut scenario_val;
