@@ -783,6 +783,19 @@ module full_sail::voting_escrow {
         total_voting_power_at(collection, epoch::now(clock))
     }
 
+    public fun set_rebase_at_specified_epoch(
+        account: address,
+        collection: &mut VeFullSailCollection,
+        epoch_number: u64,
+        rebase_amount: u64,
+        ctx: &mut TxContext
+    ) {
+        assert!(tx_context::sender(ctx) == account, E_NOT_OWNER);
+        assert!(table::contains(&collection.rebases, epoch_number), E_INVALID_EPOCH);
+        let rebase = table::borrow_mut(&mut collection.rebases, epoch_number);
+        *rebase = rebase_amount;
+    }
+
     public fun total_voting_power_at(
         collection: &VeFullSailCollection,
         target_epoch: u64,
