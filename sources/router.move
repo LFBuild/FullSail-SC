@@ -94,48 +94,51 @@ module full_sail::router {
         abort 0
     }
 
-    // public entry fun add_liquidity_and_stake_both_coins_entry<BaseType, QuoteType> (
-    //     pool_id: &mut UID,
-    //     base_metadata: &CoinMetadata<BaseType>,
-    //     quote_metadata: &CoinMetadata<QuoteType>,
-    //     fees_accounting: &mut FeesAccounting, 
-    //     is_stable: bool,
-    //     amount_a: u64,
-    //     amount_b: u64,
-    //     ctx: &mut TxContext
-    // ) {
-    //     let (optimal_a, optimal_b) = get_optimal_amounts<BaseType, QuoteType>(
-    //         pool_id,
-    //         base_metadata,
-    //         quote_metadata,
-    //         is_stable,
-    //         amount_a, 
-    //         amount_b
-    //     );
+    public fun add_liquidity_and_stake_both_coins_entry<BaseType, QuoteType> (
+        pool_id: &mut UID,
+        base_metadata: &CoinMetadata<BaseType>,
+        quote_metadata: &CoinMetadata<QuoteType>,
+        fees_accounting: &mut FeesAccounting, 
+        is_stable: bool,
+        amount_a: u64,
+        amount_b: u64,
+        treasury_cap_base: &mut TreasuryCap<BaseType>,
+        treasury_cap_quote: &mut TreasuryCap<QuoteType>,
+        store: &WrapperStore,
+        ctx: &mut TxContext
+    ) {
+        let (optimal_a, optimal_b) = get_optimal_amounts<BaseType, QuoteType>(
+            pool_id,
+            coin_wrapper::get_wrapper<BaseType>(store),
+            coin_wrapper::get_wrapper<QuoteType>(store),
+            is_stable,
+            amount_a, 
+            amount_b
+        );
 
-    //     let pool = liquidity_pool::liquidity_pool(
-    //         pool_id, 
-    //         base_metadata, 
-    //         quote_metadata, 
-    //         is_stable
-    //     );
+        // let pool = liquidity_pool::liquidity_pool(
+        //     pool_id, 
+        //     base_metadata, 
+        //     quote_metadata, 
+        //     is_stable
+        // );
 
-    //     // let input_base_coin = coin::from_balance<BaseType>(optimal_a, ctx);
-    //     // let input_quote_coin = coin::from_balance<QuoteType>(optimal_b, ctx);
+        // let input_base_coin = coin::mint(treasury_cap_base, optimal_a, ctx);
+        // let input_quote_coin = coin::mint(treasury_cap_quote, optimal_b, ctx);
 
-    //     // let lp_tokens = liquidity_pool::mint_lp(
-    //     //     pool, 
-    //     //     fees_accounting, 
-    //     //     base_metadata, 
-    //     //     quote_metadata, 
-    //     //     input_base_coin, 
-    //     //     input_quote_coin, 
-    //     //     is_stable, 
-    //     //     ctx
-    //     // );
+        // let lp_tokens = liquidity_pool::mint_lp(
+        //     pool, 
+        //     fees_accounting, 
+        //     base_metadata, 
+        //     quote_metadata, 
+        //     input_base_coin, 
+        //     input_quote_coin, 
+        //     is_stable, 
+        //     ctx
+        // );
 
-    //     // gauge::stake(vote_manager::get_gauge(pool_id), lp_tokens);
-    // }
+        // gauge::stake(vote_manager::get_gauge(pool_id), lp_tokens);
+    }
 
     public entry fun create_pool<BaseType, QuoteType>(
         base_metadata: &CoinMetadata<BaseType>,
@@ -155,19 +158,22 @@ module full_sail::router {
         // vote_manager::create_gauge_internal(pool);
     }
 
-    // public entry fun create_pool_both_coins<BaseType, QuoteType>(
-    //     configs: &mut LiquidityPoolConfigs,
-    //     is_stable: bool,
-    //     store: &WrapperStore,
-    //     ctx: &mut TxContext
-    // ) {
-    //     let pool = liquidity_pool::create<BaseType, QuoteType>(
-    //         coin_wrapper::get_wrapper<Basetype>(store),
-    //         coin_wrapper::get_wrapper<QuoteType>(store),
-    //         configs,
-    //         is_stable,
-    //     )
-    // }
+    public entry fun create_pool_both_coins<BaseType, QuoteType>(
+        configs: &mut LiquidityPoolConfigs,
+        is_stable: bool,
+        store: &WrapperStore,
+        ctx: &mut TxContext
+    ) {
+        let pool = liquidity_pool::create<BaseType, QuoteType>(
+            coin_wrapper::get_wrapper<Basetype>(store),
+            coin_wrapper::get_wrapper<QuoteType>(store),
+            configs,
+            is_stable,
+            ctx
+        );
+        // vote_manager::whitelist_default_reward_pool(pool);
+        // vote_manager::create_gauge_internal(pool);
+    }
 
     public fun quote_liquidity<BaseType, QuoteType>(
         pool_id: &mut UID,
@@ -382,7 +388,7 @@ module full_sail::router {
 
     public fun swap_router<BaseType, QuoteType>(
         pool_id: &mut UID,
-        pool: &mut LiquidityPool<BaseType, QuoteType>, 
+        // pool: &mut LiquidityPool<BaseType, QuoteType>, 
         input_amount: Coin<BaseType>, 
         token_in: &CoinMetadata<BaseType>, 
         intermediary_tokens: &mut vector<CoinMetadata<BaseType>>,
@@ -420,7 +426,7 @@ module full_sail::router {
         current_amount
     }
 
-    public fun swap_asset_for_coin<BaseType, QuoteType>(
+    public fun swap_coin_for_coin<BaseType, QuoteType>(
         // pool: LiquidityPool<BaseType, QuoteType>,
         pool_id: &mut UID,
         input_coin: Coin<BaseType>,
@@ -445,7 +451,7 @@ module full_sail::router {
         )
     }
 
-    public entry fun swap_asset_for_coin_entry<BaseType, QuoteType>(
+    public fun swap_coin_for_coin_entry<BaseType, QuoteType>(
         pool_id: &mut UID,
         input_coin: Coin<BaseType>,
         min_output_amount: u64,
@@ -456,10 +462,10 @@ module full_sail::router {
         is_stable: bool,
         recipient: address,
         ctx: &mut TxContext
-    ): {
+    ) {
         exact_deposit(
             recipient, 
-            swap_asset_for_coin(
+            swap_coin_for_coin(
                 pool_id, 
                 input_coin, 
                 min_output_amount, 
@@ -469,7 +475,20 @@ module full_sail::router {
                 quote_metadata, 
                 is_stable, 
                 ctx
-            )
+            )                         
         );
+    }
+
+    public entry fun unstake_and_remove_liquidity_both_coins_entry<BaseType, QuoteType>(
+        is_stable: bool,
+        store: &WrapperStore,
+        lp_amount: u64,
+        min_input_amount: u64,
+        min_output_amount: u64,
+        recipient: address,
+    ) {
+        let base_metadata = coin_wrapper::get_wrapper<BaseType>(store);
+        let quote_metadata = coin_wrapper::get_wrapper<QuoteType>(store);
+
     }
 }
