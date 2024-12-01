@@ -2,6 +2,7 @@ module full_sail::coin_wrapper {
     use sui::table::{Self, Table};
     use sui::coin::{Self, Coin, TreasuryCap, CoinMetadata};
     use sui::dynamic_object_field;
+    //use sui::dynamic_field;
     use std::string;
     use std::ascii::String;
     use std::type_name;
@@ -13,15 +14,22 @@ module full_sail::coin_wrapper {
     // --- structs ---
     public struct COIN_WRAPPER has drop {}
 
-    public struct WrappedAssetData has store {
+    /*public struct WrappedAssetData has store {
         metadata: CoinMetadata<COIN_WRAPPER>,
         treasury_cap: TreasuryCap<COIN_WRAPPER>,
+        original_coin_type: String,
+    }*/
+
+    public struct WrappedAssetData<phantom T> has key, store {
+        id: UID,
+        metadata: CoinMetadata<T>,
+        treasury_cap: TreasuryCap<T>,
         original_coin_type: String,
     }
 
     public struct WrapperStore has key {
         id: UID,
-        coin_to_wrapper: Table<String, WrappedAssetData>,
+        coin_to_wrapper: Table<String, ID>,
         wrapper_to_coin: Table<ID, String>,
     }
 
@@ -45,84 +53,76 @@ module full_sail::coin_wrapper {
         transfer::share_object(registry);
     }
 
-    public fun register_coin<CoinType>(
+    public fun register_coin<CoinType, WrapperType: drop>(
         _cap: &WrapperStoreCap,
-        otw: COIN_WRAPPER,
+        witness: WrapperType,
         store: &mut WrapperStore,
         ctx: &mut TxContext
-    ) {
-        // check if the coin is already registered
+    ): &CoinMetadata<WrapperType> {
         let coin_type = type_name::get<CoinType>();
         let coin_type_name = coin_type.into_string();
         assert!(!table::contains(&store.coin_to_wrapper, coin_type_name), E_ALREADY_INITIALIZED);
 
-        // create the new wrapped coin
-        //let witness = get_witness();
-        let (treasury_cap, metadata) = coin::create_currency<COIN_WRAPPER>(
-            otw, 
-            9, // decimals
-            b"WRAPPED", // symbol
-            b"Wrapped Coin", // name
-            b"A wrapped version of the original coin", // description
-            option::none(), // icon_url
+        let (treasury_cap, metadata) = coin::create_currency<WrapperType>(
+            witness,
+            9,
+            b"WRAPPED",
+            b"Wrapped Coin",
+            b"A wrapped version of the original coin",
+            option::none(),
             ctx
         );
 
         let metadata_id = object::id(&metadata);
+        
+        // Store the metadata ID and mapping
+        table::add(&mut store.coin_to_wrapper, coin_type_name, metadata_id);
+        table::add(&mut store.wrapper_to_coin, metadata_id, coin_type_name);
 
-        // create WrappedAssetData
-        let wrapped_data = WrappedAssetData {
+        // Store the wrapped asset data as a dynamic field
+        dynamic_object_field::add(&mut store.id, metadata_id, WrappedAssetData {
+            id: object::new(ctx),
             metadata,
             treasury_cap,
             original_coin_type: coin_type_name
-        };
-        
-        table::add(&mut store.coin_to_wrapper, coin_type_name, wrapped_data);
-        table::add(&mut store.wrapper_to_coin, metadata_id, coin_type_name);
+        });
+
+        dynamic_object_field::borrow(&store.id, metadata_id)
     }
 
     // wrap
-    public fun wrap<CoinType>(
+    public fun wrap<CoinType, WrapperType>(
         store: &mut WrapperStore,
         coin_in: Coin<CoinType>,
         ctx: &mut TxContext
-    ): Coin<COIN_WRAPPER> {
-        let coin_type = type_name::get<CoinType>();
-        let coin_type_name = coin_type.into_string();
-        assert!(is_supported(store, &coin_type_name), E_NOT_INITIALIZED);
+    ): Coin<WrapperType> {
+        let coin_type_name = type_name::get<CoinType>().into_string();
+        assert!(table::contains(&store.coin_to_wrapper, coin_type_name), E_NOT_INITIALIZED);
 
+        let metadata_id = *table::borrow(&store.coin_to_wrapper, coin_type_name);
+        let wrapped_data: &mut WrappedAssetData<WrapperType> = dynamic_object_field::borrow_mut(&mut store.id, metadata_id);
+        
         let amount = coin::value(&coin_in);
-        let wrapped_data = table::borrow_mut(&mut store.coin_to_wrapper, coin_type_name);
-
-        // store original coin
+        // Store original coin
         dynamic_object_field::add(&mut store.id, coin_type_name, coin_in);
-
-        // mint wrapped coin
-        let wrapped_coin = coin::mint(&mut wrapped_data.treasury_cap, amount, ctx);
-
-        wrapped_coin
+        
+        coin::mint(&mut wrapped_data.treasury_cap, amount, ctx)
     }
 
     // unwrap
-    public fun unwrap<CoinType>(
+    public fun unwrap<WrapperType, CoinType>(
         store: &mut WrapperStore,
-        wrapped_coin: Coin<COIN_WRAPPER>,
+        wrapped_coin: Coin<WrapperType>,
     ): Coin<CoinType> {
-        let coin_type = type_name::get<CoinType>();
-        let coin_type_name = coin_type.into_string();
-        assert!(is_supported(store, &coin_type_name), E_NOT_INITIALIZED);
+        let coin_type_name = type_name::get<CoinType>().into_string();
+        assert!(table::contains(&store.coin_to_wrapper, coin_type_name), E_NOT_INITIALIZED);
 
-        let wrapped_data = table::borrow_mut(&mut store.coin_to_wrapper, coin_type_name);
-
-        // burn wrapped coin
+        let metadata_id = *table::borrow(&store.coin_to_wrapper, coin_type_name);
+        let wrapped_data: &mut WrappedAssetData<WrapperType> = dynamic_object_field::borrow_mut(&mut store.id, metadata_id);
+        
         coin::burn(&mut wrapped_data.treasury_cap, wrapped_coin);
-
-        let exists = sui::dynamic_object_field::exists_<String>(&store.id, coin_type_name);
-        assert!(exists, 1);
-
-        let stored_coin = dynamic_object_field::remove<String, Coin<CoinType>>(&mut store.id, coin_type_name);
-
-        stored_coin
+        
+        dynamic_object_field::remove(&mut store.id, coin_type_name)
     }
 
     public fun format_fungible_asset(id: ID): String {
@@ -148,9 +148,14 @@ module full_sail::coin_wrapper {
         *table::borrow(&store.wrapper_to_coin, metadata_id)
     }
 
-    public fun get_wrapper<CoinType>(store: &WrapperStore): &CoinMetadata<COIN_WRAPPER> {
+    public fun get_wrapper<CoinType>(store: &WrapperStore): &CoinMetadata<CoinType> {
         let coin_type_name = type_name::get<CoinType>().into_string();
-        &table::borrow(&store.coin_to_wrapper, coin_type_name).metadata
+        assert!(table::contains(&store.coin_to_wrapper, coin_type_name), E_NOT_INITIALIZED);
+        
+        let metadata_id = *table::borrow(&store.coin_to_wrapper, coin_type_name);
+        let wrapped_data: &WrappedAssetData<CoinType> = dynamic_object_field::borrow(&store.id, metadata_id);
+        
+        &wrapped_data.metadata
     }
 
     public fun get_original(store: &WrapperStore, metadata_id: ID) : String {
@@ -168,24 +173,25 @@ module full_sail::coin_wrapper {
     }
 
     #[test_only]
-    public fun register_coin_for_testing<COIN_WRAPPER>(        
+    public fun register_coin_for_testing<CoinType, WrapperType: drop>(
         cap: &WrapperStoreCap,
+        witness: WrapperType,
         store: &mut WrapperStore,
         ctx: &mut TxContext
-    ) {
-        let otw = create_witness();
-        register_coin<COIN_WRAPPER>(cap, otw,  store, ctx);
+    ):&CoinMetadata<WrapperType> {
+        register_coin<CoinType, WrapperType>(cap, witness, store, ctx)
     }
 
     #[test_only]
-    public(package) fun get_original_coin_type(wcoin_type: &WrappedAssetData): String {
+    public(package) fun get_original_coin_type<T>(wcoin_type: &WrappedAssetData<T>): String {
         wcoin_type.original_coin_type
     }
     
     #[test_only]
-    public fun get_wrapped_data<CoinType>(store: &WrapperStore): &WrappedAssetData {
+    public fun get_wrapped_data<CoinType, WrapperType>(store: &WrapperStore): &WrappedAssetData<WrapperType> {
         let coin_type_name = type_name::get<CoinType>().into_string();
-        table::borrow(&store.coin_to_wrapper, coin_type_name)
+        let metadata_id = *table::borrow(&store.coin_to_wrapper, coin_type_name);
+        dynamic_object_field::borrow(&store.id, metadata_id)
     }
 
     #[test_only]
