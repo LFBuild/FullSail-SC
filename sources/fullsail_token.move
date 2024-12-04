@@ -90,6 +90,11 @@ module full_sail::fullsail_token {
         coin::total_supply(&manager.cap)
     }
 
+    // cap
+    public fun get_treasury_cap(manager: &mut FullSailManager): &mut TreasuryCap<FULLSAIL_TOKEN> {
+        &mut manager.cap
+    }
+
     // --- tests funcs ---
     #[test_only]
     public fun init_for_testing(ctx: &mut TxContext) {

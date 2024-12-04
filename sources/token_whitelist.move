@@ -6,6 +6,7 @@ module full_sail::token_whitelist {
 
     // --- friends modules ---
     //use full_sail::vote_manager;
+    use full_sail::coin_wrapper;
 
     // --- errors ---
     const E_MAX_WHITELIST_EXCEEDED: u64 = 1;
@@ -24,13 +25,13 @@ module full_sail::token_whitelist {
         tokens: VecSet<String>
     }
 
-    public struct AdminCap has key {
+    public struct TokenWhitelistAdminCap has key {
         id: UID
     }
 
     // init
     fun init(_otw: TOKEN_WHITELIST, ctx: &mut TxContext) {
-        let admin_cap = AdminCap {
+        let admin_cap = TokenWhitelistAdminCap {
             id: object::new(ctx)
         };
 
@@ -50,7 +51,7 @@ module full_sail::token_whitelist {
     }
 
     public fun add_to_whitelist(
-        _: &AdminCap,
+        _: &TokenWhitelistAdminCap,
         whitelist: &mut TokenWhitelist,
         mut new_tokens: vector<String>
     ) {
@@ -97,7 +98,7 @@ module full_sail::token_whitelist {
     }
 
     public fun set_whitelist_reward_token<T>(
-        admin_cap: &AdminCap,
+        admin_cap: &TokenWhitelistAdminCap,
         pool_whitelist: &mut RewardTokenWhitelistPerPool,
         pool_address: address,
         is_whitelisted: bool
@@ -110,7 +111,7 @@ module full_sail::token_whitelist {
     }
 
     public fun set_whitelist_reward_tokens(
-        _: &AdminCap,
+        _: &TokenWhitelistAdminCap,
         pool_whitelist: &mut RewardTokenWhitelistPerPool,
         tokens: vector<String>,
         pool_address: address,
@@ -142,7 +143,7 @@ module full_sail::token_whitelist {
     }
 
     public fun whitelist_coin<T>(
-        admin_cap: &AdminCap,
+        admin_cap: &TokenWhitelistAdminCap,
         whitelist: &mut TokenWhitelist
     ) {
         let mut coins = vector::empty<String>();
@@ -161,6 +162,26 @@ module full_sail::token_whitelist {
             return 0
         };
         vec_set::size(table::borrow(&pool_whitelist.whitelist, pool_address))
+    }
+
+    public fun whitelist_native_fungible_assets(
+        admin_cap: &TokenWhitelistAdminCap,
+        whitelist: &mut TokenWhitelist,
+        mut assets: vector<ID>
+    ) {
+        let mut asset_names = vector::empty<String>();
+        vector::reverse(&mut assets);
+        
+        let mut assets_len = vector::length(&assets);
+        while (assets_len > 0) {
+            let ascii_string = coin_wrapper::format_fungible_asset(vector::pop_back(&mut assets));
+            let string = string::from_ascii(ascii_string);
+            vector::push_back(&mut asset_names, string);
+            assets_len = assets_len - 1;
+        };
+        vector::destroy_empty(assets);
+        
+        add_to_whitelist(admin_cap, whitelist, asset_names);
     }
 
     public fun whitelisted_reward_token_per_pool(
