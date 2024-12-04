@@ -56,7 +56,6 @@ module full_sail::gauge {
             rewards_pool: rewards_pool_continuous::create(rewards_duration(), ctx),
             liquidity_pool: liquidity_pool,
         };
-        
         gauge
     }
 

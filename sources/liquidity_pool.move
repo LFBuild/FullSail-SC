@@ -409,8 +409,6 @@ module full_sail::liquidity_pool {
 
     public fun burn<BaseType, QuoteType>(
         pool: &mut LiquidityPool<BaseType, QuoteType>,
-        //base_metadata: &CoinMetadata<BaseType>,
-        //quote_metadata: &CoinMetadata<QuoteType>,
         lp_amount: u64,
         ctx: &mut TxContext
     ): (Coin<BaseType>, Coin<QuoteType>) {
@@ -419,16 +417,6 @@ module full_sail::liquidity_pool {
         
         let withdrawn_asset_1 = coin::take(&mut pool.base_balance, withdraw_amount_1, ctx);
         let withdrawn_asset_2 = coin::take(&mut pool.quote_balance, withdraw_amount_2, ctx);
-        
-        /*let ordered_withdrawn_asset_1;
-        let ordered_withdrawn_asset_2;
-        if (!is_sorted(base_metadata, quote_metadata)) {
-            ordered_withdrawn_asset_1 = withdrawn_asset_2;
-            ordered_withdrawn_asset_2 = withdrawn_asset_1;
-        } else {
-            ordered_withdrawn_asset_1 = withdrawn_asset_1;
-            ordered_withdrawn_asset_2 = withdrawn_asset_2;
-        };*/
         
         (withdrawn_asset_1, withdrawn_asset_2)
     }

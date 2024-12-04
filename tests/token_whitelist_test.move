@@ -5,7 +5,7 @@ module full_sail::token_whitelist_test {
     use std::type_name;
 
     // --- modules ---
-    use full_sail::token_whitelist::{Self, TokenWhitelist, AdminCap, RewardTokenWhitelistPerPool};
+    use full_sail::token_whitelist::{Self, TokenWhitelist, TokenWhitelistAdminCap, RewardTokenWhitelistPerPool};
 
     // --- errors ---
     const ERR_WHITELIST_SHOULD_CONTAIN: u64 = 0;
@@ -36,7 +36,7 @@ module full_sail::token_whitelist_test {
         
         next_tx(scenario, OWNER);
         {
-            let admin_cap = ts::take_from_address<AdminCap>(
+            let admin_cap = ts::take_from_address<TokenWhitelistAdminCap>(
                 scenario,
                 OWNER
             );
@@ -68,7 +68,7 @@ module full_sail::token_whitelist_test {
         
         next_tx(scenario, OWNER);
         {
-            let admin_cap = ts::take_from_address<AdminCap>(
+            let admin_cap = ts::take_from_address<TokenWhitelistAdminCap>(
                 scenario,
                 OWNER
             );
@@ -126,7 +126,7 @@ module full_sail::token_whitelist_test {
 
         next_tx(scenario, OWNER);
         {
-            let admin_cap = ts::take_from_address<AdminCap>(
+            let admin_cap = ts::take_from_address<TokenWhitelistAdminCap>(
                 scenario,
                 OWNER
             );
@@ -173,7 +173,7 @@ module full_sail::token_whitelist_test {
 
         next_tx(scenario, OWNER);
         {
-            let admin_cap = ts::take_from_address<AdminCap>(
+            let admin_cap = ts::take_from_address<TokenWhitelistAdminCap>(
                 scenario,
                 OWNER
             );
@@ -206,7 +206,7 @@ module full_sail::token_whitelist_test {
 
         next_tx(scenario, OWNER);
         {
-            let admin_cap = ts::take_from_address<AdminCap>(
+            let admin_cap = ts::take_from_address<TokenWhitelistAdminCap>(
                 scenario,
                 OWNER
             );

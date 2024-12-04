@@ -39,7 +39,7 @@ module full_sail::minter {
         };
         transfer::share_object(minter_config);
         
-        let treasury_cap = fullsail_token::cap(manager);
+        let treasury_cap = fullsail_token::get_treasury_cap(manager);
         let mut initial_mint_amount = fullsail_token::mint(
             treasury_cap, 
             100000000000000000, 
@@ -52,13 +52,13 @@ module full_sail::minter {
         ve_token
     }
 
-    public(package) fun mint(minter: &mut MinterConfig, manager: &mut FullSailManager, collection: &VeFullSailCollection, clock: &Clock, ctx: &mut TxContext): (Coin<FULLSAIL_TOKEN>, Coin<FULLSAIL_TOKEN>) {
+    public fun mint(minter: &mut MinterConfig, manager: &mut FullSailManager, collection: &VeFullSailCollection, clock: &Clock, ctx: &mut TxContext): (Coin<FULLSAIL_TOKEN>, Coin<FULLSAIL_TOKEN>) {
         let rebase_amount = current_rebase(minter, manager, collection, clock);
         let current_epoch = epoch::now(clock);
         assert!(current_epoch >= minter.last_emission_update_epoch + 1, E_MAX_LOCK_TIME);
         let weekly_emission = minter.weekly_emission_amount;
         let basis_points = 10000;
-        let treasury_cap = fullsail_token::cap(manager);
+        let treasury_cap = fullsail_token::get_treasury_cap(manager);
         assert!(basis_points != 0, E_ZERO_TOTAL_POWER);
         let mut minted_tokens = fullsail_token::mint(treasury_cap, weekly_emission, ctx);
         let transfer_coin = coin::split<FULLSAIL_TOKEN>(&mut minted_tokens, (((weekly_emission as u128) * (minter.team_emission_rate_bps as u128) / (basis_points as u128)) as u64), ctx);

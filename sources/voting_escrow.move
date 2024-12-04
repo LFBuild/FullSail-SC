@@ -808,6 +808,19 @@ module full_sail::voting_escrow {
         }
     }
 
+    public fun token_owner(        
+        ve_token: &VeFullSailToken<FULLSAIL_TOKEN>,
+    ): address {
+        ve_token.owner
+    }
+
+    public fun nft_exists(
+        ve_token: &VeFullSailToken<FULLSAIL_TOKEN>,
+        addr: address
+    ): bool {
+        ve_token.owner == addr
+    }
+
     // --- test helpers ---
     #[test_only]
     public fun init_for_testing(ctx: &mut TxContext) {
