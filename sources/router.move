@@ -645,5 +645,101 @@ module full_sail::router {
             ctx,
             clock
         ); 
+        let (input_coin, output_coin) = remove_liquidity_internal<COIN_WRAPPER, COIN_WRAPPER>(
+            pool_id,
+            base_metadata,
+            quote_metadata,
+            is_stable,
+            lp_amount,
+            min_input_amount,
+            min_output_amount,
+            ctx
+        );
+        exact_deposit(recipient, input_coin);
+        exact_deposit(recipient, output_coin);
+    }
+
+    public entry fun unstake_and_remove_liquidity_coin_entry<BaseType>(
+        pool_id: &mut UID,
+        quote_metadata: &CoinMetadata<COIN_WRAPPER>,
+        is_stable: bool,
+        store: &WrapperStore,
+        lp_amount: u64,
+        min_input_amount: u64,
+        min_output_amount: u64,
+        recipient: address,
+        clock: &Clock,
+        admin_data: &AdministrativeData,
+        ctx: &mut TxContext
+    ) {
+        let base_metadata = coin_wrapper::get_wrapper<BaseType>(store);
+        gauge::unstake_lp<COIN_WRAPPER, COIN_WRAPPER>(
+            vote_manager::get_gauge<COIN_WRAPPER, COIN_WRAPPER>(
+                admin_data,
+                liquidity_pool::liquidity_pool<COIN_WRAPPER, COIN_WRAPPER>(
+                    pool_id,
+                    base_metadata,
+                    quote_metadata,
+                    is_stable
+                )
+            ),
+            lp_amount,
+            ctx,
+            clock
+        ); 
+        let (input_coin, output_coin) = remove_liquidity_internal<COIN_WRAPPER, COIN_WRAPPER>(
+            pool_id,
+            base_metadata,
+            quote_metadata,
+            is_stable,
+            lp_amount,
+            min_input_amount,
+            min_output_amount,
+            ctx
+        );
+        exact_deposit(recipient, input_coin);
+        exact_deposit(recipient, output_coin);
+    }
+
+    public entry fun unstake_and_remove_liquidity_entry(
+        pool_id: &mut UID,
+        base_metadata: &CoinMetadata<COIN_WRAPPER>,
+        quote_metadata: &CoinMetadata<COIN_WRAPPER>,
+        is_stable: bool,
+        store: &WrapperStore,
+        lp_amount: u64,
+        min_input_amount: u64,
+        min_output_amount: u64,
+        recipient: address,
+        clock: &Clock,
+        admin_data: &AdministrativeData,
+        ctx: &mut TxContext
+    ) {
+        gauge::unstake_lp<COIN_WRAPPER, COIN_WRAPPER>(
+            vote_manager::get_gauge<COIN_WRAPPER, COIN_WRAPPER>(
+                admin_data,
+                liquidity_pool::liquidity_pool<COIN_WRAPPER, COIN_WRAPPER>(
+                    pool_id,
+                    base_metadata,
+                    quote_metadata,
+                    is_stable
+                )
+            ),
+            lp_amount,
+            ctx,
+            clock
+        ); 
+        let (input_coin, output_coin) = remove_liquidity_internal<COIN_WRAPPER, COIN_WRAPPER>(
+            pool_id,
+            base_metadata,
+            quote_metadata,
+            is_stable,
+            lp_amount,
+            min_input_amount,
+            min_output_amount,
+            ctx
+        );
+        exact_deposit(recipient, input_coin);
+        exact_deposit(recipient, output_coin);
     }
 }

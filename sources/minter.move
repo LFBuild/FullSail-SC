@@ -124,6 +124,12 @@ module full_sail::minter {
         minter.weekly_emission_amount = new_weekly_emission;
     }
 
+    public fun gauge_emission(minter: &MinterConfig) : u64 {
+        let basis_points = 10000;
+        assert!(basis_points != 0, E_ZERO_TOTAL_POWER);
+        (((minter.weekly_emission_amount as u128) * ((10000 - minter.team_emission_rate_bps) as u128) / (basis_points as u128)) as u64)
+    }
+
     public fun current_rebase(minter: &MinterConfig, manager: &FullSailManager, collection: &VeFullSailCollection, clock: &Clock): u128 {
         let weekly_emission = current_weekly_emission(minter);
         let total_voting_power = voting_escrow::total_voting_power(collection, clock);
