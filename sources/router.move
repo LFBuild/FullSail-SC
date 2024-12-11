@@ -11,7 +11,7 @@ module full_sail::router {
     use full_sail::liquidity_pool::{Self, LiquidityPool, FeesAccounting, LiquidityPoolConfigs};
     use full_sail::gauge::{Self, Gauge};
     use sui::clock::{Clock};
-    use full_sail::vote_manager::{Self, AdministrativeData};
+    use full_sail::vote_manager::{Self, AdministrativeData, GaugeRegistry};
     use std::debug;
 
     // --- addresses ---
@@ -141,6 +141,8 @@ module full_sail::router {
         input_amount: u64,
         output_amount: u64,
         store: &mut WrapperStore,
+        gauge_registry: &mut GaugeRegistry<BaseType, QuoteType>,
+        admin_data: &AdministrativeData,
         ctx: &mut TxContext
     ) {
         let (optimal_a, optimal_b) = get_optimal_amounts<COIN_WRAPPER, COIN_WRAPPER>(
@@ -158,8 +160,10 @@ module full_sail::router {
         assert!(coin::value(&base_coin) == optimal_a, E_INSUFFICIENT_OUTPUT_AMOUNT);
         assert!(coin::value(&quote_coin) == optimal_b, E_INSUFFICIENT_OUTPUT_AMOUNT);
         // gauge::stake(
-        //     account,
-        //     vote_manager::get_gauge(liquidity_pool::liquidity_pool(coin_wrapper::get_wrapper<CoinType>(), other_metadata, stable)),
+        //     vote_manager::get_gauge(
+        //         gauge_registry,
+        //         vote_manager::get_gauge_id(admin_data, liquidity_pool::liquidity_pool(coin_wrapper::get_wrapper<CoinType>(), other_metadata, stable))
+        //     ),
         //     liquidity_pool::mint_lp(account, coin_wrapper::wrap<CoinType>(coin::withdraw<CoinType>(account, optimal_a)), asset_b, stable)
         // );
     }
@@ -644,10 +648,10 @@ module full_sail::router {
         recipient: address,
         ctx: &mut TxContext
     ) {
-        exact_deposit<QuoteType>(
+        exact_deposit(
             recipient, 
-            coin_wrapper::unwrap<QuoteType>(
-                store,
+            // coin_wrapper::unwrap<QuoteType>(
+                // store,
                 swap_router(
                     pool,
                     exact_withdraw<BaseType>(
@@ -663,7 +667,7 @@ module full_sail::router {
                     is_stable,
                     ctx
                 )
-            )
+            // )
         );
     }
 
@@ -742,14 +746,18 @@ module full_sail::router {
         recipient: address,
         clock: &Clock,
         admin_data: &AdministrativeData,
+        gauge_registry: &mut GaugeRegistry<COIN_WRAPPER, COIN_WRAPPER>,
         ctx: &mut TxContext
     ) {
         let base_metadata = coin_wrapper::get_wrapper<BaseType>(store);
         let quote_metadata = coin_wrapper::get_wrapper<QuoteType>(store);
         gauge::unstake_lp<COIN_WRAPPER, COIN_WRAPPER>(
             vote_manager::get_gauge<COIN_WRAPPER, COIN_WRAPPER>(
-                admin_data,
-                pool
+                gauge_registry,
+                vote_manager::get_gauge_id<COIN_WRAPPER, COIN_WRAPPER>(
+                    admin_data,
+                    pool
+                )
             ),
             lp_amount,
             ctx,
@@ -780,14 +788,18 @@ module full_sail::router {
         min_output_amount: u64,
         recipient: address,
         clock: &Clock,
+        gauge_registry: &mut GaugeRegistry<COIN_WRAPPER, COIN_WRAPPER>,
         admin_data: &AdministrativeData,
         ctx: &mut TxContext
     ) {
         let base_metadata = coin_wrapper::get_wrapper<BaseType>(store);
         gauge::unstake_lp<COIN_WRAPPER, COIN_WRAPPER>(
             vote_manager::get_gauge<COIN_WRAPPER, COIN_WRAPPER>(
-                admin_data,
-                pool,
+                gauge_registry,
+                vote_manager::get_gauge_id<COIN_WRAPPER, COIN_WRAPPER>(
+                    admin_data,
+                    pool
+                )
             ),
             lp_amount,
             ctx,
@@ -819,13 +831,17 @@ module full_sail::router {
         min_output_amount: u64,
         recipient: address,
         clock: &Clock,
+        gauge_registry: &mut GaugeRegistry<COIN_WRAPPER, COIN_WRAPPER>,
         admin_data: &AdministrativeData,
         ctx: &mut TxContext
     ) {
         gauge::unstake_lp<COIN_WRAPPER, COIN_WRAPPER>(
             vote_manager::get_gauge<COIN_WRAPPER, COIN_WRAPPER>(
-                admin_data,
-                pool
+                gauge_registry,
+                vote_manager::get_gauge_id<COIN_WRAPPER, COIN_WRAPPER>(
+                    admin_data,
+                    pool
+                )
             ),
             lp_amount,
             ctx,
