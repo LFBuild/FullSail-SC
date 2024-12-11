@@ -827,16 +827,20 @@ module full_sail::vote_manager {
 
     public(package) fun create_gauge_internal<BaseType, QuoteType>(
         admin_data: &mut AdministrativeData,
+        gauge_registry: &mut GaugeRegistry<BaseType, QuoteType>,
         liquidity_pool: LiquidityPool<BaseType, QuoteType>,
         ctx: &mut TxContext
     ) {
         let pool_id = object::id(&liquidity_pool);
         
+        // Create gauge and get its ID
         let gauge = gauge::create(liquidity_pool, ctx);
         let gauge_id = object::id(&gauge);
         
-        table::add(&mut admin_data.active_gauges, gauge_id, false);
+        // Store gauge in registry
+        table::add(&mut gauge_registry.gauges, gauge_id, gauge);
         
+        table::add(&mut admin_data.active_gauges, gauge_id, false);
         table::add(&mut admin_data.pool_to_gauge, pool_id, gauge_id);
         
         let reward_tokens = vector::empty<ID>();
