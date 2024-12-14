@@ -1557,26 +1557,9 @@ module full_sail::vote_manager {
         vector::destroy_empty(ve_tokens);
     }
 
-    // --- tests funcs ---
+    // --- test helpers ---
     #[test_only]
     public fun init_for_testing(ctx: &mut TxContext) {
-        init(VOTE_MANAGER {}, ctx);
+        init(VOTE_MANAGER {}, ctx)
     }
-
-    #[test_only]
-public fun debug_admin_data(admin_data: &AdministrativeData) {
-    debug::print(&b"Debug Admin Data:");
-    debug::print(&table::length(&admin_data.active_gauges));
-    debug::print(&vector::length(&admin_data.active_gauges_list));
-    debug::print(&table::length(&admin_data.pool_to_gauge));
-}
-
-#[test_only]
-public fun get_pool_gauge(admin_data: &AdministrativeData, pool_id: ID): Option<ID> {
-    if (table::contains(&admin_data.pool_to_gauge, pool_id)) {
-        option::some(*table::borrow(&admin_data.pool_to_gauge, pool_id))
-    } else {
-        option::none()
-    }
-}
 }

@@ -624,40 +624,40 @@ module full_sail::router {
         );
     }
 
-    // public entry fun swap_route_entry_both_coins<BaseType, QuoteType>(
-    //     pool: &mut LiquidityPool<COIN_WRAPPER, COIN_WRAPPER>,
-    //     input_amount: u64, 
-    //     min_output_amount: u64, 
-    //     intermediary_tokens: vector<CoinMetadata<COIN_WRAPPER>>, 
-    //     store: &mut WrapperStore,
-    //     configs: &LiquidityPoolConfigs,
-    //     fees_accounting: &mut FeesAccounting, 
-    //     recipient: address,
-    //     ctx: &mut TxContext
-    // ) {
-    //     let mut intermediary_tokens_mut = intermediary_tokens;
+    public entry fun swap_route_entry_both_coins<BaseType, QuoteType>(
+        pool: &mut LiquidityPool<COIN_WRAPPER, COIN_WRAPPER>,
+        input_amount: u64, 
+        min_output_amount: u64, 
+        intermediary_tokens: vector<CoinMetadata<COIN_WRAPPER>>, 
+        store: &mut WrapperStore,
+        configs: &LiquidityPoolConfigs,
+        fees_accounting: &mut FeesAccounting, 
+        recipient: address,
+        ctx: &mut TxContext
+    ) {
+        let mut intermediary_tokens_mut = intermediary_tokens;
 
-    //     exact_deposit<QuoteType>(
-    //         recipient, 
-    //         coin_wrapper::unwrap<QuoteType>(
-    //             store,
-    //             swap_router(
-    //                 pool,
-    //                 exact_withdraw<BaseType>(
-    //                     input_amount,
-    //                     store,
-    //                     ctx
-    //                 ),
-    //                 coin_wrapper::get_wrapper<BaseType>(store),
-    //                 &mut intermediary_tokens_mut,
-    //                 configs,
-    //                 fees_accounting,
-    //                 min_output_amount,
-    //                 ctx
-    //             )
-    //         )
-    //     );
-    // }
+        exact_deposit<QuoteType>(
+            recipient, 
+            coin_wrapper::unwrap<QuoteType>(
+                store,
+                swap_router(
+                    pool,
+                    exact_withdraw<BaseType>(
+                        input_amount,
+                        store,
+                        ctx
+                    ),
+                    coin_wrapper::get_wrapper<BaseType>(store),
+                    &mut intermediary_tokens_mut,
+                    configs,
+                    fees_accounting,
+                    min_output_amount,
+                    ctx
+                )
+            )
+        );
+    }
 
     // public entry fun swap_route_entry_both_coins<BaseType, QuoteType>(
     //     pool: &mut LiquidityPool<COIN_WRAPPER, COIN_WRAPPER>,
