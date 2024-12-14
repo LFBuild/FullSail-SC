@@ -58,7 +58,7 @@ module full_sail::router {
     }
 
     public fun get_trade_diff<BaseType, QuoteType>(
-        pool_id: &mut UID,
+        configs: &LiquidityPoolConfigs,
         input_amount: u64,
         base_metadata: &CoinMetadata<BaseType>,
         quote_metadata: &CoinMetadata<QuoteType>,
@@ -66,7 +66,7 @@ module full_sail::router {
         is_stable: bool
     ): (u64, u64) {
         liquidity_pool::get_trade_diff(
-            liquidity_pool::liquidity_pool(pool_id, base_metadata, quote_metadata, is_stable),
+            liquidity_pool::liquidity_pool(configs, base_metadata, quote_metadata, is_stable),
             base_metadata,
             quote_metadata,
             input_metadata,
@@ -384,7 +384,7 @@ module full_sail::router {
     }
 
     public fun liquidity_amount_out<BaseType, QuoteType>(
-        pool_id: &mut UID, 
+        configs: &LiquidityPoolConfigs,
         base_metadata: &CoinMetadata<BaseType>, 
         quote_metadata: &CoinMetadata<QuoteType>, 
         is_stable: bool, 
@@ -392,7 +392,7 @@ module full_sail::router {
         output_amount: u64
     ): u64 {
         liquidity_pool::liquidity_out(
-            liquidity_pool::liquidity_pool(pool_id, base_metadata, quote_metadata, is_stable), 
+            liquidity_pool::liquidity_pool(configs, base_metadata, quote_metadata, is_stable), 
             base_metadata, 
             quote_metadata, 
             input_amount, 
@@ -419,7 +419,7 @@ module full_sail::router {
     }
 
     public fun redeemable_liquidity<BaseType, QuoteType>(
-        pool_id: &mut UID, 
+        configs: &LiquidityPoolConfigs,
         base_metadata: &CoinMetadata<BaseType>,
         quote_metadata: &CoinMetadata<QuoteType>,
         is_stable: bool,
@@ -427,7 +427,7 @@ module full_sail::router {
     ): (u64, u64) {
         liquidity_pool::liquidity_amounts<BaseType, QuoteType>(
             liquidity_pool::liquidity_pool(
-                pool_id,
+                configs,
                 base_metadata,
                 quote_metadata,
                 is_stable
