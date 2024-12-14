@@ -1527,4 +1527,10 @@ module full_sail::vote_manager {
         };
         vector::destroy_empty(ve_tokens);
     }
+
+    // --- test helpers ---
+    #[test_only]
+    public fun init_for_testing(ctx: &mut TxContext) {
+        init(VOTE_MANAGER {}, ctx)
+    }
 }

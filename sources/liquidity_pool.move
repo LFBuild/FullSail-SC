@@ -5,6 +5,7 @@ module full_sail::liquidity_pool {
     use sui::coin::{Self, Coin, CoinMetadata};
     use sui::package;
     use sui::dynamic_field;
+    use sui::dynamic_object_field;
     use full_sail::coin_wrapper::{Self, WrapperStore};
 
     // --- addresses ---
@@ -317,15 +318,32 @@ module full_sail::liquidity_pool {
     }
 
     public fun liquidity_pool<BaseType, QuoteType>(
-        pool_id: &mut UID, 
-        base_metadata: &CoinMetadata<BaseType>, 
+        configs: &LiquidityPoolConfigs, // Need configs since that's where pools are stored
+        base_metadata: &CoinMetadata<BaseType>,
         quote_metadata: &CoinMetadata<QuoteType>,
         is_stable: bool
     ): &mut LiquidityPool<BaseType, QuoteType> {
         let pool_name = pool_name(base_metadata, quote_metadata, is_stable);
-        dynamic_field::borrow_mut(pool_id, pool_name)
+        dynamic_object_field::borrow(&configs.id, pool_name)
     }
     
+    public fun liquidity_pool_address<BaseType, QuoteType>(
+        base_metadata: &CoinMetadata<BaseType>,
+        quote_metadata: &CoinMetadata<QuoteType>,
+        is_stable: bool
+    ): address {
+        if (!is_sorted(base_metadata, quote_metadata)) {
+            return liquidity_pool_address(quote_metadata, base_metadata, is_stable)
+        };
+        
+        // Create a deterministic name for the pool
+        let pool_name = pool_name(base_metadata, quote_metadata, is_stable);
+        
+        // Derive the pool's address using object::id_to_address
+        let name_bytes = pool_name;
+        object::id_to_address(&object::id_from_bytes(name_bytes))
+    }
+
     public fun pool_name<BaseType, QuoteType>(
         base_metadata: &CoinMetadata<BaseType>,
         quote_metadata: &CoinMetadata<QuoteType>, 
@@ -524,7 +542,7 @@ module full_sail::liquidity_pool {
 
         // Share objects explicitly
         transfer::share_object(fees_accounting);
-        transfer::share_object(liquidity_pool); // Make sure pool is shared
+        transfer::public_transfer(liquidity_pool, tx_context::sender(ctx));
 
         liquidity_pool_id
     }
