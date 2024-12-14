@@ -15,7 +15,7 @@ module full_sail::gauge {
     }
 
     public struct StakeEvent has copy, drop {
-        lp: address, 
+        lp: address,
         // gauge: Gauge<BaseType, QuoteType>,
         amount: u64,
     }
@@ -50,16 +50,13 @@ module full_sail::gauge {
         rewards_pool_continuous::claimable_rewards(user_address, rewards_pool, clock)
     }
 
-    //#[allow(lint(self_transfer))]
-    public fun create<BaseType, QuoteType>(liquidity_pool: LiquidityPool<BaseType, QuoteType>, ctx: &mut TxContext): ID {
-        let gauge = Gauge<BaseType, QuoteType> {
+    public fun create<BaseType, QuoteType>(liquidity_pool: LiquidityPool<BaseType, QuoteType>, ctx: &mut TxContext): Gauge<BaseType, QuoteType> {
+        let gauge = Gauge {
             id: object::new(ctx),
             rewards_pool: rewards_pool_continuous::create(rewards_duration(), ctx),
             liquidity_pool: liquidity_pool,
         };
-        let gauge_id = object::id(&gauge);
-        transfer::share_object(gauge);
-        gauge_id
+        gauge
     }
 
     public fun transfer_gauge<BaseType, QuoteType>(gauge: Gauge<BaseType, QuoteType>, ctx: &mut TxContext) {
@@ -115,17 +112,7 @@ module full_sail::gauge {
     }
 
     #[test_only]
-    public fun create_test<BaseType, QuoteType>(pool: LiquidityPool<BaseType, QuoteType>, ctx: &mut TxContext) {
-        create(pool, ctx);
-    }
-
-    #[test_only]
-    public fun unstake_lp_test<BaseType, QuoteType>(gauge: &mut Gauge<BaseType, QuoteType>, amount: u64, ctx: &mut TxContext, clock: &Clock) {
-        unstake_lp(gauge, amount, ctx, clock);
-    }
-
-    #[test_only]
-    public fun claim_rewards_test<BaseType, QuoteType>(gauge: &mut Gauge<BaseType, QuoteType>, ctx: &mut TxContext, clock: &Clock): Balance<FULLSAIL_TOKEN> {
-        claim_rewards(gauge, ctx, clock)
+    public fun create_test<BaseType, QuoteType>(pool: LiquidityPool<BaseType, QuoteType>, ctx: &mut TxContext): Gauge<BaseType, QuoteType> {
+        create(pool, ctx)
     }
 }
