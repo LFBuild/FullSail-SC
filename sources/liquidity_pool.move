@@ -4,7 +4,7 @@ module full_sail::liquidity_pool {
     use sui::balance::{Self, Balance};
     use sui::coin::{Self, Coin, CoinMetadata};
     use sui::package;
-    use sui::dynamic_field;
+    //use sui::dynamic_field;
     use sui::dynamic_object_field;
     use full_sail::coin_wrapper::{Self, WrapperStore};
 
