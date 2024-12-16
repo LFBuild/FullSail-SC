@@ -1,9 +1,9 @@
 module full_sail::gauge {
     use full_sail::rewards_pool_continuous::{Self, RewardsPool};
-    use full_sail::liquidity_pool::{Self, LiquidityPool};
+    use full_sail::liquidity_pool::{Self, LiquidityPool, LiquidityPoolConfigs};
     use full_sail::fullsail_token::{FULLSAIL_TOKEN};
 
-    use sui::coin::{Coin};
+    use sui::coin::{Coin, CoinMetadata};
     use sui::balance::{Balance};
     use sui::clock::{Clock};
     use sui::event;
@@ -127,5 +127,45 @@ module full_sail::gauge {
     #[test_only]
     public fun claim_rewards_test<BaseType, QuoteType>(gauge: &mut Gauge<BaseType, QuoteType>, ctx: &mut TxContext, clock: &Clock): Balance<FULLSAIL_TOKEN> {
         claim_rewards(gauge, ctx, clock)
+    }
+
+    #[test_only]
+    public fun create_gauge_pool_test<BaseType, QuoteType>(
+        base_metadata: &CoinMetadata<BaseType>,
+        quote_metadata: &CoinMetadata<QuoteType>,
+        configs: &mut LiquidityPoolConfigs,
+        is_stable: bool,
+        ctx: &mut TxContext
+    ): (LiquidityPool<BaseType, QuoteType>, ID) {
+        let (pool, id) = liquidity_pool::create_liquidity_pool_test<BaseType, QuoteType>(
+            base_metadata, 
+            quote_metadata, 
+            configs, 
+            false, 
+            ctx
+        );
+        // let gauge_id = create<BaseType, QuoteType>(pool, ctx);
+        (pool, id)
+    }
+
+    #[test_only]
+    public fun create_gauge_test<BaseType, QuoteType>(
+        base_metadata: &CoinMetadata<BaseType>,
+        quote_metadata: &CoinMetadata<QuoteType>,
+        configs: &mut LiquidityPoolConfigs,
+        is_stable: bool,
+        ctx: &mut TxContext
+    ) {
+        let (pool, id) = liquidity_pool::create_liquidity_pool_test<BaseType, QuoteType>(
+            base_metadata, 
+            quote_metadata, 
+            configs, 
+            false, 
+            ctx
+        );
+        let gauge_id = create<BaseType, QuoteType>(
+            pool, 
+            ctx
+        );
     }
 }

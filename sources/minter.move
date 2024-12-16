@@ -26,8 +26,7 @@ module full_sail::minter {
         last_emission_update_epoch: u64,
     }
 
-    #[lint_allow(self_transfer)]
-    public fun initialize(_otw: MINTER, ctx: &mut TxContext, manager: &mut FullSailManager, collection: &mut VeFullSailCollection, clock: &Clock): VeFullSailToken<FULLSAIL_TOKEN> {
+    public fun initialize(_otw: MINTER, ctx: &mut TxContext, clock: &Clock) {
         let recipient = tx_context::sender(ctx);
         let minter_config = MinterConfig{
             id                         : object::new(ctx),
@@ -38,8 +37,12 @@ module full_sail::minter {
             last_emission_update_epoch : epoch::now(clock),
         };
         transfer::share_object(minter_config);
-        
+    }
+
+    #[lint_allow(self_transfer)]
+    public fun initial_mint(manager: &mut FullSailManager, collection: &mut VeFullSailCollection, clock: &Clock, ctx: &mut TxContext): VeFullSailToken<FULLSAIL_TOKEN> {
         let treasury_cap = fullsail_token::get_treasury_cap(manager);
+        let recipient = tx_context::sender(ctx);
         let mut initial_mint_amount = fullsail_token::mint(
             treasury_cap, 
             100000000000000000, 
@@ -145,7 +148,7 @@ module full_sail::minter {
     }
 
     #[test_only]
-    public fun init_for_testing(ctx: &mut TxContext, manager: &mut FullSailManager, collection: &mut VeFullSailCollection, clock: &Clock): VeFullSailToken<FULLSAIL_TOKEN> {
-        initialize(MINTER {}, ctx, manager, collection, clock)
+    public fun init_for_testing(ctx: &mut TxContext, clock: &Clock) {
+        initialize(MINTER {}, ctx, clock)
     }
 }
