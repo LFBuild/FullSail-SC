@@ -4,7 +4,7 @@ module full_sail::liquidity_pool {
     use sui::balance::{Self, Balance};
     use sui::coin::{Self, Coin, CoinMetadata};
     use sui::package;
-    use sui::dynamic_field;
+    //use sui::dynamic_field;
     use sui::dynamic_object_field;
     use full_sail::coin_wrapper::{Self, WrapperStore};
 
@@ -322,7 +322,7 @@ module full_sail::liquidity_pool {
         base_metadata: &CoinMetadata<BaseType>,
         quote_metadata: &CoinMetadata<QuoteType>,
         is_stable: bool
-    ): &mut LiquidityPool<BaseType, QuoteType> {
+    ): &LiquidityPool<BaseType, QuoteType> {
         let pool_name = pool_name(base_metadata, quote_metadata, is_stable);
         dynamic_object_field::borrow(&configs.id, pool_name)
     }

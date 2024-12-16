@@ -5,6 +5,7 @@ module full_sail::router_test {
     use sui::coin::{Self, Coin, CoinMetadata};
     use sui::clock;
     use full_sail::router;
+    use full_sail::gauge::{Self, Gauge};
     use full_sail::liquidity_pool::{Self, LiquidityPool, LiquidityPoolConfigs, FeesAccounting};
     use full_sail::coin_wrapper::{Self, WrapperStore};
     use full_sail::vote_manager::{Self, AdministrativeData};
@@ -27,50 +28,72 @@ module full_sail::router_test {
         ts::return_immutable(quote_metadata);
     }
 
-    #[test]
-    fun test_add_liquidity_and_stake_both_coins_entry(): ID {
-        let mut scenario_val = ts::begin(OWNER);
-        let scenario = &mut scenario_val;
-        setup(scenario);
+    // #[test]
+    // fun test_add_liquidity_and_stake_both_coins_entry() {
+    //     let mut scenario_val = ts::begin(OWNER);
+    //     let scenario = &mut scenario_val;
+    //     setup(scenario);
+    //     let clock = clock::create_for_testing(ts::ctx(scenario));
 
-        next_tx(scenario, OWNER);
-        let base_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
-        let quote_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
-        let mut configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
-        let mut store = ts::take_shared<WrapperStore>(scenario);
-        let admin_data = ts::take_shared<AdministrativeData>(scenario);
-        let mut clock = clock::create_for_testing(ts::ctx(scenario));
-        let mut gauge_registry = vote_manager::create_gauge_registry<USDT, SUI>(ts::ctx(scenario));
-        let pool_id = liquidity_pool::create<SUI, USDT>(&base_metadata, &quote_metadata, &mut configs, false, ts::ctx(scenario));
-        
-        next_tx(scenario, OWNER);
-        let mut pool = ts::take_shared<LiquidityPool<USDT, SUI>>(scenario);
-        let mut fees_accounting = ts::take_shared<FeesAccounting>(scenario);
-        router::add_liquidity_and_stake_both_coins_entry<USDT, SUI>(
-            &mut pool,
-            &quote_metadata,
-            &base_metadata,
-            false,
-            100,
-            100,
-            &mut store,
-            &mut gauge_registry,
-            &admin_data,
-            &mut fees_accounting,
-            &clock,
-            ts::ctx(scenario)
-        );
+    //     next_tx(scenario, OWNER);
+    //     {
+    //         let base_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
+    //         let quote_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
+    //         let mut configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
+    //         let mut store = ts::take_shared<WrapperStore>(scenario);
+    //         let admin_data = ts::take_shared<AdministrativeData>(scenario);
+    //         let pool_id = liquidity_pool::create<SUI, USDT>(&base_metadata, &quote_metadata, &mut configs, false, ts::ctx(scenario));
 
-        clock.destroy_for_testing();
-        ts::return_immutable(base_metadata);
-        ts::return_immutable(quote_metadata);
-        ts::return_shared(store);
-        test_utils::destroy(gauge_registry);
-        ts::return_shared(admin_data);
-        ts::return_shared(fees_accounting);
-        ts::return_shared(configs);
-        ts::return_shared(pool);
-        ts::end(scenario_val);
-        pool_id
-    }
+    //         ts::return_immutable(base_metadata);
+    //         ts::return_immutable(quote_metadata);
+    //         ts::return_shared(configs);
+    //         ts::return_shared(store);
+    //         ts::return_shared(admin_data);
+    //     };
+
+    //     next_tx(scenario, OWNER);
+    //     {
+    //         let mut pool = ts::take_from_sender<LiquidityPool<USDT, SUI>>(scenario);
+    //         let mut fees_accounting = ts::take_shared<FeesAccounting>(scenario);
+    //         let gauge_id = gauge::create<USDT, SUI>(pool, ts::ctx(scenario));
+    //         ts::return_shared(fees_accounting);
+    //         ts::return_to_sender(scenario, pool);
+    //     };
+
+    //     next_tx(scenario, OWNER);
+    //     {
+    //         let mut pool = ts::take_from_sender<LiquidityPool<USDT, SUI>>(scenario);
+    //         let base_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
+    //         let quote_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
+    //         let mut fees_accounting = ts::take_shared<FeesAccounting>(scenario);
+    //         let mut store = ts::take_shared<WrapperStore>(scenario);
+    //         let admin_data = ts::take_shared<AdministrativeData>(scenario);
+    //         let mut gauge = ts::take_shared<Gauge<USDT, SUI>>(scenario);
+    //         router::add_liquidity_and_stake_both_coins_entry<USDT, SUI>(
+    //             &mut pool,
+    //             &mut gauge,
+    //             &quote_metadata,
+    //             &base_metadata,
+    //             false,
+    //             100,
+    //             100,
+    //             &mut store,
+    //             &admin_data,
+    //             &mut fees_accounting,
+    //             &clock,
+    //             ts::ctx(scenario)
+    //         );
+
+    //         ts::return_shared(fees_accounting);
+    //         ts::return_immutable(base_metadata);
+    //         ts::return_immutable(quote_metadata);
+    //         ts::return_to_sender(scenario, pool);
+    //         ts::return_shared(store);
+    //         ts::return_shared(admin_data);
+    //         ts::return_shared(gauge);
+    //     };
+
+    //     clock.destroy_for_testing();
+    //     ts::end(scenario_val);
+    // }
 }

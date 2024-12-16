@@ -5,7 +5,6 @@ module full_sail::vote_manager {
     use sui::vec_map::{Self, VecMap};
     use sui::coin::{Self, Coin, CoinMetadata};
     use sui::clock::Clock;
-    use std::debug;
     //use sui::package::{Self, UpgradeCap};
 
     use full_sail::voting_escrow::{Self, VeFullSailToken, VeFullSailCollection};
@@ -49,12 +48,7 @@ module full_sail::vote_manager {
         gauge_to_incentive_pool: Table<ID, ID>,
         operator: address,
         governance: address,
-        pending_distribution_epoch: u64
-    }
-
-    public struct GaugeRegistry<phantom BaseType, phantom QuoteType> has key {
-        id: UID,
-        gauges: Table<ID, Gauge<BaseType, QuoteType>>,
+        pending_distribution_epoch: u64,
     }
 
     public struct NullCoin {
@@ -92,7 +86,7 @@ module full_sail::vote_manager {
             gauge_to_incentive_pool: table::new(ctx),
             operator: tx_context::sender(ctx),
             governance: tx_context::sender(ctx),
-            pending_distribution_epoch: 0
+            pending_distribution_epoch: 0,
         };
 
         let ve_token_vote_accounting = VeTokenVoteAccounting {
@@ -113,13 +107,6 @@ module full_sail::vote_manager {
         transfer::transfer(admin_cap, tx_context::sender(ctx));
     }
 
-    public fun create_gauge_registry<BaseType, QuoteType>(ctx: &mut TxContext): GaugeRegistry<BaseType, QuoteType> {
-        GaugeRegistry {
-            id: object::new(ctx),
-            gauges: table::new(ctx),
-        }
-    }
-
     public entry fun claim_rewards<BaseType, QuoteType, T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(
         ve_token: &VeFullSailToken<FULLSAIL_TOKEN>,
         liquidity_pool: &LiquidityPool<BaseType, QuoteType>,
@@ -130,7 +117,7 @@ module full_sail::vote_manager {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        let gauge = get_gauge_id(admin_data, liquidity_pool);
+        let gauge = get_gauge(admin_data, liquidity_pool);
         assert!(is_gauge_active(admin_data, gauge), E_GAUGE_INACTIVE);
 
         let account_addr = tx_context::sender(ctx);
@@ -199,18 +186,13 @@ module full_sail::vote_manager {
     }
 
     public fun get_gauge<BaseType, QuoteType>(
-        gauge_registry: &mut GaugeRegistry<BaseType, QuoteType>,
-        gauge_id: ID
-    ): &mut Gauge<BaseType, QuoteType> {
-        table::borrow_mut(&mut gauge_registry.gauges, gauge_id)
-    }
-
-    public fun get_gauge_id<BaseType, QuoteType>(
         admin_data: &AdministrativeData,
         liquidity_pool: &LiquidityPool<BaseType, QuoteType>
     ): ID {
-        let pool_id = object::id(liquidity_pool);
-        *table::borrow(&admin_data.pool_to_gauge, pool_id)
+        get_gauges(
+            admin_data, 
+            vector::singleton(object::id(liquidity_pool))
+        )[0]
     }
 
     public fun get_gauges(
@@ -245,7 +227,7 @@ module full_sail::vote_manager {
         admin_data: &AdministrativeData,
         liquidity_pool: &LiquidityPool<BaseType, QuoteType>
     ): ID {
-        let gauge_id = get_gauge_id(admin_data, liquidity_pool);
+        let gauge_id = get_gauge(admin_data, liquidity_pool);
         *table::borrow(&admin_data.gauge_to_fees_pool, gauge_id)
     }
 
@@ -253,7 +235,7 @@ module full_sail::vote_manager {
         admin_data: &AdministrativeData,
         liquidity_pool: &LiquidityPool<BaseType, QuoteType>
     ): ID {
-        let gauge_id = get_gauge_id(admin_data, liquidity_pool);
+        let gauge_id = get_gauge(admin_data, liquidity_pool);
         *table::borrow(&admin_data.gauge_to_incentive_pool, gauge_id)
     }
 
@@ -553,7 +535,7 @@ module full_sail::vote_manager {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        let gauge = get_gauge_id(admin_data, liquidity_pool);
+        let gauge = get_gauge(admin_data, liquidity_pool);
         assert!(is_gauge_active(admin_data, gauge), E_GAUGE_INACTIVE);
 
         let account_addr = tx_context::sender(ctx);
@@ -703,7 +685,7 @@ module full_sail::vote_manager {
         clock: &Clock,
         ctx: &mut TxContext
     ): Coin<FULLSAIL_TOKEN> {
-        let gauge_id = get_gauge_id(admin_data, liquidity_pool);
+        let gauge_id = get_gauge(admin_data, liquidity_pool);
         assert!(is_gauge_active(admin_data, gauge_id), E_GAUGE_INACTIVE);
         
         let gauge = table::borrow_mut(gauge_registry, gauge_id);
@@ -756,7 +738,7 @@ module full_sail::vote_manager {
         gauge_registry: &mut Table<ID, Gauge<BaseType, QuoteType>>,
         clock: &Clock
     ): u64 {
-        let gauge_id = get_gauge_id(admin_data, liquidity_pool);
+        let gauge_id = get_gauge(admin_data, liquidity_pool);
         let gauge = table::borrow_mut(gauge_registry, gauge_id); 
         gauge::claimable_rewards(account_address, gauge, clock)
     }
@@ -774,7 +756,7 @@ module full_sail::vote_manager {
         
         while (pool_count > 0) {
             let pool = vector::pop_back(&mut liquidity_pools);
-            let gauge_id = get_gauge_id(admin_data, &pool);  
+            let gauge_id = get_gauge(admin_data, &pool);  
             let gauge = table::borrow_mut(gauge_registry, gauge_id); 
             vector::push_back(&mut claimable_amounts, gauge::claimable_rewards(account_address, gauge, clock));
             vector::push_back(&mut liquidity_pools, pool); 
@@ -787,7 +769,6 @@ module full_sail::vote_manager {
 
     public fun create_gauge<BaseType, QuoteType>(
         admin_data: &mut AdministrativeData,
-        gauge_registry: &mut GaugeRegistry<BaseType, QuoteType>,
         liquidity_pool: LiquidityPool<BaseType, QuoteType>,
         ctx: &mut TxContext
     ) {
@@ -795,15 +776,11 @@ module full_sail::vote_manager {
         
         let pool_id = object::id(&liquidity_pool);
         
-        // Create gauge and get its ID
-        let gauge = gauge::create(liquidity_pool, ctx);
-        let gauge_id = object::id(&gauge);
-        
-        // Store gauge in registry
-        table::add(&mut gauge_registry.gauges, gauge_id, gauge);
+        let gauge_id = gauge::create(liquidity_pool, ctx);
         
         vector::push_back(&mut admin_data.active_gauges_list, gauge_id);
         table::add(&mut admin_data.active_gauges, gauge_id, true);
+        
         table::add(&mut admin_data.pool_to_gauge, pool_id, gauge_id);
         
         let reward_tokens = vector::empty<ID>();
@@ -818,29 +795,23 @@ module full_sail::vote_manager {
 
     public entry fun create_gauge_entry<BaseType, QuoteType>(
         admin_data: &mut AdministrativeData,
-        gauge_registry: &mut GaugeRegistry<BaseType, QuoteType>,
         liquidity_pool: LiquidityPool<BaseType, QuoteType>,
         ctx: &mut TxContext
     ) {
-        create_gauge(admin_data, gauge_registry, liquidity_pool, ctx);
+        create_gauge(admin_data, liquidity_pool, ctx);
     }
 
     public(package) fun create_gauge_internal<BaseType, QuoteType>(
         admin_data: &mut AdministrativeData,
-        gauge_registry: &mut GaugeRegistry<BaseType, QuoteType>,
         liquidity_pool: LiquidityPool<BaseType, QuoteType>,
         ctx: &mut TxContext
     ) {
         let pool_id = object::id(&liquidity_pool);
         
-        // Create gauge and get its ID
-        let gauge = gauge::create(liquidity_pool, ctx);
-        let gauge_id = object::id(&gauge);
-        
-        // Store gauge in registry
-        table::add(&mut gauge_registry.gauges, gauge_id, gauge);
+        let gauge_id = gauge::create(liquidity_pool, ctx);
         
         table::add(&mut admin_data.active_gauges, gauge_id, false);
+        
         table::add(&mut admin_data.pool_to_gauge, pool_id, gauge_id);
         
         let reward_tokens = vector::empty<ID>();
@@ -858,7 +829,7 @@ module full_sail::vote_manager {
         admin_data: &AdministrativeData,
         gauge_vote_accounting: &GaugeVoteAccounting,
     ): (u128, u128) {
-        let gauge_id = get_gauge_id(admin_data, liquidity_pool);
+        let gauge_id = get_gauge(admin_data, liquidity_pool);
         (
             *vec_map::get(&gauge_vote_accounting.votes_for_gauges, &gauge_id),
             gauge_vote_accounting.total_votes
