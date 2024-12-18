@@ -4,6 +4,8 @@ module full_sail::liquidity_pool {
     use sui::balance::{Self, Balance};
     use sui::coin::{Self, Coin, CoinMetadata};
     use sui::package;
+    use std::debug;
+
     //use sui::dynamic_field;
     use sui::dynamic_object_field;
     use full_sail::coin_wrapper::{Self, WrapperStore};
@@ -98,7 +100,6 @@ module full_sail::liquidity_pool {
         ctx: &mut TxContext
     ): Coin<QuoteType> {
         assert!(!configs.is_paused, E_LOCK_NOT_EXPIRED);
-        
         let input_amount = coin::value(&input_coin);
         
         let (output_amount, fee_amount) = get_amount_out(
@@ -107,7 +108,6 @@ module full_sail::liquidity_pool {
         quote_metadata,
             input_amount
         );
-        
         let fee_coin = coin::split(&mut input_coin, fee_amount, ctx);
         
         let (standardized_reserve_base, standardized_reserve_quote) = if (pool.is_stable) {
@@ -939,5 +939,4 @@ module full_sail::liquidity_pool {
 
         (liquidity_pool, liquidity_pool_id)
     }
-
 }

@@ -2,9 +2,10 @@ module full_sail::router {
     use sui::coin::{Self, Coin, CoinMetadata};
     use full_sail::coin_wrapper::{Self, WrapperStore, COIN_WRAPPER};
     use full_sail::liquidity_pool::{Self, LiquidityPool, FeesAccounting, LiquidityPoolConfigs};
+    use full_sail::token_whitelist::{Self, TokenWhitelist, TokenWhitelistAdminCap, RewardTokenWhitelistPerPool};
     use full_sail::gauge::{Self, Gauge};
-    use sui::clock::{Clock};
     use full_sail::vote_manager::{Self, AdministrativeData};
+    use sui::clock::{Clock};
     use std::debug;
 
     // --- addresses ---
@@ -30,7 +31,7 @@ module full_sail::router {
         ctx: &mut TxContext
     ): Coin<QuoteType> {
         let output_coin = liquidity_pool::swap<BaseType, QuoteType>(
-            pool,
+            pool, 
             configs,
             fees_accounting,
             base_metadata,
@@ -83,7 +84,7 @@ module full_sail::router {
         abort 0
     }
 
-    public entry fun add_liquidity_and_stake_both_coins_entry<BaseType, QuoteType> (
+    public entry fun add_liquidity_and_stake_entry<BaseType, QuoteType> (
         // pool_id: &mut UID,
         pool: &mut LiquidityPool<BaseType, QuoteType>,
         gauge: &mut Gauge<BaseType, QuoteType>,
@@ -180,12 +181,9 @@ module full_sail::router {
         );
     }
 
-    public entry fun add_liquidity_and_stake_entry<BaseType, QuoteType>(
-        // pool_id: &mut UID,
+    public entry fun add_liquidity_and_stake_both_coins_entry<BaseType, QuoteType>(
         pool: &mut LiquidityPool<COIN_WRAPPER, COIN_WRAPPER>,
-        gauge: &mut Gauge<BaseType, QuoteType>,
-        base_metadata: &CoinMetadata<COIN_WRAPPER>,
-        quote_metadata: &CoinMetadata<COIN_WRAPPER>,
+        gauge: &mut Gauge<COIN_WRAPPER, COIN_WRAPPER>,
         is_stable: bool,
         input_amount: u64,
         output_amount: u64,
@@ -195,6 +193,8 @@ module full_sail::router {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        let base_metadata = coin_wrapper::get_wrapper<BaseType>(store);
+        let quote_metadata = coin_wrapper::get_wrapper<QuoteType>(store);
         let (optimal_a, optimal_b) = get_optimal_amounts<COIN_WRAPPER, COIN_WRAPPER>(
             pool,
             base_metadata,
@@ -207,13 +207,15 @@ module full_sail::router {
         let quote_coin = exact_withdraw<QuoteType>(optimal_b, store, ctx);
         assert!(coin::value(&base_coin) == optimal_a, E_INSUFFICIENT_OUTPUT_AMOUNT);
         assert!(coin::value(&quote_coin) == optimal_b, E_INSUFFICIENT_OUTPUT_AMOUNT);
+        let base_metadata1 = coin_wrapper::get_wrapper<BaseType>(store);
+        let quote_metadata1 = coin_wrapper::get_wrapper<QuoteType>(store);
         gauge::stake(
             gauge,
             liquidity_pool::mint_lp(
                 pool, 
                 fees_accounting, 
-                base_metadata,
-                quote_metadata,
+                base_metadata1,
+                quote_metadata1,
                 base_coin,
                 quote_coin,
                 is_stable,
@@ -228,6 +230,10 @@ module full_sail::router {
         base_metadata: &CoinMetadata<BaseType>,
         quote_metadata: &CoinMetadata<QuoteType>,
         configs: &mut LiquidityPoolConfigs,
+        admin_cap: &TokenWhitelistAdminCap,
+        pool_whitelist: &mut RewardTokenWhitelistPerPool,
+        admin_data: &mut AdministrativeData,
+        store: &WrapperStore,
         is_stable: bool,
         ctx: &mut TxContext
     ) {
@@ -238,8 +244,29 @@ module full_sail::router {
             is_stable, 
             ctx
         );
-        // vote_manager::whitelist_default_reward_pool(pool);
-        // vote_manager::create_gauge_internal(pool);
+        vote_manager::whitelist_default_reward_pool(
+            liquidity_pool::liquidity_pool(
+                configs,
+                base_metadata,
+                quote_metadata,
+                is_stable
+            ),
+            base_metadata,
+            quote_metadata,
+            admin_cap,
+            pool_whitelist,
+            store
+        );
+        // vote_manager::create_gauge_internal<BaseType, QuoteType>(
+        //     admin_data, 
+        //     liquidity_pool::liquidity_pool(
+        //         configs,
+        //         base_metadata,
+        //         quote_metadata,
+        //         is_stable
+        //     ), 
+        //     ctx
+        // );
     }
 
     public entry fun create_pool_both_coins<BaseType, QuoteType>(
@@ -278,14 +305,13 @@ module full_sail::router {
     }
 
     public fun quote_liquidity<BaseType, QuoteType>(
-        // pool_id: &mut UID,
         pool: &mut LiquidityPool<BaseType, QuoteType>,
         base_metadata: &CoinMetadata<BaseType>, 
         quote_metadata: &CoinMetadata<QuoteType>,
         input_amount: u64
     ): u64 {
         let (reserve_amount_1, reserve_amount_2) = liquidity_pool::pool_reserves<BaseType, QuoteType>(
-            pool//liquidity_pool::liquidity_pool(pool_id, base_metadata, quote_metadata, is_stable)
+            pool
         );
 
         let mut reserve_in = reserve_amount_1;
@@ -303,7 +329,6 @@ module full_sail::router {
     }
 
     fun get_optimal_amounts<BaseType, QuoteType>(
-        // pool_id: &mut UID,
         pool: &mut LiquidityPool<BaseType, QuoteType>,
         base_metadata: &CoinMetadata<BaseType>,
         quote_metadata: &CoinMetadata<QuoteType>,
@@ -579,7 +604,7 @@ module full_sail::router {
                 base_metadata, 
                 quote_metadata, 
                 ctx
-            )                         
+            )
         );
     }
 
@@ -845,5 +870,23 @@ module full_sail::router {
         );
         exact_deposit(recipient, input_coin);
         exact_deposit(recipient, output_coin);
+    }
+
+    #[test_only]
+    public fun get_optimal_amounts_for_testing<BaseType, QuoteType>(
+        // pool_id: &mut UID,
+        pool: &mut LiquidityPool<BaseType, QuoteType>,
+        base_metadata: &CoinMetadata<BaseType>,
+        quote_metadata: &CoinMetadata<QuoteType>,
+        input_amount: u64,
+        output_amount: u64
+    ): (u64, u64) {
+        get_optimal_amounts(
+            pool,
+            base_metadata,
+            quote_metadata,
+            input_amount,
+            output_amount
+        )
     }
 }
