@@ -208,8 +208,6 @@ module full_sail::coin_wrapper {
         let coin_type_name = coin_type.into_string();
         assert!(is_supported(store, &coin_type_name), E_NOT_INITIALIZED);
 
-        let wrapped_data = table::borrow_mut(&mut store.coin_to_wrapper, coin_type_name);
-
         let exists = sui::dynamic_object_field::exists_<String>(&store.id, coin_type_name);
         assert!(exists, 1);
 
