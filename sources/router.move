@@ -216,13 +216,24 @@ module full_sail::router {
         );
     }
 
+    public entry fun create_gauge<BaseType, QuoteType>(
+        admin_data: &mut AdministrativeData,
+        pool: LiquidityPool<BaseType, QuoteType>,
+        ctx: &mut TxContext
+    ) {
+        vote_manager::create_gauge_internal<BaseType, QuoteType>(
+            admin_data, 
+            pool,
+            ctx
+        );
+    }
+
     public entry fun create_pool<BaseType, QuoteType>(
         base_metadata: &CoinMetadata<BaseType>,
         quote_metadata: &CoinMetadata<QuoteType>,
         configs: &mut LiquidityPoolConfigs,
         admin_cap: &TokenWhitelistAdminCap,
         pool_whitelist: &mut RewardTokenWhitelistPerPool,
-        admin_data: &mut AdministrativeData,
         store: &WrapperStore,
         is_stable: bool,
         ctx: &mut TxContext
@@ -247,22 +258,14 @@ module full_sail::router {
             pool_whitelist,
             store
         );
-        // vote_manager::create_gauge_internal<BaseType, QuoteType>(
-        //     admin_data, 
-        //     liquidity_pool::liquidity_pool(
-        //         configs,
-        //         base_metadata,
-        //         quote_metadata,
-        //         is_stable
-        //     ), 
-        //     ctx
-        // );
     }
 
     public entry fun create_pool_both_coins<BaseType, QuoteType>(
         configs: &mut LiquidityPoolConfigs,
-        is_stable: bool,
+        admin_cap: &TokenWhitelistAdminCap,
+        pool_whitelist: &mut RewardTokenWhitelistPerPool,
         store: &WrapperStore,
+        is_stable: bool,
         ctx: &mut TxContext
     ) {
         let pool = liquidity_pool::create<COIN_WRAPPER, COIN_WRAPPER>(
@@ -272,15 +275,28 @@ module full_sail::router {
             is_stable,
             ctx
         );
-        // vote_manager::whitelist_default_reward_pool(pool);
-        // vote_manager::create_gauge_internal(pool);
+        vote_manager::whitelist_default_reward_pool(
+            liquidity_pool::liquidity_pool(
+                configs,
+                coin_wrapper::get_wrapper<BaseType>(store),
+                coin_wrapper::get_wrapper<BaseType>(store),
+                is_stable
+            ),
+            coin_wrapper::get_wrapper<BaseType>(store),
+            coin_wrapper::get_wrapper<BaseType>(store),
+            admin_cap,
+            pool_whitelist,
+            store
+        );
     }
 
     public entry fun create_pool_coin<BaseType>(
-        quote_metadata: &CoinMetadata<COIN_WRAPPER>,
         configs: &mut LiquidityPoolConfigs,
-        is_stable: bool,
+        quote_metadata: &CoinMetadata<COIN_WRAPPER>,
+        admin_cap: &TokenWhitelistAdminCap,
+        pool_whitelist: &mut RewardTokenWhitelistPerPool,
         store: &WrapperStore,
+        is_stable: bool,
         ctx: &mut TxContext
     ) {
         let pool = liquidity_pool::create<COIN_WRAPPER, COIN_WRAPPER>(
@@ -290,8 +306,19 @@ module full_sail::router {
             is_stable,
             ctx
         );
-        // vote_manager::whitelist_default_reward_pool(pool);
-        // vote_manager::create_gauge_internal(pool);
+        vote_manager::whitelist_default_reward_pool(
+            liquidity_pool::liquidity_pool(
+                configs,
+                coin_wrapper::get_wrapper<BaseType>(store),
+                quote_metadata,
+                is_stable
+            ),
+            coin_wrapper::get_wrapper<BaseType>(store),
+            quote_metadata,
+            admin_cap,
+            pool_whitelist,
+            store
+        );
     }
 
     public fun quote_liquidity<BaseType, QuoteType>(
@@ -469,7 +496,7 @@ module full_sail::router {
         _min_output_amount: u64,
         _recipient: address,
         _ctx: &mut TxContext
-    ): (&Coin<BaseType>, &Coin<QuoteType>) {
+    ) {
         abort 0
     }
 
@@ -492,7 +519,7 @@ module full_sail::router {
         _min_output_amount: u64,
         _recipient: address,
         _ctx: &mut TxContext
-    ): (&Coin<BaseType>, &Coin<QuoteType>) {
+    ) {
         abort 0
     }
 
@@ -505,7 +532,7 @@ module full_sail::router {
         _min_output_amount: u64,
         _recipient: address,
         _ctx: &mut TxContext
-    ): (&Coin<BaseType>, &Coin<QuoteType>) {
+    ) {
         abort 0
     }
 
