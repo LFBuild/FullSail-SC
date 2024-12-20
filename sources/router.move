@@ -496,7 +496,7 @@ module full_sail::router {
         _min_output_amount: u64,
         _recipient: address,
         _ctx: &mut TxContext
-    ): (&Coin<BaseType>, &Coin<QuoteType>) {
+    ) {
         abort 0
     }
 
@@ -519,7 +519,7 @@ module full_sail::router {
         _min_output_amount: u64,
         _recipient: address,
         _ctx: &mut TxContext
-    ): (&Coin<BaseType>, &Coin<QuoteType>) {
+    ) {
         abort 0
     }
 
@@ -532,7 +532,7 @@ module full_sail::router {
         _min_output_amount: u64,
         _recipient: address,
         _ctx: &mut TxContext
-    ): (&Coin<BaseType>, &Coin<QuoteType>) {
+    ) {
         abort 0
     }
 
