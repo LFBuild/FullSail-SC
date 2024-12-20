@@ -106,7 +106,6 @@ module full_sail::liquidity_pool {
         ctx: &mut TxContext
     ): Coin<QuoteType> {
         assert!(!configs.is_paused, E_LOCK_NOT_EXPIRED);
-        
         let input_amount = coin::value(&input_coin);
         
         let (output_amount, fee_amount) = get_amount_out(
@@ -115,7 +114,6 @@ module full_sail::liquidity_pool {
         quote_metadata,
             input_amount
         );
-        
         let fee_coin = coin::split(&mut input_coin, fee_amount, ctx);
         
         let (standardized_reserve_base, standardized_reserve_quote) = if (pool.is_stable) {
@@ -330,7 +328,7 @@ module full_sail::liquidity_pool {
         base_metadata: &CoinMetadata<BaseType>,
         quote_metadata: &CoinMetadata<QuoteType>,
         is_stable: bool
-    ): &mut LiquidityPool<BaseType, QuoteType> {
+    ): &LiquidityPool<BaseType, QuoteType> {
         let pool_name = pool_name(base_metadata, quote_metadata, is_stable);
         dynamic_object_field::borrow(&configs.id, pool_name)
     }
@@ -906,5 +904,52 @@ module full_sail::liquidity_pool {
     #[test_only]
     public(package) fun configs_id(configs: &LiquidityPoolConfigs): &UID {
         &configs.id
+    }
+
+    #[test_only]
+    public fun create_liquidity_pool_test<BaseType, QuoteType>(
+        base_metadata: &CoinMetadata<BaseType>,
+        quote_metadata: &CoinMetadata<QuoteType>,
+        configs: &mut LiquidityPoolConfigs,
+        is_stable: bool,
+        ctx: &mut TxContext
+    ): (LiquidityPool<BaseType, QuoteType>, ID) {
+        let fee_bps = if (is_stable) {
+            configs.stable_fee_bps
+        } else {
+            configs.volatile_fee_bps
+        };
+
+        // Create the pool
+        let liquidity_pool = LiquidityPool<BaseType, QuoteType> {
+            id: object::new(ctx),
+            base_balance: balance::zero<BaseType>(),
+            quote_balance: balance::zero<QuoteType>(),
+            base_fees: balance::zero<BaseType>(),
+            quote_fees: balance::zero<QuoteType>(),
+            swap_fee_bps: fee_bps,
+            is_stable,
+        };
+
+        // Create fees accounting
+        let fees_accounting = FeesAccounting {
+            id: object::new(ctx),
+            total_fees_base: 0,
+            total_fees_quote: 0,
+            total_fees_at_last_claim_base: table::new<address, u128>(ctx),
+            total_fees_at_last_claim_quote: table::new<address, u128>(ctx),
+            claimable_base: table::new<address, u128>(ctx),
+            claimable_quote: table::new<address, u128>(ctx)
+        };
+
+        let liquidity_pool_id = object::id(&liquidity_pool);
+        
+        // Add pool ID to configs BEFORE sharing
+        vector::push_back(&mut configs.all_pools, liquidity_pool_id);
+
+        // Share objects explicitly
+        transfer::share_object(fees_accounting);
+
+        (liquidity_pool, liquidity_pool_id)
     }
 }
