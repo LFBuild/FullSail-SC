@@ -54,7 +54,7 @@ module full_sail::liquidity_pool_test {
         {
             let configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
             let fees = ts::take_shared<FeesAccounting>(scenario);
-            let pool = ts::take_shared<LiquidityPool<USDT, SUI>>(scenario);
+            let pool = ts::take_from_sender<LiquidityPool<USDT, SUI>>(scenario);
             
             // verify pool properties
             assert!(!liquidity_pool::is_stable(&pool), 2);
@@ -62,7 +62,7 @@ module full_sail::liquidity_pool_test {
             assert!(base_reserve == 0, 3);
             assert!(quote_reserve == 0, 4);
             
-            ts::return_shared(pool);
+            ts::return_to_sender(scenario, pool);
             ts::return_shared(configs);
             ts::return_shared(fees);
         };
@@ -104,7 +104,7 @@ module full_sail::liquidity_pool_test {
         next_tx(scenario, OWNER);
         {
             let mut fees = ts::take_shared<FeesAccounting>(scenario);
-            let mut pool = ts::take_shared<LiquidityPool<USDT, SUI>>(scenario);
+            let mut pool = ts::take_from_sender<LiquidityPool<USDT, SUI>>(scenario);
             let base_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
             let quote_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
             
@@ -130,7 +130,7 @@ module full_sail::liquidity_pool_test {
             assert!(base_reserve == amount, 3);
             assert!(quote_reserve == amount, 4);
             
-            ts::return_shared(pool);
+            ts::return_to_sender(scenario, pool);
             ts::return_shared(fees);
             ts::return_immutable(base_metadata);
             ts::return_immutable(quote_metadata);
@@ -169,7 +169,7 @@ module full_sail::liquidity_pool_test {
         next_tx(scenario, OWNER);
         {
             let mut fees = ts::take_shared<FeesAccounting>(scenario);
-            let mut pool = ts::take_shared<LiquidityPool<USDT, SUI>>(scenario);
+            let mut pool = ts::take_from_sender<LiquidityPool<USDT, SUI>>(scenario);
             let base_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
             let quote_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
             
@@ -189,7 +189,7 @@ module full_sail::liquidity_pool_test {
                 ts::ctx(scenario)
             );
             
-            ts::return_shared(pool);
+            ts::return_to_sender(scenario, pool);
             ts::return_shared(fees);
             ts::return_immutable(base_metadata);
             ts::return_immutable(quote_metadata);
@@ -199,7 +199,7 @@ module full_sail::liquidity_pool_test {
         {
             let configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
             let mut fees = ts::take_shared<FeesAccounting>(scenario);
-            let mut pool = ts::take_shared<LiquidityPool<USDT, SUI>>(scenario);
+            let mut pool = ts::take_from_sender<LiquidityPool<USDT, SUI>>(scenario);
             let base_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
             let quote_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
             
@@ -234,7 +234,7 @@ module full_sail::liquidity_pool_test {
             
             transfer::public_transfer(coin_out, OWNER);
             
-            ts::return_shared(pool);
+            ts::return_to_sender(scenario, pool);
             ts::return_shared(configs);
             ts::return_shared(fees);
             ts::return_immutable(base_metadata);
@@ -274,7 +274,7 @@ module full_sail::liquidity_pool_test {
         next_tx(scenario, OWNER);
         {
             let mut fees = ts::take_shared<FeesAccounting>(scenario);
-            let mut pool = ts::take_shared<LiquidityPool<USDT, SUI>>(scenario);
+            let mut pool = ts::take_from_sender<LiquidityPool<USDT, SUI>>(scenario);
             let base_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
             let quote_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
             
@@ -292,7 +292,7 @@ module full_sail::liquidity_pool_test {
                 ts::ctx(scenario)
             );
             
-            ts::return_shared(pool);
+            ts::return_to_sender(scenario, pool);
             ts::return_shared(fees);
             ts::return_immutable(base_metadata);
             ts::return_immutable(quote_metadata);
@@ -303,7 +303,7 @@ module full_sail::liquidity_pool_test {
         {
             let configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
             let mut fees = ts::take_shared<FeesAccounting>(scenario);
-            let mut pool = ts::take_shared<LiquidityPool<USDT, SUI>>(scenario);
+            let mut pool = ts::take_from_sender<LiquidityPool<USDT, SUI>>(scenario);
             let base_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
             let quote_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
             
@@ -326,7 +326,7 @@ module full_sail::liquidity_pool_test {
             assert!(base_fees == 10, 0); // 1% of 10000
             assert!(quote_fees == 0, 1);   // no quote fees yet
             
-            ts::return_shared(pool);
+            ts::return_to_sender(scenario, pool);
             ts::return_shared(configs);
             ts::return_shared(fees);
             ts::return_immutable(base_metadata);
@@ -335,7 +335,7 @@ module full_sail::liquidity_pool_test {
         
         next_tx(scenario, OWNER);
         {
-            let mut pool = ts::take_shared<LiquidityPool<USDT, SUI>>(scenario);
+            let mut pool = ts::take_from_sender<LiquidityPool<USDT, SUI>>(scenario);
             
             let (initial_base_fees, initial_quote_fees) = liquidity_pool::gauge_claimable_fees(&pool);
             assert!(initial_base_fees == 10, 2); // 1% of 10000 USDT
@@ -360,13 +360,13 @@ module full_sail::liquidity_pool_test {
             transfer::public_transfer(base_fee_coin, OWNER);
             transfer::public_transfer(quote_fee_coin, OWNER);
             
-            ts::return_shared(pool);
+            ts::return_to_sender(scenario, pool);
         };
         
         // verify claiming again yields zero
         next_tx(scenario, OWNER);
         {
-            let mut pool = ts::take_shared<LiquidityPool<USDT, SUI>>(scenario);
+            let mut pool = ts::take_from_sender<LiquidityPool<USDT, SUI>>(scenario);
             
             let (base_fee_coin, quote_fee_coin) = liquidity_pool::claim_fees(
                 &mut pool,
@@ -380,7 +380,7 @@ module full_sail::liquidity_pool_test {
             transfer::public_transfer(base_fee_coin, OWNER);
             transfer::public_transfer(quote_fee_coin, OWNER);
             
-            ts::return_shared(pool);
+            ts::return_to_sender(scenario, pool);
         };
         
         ts::end(scenario_val);
@@ -415,7 +415,7 @@ module full_sail::liquidity_pool_test {
         next_tx(scenario, OWNER);
         {
             let mut fees = ts::take_shared<FeesAccounting>(scenario);
-            let mut pool = ts::take_shared<LiquidityPool<USDT, SUI>>(scenario);
+            let mut pool = ts::take_from_sender<LiquidityPool<USDT, SUI>>(scenario);
             let base_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
             let quote_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
             
@@ -441,7 +441,7 @@ module full_sail::liquidity_pool_test {
             assert!(quote_reserve == initial_quote, 1);
             assert!(liquidity_amount == 99000, 2);
             
-            ts::return_shared(pool);
+            ts::return_to_sender(scenario, pool);
             ts::return_shared(fees);
             ts::return_immutable(base_metadata);
             ts::return_immutable(quote_metadata);
@@ -450,7 +450,7 @@ module full_sail::liquidity_pool_test {
         // Test burn
         next_tx(scenario, OWNER);
         {
-            let mut pool = ts::take_shared<LiquidityPool<USDT, SUI>>(scenario);
+            let mut pool = ts::take_from_sender<LiquidityPool<USDT, SUI>>(scenario);
             
             let burn_amount = 50000; // burn about half the liquidity
             
@@ -480,9 +480,10 @@ module full_sail::liquidity_pool_test {
             transfer::public_transfer(base_coin, OWNER);
             transfer::public_transfer(quote_coin, OWNER);
             
-            ts::return_shared(pool);
+            ts::return_to_sender(scenario, pool);
         };
         
         ts::end(scenario_val);
     }
+
 }
