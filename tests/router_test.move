@@ -10,6 +10,7 @@ module full_sail::router_test {
     use full_sail::liquidity_pool::{Self, LiquidityPool, LiquidityPoolConfigs, FeesAccounting};
     use full_sail::coin_wrapper::{Self, WrapperStore, WrapperStoreCap, COIN_WRAPPER};
     use full_sail::vote_manager::{Self, AdministrativeData};
+    use full_sail::token_whitelist::{Self, RewardTokenWhitelistPerPool, TokenWhitelistAdminCap};
     use full_sail::sui::{Self, SUI};
     use full_sail::usdt::{Self, USDT};
 
@@ -22,6 +23,7 @@ module full_sail::router_test {
         liquidity_pool::init_for_testing(ts::ctx(scenario));
         coin_wrapper::init_for_testing(ts::ctx(scenario));
         vote_manager::init_for_testing(ts::ctx(scenario));
+        token_whitelist::init_for_testing(ts::ctx(scenario));
         next_tx(scenario, OWNER);
         let base_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
         let quote_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
@@ -524,6 +526,267 @@ module full_sail::router_test {
     }
 
     #[test]
+    fun test_create_pool() {
+        let mut scenario_val = ts::begin(OWNER);
+        let scenario = &mut scenario_val;
+        setup(scenario);
+        let clock = clock::create_for_testing(ts::ctx(scenario));
+
+        next_tx(scenario, OWNER);
+        let mut configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
+        let mut store = ts::take_shared<WrapperStore>(scenario);
+        let cap = ts::take_from_sender<WrapperStoreCap>(scenario);
+        let mut admin_data = ts::take_shared<AdministrativeData>(scenario);
+        let admin_cap = ts::take_from_sender<TokenWhitelistAdminCap>(scenario);
+        let mut pool_whitelist = ts::take_shared<RewardTokenWhitelistPerPool>(scenario);
+        coin_wrapper::register_coin_for_testing<USDT>(
+            &cap,
+            &mut store,
+            ts::ctx(scenario)
+        );
+        coin_wrapper::register_coin_for_testing<SUI>(
+            &cap,
+            &mut store,
+            ts::ctx(scenario)
+        );
+
+        let base_metadata = coin_wrapper::get_wrapper<SUI>(&store);
+        let quote_metadata = coin_wrapper::get_wrapper<USDT>(&store);
+
+        // let base_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
+        // let quote_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
+
+        next_tx(scenario, OWNER);
+        
+        let (pool, pool_id) = gauge::create_gauge_pool_test<COIN_WRAPPER, COIN_WRAPPER>(
+            quote_metadata, 
+            base_metadata, 
+            &mut configs, 
+            false, 
+            ts::ctx(scenario)
+        );
+        
+        vote_manager::whitelist_default_reward_pool<COIN_WRAPPER, COIN_WRAPPER>(
+            &pool,
+            quote_metadata,
+            base_metadata,
+            &admin_cap,
+            &mut pool_whitelist,
+            &store
+        );
+
+        router::create_gauge(
+            &mut admin_data,
+            pool,
+            ts::ctx(scenario)
+        );
+
+        next_tx(scenario, OWNER);
+        let mut gauge = ts::take_shared<Gauge<COIN_WRAPPER, COIN_WRAPPER>>(scenario);
+        let all_pools = liquidity_pool::all_pool_ids(&configs);
+        assert!(vector::length(&all_pools) == 1, 0);
+        assert!(vector::contains(&all_pools, &pool_id), 1);
+        assert!(
+            vote_manager::gauge_exists(
+                &admin_data, 
+                gauge::liquidity_pool(&mut gauge)
+            ) == true, 2
+        );
+        assert!(
+            token_whitelist::whitelist_length(
+                &pool_whitelist, 
+                object::id_address(gauge::liquidity_pool(&mut gauge))
+            ) == 3, 3
+        );
+
+        ts::return_shared(configs);
+        ts::return_shared(store);
+        ts::return_shared(gauge);
+        ts::return_to_sender(scenario, cap);
+        ts::return_to_sender(scenario, admin_cap);
+        ts::return_shared(admin_data);
+        ts::return_shared(pool_whitelist);
+        clock.destroy_for_testing();
+        // ts::return_immutable(base_metadata);
+        // ts::return_immutable(quote_metadata);
+        ts::end(scenario_val);
+    }
+
+    #[test]
+    fun test_create_pool_both_coins() {
+        let mut scenario_val = ts::begin(OWNER);
+        let scenario = &mut scenario_val;
+        setup(scenario);
+        let clock = clock::create_for_testing(ts::ctx(scenario));
+
+        next_tx(scenario, OWNER);
+        let mut configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
+        let mut store = ts::take_shared<WrapperStore>(scenario);
+        let cap = ts::take_from_sender<WrapperStoreCap>(scenario);
+        let mut admin_data = ts::take_shared<AdministrativeData>(scenario);
+        let admin_cap = ts::take_from_sender<TokenWhitelistAdminCap>(scenario);
+        let mut pool_whitelist = ts::take_shared<RewardTokenWhitelistPerPool>(scenario);
+        coin_wrapper::register_coin_for_testing<USDT>(
+            &cap,
+            &mut store,
+            ts::ctx(scenario)
+        );
+        coin_wrapper::register_coin_for_testing<SUI>(
+            &cap,
+            &mut store,
+            ts::ctx(scenario)
+        );
+
+        let base_metadata = coin_wrapper::get_wrapper<SUI>(&store);
+        let quote_metadata = coin_wrapper::get_wrapper<USDT>(&store);
+
+        // let base_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
+        // let quote_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
+
+        next_tx(scenario, OWNER);
+        
+        let (pool, pool_id) = gauge::create_gauge_pool_test<COIN_WRAPPER, COIN_WRAPPER>(
+            quote_metadata, 
+            base_metadata, 
+            &mut configs, 
+            false, 
+            ts::ctx(scenario)
+        );
+        
+        vote_manager::whitelist_default_reward_pool<COIN_WRAPPER, COIN_WRAPPER>(
+            &pool,
+            quote_metadata,
+            base_metadata,
+            &admin_cap,
+            &mut pool_whitelist,
+            &store
+        );
+
+        router::create_gauge(
+            &mut admin_data,
+            pool,
+            ts::ctx(scenario)
+        );
+
+        next_tx(scenario, OWNER);
+        let mut gauge = ts::take_shared<Gauge<COIN_WRAPPER, COIN_WRAPPER>>(scenario);
+        let all_pools = liquidity_pool::all_pool_ids(&configs);
+        assert!(vector::length(&all_pools) == 1, 0);
+        assert!(vector::contains(&all_pools, &pool_id), 1);
+        assert!(
+            vote_manager::gauge_exists(
+                &admin_data, 
+                gauge::liquidity_pool(&mut gauge)
+            ) == true, 2
+        );
+        assert!(
+            token_whitelist::whitelist_length(
+                &pool_whitelist, 
+                object::id_address(gauge::liquidity_pool(&mut gauge))
+            ) == 3, 3
+        );
+
+        ts::return_shared(configs);
+        ts::return_shared(store);
+        ts::return_shared(gauge);
+        ts::return_to_sender(scenario, cap);
+        ts::return_to_sender(scenario, admin_cap);
+        ts::return_shared(admin_data);
+        ts::return_shared(pool_whitelist);
+        clock.destroy_for_testing();
+        // ts::return_immutable(base_metadata);
+        // ts::return_immutable(quote_metadata);
+        ts::end(scenario_val);
+    }
+
+     #[test]
+    fun test_create_pool_coin() {
+        let mut scenario_val = ts::begin(OWNER);
+        let scenario = &mut scenario_val;
+        setup(scenario);
+        let clock = clock::create_for_testing(ts::ctx(scenario));
+
+        next_tx(scenario, OWNER);
+        let mut configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
+        let mut store = ts::take_shared<WrapperStore>(scenario);
+        let cap = ts::take_from_sender<WrapperStoreCap>(scenario);
+        let mut admin_data = ts::take_shared<AdministrativeData>(scenario);
+        let admin_cap = ts::take_from_sender<TokenWhitelistAdminCap>(scenario);
+        let mut pool_whitelist = ts::take_shared<RewardTokenWhitelistPerPool>(scenario);
+        coin_wrapper::register_coin_for_testing<USDT>(
+            &cap,
+            &mut store,
+            ts::ctx(scenario)
+        );
+        coin_wrapper::register_coin_for_testing<SUI>(
+            &cap,
+            &mut store,
+            ts::ctx(scenario)
+        );
+
+        let base_metadata = coin_wrapper::get_wrapper<SUI>(&store);
+        let quote_metadata = coin_wrapper::get_wrapper<USDT>(&store);
+
+        // let base_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
+        // let quote_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
+
+        next_tx(scenario, OWNER);
+        
+        let (pool, pool_id) = gauge::create_gauge_pool_test<COIN_WRAPPER, COIN_WRAPPER>(
+            quote_metadata, 
+            base_metadata, 
+            &mut configs, 
+            false, 
+            ts::ctx(scenario)
+        );
+        
+        vote_manager::whitelist_default_reward_pool<COIN_WRAPPER, COIN_WRAPPER>(
+            &pool,
+            quote_metadata,
+            base_metadata,
+            &admin_cap,
+            &mut pool_whitelist,
+            &store
+        );
+
+        router::create_gauge(
+            &mut admin_data,
+            pool,
+            ts::ctx(scenario)
+        );
+
+        next_tx(scenario, OWNER);
+        let mut gauge = ts::take_shared<Gauge<COIN_WRAPPER, COIN_WRAPPER>>(scenario);
+        let all_pools = liquidity_pool::all_pool_ids(&configs);
+        assert!(vector::length(&all_pools) == 1, 0);
+        assert!(vector::contains(&all_pools, &pool_id), 1);
+        assert!(
+            vote_manager::gauge_exists(
+                &admin_data, 
+                gauge::liquidity_pool(&mut gauge)
+            ) == true, 2
+        );
+        assert!(
+            token_whitelist::whitelist_length(
+                &pool_whitelist, 
+                object::id_address(gauge::liquidity_pool(&mut gauge))
+            ) == 3, 3
+        );
+
+        ts::return_shared(configs);
+        ts::return_shared(store);
+        ts::return_shared(gauge);
+        ts::return_to_sender(scenario, cap);
+        ts::return_to_sender(scenario, admin_cap);
+        ts::return_shared(admin_data);
+        ts::return_shared(pool_whitelist);
+        clock.destroy_for_testing();
+        // ts::return_immutable(base_metadata);
+        // ts::return_immutable(quote_metadata);
+        ts::end(scenario_val);
+    }
+
+    #[test]
     fun test_swap_route_entry() {
         let mut scenario_val = ts::begin(OWNER);
         let scenario = &mut scenario_val;
@@ -1005,5 +1268,5 @@ module full_sail::router_test {
         clock.destroy_for_testing();
         test_utils::destroy(pool);
         ts::end(scenario_val);
-    } 
+    }
 }
