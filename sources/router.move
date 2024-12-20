@@ -2,21 +2,15 @@ module full_sail::router {
     use sui::coin::{Self, Coin, CoinMetadata};
     use full_sail::coin_wrapper::{Self, WrapperStore, COIN_WRAPPER};
     use full_sail::liquidity_pool::{Self, LiquidityPool, FeesAccounting, LiquidityPoolConfigs};
-    use full_sail::token_whitelist::{Self, TokenWhitelist, TokenWhitelistAdminCap, RewardTokenWhitelistPerPool};
+    use full_sail::token_whitelist::{TokenWhitelistAdminCap, RewardTokenWhitelistPerPool};
     use full_sail::gauge::{Self, Gauge};
     use full_sail::vote_manager::{Self, AdministrativeData};
     use sui::clock::{Clock};
-    use std::debug;
-
-    // --- addresses ---
-    const DEFAULT_ADMIN: address = @0x123;
 
     // --- errors ---
     const E_INSUFFICIENT_OUTPUT_AMOUNT: u64 = 1;
     const E_ZERO_RESERVE: u64 = 2;
     const E_VECTOR_LENGTH_MISMATCH: u64 = 3;
-    const E_OUTPUT_IS_WRAPPER: u64 = 4;
-    const E_INSUFFICIENT_BALANCE: u64 = 6;
     const E_ZERO_AMOUNT: u64 = 7;
     
     public fun swap<BaseType, QuoteType>(
@@ -91,7 +85,6 @@ module full_sail::router {
         amount_a: u64,
         amount_b: u64,
         store: &mut WrapperStore,
-        admin_data: &AdministrativeData,
         fees_accounting: &mut FeesAccounting,
         clock: &Clock,
         ctx: &mut TxContext
@@ -136,7 +129,6 @@ module full_sail::router {
         input_amount: u64,
         output_amount: u64,
         store: &mut WrapperStore,
-        admin_data: &AdministrativeData,
         fees_accounting: &mut FeesAccounting,
         clock: &Clock,
         ctx: &mut TxContext
@@ -178,7 +170,6 @@ module full_sail::router {
         input_amount: u64,
         output_amount: u64,
         store: &mut WrapperStore,
-        admin_data: &AdministrativeData,
         fees_accounting: &mut FeesAccounting,
         clock: &Clock,
         ctx: &mut TxContext
@@ -238,7 +229,7 @@ module full_sail::router {
         is_stable: bool,
         ctx: &mut TxContext
     ) {
-        let pool = liquidity_pool::create<BaseType, QuoteType>(
+        let _pool = liquidity_pool::create<BaseType, QuoteType>(
             base_metadata, 
             quote_metadata, 
             configs, 
@@ -268,7 +259,7 @@ module full_sail::router {
         is_stable: bool,
         ctx: &mut TxContext
     ) {
-        let pool = liquidity_pool::create<COIN_WRAPPER, COIN_WRAPPER>(
+        let _pool = liquidity_pool::create<COIN_WRAPPER, COIN_WRAPPER>(
             coin_wrapper::get_wrapper<BaseType>(store),
             coin_wrapper::get_wrapper<QuoteType>(store),
             configs,
@@ -299,7 +290,7 @@ module full_sail::router {
         is_stable: bool,
         ctx: &mut TxContext
     ) {
-        let pool = liquidity_pool::create<COIN_WRAPPER, COIN_WRAPPER>(
+        let _pool = liquidity_pool::create<COIN_WRAPPER, COIN_WRAPPER>(
             coin_wrapper::get_wrapper<BaseType>(store),
             quote_metadata,
             configs,
@@ -489,7 +480,7 @@ module full_sail::router {
         abort 0
     }
 
-    public entry fun remove_liquidity_both_coins_entry<BaseType, QuoteType>(
+    public entry fun remove_liquidity_both_coins_entry(
         _is_stable: bool,
         _liquidity_amount: u64,
         _min_input_amount: u64,
@@ -511,7 +502,7 @@ module full_sail::router {
         abort 0
     }
 
-    public entry fun remove_liquidity_coin_entry<BaseType, QuoteType>(
+    public entry fun remove_liquidity_coin_entry<QuoteType>(
         _quote_metadata: &CoinMetadata<QuoteType>,
         _is_stable: bool,
         _liquidity_amount: u64,
@@ -601,7 +592,6 @@ module full_sail::router {
         fees_accounting: &mut FeesAccounting,
         base_metadata: &CoinMetadata<COIN_WRAPPER>,
         quote_metadata: &CoinMetadata<COIN_WRAPPER>,
-        is_stable: bool,
         recipient: address,
         ctx: &mut TxContext
     ) {
@@ -620,7 +610,7 @@ module full_sail::router {
         );
     }
 
-    public entry fun swap_entry<BaseType, QuoteType>(
+    public entry fun swap_entry<BaseType>(
         pool: &mut LiquidityPool<COIN_WRAPPER, COIN_WRAPPER>,
         input_amount: u64, 
         min_output_amount: u64,
@@ -784,21 +774,16 @@ module full_sail::router {
         vector::destroy_empty<CoinMetadata<COIN_WRAPPER>>(intermediary_tokens_mut);
     }
 
-    public entry fun unstake_and_remove_liquidity_both_coins_entry<BaseType, QuoteType>(
+    public entry fun unstake_and_remove_liquidity_both_coins_entry(
         pool: &mut LiquidityPool<COIN_WRAPPER, COIN_WRAPPER>,
         gauge: &mut Gauge<COIN_WRAPPER, COIN_WRAPPER>,
-        is_stable: bool,
-        store: &WrapperStore,
         lp_amount: u64,
         min_input_amount: u64,
         min_output_amount: u64,
         recipient: address,
         clock: &Clock,
-        admin_data: &AdministrativeData,
         ctx: &mut TxContext
     ) {
-        let base_metadata = coin_wrapper::get_wrapper<BaseType>(store);
-        let quote_metadata = coin_wrapper::get_wrapper<QuoteType>(store);
         gauge::unstake_lp<COIN_WRAPPER, COIN_WRAPPER>(
             gauge,
             lp_amount,
@@ -816,21 +801,16 @@ module full_sail::router {
         exact_deposit(recipient, output_coin);
     }
 
-    public entry fun unstake_and_remove_liquidity_coin_entry<BaseType>(
+    public entry fun unstake_and_remove_liquidity_coin_entry(
         pool: &mut LiquidityPool<COIN_WRAPPER, COIN_WRAPPER>,
         gauge: &mut Gauge<COIN_WRAPPER, COIN_WRAPPER>,
-        quote_metadata: &CoinMetadata<COIN_WRAPPER>,
-        is_stable: bool,
-        store: &WrapperStore,
         lp_amount: u64,
         min_input_amount: u64,
         min_output_amount: u64,
         recipient: address,
         clock: &Clock,
-        admin_data: &AdministrativeData,
         ctx: &mut TxContext
     ) {
-        let base_metadata = coin_wrapper::get_wrapper<BaseType>(store);
         gauge::unstake_lp<COIN_WRAPPER, COIN_WRAPPER>(
             gauge,
             lp_amount,
@@ -851,15 +831,11 @@ module full_sail::router {
     public entry fun unstake_and_remove_liquidity_entry(
         pool: &mut LiquidityPool<COIN_WRAPPER, COIN_WRAPPER>,
         gauge: &mut Gauge<COIN_WRAPPER, COIN_WRAPPER>,
-        base_metadata: &CoinMetadata<COIN_WRAPPER>,
-        quote_metadata: &CoinMetadata<COIN_WRAPPER>,
-        is_stable: bool,
         lp_amount: u64,
         min_input_amount: u64,
         min_output_amount: u64,
         recipient: address,
         clock: &Clock,
-        admin_data: &AdministrativeData,
         ctx: &mut TxContext
     ) {
         gauge::unstake_lp<COIN_WRAPPER, COIN_WRAPPER>(

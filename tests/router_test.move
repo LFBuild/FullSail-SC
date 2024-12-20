@@ -2,12 +2,11 @@
 module full_sail::router_test {
     use sui::test_scenario::{Self as ts, next_tx, Scenario};
     use sui::test_utils;
-    use sui::coin::{Self, Coin, CoinMetadata};
+    use sui::coin::{Self, CoinMetadata};
     use sui::clock;
-    use std::debug;
     use full_sail::router;
     use full_sail::gauge::{Self, Gauge};
-    use full_sail::liquidity_pool::{Self, LiquidityPool, LiquidityPoolConfigs, FeesAccounting};
+    use full_sail::liquidity_pool::{Self, LiquidityPoolConfigs, FeesAccounting};
     use full_sail::coin_wrapper::{Self, WrapperStore, WrapperStoreCap, COIN_WRAPPER};
     use full_sail::vote_manager::{Self, AdministrativeData};
     use full_sail::token_whitelist::{Self, RewardTokenWhitelistPerPool, TokenWhitelistAdminCap};
@@ -88,7 +87,6 @@ module full_sail::router_test {
                 100000,
                 100000,
                 &mut store,
-                &admin_data,
                 &mut fees_accounting,
                 &clock,
                 ts::ctx(scenario)
@@ -381,7 +379,6 @@ module full_sail::router_test {
             );
             let quote_coin_copy = coin_wrapper::unwrap_for_testing<USDT>(&mut store);
             let quote_wrapped_coin_copy = coin_wrapper::wrap<USDT>(&mut store, quote_coin_copy, ts::ctx(scenario));
-            let mut gauge = ts::take_shared<Gauge<COIN_WRAPPER, COIN_WRAPPER>>(scenario);
             let recipient = @0x1234;
             let base_metadata_copy = coin_wrapper::get_wrapper<SUI>(&store);
             let quote_metadata_copy = coin_wrapper::get_wrapper<USDT>(&store);
@@ -399,7 +396,6 @@ module full_sail::router_test {
             router::exact_deposit(recipient, deposited_coin);
 
             ts::return_shared(fees_accounting);
-            ts::return_shared(gauge);
         };
 
         let all_pools = liquidity_pool::all_pool_ids(&configs);
@@ -553,9 +549,6 @@ module full_sail::router_test {
         let base_metadata = coin_wrapper::get_wrapper<SUI>(&store);
         let quote_metadata = coin_wrapper::get_wrapper<USDT>(&store);
 
-        // let base_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
-        // let quote_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
-
         next_tx(scenario, OWNER);
         
         let (pool, pool_id) = gauge::create_gauge_pool_test<COIN_WRAPPER, COIN_WRAPPER>(
@@ -607,8 +600,6 @@ module full_sail::router_test {
         ts::return_shared(admin_data);
         ts::return_shared(pool_whitelist);
         clock.destroy_for_testing();
-        // ts::return_immutable(base_metadata);
-        // ts::return_immutable(quote_metadata);
         ts::end(scenario_val);
     }
 
@@ -640,9 +631,6 @@ module full_sail::router_test {
         let base_metadata = coin_wrapper::get_wrapper<SUI>(&store);
         let quote_metadata = coin_wrapper::get_wrapper<USDT>(&store);
 
-        // let base_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
-        // let quote_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
-
         next_tx(scenario, OWNER);
         
         let (pool, pool_id) = gauge::create_gauge_pool_test<COIN_WRAPPER, COIN_WRAPPER>(
@@ -694,8 +682,6 @@ module full_sail::router_test {
         ts::return_shared(admin_data);
         ts::return_shared(pool_whitelist);
         clock.destroy_for_testing();
-        // ts::return_immutable(base_metadata);
-        // ts::return_immutable(quote_metadata);
         ts::end(scenario_val);
     }
 
@@ -727,9 +713,6 @@ module full_sail::router_test {
         let base_metadata = coin_wrapper::get_wrapper<SUI>(&store);
         let quote_metadata = coin_wrapper::get_wrapper<USDT>(&store);
 
-        // let base_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
-        // let quote_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
-
         next_tx(scenario, OWNER);
         
         let (pool, pool_id) = gauge::create_gauge_pool_test<COIN_WRAPPER, COIN_WRAPPER>(
@@ -781,8 +764,6 @@ module full_sail::router_test {
         ts::return_shared(admin_data);
         ts::return_shared(pool_whitelist);
         clock.destroy_for_testing();
-        // ts::return_immutable(base_metadata);
-        // ts::return_immutable(quote_metadata);
         ts::end(scenario_val);
     }
 
@@ -864,9 +845,6 @@ module full_sail::router_test {
             );
             let base_metadata_copy = coin_wrapper::get_wrapper<SUI>(&store);
             let quote_metadata_copy = coin_wrapper::get_wrapper<USDT>(&store);
-            // let mut intermediary_tokens = vector::empty<&CoinMetadata<COIN_WRAPPER>>();
-            // vector::push_back(&mut intermediary_tokens, base_metadata_copy);
-            // vector::push_back(&mut intermediary_tokens, quote_metadata_copy);
             let deposited_coin = router::swap(
                 &mut pool,
                 new_quote_wrapped_coin,
@@ -986,17 +964,14 @@ module full_sail::router_test {
             assert!(vector::length(&all_pools) == 2, 4);
             assert!(vector::contains(&all_pools, &pool_id), 5);
 
-            router::unstake_and_remove_liquidity_both_coins_entry<USDT, SUI>(
+            router::unstake_and_remove_liquidity_both_coins_entry(
                 &mut pool,
                 &mut gauge,
-                false,
-                &store,
                 5000,
                 2500,
                 2500,
                 @0x1234,
                 &clock,
-                &admin_data,
                 ts::ctx(scenario)
             );
 
@@ -1109,18 +1084,14 @@ module full_sail::router_test {
             assert!(vector::length(&all_pools) == 2, 4);
             assert!(vector::contains(&all_pools, &pool_id), 5);
 
-            router::unstake_and_remove_liquidity_coin_entry<USDT>(
+            router::unstake_and_remove_liquidity_coin_entry(
                 &mut pool,
                 &mut gauge,
-                base_metadata2,
-                false,
-                &store,
                 5000,
                 2500,
                 2500,
                 @0x1234,
                 &clock,
-                &admin_data,
                 ts::ctx(scenario)
             );
 
@@ -1236,15 +1207,11 @@ module full_sail::router_test {
             router::unstake_and_remove_liquidity_entry(
                 &mut pool,
                 &mut gauge,
-                quote_metadata2,
-                base_metadata2,
-                false,
                 5000,
                 2500,
                 2500,
                 @0x1234,
                 &clock,
-                &admin_data,
                 ts::ctx(scenario)
             );
 
