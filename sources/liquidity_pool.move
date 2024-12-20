@@ -4,11 +4,10 @@ module full_sail::liquidity_pool {
     use sui::balance::{Self, Balance};
     use sui::coin::{Self, Coin, CoinMetadata};
     use sui::package;
-    use std::debug;
-
     //use sui::dynamic_field;
     use sui::dynamic_object_field;
     use full_sail::coin_wrapper::{Self, WrapperStore};
+    use sui::event;
 
     // --- addresses ---
     const DEFAULT_ADMIN: address = @0x123;
@@ -65,6 +64,13 @@ module full_sail::liquidity_pool {
         id: UID
     }
 
+    // --- events ---
+    public struct CreatePoolEvent has copy, drop {
+        pool: ID,
+        token_1: String,
+        token_2: String,
+        is_stable: bool,
+    }
     // init
     fun init(otw: LIQUIDITY_POOL, ctx: &mut TxContext) {
         let configs = LiquidityPoolConfigs {
@@ -543,6 +549,13 @@ module full_sail::liquidity_pool {
         // Share objects explicitly
         transfer::share_object(fees_accounting);
         transfer::public_transfer(liquidity_pool, tx_context::sender(ctx));
+
+        event::emit(CreatePoolEvent {
+            pool: liquidity_pool_id,
+            token_1: coin::get_symbol(base_metadata),
+            token_2: coin::get_symbol(quote_metadata),
+            is_stable
+        });
 
         liquidity_pool_id
     }
