@@ -4,9 +4,10 @@ module full_sail::rewards_pool_continuous_tests {
     use sui::coin;
     use sui::clock;
     use std::debug;
-    use sui::balance::{Balance};
+    use sui::balance;
     use full_sail::fullsail_token::{FULLSAIL_TOKEN};
     use full_sail::rewards_pool_continuous::{Self, RewardsPool};
+    use sui::test_utils;
 
     // --- addresses ---
     const OWNER : address = @0xab;
@@ -16,7 +17,7 @@ module full_sail::rewards_pool_continuous_tests {
         let mut scenario_val = ts::begin(OWNER);
         let scenario = &mut scenario_val;
 
-        let rewards_pool = rewards_pool_continuous::create(604800000 * 3, scenario.ctx());
+        let rewards_pool = rewards_pool_continuous::create(604800000 * 5, scenario.ctx());
         transfer::public_transfer(rewards_pool, @0x01);
         ts::end(scenario_val);
     }
@@ -73,8 +74,7 @@ module full_sail::rewards_pool_continuous_tests {
             assert!(rewards_pool_continuous::total_stake(&rewards_pool) == 1000, 1);
 
             clock.increment_for_testing(MS_IN_WEEK);
-
-            assert!(rewards_pool_continuous::claimable_rewards(test_addr,&mut rewards_pool, &clock) == 332, 1);
+            assert!(rewards_pool_continuous::claimable_rewards(test_addr,&mut rewards_pool, &clock) == 199, 1);
 
             clock.destroy_for_testing();
             ts::return_shared(rewards_pool);
@@ -137,10 +137,29 @@ module full_sail::rewards_pool_continuous_tests {
             
             clock.increment_for_testing(MS_IN_WEEK);
 
-            debug::print(&rewards_pool_continuous::claimable_rewards(test_addr,&mut rewards_pool, &clock));
-            assert!(rewards_pool_continuous::claimable_rewards(test_addr,&mut rewards_pool, &clock) == 664, 1);
+            assert!(rewards_pool_continuous::claimable_rewards(test_addr,&mut rewards_pool, &clock) == 398, 1);
 
+            let rewards_balance = rewards_pool_continuous::claim_rewards_test(test_addr, &mut rewards_pool, &clock);
+
+            assert!(rewards_pool_continuous::claimable_rewards(test_addr,&mut rewards_pool, &clock) == 0, 1);
+            assert!(balance::value<FULLSAIL_TOKEN>(&rewards_balance) == 398, 1);
+
+                        rewards_pool_continuous::stake_test(test_addr, &mut rewards_pool, 1000, &clock);
+            assert!(rewards_pool_continuous::total_stake(&rewards_pool) == 3000, 1);
+            
+            clock.increment_for_testing(MS_IN_WEEK);
+
+            assert!(rewards_pool_continuous::claimable_rewards(test_addr,&mut rewards_pool, &clock) == 199, 1);
+
+            let rewards_balance_second = rewards_pool_continuous::claim_rewards_test(test_addr, &mut rewards_pool, &clock);
+
+            assert!(rewards_pool_continuous::claimable_rewards(test_addr,&mut rewards_pool, &clock) == 0, 1);
+            assert!(balance::value<FULLSAIL_TOKEN>(&rewards_balance_second) == 199, 1);
+            
+            test_utils::destroy(rewards_balance);
+            test_utils::destroy(rewards_balance_second);
             clock.destroy_for_testing();
+
             ts::return_shared(rewards_pool);
         };
         ts::end(scenario_val);
