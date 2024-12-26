@@ -197,7 +197,7 @@ module full_sail::liquidity_pool_test {
         
         next_tx(scenario, OWNER);
         {
-            let configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
+            let mut configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
             let mut fees = ts::take_shared<FeesAccounting>(scenario);
             let mut pool = ts::take_from_sender<LiquidityPool<USDT, SUI>>(scenario);
             let base_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
@@ -212,12 +212,13 @@ module full_sail::liquidity_pool_test {
             
             // swap
             let coin_out = liquidity_pool::swap(
-                &mut pool,
-                &configs,
+                // &mut pool,
+                &mut configs,
                 &mut fees,
                 &base_metadata,
                 &quote_metadata,
                 coin_in,
+                false,
                 ts::ctx(scenario)
             );
             
@@ -301,7 +302,7 @@ module full_sail::liquidity_pool_test {
         // some swaps to generate fees
         next_tx(scenario, OWNER);
         {
-            let configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
+            let mut configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
             let mut fees = ts::take_shared<FeesAccounting>(scenario);
             let mut pool = ts::take_from_sender<LiquidityPool<USDT, SUI>>(scenario);
             let base_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
@@ -310,12 +311,13 @@ module full_sail::liquidity_pool_test {
             // 10k USDT -> SUI swap
             let coin_in = coin::mint_for_testing<USDT>(10000, ts::ctx(scenario));
             let coin_out = liquidity_pool::swap(
-                &mut pool,
-                &configs,
+                // &mut pool,
+                &mut configs,
                 &mut fees,
                 &base_metadata,
                 &quote_metadata,
                 coin_in,
+                false,
                 ts::ctx(scenario)
             );
             

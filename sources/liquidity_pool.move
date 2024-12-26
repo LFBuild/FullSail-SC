@@ -97,17 +97,23 @@ module full_sail::liquidity_pool {
     }
 
     public fun swap<BaseType, QuoteType>(
-        pool: &mut LiquidityPool<BaseType, QuoteType>,
-        configs: &LiquidityPoolConfigs,
+        // pool: &mut LiquidityPool<BaseType, QuoteType>,
+        configs: &mut LiquidityPoolConfigs,
         fees_accounting: &mut FeesAccounting,
         base_metadata: &CoinMetadata<BaseType>,
         quote_metadata: &CoinMetadata<QuoteType>,
         mut input_coin: Coin<BaseType>,
+        is_stable: bool,
         ctx: &mut TxContext
     ): Coin<QuoteType> {
         assert!(!configs.is_paused, E_LOCK_NOT_EXPIRED);
         let input_amount = coin::value(&input_coin);
-        
+        let pool = liquidity_pool_mut(
+            configs,
+            base_metadata,
+            quote_metadata,
+            is_stable
+        );
         let (output_amount, fee_amount) = get_amount_out(
             pool,
             base_metadata,
@@ -331,6 +337,16 @@ module full_sail::liquidity_pool {
     ): &LiquidityPool<BaseType, QuoteType> {
         let pool_name = pool_name(base_metadata, quote_metadata, is_stable);
         dynamic_object_field::borrow(&configs.id, pool_name)
+    }
+
+    public fun liquidity_pool_mut<BaseType, QuoteType>(
+        configs: &mut LiquidityPoolConfigs,
+        base_metadata: &CoinMetadata<BaseType>,
+        quote_metadata: &CoinMetadata<QuoteType>,
+        is_stable: bool
+    ): &mut LiquidityPool<BaseType, QuoteType> {
+        let pool_name = pool_name(base_metadata, quote_metadata, is_stable);
+        dynamic_object_field::borrow_mut(&mut configs.id, pool_name)
     }
     
     public fun liquidity_pool_address<BaseType, QuoteType>(
