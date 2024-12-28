@@ -14,7 +14,6 @@ module full_sail::router {
     const E_ZERO_AMOUNT: u64 = 7;
     
     public fun swap<BaseType, QuoteType>(
-        // pool: &mut LiquidityPool<BaseType, QuoteType>,
         input_coin: Coin<BaseType>,
         min_output_amount: u64,
         configs: &mut LiquidityPoolConfigs,
@@ -25,13 +24,12 @@ module full_sail::router {
         ctx: &mut TxContext
     ): Coin<QuoteType> {
         let output_coin = liquidity_pool::swap<BaseType, QuoteType>(
-            // pool, 
             configs,
             fees_accounting,
             base_metadata,
             quote_metadata,
-            input_coin,
             is_stable,
+            input_coin,
             ctx
         );
         assert!(coin::value(&output_coin) >= min_output_amount, E_INSUFFICIENT_OUTPUT_AMOUNT);
@@ -548,14 +546,7 @@ module full_sail::router {
         while(token_count > 0) {
             let next_token = vector::borrow(intermediary_tokens, token_count - 1);
             let coin_in = current_amount;
-            // let pool = liquidity_pool::liquidity_pool_mut(
-            //     configs,
-            //     first_token,
-            //     next_token,
-            //     vector::pop_back(route_stable)
-            // );
             let amount_out = swap(
-                // pool, 
                 coin_in, 
                 min_output_amount,
                 configs,
@@ -574,7 +565,6 @@ module full_sail::router {
     }
 
     public fun swap_coin_for_coin(
-        // pool: &mut LiquidityPool<COIN_WRAPPER, COIN_WRAPPER>,
         input_coin: Coin<COIN_WRAPPER>,
         min_output_amount: u64,
         configs: &mut LiquidityPoolConfigs,
@@ -585,7 +575,6 @@ module full_sail::router {
         ctx: &mut TxContext
     ): Coin<COIN_WRAPPER> {
         swap(
-            // pool, 
             input_coin, 
             min_output_amount, 
             configs, 
@@ -598,7 +587,6 @@ module full_sail::router {
     }
 
     public entry fun swap_coin_for_coin_entry(
-        // pool: &mut LiquidityPool<COIN_WRAPPER, COIN_WRAPPER>,
         input_coin: Coin<COIN_WRAPPER>,
         min_output_amount: u64,
         configs: &mut LiquidityPoolConfigs,
@@ -612,7 +600,6 @@ module full_sail::router {
         exact_deposit(
             recipient, 
             swap_coin_for_coin(
-                // pool, 
                 input_coin, 
                 min_output_amount, 
                 configs, 
@@ -626,7 +613,6 @@ module full_sail::router {
     }
 
     public entry fun swap_entry<BaseType>(
-        // pool: &mut LiquidityPool<COIN_WRAPPER, COIN_WRAPPER>,
         input_amount: u64, 
         min_output_amount: u64,
         store: &mut WrapperStore,
@@ -641,7 +627,6 @@ module full_sail::router {
         exact_deposit(
             recipient,
             swap<COIN_WRAPPER, COIN_WRAPPER>(
-                // pool, 
                 exact_withdraw<BaseType>(
                     input_amount,
                     store,

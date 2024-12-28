@@ -134,7 +134,6 @@ module full_sail::gauge {
         base_metadata: &CoinMetadata<BaseType>,
         quote_metadata: &CoinMetadata<QuoteType>,
         configs: &mut LiquidityPoolConfigs,
-        is_stable: bool,
         ctx: &mut TxContext
     ): (LiquidityPool<BaseType, QuoteType>, ID) {
         let (pool, id) = liquidity_pool::create_liquidity_pool_test<BaseType, QuoteType>(

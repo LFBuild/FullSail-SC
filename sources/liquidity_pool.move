@@ -6,6 +6,7 @@ module full_sail::liquidity_pool {
     use sui::package;
     //use sui::dynamic_field;
     use sui::dynamic_object_field;
+    use sui::dynamic_field;
     use full_sail::coin_wrapper::{Self, WrapperStore};
     use sui::event;
 
@@ -97,29 +98,27 @@ module full_sail::liquidity_pool {
     }
 
     public fun swap<BaseType, QuoteType>(
-        // pool: &mut LiquidityPool<BaseType, QuoteType>,
+        //pool: &mut LiquidityPool<BaseType, QuoteType>,
         configs: &mut LiquidityPoolConfigs,
         fees_accounting: &mut FeesAccounting,
         base_metadata: &CoinMetadata<BaseType>,
         quote_metadata: &CoinMetadata<QuoteType>,
-        mut input_coin: Coin<BaseType>,
         is_stable: bool,
+        mut input_coin: Coin<BaseType>,
         ctx: &mut TxContext
     ): Coin<QuoteType> {
         assert!(!configs.is_paused, E_LOCK_NOT_EXPIRED);
+        let pool = liquidity_pool_mut(configs, base_metadata, quote_metadata, is_stable);
+        
         let input_amount = coin::value(&input_coin);
-        let pool = liquidity_pool_mut(
-            configs,
-            base_metadata,
-            quote_metadata,
-            is_stable
-        );
+        
         let (output_amount, fee_amount) = get_amount_out(
             pool,
             base_metadata,
         quote_metadata,
             input_amount
         );
+        
         let fee_coin = coin::split(&mut input_coin, fee_amount, ctx);
         
         let (standardized_reserve_base, standardized_reserve_quote) = if (pool.is_stable) {
@@ -330,7 +329,7 @@ module full_sail::liquidity_pool {
     }
 
     public fun liquidity_pool<BaseType, QuoteType>(
-        configs: &LiquidityPoolConfigs, // Need configs since that's where pools are stored
+        configs: &LiquidityPoolConfigs,
         base_metadata: &CoinMetadata<BaseType>,
         quote_metadata: &CoinMetadata<QuoteType>,
         is_stable: bool
@@ -564,7 +563,11 @@ module full_sail::liquidity_pool {
 
         // Share objects explicitly
         transfer::share_object(fees_accounting);
-        transfer::public_transfer(liquidity_pool, tx_context::sender(ctx));
+
+        let pool_name = pool_name(base_metadata, quote_metadata, is_stable);
+        dynamic_object_field::add(&mut configs.id, pool_name, liquidity_pool);
+
+        assert!(verify_pool_exists(configs, base_metadata, quote_metadata, is_stable), 1);
 
         event::emit(CreatePoolEvent {
             pool: liquidity_pool_id,
@@ -967,5 +970,16 @@ module full_sail::liquidity_pool {
         transfer::share_object(fees_accounting);
 
         (liquidity_pool, liquidity_pool_id)
+    }
+
+    #[test_only]
+    fun verify_pool_exists<BaseType, QuoteType>(
+        configs: &LiquidityPoolConfigs,
+        base_metadata: &CoinMetadata<BaseType>,
+        quote_metadata: &CoinMetadata<QuoteType>,
+        is_stable: bool
+    ): bool {
+        let pool_name = pool_name(base_metadata, quote_metadata, is_stable); 
+        dynamic_object_field::exists_(&configs.id, pool_name)
     }
 }
