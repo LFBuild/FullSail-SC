@@ -4,6 +4,7 @@ module full_sail::router_test {
     use sui::test_utils;
     use sui::coin::{Self, CoinMetadata};
     use sui::clock;
+    use std::debug;
     use full_sail::router;
     use full_sail::gauge::{Self, Gauge};
     use full_sail::liquidity_pool::{Self, LiquidityPoolConfigs, FeesAccounting};
@@ -58,7 +59,6 @@ module full_sail::router_test {
             &quote_metadata, 
             &base_metadata, 
             &mut configs, 
-            false, 
             ts::ctx(scenario)
         );
         gauge::create_gauge_test<USDT, SUI>(
@@ -143,7 +143,6 @@ module full_sail::router_test {
             quote_metadata, 
             base_metadata, 
             &mut configs, 
-            false, 
             ts::ctx(scenario)
         );
         gauge::create_gauge_test<COIN_WRAPPER, COIN_WRAPPER>(
@@ -245,7 +244,6 @@ module full_sail::router_test {
             quote_metadata, 
             base_metadata, 
             &mut configs, 
-            false, 
             ts::ctx(scenario)
         );
         gauge::create_gauge_test<COIN_WRAPPER, COIN_WRAPPER>(
@@ -349,26 +347,25 @@ module full_sail::router_test {
         
         next_tx(scenario, OWNER);
         
-        let (mut pool, pool_id) = gauge::create_gauge_pool_test<COIN_WRAPPER, COIN_WRAPPER>(
-            quote_metadata, 
-            base_metadata, 
-            &mut configs, 
-            false, 
-            ts::ctx(scenario)
-        );
-        gauge::create_gauge_test<COIN_WRAPPER, COIN_WRAPPER>(
+        let pool_id = liquidity_pool::create<COIN_WRAPPER, COIN_WRAPPER>(
             quote_metadata, 
             base_metadata, 
             &mut configs, 
             false,
             ts::ctx(scenario)
         );
+        let pool = liquidity_pool::liquidity_pool_mut(
+            &mut configs,
+            quote_metadata,
+            base_metadata,
+            false
+        );
 
         next_tx(scenario, OWNER);
         {
             let mut fees_accounting = ts::take_shared<FeesAccounting>(scenario);
             liquidity_pool::mint_lp(
-                &mut pool,
+                pool,
                 &mut fees_accounting,
                 quote_metadata,
                 base_metadata,
@@ -383,13 +380,13 @@ module full_sail::router_test {
             let base_metadata_copy = coin_wrapper::get_wrapper<SUI>(&store);
             let quote_metadata_copy = coin_wrapper::get_wrapper<USDT>(&store);
             let deposited_coin = router::swap_coin_for_coin(
-                &mut pool,
                 quote_wrapped_coin_copy,
                 10000,
-                &configs,
+                &mut configs,
                 &mut fees_accounting,
                 quote_metadata_copy,
                 base_metadata_copy,
+                false,
                 ts::ctx(scenario)
             );
             assert!(coin::value(&deposited_coin) >= 10000, 2);
@@ -399,7 +396,7 @@ module full_sail::router_test {
         };
 
         let all_pools = liquidity_pool::all_pool_ids(&configs);
-        assert!(vector::length(&all_pools) == 2, 0);
+        assert!(vector::length(&all_pools) == 1, 0);
         assert!(vector::contains(&all_pools, &pool_id), 1);
 
         ts::return_shared(configs);
@@ -407,7 +404,6 @@ module full_sail::router_test {
         ts::return_to_sender(scenario, cap);
         ts::return_shared(admin_data);
         clock.destroy_for_testing();
-        test_utils::destroy(pool);
         ts::end(scenario_val);
     }
 
@@ -422,7 +418,7 @@ module full_sail::router_test {
         let mut configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
         let mut store = ts::take_shared<WrapperStore>(scenario);
         let cap = ts::take_from_sender<WrapperStoreCap>(scenario);
-        let admin_data = ts::take_shared<AdministrativeData>(scenario);
+        let mut admin_data = ts::take_shared<AdministrativeData>(scenario);
         coin_wrapper::register_coin_for_testing<USDT>(
             &cap,
             &mut store,
@@ -443,26 +439,25 @@ module full_sail::router_test {
         
         next_tx(scenario, OWNER);
         
-        let (mut pool, pool_id) = gauge::create_gauge_pool_test<COIN_WRAPPER, COIN_WRAPPER>(
-            quote_metadata, 
-            base_metadata, 
-            &mut configs, 
-            false, 
-            ts::ctx(scenario)
-        );
-        gauge::create_gauge_test<COIN_WRAPPER, COIN_WRAPPER>(
+        let pool_id = liquidity_pool::create<COIN_WRAPPER, COIN_WRAPPER>(
             quote_metadata, 
             base_metadata, 
             &mut configs, 
             false,
             ts::ctx(scenario)
         );
+        let pool = liquidity_pool::liquidity_pool_mut(
+            &mut configs,
+            quote_metadata,
+            base_metadata,
+            false
+        );
 
         next_tx(scenario, OWNER);
         {
             let mut fees_accounting = ts::take_shared<FeesAccounting>(scenario);
             liquidity_pool::mint_lp(
-                &mut pool,
+                pool,
                 &mut fees_accounting,
                 quote_metadata,
                 base_metadata,
@@ -487,16 +482,17 @@ module full_sail::router_test {
                 10000,
                 ts::ctx(scenario)
             );
+
             let base_metadata_copy = coin_wrapper::get_wrapper<SUI>(&store);
             let quote_metadata_copy = coin_wrapper::get_wrapper<USDT>(&store);
             let deposited_coin = router::swap(
-                &mut pool,
                 new_quote_wrapped_coin,
                 1000,
-                &configs,
+                &mut configs,
                 &mut fees_accounting,
-                base_metadata_copy,
                 quote_metadata_copy,
+                base_metadata_copy,
+                false,
                 ts::ctx(scenario)
             );
             assert!(coin::value(&deposited_coin) >= 1000, 2);
@@ -509,7 +505,7 @@ module full_sail::router_test {
         };
 
         let all_pools = liquidity_pool::all_pool_ids(&configs);
-        assert!(vector::length(&all_pools) == 2, 0);
+        assert!(vector::length(&all_pools) == 1, 0);
         assert!(vector::contains(&all_pools, &pool_id), 1);
 
         ts::return_shared(configs);
@@ -517,7 +513,6 @@ module full_sail::router_test {
         ts::return_to_sender(scenario, cap);
         ts::return_shared(admin_data);
         clock.destroy_for_testing();
-        test_utils::destroy(pool);
         ts::end(scenario_val);
     }
 
@@ -555,7 +550,6 @@ module full_sail::router_test {
             quote_metadata, 
             base_metadata, 
             &mut configs, 
-            false, 
             ts::ctx(scenario)
         );
         
@@ -637,7 +631,6 @@ module full_sail::router_test {
             quote_metadata, 
             base_metadata, 
             &mut configs, 
-            false, 
             ts::ctx(scenario)
         );
         
@@ -719,7 +712,6 @@ module full_sail::router_test {
             quote_metadata, 
             base_metadata, 
             &mut configs, 
-            false, 
             ts::ctx(scenario)
         );
         
@@ -799,14 +791,7 @@ module full_sail::router_test {
         
         next_tx(scenario, OWNER);
         
-        let (mut pool, pool_id) = gauge::create_gauge_pool_test<COIN_WRAPPER, COIN_WRAPPER>(
-            quote_metadata, 
-            base_metadata, 
-            &mut configs, 
-            false, 
-            ts::ctx(scenario)
-        );
-        gauge::create_gauge_test<COIN_WRAPPER, COIN_WRAPPER>(
+        let pool_id = liquidity_pool::create<COIN_WRAPPER, COIN_WRAPPER>(
             quote_metadata, 
             base_metadata, 
             &mut configs, 
@@ -814,11 +799,18 @@ module full_sail::router_test {
             ts::ctx(scenario)
         );
 
+        let pool = liquidity_pool::liquidity_pool_mut(
+            &mut configs,
+            quote_metadata,
+            base_metadata,
+            false
+        );
+
         next_tx(scenario, OWNER);
         {
             let mut fees_accounting = ts::take_shared<FeesAccounting>(scenario);
             liquidity_pool::mint_lp(
-                &mut pool,
+                pool,
                 &mut fees_accounting,
                 quote_metadata,
                 base_metadata,
@@ -846,13 +838,13 @@ module full_sail::router_test {
             let base_metadata_copy = coin_wrapper::get_wrapper<SUI>(&store);
             let quote_metadata_copy = coin_wrapper::get_wrapper<USDT>(&store);
             let deposited_coin = router::swap(
-                &mut pool,
                 new_quote_wrapped_coin,
                 1000,
-                &configs,
+                &mut configs,
                 &mut fees_accounting,
-                base_metadata_copy,
                 quote_metadata_copy,
+                base_metadata_copy,
+                false,
                 ts::ctx(scenario)
             );
             assert!(coin::value(&deposited_coin) >= 1000, 2);
@@ -865,7 +857,7 @@ module full_sail::router_test {
         };
 
         let all_pools = liquidity_pool::all_pool_ids(&configs);
-        assert!(vector::length(&all_pools) == 2, 0);
+        assert!(vector::length(&all_pools) == 1, 0);
         assert!(vector::contains(&all_pools, &pool_id), 1);
 
         ts::return_shared(configs);
@@ -873,7 +865,6 @@ module full_sail::router_test {
         ts::return_to_sender(scenario, cap);
         ts::return_shared(admin_data);
         clock.destroy_for_testing();
-        test_utils::destroy(pool);
         ts::end(scenario_val);
     }
 
@@ -907,7 +898,6 @@ module full_sail::router_test {
             quote_metadata, 
             base_metadata, 
             &mut configs, 
-            false, 
             ts::ctx(scenario)
         );
         gauge::create_gauge_test<COIN_WRAPPER, COIN_WRAPPER>(
@@ -1027,7 +1017,6 @@ module full_sail::router_test {
             quote_metadata, 
             base_metadata, 
             &mut configs, 
-            false, 
             ts::ctx(scenario)
         );
         gauge::create_gauge_test<COIN_WRAPPER, COIN_WRAPPER>(
@@ -1147,7 +1136,6 @@ module full_sail::router_test {
             quote_metadata, 
             base_metadata, 
             &mut configs, 
-            false, 
             ts::ctx(scenario)
         );
         gauge::create_gauge_test<COIN_WRAPPER, COIN_WRAPPER>(

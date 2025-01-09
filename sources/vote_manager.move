@@ -1,11 +1,10 @@
 module full_sail::vote_manager {
-    use std::ascii::{Self, String};
+    use std::ascii::String;
     use std::string;
     use sui::table::{Self, Table};
     use sui::vec_map::{Self, VecMap};
     use sui::coin::{Self, Coin, CoinMetadata};
     use sui::clock::Clock;
-    //use sui::package::{Self, UpgradeCap};
 
     use full_sail::voting_escrow::{Self, VeFullSailToken, VeFullSailCollection};
     use full_sail::fullsail_token::{Self, FULLSAIL_TOKEN, FullSailManager};
@@ -34,6 +33,8 @@ module full_sail::vote_manager {
     const E_ZERO_TOTAL_WEIGHT: u64 = 14;
     const E_GAUGE_NOT_FOUND: u64 = 15;
     const E_GAUGE_ALREADY_ACTIVE: u64 = 16;
+    const E_WRONG_REWARD_POOL:u64 = 17;
+    const E_WRONG_GAUGE: u64 = 18;
 
     // --- structs ---
     // otw
@@ -71,7 +72,7 @@ module full_sail::vote_manager {
         id: UID 
     }
 
-        // --- Initialize function ---
+    // --- Initialize function ---
     fun init(_otw: VOTE_MANAGER, ctx: &mut TxContext) {
         let admin_cap = VoteManagerAdminCap {
             id: object::new(ctx)
@@ -107,9 +108,9 @@ module full_sail::vote_manager {
         transfer::transfer(admin_cap, tx_context::sender(ctx));
     }
 
-    public entry fun claim_rewards<BaseType, QuoteType, T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(
+    public entry fun claim_rewards<BaseType, T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(
         ve_token: &VeFullSailToken<FULLSAIL_TOKEN>,
-        liquidity_pool: &LiquidityPool<BaseType, QuoteType>,
+        liquidity_pool: ID,
         epoch_id: u64,
         admin_data: &AdministrativeData,
         rewards_pool: &mut RewardsPool<BaseType>,
@@ -185,13 +186,13 @@ module full_sail::vote_manager {
         vector::destroy_empty(rewards);
     }
 
-    public fun get_gauge<BaseType, QuoteType>(
+    public fun get_gauge(
         admin_data: &AdministrativeData,
-        liquidity_pool: &LiquidityPool<BaseType, QuoteType>
+        liquidity_pool: ID
     ): ID {
         get_gauges(
             admin_data, 
-            vector::singleton(object::id(liquidity_pool))
+            vector::singleton(liquidity_pool)
         )[0]
     }
 
@@ -223,17 +224,17 @@ module full_sail::vote_manager {
         }
     }
 
-    public fun fees_pool<BaseType, QuoteType>(
+    public fun fees_pool(
         admin_data: &AdministrativeData,
-        liquidity_pool: &LiquidityPool<BaseType, QuoteType>
+        liquidity_pool: ID
     ): ID {
         let gauge_id = get_gauge(admin_data, liquidity_pool);
         *table::borrow(&admin_data.gauge_to_fees_pool, gauge_id)
     }
 
-    public fun incentive_pool<BaseType, QuoteType>(
+    public fun incentive_pool(
         admin_data: &AdministrativeData,
-        liquidity_pool: &LiquidityPool<BaseType, QuoteType>
+        liquidity_pool: ID
     ): ID {
         let gauge_id = get_gauge(admin_data, liquidity_pool);
         *table::borrow(&admin_data.gauge_to_incentive_pool, gauge_id)
@@ -369,10 +370,10 @@ module full_sail::vote_manager {
     public entry fun advance_epoch<BaseType, QuoteType>(
         admin_data: &mut AdministrativeData,
         gauge_vote_accounting: &mut GaugeVoteAccounting,
+        gauge: &mut Gauge<BaseType, QuoteType>,
+        rewards_pool: &mut RewardsPool<BaseType>,
         manager: &mut FullSailManager,
         collection: &mut VeFullSailCollection,
-        gauge_registry: &mut Table<ID, Gauge<BaseType, QuoteType>>,
-        rewards_pool_registry: &mut Table<ID, RewardsPool<BaseType>>,
         minter: &mut MinterConfig,
         clock: &Clock,
         ctx: &mut TxContext
@@ -389,11 +390,15 @@ module full_sail::vote_manager {
         
         // Get minted tokens and rebase tokens
         let (mut minted_tokens, rebase_tokens) = minter::mint(minter, manager, collection, clock, ctx);
-        
-        // Add rebase tokens to voting escrow
         let rebase_amount = coin::value(&rebase_tokens);
         voting_escrow::add_rebase(collection, rebase_amount, current_epoch - 1, clock);
-        coin::destroy_zero(rebase_tokens);
+
+        // Now handle the token
+        if (rebase_amount > 0) {
+            fullsail_token::burn(fullsail_token::get_treasury_cap(manager), rebase_tokens);
+        } else {
+            coin::destroy_zero(rebase_tokens);
+        };
         
         // Process gauge votes and distribute rewards
         let gauge_entries = vec_map::keys(&gauge_vote_accounting.votes_for_gauges);
@@ -410,15 +415,8 @@ module full_sail::vote_manager {
                 let amount_to_extract = (((coins_amount as u128) * vote_amount / gauge_vote_accounting.total_votes) as u64);
                 if (amount_to_extract > 0) {
                     let extracted_tokens = coin::split(&mut minted_tokens, amount_to_extract, ctx);
-
-                    if (table::contains(gauge_registry, gauge_id)) {
-                        let gauge = table::borrow_mut(gauge_registry, gauge_id);
-                        let extracted_balance = coin::into_balance(extracted_tokens);
-                        gauge::add_rewards(gauge, extracted_balance, clock);
-                    } else {
-                        coin::destroy_zero(extracted_tokens);
-                    };
-
+                    let extracted_balance = coin::into_balance(extracted_tokens);
+                    gauge::add_rewards(gauge, extracted_balance, clock);
                 };
             };
             
@@ -430,29 +428,22 @@ module full_sail::vote_manager {
         let mut i = 0;
         while (i < vector::length(active_gauges)) {
             let gauge_id = *vector::borrow(active_gauges, i);
+            let (gauge_fees, claim_fees) = gauge::claim_fees(gauge, ctx);
 
-            if (table::contains(gauge_registry, gauge_id)) {
-                let gauge = table::borrow_mut(gauge_registry, gauge_id);
-                let (gauge_fees, claim_fees) = gauge::claim_fees(gauge, ctx);
-
-                if (coin::value(&gauge_fees) > 0 || coin::value(&claim_fees) > 0) {
-                    let mut base_rewards = vector::empty<Coin<BaseType>>();
-                    vector::push_back(&mut base_rewards, gauge_fees);
-                    coin::destroy_zero(claim_fees);
-                    
-                    let fees_pool_id = *table::borrow(&admin_data.gauge_to_fees_pool, gauge_id);
-                    let mut metadata = vector::empty<ID>();
-                    vector::push_back(&mut metadata, gauge_id);
-                    let pool = table::borrow_mut(rewards_pool_registry, fees_pool_id);
-                    rewards_pool::add_rewards(pool, metadata, base_rewards, current_epoch, ctx);
-
-                } else {
-                    coin::destroy_zero(gauge_fees);
-                    coin::destroy_zero(claim_fees);
-                };
-
-                i = i + 1;
+            if (coin::value(&gauge_fees) > 0 || coin::value(&claim_fees) > 0) {
+                let mut base_rewards = vector::empty<Coin<BaseType>>();
+                vector::push_back(&mut base_rewards, gauge_fees);
+                coin::destroy_zero(claim_fees);
+                
+                let mut metadata = vector::empty<ID>();
+                vector::push_back(&mut metadata, gauge_id);
+                rewards_pool::add_rewards(rewards_pool, metadata, base_rewards, current_epoch, ctx);
+            } else {
+                coin::destroy_zero(gauge_fees);
+                coin::destroy_zero(claim_fees);
             };
+
+            i = i + 1;
         };
         
         // Burn or destroy remaining minted tokens
@@ -525,9 +516,9 @@ module full_sail::vote_manager {
         (result_map, gauge_vote_accounting.total_votes)
     }
 
-    public entry fun claim_rewards_6<BaseType, QuoteType, T0, T1, T2, T3, T4, T5>(
+    public entry fun claim_rewards_6<BaseType, T0, T1, T2, T3, T4, T5>(
         ve_token: &VeFullSailToken<FULLSAIL_TOKEN>,
-        liquidity_pool: &LiquidityPool<BaseType, QuoteType>,
+        liquidity_pool: ID,
         epoch_id: u64,
         admin_data: &AdministrativeData,
         rewards_pool: &mut RewardsPool<BaseType>,
@@ -585,9 +576,9 @@ module full_sail::vote_manager {
         vector::destroy_empty(rewards);
     }
 
-    public entry fun claim_rewards_all_6<BaseType, QuoteType, T0, T1, T2, T3, T4, T5>(
+    public entry fun claim_rewards_all_6<BaseType, T0, T1, T2, T3, T4, T5>(
         ve_token: &VeFullSailToken<FULLSAIL_TOKEN>,
-        liquidity_pool: &LiquidityPool<BaseType, QuoteType>,
+        liquidity_pool: ID,
         epoch_count: u64,
         admin_data: &AdministrativeData,
         rewards_pool: &mut RewardsPool<BaseType>,
@@ -599,7 +590,7 @@ module full_sail::vote_manager {
         let mut start_epoch = current_epoch - epoch_count;
         
         while (start_epoch < current_epoch) {
-            claim_rewards_6<BaseType, QuoteType, T0, T1, T2, T3, T4, T5>(
+            claim_rewards_6<BaseType, T0, T1, T2, T3, T4, T5>(
                 ve_token,
                 liquidity_pool,
                 start_epoch,
@@ -613,9 +604,9 @@ module full_sail::vote_manager {
         };
     }
 
-    public entry fun batch_claim<BaseType, QuoteType, T0, T1, T2, T3, T4, T5>(
+    public entry fun batch_claim<BaseType, T0, T1, T2, T3, T4, T5>(
         mut ve_tokens: vector<VeFullSailToken<FULLSAIL_TOKEN>>,
-        mut liquidity_pools: vector<LiquidityPool<BaseType, QuoteType>>,
+        mut liquidity_pools: vector<ID>,
         epoch_count: u64,
         admin_data: &AdministrativeData,
         rewards_pool: &mut RewardsPool<BaseType>,
@@ -634,9 +625,9 @@ module full_sail::vote_manager {
             while (pool_len > 0) {
                 let pool = vector::pop_back(&mut liquidity_pools);
                 
-                claim_rewards_all_6<BaseType, QuoteType, T0, T1, T2, T3, T4, T5>(
+                claim_rewards_all_6<BaseType, T0, T1, T2, T3, T4, T5>(
                     &ve_token,
-                    &pool,
+                    pool,
                     epoch_count,
                     admin_data,
                     rewards_pool,
@@ -679,36 +670,36 @@ module full_sail::vote_manager {
     }
 
     public fun claim_emissions<BaseType, QuoteType>(
-        liquidity_pool: &LiquidityPool<BaseType, QuoteType>,
+        liquidity_pool: ID,
         admin_data: &AdministrativeData,
-        gauge_registry: &mut Table<ID, Gauge<BaseType, QuoteType>>,
+        gauge: &mut Gauge<BaseType, QuoteType>,
         clock: &Clock,
         ctx: &mut TxContext
     ): Coin<FULLSAIL_TOKEN> {
         let gauge_id = get_gauge(admin_data, liquidity_pool);
         assert!(is_gauge_active(admin_data, gauge_id), E_GAUGE_INACTIVE);
-        
-        let gauge = table::borrow_mut(gauge_registry, gauge_id);
+
+        assert!(object::id(gauge) == gauge_id, E_WRONG_GAUGE);
         let balance = gauge::claim_rewards(gauge, ctx, clock);
         
         coin::from_balance(balance, ctx)
     }
 
     public entry fun claim_emissions_entry<BaseType, QuoteType>(
-        liquidity_pool: &LiquidityPool<BaseType, QuoteType>,
+        liquidity_pool: ID,
         admin_data: &AdministrativeData,
-        gauge_registry: &mut Table<ID, Gauge<BaseType, QuoteType>>,
+        gauge: &mut Gauge<BaseType, QuoteType>,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        let emissions = claim_emissions(liquidity_pool, admin_data, gauge_registry, clock, ctx);
+        let emissions = claim_emissions(liquidity_pool, admin_data, gauge, clock, ctx);
         transfer::public_transfer(emissions, tx_context::sender(ctx));
     }
 
     public entry fun claim_emissions_multiple<BaseType, QuoteType>(
-        mut liquidity_pools: vector<LiquidityPool<BaseType, QuoteType>>,
+        mut liquidity_pools: vector<ID>,
         admin_data: &AdministrativeData,
-        gauge_registry: &mut Table<ID, Gauge<BaseType, QuoteType>>,
+        gauge: &mut Gauge<BaseType, QuoteType>,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
@@ -716,15 +707,18 @@ module full_sail::vote_manager {
         let mut pool_count = vector::length(&liquidity_pools);
         
         while (pool_count > 0) {
-            let pool = vector::pop_back(&mut liquidity_pools);
+            let pool_id = vector::pop_back(&mut liquidity_pools);
+            let gauge_id = get_gauge(admin_data, pool_id);
+
             claim_emissions_entry(
-                &pool,
+                pool_id,
                 admin_data,
-                gauge_registry,
+                gauge,
                 clock,
                 ctx
             );
-            vector::push_back(&mut liquidity_pools, pool);
+            
+
             pool_count = pool_count - 1;
         };
         
@@ -733,21 +727,21 @@ module full_sail::vote_manager {
 
     public fun claimable_emissions<BaseType, QuoteType>(
         account_address: address,
-        liquidity_pool: &LiquidityPool<BaseType, QuoteType>,
         admin_data: &AdministrativeData,
-        gauge_registry: &mut Table<ID, Gauge<BaseType, QuoteType>>,
+        pool: ID,
+        gauge: &mut Gauge<BaseType, QuoteType>,
         clock: &Clock
     ): u64 {
-        let gauge_id = get_gauge(admin_data, liquidity_pool);
-        let gauge = table::borrow_mut(gauge_registry, gauge_id); 
+        let gauge_id = get_gauge(admin_data, pool);  
+        assert!(object::id(gauge) == gauge_id, E_WRONG_GAUGE);
         gauge::claimable_rewards(account_address, gauge, clock)
     }
 
     public fun claimable_emissions_multiple<BaseType, QuoteType>(
         account_address: address,
-        mut liquidity_pools: vector<LiquidityPool<BaseType, QuoteType>>,
+        mut liquidity_pools: vector<ID>,
         admin_data: &AdministrativeData,
-        gauge_registry: &mut Table<ID, Gauge<BaseType, QuoteType>>,
+        gauge: &mut Gauge<BaseType, QuoteType>,
         clock: &Clock
     ): vector<u64> {
         let mut claimable_amounts = vector::empty();
@@ -756,8 +750,8 @@ module full_sail::vote_manager {
         
         while (pool_count > 0) {
             let pool = vector::pop_back(&mut liquidity_pools);
-            let gauge_id = get_gauge(admin_data, &pool);  
-            let gauge = table::borrow_mut(gauge_registry, gauge_id); 
+            let gauge_id = get_gauge(admin_data, pool);  
+            assert!(object::id(gauge) == gauge_id, E_WRONG_GAUGE);
             vector::push_back(&mut claimable_amounts, gauge::claimable_rewards(account_address, gauge, clock));
             vector::push_back(&mut liquidity_pools, pool); 
             pool_count = pool_count - 1;
@@ -824,8 +818,8 @@ module full_sail::vote_manager {
         table::add(&mut admin_data.gauge_to_incentive_pool, gauge_id, incentive_pool_id);
     }
 
-    public fun current_votes<BaseType, QuoteType>(
-        liquidity_pool: &LiquidityPool<BaseType, QuoteType>,
+    public fun current_votes(
+        liquidity_pool: ID,
         admin_data: &AdministrativeData,
         gauge_vote_accounting: &GaugeVoteAccounting,
     ): (u128, u128) {
@@ -887,55 +881,63 @@ module full_sail::vote_manager {
     }
 
     public fun incentivize<BaseType, QuoteType>(
-        liquidity_pool: &LiquidityPool<BaseType, QuoteType>,
         rewards: vector<Coin<BaseType>>,
+        incentive_pool: &mut RewardsPool<BaseType>,
         admin_data: &mut AdministrativeData,
+        gauge: &mut Gauge<BaseType, QuoteType>,
         gauge_vote_accounting: &mut GaugeVoteAccounting,
-        gauge_registry: &mut Table<ID, Gauge<BaseType, QuoteType>>,
-        rewards_pool_registry: &mut Table<ID, RewardsPool<BaseType>>,
-        whitelist: &RewardTokenWhitelistPerPool,
-        wrapper_store: &WrapperStore,
         manager: &mut FullSailManager,
         collection: &mut VeFullSailCollection,
         minter: &mut MinterConfig,
+        whitelist: &RewardTokenWhitelistPerPool,
+        wrapper_store: &WrapperStore,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        let liquidity_pool = gauge::liquidity_pool(gauge);
         assert!(gauge_exists(admin_data, liquidity_pool), E_GAUGE_NOT_EXISTS);
         
         let mut reward_tokens = vector::empty<ID>();
         let mut i = 0;
         while (i < vector::length(&rewards)) {
-            let token_name = coin_wrapper::get_original(wrapper_store, object::id(vector::borrow(&rewards, i)));
-            let token_name_string = string::from_ascii(token_name);
-            assert!(
-                token_whitelist::is_reward_token_whitelisted_on_pool(
-                    whitelist,
-                    &token_name_string,
-                    object::id_address(liquidity_pool)
-                ),
-                E_REWARD_TOKEN_NOT_WHITELISTED
-            );
-            vector::push_back(&mut reward_tokens, object::id(vector::borrow(&rewards, i)));
+            let coin_id = object::id(vector::borrow(&rewards, i));
+            vector::push_back(&mut reward_tokens, coin_id); // Add ID unconditionally
+            
+            if (coin_wrapper::is_wrapper(wrapper_store, coin_id)) {
+                let original = coin_wrapper::get_original(wrapper_store, coin_id);
+                let token_name = string::from_ascii(original);
+                
+                assert!(
+                    token_whitelist::is_reward_token_whitelisted_on_pool(
+                        whitelist,
+                        &token_name,
+                        object::id_address(liquidity_pool)
+                    ),
+                    E_REWARD_TOKEN_NOT_WHITELISTED
+                );
+            };
             i = i + 1;
         };
+
+        assert!(vector::length(&reward_tokens) == vector::length(&rewards), E_VECTOR_LENGTH_MISMATCH);
+        let pool_id = object::id(liquidity_pool);
+        let incentive_pool_id = incentive_pool(admin_data, pool_id);
+        assert!(incentive_pool_id == object::id(incentive_pool), E_WRONG_REWARD_POOL);
 
         advance_epoch(
             admin_data,
             gauge_vote_accounting,
+            gauge,
+            incentive_pool,
             manager,
             collection,
-            gauge_registry,
-            rewards_pool_registry,
             minter,
             clock,
             ctx
         );
 
-        let incentive_pool_id = incentive_pool(admin_data, liquidity_pool);
-        let pool = table::borrow_mut(rewards_pool_registry, incentive_pool_id);
         rewards_pool::add_rewards(
-            pool,
+            incentive_pool,
             reward_tokens,
             rewards,
             epoch::now(clock) + 1,
@@ -944,19 +946,18 @@ module full_sail::vote_manager {
     }
 
     public fun incentivize_coin<BaseType, QuoteType, CoinType>(
-        liquidity_pool: &LiquidityPool<BaseType, QuoteType>,
-        reward_coin: Coin<CoinType>,
+        rewards_pool: &mut RewardsPool<BaseType>,
         admin_data: &mut AdministrativeData,
+        gauge: &mut Gauge<BaseType, QuoteType>,
         gauge_vote_accounting: &mut GaugeVoteAccounting,
-        gauge_registry: &mut Table<ID, Gauge<BaseType, QuoteType>>,
-        rewards_pool_registry: &mut Table<ID, RewardsPool<BaseType>>,
-        whitelist: &RewardTokenWhitelistPerPool,
-        wrapper_store: &mut WrapperStore,
         manager: &mut FullSailManager,
         collection: &mut VeFullSailCollection,
         minter: &mut MinterConfig,
+        whitelist: &RewardTokenWhitelistPerPool,
+        wrapper_store: &mut WrapperStore,
+        reward_coin: Coin<CoinType>,
         clock: &Clock,
-        ctx: &mut TxContext
+        ctx: &mut TxContext,
     ) {
         let wrapped_coin = coin_wrapper::wrap<CoinType>(wrapper_store, reward_coin, ctx);
         let base_coin: Coin<BaseType> = coin_wrapper::unwrap<BaseType>(wrapper_store, wrapped_coin);
@@ -965,68 +966,65 @@ module full_sail::vote_manager {
         vector::push_back(&mut rewards, base_coin);
 
         incentivize(
-            liquidity_pool,
             rewards,
+            rewards_pool,
             admin_data,
+            gauge,
             gauge_vote_accounting,
-            gauge_registry,
-            rewards_pool_registry,
-            whitelist,
-            wrapper_store,
             manager,
             collection,
             minter,
+            whitelist,
+            wrapper_store,
             clock,
             ctx
         )
     }
 
     public entry fun incentivize_coin_entry<BaseType, QuoteType, CoinType>(
-        liquidity_pool: &LiquidityPool<BaseType, QuoteType>,
-        coin: Coin<CoinType>,
+        rewards_pool: &mut RewardsPool<BaseType>,
         admin_data: &mut AdministrativeData,
+        gauge: &mut Gauge<BaseType, QuoteType>,
         gauge_vote_accounting: &mut GaugeVoteAccounting,
-        gauge_registry: &mut Table<ID, Gauge<BaseType, QuoteType>>,
-        rewards_pool_registry: &mut Table<ID, RewardsPool<BaseType>>,
-        whitelist: &RewardTokenWhitelistPerPool,
-        wrapper_store: &mut WrapperStore,
         manager: &mut FullSailManager,
         collection: &mut VeFullSailCollection,
         minter: &mut MinterConfig,
+        whitelist: &RewardTokenWhitelistPerPool,
+        wrapper_store: &mut WrapperStore,
+        reward_coin: Coin<CoinType>,
         clock: &Clock,
-        ctx: &mut TxContext
+        ctx: &mut TxContext,
     ) {
         incentivize_coin(
-            liquidity_pool,
-            coin,
+            //liquidity_pool,
+            rewards_pool,
             admin_data,
+            gauge,
             gauge_vote_accounting,
-            gauge_registry,
-            rewards_pool_registry,
-            whitelist,
-            wrapper_store,
             manager,
             collection,
             minter,
+            whitelist,
+            wrapper_store,
+            reward_coin,
             clock,
             ctx
         )
     }
 
     public entry fun incentivize_entry<BaseType, QuoteType>(
-        liquidity_pool: &LiquidityPool<BaseType, QuoteType>,
-        mut metadata_objects: vector<ID>,
+        mut metadata_objects: vector<ID>, 
         mut amounts: vector<u64>,
         mut coins: vector<Coin<BaseType>>,
+        rewards_pool: &mut RewardsPool<BaseType>,
         admin_data: &mut AdministrativeData,
+        gauge: &mut Gauge<BaseType, QuoteType>,
         gauge_vote_accounting: &mut GaugeVoteAccounting,
-        gauge_registry: &mut Table<ID, Gauge<BaseType, QuoteType>>,
-        rewards_pool_registry: &mut Table<ID, RewardsPool<BaseType>>,
-        whitelist: &RewardTokenWhitelistPerPool,
-        wrapper_store: &mut WrapperStore,
         manager: &mut FullSailManager,
         collection: &mut VeFullSailCollection,
         minter: &mut MinterConfig,
+        whitelist: &RewardTokenWhitelistPerPool,
+        wrapper_store: &mut WrapperStore,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
@@ -1051,17 +1049,16 @@ module full_sail::vote_manager {
         vector::destroy_empty(coins);
         
         incentivize(
-            liquidity_pool,
             rewards,
+            rewards_pool,
             admin_data,
+            gauge,
             gauge_vote_accounting,
-            gauge_registry,
-            rewards_pool_registry,
-            whitelist,
-            wrapper_store,
             manager,
             collection,
             minter,
+            whitelist,
+            wrapper_store,
             clock,
             ctx
         )
@@ -1113,29 +1110,30 @@ module full_sail::vote_manager {
     ) {
         let mut whitelisted_tokens = vector::empty<string::String>();
 
-        // add default whitelisted tokens
+        // Add SUI token as default - use explicit string creation
         vector::push_back(&mut whitelisted_tokens, string::utf8(b"sui::sui::SUI"));
 
-        // get assets from liquidity pool
+        // Get assets from liquidity pool
         let inner_assets = liquidity_pool::supported_inner_assets<BaseType, QuoteType>(
             base_metadata,
             quote_metadata
         );
 
-        // add supported assets to whitelist
+        // Add supported assets to whitelist with proper string handling
         let mut i = 0;
         let len = vector::length(&inner_assets);
         while (i < len) {
             let asset_id = *vector::borrow(&inner_assets, i);
-            let original = coin_wrapper::get_original(wrapper_store, asset_id);
-            let original_bytes = *string::as_bytes(&string::utf8(ascii::into_bytes(original)));
-            vector::push_back(
-                &mut whitelisted_tokens,              
-                string::utf8(original_bytes)
-            );
+            if (coin_wrapper::is_wrapper(wrapper_store, asset_id)) {
+                let original = coin_wrapper::get_original(wrapper_store, asset_id);
+                // Safely create string from ASCII
+                let token_string = string::from_ascii(original);
+                vector::push_back(&mut whitelisted_tokens, token_string);
+            };
             i = i + 1;
         };
 
+        // Set whitelist tokens
         token_whitelist::set_whitelist_reward_tokens(
             admin_cap,
             pool_whitelist,
@@ -1307,58 +1305,62 @@ module full_sail::vote_manager {
     ) {
         let token_id = object::id(ve_token);
         if (table::contains(&ve_token_accounting.votes_for_pools_by_ve_token, token_id)) {
+            // retrieve all existing vote records for this token
             let mut old_votes = table::remove(&mut ve_token_accounting.votes_for_pools_by_ve_token, token_id);
             
-            let keys = vec_map::keys(&old_votes);
-            let size = vec_map::size(&old_votes);
-            let mut i = 0;
-            while (i < size) {
-                vec_map::remove(&mut old_votes, vector::borrow(&keys, i));
-                i = i + 1;
+            // get all keys first
+            let mut keys = vec_map::keys(&old_votes);
+            let size = vector::length(&keys);
+            
+            // clear all voting records for this token, pool by pool
+            while (!vector::is_empty(&keys)) {
+                let key = vector::pop_back(&mut keys);
+                vec_map::remove(&mut old_votes, &key);
             };
+            
             vector::destroy_empty(keys);
             vec_map::destroy_empty(old_votes);
         };
     }
 
     public entry fun rescue_stuck_rewards<BaseType, QuoteType>(
+        mut liquidity_pools: vector<ID>,
+        fees_pool: &mut RewardsPool<BaseType>,
+        incentive_pool: &mut RewardsPool<BaseType>,
         admin_data: &mut AdministrativeData,
+        gauge: &mut Gauge<BaseType, QuoteType>,
         gauge_vote_accounting: &mut GaugeVoteAccounting,
-        mut liquidity_pools: vector<LiquidityPool<BaseType, QuoteType>>,
-        ve_token: &VeFullSailToken<FULLSAIL_TOKEN>,
-        gauge_registry: &mut Table<ID, Gauge<BaseType, QuoteType>>,
-        epoch_count: u64,
-        rewards_pool_registry: &mut Table<ID, RewardsPool<BaseType>>,
-        whitelist: &RewardTokenWhitelistPerPool,
-        wrapper_store: &mut WrapperStore,
         manager: &mut FullSailManager,
         collection: &mut VeFullSailCollection,
         minter: &mut MinterConfig,
+        whitelist: &RewardTokenWhitelistPerPool,
+        wrapper_store: &mut WrapperStore,
+        epoch_count: u64,
+        account_address: address,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        // check if user already has an NFT
-        assert!(!voting_escrow::nft_exists(ve_token, tx_context::sender(ctx)), E_NFT_EXISTS);
-
         let current_epoch = epoch::now(clock);
         vector::reverse(&mut liquidity_pools);
         let mut pool_count = vector::length(&liquidity_pools);
 
         while (pool_count > 0) {
-            let liquidity_pool = vector::pop_back(&mut liquidity_pools);
+            let pool_id = vector::pop_back(&mut liquidity_pools);
             let mut start_epoch = current_epoch - epoch_count;
             
-            // get pools for this liquidity pool
-            let fees_pool_id = fees_pool(admin_data, &liquidity_pool);
-            let incentive_pool_id = incentive_pool(admin_data, &liquidity_pool);
+            // Verify pools match the gauge
+            let lp = gauge::liquidity_pool(gauge);
+            let fees_pool_id = fees_pool(admin_data, object::id(lp));
+            let incentive_pool_id = incentive_pool(admin_data, object::id(lp));
+
+            assert!(object::id(fees_pool) == fees_pool_id, E_WRONG_REWARD_POOL);
+            assert!(object::id(incentive_pool) == incentive_pool_id, E_WRONG_REWARD_POOL);
             
-            // initialize vectors for collecting rescued rewards
             let mut rescued_rewards = vector::empty<Coin<BaseType>>();
             
             while (start_epoch < current_epoch) {
-                let fees_pool = table::borrow_mut(rewards_pool_registry, fees_pool_id);
                 let fees_rewards = rewards_pool::claim_rewards(
-                    tx_context::sender(ctx),
+                    account_address,
                     fees_pool,
                     start_epoch,
                     clock,
@@ -1366,9 +1368,8 @@ module full_sail::vote_manager {
                 );
                 vector::append(&mut rescued_rewards, fees_rewards);
 
-                let incentive_pool = table::borrow_mut(rewards_pool_registry, incentive_pool_id);
                 let incentive_rewards = rewards_pool::claim_rewards(
-                    tx_context::sender(ctx),
+                    account_address,
                     incentive_pool,
                     start_epoch,
                     clock,
@@ -1381,17 +1382,16 @@ module full_sail::vote_manager {
 
             if (!vector::is_empty(&rescued_rewards)) {
                 incentivize(
-                    &liquidity_pool,
                     rescued_rewards,
+                    incentive_pool,
                     admin_data,
+                    gauge,
                     gauge_vote_accounting,
-                    gauge_registry,
-                    rewards_pool_registry,
-                    whitelist,
-                    wrapper_store,
                     manager,
                     collection,
                     minter,
+                    whitelist,
+                    wrapper_store,
                     clock,
                     ctx
                 );
@@ -1399,7 +1399,6 @@ module full_sail::vote_manager {
                 vector::destroy_empty(rescued_rewards);
             };
 
-            vector::push_back(&mut liquidity_pools, liquidity_pool);
             pool_count = pool_count - 1;
         };
 
