@@ -717,7 +717,6 @@ module full_sail::vote_manager {
                 clock,
                 ctx
             );
-            
 
             pool_count = pool_count - 1;
         };
