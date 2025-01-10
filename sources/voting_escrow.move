@@ -64,6 +64,11 @@ module full_sail::voting_escrow {
         uri_base: String,
     }
 
+    public struct Frozen<phantom FULLSAIL_TOKEN> has key {
+        id: UID,
+        token: VeFullSailToken<FULLSAIL_TOKEN>
+    }
+
     public struct AdminCap has key {
         id: UID
     }
@@ -176,11 +181,9 @@ module full_sail::voting_escrow {
         transfer::public_transfer(withdrawn_coins, account)
     }
 
-    public fun destroy_snapshots(mut snapshots: vector<TokenSnapshot>) {
-        let mut i = 0;
-        while (i < vector::length(&snapshots)) {
+    fun destroy_snapshots(mut snapshots: vector<TokenSnapshot>) {
+        while (!vector::is_empty(&snapshots)) {
             vector::pop_back(&mut snapshots);
-            i = i + 1;
         };
         vector::destroy_empty(snapshots);
     }

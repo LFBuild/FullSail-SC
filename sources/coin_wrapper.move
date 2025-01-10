@@ -153,11 +153,11 @@ module full_sail::coin_wrapper {
         string::to_ascii(string::utf8(bytes))
     }
 
-    public fun get_original(store: &WrapperStore, metadata_id: ID) : String {
+    public fun get_original<BaseType>(store: &WrapperStore, metadata_id: ID) : String {
         if (is_wrapper(store, metadata_id)) {
             get_coin_type(store, metadata_id)
         } else {
-            format_fungible_asset(metadata_id)
+            type_name::get<BaseType>().into_string()
         }
     }
 

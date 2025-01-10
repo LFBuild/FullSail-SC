@@ -62,7 +62,7 @@ module full_sail::rewards_pool_continuous {
         let default_reward_value = 0;
         let user_reward_amount = default_reward_value + *table::borrow(&pool_ref.rewards, user_address);
         assert!(user_reward_amount > 0, E_MAX_LOCK_TIME);
-        table::add(&mut pool_ref.rewards, user_address, 0);
+        table::remove<address, u64>(&mut pool_ref.rewards, user_address);
         let user_rewards_blance = balance::split(&mut pool.rewards_balance, user_reward_amount);
         user_rewards_blance
     }
