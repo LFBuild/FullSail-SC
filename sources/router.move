@@ -1,4 +1,4 @@
-/*module full_sail::router {
+module full_sail::router {
     use sui::coin::{Self, Coin, CoinMetadata};
     use full_sail::coin_wrapper::{Self, WrapperStore, COIN_WRAPPER};
     use full_sail::liquidity_pool::{Self, LiquidityPool, FeesAccounting, LiquidityPoolConfigs};
@@ -14,21 +14,21 @@
     const E_ZERO_AMOUNT: u64 = 7;
     
     public fun swap<BaseType, QuoteType>(
-        pool: &mut LiquidityPool<BaseType, QuoteType>,
         input_coin: Coin<BaseType>,
         min_output_amount: u64,
-        configs: &LiquidityPoolConfigs,
+        configs: &mut LiquidityPoolConfigs,
         fees_accounting: &mut FeesAccounting,
         base_metadata: &CoinMetadata<BaseType>,
         quote_metadata: &CoinMetadata<QuoteType>,
+        is_stable: bool,
         ctx: &mut TxContext
     ): Coin<QuoteType> {
         let output_coin = liquidity_pool::swap<BaseType, QuoteType>(
-            pool, 
             configs,
             fees_accounting,
             base_metadata,
             quote_metadata,
+            is_stable,
             input_coin,
             ctx
         );
@@ -209,12 +209,18 @@
 
     public entry fun create_gauge<BaseType, QuoteType>(
         admin_data: &mut AdministrativeData,
-        pool: LiquidityPool<BaseType, QuoteType>,
+        config: &mut LiquidityPoolConfigs,
+        base_metadata: &CoinMetadata<BaseType>,
+        quote_metadata: &CoinMetadata<QuoteType>,
+        is_stable: bool,
         ctx: &mut TxContext
     ) {
         vote_manager::create_gauge_internal<BaseType, QuoteType>(
             admin_data, 
-            pool,
+            config,
+            base_metadata,
+            quote_metadata,
+            is_stable,
             ctx
         );
     }
@@ -528,104 +534,105 @@
     }
 
     public fun swap_router(
-        pool: &mut LiquidityPool<COIN_WRAPPER, COIN_WRAPPER>, 
         input_amount: Coin<COIN_WRAPPER>, 
         token_in: &CoinMetadata<COIN_WRAPPER>, 
-        intermediary_tokens: vector<CoinMetadata<COIN_WRAPPER>>,
-        configs: &LiquidityPoolConfigs,
+        intermediary_tokens: &mut vector<CoinMetadata<COIN_WRAPPER>>,
+        route_stable: &mut vector<bool>,
+        configs: &mut LiquidityPoolConfigs,
         fees_accounting: &mut FeesAccounting, 
         min_output_amount: u64,
         ctx: &mut TxContext
-    ): (Coin<COIN_WRAPPER>, vector<CoinMetadata<COIN_WRAPPER>>) {
-        let mut token_count = vector::length(&intermediary_tokens);
+    ): Coin<COIN_WRAPPER> {
+        vector::reverse(intermediary_tokens);
+        vector::reverse(route_stable);
+
+        let mut token_count = vector::length(intermediary_tokens);
         let mut current_amount = input_amount;
-        let mut tokens = intermediary_tokens;
-        
+        let mut first_token = token_in;
         while(token_count > 0) {
-            let next_token_ref = vector::borrow(&tokens, token_count - 1);
+            let next_token = vector::borrow(intermediary_tokens, token_count - 1);
             let coin_in = current_amount;
             let amount_out = swap(
-                pool, 
                 coin_in, 
                 min_output_amount,
                 configs,
                 fees_accounting,
-                token_in,
-                next_token_ref,
+                first_token, 
+                next_token, 
+                vector::pop_back(route_stable),
                 ctx
             );
             current_amount = amount_out;
             token_count = token_count - 1;
+            first_token = next_token; 
         };
-
         assert!(coin::value(&current_amount) >= min_output_amount, E_INSUFFICIENT_OUTPUT_AMOUNT);
-        (current_amount, tokens)
+        current_amount
     }
 
     public fun swap_coin_for_coin(
-        pool: &mut LiquidityPool<COIN_WRAPPER, COIN_WRAPPER>,
         input_coin: Coin<COIN_WRAPPER>,
         min_output_amount: u64,
-        configs: &LiquidityPoolConfigs,
+        configs: &mut LiquidityPoolConfigs,
         fees_accounting: &mut FeesAccounting,
         base_metadata: &CoinMetadata<COIN_WRAPPER>,
         quote_metadata: &CoinMetadata<COIN_WRAPPER>,
+        is_stable: bool,
         ctx: &mut TxContext
     ): Coin<COIN_WRAPPER> {
         swap(
-            pool, 
             input_coin, 
             min_output_amount, 
             configs, 
             fees_accounting, 
             base_metadata, 
             quote_metadata, 
+            is_stable,
             ctx
         )
     }
 
     public entry fun swap_coin_for_coin_entry(
-        pool: &mut LiquidityPool<COIN_WRAPPER, COIN_WRAPPER>,
         input_coin: Coin<COIN_WRAPPER>,
         min_output_amount: u64,
-        configs: &LiquidityPoolConfigs,
+        configs: &mut LiquidityPoolConfigs,
         fees_accounting: &mut FeesAccounting,
         base_metadata: &CoinMetadata<COIN_WRAPPER>,
         quote_metadata: &CoinMetadata<COIN_WRAPPER>,
         recipient: address,
+        is_stable: bool,
         ctx: &mut TxContext
     ) {
         exact_deposit(
             recipient, 
             swap_coin_for_coin(
-                pool, 
                 input_coin, 
                 min_output_amount, 
                 configs, 
                 fees_accounting, 
                 base_metadata, 
                 quote_metadata, 
+                is_stable,
                 ctx
             )
         );
     }
 
     public entry fun swap_entry<BaseType>(
-        pool: &mut LiquidityPool<COIN_WRAPPER, COIN_WRAPPER>,
         input_amount: u64, 
         min_output_amount: u64,
         store: &mut WrapperStore,
-        configs: &LiquidityPoolConfigs,
+        configs: &mut LiquidityPoolConfigs,
         fees_accounting: &mut FeesAccounting,
         base_metadata: &CoinMetadata<COIN_WRAPPER>, 
         quote_metadata: &CoinMetadata<COIN_WRAPPER>, 
         recipient: address,
+        is_stable: bool,
         ctx: &mut TxContext
     ) {
         exact_deposit(
             recipient,
             swap<COIN_WRAPPER, COIN_WRAPPER>(
-                pool, 
                 exact_withdraw<BaseType>(
                     input_amount,
                     store,
@@ -636,126 +643,147 @@
                 fees_accounting, 
                 base_metadata, 
                 quote_metadata, 
+                is_stable,
                 ctx
             )
         );
     }
 
     public entry fun swap_route_entry_both_coins<BaseType, QuoteType>(
-        pool: &mut LiquidityPool<COIN_WRAPPER, COIN_WRAPPER>,
-        input_amount: u64,
-        min_output_amount: u64,
-        intermediary_tokens: vector<CoinMetadata<COIN_WRAPPER>>,
+        input_amount: u64, 
+        min_output_amount: u64, 
+        intermediary_tokens: vector<CoinMetadata<COIN_WRAPPER>>, 
+        route_stable: vector<bool>,
         store: &mut WrapperStore,
-        configs: &LiquidityPoolConfigs,
-        fees_accounting: &mut FeesAccounting,
+        configs: &mut LiquidityPoolConfigs,
+        fees_accounting: &mut FeesAccounting, 
         recipient: address,
         ctx: &mut TxContext
     ) {
-        let base_coin = exact_withdraw<BaseType>(input_amount, store, ctx);
-        let base_metadata = coin_wrapper::get_wrapper<BaseType>(store);
-
-        let (output_coin, tokens) = swap_router(
-            pool,
-            base_coin,
-            base_metadata,
-            intermediary_tokens,
-            configs,
-            fees_accounting,
-            min_output_amount,
+        let mut intermediary_tokens_mut = intermediary_tokens;
+        let mut route_stable_mut = route_stable;
+        let base_coin = exact_withdraw<BaseType>(
+            input_amount,
+            store,
             ctx
         );
+        let base_metadata = coin_wrapper::get_wrapper<BaseType>(store);
 
         exact_deposit<QuoteType>(
-            recipient,
-            coin_wrapper::unwrap<QuoteType>(store, output_coin)
+            recipient, 
+            coin_wrapper::unwrap<QuoteType>(
+                store,
+                swap_router(
+                    base_coin,
+                    base_metadata,
+                    &mut intermediary_tokens_mut,
+                    &mut route_stable_mut,
+                    configs,
+                    fees_accounting,
+                    min_output_amount,
+                    ctx
+                )
+            )
         );
-        vector::destroy_empty(tokens);
+        vector::destroy_empty<CoinMetadata<COIN_WRAPPER>>(intermediary_tokens_mut);
     }
 
     public entry fun swap_route_entry(
-        pool: &mut LiquidityPool<COIN_WRAPPER, COIN_WRAPPER>,
-        min_output_amount: u64,
+        min_output_amount: u64, 
         input_coin: Coin<COIN_WRAPPER>,
         base_metadata: &CoinMetadata<COIN_WRAPPER>,
-        intermediary_tokens: vector<CoinMetadata<COIN_WRAPPER>>,
-        configs: &LiquidityPoolConfigs,
-        fees_accounting: &mut FeesAccounting,
-        recipient: address, 
+        intermediary_tokens: vector<CoinMetadata<COIN_WRAPPER>>, 
+        route_stable: vector<bool>,
+        configs: &mut LiquidityPoolConfigs,
+        fees_accounting: &mut FeesAccounting, 
+        recipient: address,
         ctx: &mut TxContext
     ) {
-        let (output_coin, tokens) = swap_router(
-            pool,
-            input_coin,
-            base_metadata,
-            intermediary_tokens,
-            configs,
-            fees_accounting,
-            min_output_amount,
-            ctx
+        let mut intermediary_tokens_mut = intermediary_tokens;
+        let mut route_stable_mut = route_stable;
+        exact_deposit(
+            recipient, 
+            swap_router(
+                input_coin,
+                base_metadata,
+                &mut intermediary_tokens_mut,
+                &mut route_stable_mut,
+                configs,
+                fees_accounting,
+                min_output_amount,
+                ctx
+            )
         );
-        
-        exact_deposit(recipient, output_coin);
-        vector::destroy_empty(tokens);
+        vector::destroy_empty<CoinMetadata<COIN_WRAPPER>>(intermediary_tokens_mut);
     }
     
     public entry fun swap_route_entry_from_coin<BaseType>(
-        pool: &mut LiquidityPool<COIN_WRAPPER, COIN_WRAPPER>,
-        input_amount: u64,
-        min_output_amount: u64,
-        intermediary_tokens: vector<CoinMetadata<COIN_WRAPPER>>,
-        store: &mut WrapperStore, 
-        configs: &LiquidityPoolConfigs,
-        fees_accounting: &mut FeesAccounting,
+        input_amount: u64, 
+        min_output_amount: u64, 
+        intermediary_tokens: vector<CoinMetadata<COIN_WRAPPER>>, 
+        route_stable: vector<bool>,
+        store: &mut WrapperStore,
+        configs: &mut LiquidityPoolConfigs,
+        fees_accounting: &mut FeesAccounting, 
         recipient: address,
         ctx: &mut TxContext
     ) {
-        let base_coin = exact_withdraw<BaseType>(input_amount, store, ctx);
-        let base_metadata = coin_wrapper::get_wrapper<BaseType>(store);
-
-        let (output_coin, tokens) = swap_router(
-            pool,
-            base_coin,
-            base_metadata,
-            intermediary_tokens,
-            configs,
-            fees_accounting,
-            min_output_amount,
+        let mut intermediary_tokens_mut = intermediary_tokens;
+        let mut route_stable_mut = route_stable;
+        let base_coin = exact_withdraw<BaseType>(
+            input_amount,
+            store,
             ctx
         );
-        
-        exact_deposit(recipient, output_coin);
-        vector::destroy_empty(tokens);
+        let base_metadata = coin_wrapper::get_wrapper<BaseType>(store);
+
+        exact_deposit(
+            recipient, 
+            swap_router(
+                base_coin,
+                base_metadata,
+                &mut intermediary_tokens_mut,
+                &mut route_stable_mut,
+                configs,
+                fees_accounting,
+                min_output_amount,
+                ctx
+            )
+        );
+        vector::destroy_empty<CoinMetadata<COIN_WRAPPER>>(intermediary_tokens_mut);
     }
 
     public entry fun swap_route_entry_to_coin<QuoteType>(
-        pool: &mut LiquidityPool<COIN_WRAPPER, COIN_WRAPPER>,
-        min_output_amount: u64,
-        input_coin: Coin<COIN_WRAPPER>, 
+        min_output_amount: u64, 
+        input_coin: Coin<COIN_WRAPPER>,
         base_metadata: &CoinMetadata<COIN_WRAPPER>,
-        intermediary_tokens: vector<CoinMetadata<COIN_WRAPPER>>,
+        intermediary_tokens: vector<CoinMetadata<COIN_WRAPPER>>, 
+        route_stable: vector<bool>,
         store: &mut WrapperStore,
-        configs: &LiquidityPoolConfigs,
-        fees_accounting: &mut FeesAccounting,
+        configs: &mut LiquidityPoolConfigs,
+        fees_accounting: &mut FeesAccounting, 
         recipient: address,
         ctx: &mut TxContext
     ) {
-        let (output_coin, tokens) = swap_router(
-            pool,
-            input_coin,
-            base_metadata,
-            intermediary_tokens,
-            configs, 
-            fees_accounting,
-            min_output_amount,
-            ctx
-        );
-        
+        let mut intermediary_tokens_mut = intermediary_tokens;
+        let mut route_stable_mut = route_stable;
         exact_deposit(
-            recipient,
-            coin_wrapper::unwrap<QuoteType>(store, output_coin)
+            recipient, 
+            coin_wrapper::unwrap<QuoteType>(
+                store,
+                swap_router(
+                    input_coin,
+                    base_metadata,
+                    &mut intermediary_tokens_mut,
+                    &mut route_stable_mut,
+                    configs,
+                    fees_accounting,
+                    min_output_amount,
+                    ctx
+                )
+            )
         );
-        vector::destroy_empty(tokens);
+        vector::destroy_empty<CoinMetadata<COIN_WRAPPER>>(intermediary_tokens_mut);
     }
 
     public entry fun unstake_and_remove_liquidity_both_coins_entry(

@@ -161,6 +161,13 @@ module full_sail::coin_wrapper {
         }
     }
 
+    public fun borrow_original_coin<CoinType>(store: &mut WrapperStore): &mut Coin<CoinType> {
+        let coin_type = type_name::get<CoinType>();
+        let coin_type_name = coin_type.into_string();
+        let coin = dynamic_object_field::borrow_mut<String, Coin<CoinType>>(&mut store.id, coin_type_name);
+        coin
+    }
+
     // --- tests funcs ---
     #[test_only]
     public fun init_for_testing(ctx: &mut TxContext) {
