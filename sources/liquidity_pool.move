@@ -891,7 +891,7 @@ module full_sail::liquidity_pool {
             let asset_id = vector::pop_back(&mut inner_assets);
             vector::push_back(
                 &mut token_strings, 
-                coin_wrapper::get_original(wrapper_store, asset_id)
+                coin_wrapper::get_original<BaseType>(wrapper_store, asset_id)
             );
             inner_assets_length = inner_assets_length - 1;
         };
@@ -972,8 +972,17 @@ module full_sail::liquidity_pool {
         (liquidity_pool, liquidity_pool_id)
     }
 
-    #[test_only]
-    fun verify_pool_exists<BaseType, QuoteType>(
+    public fun extract_pool<BaseType, QuoteType>(
+        configs: &mut LiquidityPoolConfigs,
+        base_metadata: &CoinMetadata<BaseType>,
+        quote_metadata: &CoinMetadata<QuoteType>,
+        is_stable: bool
+    ): LiquidityPool<BaseType, QuoteType> {
+        let pool_name = pool_name(base_metadata, quote_metadata, is_stable);
+        dynamic_object_field::remove(&mut configs.id, pool_name)
+    }
+
+    public fun verify_pool_exists<BaseType, QuoteType>(
         configs: &LiquidityPoolConfigs,
         base_metadata: &CoinMetadata<BaseType>,
         quote_metadata: &CoinMetadata<QuoteType>,

@@ -6,8 +6,9 @@ module full_sail::gauge {
     use sui::coin::{Coin, CoinMetadata};
     use sui::balance::{Balance};
     use sui::clock::{Clock};
+    use sui::dynamic_object_field;
     use sui::event;
-    
+
     public struct Gauge<phantom BaseType, phantom QuoteType> has key, store {
         id: UID,
         rewards_pool: RewardsPool,
@@ -28,6 +29,10 @@ module full_sail::gauge {
 
     public fun liquidity_pool<BaseType, QuoteType>(gauge: &mut Gauge<BaseType, QuoteType>) : &mut LiquidityPool<BaseType, QuoteType> {
         &mut gauge.liquidity_pool
+    }
+
+    public fun liquidity_pool_ref<BaseType, QuoteType>(gauge: &Gauge<BaseType, QuoteType>) : &LiquidityPool<BaseType, QuoteType> {
+        &gauge.liquidity_pool
     }
 
     public fun claim_fees<BaseType, QuoteType>(gauge: &mut Gauge<BaseType, QuoteType>, ctx: &mut TxContext): (Coin<BaseType>, Coin<QuoteType>) {
@@ -61,6 +66,13 @@ module full_sail::gauge {
         transfer::share_object(gauge);
         gauge_id
     }
+
+    /*public fun get_gauge<BaseType, QuoteType>(
+        gauge_config: &mut GaugeConfig,
+        gauge_id: ID
+    ): &mut Gauge<BaseType, QuoteType> {
+        dynamic_object_field::borrow_mut(&mut gauge_config.id, gauge_id)
+    }*/
 
     public fun transfer_gauge<BaseType, QuoteType>(gauge: Gauge<BaseType, QuoteType>, ctx: &mut TxContext) {
         let sender = tx_context::sender(ctx);
@@ -114,10 +126,17 @@ module full_sail::gauge {
         event::emit(UnstakeEvent { lp: sender, amount: amount })
     }
 
-    #[test_only]
-    public fun create_test<BaseType, QuoteType>(pool: LiquidityPool<BaseType, QuoteType>, ctx: &mut TxContext) {
-        create(pool, ctx);
-    }
+    /*#[test_only]
+    public fun create_test<BaseType, QuoteType>(
+        //gauge_config: &mut GaugeConfig,
+        configs: &mut LiquidityPoolConfigs,
+        base_metadata: &CoinMetadata<BaseType>,
+        quote_metadata: &CoinMetadata<QuoteType>,
+        is_stable: bool,
+        ctx: &mut TxContext
+    ) {
+        create(gauge_config, configs, base_metadata, quote_metadata, is_stable, ctx);
+    }*/
 
     #[test_only]
     public fun unstake_lp_test<BaseType, QuoteType>(gauge: &mut Gauge<BaseType, QuoteType>, amount: u64, ctx: &mut TxContext, clock: &Clock) {
@@ -134,37 +153,26 @@ module full_sail::gauge {
         base_metadata: &CoinMetadata<BaseType>,
         quote_metadata: &CoinMetadata<QuoteType>,
         configs: &mut LiquidityPoolConfigs,
+        is_stable: bool,
         ctx: &mut TxContext
-    ): (LiquidityPool<BaseType, QuoteType>, ID) {
+        ): (LiquidityPool<BaseType, QuoteType>, ID) {
         let (pool, id) = liquidity_pool::create_liquidity_pool_test<BaseType, QuoteType>(
-            base_metadata, 
-            quote_metadata, 
-            configs, 
-            false, 
+            base_metadata,
+            quote_metadata,
+            configs,
+            is_stable,
             ctx
         );
-        // let gauge_id = create<BaseType, QuoteType>(pool, ctx);
         (pool, id)
     }
 
     #[test_only]
-    public fun create_gauge_test<BaseType, QuoteType>(
-        base_metadata: &CoinMetadata<BaseType>,
-        quote_metadata: &CoinMetadata<QuoteType>,
-        configs: &mut LiquidityPoolConfigs,
-        is_stable: bool,
-        ctx: &mut TxContext
-    ) {
-        let (pool, id) = liquidity_pool::create_liquidity_pool_test<BaseType, QuoteType>(
-            base_metadata, 
-            quote_metadata, 
-            configs, 
-            false, 
-            ctx
-        );
-        let gauge_id = create<BaseType, QuoteType>(
-            pool, 
-            ctx
-        );
+    public fun create_gauge_test<BaseType, QuoteType>(liquidity_pool: LiquidityPool<BaseType, QuoteType>, ctx: &mut TxContext) {
+        create<BaseType, QuoteType>(liquidity_pool, ctx);
     }
+
+    /*#[test_only]
+    public fun init_for_testing(ctx: &mut TxContext) {
+        initialize(GAUGE {}, ctx)
+    }*/
 }
