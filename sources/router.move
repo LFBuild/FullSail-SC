@@ -209,18 +209,12 @@ module full_sail::router {
 
     public entry fun create_gauge<BaseType, QuoteType>(
         admin_data: &mut AdministrativeData,
-        config: &mut LiquidityPoolConfigs,
-        base_metadata: &CoinMetadata<BaseType>,
-        quote_metadata: &CoinMetadata<QuoteType>,
-        is_stable: bool,
+        pool: LiquidityPool<BaseType, QuoteType>,
         ctx: &mut TxContext
     ) {
         vote_manager::create_gauge_internal<BaseType, QuoteType>(
             admin_data, 
-            config,
-            base_metadata,
-            quote_metadata,
-            is_stable,
+            pool,
             ctx
         );
     }
