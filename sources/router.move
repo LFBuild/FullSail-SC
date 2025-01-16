@@ -77,7 +77,6 @@ module full_sail::router {
     }
 
     public entry fun add_liquidity_and_stake_entry<BaseType, QuoteType> (
-        pool: &mut LiquidityPool<BaseType, QuoteType>,
         gauge: &mut Gauge<BaseType, QuoteType>,
         base_metadata: &CoinMetadata<BaseType>,
         quote_metadata: &CoinMetadata<QuoteType>,
@@ -89,6 +88,7 @@ module full_sail::router {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        let pool = gauge::liquidity_pool(gauge);
         let (optimal_a, optimal_b) = get_optimal_amounts<BaseType, QuoteType>(
             pool,
             base_metadata,
@@ -209,12 +209,18 @@ module full_sail::router {
 
     public entry fun create_gauge<BaseType, QuoteType>(
         admin_data: &mut AdministrativeData,
-        pool: LiquidityPool<BaseType, QuoteType>,
+        configs: &mut LiquidityPoolConfigs,
+        base_metadata: &CoinMetadata<BaseType>,
+        quote_metadata: &CoinMetadata<QuoteType>,
+        is_stable: bool,
         ctx: &mut TxContext
     ) {
         vote_manager::create_gauge_internal<BaseType, QuoteType>(
             admin_data, 
-            pool,
+            configs,
+            base_metadata,
+            quote_metadata,
+            is_stable,
             ctx
         );
     }
@@ -229,7 +235,7 @@ module full_sail::router {
         is_stable: bool,
         ctx: &mut TxContext
     ) {
-        let _pool = liquidity_pool::create<BaseType, QuoteType>(
+        liquidity_pool::create(
             base_metadata, 
             quote_metadata, 
             configs, 
@@ -259,7 +265,7 @@ module full_sail::router {
         is_stable: bool,
         ctx: &mut TxContext
     ) {
-        let _pool = liquidity_pool::create<COIN_WRAPPER, COIN_WRAPPER>(
+        liquidity_pool::create<COIN_WRAPPER, COIN_WRAPPER>(
             coin_wrapper::get_wrapper<BaseType>(store),
             coin_wrapper::get_wrapper<QuoteType>(store),
             configs,
@@ -270,11 +276,11 @@ module full_sail::router {
             liquidity_pool::liquidity_pool(
                 configs,
                 coin_wrapper::get_wrapper<BaseType>(store),
-                coin_wrapper::get_wrapper<BaseType>(store),
+                coin_wrapper::get_wrapper<QuoteType>(store),
                 is_stable
             ),
             coin_wrapper::get_wrapper<BaseType>(store),
-            coin_wrapper::get_wrapper<BaseType>(store),
+            coin_wrapper::get_wrapper<QuoteType>(store),
             admin_cap,
             pool_whitelist,
             store
@@ -781,7 +787,6 @@ module full_sail::router {
     }
 
     public entry fun unstake_and_remove_liquidity_both_coins_entry(
-        pool: &mut LiquidityPool<COIN_WRAPPER, COIN_WRAPPER>,
         gauge: &mut Gauge<COIN_WRAPPER, COIN_WRAPPER>,
         lp_amount: u64,
         min_input_amount: u64,
@@ -790,12 +795,7 @@ module full_sail::router {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        gauge::unstake_lp<COIN_WRAPPER, COIN_WRAPPER>(
-            gauge,
-            lp_amount,
-            ctx,
-            clock
-        );
+        let pool = gauge::liquidity_pool(gauge);
         let (input_coin, output_coin) = remove_liquidity_internal<COIN_WRAPPER, COIN_WRAPPER>(
             pool,
             lp_amount,
@@ -803,59 +803,11 @@ module full_sail::router {
             min_output_amount,
             ctx
         );
-        exact_deposit(recipient, input_coin);
-        exact_deposit(recipient, output_coin);
-    }
-
-    public entry fun unstake_and_remove_liquidity_coin_entry(
-        pool: &mut LiquidityPool<COIN_WRAPPER, COIN_WRAPPER>,
-        gauge: &mut Gauge<COIN_WRAPPER, COIN_WRAPPER>,
-        lp_amount: u64,
-        min_input_amount: u64,
-        min_output_amount: u64,
-        recipient: address,
-        clock: &Clock,
-        ctx: &mut TxContext
-    ) {
         gauge::unstake_lp<COIN_WRAPPER, COIN_WRAPPER>(
             gauge,
             lp_amount,
             ctx,
             clock
-        ); 
-        let (input_coin, output_coin) = remove_liquidity_internal<COIN_WRAPPER, COIN_WRAPPER>(
-            pool,
-            lp_amount,
-            min_input_amount,
-            min_output_amount,
-            ctx
-        );
-        exact_deposit(recipient, input_coin);
-        exact_deposit(recipient, output_coin);
-    }
-
-    public entry fun unstake_and_remove_liquidity_entry(
-        pool: &mut LiquidityPool<COIN_WRAPPER, COIN_WRAPPER>,
-        gauge: &mut Gauge<COIN_WRAPPER, COIN_WRAPPER>,
-        lp_amount: u64,
-        min_input_amount: u64,
-        min_output_amount: u64,
-        recipient: address,
-        clock: &Clock,
-        ctx: &mut TxContext
-    ) {
-        gauge::unstake_lp<COIN_WRAPPER, COIN_WRAPPER>(
-            gauge,
-            lp_amount,
-            ctx,
-            clock
-        ); 
-        let (input_coin, output_coin) = remove_liquidity_internal<COIN_WRAPPER, COIN_WRAPPER>(
-            pool,
-            lp_amount,
-            min_input_amount,
-            min_output_amount,
-            ctx
         );
         exact_deposit(recipient, input_coin);
         exact_deposit(recipient, output_coin);
