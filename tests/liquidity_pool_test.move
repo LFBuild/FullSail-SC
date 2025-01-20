@@ -5,7 +5,7 @@ module full_sail::liquidity_pool_test {
     use std::debug;
     
     // --- modules ---
-    use full_sail::liquidity_pool::{Self, LiquidityPoolConfigs, LiquidityPool, FeesAccounting, WhitelistedLPers};
+    use full_sail::liquidity_pool::{Self, LiquidityPoolConfigs, LiquidityPool, FeesAccounting};
     use full_sail::sui::{Self, SUI};
     use full_sail::usdt::{Self, USDT};
     
@@ -114,12 +114,9 @@ module full_sail::liquidity_pool_test {
             let base_coin = coin::mint_for_testing<SUI>(amount, ts::ctx(scenario));
             let quote_coin = coin::mint_for_testing<USDT>(amount, ts::ctx(scenario));
             
-            let whitelist = ts::take_shared<WhitelistedLPers>(scenario);
-            
             let liquidity_out = liquidity_pool::mint_lp(
                 pool,
                 &mut fees,
-                &whitelist,
                 &quote_metadata,
                 &base_metadata,
                 quote_coin,
@@ -139,7 +136,6 @@ module full_sail::liquidity_pool_test {
             ts::return_immutable(base_metadata);
             ts::return_immutable(quote_metadata);
             ts::return_shared(configs);
-            ts::return_shared(whitelist);
         };
         
         ts::end(scenario_val);
@@ -184,13 +180,10 @@ module full_sail::liquidity_pool_test {
             let base_coin = coin::mint_for_testing<SUI>(100000, ts::ctx(scenario));
             let quote_coin = coin::mint_for_testing<USDT>(100000, ts::ctx(scenario));
             
-            let whitelist = ts::take_shared<WhitelistedLPers>(scenario);
-            
             // mint lp
             liquidity_pool::mint_lp(
                 pool,
                 &mut fees,
-                &whitelist,
                 &quote_metadata,
                 &base_metadata,
                 quote_coin,
@@ -203,7 +196,6 @@ module full_sail::liquidity_pool_test {
             ts::return_immutable(base_metadata);
             ts::return_immutable(quote_metadata);
             ts::return_shared(configs);
-            ts::return_shared(whitelist);
         };
         
         next_tx(scenario, OWNER);
@@ -285,14 +277,13 @@ module full_sail::liquidity_pool_test {
             let base_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
             let quote_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
             let pool = liquidity_pool::liquidity_pool_mut(&mut configs, &quote_metadata, &base_metadata, false);
-            let whitelist = ts::take_shared<WhitelistedLPers>(scenario);
+            
             let base_coin = coin::mint_for_testing<SUI>(100000, ts::ctx(scenario));
             let quote_coin = coin::mint_for_testing<USDT>(100000, ts::ctx(scenario));
             
             liquidity_pool::mint_lp(
                 pool,
                 &mut fees,
-                &whitelist,
                 &quote_metadata,
                 &base_metadata,
                 quote_coin,    
@@ -305,7 +296,6 @@ module full_sail::liquidity_pool_test {
             ts::return_immutable(base_metadata);
             ts::return_immutable(quote_metadata);
             ts::return_shared(configs);
-            ts::return_shared(whitelist);
         };
         
         // some swaps to generate fees
@@ -438,7 +428,6 @@ module full_sail::liquidity_pool_test {
             let mut configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
             let base_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
             let quote_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
-            let whitelist = ts::take_shared<WhitelistedLPers>(scenario);
             let pool = liquidity_pool::liquidity_pool_mut(&mut configs, &quote_metadata, &base_metadata, false);
             
             let initial_base = 100000;
@@ -450,7 +439,6 @@ module full_sail::liquidity_pool_test {
             let liquidity_amount = liquidity_pool::mint_lp(
                 pool,
                 &mut fees,
-                &whitelist,
                 &quote_metadata,
                 &base_metadata,
                 base_coin,
@@ -468,7 +456,6 @@ module full_sail::liquidity_pool_test {
             ts::return_shared(fees);
             ts::return_immutable(base_metadata);
             ts::return_immutable(quote_metadata);
-            ts::return_shared(whitelist);
         };
         
         // Test burn

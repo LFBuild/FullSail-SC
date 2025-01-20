@@ -23,7 +23,6 @@ module full_sail::liquidity_pool {
     const E_ZERO_AMOUNT: u64 = 7;
     const E_ZERO_TOTAL_POWER: u64 = 8;
     const E_SAME_TOKEN: u64 = 9;
-    const E_NOT_WHITELISTED: u64 = 17;
 
     // --- structs ---
     // otw
@@ -66,13 +65,6 @@ module full_sail::liquidity_pool {
         id: UID
     }
 
-    /// Struct to manage whitelisted LPers
-    public struct WhitelistedLPers has key {
-        id: UID,
-        whitelisted_lpers: Table<address, bool>,
-        fee_manager: address
-    }
-
     // --- events ---
     public struct CreatePoolEvent has copy, drop {
         pool: ID,
@@ -98,15 +90,8 @@ module full_sail::liquidity_pool {
             id: object::new(ctx)
         };
 
-        let whitelisted_lpers = WhitelistedLPers {
-            id: object::new(ctx),
-            whitelisted_lpers: table::new(ctx),
-            fee_manager: DEFAULT_ADMIN
-        };
-
         transfer::share_object(configs);
         transfer::transfer(admin_cap, DEFAULT_ADMIN);
-        transfer::share_object(whitelisted_lpers);
 
         let publisher = package::claim(otw, ctx);
         transfer::public_transfer(publisher, tx_context::sender(ctx));
@@ -578,6 +563,7 @@ module full_sail::liquidity_pool {
 
         // Share objects explicitly
         transfer::share_object(fees_accounting);
+
         let pool_name = pool_name(base_metadata, quote_metadata, is_stable);
         dynamic_object_field::add(&mut configs.id, pool_name, liquidity_pool);
 
@@ -706,7 +692,6 @@ module full_sail::liquidity_pool {
     public fun mint_lp<BaseType, QuoteType>(
         pool: &mut LiquidityPool<BaseType, QuoteType>,
         fees_accounting: &mut FeesAccounting,
-        whitelist: &WhitelistedLPers,
         base_metadata: &CoinMetadata<BaseType>,
         quote_metadata: &CoinMetadata<QuoteType>,
         input_base_coin: Coin<BaseType>,
@@ -718,7 +703,6 @@ module full_sail::liquidity_pool {
             return mint_lp(
                 pool,
                 fees_accounting,
-                whitelist,
                 base_metadata,
                 quote_metadata,
                 input_base_coin,
@@ -758,17 +742,6 @@ module full_sail::liquidity_pool {
         // Update fees accounting
         fees_accounting.total_fees_base = fees_accounting.total_fees_base;
         fees_accounting.total_fees_quote = fees_accounting.total_fees_quote;
-
-        let lper = tx_context::sender(ctx);
-        let is_whitelisted = is_whitelisted_lper(whitelist, lper);
-
-        // If whitelisted, store their contribution percentage for fee distribution
-        if (is_whitelisted) {
-            let total_supply = base_reserve + quote_reserve;
-            let contribution_percentage = ((liquidity_out as u128) * 10000) / (total_supply as u128);
-            dynamic_field::add(&mut pool.id, lper, contribution_percentage);
-        };
-
 
         liquidity_out
     }
@@ -1017,65 +990,5 @@ module full_sail::liquidity_pool {
     ): bool {
         let pool_name = pool_name(base_metadata, quote_metadata, is_stable); 
         dynamic_object_field::exists_(&configs.id, pool_name)
-    }
-
-    public entry fun add_whitelisted_lper(
-        whitelist: &mut WhitelistedLPers,
-        lper: address,
-        ctx: &mut TxContext
-    ) {
-        assert!(tx_context::sender(ctx) == whitelist.fee_manager, E_NOT_OWNER);
-        if (!table::contains(&whitelist.whitelisted_lpers, lper)) {
-            table::add(&mut whitelist.whitelisted_lpers, lper, true);
-        };
-    }
-
-    public entry fun remove_whitelisted_lper(
-        whitelist: &mut WhitelistedLPers,
-        lper: address,
-        ctx: &mut TxContext
-    ) {
-        assert!(tx_context::sender(ctx) == whitelist.fee_manager, E_NOT_OWNER);
-        if (table::contains(&whitelist.whitelisted_lpers, lper)) {
-            table::remove(&mut whitelist.whitelisted_lpers, lper);
-        };
-    }
-
-    public fun is_whitelisted_lper(
-        whitelist: &WhitelistedLPers,
-        lper: address
-    ): bool {
-        table::contains(&whitelist.whitelisted_lpers, lper)
-    }
-
-    public fun claim_whitelisted_fees<BaseType, QuoteType>(
-        pool: &mut LiquidityPool<BaseType, QuoteType>,
-        whitelist: &WhitelistedLPers,
-        ctx: &mut TxContext
-    ): (Coin<BaseType>, Coin<QuoteType>) {
-        let lper = tx_context::sender(ctx);
-        assert!(is_whitelisted_lper(whitelist, lper), E_NOT_WHITELISTED);
-        
-        let contribution_percentage = *dynamic_field::borrow<address, u128>(&pool.id, lper);
-        
-        let base_fees = (balance::value(&pool.base_fees) as u128);
-        let quote_fees = (balance::value(&pool.quote_fees) as u128);
-        
-        let claimable_base = ((base_fees * contribution_percentage) / 10000 as u64);
-        let claimable_quote = ((quote_fees * contribution_percentage) / 10000 as u64);
-        
-        let base_coin = if (claimable_base > 0) {
-            coin::from_balance(balance::split(&mut pool.base_fees, claimable_base), ctx)
-        } else {
-            coin::zero<BaseType>(ctx)
-        };
-        
-        let quote_coin = if (claimable_quote > 0) {
-            coin::from_balance(balance::split(&mut pool.quote_fees, claimable_quote), ctx)
-        } else {
-            coin::zero<QuoteType>(ctx)
-        };
-        
-        (base_coin, quote_coin)
     }
 }

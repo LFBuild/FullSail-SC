@@ -1,7 +1,7 @@
 module full_sail::router {
     use sui::coin::{Self, Coin, CoinMetadata};
     use full_sail::coin_wrapper::{Self, WrapperStore, COIN_WRAPPER};
-    use full_sail::liquidity_pool::{Self, LiquidityPool, FeesAccounting, LiquidityPoolConfigs, WhitelistedLPers};
+    use full_sail::liquidity_pool::{Self, LiquidityPool, FeesAccounting, LiquidityPoolConfigs};
     use full_sail::token_whitelist::{TokenWhitelistAdminCap, RewardTokenWhitelistPerPool};
     use full_sail::gauge::{Self, Gauge};
     use full_sail::vote_manager::{Self, AdministrativeData};
@@ -78,7 +78,6 @@ module full_sail::router {
 
     public entry fun add_liquidity_and_stake_entry<BaseType, QuoteType> (
         gauge: &mut Gauge<BaseType, QuoteType>,
-        whitelist: &WhitelistedLPers,
         base_metadata: &CoinMetadata<BaseType>,
         quote_metadata: &CoinMetadata<QuoteType>,
         is_stable: bool,
@@ -107,7 +106,6 @@ module full_sail::router {
         let lp_tokens = liquidity_pool::mint_lp(
             pool, 
             fees_accounting, 
-            whitelist,
             base_metadata,
             quote_metadata,
             new_base_coin,
@@ -128,7 +126,6 @@ module full_sail::router {
         gauge: &mut Gauge<BaseType, QuoteType>,
         quote_metadata: &CoinMetadata<COIN_WRAPPER>,
         is_stable: bool,
-        whitelist: &WhitelistedLPers,
         input_amount: u64,
         output_amount: u64,
         store: &mut WrapperStore,
@@ -154,7 +151,6 @@ module full_sail::router {
             liquidity_pool::mint_lp(
                 pool, 
                 fees_accounting, 
-                whitelist,
                 coin_wrapper::get_wrapper<BaseType>(store),
                 quote_metadata,
                 base_coin,
@@ -175,7 +171,6 @@ module full_sail::router {
         output_amount: u64,
         store: &mut WrapperStore,
         fees_accounting: &mut FeesAccounting,
-        whitelist: &WhitelistedLPers,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
@@ -200,7 +195,6 @@ module full_sail::router {
             liquidity_pool::mint_lp(
                 pool, 
                 fees_accounting, 
-                whitelist,
                 base_metadata1,
                 quote_metadata1,
                 base_coin,
