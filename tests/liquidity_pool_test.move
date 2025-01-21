@@ -5,7 +5,7 @@ module full_sail::liquidity_pool_test {
     use std::debug;
     
     // --- modules ---
-    use full_sail::liquidity_pool::{Self, LiquidityPoolConfigs, LiquidityPool, FeesAccounting};
+    use full_sail::liquidity_pool::{Self, LiquidityPoolConfigs, LiquidityPool, FeesAccounting, WhitelistedLPers};
     use full_sail::sui::{Self, SUI};
     use full_sail::usdt::{Self, USDT};
     
@@ -57,7 +57,7 @@ module full_sail::liquidity_pool_test {
         let base_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
         let quote_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
 
-        let pool = liquidity_pool::liquidity_pool(&configs, &quote_metadata, &base_metadata, false);
+        let pool = liquidity_pool::liquidity_pool(&configs, &base_metadata, &quote_metadata, false);
         assert!(!liquidity_pool::is_stable(pool), 2);
         let (base_reserve, quote_reserve) = liquidity_pool::pool_reserves(pool);
         assert!(base_reserve == 0, 3);
@@ -108,19 +108,22 @@ module full_sail::liquidity_pool_test {
             let base_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
             let quote_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
             let mut configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
-            let pool = liquidity_pool::liquidity_pool_mut(&mut configs, &quote_metadata, &base_metadata, false);
+            let pool = liquidity_pool::liquidity_pool_mut(&mut configs, &base_metadata, &quote_metadata, false);
             
             let amount = 100000;
             let base_coin = coin::mint_for_testing<SUI>(amount, ts::ctx(scenario));
             let quote_coin = coin::mint_for_testing<USDT>(amount, ts::ctx(scenario));
             
+            let whitelist = ts::take_shared<WhitelistedLPers>(scenario);
+            
             let liquidity_out = liquidity_pool::mint_lp(
                 pool,
                 &mut fees,
-                &quote_metadata,
+                &whitelist,
                 &base_metadata,
-                quote_coin,
+                &quote_metadata,
                 base_coin,    
+                quote_coin,
                 false,
                 ts::ctx(scenario)
             );
@@ -136,6 +139,7 @@ module full_sail::liquidity_pool_test {
             ts::return_immutable(base_metadata);
             ts::return_immutable(quote_metadata);
             ts::return_shared(configs);
+            ts::return_shared(whitelist);
         };
         
         ts::end(scenario_val);
@@ -174,20 +178,23 @@ module full_sail::liquidity_pool_test {
             let base_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
             let quote_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
             let mut configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
-            let pool = liquidity_pool::liquidity_pool_mut(&mut configs, &quote_metadata, &base_metadata, false);
+            let pool = liquidity_pool::liquidity_pool_mut(&mut configs, &base_metadata, &quote_metadata, false);
             
             // add 100k of each token as initial liquidity
             let base_coin = coin::mint_for_testing<SUI>(100000, ts::ctx(scenario));
             let quote_coin = coin::mint_for_testing<USDT>(100000, ts::ctx(scenario));
             
+            let whitelist = ts::take_shared<WhitelistedLPers>(scenario);
+            
             // mint lp
             liquidity_pool::mint_lp(
                 pool,
                 &mut fees,
-                &quote_metadata,
+                &whitelist,
                 &base_metadata,
-                quote_coin,
-                base_coin,    
+                &quote_metadata,
+                base_coin, 
+                quote_coin,   
                 false,
                 ts::ctx(scenario)
             );
@@ -196,6 +203,7 @@ module full_sail::liquidity_pool_test {
             ts::return_immutable(base_metadata);
             ts::return_immutable(quote_metadata);
             ts::return_shared(configs);
+            ts::return_shared(whitelist);
         };
         
         next_tx(scenario, OWNER);
@@ -205,25 +213,25 @@ module full_sail::liquidity_pool_test {
             let base_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
             let quote_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
             
-            let pool = liquidity_pool::liquidity_pool_mut(&mut configs, &quote_metadata, &base_metadata, false);
+            let pool = liquidity_pool::liquidity_pool_mut(&mut configs, &base_metadata, &quote_metadata, false);
             let (initial_base_reserve, initial_quote_reserve) = liquidity_pool::pool_reserves(pool);
             let (initial_fee_base, _initial_fee_quote) = liquidity_pool::gauge_claimable_fees(pool);
             
-            // 10k USDT -> SUI swap
+            // 10k SUI -> USDT swap
             let amount_in = 10000;
-            let coin_in = coin::mint_for_testing<USDT>(amount_in, ts::ctx(scenario));
+            let coin_in = coin::mint_for_testing<SUI>(amount_in, ts::ctx(scenario));
             
             let coin_out = liquidity_pool::swap(
                 &mut configs,
                 &mut fees,
-                &quote_metadata,
                 &base_metadata,
+                &quote_metadata,
                 false,
                 coin_in,
                 ts::ctx(scenario)
             );
 
-            let pool = liquidity_pool::liquidity_pool_mut(&mut configs, &quote_metadata, &base_metadata, false);
+            let pool = liquidity_pool::liquidity_pool_mut(&mut configs, &base_metadata, &quote_metadata, false);
             let (final_base_reserve, final_quote_reserve) = liquidity_pool::pool_reserves(pool);
             let (final_fee_base, _final_fee_quote) = liquidity_pool::gauge_claimable_fees(pool);
 
@@ -276,18 +284,19 @@ module full_sail::liquidity_pool_test {
             let mut configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
             let base_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
             let quote_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
-            let pool = liquidity_pool::liquidity_pool_mut(&mut configs, &quote_metadata, &base_metadata, false);
-            
+            let pool = liquidity_pool::liquidity_pool_mut(&mut configs, &base_metadata, &quote_metadata, false);
+            let whitelist = ts::take_shared<WhitelistedLPers>(scenario);
             let base_coin = coin::mint_for_testing<SUI>(100000, ts::ctx(scenario));
             let quote_coin = coin::mint_for_testing<USDT>(100000, ts::ctx(scenario));
             
             liquidity_pool::mint_lp(
                 pool,
                 &mut fees,
-                &quote_metadata,
+                &whitelist,
                 &base_metadata,
-                quote_coin,    
+                &quote_metadata,    
                 base_coin,
+                quote_coin,
                 false,
                 ts::ctx(scenario)
             );
@@ -296,6 +305,7 @@ module full_sail::liquidity_pool_test {
             ts::return_immutable(base_metadata);
             ts::return_immutable(quote_metadata);
             ts::return_shared(configs);
+            ts::return_shared(whitelist);
         };
         
         // some swaps to generate fees
@@ -303,11 +313,11 @@ module full_sail::liquidity_pool_test {
         {
             let mut configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
             let mut fees = ts::take_shared<FeesAccounting>(scenario);
-            let base_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
-            let quote_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
+            let base_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
+            let quote_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
             
             // 10k USDT -> SUI swap
-            let coin_in = coin::mint_for_testing<USDT>(10000, ts::ctx(scenario));
+            let coin_in = coin::mint_for_testing<SUI>(10000, ts::ctx(scenario));
             let coin_out = liquidity_pool::swap(
                 //pool,
                 &mut configs,
@@ -338,7 +348,7 @@ module full_sail::liquidity_pool_test {
             let mut configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
             let base_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
             let quote_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
-            let pool = liquidity_pool::liquidity_pool_mut(&mut configs, &quote_metadata, &base_metadata, false);
+            let pool = liquidity_pool::liquidity_pool_mut(&mut configs, &base_metadata, &quote_metadata, false);
             
             let (initial_base_fees, initial_quote_fees) = liquidity_pool::gauge_claimable_fees(pool);
             assert!(initial_base_fees == 10, 2); // 1% of 10000 USDT
@@ -374,7 +384,7 @@ module full_sail::liquidity_pool_test {
             let mut configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
             let base_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
             let quote_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
-            let pool = liquidity_pool::liquidity_pool_mut(&mut configs, &quote_metadata, &base_metadata, false);
+            let pool = liquidity_pool::liquidity_pool_mut(&mut configs, &base_metadata, &quote_metadata, false);
             
             let (base_fee_coin, quote_fee_coin) = liquidity_pool::claim_fees(
                 pool,
@@ -406,10 +416,10 @@ module full_sail::liquidity_pool_test {
         next_tx(scenario, OWNER);
         {
             let mut configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
-            let base_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
-            let quote_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
+            let base_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
+            let quote_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
             
-            liquidity_pool::create<USDT, SUI>(
+            liquidity_pool::create<SUI, USDT>(
                 &base_metadata,
                 &quote_metadata,
                 &mut configs,
@@ -428,21 +438,23 @@ module full_sail::liquidity_pool_test {
             let mut configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
             let base_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
             let quote_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
-            let pool = liquidity_pool::liquidity_pool_mut(&mut configs, &quote_metadata, &base_metadata, false);
+            let whitelist = ts::take_shared<WhitelistedLPers>(scenario);
+            let pool = liquidity_pool::liquidity_pool_mut(&mut configs, &base_metadata, &quote_metadata, false);
             
             let initial_base = 100000;
             let initial_quote = 100000;
             
-            let base_coin = coin::mint_for_testing<USDT>(initial_base, ts::ctx(scenario));
-            let quote_coin = coin::mint_for_testing<SUI>(initial_quote, ts::ctx(scenario));
+            let base_coin = coin::mint_for_testing<SUI>(initial_base, ts::ctx(scenario));
+            let quote_coin = coin::mint_for_testing<USDT>(initial_quote, ts::ctx(scenario));
             
             let liquidity_amount = liquidity_pool::mint_lp(
                 pool,
                 &mut fees,
-                &quote_metadata,
+                &whitelist,
                 &base_metadata,
-                base_coin,
-                quote_coin,    
+                &quote_metadata,  
+                base_coin,  
+                quote_coin,
                 false,
                 ts::ctx(scenario)
             );
@@ -456,6 +468,7 @@ module full_sail::liquidity_pool_test {
             ts::return_shared(fees);
             ts::return_immutable(base_metadata);
             ts::return_immutable(quote_metadata);
+            ts::return_shared(whitelist);
         };
         
         // Test burn
@@ -464,7 +477,7 @@ module full_sail::liquidity_pool_test {
             let mut configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
             let base_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
             let quote_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
-            let pool = liquidity_pool::liquidity_pool_mut(&mut configs, &quote_metadata, &base_metadata, false);
+            let pool = liquidity_pool::liquidity_pool_mut(&mut configs, &base_metadata, &quote_metadata, false);
             
             let burn_amount = 50000; // burn about half the liquidity
             
