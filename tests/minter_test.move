@@ -31,9 +31,13 @@ module full_sail::minter_test {
         let mut manager = ts::take_shared<FullSailManager>(scenario1);
         let clock = clock::create_for_testing(ts::ctx(scenario1));
         minter::init_for_testing(ts::ctx(scenario1), &clock);
-        let ve_token = minter::initial_mint(&mut manager, &mut collection, &clock, ts::ctx(scenario1));
+        
+        next_tx(scenario1, OWNER);
+        let admin_cap = ts::take_from_sender<MinterAdminCap>(scenario1);
+        let ve_token = minter::initial_mint(&admin_cap, &mut manager, &mut collection, &clock, ts::ctx(scenario1));
         ts::return_shared(collection);
         ts::return_shared(manager);
+        ts::return_to_sender(scenario1, admin_cap);
         clock::destroy_for_testing(clock);
         ts::end(scenario_val1);
         ve_token

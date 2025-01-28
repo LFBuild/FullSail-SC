@@ -50,7 +50,7 @@ module full_sail::minter {
     }
 
     #[lint_allow(self_transfer)]
-    public fun initial_mint(manager: &mut FullSailManager, collection: &mut VeFullSailCollection, clock: &Clock, ctx: &mut TxContext): VeFullSailToken<FULLSAIL_TOKEN> {
+    public fun initial_mint(_admin_cap: &MinterAdminCap, manager: &mut FullSailManager, collection: &mut VeFullSailCollection, clock: &Clock, ctx: &mut TxContext): VeFullSailToken<FULLSAIL_TOKEN> {
         let treasury_cap = fullsail_token::get_treasury_cap(manager);
         let recipient = tx_context::sender(ctx);
         let mut initial_mint_amount = fullsail_token::mint(
