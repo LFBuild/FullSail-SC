@@ -677,6 +677,7 @@ module full_sail::router_test {
         next_tx(scenario, OWNER);
         
         router::create_pool(
+            &mut admin_data,
             &quote_metadata,
             &base_metadata,
             &mut configs,
@@ -739,6 +740,7 @@ module full_sail::router_test {
         next_tx(scenario, OWNER);
         
         router::create_pool_both_coins<USDT, SUI>(
+            &mut admin_data,
             &mut configs,
             &admin_cap,
             &mut pool_whitelist,
@@ -799,6 +801,7 @@ module full_sail::router_test {
         next_tx(scenario, OWNER);
         
         router::create_pool_coin<SUI>(
+            &mut admin_data,
             &mut configs,
             quote_metadata,
             &admin_cap,

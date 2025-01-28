@@ -232,6 +232,7 @@ module full_sail::router {
     }
 
     public entry fun create_pool<BaseType, QuoteType>(
+        admin_data: &mut AdministrativeData,
         base_metadata: &CoinMetadata<BaseType>,
         quote_metadata: &CoinMetadata<QuoteType>,
         configs: &mut LiquidityPoolConfigs,
@@ -261,9 +262,18 @@ module full_sail::router {
             pool_whitelist,
             store
         );
+        vote_manager::create_gauge_internal<BaseType, QuoteType>(
+            admin_data, 
+            configs,
+            base_metadata,
+            quote_metadata,
+            is_stable,
+            ctx
+        );
     }
 
     public entry fun create_pool_both_coins<BaseType, QuoteType>(
+        admin_data: &mut AdministrativeData,
         configs: &mut LiquidityPoolConfigs,
         admin_cap: &TokenWhitelistAdminCap,
         pool_whitelist: &mut RewardTokenWhitelistPerPool,
@@ -291,9 +301,18 @@ module full_sail::router {
             pool_whitelist,
             store
         );
+        vote_manager::create_gauge_internal(
+            admin_data, 
+            configs,
+            coin_wrapper::get_wrapper<BaseType>(store),
+            coin_wrapper::get_wrapper<QuoteType>(store),
+            is_stable,
+            ctx
+        );
     }
 
     public entry fun create_pool_coin<BaseType>(
+        admin_data: &mut AdministrativeData,
         configs: &mut LiquidityPoolConfigs,
         quote_metadata: &CoinMetadata<COIN_WRAPPER>,
         admin_cap: &TokenWhitelistAdminCap,
@@ -321,6 +340,14 @@ module full_sail::router {
             admin_cap,
             pool_whitelist,
             store
+        );
+        vote_manager::create_gauge_internal(
+            admin_data, 
+            configs,
+            coin_wrapper::get_wrapper<BaseType>(store),
+            quote_metadata,
+            is_stable,
+            ctx
         );
     }
 
