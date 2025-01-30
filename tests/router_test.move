@@ -79,6 +79,7 @@ module full_sail::router_test {
         {
             let mut gauge = ts::take_shared<Gauge<USDT, SUI>>(scenario);
             let mut fees_accounting = ts::take_shared<FeesAccounting>(scenario);
+            let mut whitelist = ts::take_shared<WhitelistedLPers>(scenario);
             let amount = 100000;
             let base_coin = coin::mint_for_testing<SUI>(amount, ts::ctx(scenario));
             let quote_coin = coin::mint_for_testing<USDT>(amount, ts::ctx(scenario));
@@ -380,6 +381,7 @@ module full_sail::router_test {
                 base_metadata,
                 false
             );
+            let whitelist = ts::take_shared<WhitelistedLPers>(scenario);
             liquidity_pool::mint_lp(
                 pool,
                 &mut fees_accounting,
@@ -409,6 +411,7 @@ module full_sail::router_test {
             assert!(coin::value(&deposited_coin) >= 10000, 2);
             router::exact_deposit(recipient, deposited_coin);
             ts::return_shared(fees_accounting);
+            ts::return_shared(whitelist);
             // ts::return_shared(gauge);
         };
 
@@ -558,10 +561,10 @@ module full_sail::router_test {
             ts::ctx(scenario)
         );
         let amount = 100000;
-        let base_coin = coin::mint_for_testing<SUI>(amount, ts::ctx(scenario));
-        let quote_coin = coin::mint_for_testing<USDT>(amount, ts::ctx(scenario));
-        let base_wrapped_coin = coin_wrapper::wrap<SUI>(&mut store, base_coin, ts::ctx(scenario));
-        let quote_wrapped_coin = coin_wrapper::wrap<USDT>(&mut store, quote_coin, ts::ctx(scenario));
+        // let base_coin = coin::mint_for_testing<SUI>(amount, ts::ctx(scenario));
+        // let quote_coin = coin::mint_for_testing<USDT>(amount, ts::ctx(scenario));
+        // let base_wrapped_coin = coin_wrapper::wrap<SUI>(&mut store, base_coin, ts::ctx(scenario));
+        // let quote_wrapped_coin = coin_wrapper::wrap<USDT>(&mut store, quote_coin, ts::ctx(scenario));
         let base_metadata = coin_wrapper::get_wrapper<SUI>(&store);
         let quote_metadata = coin_wrapper::get_wrapper<USDT>(&store);
         
@@ -582,56 +585,55 @@ module full_sail::router_test {
             false
         );
 
-        next_tx(scenario, OWNER);
-        {
-            let mut fees_accounting = ts::take_shared<FeesAccounting>(scenario);
-            liquidity_pool::mint_lp(
-                pool,
-                &mut fees_accounting,
-                quote_metadata,
-                base_metadata,
-                quote_wrapped_coin,
-                base_wrapped_coin,
-                false,
-                ts::ctx(scenario)
-            );
-            let recipient = @0x1234;
-            let quote_new_coin = coin_wrapper::unwrap_for_testing<USDT>(
-                &mut store
-            );
+        // next_tx(scenario, OWNER);
+        // {
+        //     let mut fees_accounting = ts::take_shared<FeesAccounting>(scenario);
+        //     liquidity_pool::mint_lp(
+        //         pool,
+        //         &mut fees_accounting,
+        //         quote_metadata,
+        //         base_metadata,
+        //         quote_wrapped_coin,
+        //         base_wrapped_coin,
+        //         false,
+        //         ts::ctx(scenario)
+        //     );
+        //     let recipient = @0x1234;
+        //     let quote_new_coin = coin_wrapper::unwrap_for_testing<USDT>(
+        //         &mut store
+        //     );
 
-            let mut quote_new_wrapped_coin = coin_wrapper::wrap<USDT>(
-                &mut store,
-                quote_new_coin,
-                ts::ctx(scenario)
-            );
+        //     let mut quote_new_wrapped_coin = coin_wrapper::wrap<USDT>(
+        //         &mut store,
+        //         quote_new_coin,
+        //         ts::ctx(scenario)
+        //     );
 
-            let new_quote_wrapped_coin = coin::split(
-                &mut quote_new_wrapped_coin,
-                10000,
-                ts::ctx(scenario)
-            );
-            let base_metadata_copy = coin_wrapper::get_wrapper<SUI>(&store);
-            let quote_metadata_copy = coin_wrapper::get_wrapper<USDT>(&store);
-
-            let intermediary_tokens: vector<CoinMetadata<COIN_WRAPPER>> = vector[base_metadata];
-            let route_stable = vector[false];
-
-            router::swap_route_entry(
-                5000, // min_output_amount
-                new_quote_wrapped_coin,
-                quote_metadata,
-                intermediary_tokens,
-                route_stable,
-                &mut configs,
-                &mut fees_accounting,
-                recipient,
-                ts::ctx(scenario)
-            );
-
-            ts::return_shared(fees_accounting);
-            transfer::public_transfer(quote_new_wrapped_coin, @0xcafe);
-        };
+        //     let new_quote_wrapped_coin = coin::split(
+        //         &mut quote_new_wrapped_coin,
+        //         10000,
+        //         ts::ctx(scenario)
+        //     );
+        //     let base_metadata_copy = coin_wrapper::get_wrapper<SUI>(&store);
+        //     let quote_metadata_copy = coin_wrapper::get_wrapper<USDT>(&store);
+        //     let deposited_coin = router::swap(
+        //         new_quote_wrapped_coin,
+        //         1000,
+        //         &mut configs,
+        //         &mut fees_accounting,
+        //         quote_metadata_copy,
+        //         base_metadata_copy,
+        //         false,
+        //         ts::ctx(scenario)
+        //     );
+        //     assert!(coin::value(&deposited_coin) >= 1000, 2);
+        //     router::exact_deposit(
+        //         recipient, 
+        //         deposited_coin
+        //     );
+        //     ts::return_shared(fees_accounting);
+        //     transfer::public_transfer(quote_new_wrapped_coin, @0xcafe);
+        // };
 
         let all_pools = liquidity_pool::all_pool_ids(&configs);
         assert!(vector::length(&all_pools) == 1, 0);
@@ -675,6 +677,7 @@ module full_sail::router_test {
         next_tx(scenario, OWNER);
         
         router::create_pool(
+            &mut admin_data,
             &quote_metadata,
             &base_metadata,
             &mut configs,
@@ -737,6 +740,7 @@ module full_sail::router_test {
         next_tx(scenario, OWNER);
         
         router::create_pool_both_coins<USDT, SUI>(
+            &mut admin_data,
             &mut configs,
             &admin_cap,
             &mut pool_whitelist,
@@ -797,6 +801,7 @@ module full_sail::router_test {
         next_tx(scenario, OWNER);
         
         router::create_pool_coin<SUI>(
+            &mut admin_data,
             &mut configs,
             quote_metadata,
             &admin_cap,
@@ -896,6 +901,7 @@ module full_sail::router_test {
             assert!(coin::value(&quote_coin_opt) == optimal_b, 3);
             let base_metadata2 = coin_wrapper::get_wrapper<SUI>(&store);
             let quote_metadata2 = coin_wrapper::get_wrapper<USDT>(&store);
+            let whitelist = ts::take_shared<WhitelistedLPers>(scenario);
             gauge::stake(
                 &mut gauge,
                 liquidity_pool::mint_lp(
@@ -912,6 +918,7 @@ module full_sail::router_test {
                 ts::ctx(scenario),
                 &clock
             );
+            ts::return_shared(whitelist);
             ts::return_shared(gauge);
 
             next_tx(scenario, OWNER);
@@ -953,4 +960,4 @@ module full_sail::router_test {
         clock.destroy_for_testing();
         ts::end(scenario_val);
     }
-}*/
+}

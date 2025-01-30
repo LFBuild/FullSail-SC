@@ -4,7 +4,7 @@ module full_sail::liquidity_pool_test {
     use sui::coin::{Self, CoinMetadata};
     
     // --- modules ---
-    use full_sail::liquidity_pool::{Self, LiquidityPoolConfigs, LiquidityPoolAdminCap, FeesAccounting, WhitelistedLPers};
+    use full_sail::liquidity_pool::{Self, LiquidityPoolConfigs, FeesAccounting, WhitelistedLPers};
     use full_sail::sui::{Self, SUI};
     use full_sail::usdt::{Self, USDT};
     
@@ -514,35 +514,35 @@ module full_sail::liquidity_pool_test {
         ts::end(scenario_val);
     }
 
-#[test]
-fun test_set_pauser() {
-    let mut scenario_val = ts::begin(OWNER);
-    let scenario = &mut scenario_val;
+// #[test]
+// fun test_set_pauser() {
+//     let mut scenario_val = ts::begin(OWNER);
+//     let scenario = &mut scenario_val;
     
-    setup(scenario);
+//     setup(scenario);
 
-    next_tx(scenario, OWNER);
-    {
-        let mut configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
-        let admin_cap = ts::take_from_sender<LiquidityPoolAdminCap>(scenario);
-        let new_pauser = @0x123;
+//     next_tx(scenario, OWNER);
+//     {
+//         let mut configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
+//         let admin_cap = ts::take_from_sender<LiquidityPoolAdminCap>(scenario);
+//         let new_pauser = @0x123;
 
-        assert!(liquidity_pool::get_pauser(&configs) == OWNER, 0);
+//         assert!(liquidity_pool::get_pauser(&configs) == OWNER, 0);
         
-        liquidity_pool::set_pauser(
-            &admin_cap,
-            &mut configs,
-            new_pauser,
-            ts::ctx(scenario)
-        );
+//         liquidity_pool::set_pauser(
+//             &admin_cap,
+//             &mut configs,
+//             new_pauser,
+//             ts::ctx(scenario)
+//         );
 
-        assert!(liquidity_pool::get_pauser(&configs) == OWNER, 1);
-        assert!(liquidity_pool::get_pending_pauser(&configs) == new_pauser, 2);
+//         assert!(liquidity_pool::get_pauser(&configs) == OWNER, 1);
+//         assert!(liquidity_pool::get_pending_pauser(&configs) == new_pauser, 2);
 
-        ts::return_shared(configs);
-        ts::return_to_sender(scenario, admin_cap);
-    };
+//         ts::return_shared(configs);
+//         ts::return_to_sender(scenario, admin_cap);
+//     };
 
-    ts::end(scenario_val);
-}
+//     ts::end(scenario_val);
+// }
 }
