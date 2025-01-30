@@ -28,7 +28,7 @@ module full_sail::rewards_pool_continuous {
     }
 
     #[allow(unused_variable)]
-    public fun add_rewards(pool: &mut RewardsPool, balance: Balance<FULLSAIL_TOKEN>, clock: &Clock) {
+    public(package) fun add_rewards(pool: &mut RewardsPool, balance: Balance<FULLSAIL_TOKEN>, clock: &Clock) {
         // Update the rewards for the pool
         update_reward(@0x0, pool, clock);
         
@@ -56,7 +56,7 @@ module full_sail::rewards_pool_continuous {
         pool_ref.last_update_time = current_time;
     }
 
-    public fun claim_rewards(user_address: address, pool: &mut RewardsPool, clock: &Clock) : Balance<FULLSAIL_TOKEN> {
+    public(package) fun claim_rewards(user_address: address, pool: &mut RewardsPool, clock: &Clock) : Balance<FULLSAIL_TOKEN> {
         update_reward(user_address, pool, clock);
         let pool_ref = pool;
         let default_reward_value = 0;
@@ -93,7 +93,7 @@ module full_sail::rewards_pool_continuous {
         claimable_internal(user_address, pool, clock)
     }
 
-    public fun create(duration: u64, ctx: &mut TxContext): RewardsPool {
+    public(package) fun create(duration: u64, ctx: &mut TxContext): RewardsPool {
         assert!(duration > 0, E_NOT_OWNER);
         let new_rewards_pool = RewardsPool {
             id: object::new(ctx),
@@ -149,7 +149,7 @@ module full_sail::rewards_pool_continuous {
     }
 
 
-    public fun stake(user_address: address, pool: &mut RewardsPool, stake_amount: u64, clock: &Clock) {
+    public(package) fun stake(user_address: address, pool: &mut RewardsPool, stake_amount: u64, clock: &Clock) {
         update_reward(user_address, pool, clock);
         let pool_ref = pool;
         let user_stake_amount = table::borrow_mut<address, u64>(&mut pool_ref.stakes, user_address);
@@ -169,7 +169,7 @@ module full_sail::rewards_pool_continuous {
         balance::value(&pool.rewards_balance)
     }
 
-    public fun unstake(user_address: address, pool: &mut RewardsPool, stake_amount: u64, clock: &Clock) {
+    public(package) fun unstake(user_address: address, pool: &mut RewardsPool, stake_amount: u64, clock: &Clock) {
         update_reward(user_address, pool, clock);
         let pool_ref = pool;
         assert!(table::contains<address, u64>(&pool_ref.stakes, user_address), E_MIN_LOCK_TIME);

@@ -4,6 +4,7 @@ module full_sail::router_test {
     use sui::test_utils;
     use sui::coin::{Self, CoinMetadata};
     use sui::clock;
+    use std::debug;
     use full_sail::router;
     use full_sail::gauge::{Self, Gauge};
     use full_sail::liquidity_pool::{Self, LiquidityPoolConfigs, FeesAccounting};
@@ -43,7 +44,7 @@ module full_sail::router_test {
         let mut configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
         let mut store = ts::take_shared<WrapperStore>(scenario);
         let cap = ts::take_from_sender<WrapperStoreCap>(scenario);
-        let admin_data = ts::take_shared<AdministrativeData>(scenario);
+        let mut admin_data = ts::take_shared<AdministrativeData>(scenario);
         coin_wrapper::register_coin_for_testing<USDT>(
             &cap,
             &mut store,
@@ -54,38 +55,42 @@ module full_sail::router_test {
             &mut store,
             ts::ctx(scenario)
         );
-        let (mut pool, pool_id) = gauge::create_gauge_pool_test<USDT, SUI>(
-            &quote_metadata, 
-            &base_metadata, 
-            &mut configs, 
-            false, 
+
+        liquidity_pool::create<USDT, SUI>(
+            &quote_metadata,
+            &base_metadata,
+            &mut configs,
+            false,
             ts::ctx(scenario)
         );
-        gauge::create_gauge_test<USDT, SUI>(
-            &quote_metadata, 
-            &base_metadata, 
-            &mut configs, 
+
+        next_tx(scenario, OWNER);
+
+        vote_manager::create_gauge<USDT, SUI>(
+            &mut admin_data,
+            &mut configs,
+            &quote_metadata,
+            &base_metadata,
             false,
             ts::ctx(scenario)
         );
 
         next_tx(scenario, OWNER);
         {
-            let mut fees_accounting = ts::take_shared<FeesAccounting>(scenario);
             let mut gauge = ts::take_shared<Gauge<USDT, SUI>>(scenario);
+            let mut fees_accounting = ts::take_shared<FeesAccounting>(scenario);
             let amount = 100000;
             let base_coin = coin::mint_for_testing<SUI>(amount, ts::ctx(scenario));
             let quote_coin = coin::mint_for_testing<USDT>(amount, ts::ctx(scenario));
             let base_wrapped_coin = coin_wrapper::wrap<SUI>(&mut store, base_coin, ts::ctx(scenario));
             let quote_wrapped_coin = coin_wrapper::wrap<USDT>(&mut store, quote_coin, ts::ctx(scenario));
             router::add_liquidity_and_stake_entry<USDT, SUI>(
-                &mut pool,
                 &mut gauge,
                 &quote_metadata,
                 &base_metadata,
                 false,
-                100000,
-                100000,
+                amount,
+                amount,
                 &mut store,
                 &mut fees_accounting,
                 &clock,
@@ -99,8 +104,7 @@ module full_sail::router_test {
         };
 
         let all_pools = liquidity_pool::all_pool_ids(&configs);
-        assert!(vector::length(&all_pools) == 2, 0);
-        assert!(vector::contains(&all_pools, &pool_id), 1);
+        assert!(vector::length(&all_pools) == 1, 0);
 
         ts::return_immutable(base_metadata);
         ts::return_immutable(quote_metadata);
@@ -109,7 +113,6 @@ module full_sail::router_test {
         ts::return_to_sender(scenario, cap);
         ts::return_shared(admin_data);
         clock.destroy_for_testing();
-        test_utils::destroy(pool);
         ts::end(scenario_val);
     }
 
@@ -124,7 +127,7 @@ module full_sail::router_test {
         let mut configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
         let mut store = ts::take_shared<WrapperStore>(scenario);
         let cap = ts::take_from_sender<WrapperStoreCap>(scenario);
-        let admin_data = ts::take_shared<AdministrativeData>(scenario);
+        let mut admin_data = ts::take_shared<AdministrativeData>(scenario);
         coin_wrapper::register_coin_for_testing<USDT>(
             &cap,
             &mut store,
@@ -137,39 +140,42 @@ module full_sail::router_test {
         );
         let base_metadata = coin_wrapper::get_wrapper<SUI>(&store);
         let quote_metadata = coin_wrapper::get_wrapper<USDT>(&store);
-        next_tx(scenario, OWNER);
-        
-        let (mut pool, pool_id) = gauge::create_gauge_pool_test<COIN_WRAPPER, COIN_WRAPPER>(
-            quote_metadata, 
-            base_metadata, 
-            &mut configs, 
-            false, 
+
+        liquidity_pool::create<COIN_WRAPPER, COIN_WRAPPER>(
+            quote_metadata,
+            base_metadata,
+            &mut configs,
+            false,
             ts::ctx(scenario)
         );
-        gauge::create_gauge_test<COIN_WRAPPER, COIN_WRAPPER>(
-            quote_metadata, 
-            base_metadata, 
-            &mut configs, 
+
+        next_tx(scenario, OWNER);
+        vote_manager::create_gauge<COIN_WRAPPER, COIN_WRAPPER>(
+            &mut admin_data,
+            &mut configs,
+            quote_metadata,
+            base_metadata,
             false,
             ts::ctx(scenario)
         );
 
         next_tx(scenario, OWNER);
         {
-            let mut fees_accounting = ts::take_shared<FeesAccounting>(scenario);
             let mut gauge = ts::take_shared<Gauge<COIN_WRAPPER, COIN_WRAPPER>>(scenario);
+            let mut fees_accounting = ts::take_shared<FeesAccounting>(scenario);
             let amount = 100000;
             let mut base_coin = coin::mint_for_testing<SUI>(amount, ts::ctx(scenario));
             let mut quote_coin = coin::mint_for_testing<USDT>(amount, ts::ctx(scenario));
             
+            let pool = gauge::liquidity_pool(&mut gauge);
             let base_metadata1 = coin_wrapper::get_wrapper<SUI>(&store);
             let quote_metadata1 = coin_wrapper::get_wrapper<USDT>(&store);
             let (optimal_a, optimal_b) = router::get_optimal_amounts_for_testing<COIN_WRAPPER, COIN_WRAPPER>(
-                &mut pool,
+                pool,
                 quote_metadata1,
                 base_metadata1,
-                100000,
-                100000
+                amount,
+                amount
             );
 
             let new_base_coin = coin::split(&mut base_coin, optimal_a, ts::ctx(scenario));
@@ -183,7 +189,7 @@ module full_sail::router_test {
             gauge::stake(
                 &mut gauge,
                 liquidity_pool::mint_lp(
-                    &mut pool, 
+                    pool, 
                     &mut fees_accounting, 
                     quote_metadata2,
                     base_metadata2,
@@ -203,15 +209,13 @@ module full_sail::router_test {
         };
 
         let all_pools = liquidity_pool::all_pool_ids(&configs);
-        assert!(vector::length(&all_pools) == 2, 4);
-        assert!(vector::contains(&all_pools, &pool_id), 5);
+        assert!(vector::length(&all_pools) == 1, 0);
 
         ts::return_shared(configs);
         ts::return_shared(store);
         ts::return_to_sender(scenario, cap);
         ts::return_shared(admin_data);
         clock.destroy_for_testing();
-        test_utils::destroy(pool);
         ts::end(scenario_val);
     }
 
@@ -226,7 +230,7 @@ module full_sail::router_test {
         let mut configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
         let mut store = ts::take_shared<WrapperStore>(scenario);
         let cap = ts::take_from_sender<WrapperStoreCap>(scenario);
-        let admin_data = ts::take_shared<AdministrativeData>(scenario);
+        let mut admin_data = ts::take_shared<AdministrativeData>(scenario);
         coin_wrapper::register_coin_for_testing<USDT>(
             &cap,
             &mut store,
@@ -239,39 +243,42 @@ module full_sail::router_test {
         );
         let base_metadata = coin_wrapper::get_wrapper<SUI>(&store);
         let quote_metadata = coin_wrapper::get_wrapper<USDT>(&store);
-        next_tx(scenario, OWNER);
-        
-        let (mut pool, pool_id) = gauge::create_gauge_pool_test<COIN_WRAPPER, COIN_WRAPPER>(
-            quote_metadata, 
-            base_metadata, 
-            &mut configs, 
-            false, 
+
+        liquidity_pool::create<COIN_WRAPPER, COIN_WRAPPER>(
+            quote_metadata,
+            base_metadata,
+            &mut configs,
+            false,
             ts::ctx(scenario)
         );
-        gauge::create_gauge_test<COIN_WRAPPER, COIN_WRAPPER>(
-            quote_metadata, 
-            base_metadata, 
-            &mut configs, 
+
+        next_tx(scenario, OWNER);
+        vote_manager::create_gauge<COIN_WRAPPER, COIN_WRAPPER>(
+            &mut admin_data,
+            &mut configs,
+            quote_metadata,
+            base_metadata,
             false,
             ts::ctx(scenario)
         );
 
         next_tx(scenario, OWNER);
         {
-            let mut fees_accounting = ts::take_shared<FeesAccounting>(scenario);
             let mut gauge = ts::take_shared<Gauge<COIN_WRAPPER, COIN_WRAPPER>>(scenario);
+            let mut fees_accounting = ts::take_shared<FeesAccounting>(scenario);
             let amount = 100000;
             let mut base_coin = coin::mint_for_testing<SUI>(amount, ts::ctx(scenario));
             let mut quote_coin = coin::mint_for_testing<USDT>(amount, ts::ctx(scenario));
-          
+            
+            let pool = gauge::liquidity_pool(&mut gauge);
             let base_metadata1 = coin_wrapper::get_wrapper<SUI>(&store);
             let quote_metadata1 = coin_wrapper::get_wrapper<USDT>(&store);
             let (optimal_a, optimal_b) = router::get_optimal_amounts_for_testing<COIN_WRAPPER, COIN_WRAPPER>(
-                &mut pool,
+                pool,
                 quote_metadata1,
                 base_metadata1,
-                100000,
-                100000
+                amount,
+                amount
             );
 
             let new_base_coin = coin::split(&mut base_coin, optimal_a, ts::ctx(scenario));
@@ -285,7 +292,7 @@ module full_sail::router_test {
             gauge::stake(
                 &mut gauge,
                 liquidity_pool::mint_lp(
-                    &mut pool, 
+                    pool, 
                     &mut fees_accounting, 
                     quote_metadata2,
                     base_metadata2,
@@ -305,15 +312,13 @@ module full_sail::router_test {
         };
 
         let all_pools = liquidity_pool::all_pool_ids(&configs);
-        assert!(vector::length(&all_pools) == 2, 4);
-        assert!(vector::contains(&all_pools, &pool_id), 5);
+        assert!(vector::length(&all_pools) == 1, 0);
 
         ts::return_shared(configs);
         ts::return_shared(store);
         ts::return_to_sender(scenario, cap);
         ts::return_shared(admin_data);
         clock.destroy_for_testing();
-        test_utils::destroy(pool);
         ts::end(scenario_val);
     }
 
@@ -328,7 +333,7 @@ module full_sail::router_test {
         let mut configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
         let mut store = ts::take_shared<WrapperStore>(scenario);
         let cap = ts::take_from_sender<WrapperStoreCap>(scenario);
-        let admin_data = ts::take_shared<AdministrativeData>(scenario);
+        let mut admin_data = ts::take_shared<AdministrativeData>(scenario);
         coin_wrapper::register_coin_for_testing<USDT>(
             &cap,
             &mut store,
@@ -349,14 +354,7 @@ module full_sail::router_test {
         
         next_tx(scenario, OWNER);
         
-        let (mut pool, pool_id) = gauge::create_gauge_pool_test<COIN_WRAPPER, COIN_WRAPPER>(
-            quote_metadata, 
-            base_metadata, 
-            &mut configs, 
-            false, 
-            ts::ctx(scenario)
-        );
-        gauge::create_gauge_test<COIN_WRAPPER, COIN_WRAPPER>(
+        liquidity_pool::create<COIN_WRAPPER, COIN_WRAPPER>(
             quote_metadata, 
             base_metadata, 
             &mut configs, 
@@ -366,9 +364,16 @@ module full_sail::router_test {
 
         next_tx(scenario, OWNER);
         {
+            // let mut gauge = ts::take_shared<Gauge<COIN_WRAPPER, COIN_WRAPPER>>(scenario);
             let mut fees_accounting = ts::take_shared<FeesAccounting>(scenario);
+            let pool = liquidity_pool::liquidity_pool_mut(
+                &mut configs,
+                quote_metadata,
+                base_metadata,
+                false
+            );
             liquidity_pool::mint_lp(
-                &mut pool,
+                pool,
                 &mut fees_accounting,
                 quote_metadata,
                 base_metadata,
@@ -383,23 +388,131 @@ module full_sail::router_test {
             let base_metadata_copy = coin_wrapper::get_wrapper<SUI>(&store);
             let quote_metadata_copy = coin_wrapper::get_wrapper<USDT>(&store);
             let deposited_coin = router::swap_coin_for_coin(
-                &mut pool,
                 quote_wrapped_coin_copy,
                 10000,
-                &configs,
+                &mut configs,
                 &mut fees_accounting,
                 quote_metadata_copy,
                 base_metadata_copy,
+                false,
                 ts::ctx(scenario)
             );
             assert!(coin::value(&deposited_coin) >= 10000, 2);
             router::exact_deposit(recipient, deposited_coin);
-
             ts::return_shared(fees_accounting);
+            // ts::return_shared(gauge);
         };
 
         let all_pools = liquidity_pool::all_pool_ids(&configs);
-        assert!(vector::length(&all_pools) == 2, 0);
+        assert!(vector::length(&all_pools) == 1, 0);
+
+        ts::return_shared(configs);
+        ts::return_shared(store);
+        ts::return_to_sender(scenario, cap);
+        ts::return_shared(admin_data);
+        clock.destroy_for_testing();
+        ts::end(scenario_val);
+    }
+
+    #[test]
+    fun test_swap_entry() {
+        let mut scenario_val = ts::begin(OWNER);
+        let scenario = &mut scenario_val;
+        setup(scenario);
+        let clock = clock::create_for_testing(ts::ctx(scenario));
+
+        next_tx(scenario, OWNER);
+        let mut configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
+        let mut store = ts::take_shared<WrapperStore>(scenario);
+        let cap = ts::take_from_sender<WrapperStoreCap>(scenario);
+        let mut admin_data = ts::take_shared<AdministrativeData>(scenario);
+        coin_wrapper::register_coin_for_testing<USDT>(
+            &cap,
+            &mut store,
+            ts::ctx(scenario)
+        );
+        coin_wrapper::register_coin_for_testing<SUI>(
+            &cap,
+            &mut store,
+            ts::ctx(scenario)
+        );
+        let amount = 100000;
+        let base_coin = coin::mint_for_testing<SUI>(amount, ts::ctx(scenario));
+        let quote_coin = coin::mint_for_testing<USDT>(amount, ts::ctx(scenario));
+        let base_wrapped_coin = coin_wrapper::wrap<SUI>(&mut store, base_coin, ts::ctx(scenario));
+        let quote_wrapped_coin = coin_wrapper::wrap<USDT>(&mut store, quote_coin, ts::ctx(scenario));
+        let base_metadata = coin_wrapper::get_wrapper<SUI>(&store);
+        let quote_metadata = coin_wrapper::get_wrapper<USDT>(&store);
+        
+        next_tx(scenario, OWNER);
+        
+        let pool_id = liquidity_pool::create<COIN_WRAPPER, COIN_WRAPPER>(
+            quote_metadata, 
+            base_metadata, 
+            &mut configs, 
+            false,
+            ts::ctx(scenario)
+        );
+        let pool = liquidity_pool::liquidity_pool_mut(
+            &mut configs,
+            quote_metadata,
+            base_metadata,
+            false
+        );
+
+        next_tx(scenario, OWNER);
+        {
+            let mut fees_accounting = ts::take_shared<FeesAccounting>(scenario);
+            liquidity_pool::mint_lp(
+                pool,
+                &mut fees_accounting,
+                quote_metadata,
+                base_metadata,
+                quote_wrapped_coin,
+                base_wrapped_coin,
+                false,
+                ts::ctx(scenario)
+            );
+            let recipient = @0x1234;
+            let quote_new_coin = coin_wrapper::unwrap_for_testing<USDT>(
+                &mut store
+            );
+
+            let mut quote_new_wrapped_coin = coin_wrapper::wrap<USDT>(
+                &mut store,
+                quote_new_coin,
+                ts::ctx(scenario)
+            );
+
+            let new_quote_wrapped_coin = coin::split(
+                &mut quote_new_wrapped_coin,
+                10000,
+                ts::ctx(scenario)
+            );
+
+            let base_metadata_copy = coin_wrapper::get_wrapper<SUI>(&store);
+            let quote_metadata_copy = coin_wrapper::get_wrapper<USDT>(&store);
+            let deposited_coin = router::swap(
+                new_quote_wrapped_coin,
+                1000,
+                &mut configs,
+                &mut fees_accounting,
+                quote_metadata_copy,
+                base_metadata_copy,
+                false,
+                ts::ctx(scenario)
+            );
+            assert!(coin::value(&deposited_coin) >= 1000, 2);
+            router::exact_deposit(
+                recipient, 
+                deposited_coin
+            );
+            ts::return_shared(fees_accounting);
+            transfer::public_transfer(quote_new_wrapped_coin, @0xcafe);
+        };
+
+        let all_pools = liquidity_pool::all_pool_ids(&configs);
+        assert!(vector::length(&all_pools) == 1, 0);
         assert!(vector::contains(&all_pools, &pool_id), 1);
 
         ts::return_shared(configs);
@@ -407,12 +520,11 @@ module full_sail::router_test {
         ts::return_to_sender(scenario, cap);
         ts::return_shared(admin_data);
         clock.destroy_for_testing();
-        test_utils::destroy(pool);
         ts::end(scenario_val);
     }
 
     #[test]
-    fun test_swap_entry() {
+    fun test_swap_route_entry() {
         let mut scenario_val = ts::begin(OWNER);
         let scenario = &mut scenario_val;
         setup(scenario);
@@ -443,14 +555,7 @@ module full_sail::router_test {
         
         next_tx(scenario, OWNER);
         
-        let (mut pool, pool_id) = gauge::create_gauge_pool_test<COIN_WRAPPER, COIN_WRAPPER>(
-            quote_metadata, 
-            base_metadata, 
-            &mut configs, 
-            false, 
-            ts::ctx(scenario)
-        );
-        gauge::create_gauge_test<COIN_WRAPPER, COIN_WRAPPER>(
+        let pool_id = liquidity_pool::create<COIN_WRAPPER, COIN_WRAPPER>(
             quote_metadata, 
             base_metadata, 
             &mut configs, 
@@ -458,11 +563,18 @@ module full_sail::router_test {
             ts::ctx(scenario)
         );
 
+        let pool = liquidity_pool::liquidity_pool_mut(
+            &mut configs,
+            quote_metadata,
+            base_metadata,
+            false
+        );
+
         next_tx(scenario, OWNER);
         {
             let mut fees_accounting = ts::take_shared<FeesAccounting>(scenario);
             liquidity_pool::mint_lp(
-                &mut pool,
+                pool,
                 &mut fees_accounting,
                 quote_metadata,
                 base_metadata,
@@ -489,27 +601,28 @@ module full_sail::router_test {
             );
             let base_metadata_copy = coin_wrapper::get_wrapper<SUI>(&store);
             let quote_metadata_copy = coin_wrapper::get_wrapper<USDT>(&store);
-            let deposited_coin = router::swap(
-                &mut pool,
+
+            let intermediary_tokens: vector<CoinMetadata<COIN_WRAPPER>> = vector[base_metadata];
+            let route_stable = vector[false];
+
+            router::swap_route_entry(
+                5000, // min_output_amount
                 new_quote_wrapped_coin,
-                1000,
-                &configs,
+                quote_metadata,
+                intermediary_tokens,
+                route_stable,
+                &mut configs,
                 &mut fees_accounting,
-                base_metadata_copy,
-                quote_metadata_copy,
+                recipient,
                 ts::ctx(scenario)
             );
-            assert!(coin::value(&deposited_coin) >= 1000, 2);
-            router::exact_deposit(
-                recipient, 
-                deposited_coin
-            );
+
             ts::return_shared(fees_accounting);
             transfer::public_transfer(quote_new_wrapped_coin, @0xcafe);
         };
 
         let all_pools = liquidity_pool::all_pool_ids(&configs);
-        assert!(vector::length(&all_pools) == 2, 0);
+        assert!(vector::length(&all_pools) == 1, 0);
         assert!(vector::contains(&all_pools, &pool_id), 1);
 
         ts::return_shared(configs);
@@ -517,7 +630,6 @@ module full_sail::router_test {
         ts::return_to_sender(scenario, cap);
         ts::return_shared(admin_data);
         clock.destroy_for_testing();
-        test_utils::destroy(pool);
         ts::end(scenario_val);
     }
 
@@ -530,6 +642,8 @@ module full_sail::router_test {
 
         next_tx(scenario, OWNER);
         let mut configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
+        let base_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
+        let quote_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
         let mut store = ts::take_shared<WrapperStore>(scenario);
         let cap = ts::take_from_sender<WrapperStoreCap>(scenario);
         let mut admin_data = ts::take_shared<AdministrativeData>(scenario);
@@ -546,55 +660,33 @@ module full_sail::router_test {
             ts::ctx(scenario)
         );
 
-        let base_metadata = coin_wrapper::get_wrapper<SUI>(&store);
-        let quote_metadata = coin_wrapper::get_wrapper<USDT>(&store);
-
         next_tx(scenario, OWNER);
         
-        let (pool, pool_id) = gauge::create_gauge_pool_test<COIN_WRAPPER, COIN_WRAPPER>(
-            quote_metadata, 
-            base_metadata, 
-            &mut configs, 
-            false, 
-            ts::ctx(scenario)
-        );
-        
-        vote_manager::whitelist_default_reward_pool<COIN_WRAPPER, COIN_WRAPPER>(
-            &pool,
-            quote_metadata,
-            base_metadata,
+        router::create_pool(
+            &quote_metadata,
+            &base_metadata,
+            &mut configs,
             &admin_cap,
             &mut pool_whitelist,
-            &store
-        );
-
-        router::create_gauge(
-            &mut admin_data,
-            pool,
+            &store,
+            false,
             ts::ctx(scenario)
         );
 
         next_tx(scenario, OWNER);
-        let mut gauge = ts::take_shared<Gauge<COIN_WRAPPER, COIN_WRAPPER>>(scenario);
         let all_pools = liquidity_pool::all_pool_ids(&configs);
         assert!(vector::length(&all_pools) == 1, 0);
-        assert!(vector::contains(&all_pools, &pool_id), 1);
-        assert!(
-            vote_manager::gauge_exists(
-                &admin_data, 
-                gauge::liquidity_pool(&mut gauge)
-            ) == true, 2
-        );
         assert!(
             token_whitelist::whitelist_length(
                 &pool_whitelist, 
-                object::id_address(gauge::liquidity_pool(&mut gauge))
-            ) == 3, 3
+                object::id_to_address(vector::borrow(&all_pools, 0))
+            ) == 1, 3
         );
 
         ts::return_shared(configs);
+        ts::return_immutable(base_metadata);
+        ts::return_immutable(quote_metadata);
         ts::return_shared(store);
-        ts::return_shared(gauge);
         ts::return_to_sender(scenario, cap);
         ts::return_to_sender(scenario, admin_cap);
         ts::return_shared(admin_data);
@@ -612,6 +704,8 @@ module full_sail::router_test {
 
         next_tx(scenario, OWNER);
         let mut configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
+        let base_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
+        let quote_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
         let mut store = ts::take_shared<WrapperStore>(scenario);
         let cap = ts::take_from_sender<WrapperStoreCap>(scenario);
         let mut admin_data = ts::take_shared<AdministrativeData>(scenario);
@@ -628,55 +722,31 @@ module full_sail::router_test {
             ts::ctx(scenario)
         );
 
-        let base_metadata = coin_wrapper::get_wrapper<SUI>(&store);
-        let quote_metadata = coin_wrapper::get_wrapper<USDT>(&store);
-
         next_tx(scenario, OWNER);
         
-        let (pool, pool_id) = gauge::create_gauge_pool_test<COIN_WRAPPER, COIN_WRAPPER>(
-            quote_metadata, 
-            base_metadata, 
-            &mut configs, 
-            false, 
-            ts::ctx(scenario)
-        );
-        
-        vote_manager::whitelist_default_reward_pool<COIN_WRAPPER, COIN_WRAPPER>(
-            &pool,
-            quote_metadata,
-            base_metadata,
+        router::create_pool_both_coins<USDT, SUI>(
+            &mut configs,
             &admin_cap,
             &mut pool_whitelist,
-            &store
-        );
-
-        router::create_gauge(
-            &mut admin_data,
-            pool,
+            &store,
+            false,
             ts::ctx(scenario)
         );
-
+        
         next_tx(scenario, OWNER);
-        let mut gauge = ts::take_shared<Gauge<COIN_WRAPPER, COIN_WRAPPER>>(scenario);
         let all_pools = liquidity_pool::all_pool_ids(&configs);
         assert!(vector::length(&all_pools) == 1, 0);
-        assert!(vector::contains(&all_pools, &pool_id), 1);
-        assert!(
-            vote_manager::gauge_exists(
-                &admin_data, 
-                gauge::liquidity_pool(&mut gauge)
-            ) == true, 2
-        );
         assert!(
             token_whitelist::whitelist_length(
                 &pool_whitelist, 
-                object::id_address(gauge::liquidity_pool(&mut gauge))
-            ) == 3, 3
+                object::id_to_address(vector::borrow(&all_pools, 0))
+            ) == 3, 1
         );
 
         ts::return_shared(configs);
+        ts::return_immutable(base_metadata);
+        ts::return_immutable(quote_metadata);
         ts::return_shared(store);
-        ts::return_shared(gauge);
         ts::return_to_sender(scenario, cap);
         ts::return_to_sender(scenario, admin_cap);
         ts::return_shared(admin_data);
@@ -709,56 +779,33 @@ module full_sail::router_test {
             &mut store,
             ts::ctx(scenario)
         );
-
         let base_metadata = coin_wrapper::get_wrapper<SUI>(&store);
         let quote_metadata = coin_wrapper::get_wrapper<USDT>(&store);
 
         next_tx(scenario, OWNER);
         
-        let (pool, pool_id) = gauge::create_gauge_pool_test<COIN_WRAPPER, COIN_WRAPPER>(
-            quote_metadata, 
-            base_metadata, 
-            &mut configs, 
-            false, 
+        router::create_pool_coin<SUI>(
+            &mut configs,
+            quote_metadata,
+            &admin_cap,
+            &mut pool_whitelist,
+            &store,
+            false,
             ts::ctx(scenario)
         );
         
-        vote_manager::whitelist_default_reward_pool<COIN_WRAPPER, COIN_WRAPPER>(
-            &pool,
-            quote_metadata,
-            base_metadata,
-            &admin_cap,
-            &mut pool_whitelist,
-            &store
-        );
-
-        router::create_gauge(
-            &mut admin_data,
-            pool,
-            ts::ctx(scenario)
-        );
-
         next_tx(scenario, OWNER);
-        let mut gauge = ts::take_shared<Gauge<COIN_WRAPPER, COIN_WRAPPER>>(scenario);
         let all_pools = liquidity_pool::all_pool_ids(&configs);
         assert!(vector::length(&all_pools) == 1, 0);
-        assert!(vector::contains(&all_pools, &pool_id), 1);
-        assert!(
-            vote_manager::gauge_exists(
-                &admin_data, 
-                gauge::liquidity_pool(&mut gauge)
-            ) == true, 2
-        );
         assert!(
             token_whitelist::whitelist_length(
                 &pool_whitelist, 
-                object::id_address(gauge::liquidity_pool(&mut gauge))
-            ) == 3, 3
+                object::id_to_address(vector::borrow(&all_pools, 0))
+            ) == 3, 1
         );
 
         ts::return_shared(configs);
         ts::return_shared(store);
-        ts::return_shared(gauge);
         ts::return_to_sender(scenario, cap);
         ts::return_to_sender(scenario, admin_cap);
         ts::return_shared(admin_data);
@@ -766,85 +813,6 @@ module full_sail::router_test {
         clock.destroy_for_testing();
         ts::end(scenario_val);
     }
-
-#[test]
-fun test_swap_route_entry() {
-   let mut scenario_val = ts::begin(OWNER);
-   let scenario = &mut scenario_val;
-   setup(scenario);
-   let clock = clock::create_for_testing(ts::ctx(scenario));
-
-   next_tx(scenario, OWNER);
-   let mut configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
-   let mut store = ts::take_shared<WrapperStore>(scenario);
-   let cap = ts::take_from_sender<WrapperStoreCap>(scenario);
-   let admin_data = ts::take_shared<AdministrativeData>(scenario);
-   
-   coin_wrapper::register_coin_for_testing<USDT>(&cap, &mut store, ts::ctx(scenario));
-   coin_wrapper::register_coin_for_testing<SUI>(&cap, &mut store, ts::ctx(scenario));
-
-   let amount = 100000;
-   let base_coin = coin::mint_for_testing<SUI>(amount, ts::ctx(scenario));
-   let quote_coin = coin::mint_for_testing<USDT>(amount, ts::ctx(scenario));
-   let base_wrapped = coin_wrapper::wrap<SUI>(&mut store, base_coin, ts::ctx(scenario));
-   let quote_wrapped = coin_wrapper::wrap<USDT>(&mut store, quote_coin, ts::ctx(scenario));
-   let base_meta = coin_wrapper::get_wrapper<SUI>(&store);
-   let quote_meta = coin_wrapper::get_wrapper<USDT>(&store);
-   
-   next_tx(scenario, OWNER);
-   let (mut pool, pool_id) = gauge::create_gauge_pool_test<COIN_WRAPPER, COIN_WRAPPER>(
-       quote_meta, base_meta, &mut configs, false, ts::ctx(scenario)
-   );
-
-   next_tx(scenario, OWNER);
-   {
-       let mut fees_accounting = ts::take_shared<FeesAccounting>(scenario);
-       
-       liquidity_pool::mint_lp(
-           &mut pool, &mut fees_accounting,
-           quote_meta, base_meta,
-           quote_wrapped, base_wrapped,
-           false, ts::ctx(scenario)
-       );
-
-        let mut tokens = vector::empty<CoinMetadata<COIN_WRAPPER>>();
-        let quote_meta_new = coin_wrapper::get_wrapper<USDT>(&store);
-        let coin_metadata = quote_meta_new;
-        vector::push_back(&mut tokens, coin_metadata);
-       
-       let input_coin = coin_wrapper::wrap<SUI>(
-           &mut store,
-           coin::mint_for_testing<SUI>(10000, ts::ctx(scenario)),
-           ts::ctx(scenario)
-       );
-
-       router::swap_route_entry(
-           &mut pool,
-           9000,
-           input_coin,
-           base_meta,
-           tokens,
-           &configs,
-           &mut fees_accounting,
-           @0x1234,
-           ts::ctx(scenario)
-       );
-
-       ts::return_shared(fees_accounting);
-   };
-
-   let all_pools = liquidity_pool::all_pool_ids(&configs);
-   assert!(vector::length(&all_pools) == 2, 0);
-   assert!(vector::contains(&all_pools, &pool_id), 1);
-
-   ts::return_shared(configs);
-   ts::return_shared(store);
-   ts::return_to_sender(scenario, cap);
-   ts::return_shared(admin_data);
-   clock.destroy_for_testing();
-   test_utils::destroy(pool);
-   ts::end(scenario_val);
-}
 
     #[test]
     fun test_unstake_and_remove_liquidity_both_coins_entry() {
@@ -857,7 +825,7 @@ fun test_swap_route_entry() {
         let mut configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
         let mut store = ts::take_shared<WrapperStore>(scenario);
         let cap = ts::take_from_sender<WrapperStoreCap>(scenario);
-        let admin_data = ts::take_shared<AdministrativeData>(scenario);
+        let mut admin_data = ts::take_shared<AdministrativeData>(scenario);
         coin_wrapper::register_coin_for_testing<USDT>(
             &cap,
             &mut store,
@@ -872,17 +840,19 @@ fun test_swap_route_entry() {
         let quote_metadata = coin_wrapper::get_wrapper<USDT>(&store);
         next_tx(scenario, OWNER);
         
-        let (mut pool, pool_id) = gauge::create_gauge_pool_test<COIN_WRAPPER, COIN_WRAPPER>(
-            quote_metadata, 
-            base_metadata, 
-            &mut configs, 
-            false, 
+        liquidity_pool::create<COIN_WRAPPER, COIN_WRAPPER>(
+            quote_metadata,
+            base_metadata,
+            &mut configs,
+            false,
             ts::ctx(scenario)
         );
-        gauge::create_gauge_test<COIN_WRAPPER, COIN_WRAPPER>(
-            quote_metadata, 
-            base_metadata, 
-            &mut configs, 
+
+        vote_manager::create_gauge<COIN_WRAPPER, COIN_WRAPPER>(
+            &mut admin_data,
+            &mut configs,
+            quote_metadata,
+            base_metadata,
             false,
             ts::ctx(scenario)
         );
@@ -891,6 +861,7 @@ fun test_swap_route_entry() {
         {
             let mut fees_accounting = ts::take_shared<FeesAccounting>(scenario);
             let mut gauge = ts::take_shared<Gauge<COIN_WRAPPER, COIN_WRAPPER>>(scenario);
+            let pool = gauge::liquidity_pool(&mut gauge);
             let amount = 100000;
             let mut base_coin = coin::mint_for_testing<SUI>(amount, ts::ctx(scenario));
             let mut quote_coin = coin::mint_for_testing<USDT>(amount, ts::ctx(scenario));
@@ -898,7 +869,7 @@ fun test_swap_route_entry() {
             let base_metadata1 = coin_wrapper::get_wrapper<SUI>(&store);
             let quote_metadata1 = coin_wrapper::get_wrapper<USDT>(&store);
             let (optimal_a, optimal_b) = router::get_optimal_amounts_for_testing<COIN_WRAPPER, COIN_WRAPPER>(
-                &mut pool,
+                pool,
                 quote_metadata1,
                 base_metadata1,
                 100000,
@@ -913,10 +884,11 @@ fun test_swap_route_entry() {
             assert!(coin::value(&quote_coin_opt) == optimal_b, 3);
             let base_metadata2 = coin_wrapper::get_wrapper<SUI>(&store);
             let quote_metadata2 = coin_wrapper::get_wrapper<USDT>(&store);
+            
             gauge::stake(
                 &mut gauge,
                 liquidity_pool::mint_lp(
-                    &mut pool, 
+                    pool, 
                     &mut fees_accounting, 
                     quote_metadata2,
                     base_metadata2,
@@ -928,14 +900,16 @@ fun test_swap_route_entry() {
                 ts::ctx(scenario),
                 &clock
             );
+            ts::return_shared(gauge);
+
+            next_tx(scenario, OWNER);
+            let mut gauge1 = ts::take_shared<Gauge<COIN_WRAPPER, COIN_WRAPPER>>(scenario);
             
             let all_pools = liquidity_pool::all_pool_ids(&configs);
-            assert!(vector::length(&all_pools) == 2, 4);
-            assert!(vector::contains(&all_pools, &pool_id), 5);
+            assert!(vector::length(&all_pools) == 1, 4);
 
             router::unstake_and_remove_liquidity_both_coins_entry(
-                &mut pool,
-                &mut gauge,
+                &mut gauge1,
                 5000,
                 2500,
                 2500,
@@ -943,18 +917,21 @@ fun test_swap_route_entry() {
                 &clock,
                 ts::ctx(scenario)
             );
+            ts::return_shared(gauge1);
 
+            next_tx(scenario, OWNER);
+            let mut gauge2 = ts::take_shared<Gauge<COIN_WRAPPER, COIN_WRAPPER>>(scenario);
+            let pool1 = gauge::liquidity_pool(&mut gauge2);
             let (coin_in, coin_out) = liquidity_pool::liquidity_amounts<COIN_WRAPPER, COIN_WRAPPER>(
-                &pool,
+                pool1,
                 5000
             );
-            
             assert!(coin_in == 2500, 1);
             assert!(coin_out == 2500, 2);
             transfer::public_transfer(base_coin, @0xcafe);
             transfer::public_transfer(quote_coin, @0xcafe);
             ts::return_shared(fees_accounting);
-            ts::return_shared(gauge);
+            ts::return_shared(gauge2);
         };
 
         ts::return_shared(configs);
@@ -962,247 +939,6 @@ fun test_swap_route_entry() {
         ts::return_to_sender(scenario, cap);
         ts::return_shared(admin_data);
         clock.destroy_for_testing();
-        test_utils::destroy(pool);
         ts::end(scenario_val);
     }
-
-    #[test]
-    fun test_unstake_and_remove_liquidity_coin_entry() {
-        let mut scenario_val = ts::begin(OWNER);
-        let scenario = &mut scenario_val;
-        setup(scenario);
-        let clock = clock::create_for_testing(ts::ctx(scenario));
-
-        next_tx(scenario, OWNER);
-        let mut configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
-        let mut store = ts::take_shared<WrapperStore>(scenario);
-        let cap = ts::take_from_sender<WrapperStoreCap>(scenario);
-        let admin_data = ts::take_shared<AdministrativeData>(scenario);
-        coin_wrapper::register_coin_for_testing<USDT>(
-            &cap,
-            &mut store,
-            ts::ctx(scenario)
-        );
-        coin_wrapper::register_coin_for_testing<SUI>(
-            &cap,
-            &mut store,
-            ts::ctx(scenario)
-        );
-        let base_metadata = coin_wrapper::get_wrapper<SUI>(&store);
-        let quote_metadata = coin_wrapper::get_wrapper<USDT>(&store);
-        next_tx(scenario, OWNER);
-        
-        let (mut pool, pool_id) = gauge::create_gauge_pool_test<COIN_WRAPPER, COIN_WRAPPER>(
-            quote_metadata, 
-            base_metadata, 
-            &mut configs, 
-            false, 
-            ts::ctx(scenario)
-        );
-        gauge::create_gauge_test<COIN_WRAPPER, COIN_WRAPPER>(
-            quote_metadata, 
-            base_metadata, 
-            &mut configs, 
-            false,
-            ts::ctx(scenario)
-        );
-
-        next_tx(scenario, OWNER);
-        {
-            let mut fees_accounting = ts::take_shared<FeesAccounting>(scenario);
-            let mut gauge = ts::take_shared<Gauge<COIN_WRAPPER, COIN_WRAPPER>>(scenario);
-            let amount = 100000;
-            let mut base_coin = coin::mint_for_testing<SUI>(amount, ts::ctx(scenario));
-            let mut quote_coin = coin::mint_for_testing<USDT>(amount, ts::ctx(scenario));
-          
-            let base_metadata1 = coin_wrapper::get_wrapper<SUI>(&store);
-            let quote_metadata1 = coin_wrapper::get_wrapper<USDT>(&store);
-            let (optimal_a, optimal_b) = router::get_optimal_amounts_for_testing<COIN_WRAPPER, COIN_WRAPPER>(
-                &mut pool,
-                quote_metadata1,
-                base_metadata1,
-                100000,
-                100000
-            );
-
-            let new_base_coin = coin::split(&mut base_coin, optimal_a, ts::ctx(scenario));
-            let new_quote_coin = coin::split(&mut quote_coin, optimal_b, ts::ctx(scenario));
-            let base_coin_opt = coin_wrapper::wrap<SUI>(&mut store, new_base_coin, ts::ctx(scenario));
-            let quote_coin_opt = coin_wrapper::wrap<USDT>(&mut store, new_quote_coin, ts::ctx(scenario));
-            assert!(coin::value(&base_coin_opt) == optimal_a, 2);
-            assert!(coin::value(&quote_coin_opt) == optimal_b, 3);
-            let base_metadata2 = coin_wrapper::get_wrapper<SUI>(&store);
-            let quote_metadata2 = coin_wrapper::get_wrapper<USDT>(&store);
-            gauge::stake(
-                &mut gauge,
-                liquidity_pool::mint_lp(
-                    &mut pool, 
-                    &mut fees_accounting, 
-                    quote_metadata2,
-                    base_metadata2,
-                    base_coin_opt,
-                    quote_coin_opt,
-                    false,
-                    ts::ctx(scenario)
-                ),
-                ts::ctx(scenario),
-                &clock
-            );
-            
-            let all_pools = liquidity_pool::all_pool_ids(&configs);
-            assert!(vector::length(&all_pools) == 2, 4);
-            assert!(vector::contains(&all_pools, &pool_id), 5);
-
-            router::unstake_and_remove_liquidity_coin_entry(
-                &mut pool,
-                &mut gauge,
-                5000,
-                2500,
-                2500,
-                @0x1234,
-                &clock,
-                ts::ctx(scenario)
-            );
-
-            let (coin_in, coin_out) = liquidity_pool::liquidity_amounts<COIN_WRAPPER, COIN_WRAPPER>(
-                &pool,
-                5000
-            );
-            
-            assert!(coin_in == 2500, 1);
-            assert!(coin_out == 2500, 2);
-            transfer::public_transfer(base_coin, @0xcafe);
-            transfer::public_transfer(quote_coin, @0xcafe);
-            ts::return_shared(fees_accounting);
-            ts::return_shared(gauge);
-        };
-
-        ts::return_shared(configs);
-        ts::return_shared(store);
-        ts::return_to_sender(scenario, cap);
-        ts::return_shared(admin_data);
-        clock.destroy_for_testing();
-        test_utils::destroy(pool);
-        ts::end(scenario_val);
-    }
-
-    #[test]
-    fun test_unstake_and_remove_liquidity_entry() {
-        let mut scenario_val = ts::begin(OWNER);
-        let scenario = &mut scenario_val;
-        setup(scenario);
-        let clock = clock::create_for_testing(ts::ctx(scenario));
-
-        next_tx(scenario, OWNER);
-        let mut configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
-        let mut store = ts::take_shared<WrapperStore>(scenario);
-        let cap = ts::take_from_sender<WrapperStoreCap>(scenario);
-        let admin_data = ts::take_shared<AdministrativeData>(scenario);
-        coin_wrapper::register_coin_for_testing<USDT>(
-            &cap,
-            &mut store,
-            ts::ctx(scenario)
-        );
-        coin_wrapper::register_coin_for_testing<SUI>(
-            &cap,
-            &mut store,
-            ts::ctx(scenario)
-        );
-        let base_metadata = coin_wrapper::get_wrapper<SUI>(&store);
-        let quote_metadata = coin_wrapper::get_wrapper<USDT>(&store);
-        next_tx(scenario, OWNER);
-        
-        let (mut pool, pool_id) = gauge::create_gauge_pool_test<COIN_WRAPPER, COIN_WRAPPER>(
-            quote_metadata, 
-            base_metadata, 
-            &mut configs, 
-            false, 
-            ts::ctx(scenario)
-        );
-        gauge::create_gauge_test<COIN_WRAPPER, COIN_WRAPPER>(
-            quote_metadata, 
-            base_metadata, 
-            &mut configs, 
-            false,
-            ts::ctx(scenario)
-        );
-
-        next_tx(scenario, OWNER);
-        {
-            let mut fees_accounting = ts::take_shared<FeesAccounting>(scenario);
-            let mut gauge = ts::take_shared<Gauge<COIN_WRAPPER, COIN_WRAPPER>>(scenario);
-            let amount = 100000;
-            let mut base_coin = coin::mint_for_testing<SUI>(amount, ts::ctx(scenario));
-            let mut quote_coin = coin::mint_for_testing<USDT>(amount, ts::ctx(scenario));
-          
-            let base_metadata1 = coin_wrapper::get_wrapper<SUI>(&store);
-            let quote_metadata1 = coin_wrapper::get_wrapper<USDT>(&store);
-            let (optimal_a, optimal_b) = router::get_optimal_amounts_for_testing<COIN_WRAPPER, COIN_WRAPPER>(
-                &mut pool,
-                quote_metadata1,
-                base_metadata1,
-                100000,
-                100000
-            );
-
-            let new_base_coin = coin::split(&mut base_coin, optimal_a, ts::ctx(scenario));
-            let new_quote_coin = coin::split(&mut quote_coin, optimal_b, ts::ctx(scenario));
-            let base_coin_opt = coin_wrapper::wrap<SUI>(&mut store, new_base_coin, ts::ctx(scenario));
-            let quote_coin_opt = coin_wrapper::wrap<USDT>(&mut store, new_quote_coin, ts::ctx(scenario));
-            assert!(coin::value(&base_coin_opt) == optimal_a, 2);
-            assert!(coin::value(&quote_coin_opt) == optimal_b, 3);
-            let base_metadata2 = coin_wrapper::get_wrapper<SUI>(&store);
-            let quote_metadata2 = coin_wrapper::get_wrapper<USDT>(&store);
-            gauge::stake(
-                &mut gauge,
-                liquidity_pool::mint_lp(
-                    &mut pool, 
-                    &mut fees_accounting, 
-                    quote_metadata2,
-                    base_metadata2,
-                    base_coin_opt,
-                    quote_coin_opt,
-                    false,
-                    ts::ctx(scenario)
-                ),
-                ts::ctx(scenario),
-                &clock
-            );
-            
-            let all_pools = liquidity_pool::all_pool_ids(&configs);
-            assert!(vector::length(&all_pools) == 2, 4);
-            assert!(vector::contains(&all_pools, &pool_id), 5);
-
-            router::unstake_and_remove_liquidity_entry(
-                &mut pool,
-                &mut gauge,
-                5000,
-                2500,
-                2500,
-                @0x1234,
-                &clock,
-                ts::ctx(scenario)
-            );
-
-            let (coin_in, coin_out) = liquidity_pool::liquidity_amounts<COIN_WRAPPER, COIN_WRAPPER>(
-                &pool,
-                5000
-            );
-            
-            assert!(coin_in == 2500, 1);
-            assert!(coin_out == 2500, 2);
-            transfer::public_transfer(base_coin, @0xcafe);
-            transfer::public_transfer(quote_coin, @0xcafe);
-            ts::return_shared(fees_accounting);
-            ts::return_shared(gauge);
-        };
-
-        ts::return_shared(configs);
-        ts::return_shared(store);
-        ts::return_to_sender(scenario, cap);
-        ts::return_shared(admin_data);
-        clock.destroy_for_testing();
-        test_utils::destroy(pool);
-        ts::end(scenario_val);
-    }
-}
+}*/

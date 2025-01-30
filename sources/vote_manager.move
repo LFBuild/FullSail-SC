@@ -2,15 +2,11 @@ module full_sail::vote_manager {
     use std::ascii::String;
     use std::string;
     use sui::table::{Self, Table};
-    use sui::table_vec::{TableVec};
     use sui::vec_map::{Self, VecMap};
     use sui::coin::{Self, Coin, CoinMetadata};
     use sui::dynamic_object_field;
     use sui::clock::Clock;
     use sui::bag::{Self, Bag};
-    use sui::object_bag::{Self, ObjectBag};
-    use sui::object_table::{Self, ObjectTable};
-    use std::debug;
 
     use full_sail::voting_escrow::{Self, VeFullSailToken, VeFullSailCollection};
     use full_sail::fullsail_token::{Self, FULLSAIL_TOKEN, FullSailManager};

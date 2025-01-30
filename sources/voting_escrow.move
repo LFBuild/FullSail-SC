@@ -7,7 +7,7 @@ module full_sail::voting_escrow {
     use sui::display;
     use sui::balance::{Self, Balance};
 
-    use full_sail::fullsail_token::{Self, FULLSAIL_TOKEN, FullSailManager};
+    use full_sail::fullsail_token::{Self, FULLSAIL_TOKEN, FullSailManager, FullSailAdminCap};
     use full_sail::epoch;
 
     // --- errors ---
@@ -69,7 +69,7 @@ module full_sail::voting_escrow {
         token: VeFullSailToken<FULLSAIL_TOKEN>
     }
 
-    public struct AdminCap has key {
+    public struct VotingEscrowAdminCap has key {
         id: UID
     }
 
@@ -107,7 +107,7 @@ module full_sail::voting_escrow {
         
         // create admin capability
         transfer::transfer(
-            AdminCap { id: object::new(ctx) },
+            VotingEscrowAdminCap { id: object::new(ctx) },
             tx_context::sender(ctx)
         );
         
@@ -222,7 +222,7 @@ module full_sail::voting_escrow {
         }
     }
 
-    public fun add_rebase(
+    public(package) fun add_rebase(
         collection: &mut VeFullSailCollection,
         amount: u64,
         epoch_number: u64,

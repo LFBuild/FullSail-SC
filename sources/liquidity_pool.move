@@ -1087,4 +1087,14 @@ module full_sail::liquidity_pool {
         
         (base_coin, quote_coin)
     }
+
+    #[test_only]
+    public fun get_pauser(configs: &LiquidityPoolConfigs): address {
+        configs.pauser
+    }
+
+    #[test_only]
+    public fun get_pending_pauser(configs: &LiquidityPoolConfigs): address {
+        configs.pending_pauser
+    }
 }

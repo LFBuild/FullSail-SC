@@ -1,6 +1,9 @@
 module full_sail::fullsail_token {
     use sui::coin::{Self, Coin, TreasuryCap};
 
+    // --- addresses ---
+    const DEFAULT_ADMIN: address = @full_sail;
+
     // --- structs ---
     // OTW
     public struct FULLSAIL_TOKEN has drop {}
@@ -10,6 +13,10 @@ module full_sail::fullsail_token {
         id: UID,
         cap: TreasuryCap<FULLSAIL_TOKEN>,
         minter: address
+    }
+
+    public struct FullSailAdminCap has key {
+        id: UID
     }
 
     // init
@@ -33,6 +40,11 @@ module full_sail::fullsail_token {
             minter: tx_context::sender(ctx)
         };
 
+        let admin_cap = FullSailAdminCap {
+            id: object::new(ctx)
+        };
+
+        transfer::transfer(admin_cap, DEFAULT_ADMIN);
         transfer::share_object(manager);
         transfer::public_freeze_object(metadata);
     }
@@ -70,7 +82,7 @@ module full_sail::fullsail_token {
         transfer::public_freeze_object(coin);
     }
 
-    public fun withdraw(
+    public(package) fun withdraw(
         manager: &mut FullSailManager, 
         amount: u64, 
         ctx: &mut TxContext

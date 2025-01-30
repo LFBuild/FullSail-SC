@@ -2,15 +2,14 @@
 module full_sail::liquidity_pool_test {
     use sui::test_scenario::{Self as ts, next_tx, Scenario};
     use sui::coin::{Self, CoinMetadata};
-    use std::debug;
     
     // --- modules ---
-    use full_sail::liquidity_pool::{Self, LiquidityPoolConfigs, LiquidityPool, FeesAccounting, WhitelistedLPers};
+    use full_sail::liquidity_pool::{Self, LiquidityPoolConfigs, LiquidityPoolAdminCap, FeesAccounting, WhitelistedLPers};
     use full_sail::sui::{Self, SUI};
     use full_sail::usdt::{Self, USDT};
     
     // --- addresses ---
-    const OWNER: address = @0xab;
+    const OWNER: address = @full_sail;
 
     fun setup(scenario: &mut Scenario) {
         // Initialize all modules
@@ -515,4 +514,35 @@ module full_sail::liquidity_pool_test {
         ts::end(scenario_val);
     }
 
+#[test]
+fun test_set_pauser() {
+    let mut scenario_val = ts::begin(OWNER);
+    let scenario = &mut scenario_val;
+    
+    setup(scenario);
+
+    next_tx(scenario, OWNER);
+    {
+        let mut configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
+        let admin_cap = ts::take_from_sender<LiquidityPoolAdminCap>(scenario);
+        let new_pauser = @0x123;
+
+        assert!(liquidity_pool::get_pauser(&configs) == OWNER, 0);
+        
+        liquidity_pool::set_pauser(
+            &admin_cap,
+            &mut configs,
+            new_pauser,
+            ts::ctx(scenario)
+        );
+
+        assert!(liquidity_pool::get_pauser(&configs) == OWNER, 1);
+        assert!(liquidity_pool::get_pending_pauser(&configs) == new_pauser, 2);
+
+        ts::return_shared(configs);
+        ts::return_to_sender(scenario, admin_cap);
+    };
+
+    ts::end(scenario_val);
+}
 }
