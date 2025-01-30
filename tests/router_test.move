@@ -1,4 +1,4 @@
-/*#[test_only]
+#[test_only]
 module full_sail::router_test {
     use sui::test_scenario::{Self as ts, next_tx, Scenario};
     use sui::test_utils;
@@ -7,7 +7,7 @@ module full_sail::router_test {
     use std::debug;
     use full_sail::router;
     use full_sail::gauge::{Self, Gauge};
-    use full_sail::liquidity_pool::{Self, LiquidityPoolConfigs, FeesAccounting};
+    use full_sail::liquidity_pool::{Self, LiquidityPoolConfigs, LiquidityPool, FeesAccounting, WhitelistedLPers};
     use full_sail::coin_wrapper::{Self, WrapperStore, WrapperStoreCap, COIN_WRAPPER};
     use full_sail::vote_manager::{Self, AdministrativeData};
     use full_sail::token_whitelist::{Self, RewardTokenWhitelistPerPool, TokenWhitelistAdminCap};
@@ -86,6 +86,7 @@ module full_sail::router_test {
             let quote_wrapped_coin = coin_wrapper::wrap<USDT>(&mut store, quote_coin, ts::ctx(scenario));
             router::add_liquidity_and_stake_entry<USDT, SUI>(
                 &mut gauge,
+                &whitelist,
                 &quote_metadata,
                 &base_metadata,
                 false,
@@ -99,6 +100,7 @@ module full_sail::router_test {
 
             transfer::public_transfer(base_wrapped_coin, @0xcafe);
             transfer::public_transfer(quote_wrapped_coin, @0xcafe);
+            ts::return_shared(whitelist);
             ts::return_shared(fees_accounting);
             ts::return_shared(gauge);
         };
@@ -186,11 +188,13 @@ module full_sail::router_test {
             assert!(coin::value(&quote_coin_opt) == optimal_b, 3);
             let base_metadata2 = coin_wrapper::get_wrapper<SUI>(&store);
             let quote_metadata2 = coin_wrapper::get_wrapper<USDT>(&store);
+            let whitelist = ts::take_shared<WhitelistedLPers>(scenario);
             gauge::stake(
                 &mut gauge,
                 liquidity_pool::mint_lp(
                     pool, 
                     &mut fees_accounting, 
+                    &whitelist,
                     quote_metadata2,
                     base_metadata2,
                     base_coin_opt,
@@ -206,6 +210,7 @@ module full_sail::router_test {
             transfer::public_transfer(quote_coin, @0xcafe);
             ts::return_shared(fees_accounting);
             ts::return_shared(gauge);
+            ts::return_shared(whitelist);
         };
 
         let all_pools = liquidity_pool::all_pool_ids(&configs);
@@ -289,11 +294,13 @@ module full_sail::router_test {
             assert!(coin::value(&quote_coin_opt) == optimal_b, 3);
             let base_metadata2 = coin_wrapper::get_wrapper<SUI>(&store);
             let quote_metadata2 = coin_wrapper::get_wrapper<USDT>(&store);
+            let whitelist = ts::take_shared<WhitelistedLPers>(scenario);
             gauge::stake(
                 &mut gauge,
                 liquidity_pool::mint_lp(
                     pool, 
                     &mut fees_accounting, 
+                    &whitelist,
                     quote_metadata2,
                     base_metadata2,
                     base_coin_opt,
@@ -307,6 +314,7 @@ module full_sail::router_test {
                 
             transfer::public_transfer(base_coin, @0xcafe);
             transfer::public_transfer(quote_coin, @0xcafe);
+            ts::return_shared(whitelist);
             ts::return_shared(fees_accounting);
             ts::return_shared(gauge);
         };
@@ -375,6 +383,7 @@ module full_sail::router_test {
             liquidity_pool::mint_lp(
                 pool,
                 &mut fees_accounting,
+                &whitelist,
                 quote_metadata,
                 base_metadata,
                 base_wrapped_coin,
@@ -463,9 +472,11 @@ module full_sail::router_test {
         next_tx(scenario, OWNER);
         {
             let mut fees_accounting = ts::take_shared<FeesAccounting>(scenario);
+            let whitelist = ts::take_shared<WhitelistedLPers>(scenario);
             liquidity_pool::mint_lp(
                 pool,
                 &mut fees_accounting,
+                &whitelist,
                 quote_metadata,
                 base_metadata,
                 quote_wrapped_coin,
@@ -508,6 +519,7 @@ module full_sail::router_test {
                 deposited_coin
             );
             ts::return_shared(fees_accounting);
+            ts::return_shared(whitelist);
             transfer::public_transfer(quote_new_wrapped_coin, @0xcafe);
         };
 
@@ -884,12 +896,12 @@ module full_sail::router_test {
             assert!(coin::value(&quote_coin_opt) == optimal_b, 3);
             let base_metadata2 = coin_wrapper::get_wrapper<SUI>(&store);
             let quote_metadata2 = coin_wrapper::get_wrapper<USDT>(&store);
-            
             gauge::stake(
                 &mut gauge,
                 liquidity_pool::mint_lp(
                     pool, 
                     &mut fees_accounting, 
+                    &whitelist,
                     quote_metadata2,
                     base_metadata2,
                     base_coin_opt,

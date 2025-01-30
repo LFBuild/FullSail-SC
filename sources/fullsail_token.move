@@ -118,4 +118,3 @@ module full_sail::fullsail_token {
         &mut manager.cap
     }
 }
-

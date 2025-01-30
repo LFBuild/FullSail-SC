@@ -12,10 +12,15 @@ module full_sail::minter {
     const E_INSUFFICIENT_BALANCE: u64 = 2;
     const E_ZERO_TOTAL_POWER: u64 = 3;
     const E_MAX_LOCK_TIME: u64 = 4;
+    const DEFAULT_ADMIN: address = @full_sail;
 
     // --- structs ---
     // otw
     public struct MINTER has drop {}
+
+    public struct MinterAdminCap has key {
+        id: UID
+    }
 
     public struct MinterConfig has key {
         id: UID,
@@ -37,10 +42,15 @@ module full_sail::minter {
             last_emission_update_epoch : epoch::now(clock),
         };
         transfer::share_object(minter_config);
+        
+        let admin_cap = MinterAdminCap {
+            id: object::new(ctx)
+        };
+        transfer::transfer(admin_cap, DEFAULT_ADMIN);
     }
 
     #[lint_allow(self_transfer)]
-    public fun initial_mint(manager: &mut FullSailManager, collection: &mut VeFullSailCollection, clock: &Clock, ctx: &mut TxContext): VeFullSailToken<FULLSAIL_TOKEN> {
+    public fun initial_mint(_admin_cap: &MinterAdminCap, manager: &mut FullSailManager, collection: &mut VeFullSailCollection, clock: &Clock, ctx: &mut TxContext): VeFullSailToken<FULLSAIL_TOKEN> {
         let treasury_cap = fullsail_token::get_treasury_cap(manager);
         let recipient = tx_context::sender(ctx);
         let mut initial_mint_amount = fullsail_token::mint(
@@ -90,12 +100,12 @@ module full_sail::minter {
         minter.team_emission_rate_bps
     }
 
-    public entry fun update_team_account(minter: &mut MinterConfig, new_team_account: address, ctx: &mut TxContext) {
+    public entry fun update_team_account(_admin_cap: &MinterAdminCap, minter: &mut MinterConfig, new_team_account: address, ctx: &mut TxContext) {
         assert!(tx_context::sender(ctx) == minter.team_account, E_NOT_OWNER);
         minter.pending_team_account = new_team_account;
     }
 
-    public entry fun set_team_rate(minter: &mut MinterConfig, new_rate_bps: u64, ctx: &mut TxContext) {
+    public entry fun set_team_rate(_admin_cap: &MinterAdminCap, minter: &mut MinterConfig, new_rate_bps: u64, ctx: &mut TxContext) {
         assert!(new_rate_bps <= 50, E_INSUFFICIENT_BALANCE);
         assert!(tx_context::sender(ctx) == minter.team_account, E_NOT_OWNER);
         minter.team_emission_rate_bps = new_rate_bps;
@@ -141,7 +151,7 @@ module full_sail::minter {
         ((((((((((weekly_emission as u128) as u256) * (total_voting_power as u256) / (total_supply as u256)) as u128) as u256) * (total_voting_power as u256) / (total_supply as u256)) as u128) as u256) * (total_voting_power as u256) / (total_supply as u256)) as u128) / 2
     }
 
-    public entry fun confirm_new_team_account(minter: &mut MinterConfig, ctx: &mut TxContext) {
+    public entry fun confirm_new_team_account(_admin_cap: &MinterAdminCap, minter: &mut MinterConfig, ctx: &mut TxContext) {
         assert!(tx_context::sender(ctx) == minter.team_account, E_NOT_OWNER);
         minter.team_account = minter.pending_team_account;
         minter.pending_team_account = @0x0;
