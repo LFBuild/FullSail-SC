@@ -294,11 +294,11 @@ module full_sail::vote_manager_test {
             let base_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
             let quote_metadata_eth = ts::take_immutable<CoinMetadata<ETH>>(scenario);
             
-            vote_manager::create_gauge<ETH, SUI>(
+            vote_manager::create_gauge<SUI, ETH>(
                 &mut admin_data,
                 &mut configs,
-                &quote_metadata_eth, 
                 &base_metadata,
+                &quote_metadata_eth, 
                 false,
                 ts::ctx(scenario)
             );
@@ -309,10 +309,10 @@ module full_sail::vote_manager_test {
             ts::return_immutable(quote_metadata_eth);
         };
 
-        // Increment clock for voting
+        // increment clock for voting
         clock::increment_for_testing(&mut clock, 604800000 * 2);
 
-        // Vote for SUI/USDT pool
+        // vote for SUI/USDT pool
         next_tx(scenario, USER);
         {
             let mut admin_data = ts::take_shared<AdministrativeData>(scenario);
@@ -376,16 +376,16 @@ module full_sail::vote_manager_test {
             let mut gauge_vote_accounting = ts::take_shared<GaugeVoteAccounting>(scenario);
             let mut ve_token_accounting = ts::take_shared<VeTokenVoteAccounting>(scenario);
             let ve_token = ts::take_from_sender<VeFullSailToken<FULLSAIL_TOKEN>>(scenario);
-            let mut rewards_pool = ts::take_shared<RewardsPool<ETH>>(scenario);
+            let mut rewards_pool = ts::take_shared<RewardsPool<SUI>>(scenario);
             let mut manager = ts::take_shared<FullSailManager>(scenario);
             let mut collection = ts::take_shared<VeFullSailCollection>(scenario);
             let mut minter = ts::take_shared<MinterConfig>(scenario);
-            let mut gauge = ts::take_shared<Gauge<ETH, SUI>>(scenario);
+            let mut gauge = ts::take_shared<Gauge<SUI, ETH>>(scenario);
 
             let pool = gauge::liquidity_pool(&mut gauge);
             let pool_id = object::id(pool);
             
-            vote_manager::vote<ETH, SUI>(
+            vote_manager::vote<SUI, ETH>(
                 &ve_token,
                 pool_id,
                 30,
@@ -1303,11 +1303,11 @@ module full_sail::vote_manager_test {
                 ts::ctx(scenario)
             );
 
-            vote_manager::create_gauge<ETH, SUI>(
+            vote_manager::create_gauge<SUI, ETH>(
                 &mut admin_data,
                 &mut configs,
-                &quote_metadata_eth,
                 &base_metadata,
+                &quote_metadata_eth,
                 false,
                 ts::ctx(scenario)
             );
@@ -1394,7 +1394,7 @@ module full_sail::vote_manager_test {
         next_tx(scenario, USER);
         {
             let mut gauge_sui = ts::take_shared<Gauge<SUI, USDT>>(scenario);
-            let mut gauge_eth = ts::take_shared<Gauge<ETH, SUI>>(scenario);
+            let mut gauge_eth = ts::take_shared<Gauge<SUI, ETH>>(scenario);
 
             gauge::stake(&mut gauge_sui, POOL_AMOUNT, ts::ctx(scenario), &clock);
             gauge::stake(&mut gauge_eth, POOL_AMOUNT, ts::ctx(scenario), &clock);
@@ -1410,7 +1410,7 @@ module full_sail::vote_manager_test {
         next_tx(scenario, OWNER);
         {
             let mut gauge_sui = ts::take_shared<Gauge<SUI, USDT>>(scenario);
-            let mut gauge_eth = ts::take_shared<Gauge<ETH, SUI>>(scenario);
+            let mut gauge_eth = ts::take_shared<Gauge<SUI, ETH>>(scenario);
             let admin_data = ts::take_shared<AdministrativeData>(scenario);
             
             let reward_balance1 = balance::create_for_testing(1000);
@@ -1454,7 +1454,7 @@ module full_sail::vote_manager_test {
         next_tx(scenario, USER);
         {
             let admin_data = ts::take_shared<AdministrativeData>(scenario);
-            let mut gauge_eth = ts::take_shared<Gauge<ETH, SUI>>(scenario);
+            let mut gauge_eth = ts::take_shared<Gauge<SUI, ETH>>(scenario);
             let pool_eth = gauge::liquidity_pool_ref(&gauge_eth);
             let pool_eth_id = object::id(pool_eth);
             
@@ -1515,7 +1515,7 @@ module full_sail::vote_manager_test {
         next_tx(scenario, USER);
         {
             let admin_data = ts::take_shared<AdministrativeData>(scenario);
-            let mut gauge_eth = ts::take_shared<Gauge<ETH, SUI>>(scenario);
+            let mut gauge_eth = ts::take_shared<Gauge<SUI, ETH>>(scenario);
             let pool_eth = gauge::liquidity_pool_ref(&gauge_eth);
             let pool_eth_id = object::id(pool_eth);
             
@@ -1613,11 +1613,11 @@ module full_sail::vote_manager_test {
             let base_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
             let quote_metadata_eth = ts::take_immutable<CoinMetadata<ETH>>(scenario);
 
-            vote_manager::create_gauge<ETH, SUI>(
+            vote_manager::create_gauge<SUI, ETH>(
                 &mut admin_data,
                 &mut configs,
-                &quote_metadata_eth,
                 &base_metadata,
+                &quote_metadata_eth,
                 false,
                 ts::ctx(scenario)
             );
@@ -1722,8 +1722,8 @@ module full_sail::vote_manager_test {
             let mut admin_data = ts::take_shared<AdministrativeData>(scenario);
             let mut gauge_vote_accounting = ts::take_shared<GaugeVoteAccounting>(scenario);
             let mut ve_token_accounting = ts::take_shared<VeTokenVoteAccounting>(scenario);
-            let mut gauge = ts::take_shared<Gauge<ETH, SUI>>(scenario);
-            let mut rewards_pool = ts::take_shared<RewardsPool<ETH>>(scenario);
+            let mut gauge = ts::take_shared<Gauge<SUI, ETH>>(scenario);
+            let mut rewards_pool = ts::take_shared<RewardsPool<SUI>>(scenario);
             let mut manager = ts::take_shared<FullSailManager>(scenario);
             let mut collection = ts::take_shared<VeFullSailCollection>(scenario);
             let mut minter = ts::take_shared<MinterConfig>(scenario);
@@ -1732,7 +1732,7 @@ module full_sail::vote_manager_test {
             
             let pool_id = object::id(gauge::liquidity_pool(&mut gauge));
 
-            vote_manager::vote<ETH, SUI>(
+            vote_manager::vote<SUI, ETH>(
                 &ve_token2,
                 pool_id,
                 100,

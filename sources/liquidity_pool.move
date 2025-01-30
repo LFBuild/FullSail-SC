@@ -11,7 +11,7 @@ module full_sail::liquidity_pool {
     use sui::event;
 
     // --- addresses ---
-    const DEFAULT_ADMIN: address = @0x123;
+    const DEFAULT_ADMIN: address = @full_sail;
 
     // --- errors ---
     const E_INSUFFICIENT_BALANCE: u64 = 1;
@@ -62,7 +62,7 @@ module full_sail::liquidity_pool {
         volatile_fee_bps: u64
     }
 
-    public struct AdminCap has key {
+    public struct LiquidityPoolAdminCap has key {
         id: UID
     }
 
@@ -94,7 +94,7 @@ module full_sail::liquidity_pool {
             volatile_fee_bps: 10
         };
 
-        let admin_cap = AdminCap {
+        let admin_cap = LiquidityPoolAdminCap {
             id: object::new(ctx)
         };
 
@@ -113,7 +113,6 @@ module full_sail::liquidity_pool {
     }
 
     public fun swap<BaseType, QuoteType>(
-        //pool: &mut LiquidityPool<BaseType, QuoteType>,
         configs: &mut LiquidityPoolConfigs,
         fees_accounting: &mut FeesAccounting,
         base_metadata: &CoinMetadata<BaseType>,
@@ -432,6 +431,7 @@ module full_sail::liquidity_pool {
     }
 
     public entry fun accept_fee_manager(
+        _admin_cap: &LiquidityPoolAdminCap,
         configs: &mut LiquidityPoolConfigs,
         ctx: &mut TxContext
     ) {
@@ -445,6 +445,7 @@ module full_sail::liquidity_pool {
     }
 
     public entry fun accept_pauser(
+        _admin_cap: &LiquidityPoolAdminCap,
         configs: &mut LiquidityPoolConfigs,
         ctx: &mut TxContext
     ) {
@@ -796,6 +797,7 @@ module full_sail::liquidity_pool {
     }
 
     public entry fun set_fee_manager(
+        _admin_cap: &LiquidityPoolAdminCap,
         configs: &mut LiquidityPoolConfigs,
         new_fee_manager: address,
         ctx: &mut TxContext
@@ -808,6 +810,7 @@ module full_sail::liquidity_pool {
     }
 
     public entry fun set_pause(
+        _admin_cap: &LiquidityPoolAdminCap,
         configs: &mut LiquidityPoolConfigs,
         pause_status: bool,
         ctx: &mut TxContext
@@ -820,6 +823,7 @@ module full_sail::liquidity_pool {
     }
 
     public entry fun set_pauser(
+        _admin_cap: &LiquidityPoolAdminCap,
         configs: &mut LiquidityPoolConfigs,
         new_pauser: address,
         ctx: &mut TxContext
@@ -832,6 +836,7 @@ module full_sail::liquidity_pool {
     }
 
     public entry fun set_pool_swap_fee<BaseType, QuoteType>(
+        _admin_cap: &LiquidityPoolAdminCap,
         pool: &mut LiquidityPool<BaseType, QuoteType>,
         configs: &LiquidityPoolConfigs,
         new_swap_fee: u64,
@@ -845,6 +850,7 @@ module full_sail::liquidity_pool {
     }
 
     public entry fun set_stable_fee(
+        _admin_cap: &LiquidityPoolAdminCap,
         configs: &mut LiquidityPoolConfigs,
         new_stable_fee: u64,
         ctx: &mut TxContext
@@ -857,6 +863,7 @@ module full_sail::liquidity_pool {
     }
 
     public entry fun set_volatile_fee(
+        _admin_cap: &LiquidityPoolAdminCap,
         configs: &mut LiquidityPoolConfigs,
         new_volatile_fee: u64,
         ctx: &mut TxContext
@@ -1020,6 +1027,7 @@ module full_sail::liquidity_pool {
     }
 
     public entry fun add_whitelisted_lper(
+        _admin_cap: &LiquidityPoolAdminCap,
         whitelist: &mut WhitelistedLPers,
         lper: address,
         ctx: &mut TxContext
@@ -1031,6 +1039,7 @@ module full_sail::liquidity_pool {
     }
 
     public entry fun remove_whitelisted_lper(
+        _admin_cap: &LiquidityPoolAdminCap,
         whitelist: &mut WhitelistedLPers,
         lper: address,
         ctx: &mut TxContext
@@ -1077,5 +1086,15 @@ module full_sail::liquidity_pool {
         };
         
         (base_coin, quote_coin)
+    }
+
+    #[test_only]
+    public fun get_pauser(configs: &LiquidityPoolConfigs): address {
+        configs.pauser
+    }
+
+    #[test_only]
+    public fun get_pending_pauser(configs: &LiquidityPoolConfigs): address {
+        configs.pending_pauser
     }
 }
