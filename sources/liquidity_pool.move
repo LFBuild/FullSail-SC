@@ -7,7 +7,7 @@ module full_sail::liquidity_pool {
     //use sui::dynamic_field;
     use sui::dynamic_object_field;
     use sui::dynamic_field;
-    use full_sail::coin_wrapper::{Self, WrapperStore};
+    //use full_sail::coin_wrapper::{Self, WrapperStore};
     use sui::event;
 
     // --- addresses ---
@@ -890,47 +890,24 @@ module full_sail::liquidity_pool {
     public fun supported_native_fungible_assets<BaseType, QuoteType>(
         base_metadata: &CoinMetadata<BaseType>,
         quote_metadata: &CoinMetadata<QuoteType>,
-        wrapper_store: &WrapperStore,
+        //wrapper_store: &WrapperStore,
     ): vector<ID> {
-        let mut inner_assets = supported_inner_assets(base_metadata, quote_metadata);
-        let mut native_assets = vector::empty<ID>();
-        
-        vector::reverse(&mut inner_assets);
-        let mut inner_assets_length = vector::length(&inner_assets);
-        
-        while (inner_assets_length > 0) {
-            let asset_id = vector::pop_back(&mut inner_assets);
-            if (!coin_wrapper::is_wrapper(wrapper_store, asset_id)) {
-                vector::push_back(&mut native_assets, asset_id);
-            };
-            inner_assets_length = inner_assets_length - 1;
-        };
-        
-        vector::destroy_empty(inner_assets);
-        native_assets
+        supported_inner_assets(base_metadata, quote_metadata)
     }
 
     public fun supported_token_strings<BaseType, QuoteType>(
         base_metadata: &CoinMetadata<BaseType>,
         quote_metadata: &CoinMetadata<QuoteType>,
-        wrapper_store: &WrapperStore,
+        //wrapper_store: &WrapperStore,
     ): vector<String> {
-        let mut inner_assets = supported_inner_assets(base_metadata, quote_metadata);
         let mut token_strings = vector::empty<String>();
         
-        vector::reverse(&mut inner_assets);
-        let mut inner_assets_length = vector::length(&inner_assets);
+        // add base token symbol
+        vector::push_back(&mut token_strings, coin::get_symbol(base_metadata));
         
-        while (inner_assets_length > 0) {
-            let asset_id = vector::pop_back(&mut inner_assets);
-            vector::push_back(
-                &mut token_strings, 
-                coin_wrapper::get_original<BaseType>(wrapper_store, asset_id)
-            );
-            inner_assets_length = inner_assets_length - 1;
-        };
+        // add quote token symbol
+        vector::push_back(&mut token_strings, coin::get_symbol(quote_metadata));
         
-        vector::destroy_empty(inner_assets);
         token_strings
     }
 

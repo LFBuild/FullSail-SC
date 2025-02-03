@@ -1,7 +1,9 @@
 module full_sail::minter {
     use sui::coin::{Self, Coin};
+    use std::ascii::{String};
     use sui::clock::Clock;
     use std::u64;
+    use std::type_name;
 
     use full_sail::fullsail_token::{Self, FULLSAIL_TOKEN, FullSailManager};
     use full_sail::epoch;
@@ -145,6 +147,10 @@ module full_sail::minter {
         assert!(tx_context::sender(ctx) == minter.team_account, E_NOT_OWNER);
         minter.team_account = minter.pending_team_account;
         minter.pending_team_account = @0x0;
+    }
+
+    public fun format_coin<T>(): String {
+        type_name::get<T>().into_string()
     }
 
     #[test_only]
