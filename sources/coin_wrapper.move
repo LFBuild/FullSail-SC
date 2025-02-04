@@ -1,4 +1,4 @@
-/*module full_sail::coin_wrapper {
+module full_sail::coin_wrapper {
     use sui::table::{Self, Table};
     use sui::coin::{Self, Coin, TreasuryCap, CoinMetadata};
     use sui::dynamic_object_field;
@@ -155,4 +155,20 @@
     public fun create_witness(): COIN_WRAPPER {
         COIN_WRAPPER {}
     }
-}*/
+
+    #[test_only]
+    public fun unwrap_for_testing<CoinType>(
+        store: &mut WrapperStore,
+    ): Coin<CoinType> {
+        let coin_type = type_name::get<CoinType>();
+        let coin_type_name = coin_type.into_string();
+        assert!(is_supported(store, &coin_type_name), E_NOT_INITIALIZED);
+
+        let exists = sui::dynamic_object_field::exists_<String>(&store.id, coin_type_name);
+        assert!(exists, 1);
+
+        let stored_coin = dynamic_object_field::remove<String, Coin<CoinType>>(&mut store.id, coin_type_name);
+
+        stored_coin
+    }
+}
