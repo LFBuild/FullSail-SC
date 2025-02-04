@@ -342,21 +342,10 @@ module full_sail::router_test {
         let mut configs = ts::take_shared<LiquidityPoolConfigs>(scenario);
         let base_metadata = ts::take_immutable<CoinMetadata<SUI>>(scenario);
         let quote_metadata = ts::take_immutable<CoinMetadata<USDT>>(scenario);
-        let mut store = ts::take_shared<WrapperStore>(scenario);
         let cap = ts::take_from_sender<WrapperStoreCap>(scenario);
         let mut admin_data = ts::take_shared<AdministrativeData>(scenario);
         let admin_cap = ts::take_from_sender<TokenWhitelistAdminCap>(scenario);
         let mut pool_whitelist = ts::take_shared<RewardTokenWhitelistPerPool>(scenario);
-        coin_wrapper::register_coin_for_testing<USDT>(
-            &cap,
-            &mut store,
-            ts::ctx(scenario)
-        );
-        coin_wrapper::register_coin_for_testing<SUI>(
-            &cap,
-            &mut store,
-            ts::ctx(scenario)
-        );
 
         next_tx(scenario, OWNER);
         
@@ -367,7 +356,6 @@ module full_sail::router_test {
             &mut configs,
             &admin_cap,
             &mut pool_whitelist,
-            &store,
             false,
             ts::ctx(scenario)
         );
@@ -379,13 +367,12 @@ module full_sail::router_test {
             token_whitelist::whitelist_length(
                 &pool_whitelist, 
                 object::id_to_address(vector::borrow(&all_pools, 0))
-            ) == 1, 3
+            ) == 3, 3
         );
 
         ts::return_shared(configs);
         ts::return_immutable(base_metadata);
         ts::return_immutable(quote_metadata);
-        ts::return_shared(store);
         ts::return_to_sender(scenario, cap);
         ts::return_to_sender(scenario, admin_cap);
         ts::return_shared(admin_data);
