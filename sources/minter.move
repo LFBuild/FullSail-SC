@@ -33,7 +33,7 @@ module full_sail::minter {
         last_emission_update_epoch: u64,
     }
 
-    public fun initialize(_otw: MINTER, ctx: &mut TxContext, clock: &Clock) {
+    public fun initialize(_otw: MINTER, clock: &Clock, ctx: &mut TxContext) {
         let recipient = tx_context::sender(ctx);
         let minter_config = MinterConfig{
             id                         : object::new(ctx),
@@ -165,6 +165,6 @@ module full_sail::minter {
 
     #[test_only]
     public fun init_for_testing(ctx: &mut TxContext, clock: &Clock) {
-        initialize(MINTER {}, ctx, clock)
+        initialize(MINTER {}, clock, ctx)
     }
 }
