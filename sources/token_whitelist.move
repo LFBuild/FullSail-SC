@@ -1,12 +1,13 @@
 module full_sail::token_whitelist {
     use std::string::{Self, String};
+    use std::ascii;
     use sui::table::{Self, Table};
     use sui::vec_set::{Self, VecSet};
     use std::type_name;
 
     // --- friends modules ---
     //use full_sail::vote_manager;
-    use full_sail::coin_wrapper;
+    //use full_sail::coin_wrapper;
 
     // --- errors ---
     const E_MAX_WHITELIST_EXCEEDED: u64 = 1;
@@ -174,7 +175,10 @@ module full_sail::token_whitelist {
         
         let mut assets_len = vector::length(&assets);
         while (assets_len > 0) {
-            let ascii_string = coin_wrapper::format_fungible_asset(vector::pop_back(&mut assets));
+            let asset_id = vector::pop_back(&mut assets);
+            // Convert the ID to bytes and then to a string representation
+            let id_bytes = object::id_to_bytes(&asset_id);
+            let ascii_string = ascii::string(id_bytes);
             let string = string::from_ascii(ascii_string);
             vector::push_back(&mut asset_names, string);
             assets_len = assets_len - 1;

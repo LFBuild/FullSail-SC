@@ -1,6 +1,7 @@
 module full_sail::vote_manager {
-    use std::ascii::String;
+    use std::ascii::{Self, String};
     use std::string;
+    use std::type_name;
     use sui::table::{Self, Table};
     use sui::vec_map::{Self, VecMap};
     use sui::coin::{Self, Coin, CoinMetadata};
@@ -10,7 +11,7 @@ module full_sail::vote_manager {
 
     use full_sail::voting_escrow::{Self, VeFullSailToken, VeFullSailCollection};
     use full_sail::fullsail_token::{Self, FULLSAIL_TOKEN, FullSailManager};
-    use full_sail::coin_wrapper::{Self, WrapperStore, COIN_WRAPPER, WrapperStoreCap};
+   // use full_sail::coin_wrapper::{Self, WrapperStore, COIN_WRAPPER, WrapperStoreCap};
     use full_sail::token_whitelist::{Self, TokenWhitelist, TokenWhitelistAdminCap, RewardTokenWhitelistPerPool};
     use full_sail::gauge::{Self, Gauge};
     use full_sail::epoch;
@@ -120,7 +121,6 @@ module full_sail::vote_manager {
         admin_data: &AdministrativeData,
         fees_pool: &mut RewardsPool<BaseType>,
         incentive_pool: &mut RewardsPool<BaseType>,
-        wrapper_store: &mut WrapperStore,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
@@ -130,26 +130,29 @@ module full_sail::vote_manager {
         let account_addr = tx_context::sender(ctx);
         assert!(voting_escrow::token_owner(ve_token) == account_addr, E_NOT_OWNER);
         
+        // Claim rewards from both pools
         let mut rewards = rewards_pool::claim_rewards(account_addr, fees_pool, epoch_id, clock, ctx);
         vector::append(&mut rewards, rewards_pool::claim_rewards(account_addr, incentive_pool, epoch_id, clock, ctx));
         
-        let mut valid_coins = vector::empty<String>();
-        add_valid_coin<T0>(&mut valid_coins);
-        add_valid_coin<T1>(&mut valid_coins);
-        add_valid_coin<T2>(&mut valid_coins);
-        add_valid_coin<T3>(&mut valid_coins);
-        add_valid_coin<T4>(&mut valid_coins);
-        add_valid_coin<T5>(&mut valid_coins);
-        add_valid_coin<T6>(&mut valid_coins);
-        add_valid_coin<T7>(&mut valid_coins);
-        add_valid_coin<T8>(&mut valid_coins);
-        add_valid_coin<T9>(&mut valid_coins);
-        add_valid_coin<T10>(&mut valid_coins);
-        add_valid_coin<T11>(&mut valid_coins);
-        add_valid_coin<T12>(&mut valid_coins);
-        add_valid_coin<T13>(&mut valid_coins);
-        add_valid_coin<T14>(&mut valid_coins);
+        // Create vector of valid coin types using their type names
+        let mut valid_types = vector::empty<ascii::String>();
+        add_valid_type<T0>(&mut valid_types);
+        add_valid_type<T1>(&mut valid_types);
+        add_valid_type<T2>(&mut valid_types);
+        add_valid_type<T3>(&mut valid_types);
+        add_valid_type<T4>(&mut valid_types);
+        add_valid_type<T5>(&mut valid_types);
+        add_valid_type<T6>(&mut valid_types);
+        add_valid_type<T7>(&mut valid_types);
+        add_valid_type<T8>(&mut valid_types);
+        add_valid_type<T9>(&mut valid_types);
+        add_valid_type<T10>(&mut valid_types);
+        add_valid_type<T11>(&mut valid_types);
+        add_valid_type<T12>(&mut valid_types);
+        add_valid_type<T13>(&mut valid_types);
+        add_valid_type<T14>(&mut valid_types);
 
+        // Process and distribute rewards
         vector::reverse(&mut rewards);
         let mut rewards_length = vector::length(&rewards);
         while (rewards_length > 0) {
@@ -157,39 +160,27 @@ module full_sail::vote_manager {
             if (coin::value(&reward) == 0) {
                 coin::destroy_zero(reward);
             } else {
-                let metadata_id = object::id(&reward);
-                if (coin_wrapper::is_wrapper(wrapper_store, metadata_id)) {
-                    let original = coin_wrapper::get_original<BaseType>(wrapper_store, metadata_id);
-                    let (found, index) = vector::index_of(&valid_coins, &original);
-                    assert!(found, E_INVALID_COIN);
+                // Get the coin's type name for validation
+                let base_type = type_name::get<BaseType>();
+                let ascii_str = type_name::into_string(base_type);
+                
+                let (found, _) = vector::index_of(&valid_types, &ascii_str);
+                assert!(found, E_INVALID_COIN);
 
-                    let wrapped_coin = coin_wrapper::wrap(wrapper_store, reward, ctx);
-
-                    if (index == 0) { unwrap_and_deposit<T0>(wrapper_store, account_addr, wrapped_coin); }
-                    else if (index == 1) { unwrap_and_deposit<T1>(wrapper_store, account_addr, wrapped_coin); }
-                    else if (index == 2) { unwrap_and_deposit<T2>(wrapper_store, account_addr, wrapped_coin); }
-                    else if (index == 3) { unwrap_and_deposit<T3>(wrapper_store, account_addr, wrapped_coin); }
-                    else if (index == 4) { unwrap_and_deposit<T4>(wrapper_store, account_addr, wrapped_coin); }
-                    else if (index == 5) { unwrap_and_deposit<T5>(wrapper_store, account_addr, wrapped_coin); }
-                    else if (index == 6) { unwrap_and_deposit<T6>(wrapper_store, account_addr, wrapped_coin); }
-                    else if (index == 7) { unwrap_and_deposit<T7>(wrapper_store, account_addr, wrapped_coin); }
-                    else if (index == 8) { unwrap_and_deposit<T8>(wrapper_store, account_addr, wrapped_coin); }
-                    else if (index == 9) { unwrap_and_deposit<T9>(wrapper_store, account_addr, wrapped_coin); }
-                    else if (index == 10) { unwrap_and_deposit<T10>(wrapper_store, account_addr, wrapped_coin); }
-                    else if (index == 11) { unwrap_and_deposit<T11>(wrapper_store, account_addr, wrapped_coin); }
-                    else if (index == 12) { unwrap_and_deposit<T12>(wrapper_store, account_addr, wrapped_coin); }
-                    else if (index == 13) { unwrap_and_deposit<T13>(wrapper_store, account_addr, wrapped_coin); }
-                    else {
-                        assert!(index == 14, E_INVALID_COIN);
-                        unwrap_and_deposit<T14>(wrapper_store, account_addr, wrapped_coin);
-                    };
-                } else {
-                    transfer::public_transfer(reward, account_addr);
-                };
+                // Transfer reward directly to account
+                transfer::public_transfer(reward, account_addr);
             };
             rewards_length = rewards_length - 1;
         };
         vector::destroy_empty(rewards);
+    }
+
+    fun add_valid_type<T>(types: &mut vector<ascii::String>) {
+        let type_name = type_name::get<T>();
+        let ascii_str = type_name::into_string(type_name);
+        if (ascii_str != ascii::string(b"NullCoin")) {
+            vector::push_back(types, ascii_str);
+        }
     }
 
     public fun get_gauge(
@@ -246,52 +237,23 @@ module full_sail::vote_manager {
         *table::borrow(&admin_data.gauge_to_incentive_pool, gauge_id)
     }
 
-    fun add_valid_coin<T>(coins: &mut vector<String>) {
-        let coin_name = coin_wrapper::format_coin<T>();
-        if (coin_name != coin_wrapper::format_coin<NullCoin>()) {
-            vector::push_back(coins, coin_name);
-        };
-    }
-
-    fun unwrap_and_deposit<CoinType>(
-        wrapper_store: &mut WrapperStore,
-        recipient: address,
-        coin: Coin<COIN_WRAPPER>
-    ) {
-        if (coin::value(&coin) > 0) {
-            let unwrapped = coin_wrapper::unwrap<CoinType>(wrapper_store, coin);
-            transfer::public_transfer(unwrapped, recipient);
-        } else {
-            coin::destroy_zero(coin);
-        };
-    }
-
     public fun whitelist_coin<T>(
         admin_data: &AdministrativeData,
         admin_cap: &TokenWhitelistAdminCap,
         whitelist: &mut TokenWhitelist,
-        wrapper_store: &mut WrapperStore,
-        wrapper_cap: &WrapperStoreCap,
-        otw: COIN_WRAPPER,
         ctx: &mut TxContext
     ) {
         assert!(admin_data.operator == tx_context::sender(ctx), E_NOT_OPERATOR);
-        
         token_whitelist::whitelist_coin<T>(admin_cap, whitelist);
-        coin_wrapper::register_coin<T>(wrapper_cap, otw, wrapper_store, ctx);
-        
-        let mut tokens = vector::empty<String>();
-        vector::push_back(&mut tokens, coin_wrapper::format_coin<T>());
     }
 
     public fun claimable_rewards<BaseType>(
         ve_token: &VeFullSailToken<FULLSAIL_TOKEN>,
         rewards_pool: &RewardsPool<BaseType>,
         incentive_pool: &RewardsPool<BaseType>, 
-        wrapper_store: &WrapperStore,
         clock: &Clock,
         epoch_id: u64,
-    ): VecMap<String, u64> {
+    ): VecMap<ascii::String, u64> {
         let account_addr = voting_escrow::token_owner(ve_token);
         let (mut fee_metadata, mut fee_amounts) = rewards_pool::claimable_rewards(
             account_addr,
@@ -321,8 +283,9 @@ module full_sail::vote_manager {
         while (metadata_len > 0) {
             let amount = vector::pop_back(&mut fee_amounts);
             if (amount > 0) {
-                let metadata_id = vector::pop_back(&mut fee_metadata);
-                let coin_name = coin_wrapper::get_original<BaseType>(wrapper_store, metadata_id);
+                vector::pop_back(&mut fee_metadata);
+                let base_type = type_name::get<BaseType>();
+                let coin_name = type_name::into_string(base_type);
                 
                 if (vec_map::contains(&combined_rewards, &coin_name)) {
                     let current_amount = vec_map::get_mut(&mut combined_rewards, &coin_name);
@@ -337,28 +300,17 @@ module full_sail::vote_manager {
         vector::destroy_empty(fee_metadata);
         vector::destroy_empty(fee_amounts);
         combined_rewards
-    }  
+    }
 
     public entry fun whitelist_native_fungible_assets(
         admin_data: &AdministrativeData,
         admin_cap: &TokenWhitelistAdminCap,
         whitelist: &mut TokenWhitelist,
-        mut assets: vector<ID>,
+        assets: vector<ID>,
         ctx: &mut TxContext
     ) {
         assert!(admin_data.operator == tx_context::sender(ctx), E_NOT_OPERATOR);
-        
         token_whitelist::whitelist_native_fungible_assets(admin_cap, whitelist, assets);
-        let mut tokens = vector::empty<String>();
-        
-        vector::reverse(&mut assets);
-        
-        let mut assets_len = vector::length(&assets);
-        while (assets_len > 0) {
-            vector::push_back(&mut tokens, coin_wrapper::format_fungible_asset(vector::pop_back(&mut assets)));
-            assets_len = assets_len - 1;
-        };
-        vector::destroy_empty(assets);
     }
 
     public entry fun claim_rebase(
@@ -461,7 +413,6 @@ module full_sail::vote_manager {
         epoch_count: u64,
         rewards_pool: &RewardsPool<BaseType>,
         incentive_pool: &RewardsPool<BaseType>,
-        wrapper_store: &WrapperStore,
         clock: &Clock,
     ) : VecMap<u64, VecMap<String, u64>> {
         let mut all_rewards = vec_map::empty<u64, VecMap<String, u64>>();
@@ -469,7 +420,7 @@ module full_sail::vote_manager {
         let mut start_epoch = current_epoch - epoch_count;
         
         while (start_epoch < current_epoch) {
-            let epoch_rewards = claimable_rewards(ve_token, rewards_pool, incentive_pool, wrapper_store, clock, start_epoch);
+            let epoch_rewards = claimable_rewards(ve_token, rewards_pool, incentive_pool, clock, start_epoch);
             if (vec_map::is_empty(&epoch_rewards) == false) {
                 vec_map::insert(&mut all_rewards, start_epoch, epoch_rewards);
             };
@@ -521,7 +472,6 @@ module full_sail::vote_manager {
         epoch_id: u64,
         admin_data: &AdministrativeData,
         rewards_pool: &mut RewardsPool<BaseType>,
-        wrapper_store: &mut WrapperStore,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
@@ -534,13 +484,13 @@ module full_sail::vote_manager {
         let mut rewards = rewards_pool::claim_rewards(account_addr, rewards_pool, epoch_id, clock, ctx);
         vector::append(&mut rewards, rewards_pool::claim_rewards(account_addr, rewards_pool, epoch_id, clock, ctx));
         
-        let mut valid_coins = vector::empty<String>();
-        add_valid_coin<T0>(&mut valid_coins);
-        add_valid_coin<T1>(&mut valid_coins);
-        add_valid_coin<T2>(&mut valid_coins);
-        add_valid_coin<T3>(&mut valid_coins);
-        add_valid_coin<T4>(&mut valid_coins);
-        add_valid_coin<T5>(&mut valid_coins);
+        let mut valid_types = vector::empty<ascii::String>();
+        add_valid_type<T0>(&mut valid_types);
+        add_valid_type<T1>(&mut valid_types);
+        add_valid_type<T2>(&mut valid_types);
+        add_valid_type<T3>(&mut valid_types);
+        add_valid_type<T4>(&mut valid_types);
+        add_valid_type<T5>(&mut valid_types);
 
         vector::reverse(&mut rewards);
         let mut rewards_length = vector::length(&rewards);
@@ -549,26 +499,13 @@ module full_sail::vote_manager {
             if (coin::value(&reward) == 0) {
                 coin::destroy_zero(reward);
             } else {
-                let metadata_id = object::id(&reward);
-                if (coin_wrapper::is_wrapper(wrapper_store, metadata_id)) {
-                    let original = coin_wrapper::get_original<BaseType>(wrapper_store, metadata_id);
-                    let (found, index) = vector::index_of(&valid_coins, &original);
-                    assert!(found, E_INVALID_COIN);
+                let base_type = type_name::get<BaseType>();
+                let coin_name = type_name::into_string(base_type);
+                
+                let (found, _) = vector::index_of(&valid_types, &coin_name);
+                assert!(found, E_INVALID_COIN);
 
-                    let wrapped_coin = coin_wrapper::wrap(wrapper_store, reward, ctx);
-
-                    if (index == 0) { unwrap_and_deposit<T0>(wrapper_store, account_addr, wrapped_coin); }
-                    else if (index == 1) { unwrap_and_deposit<T1>(wrapper_store, account_addr, wrapped_coin); }
-                    else if (index == 2) { unwrap_and_deposit<T2>(wrapper_store, account_addr, wrapped_coin); }
-                    else if (index == 3) { unwrap_and_deposit<T3>(wrapper_store, account_addr, wrapped_coin); }
-                    else if (index == 4) { unwrap_and_deposit<T4>(wrapper_store, account_addr, wrapped_coin); }
-                    else {
-                        assert!(index == 5, E_INVALID_COIN);
-                        unwrap_and_deposit<T5>(wrapper_store, account_addr, wrapped_coin);
-                    };
-                } else {
-                    transfer::public_transfer(reward, account_addr);
-                };
+                transfer::public_transfer(reward, account_addr);
             };
             rewards_length = rewards_length - 1;
         };
@@ -581,7 +518,6 @@ module full_sail::vote_manager {
         epoch_count: u64,
         admin_data: &AdministrativeData,
         rewards_pool: &mut RewardsPool<BaseType>,
-        wrapper_store: &mut WrapperStore,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
@@ -595,7 +531,6 @@ module full_sail::vote_manager {
                 start_epoch,
                 admin_data,
                 rewards_pool,
-                wrapper_store,
                 clock,
                 ctx
             );
@@ -609,7 +544,6 @@ module full_sail::vote_manager {
         epoch_count: u64,
         admin_data: &AdministrativeData,
         rewards_pool: &mut RewardsPool<BaseType>,
-        wrapper_store: &mut WrapperStore,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
@@ -630,7 +564,6 @@ module full_sail::vote_manager {
                     epoch_count,
                     admin_data,
                     rewards_pool,
-                    wrapper_store,
                     clock,
                     ctx
                 );
@@ -940,7 +873,6 @@ module full_sail::vote_manager {
         collection: &mut VeFullSailCollection,
         minter: &mut MinterConfig,
         whitelist: &RewardTokenWhitelistPerPool,
-        wrapper_store: &WrapperStore,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
@@ -951,21 +883,19 @@ module full_sail::vote_manager {
         let mut i = 0;
         while (i < vector::length(&rewards)) {
             let coin_id = object::id(vector::borrow(&rewards, i));
-            vector::push_back(&mut reward_tokens, coin_id); // Add ID unconditionally
+            vector::push_back(&mut reward_tokens, coin_id);
             
-            if (coin_wrapper::is_wrapper(wrapper_store, coin_id)) {
-                let original = coin_wrapper::get_original<BaseType>(wrapper_store, coin_id);
-                let token_name = string::from_ascii(original);
-                
-                assert!(
-                    token_whitelist::is_reward_token_whitelisted_on_pool(
-                        whitelist,
-                        &token_name,
-                        object::id_address(liquidity_pool)
-                    ),
-                    E_REWARD_TOKEN_NOT_WHITELISTED
-                );
-            };
+            let base_type = type_name::get<BaseType>();
+            let token_name = string::from_ascii(type_name::into_string(base_type));
+            
+            assert!(
+                token_whitelist::is_reward_token_whitelisted_on_pool(
+                    whitelist,
+                    &token_name,
+                    object::id_address(liquidity_pool)
+                ),
+                E_REWARD_TOKEN_NOT_WHITELISTED
+            );
             i = i + 1;
         };
 
@@ -977,7 +907,7 @@ module full_sail::vote_manager {
         advance_epoch<BaseType, QuoteType>(
             admin_data,
             gauge_vote_accounting,
-            gauge,  // Pass the gauge directly now
+            gauge, 
             incentive_pool,
             manager,
             collection,
@@ -995,7 +925,7 @@ module full_sail::vote_manager {
         );
     }
 
-    public fun incentivize_coin<BaseType, QuoteType, CoinType>(
+    public fun incentivize_coin<BaseType, QuoteType>(
         rewards_pool: &mut RewardsPool<BaseType>,
         admin_data: &mut AdministrativeData,
         gauge: &mut Gauge<BaseType, QuoteType>,
@@ -1004,16 +934,12 @@ module full_sail::vote_manager {
         collection: &mut VeFullSailCollection,
         minter: &mut MinterConfig,
         whitelist: &RewardTokenWhitelistPerPool,
-        wrapper_store: &mut WrapperStore,
-        reward_coin: Coin<CoinType>,
+        reward_coin: Coin<BaseType>,
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
-        let wrapped_coin = coin_wrapper::wrap<CoinType>(wrapper_store, reward_coin, ctx);
-        let base_coin: Coin<BaseType> = coin_wrapper::unwrap<BaseType>(wrapper_store, wrapped_coin);
-        
         let mut rewards = vector::empty();
-        vector::push_back(&mut rewards, base_coin);
+        vector::push_back(&mut rewards, reward_coin);
 
         incentivize(
             rewards,
@@ -1025,13 +951,12 @@ module full_sail::vote_manager {
             collection,
             minter,
             whitelist,
-            wrapper_store,
             clock,
             ctx
         )
     }
 
-    public entry fun incentivize_coin_entry<BaseType, QuoteType, CoinType>(
+    public entry fun incentivize_coin_entry<BaseType, QuoteType>(
         rewards_pool: &mut RewardsPool<BaseType>,
         admin_data: &mut AdministrativeData,
         gauge: &mut Gauge<BaseType, QuoteType>,
@@ -1040,8 +965,7 @@ module full_sail::vote_manager {
         collection: &mut VeFullSailCollection,
         minter: &mut MinterConfig,
         whitelist: &RewardTokenWhitelistPerPool,
-        wrapper_store: &mut WrapperStore,
-        reward_coin: Coin<CoinType>,
+        reward_coin: Coin<BaseType>,
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
@@ -1054,7 +978,6 @@ module full_sail::vote_manager {
             collection,
             minter,
             whitelist,
-            wrapper_store,
             reward_coin,
             clock,
             ctx
@@ -1073,7 +996,6 @@ module full_sail::vote_manager {
         collection: &mut VeFullSailCollection,
         minter: &mut MinterConfig,
         whitelist: &RewardTokenWhitelistPerPool,
-        wrapper_store: &mut WrapperStore,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
@@ -1107,7 +1029,6 @@ module full_sail::vote_manager {
             collection,
             minter,
             whitelist,
-            wrapper_store,
             clock,
             ctx
         )
@@ -1151,38 +1072,23 @@ module full_sail::vote_manager {
 
     public fun whitelist_default_reward_pool<BaseType, QuoteType>(
         liquidity_pool: &LiquidityPool<BaseType, QuoteType>,
-        base_metadata: &CoinMetadata<BaseType>,
-        quote_metadata: &CoinMetadata<QuoteType>,
         admin_cap: &TokenWhitelistAdminCap,
         pool_whitelist: &mut RewardTokenWhitelistPerPool,
-        wrapper_store: &WrapperStore,
     ) {
         let mut whitelisted_tokens = vector::empty<string::String>();
 
-        // Add SUI token as default - use explicit string creation
+        // add SUI token as default
         vector::push_back(&mut whitelisted_tokens, string::utf8(b"sui::sui::SUI"));
 
-        // Get assets from liquidity pool
-        let inner_assets = liquidity_pool::supported_inner_assets<BaseType, QuoteType>(
-            base_metadata,
-            quote_metadata
-        );
+        // add base token type
+        let base_type = type_name::get<BaseType>();
+        vector::push_back(&mut whitelisted_tokens, string::from_ascii(type_name::into_string(base_type)));
 
-        // Add supported assets to whitelist with proper string handling
-        let mut i = 0;
-        let len = vector::length(&inner_assets);
-        while (i < len) {
-            let asset_id = *vector::borrow(&inner_assets, i);
-            if (coin_wrapper::is_wrapper(wrapper_store, asset_id)) {
-                let original = coin_wrapper::get_original<BaseType>(wrapper_store, asset_id);
-                // Safely create string from ASCII
-                let token_string = string::from_ascii(original);
-                vector::push_back(&mut whitelisted_tokens, token_string);
-            };
-            i = i + 1;
-        };
+        // add quote token type
+        let quote_type = type_name::get<QuoteType>();
+        vector::push_back(&mut whitelisted_tokens, string::from_ascii(type_name::into_string(quote_type)));
 
-        // Set whitelist tokens
+        // set whitelist tokens
         token_whitelist::set_whitelist_reward_tokens(
             admin_cap,
             pool_whitelist,
@@ -1372,7 +1278,6 @@ module full_sail::vote_manager {
         collection: &mut VeFullSailCollection,
         minter: &mut MinterConfig,
         whitelist: &RewardTokenWhitelistPerPool,
-        wrapper_store: &mut WrapperStore,
         epoch_count: u64,
         account_address: address,
         clock: &Clock,
@@ -1429,7 +1334,6 @@ module full_sail::vote_manager {
                     collection,
                     minter,
                     whitelist,
-                    wrapper_store,
                     clock,
                     ctx
                 );
