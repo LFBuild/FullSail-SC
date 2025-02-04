@@ -1,4 +1,4 @@
-module full_sail::coin_wrapper {
+/*module full_sail::coin_wrapper {
     use sui::table::{Self, Table};
     use sui::coin::{Self, Coin, TreasuryCap, CoinMetadata};
     use sui::dynamic_object_field;
@@ -81,50 +81,6 @@ module full_sail::coin_wrapper {
         table::add(&mut store.wrapper_to_coin, metadata_id, coin_type_name);
     }
 
-    // wrap
-    public fun wrap<CoinType>(
-        store: &mut WrapperStore,
-        coin_in: Coin<CoinType>,
-        ctx: &mut TxContext
-    ): Coin<COIN_WRAPPER> {
-        let coin_type = type_name::get<CoinType>();
-        let coin_type_name = coin_type.into_string();
-        assert!(is_supported(store, &coin_type_name), E_NOT_INITIALIZED);
-
-        let amount = coin::value(&coin_in);
-        let wrapped_data = table::borrow_mut(&mut store.coin_to_wrapper, coin_type_name);
-
-        // store original coin
-        dynamic_object_field::add(&mut store.id, coin_type_name, coin_in);
-
-        // mint wrapped coin
-        let wrapped_coin = coin::mint(&mut wrapped_data.treasury_cap, amount, ctx);
-
-        wrapped_coin
-    }
-
-    // unwrap
-    public fun unwrap<CoinType>(
-        store: &mut WrapperStore,
-        wrapped_coin: Coin<COIN_WRAPPER>,
-    ): Coin<CoinType> {
-        let coin_type = type_name::get<CoinType>();
-        let coin_type_name = coin_type.into_string();
-        assert!(is_supported(store, &coin_type_name), E_NOT_INITIALIZED);
-
-        let wrapped_data = table::borrow_mut(&mut store.coin_to_wrapper, coin_type_name);
-
-        // burn wrapped coin
-        coin::burn(&mut wrapped_data.treasury_cap, wrapped_coin);
-
-        let exists = sui::dynamic_object_field::exists_<String>(&store.id, coin_type_name);
-        assert!(exists, 1);
-
-        let stored_coin = dynamic_object_field::remove<String, Coin<CoinType>>(&mut store.id, coin_type_name);
-
-        stored_coin
-    }
-
     public fun format_coin<T>(): String {
         type_name::get<T>().into_string()
     }
@@ -199,4 +155,4 @@ module full_sail::coin_wrapper {
     public fun create_witness(): COIN_WRAPPER {
         COIN_WRAPPER {}
     }
-}
+}*/
