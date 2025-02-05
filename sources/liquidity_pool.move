@@ -29,7 +29,7 @@ module full_sail::liquidity_pool {
     // otw
     public struct LIQUIDITY_POOL has drop {}
 
-    public struct FeesAccounting has key {
+    public struct FeesAccounting has key, store {
         id: UID,
         total_fees_base: u128,
         total_fees_quote: u128,
@@ -59,7 +59,8 @@ module full_sail::liquidity_pool {
         pending_fee_manager: address,
         pending_pauser: address,
         stable_fee_bps: u64,
-        volatile_fee_bps: u64
+        volatile_fee_bps: u64,
+        pool_to_fee_accounting: Table<ID, ID>
     }
 
     public struct LiquidityPoolAdminCap has key {
@@ -91,7 +92,8 @@ module full_sail::liquidity_pool {
             pending_fee_manager: @0x0,
             pending_pauser: @0x0,
             stable_fee_bps: 4,
-            volatile_fee_bps: 10
+            volatile_fee_bps: 10,
+            pool_to_fee_accounting: table::new(ctx)
         };
 
         let admin_cap = LiquidityPoolAdminCap {
@@ -114,7 +116,7 @@ module full_sail::liquidity_pool {
 
     public fun swap<BaseType, QuoteType>(
         configs: &mut LiquidityPoolConfigs,
-        fees_accounting: &mut FeesAccounting,
+        pool_id: ID,
         base_metadata: &CoinMetadata<BaseType>,
         quote_metadata: &CoinMetadata<QuoteType>,
         is_stable: bool,
@@ -155,8 +157,6 @@ module full_sail::liquidity_pool {
         balance::join(&mut pool.base_balance, base_coin_balance);
         balance::join(&mut pool.base_fees, base_fee_balance);
         
-        fees_accounting.total_fees_base = fees_accounting.total_fees_base + (fee_amount as u128);
-        
         let out_balance = balance::split(&mut pool.quote_balance, output_amount);
         let output_coin = coin::from_balance(out_balance, ctx);
 
@@ -179,6 +179,10 @@ module full_sail::liquidity_pool {
             calculate_k(updated_reserve_base, updated_reserve_quote, pool.is_stable),
             E_INVALID_UPDATE
         );
+
+        let fees_accounting = get_fees_accounting_mut(configs, pool_id);
+        
+        fees_accounting.total_fees_base = fees_accounting.total_fees_base + (fee_amount as u128);
 
         output_coin
     }
@@ -550,7 +554,7 @@ module full_sail::liquidity_pool {
             configs.volatile_fee_bps
         };
 
-        // Create the pool
+        // create the pool
         let liquidity_pool = LiquidityPool<BaseType, QuoteType> {
             id: object::new(ctx),
             base_balance: balance::zero<BaseType>(),
@@ -561,7 +565,7 @@ module full_sail::liquidity_pool {
             is_stable,
         };
 
-        // Create fees accounting
+        // create fees accounting
         let fees_accounting = FeesAccounting {
             id: object::new(ctx),
             total_fees_base: 0,
@@ -573,12 +577,14 @@ module full_sail::liquidity_pool {
         };
 
         let liquidity_pool_id = object::id(&liquidity_pool);
+        let fees_accounting_id = object::id(&fees_accounting);
+        table::add(&mut configs.pool_to_fee_accounting, liquidity_pool_id, fees_accounting_id);
         
-        // Add pool ID to configs BEFORE sharing
+        // add pool ID to configs BEFORE sharing
         vector::push_back(&mut configs.all_pools, liquidity_pool_id);
 
-        // Share objects explicitly
-        transfer::share_object(fees_accounting);
+        dynamic_object_field::add(&mut configs.id, fees_accounting_id, fees_accounting);
+
         let pool_name = pool_name(base_metadata, quote_metadata, is_stable);
         dynamic_object_field::add(&mut configs.id, pool_name, liquidity_pool);
 
@@ -592,6 +598,29 @@ module full_sail::liquidity_pool {
         });
 
         liquidity_pool_id
+    }
+
+    public fun get_fees_accounting_id(
+        configs: &LiquidityPoolConfigs,
+        pool_id: ID
+    ): ID {
+        *table::borrow(&configs.pool_to_fee_accounting, pool_id)
+    }
+
+    public fun get_fees_accounting(
+        configs: &mut LiquidityPoolConfigs,
+        pool_id: ID,
+    ): &FeesAccounting {
+        let fees_accounting_id = *table::borrow(&configs.pool_to_fee_accounting, pool_id);
+        dynamic_object_field::borrow(&configs.id, fees_accounting_id)
+    }
+
+    public fun get_fees_accounting_mut(
+        configs: &mut LiquidityPoolConfigs,
+        pool_id: ID,
+    ): &mut FeesAccounting {
+        let fees_accounting_id = *table::borrow(&configs.pool_to_fee_accounting, pool_id);
+        dynamic_object_field::borrow_mut(&mut configs.id, fees_accounting_id)
     }
 
     public fun get_trade_diff<BaseType, QuoteType>(
@@ -706,7 +735,8 @@ module full_sail::liquidity_pool {
 
     public fun mint_lp<BaseType, QuoteType>(
         pool: &mut LiquidityPool<BaseType, QuoteType>,
-        fees_accounting: &mut FeesAccounting,
+        pool_id: ID,
+        configs: &mut LiquidityPoolConfigs,
         whitelist: &WhitelistedLPers,
         base_metadata: &CoinMetadata<BaseType>,
         quote_metadata: &CoinMetadata<QuoteType>,
@@ -718,7 +748,8 @@ module full_sail::liquidity_pool {
         if (!is_sorted(base_metadata, quote_metadata)) {
             return mint_lp(
                 pool,
-                fees_accounting,
+                pool_id,
+                configs,
                 whitelist,
                 base_metadata,
                 quote_metadata,
@@ -729,6 +760,7 @@ module full_sail::liquidity_pool {
             )
         };
 
+        let fees_accounting = get_fees_accounting_mut(configs, pool_id);
         let amount_base = coin::value(&input_base_coin);
         let amount_quote = coin::value(&input_quote_coin);
         assert!(amount_base > 0 && amount_quote > 0, E_INSUFFICIENT_BALANCE);
