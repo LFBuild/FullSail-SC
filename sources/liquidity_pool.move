@@ -125,8 +125,6 @@ module full_sail::liquidity_pool {
     ): Coin<QuoteType> {
         assert!(!configs.is_paused, E_LOCK_NOT_EXPIRED);
         let pool = liquidity_pool_mut(configs, base_metadata, quote_metadata, is_stable);
-        let fees_accounting_id = get_fees_accounting_id(configs, pool_id);
-        let fees_accounting = get_fees_accounting(configs, pool_id);
         
         let input_amount = coin::value(&input_coin);
         
@@ -159,8 +157,6 @@ module full_sail::liquidity_pool {
         balance::join(&mut pool.base_balance, base_coin_balance);
         balance::join(&mut pool.base_fees, base_fee_balance);
         
-        fees_accounting.total_fees_base = fees_accounting.total_fees_base + (fee_amount as u128);
-        
         let out_balance = balance::split(&mut pool.quote_balance, output_amount);
         let output_coin = coin::from_balance(out_balance, ctx);
 
@@ -183,6 +179,10 @@ module full_sail::liquidity_pool {
             calculate_k(updated_reserve_base, updated_reserve_quote, pool.is_stable),
             E_INVALID_UPDATE
         );
+
+        let fees_accounting = get_fees_accounting_mut(configs, pool_id);
+        
+        fees_accounting.total_fees_base = fees_accounting.total_fees_base + (fee_amount as u128);
 
         output_coin
     }
@@ -610,6 +610,14 @@ module full_sail::liquidity_pool {
     public fun get_fees_accounting(
         configs: &mut LiquidityPoolConfigs,
         pool_id: ID,
+    ): &FeesAccounting {
+        let fees_accounting_id = *table::borrow(&configs.pool_to_fee_accounting, pool_id);
+        dynamic_object_field::borrow(&configs.id, fees_accounting_id)
+    }
+
+    public fun get_fees_accounting_mut(
+        configs: &mut LiquidityPoolConfigs,
+        pool_id: ID,
     ): &mut FeesAccounting {
         let fees_accounting_id = *table::borrow(&configs.pool_to_fee_accounting, pool_id);
         dynamic_object_field::borrow_mut(&mut configs.id, fees_accounting_id)
@@ -752,7 +760,7 @@ module full_sail::liquidity_pool {
             )
         };
 
-        let fees_accounting = get_fees_accounting(configs, pool_id);
+        let fees_accounting = get_fees_accounting_mut(configs, pool_id);
         let amount_base = coin::value(&input_base_coin);
         let amount_quote = coin::value(&input_quote_coin);
         assert!(amount_base > 0 && amount_quote > 0, E_INSUFFICIENT_BALANCE);
