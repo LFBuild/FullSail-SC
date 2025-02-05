@@ -116,7 +116,6 @@ module full_sail::liquidity_pool {
 
     public fun swap<BaseType, QuoteType>(
         configs: &mut LiquidityPoolConfigs,
-        pool_id: ID,
         base_metadata: &CoinMetadata<BaseType>,
         quote_metadata: &CoinMetadata<QuoteType>,
         is_stable: bool,
@@ -180,6 +179,7 @@ module full_sail::liquidity_pool {
             E_INVALID_UPDATE
         );
 
+        let pool_id = object::id(pool);
         let fees_accounting = get_fees_accounting_mut(configs, pool_id);
         
         fees_accounting.total_fees_base = fees_accounting.total_fees_base + (fee_amount as u128);
@@ -735,7 +735,6 @@ module full_sail::liquidity_pool {
 
     public fun mint_lp<BaseType, QuoteType>(
         pool: &mut LiquidityPool<BaseType, QuoteType>,
-        pool_id: ID,
         configs: &mut LiquidityPoolConfigs,
         whitelist: &WhitelistedLPers,
         base_metadata: &CoinMetadata<BaseType>,
@@ -748,7 +747,6 @@ module full_sail::liquidity_pool {
         if (!is_sorted(base_metadata, quote_metadata)) {
             return mint_lp(
                 pool,
-                pool_id,
                 configs,
                 whitelist,
                 base_metadata,
@@ -760,6 +758,7 @@ module full_sail::liquidity_pool {
             )
         };
 
+        let pool_id = object::id(pool);
         let fees_accounting = get_fees_accounting_mut(configs, pool_id);
         let amount_base = coin::value(&input_base_coin);
         let amount_quote = coin::value(&input_quote_coin);
