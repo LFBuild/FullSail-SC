@@ -1,5 +1,6 @@
 module full_sail::liquidity_pool {
     use std::ascii::String;
+    use std::type_name;
     use sui::table::{Self, Table};
     use sui::balance::{Self, Balance};
     use sui::coin::{Self, Coin, CoinMetadata};
@@ -7,11 +8,11 @@ module full_sail::liquidity_pool {
     //use sui::dynamic_field;
     use sui::dynamic_object_field;
     use sui::dynamic_field;
-    use full_sail::coin_wrapper::{Self, WrapperStore};
+    //use full_sail::coin_wrapper::{Self, WrapperStore};
     use sui::event;
 
     // --- addresses ---
-    const DEFAULT_ADMIN: address = @0x123;
+    const DEFAULT_ADMIN: address = @full_sail;
 
     // --- errors ---
     const E_INSUFFICIENT_BALANCE: u64 = 1;
@@ -29,7 +30,7 @@ module full_sail::liquidity_pool {
     // otw
     public struct LIQUIDITY_POOL has drop {}
 
-    public struct FeesAccounting has key {
+    public struct FeesAccounting has key, store {
         id: UID,
         total_fees_base: u128,
         total_fees_quote: u128,
@@ -59,10 +60,11 @@ module full_sail::liquidity_pool {
         pending_fee_manager: address,
         pending_pauser: address,
         stable_fee_bps: u64,
-        volatile_fee_bps: u64
+        volatile_fee_bps: u64,
+        pool_to_fee_accounting: Table<ID, ID>
     }
 
-    public struct AdminCap has key {
+    public struct LiquidityPoolAdminCap has key {
         id: UID
     }
 
@@ -78,8 +80,19 @@ module full_sail::liquidity_pool {
         pool: ID,
         token_1: String,
         token_2: String,
+        token_type1: String,
+        token_type2: String,
         is_stable: bool,
     }
+
+    public struct SwapEvent has copy, drop {
+        pool: address,
+        from_token: String,
+        to_token: String,
+        amount_in: u64,
+        amount_out: u64,
+    }
+
     // init
     fun init(otw: LIQUIDITY_POOL, ctx: &mut TxContext) {
         let configs = LiquidityPoolConfigs {
@@ -91,10 +104,11 @@ module full_sail::liquidity_pool {
             pending_fee_manager: @0x0,
             pending_pauser: @0x0,
             stable_fee_bps: 4,
-            volatile_fee_bps: 10
+            volatile_fee_bps: 10,
+            pool_to_fee_accounting: table::new(ctx)
         };
 
-        let admin_cap = AdminCap {
+        let admin_cap = LiquidityPoolAdminCap {
             id: object::new(ctx)
         };
 
@@ -113,9 +127,7 @@ module full_sail::liquidity_pool {
     }
 
     public fun swap<BaseType, QuoteType>(
-        //pool: &mut LiquidityPool<BaseType, QuoteType>,
         configs: &mut LiquidityPoolConfigs,
-        fees_accounting: &mut FeesAccounting,
         base_metadata: &CoinMetadata<BaseType>,
         quote_metadata: &CoinMetadata<QuoteType>,
         is_stable: bool,
@@ -156,8 +168,6 @@ module full_sail::liquidity_pool {
         balance::join(&mut pool.base_balance, base_coin_balance);
         balance::join(&mut pool.base_fees, base_fee_balance);
         
-        fees_accounting.total_fees_base = fees_accounting.total_fees_base + (fee_amount as u128);
-        
         let out_balance = balance::split(&mut pool.quote_balance, output_amount);
         let output_coin = coin::from_balance(out_balance, ctx);
 
@@ -180,6 +190,19 @@ module full_sail::liquidity_pool {
             calculate_k(updated_reserve_base, updated_reserve_quote, pool.is_stable),
             E_INVALID_UPDATE
         );
+
+        let pool_id = object::id(pool);
+        let fees_accounting = get_fees_accounting_mut(configs, pool_id);
+        
+        fees_accounting.total_fees_base = fees_accounting.total_fees_base + (fee_amount as u128);
+
+        event::emit(SwapEvent {
+            pool: object::id_to_address(&pool_id),
+            from_token: coin::get_symbol(base_metadata),
+            to_token: coin::get_symbol(quote_metadata),
+            amount_in: input_amount,
+            amount_out: output_amount,
+        });
 
         output_coin
     }
@@ -432,6 +455,7 @@ module full_sail::liquidity_pool {
     }
 
     public entry fun accept_fee_manager(
+        _admin_cap: &LiquidityPoolAdminCap,
         configs: &mut LiquidityPoolConfigs,
         ctx: &mut TxContext
     ) {
@@ -445,6 +469,7 @@ module full_sail::liquidity_pool {
     }
 
     public entry fun accept_pauser(
+        _admin_cap: &LiquidityPoolAdminCap,
         configs: &mut LiquidityPoolConfigs,
         ctx: &mut TxContext
     ) {
@@ -549,7 +574,7 @@ module full_sail::liquidity_pool {
             configs.volatile_fee_bps
         };
 
-        // Create the pool
+        // create the pool
         let liquidity_pool = LiquidityPool<BaseType, QuoteType> {
             id: object::new(ctx),
             base_balance: balance::zero<BaseType>(),
@@ -560,7 +585,7 @@ module full_sail::liquidity_pool {
             is_stable,
         };
 
-        // Create fees accounting
+        // create fees accounting
         let fees_accounting = FeesAccounting {
             id: object::new(ctx),
             total_fees_base: 0,
@@ -572,12 +597,14 @@ module full_sail::liquidity_pool {
         };
 
         let liquidity_pool_id = object::id(&liquidity_pool);
+        let fees_accounting_id = object::id(&fees_accounting);
+        table::add(&mut configs.pool_to_fee_accounting, liquidity_pool_id, fees_accounting_id);
         
-        // Add pool ID to configs BEFORE sharing
+        // add pool ID to configs BEFORE sharing
         vector::push_back(&mut configs.all_pools, liquidity_pool_id);
 
-        // Share objects explicitly
-        transfer::share_object(fees_accounting);
+        dynamic_object_field::add(&mut configs.id, fees_accounting_id, fees_accounting);
+
         let pool_name = pool_name(base_metadata, quote_metadata, is_stable);
         dynamic_object_field::add(&mut configs.id, pool_name, liquidity_pool);
 
@@ -587,10 +614,35 @@ module full_sail::liquidity_pool {
             pool: liquidity_pool_id,
             token_1: coin::get_symbol(base_metadata),
             token_2: coin::get_symbol(quote_metadata),
+            token_type1: type_name::into_string(type_name::get<BaseType>()),
+            token_type2: type_name::into_string(type_name::get<QuoteType>()),
             is_stable
         });
 
         liquidity_pool_id
+    }
+
+    public fun get_fees_accounting_id(
+        configs: &LiquidityPoolConfigs,
+        pool_id: ID
+    ): ID {
+        *table::borrow(&configs.pool_to_fee_accounting, pool_id)
+    }
+
+    public fun get_fees_accounting(
+        configs: &mut LiquidityPoolConfigs,
+        pool_id: ID,
+    ): &FeesAccounting {
+        let fees_accounting_id = *table::borrow(&configs.pool_to_fee_accounting, pool_id);
+        dynamic_object_field::borrow(&configs.id, fees_accounting_id)
+    }
+
+    public fun get_fees_accounting_mut(
+        configs: &mut LiquidityPoolConfigs,
+        pool_id: ID,
+    ): &mut FeesAccounting {
+        let fees_accounting_id = *table::borrow(&configs.pool_to_fee_accounting, pool_id);
+        dynamic_object_field::borrow_mut(&mut configs.id, fees_accounting_id)
     }
 
     public fun get_trade_diff<BaseType, QuoteType>(
@@ -705,7 +757,7 @@ module full_sail::liquidity_pool {
 
     public fun mint_lp<BaseType, QuoteType>(
         pool: &mut LiquidityPool<BaseType, QuoteType>,
-        fees_accounting: &mut FeesAccounting,
+        configs: &mut LiquidityPoolConfigs,
         whitelist: &WhitelistedLPers,
         base_metadata: &CoinMetadata<BaseType>,
         quote_metadata: &CoinMetadata<QuoteType>,
@@ -717,7 +769,7 @@ module full_sail::liquidity_pool {
         if (!is_sorted(base_metadata, quote_metadata)) {
             return mint_lp(
                 pool,
-                fees_accounting,
+                configs,
                 whitelist,
                 base_metadata,
                 quote_metadata,
@@ -728,6 +780,8 @@ module full_sail::liquidity_pool {
             )
         };
 
+        let pool_id = object::id(pool);
+        let fees_accounting = get_fees_accounting_mut(configs, pool_id);
         let amount_base = coin::value(&input_base_coin);
         let amount_quote = coin::value(&input_quote_coin);
         assert!(amount_base > 0 && amount_quote > 0, E_INSUFFICIENT_BALANCE);
@@ -796,6 +850,7 @@ module full_sail::liquidity_pool {
     }
 
     public entry fun set_fee_manager(
+        _admin_cap: &LiquidityPoolAdminCap,
         configs: &mut LiquidityPoolConfigs,
         new_fee_manager: address,
         ctx: &mut TxContext
@@ -808,6 +863,7 @@ module full_sail::liquidity_pool {
     }
 
     public entry fun set_pause(
+        _admin_cap: &LiquidityPoolAdminCap,
         configs: &mut LiquidityPoolConfigs,
         pause_status: bool,
         ctx: &mut TxContext
@@ -820,6 +876,7 @@ module full_sail::liquidity_pool {
     }
 
     public entry fun set_pauser(
+        _admin_cap: &LiquidityPoolAdminCap,
         configs: &mut LiquidityPoolConfigs,
         new_pauser: address,
         ctx: &mut TxContext
@@ -832,6 +889,7 @@ module full_sail::liquidity_pool {
     }
 
     public entry fun set_pool_swap_fee<BaseType, QuoteType>(
+        _admin_cap: &LiquidityPoolAdminCap,
         pool: &mut LiquidityPool<BaseType, QuoteType>,
         configs: &LiquidityPoolConfigs,
         new_swap_fee: u64,
@@ -845,6 +903,7 @@ module full_sail::liquidity_pool {
     }
 
     public entry fun set_stable_fee(
+        _admin_cap: &LiquidityPoolAdminCap,
         configs: &mut LiquidityPoolConfigs,
         new_stable_fee: u64,
         ctx: &mut TxContext
@@ -857,6 +916,7 @@ module full_sail::liquidity_pool {
     }
 
     public entry fun set_volatile_fee(
+        _admin_cap: &LiquidityPoolAdminCap,
         configs: &mut LiquidityPoolConfigs,
         new_volatile_fee: u64,
         ctx: &mut TxContext
@@ -883,47 +943,24 @@ module full_sail::liquidity_pool {
     public fun supported_native_fungible_assets<BaseType, QuoteType>(
         base_metadata: &CoinMetadata<BaseType>,
         quote_metadata: &CoinMetadata<QuoteType>,
-        wrapper_store: &WrapperStore,
+        //wrapper_store: &WrapperStore,
     ): vector<ID> {
-        let mut inner_assets = supported_inner_assets(base_metadata, quote_metadata);
-        let mut native_assets = vector::empty<ID>();
-        
-        vector::reverse(&mut inner_assets);
-        let mut inner_assets_length = vector::length(&inner_assets);
-        
-        while (inner_assets_length > 0) {
-            let asset_id = vector::pop_back(&mut inner_assets);
-            if (!coin_wrapper::is_wrapper(wrapper_store, asset_id)) {
-                vector::push_back(&mut native_assets, asset_id);
-            };
-            inner_assets_length = inner_assets_length - 1;
-        };
-        
-        vector::destroy_empty(inner_assets);
-        native_assets
+        supported_inner_assets(base_metadata, quote_metadata)
     }
 
     public fun supported_token_strings<BaseType, QuoteType>(
         base_metadata: &CoinMetadata<BaseType>,
         quote_metadata: &CoinMetadata<QuoteType>,
-        wrapper_store: &WrapperStore,
+        //wrapper_store: &WrapperStore,
     ): vector<String> {
-        let mut inner_assets = supported_inner_assets(base_metadata, quote_metadata);
         let mut token_strings = vector::empty<String>();
         
-        vector::reverse(&mut inner_assets);
-        let mut inner_assets_length = vector::length(&inner_assets);
+        // add base token symbol
+        vector::push_back(&mut token_strings, coin::get_symbol(base_metadata));
         
-        while (inner_assets_length > 0) {
-            let asset_id = vector::pop_back(&mut inner_assets);
-            vector::push_back(
-                &mut token_strings, 
-                coin_wrapper::get_original<BaseType>(wrapper_store, asset_id)
-            );
-            inner_assets_length = inner_assets_length - 1;
-        };
+        // add quote token symbol
+        vector::push_back(&mut token_strings, coin::get_symbol(quote_metadata));
         
-        vector::destroy_empty(inner_assets);
         token_strings
     }
 
@@ -1020,6 +1057,7 @@ module full_sail::liquidity_pool {
     }
 
     public entry fun add_whitelisted_lper(
+        _admin_cap: &LiquidityPoolAdminCap,
         whitelist: &mut WhitelistedLPers,
         lper: address,
         ctx: &mut TxContext
@@ -1031,6 +1069,7 @@ module full_sail::liquidity_pool {
     }
 
     public entry fun remove_whitelisted_lper(
+        _admin_cap: &LiquidityPoolAdminCap,
         whitelist: &mut WhitelistedLPers,
         lper: address,
         ctx: &mut TxContext
@@ -1077,5 +1116,15 @@ module full_sail::liquidity_pool {
         };
         
         (base_coin, quote_coin)
+    }
+
+    #[test_only]
+    public fun get_pauser(configs: &LiquidityPoolConfigs): address {
+        configs.pauser
+    }
+
+    #[test_only]
+    public fun get_pending_pauser(configs: &LiquidityPoolConfigs): address {
+        configs.pending_pauser
     }
 }

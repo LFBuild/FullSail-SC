@@ -1,7 +1,9 @@
 module full_sail::minter {
     use sui::coin::{Self, Coin};
+    use std::ascii::{String};
     use sui::clock::Clock;
     use std::u64;
+    use std::type_name;
 
     use full_sail::fullsail_token::{Self, FULLSAIL_TOKEN, FullSailManager};
     use full_sail::epoch;
@@ -31,7 +33,7 @@ module full_sail::minter {
         last_emission_update_epoch: u64,
     }
 
-    public fun initialize(_otw: MINTER, ctx: &mut TxContext, clock: &Clock) {
+    public fun initialize(clock: &Clock, ctx: &mut TxContext) {
         let recipient = tx_context::sender(ctx);
         let minter_config = MinterConfig{
             id                         : object::new(ctx),
@@ -157,8 +159,12 @@ module full_sail::minter {
         minter.pending_team_account = @0x0;
     }
 
+    public fun format_coin<T>(): String {
+        type_name::get<T>().into_string()
+    }
+
     #[test_only]
     public fun init_for_testing(ctx: &mut TxContext, clock: &Clock) {
-        initialize(MINTER {}, ctx, clock)
+        initialize(clock, ctx)
     }
 }
