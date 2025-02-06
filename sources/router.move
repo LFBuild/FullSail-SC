@@ -14,7 +14,6 @@ module full_sail::router {
     
     public fun swap<BaseType, QuoteType>(
         input_coin: Coin<BaseType>,
-        pool_id: ID,
         min_output_amount: u64,
         configs: &mut LiquidityPoolConfigs,
         base_metadata: &CoinMetadata<BaseType>,
@@ -24,7 +23,6 @@ module full_sail::router {
     ): Coin<QuoteType> {
         let output_coin = liquidity_pool::swap<BaseType, QuoteType>(
             configs,
-            pool_id,
             base_metadata,
             quote_metadata,
             is_stable,
@@ -90,7 +88,6 @@ module full_sail::router {
         ctx: &mut TxContext
     ) {
         let pool = gauge::liquidity_pool(gauge);
-        let pool_id = object::id(pool);
         let (optimal_a, optimal_b) = get_optimal_amounts<BaseType, QuoteType>(
             pool,
             base_metadata,
@@ -106,7 +103,6 @@ module full_sail::router {
 
         let lp_tokens = liquidity_pool::mint_lp(
             pool, 
-            pool_id,
             configs,
             whitelist,
             base_metadata,
@@ -286,78 +282,8 @@ module full_sail::router {
         )
     }
 
-    public fun remove_liquidity<BaseType, QuoteType>(
-        _base_metadata: &CoinMetadata<BaseType>,
-        _quote_metadata: &CoinMetadata<QuoteType>,
-        _is_stable: bool,
-        _liquidity_amount: u64,
-        _min_input_amount: u64,
-        _min_output_amount: u64,
-        _ctx: &mut TxContext
-    ): (Coin<BaseType>, Coin<QuoteType>) {
-        abort 0
-    }
-
-    public fun remove_liquidity_both_coins<BaseType, QuoteType>(
-        _is_stable: bool,
-        _liquidity_amount: u64,
-        _min_input_amount: u64,
-        _min_output_amount: u64,
-        _ctx: &mut TxContext
-    ): (Coin<BaseType>, Coin<QuoteType>) {
-        abort 0
-    }
-
-    public entry fun remove_liquidity_both_coins_entry(
-        _is_stable: bool,
-        _liquidity_amount: u64,
-        _min_input_amount: u64,
-        _min_output_amount: u64,
-        _recipient: address,
-        _ctx: &mut TxContext
-    ) {
-        abort 0
-    }
-
-    public fun remove_liquidity_coin<BaseType, QuoteType>(
-        _quote_metadata: &CoinMetadata<QuoteType>,
-        _is_stable: bool,
-        _liquidity_amount: u64,
-        _min_input_amount: u64,
-        _min_output_amount: u64,
-        _ctx: &mut TxContext
-    ): (Coin<BaseType>, Coin<QuoteType>) {
-        abort 0
-    }
-
-    public entry fun remove_liquidity_coin_entry<QuoteType>(
-        _quote_metadata: &CoinMetadata<QuoteType>,
-        _is_stable: bool,
-        _liquidity_amount: u64,
-        _min_input_amount: u64,
-        _min_output_amount: u64,
-        _recipient: address,
-        _ctx: &mut TxContext
-    ) {
-        abort 0
-    }
-
-    public entry fun remove_liquidity_entry<BaseType, QuoteType>(
-        _base_metadata: &CoinMetadata<BaseType>,
-        _quote_metadata: &CoinMetadata<QuoteType>,
-        _is_stable: bool,
-        _liquidity_amount: u64,
-        _min_input_amount: u64,
-        _min_output_amount: u64,
-        _recipient: address,
-        _ctx: &mut TxContext
-    ) {
-        abort 0
-    }
-
     public entry fun swap_entry<BaseType, QuoteType>(
         input_coin: Coin<BaseType>, 
-        pool_id: ID,
         min_output_amount: u64,
         configs: &mut LiquidityPoolConfigs,
         base_metadata: &CoinMetadata<BaseType>, 
@@ -370,7 +296,6 @@ module full_sail::router {
             recipient,
             swap<BaseType, QuoteType>(
                 input_coin,
-                pool_id,
                 min_output_amount, 
                 configs, 
                 base_metadata, 

@@ -5,12 +5,12 @@ module full_sail::minter_test {
     use sui::coin;
 
     // --- modules ---
-    use full_sail::minter::{Self, MinterConfig};
+    use full_sail::minter::{Self, MinterConfig, MinterAdminCap};
     use full_sail::voting_escrow::{Self, VeFullSailCollection, VeFullSailToken};
     use full_sail::fullsail_token::{Self, FULLSAIL_TOKEN, FullSailManager};
 
     // --- addresses ---
-    const OWNER: address = @0xab;
+    const OWNER: address = @full_sail;
     const RECIPIENT: address = @0xcd;
 
     // --- params ---
@@ -31,9 +31,13 @@ module full_sail::minter_test {
         let mut manager = ts::take_shared<FullSailManager>(scenario1);
         let clock = clock::create_for_testing(ts::ctx(scenario1));
         minter::init_for_testing(ts::ctx(scenario1), &clock);
-        let ve_token = minter::initial_mint(&mut manager, &mut collection, &clock, ts::ctx(scenario1));
+        
+        next_tx(scenario1, OWNER);
+        let admin_cap = ts::take_from_sender<MinterAdminCap>(scenario1);
+        let ve_token = minter::initial_mint(&admin_cap, &mut manager, &mut collection, &clock, ts::ctx(scenario1));
         ts::return_shared(collection);
         ts::return_shared(manager);
+        ts::return_to_sender(scenario1, admin_cap);
         clock::destroy_for_testing(clock);
         ts::end(scenario_val1);
         ve_token
@@ -86,14 +90,16 @@ module full_sail::minter_test {
         let clock = clock::create_for_testing(ts::ctx(scenario));
         let collection = ts::take_shared<VeFullSailCollection>(scenario);
         let mut minter_config = ts::take_shared<MinterConfig>(scenario);
+        let admin_cap = ts::take_from_sender<MinterAdminCap>(scenario);
 
         next_tx(scenario, OWNER);
-        minter::update_team_account(&mut minter_config, RECIPIENT, ts::ctx(scenario));
-        minter::confirm_new_team_account(&mut minter_config, ts::ctx(scenario));
+        minter::update_team_account(&admin_cap, &mut minter_config, RECIPIENT, ts::ctx(scenario));
+        minter::confirm_new_team_account(&admin_cap, &mut minter_config, ts::ctx(scenario));
         assert!(minter::mitner_addres(&minter_config) == RECIPIENT, 4);
 
         transfer::public_transfer(ve_token, OWNER);
         ts::return_shared(minter_config);
+        ts::return_to_sender(scenario, admin_cap);
         ts::return_shared(collection);
         clock::destroy_for_testing(clock);
         ts::end(scenario_val);
@@ -109,15 +115,17 @@ module full_sail::minter_test {
         let clock = clock::create_for_testing(ts::ctx(scenario));
         let collection = ts::take_shared<VeFullSailCollection>(scenario);
         let mut minter_config = ts::take_shared<MinterConfig>(scenario);
+        let admin_cap = ts::take_from_sender<MinterAdminCap>(scenario);
 
         next_tx(scenario, OWNER);
         let new_rate_bps = 10;
-        minter::set_team_rate(&mut minter_config, new_rate_bps, ts::ctx(scenario));
+        minter::set_team_rate(&admin_cap, &mut minter_config, new_rate_bps, ts::ctx(scenario));
         assert!(minter::team_emission_rate_bps(&minter_config) == new_rate_bps, 5);
 
         transfer::public_transfer(ve_token, OWNER);
         ts::return_shared(minter_config);
         ts::return_shared(collection);
+        ts::return_to_sender(scenario, admin_cap);
         clock::destroy_for_testing(clock);
         ts::end(scenario_val);
     }
