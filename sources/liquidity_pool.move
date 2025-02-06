@@ -1,5 +1,6 @@
 module full_sail::liquidity_pool {
     use std::ascii::String;
+    use std::type_name;
     use sui::table::{Self, Table};
     use sui::balance::{Self, Balance};
     use sui::coin::{Self, Coin, CoinMetadata};
@@ -79,8 +80,19 @@ module full_sail::liquidity_pool {
         pool: ID,
         token_1: String,
         token_2: String,
+        token_type1: String,
+        token_type2: String,
         is_stable: bool,
     }
+
+    public struct SwapEvent has copy, drop {
+        pool: address,
+        from_token: String,
+        to_token: String,
+        amount_in: u64,
+        amount_out: u64,
+    }
+
     // init
     fun init(otw: LIQUIDITY_POOL, ctx: &mut TxContext) {
         let configs = LiquidityPoolConfigs {
@@ -183,6 +195,14 @@ module full_sail::liquidity_pool {
         let fees_accounting = get_fees_accounting_mut(configs, pool_id);
         
         fees_accounting.total_fees_base = fees_accounting.total_fees_base + (fee_amount as u128);
+
+        event::emit(SwapEvent {
+            pool: object::id_to_address(&pool_id),
+            from_token: coin::get_symbol(base_metadata),
+            to_token: coin::get_symbol(quote_metadata),
+            amount_in: input_amount,
+            amount_out: output_amount,
+        });
 
         output_coin
     }
@@ -594,6 +614,8 @@ module full_sail::liquidity_pool {
             pool: liquidity_pool_id,
             token_1: coin::get_symbol(base_metadata),
             token_2: coin::get_symbol(quote_metadata),
+            token_type1: type_name::into_string(type_name::get<BaseType>()),
+            token_type2: type_name::into_string(type_name::get<QuoteType>()),
             is_stable
         });
 
