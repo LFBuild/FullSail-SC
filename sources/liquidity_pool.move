@@ -91,6 +91,8 @@ module full_sail::liquidity_pool {
         to_token: String,
         amount_in: u64,
         amount_out: u64,
+        pool_base_balance: u64,
+        pool_quote_balance: u64,
     }
 
     // init
@@ -191,6 +193,8 @@ module full_sail::liquidity_pool {
             E_INVALID_UPDATE
         );
 
+        let final_base_balance = balance::value(&pool.base_balance);
+        let final_quote_balance = balance::value(&pool.quote_balance);
         let pool_id = object::id(pool);
         let fees_accounting = get_fees_accounting_mut(configs, pool_id);
         
@@ -198,10 +202,12 @@ module full_sail::liquidity_pool {
 
         event::emit(SwapEvent {
             pool: object::id_to_address(&pool_id),
-            from_token: coin::get_symbol(base_metadata),
-            to_token: coin::get_symbol(quote_metadata),
+            from_token: type_name::into_string(type_name::get<BaseType>()),
+            to_token: type_name::into_string(type_name::get<QuoteType>()),
             amount_in: input_amount,
             amount_out: output_amount,
+            pool_base_balance: final_base_balance,
+            pool_quote_balance: final_quote_balance
         });
 
         output_coin
