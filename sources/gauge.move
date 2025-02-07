@@ -11,7 +11,7 @@ module full_sail::gauge {
     public struct Gauge<phantom BaseType, phantom QuoteType> has key, store {
         id: UID,
         rewards_pool: RewardsPool,
-        liquidity_pool: ID,
+        // liquidity_pool: ID,
     }
 
     public struct StakeEvent has copy, drop {
@@ -26,15 +26,15 @@ module full_sail::gauge {
         amount: u64,
     }
 
-    public fun liquidity_pool<BaseType, QuoteType>(
-        gauge: Gauge<BaseType, QuoteType>,
-        configs: &LiquidityPoolConfigs,
-        base_metadata: &CoinMetadata<BaseType>,
-        quote_metadata: &CoinMetadata<QuoteType>,
-        is_stable: bool
-    ) : ID {
-        gauge.liquidity_pool
-    }
+    // public fun liquidity_pool<BaseType, QuoteType>(
+    //     gauge: Gauge<BaseType, QuoteType>,
+    //     configs: &LiquidityPoolConfigs,
+    //     base_metadata: &CoinMetadata<BaseType>,
+    //     quote_metadata: &CoinMetadata<QuoteType>,
+    //     is_stable: bool
+    // ) : ID {
+    //     gauge.liquidity_pool
+    // }
 
     // public fun liquidity_pool_ref<BaseType, QuoteType>(gauge: &Gauge<BaseType, QuoteType>) : &LiquidityPool<BaseType, QuoteType> {
     //     &gauge.liquidity_pool
@@ -43,12 +43,12 @@ module full_sail::gauge {
     public(package) fun claim_fees<BaseType, QuoteType>(
         gauge: &mut Gauge<BaseType, QuoteType>,
         ctx: &mut TxContext,
-        configs: &LiquidityPoolConfigs,
+        configs: &mut LiquidityPoolConfigs,
         base_metadata: &CoinMetadata<BaseType>,
         quote_metadata: &CoinMetadata<QuoteType>,
         is_stable: bool
     ): (Coin<BaseType>, Coin<QuoteType>) {
-        let liquidity_pool = liquidity_pool(gauge, configs, base_metadata, quote_metadata, is_stable);
+        let liquidity_pool = liquidity_pool::liquidity_pool_mut(configs, base_metadata, quote_metadata, is_stable);
         liquidity_pool::claim_fees(liquidity_pool, ctx)
     }
 
@@ -68,11 +68,10 @@ module full_sail::gauge {
     }
 
     //#[allow(lint(self_transfer))]
-    public(package) fun create<BaseType, QuoteType>(liquidity_pool: LiquidityPool<BaseType, QuoteType>, ctx: &mut TxContext): ID {
+    public(package) fun create<BaseType, QuoteType>(ctx: &mut TxContext): ID {
         let gauge = Gauge<BaseType, QuoteType> {
             id: object::new(ctx),
             rewards_pool: rewards_pool_continuous::create(rewards_duration(), ctx),
-            liquidity_pool: liquidity_pool,
         };
         let gauge_id = object::id(&gauge);
         transfer::share_object(gauge);
