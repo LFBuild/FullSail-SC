@@ -1,6 +1,6 @@
 module full_sail::gauge {
     use full_sail::rewards_pool_continuous::{Self, RewardsPool};
-    use full_sail::liquidity_pool::{Self, LiquidityPool, LiquidityPoolConfigs};
+    use full_sail::liquidity_pool::{Self, LiquidityPool, LiquidityPoolConfigs, liquidity_pool};
     use full_sail::fullsail_token::{FULLSAIL_TOKEN};
 
     use sui::coin::{Coin, CoinMetadata};
@@ -11,7 +11,7 @@ module full_sail::gauge {
     public struct Gauge<phantom BaseType, phantom QuoteType> has key, store {
         id: UID,
         rewards_pool: RewardsPool,
-        liquidity_pool: LiquidityPool<BaseType, QuoteType>,
+        liquidity_pool: ID,
     }
 
     public struct StakeEvent has copy, drop {
@@ -26,16 +26,29 @@ module full_sail::gauge {
         amount: u64,
     }
 
-    public fun liquidity_pool<BaseType, QuoteType>(gauge: &mut Gauge<BaseType, QuoteType>) : &mut LiquidityPool<BaseType, QuoteType> {
-        &mut gauge.liquidity_pool
+    public fun liquidity_pool<BaseType, QuoteType>(
+        gauge: Gauge<BaseType, QuoteType>,
+        configs: &LiquidityPoolConfigs,
+        base_metadata: &CoinMetadata<BaseType>,
+        quote_metadata: &CoinMetadata<QuoteType>,
+        is_stable: bool
+    ) : ID {
+        gauge.liquidity_pool
     }
 
-    public fun liquidity_pool_ref<BaseType, QuoteType>(gauge: &Gauge<BaseType, QuoteType>) : &LiquidityPool<BaseType, QuoteType> {
-        &gauge.liquidity_pool
-    }
+    // public fun liquidity_pool_ref<BaseType, QuoteType>(gauge: &Gauge<BaseType, QuoteType>) : &LiquidityPool<BaseType, QuoteType> {
+    //     &gauge.liquidity_pool
+    // }
 
-    public(package) fun claim_fees<BaseType, QuoteType>(gauge: &mut Gauge<BaseType, QuoteType>, ctx: &mut TxContext): (Coin<BaseType>, Coin<QuoteType>) {
-        let liquidity_pool = liquidity_pool(gauge);
+    public(package) fun claim_fees<BaseType, QuoteType>(
+        gauge: &mut Gauge<BaseType, QuoteType>,
+        ctx: &mut TxContext,
+        configs: &LiquidityPoolConfigs,
+        base_metadata: &CoinMetadata<BaseType>,
+        quote_metadata: &CoinMetadata<QuoteType>,
+        is_stable: bool
+    ): (Coin<BaseType>, Coin<QuoteType>) {
+        let liquidity_pool = liquidity_pool(gauge, configs, base_metadata, quote_metadata, is_stable);
         liquidity_pool::claim_fees(liquidity_pool, ctx)
     }
 
