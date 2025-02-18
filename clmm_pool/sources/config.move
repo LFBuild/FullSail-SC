@@ -81,7 +81,7 @@ module clmm_pool::config {
         &arg0.acl
     }
     
-    public fun add_role(arg0: &AdminCap, arg1: &mut GlobalConfig, arg2: address, arg3: u8) {
+    public fun add_role(_arg0: &AdminCap, arg1: &mut GlobalConfig, arg2: address, arg3: u8) {
         checked_package_version(arg1);
         clmm_pool::acl::add_role(&mut arg1.acl, arg2, arg3);
         let v0 = AddRoleEvent{
@@ -95,14 +95,14 @@ module clmm_pool::config {
         clmm_pool::acl::get_members(&arg0.acl)
     }
     
-    public fun remove_member(arg0: &AdminCap, arg1: &mut GlobalConfig, arg2: address) {
+    public fun remove_member(_arg0: &AdminCap, arg1: &mut GlobalConfig, arg2: address) {
         checked_package_version(arg1);
         clmm_pool::acl::remove_member(&mut arg1.acl, arg2);
         let v0 = RemoveMemberEvent{member: arg2};
         sui::event::emit<RemoveMemberEvent>(v0);
     }
     
-    public fun remove_role(arg0: &AdminCap, arg1: &mut GlobalConfig, arg2: address, arg3: u8) {
+    public fun remove_role(_arg0: &AdminCap, arg1: &mut GlobalConfig, arg2: address, arg3: u8) {
         checked_package_version(arg1);
         clmm_pool::acl::remove_role(&mut arg1.acl, arg2, arg3);
         let v0 = RemoveRoleEvent{
@@ -112,7 +112,7 @@ module clmm_pool::config {
         sui::event::emit<RemoveRoleEvent>(v0);
     }
     
-    public fun set_roles(arg0: &AdminCap, arg1: &mut GlobalConfig, arg2: address, arg3: u128) {
+    public fun set_roles(_arg0: &AdminCap, arg1: &mut GlobalConfig, arg2: address, arg3: u128) {
         checked_package_version(arg1);
         clmm_pool::acl::set_roles(&mut arg1.acl, arg2, arg3);
         let v0 = SetRolesEvent{
@@ -310,7 +310,7 @@ module clmm_pool::config {
         };
     }
     
-    public fun update_package_version(arg0: &AdminCap, arg1: &mut GlobalConfig, arg2: u64) {
+    public fun update_package_version(_arg0: &AdminCap, arg1: &mut GlobalConfig, arg2: u64) {
         arg1.package_version = arg2;
         let v0 = SetPackageVersion{
             new_version : arg2, 

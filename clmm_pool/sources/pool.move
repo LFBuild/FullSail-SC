@@ -1,6 +1,5 @@
 module clmm_pool::pool {
     public struct POOL has drop {
-        dummy_field: bool,
     }
     
     public struct Pool<phantom T0, phantom T1> has store, key {
@@ -321,13 +320,13 @@ module clmm_pool::pool {
         arg0.index
     }
     
-    public fun add_liquidity<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: &mut clmm_pool::position::Position, arg3: u128, arg4: &sui::clock::Clock, arg5: &mut sui::tx_context::TxContext) : AddLiquidityReceipt<T0, T1> {
+    public fun add_liquidity<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: &mut clmm_pool::position::Position, arg3: u128, arg4: &sui::clock::Clock) : AddLiquidityReceipt<T0, T1> {
         clmm_pool::config::checked_package_version(arg0);
         assert!(arg3 != 0, 3);
         add_liquidity_internal<T0, T1>(arg1, arg2, false, arg3, 0, false, sui::clock::timestamp_ms(arg4) / 1000)
     }
     
-    public fun add_liquidity_fix_coin<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: &mut clmm_pool::position::Position, arg3: u64, arg4: bool, arg5: &sui::clock::Clock, arg6: &mut sui::tx_context::TxContext) : AddLiquidityReceipt<T0, T1> {
+    public fun add_liquidity_fix_coin<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: &mut clmm_pool::position::Position, arg3: u64, arg4: bool, arg5: &sui::clock::Clock) : AddLiquidityReceipt<T0, T1> {
         clmm_pool::config::checked_package_version(arg0);
         assert!(arg3 > 0, 0);
         add_liquidity_internal<T0, T1>(arg1, arg2, true, 0, arg3, arg4, sui::clock::timestamp_ms(arg5) / 1000)

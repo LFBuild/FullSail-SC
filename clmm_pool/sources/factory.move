@@ -1,6 +1,5 @@
 module clmm_pool::factory {
     public struct FACTORY has drop {
-        dummy_field: bool,
     }
     
     public struct PoolSimpleInfo has copy, drop, store {
@@ -34,7 +33,8 @@ module clmm_pool::factory {
     
     public fun create_pool<T0, T1>(arg0: &mut Pools, arg1: &clmm_pool::config::GlobalConfig, arg2: u32, arg3: u128, arg4: std::string::String, arg5: &sui::clock::Clock, arg6: &mut sui::tx_context::TxContext) {
         clmm_pool::config::checked_package_version(arg1);
-        sui::transfer::public_share_object<clmm_pool::pool::Pool<T0, T1>>(create_pool_internal<T0, T1>(arg0, arg1, arg2, arg3, arg4, arg5, arg6));
+        let pool = create_pool_internal<T0, T1>(arg0, arg1, arg2, arg3, arg4, arg5, arg6);
+        sui::transfer::public_share_object<clmm_pool::pool::Pool<T0, T1>>(pool);
     }
     
     public fun create_pool_<T0, T1>(arg0: &mut Pools, arg1: &clmm_pool::config::GlobalConfig, arg2: u32, arg3: u128, arg4: std::string::String, arg5: &sui::clock::Clock, arg6: &mut sui::tx_context::TxContext) : clmm_pool::pool::Pool<T0, T1> {
@@ -86,7 +86,7 @@ module clmm_pool::factory {
         } else {
             arg10
         };
-        let v3 = clmm_pool::pool::add_liquidity_fix_coin<T0, T1>(arg1, &mut v0, &mut v1, v2, arg11, arg12, arg13);
+        let v3 = clmm_pool::pool::add_liquidity_fix_coin<T0, T1>(arg1, &mut v0, &mut v1, v2, arg11, arg12);
         let (v4, v5) = clmm_pool::pool::add_liquidity_pay_amount<T0, T1>(&v3);
         if (arg11) {
             assert!(v5 <= arg10, 4);

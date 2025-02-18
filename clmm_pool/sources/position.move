@@ -11,7 +11,6 @@ module clmm_pool::position {
     }
     
     public struct POSITION has drop {
-        dummy_field: bool,
     }
     
     public struct Position has store, key {
