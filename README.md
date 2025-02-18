@@ -45,7 +45,7 @@ indicates that Integrate depends on clmm_pool.
 
 ![Dependency Graph](dependency_graph.svg)
 
-So to be more specific:
+Notable dependencies:
 - integrate depends on nearly all the contracts.
 - fullsail_config does not depend on any contracts and none of the contracts depends on it.
 
