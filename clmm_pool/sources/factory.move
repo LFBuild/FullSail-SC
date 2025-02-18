@@ -126,8 +126,9 @@ module clmm_pool::factory {
             list  : move_stl::linked_table::new<sui::object::ID, PoolSimpleInfo>(arg1), 
             index : 0,
         };
+        let pools_id = sui::object::id<Pools>(&v0);
         sui::transfer::share_object<Pools>(v0);
-        let v1 = InitFactoryEvent{pools_id: sui::object::id<Pools>(&v0)};
+        let v1 = InitFactoryEvent{pools_id};
         sui::event::emit<InitFactoryEvent>(v1);
         sui::package::claim_and_keep<FACTORY>(arg0, arg1);
     }

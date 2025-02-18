@@ -67,10 +67,11 @@ module clmm_pool::partner {
         let v0 = std::string::from_ascii(std::type_name::into_string(std::type_name::get<T0>()));
         assert!(sui::bag::contains<std::string::String>(&arg2.balances, v0), 4);
         let v1 = sui::bag::remove<std::string::String, sui::balance::Balance<T0>>(&mut arg2.balances, v0);
+        let amount = sui::balance::value<T0>(&v1);
         sui::transfer::public_transfer<sui::coin::Coin<T0>>(sui::coin::from_balance<T0>(v1, arg3), sui::tx_context::sender(arg3));
         let v2 = ClaimRefFeeEvent{
             partner_id : sui::object::id<Partner>(arg2), 
-            amount     : sui::balance::value<T0>(&v1), 
+            amount, 
             type_name  : v0,
         };
         sui::event::emit<ClaimRefFeeEvent>(v2);
@@ -100,11 +101,12 @@ module clmm_pool::partner {
         };
         sui::vec_map::insert<std::string::String, sui::object::ID>(&mut arg1.partners, arg2, v1);
         sui::transfer::share_object<Partner>(v0);
+        let partner_cap_id = sui::object::id<PartnerCap>(&v2);
         sui::transfer::transfer<PartnerCap>(v2, arg6);
         let v3 = CreatePartnerEvent{
             recipient      : arg6, 
             partner_id     : v1, 
-            partner_cap_id : sui::object::id<PartnerCap>(&v2), 
+            partner_cap_id,
             ref_fee_rate   : arg3, 
             name           : arg2, 
             start_time     : arg4, 
@@ -129,8 +131,9 @@ module clmm_pool::partner {
             id       : sui::object::new(arg0), 
             partners : sui::vec_map::empty<std::string::String, sui::object::ID>(),
         };
+        let partners_id = sui::object::id<Partners>(&v0);
         sui::transfer::share_object<Partners>(v0);
-        let v1 = InitPartnerEvent{partners_id: sui::object::id<Partners>(&v0)};
+        let v1 = InitPartnerEvent{partners_id};
         sui::event::emit<InitPartnerEvent>(v1);
     }
     
@@ -140,6 +143,7 @@ module clmm_pool::partner {
     
     public fun receive_ref_fee<T0>(arg0: &mut Partner, arg1: sui::balance::Balance<T0>) {
         let v0 = std::string::from_ascii(std::type_name::into_string(std::type_name::get<T0>()));
+        let amount = sui::balance::value<T0>(&arg1);
         if (sui::bag::contains<std::string::String>(&arg0.balances, v0)) {
             sui::balance::join<T0>(sui::bag::borrow_mut<std::string::String, sui::balance::Balance<T0>>(&mut arg0.balances, v0), arg1);
         } else {
@@ -147,7 +151,7 @@ module clmm_pool::partner {
         };
         let v1 = ReceiveRefFeeEvent{
             partner_id : sui::object::id<Partner>(arg0), 
-            amount     : sui::balance::value<T0>(&arg1), 
+            amount,
             type_name  : v0,
         };
         sui::event::emit<ReceiveRefFeeEvent>(v1);

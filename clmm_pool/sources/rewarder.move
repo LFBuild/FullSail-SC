@@ -94,17 +94,18 @@ module clmm_pool::rewarder {
         if (!sui::bag::contains<std::type_name::TypeName>(&arg1.balances, v0)) {
             sui::bag::add<std::type_name::TypeName, sui::balance::Balance<T0>>(&mut arg1.balances, v0, sui::balance::zero<T0>());
         };
+        let deposit_amount = sui::balance::value<T0>(&arg2);
         let v1 = sui::balance::join<T0>(sui::bag::borrow_mut<std::type_name::TypeName, sui::balance::Balance<T0>>(&mut arg1.balances, v0), arg2);
         let v2 = DepositEvent{
             reward_type    : v0, 
-            deposit_amount : sui::balance::value<T0>(&arg2), 
+            deposit_amount : deposit_amount, 
             after_amount   : v1,
         };
         sui::event::emit<DepositEvent>(v2);
         v1
     }
     
-    public fun emergent_withdraw<T0>(arg0: &clmm_pool::config::AdminCap, arg1: &clmm_pool::config::GlobalConfig, arg2: &mut RewarderGlobalVault, arg3: u64) : sui::balance::Balance<T0> {
+    public fun emergent_withdraw<T0>(_arg0: &clmm_pool::config::AdminCap, arg1: &clmm_pool::config::GlobalConfig, arg2: &mut RewarderGlobalVault, arg3: u64) : sui::balance::Balance<T0> {
         clmm_pool::config::checked_package_version(arg1);
         let v0 = EmergentWithdrawEvent{
             reward_type     : std::type_name::get<T0>(), 
@@ -128,8 +129,9 @@ module clmm_pool::rewarder {
             id       : sui::object::new(arg0), 
             balances : sui::bag::new(arg0),
         };
+        let global_vault_id = sui::object::id<RewarderGlobalVault>(&v0);
         sui::transfer::share_object<RewarderGlobalVault>(v0);
-        let v1 = RewarderInitEvent{global_vault_id: sui::object::id<RewarderGlobalVault>(&v0)};
+        let v1 = RewarderInitEvent{global_vault_id};
         sui::event::emit<RewarderInitEvent>(v1);
     }
     

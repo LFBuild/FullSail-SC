@@ -252,10 +252,11 @@ module clmm_pool::pool {
     public fun close_position<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: clmm_pool::position::Position) {
         clmm_pool::config::checked_package_version(arg0);
         assert!(!arg1.is_pause, 13);
+        let positionId = sui::object::id<clmm_pool::position::Position>(&arg2);
         clmm_pool::position::close_position(&mut arg1.position_manager, arg2);
         let v0 = ClosePositionEvent{
             pool     : sui::object::id<Pool<T0, T1>>(arg1), 
-            position : sui::object::id<clmm_pool::position::Position>(&arg2),
+            position : positionId,
         };
         sui::event::emit<ClosePositionEvent>(v0);
     }
@@ -415,7 +416,9 @@ module clmm_pool::pool {
         let v0 = clmm_pool::position::borrow_position_info(&arg1.position_manager, arg2);
         if (clmm_pool::position::info_liquidity(v0) != 0) {
             let (v2, v3) = clmm_pool::position::info_tick_range(v0);
-            clmm_pool::position::update_points(&mut arg1.position_manager, arg2, get_points_in_tick_range<T0, T1>(arg1, v2, v3))
+            let points = get_points_in_tick_range<T0, T1>(arg1, v2, v3);
+            let positionManager = &mut arg1.position_manager;
+            clmm_pool::position::update_points(positionManager, arg2, points)
         } else {
             clmm_pool::position::info_points_owned(clmm_pool::position::borrow_position_info(&arg1.position_manager, arg2))
         }
@@ -435,7 +438,9 @@ module clmm_pool::pool {
         let v0 = clmm_pool::position::borrow_position_info(&arg1.position_manager, arg2);
         if (clmm_pool::position::info_liquidity(v0) != 0) {
             let (v2, v3) = clmm_pool::position::info_tick_range(v0);
-            clmm_pool::position::update_rewards(&mut arg1.position_manager, arg2, get_rewards_in_tick_range<T0, T1>(arg1, v2, v3))
+            let rewards = get_rewards_in_tick_range<T0, T1>(arg1, v2, v3);
+            let positionManager = &mut arg1.position_manager;
+            clmm_pool::position::update_rewards(positionManager, arg2, rewards)
         } else {
             clmm_pool::position::rewards_amount_owned(&arg1.position_manager, arg2)
         }
@@ -794,7 +799,9 @@ module clmm_pool::pool {
         let v2 = std::option::extract<u64>(&mut v1);
         let v3 = if (arg4 && clmm_pool::position::liquidity(arg2) != 0 || clmm_pool::position::inited_rewards_count(&arg1.position_manager, v0) <= v2) {
             let (v4, v5) = clmm_pool::position::tick_range(arg2);
-            clmm_pool::position::update_and_reset_rewards(&mut arg1.position_manager, v0, get_rewards_in_tick_range<T0, T1>(arg1, v4, v5), v2)
+            let rewards = get_rewards_in_tick_range<T0, T1>(arg1, v4, v5);
+            let positionManager = &mut arg1.position_manager;
+            clmm_pool::position::update_and_reset_rewards(positionManager, v0, rewards, v2)
         } else {
             clmm_pool::position::reset_rewarder(&mut arg1.position_manager, v0, v2)
         };
