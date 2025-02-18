@@ -11,8 +11,13 @@
     - [distribution](https://testnet.suivision.xyz/package/0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1?tab=Code)
     - [integrate](https://testnet.suivision.xyz/package/0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df?tab=Code)
 
-    The reason why we are using this code is because it is the only ve(3,3) model on Sui and it is a good reference for us to build our own ve(3,3) model. And the code was not deployed
-    on mainnet yet, so we had to use testnet version.
+    The reason why we are using this code is because it is the only ve(3,3) model on Sui and it is a good reference for us to build our own ve(3,3) model. And the code was not deployed on mainnet yet, so we had to use testnet version.
+
+    Some libraries were found opensource:
+    - [move_stl](https://github.com/MagmaFinanceIO/move-stl). No license was found.
+    - [integer_mate](https://github.com/MagmaFinanceIO/integer-mate). No license was found.
+
+    To mitigate the risk of of libraries becoming unavailable, we are using the code directly.
 
     Addresses were took from the frontend [library config](https://github.com/MagmaFinanceIO/magma_clmm_sdk/blob/main/src/config/testnet.ts)
 
