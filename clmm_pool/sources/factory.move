@@ -1,9 +1,9 @@
 module clmm_pool::factory {
-    struct FACTORY has drop {
+    public struct FACTORY has drop {
         dummy_field: bool,
     }
     
-    struct PoolSimpleInfo has copy, drop, store {
+    public struct PoolSimpleInfo has copy, drop, store {
         pool_id: sui::object::ID,
         pool_key: sui::object::ID,
         coin_type_a: std::type_name::TypeName,
@@ -11,17 +11,17 @@ module clmm_pool::factory {
         tick_spacing: u32,
     }
     
-    struct Pools has store, key {
+    public struct Pools has store, key {
         id: sui::object::UID,
         list: move_stl::linked_table::LinkedTable<sui::object::ID, PoolSimpleInfo>,
         index: u64,
     }
     
-    struct InitFactoryEvent has copy, drop {
+    public struct InitFactoryEvent has copy, drop {
         pools_id: sui::object::ID,
     }
     
-    struct CreatePoolEvent has copy, drop {
+    public struct CreatePoolEvent has copy, drop {
         pool_id: sui::object::ID,
         coin_type_a: std::string::String,
         coin_type_b: std::string::String,
@@ -77,10 +77,10 @@ module clmm_pool::factory {
         v4
     }
     
-    public fun create_pool_with_liquidity<T0, T1>(arg0: &mut Pools, arg1: &clmm_pool::config::GlobalConfig, arg2: u32, arg3: u128, arg4: std::string::String, arg5: u32, arg6: u32, arg7: sui::coin::Coin<T0>, arg8: sui::coin::Coin<T1>, arg9: u64, arg10: u64, arg11: bool, arg12: &sui::clock::Clock, arg13: &mut sui::tx_context::TxContext) : (clmm_pool::position::Position, sui::coin::Coin<T0>, sui::coin::Coin<T1>) {
+    public fun create_pool_with_liquidity<T0, T1>(arg0: &mut Pools, arg1: &clmm_pool::config::GlobalConfig, arg2: u32, arg3: u128, arg4: std::string::String, arg5: u32, arg6: u32, mut arg7: sui::coin::Coin<T0>, mut arg8: sui::coin::Coin<T1>, arg9: u64, arg10: u64, arg11: bool, arg12: &sui::clock::Clock, arg13: &mut sui::tx_context::TxContext) : (clmm_pool::position::Position, sui::coin::Coin<T0>, sui::coin::Coin<T1>) {
         clmm_pool::config::checked_package_version(arg1);
-        let v0 = create_pool_internal<T0, T1>(arg0, arg1, arg2, arg3, arg4, arg12, arg13);
-        let v1 = clmm_pool::pool::open_position<T0, T1>(arg1, &mut v0, arg5, arg6, arg13);
+        let mut v0 = create_pool_internal<T0, T1>(arg0, arg1, arg2, arg3, arg4, arg12, arg13);
+        let mut v1 = clmm_pool::pool::open_position<T0, T1>(arg1, &mut v0, arg5, arg6, arg13);
         let v2 = if (arg11) {
             arg9
         } else {
@@ -99,14 +99,14 @@ module clmm_pool::factory {
     }
     
     public fun fetch_pools(arg0: &Pools, arg1: vector<sui::object::ID>, arg2: u64) : vector<PoolSimpleInfo> {
-        let v0 = std::vector::empty<PoolSimpleInfo>();
+        let mut v0 = std::vector::empty<PoolSimpleInfo>();
         let v1 = if (std::vector::is_empty<sui::object::ID>(&arg1)) {
             move_stl::linked_table::head<sui::object::ID, PoolSimpleInfo>(&arg0.list)
         } else {
             move_stl::linked_table::next<sui::object::ID, PoolSimpleInfo>(move_stl::linked_table::borrow_node<sui::object::ID, PoolSimpleInfo>(&arg0.list, *std::vector::borrow<sui::object::ID>(&arg1, 0)))
         };
-        let v2 = v1;
-        let v3 = 0;
+        let mut v2 = v1;
+        let mut v3 = 0;
         while (std::option::is_some<sui::object::ID>(&v2) && v3 < arg2) {
             let v4 = move_stl::linked_table::borrow_node<sui::object::ID, PoolSimpleInfo>(&arg0.list, *std::option::borrow<sui::object::ID>(&v2));
             v2 = move_stl::linked_table::next<sui::object::ID, PoolSimpleInfo>(v4);
@@ -134,11 +134,11 @@ module clmm_pool::factory {
     
     public fun new_pool_key<T0, T1>(arg0: u32) : sui::object::ID {
         let v0 = std::type_name::into_string(std::type_name::get<T0>());
-        let v1 = *std::ascii::as_bytes(&v0);
+        let mut v1 = *std::ascii::as_bytes(&v0);
         let v2 = std::type_name::into_string(std::type_name::get<T1>());
         let v3 = std::ascii::as_bytes(&v2);
-        let v4 = 0;
-        let v5 = false;
+        let mut v4 = 0;
+        let mut v5 = false;
         while (v4 < std::vector::length<u8>(v3)) {
             let v6 = *std::vector::borrow<u8>(v3, v4);
             let v7 = !v5 && v4 < std::vector::length<u8>(&v1);

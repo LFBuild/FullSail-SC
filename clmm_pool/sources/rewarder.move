@@ -1,39 +1,39 @@
 module clmm_pool::rewarder {
-    struct RewarderManager has store {
+    public struct RewarderManager has store {
         rewarders: vector<Rewarder>,
         points_released: u128,
         points_growth_global: u128,
         last_updated_time: u64,
     }
     
-    struct Rewarder has copy, drop, store {
+    public struct Rewarder has copy, drop, store {
         reward_coin: std::type_name::TypeName,
         emissions_per_second: u128,
         growth_global: u128,
     }
     
-    struct RewarderGlobalVault has store, key {
+    public struct RewarderGlobalVault has store, key {
         id: sui::object::UID,
         balances: sui::bag::Bag,
     }
     
-    struct RewarderInitEvent has copy, drop {
+    public struct RewarderInitEvent has copy, drop {
         global_vault_id: sui::object::ID,
     }
     
-    struct DepositEvent has copy, drop, store {
+    public struct DepositEvent has copy, drop, store {
         reward_type: std::type_name::TypeName,
         deposit_amount: u64,
         after_amount: u64,
     }
     
-    struct EmergentWithdrawEvent has copy, drop, store {
+    public struct EmergentWithdrawEvent has copy, drop, store {
         reward_type: std::type_name::TypeName,
         withdraw_amount: u64,
         after_amount: u64,
     }
     
-    public(friend) fun new() : RewarderManager {
+    public(package) fun new() : RewarderManager {
         RewarderManager{
             rewarders            : std::vector::empty<Rewarder>(), 
             points_released      : 0, 
@@ -42,7 +42,7 @@ module clmm_pool::rewarder {
         }
     }
     
-    public(friend) fun add_rewarder<T0>(arg0: &mut RewarderManager) {
+    public(package) fun add_rewarder<T0>(arg0: &mut RewarderManager) {
         let v0 = rewarder_index<T0>(arg0);
         assert!(std::option::is_none<u64>(&v0), 2);
         assert!(std::vector::length<Rewarder>(&arg0.rewarders) <= 2, 1);
@@ -66,8 +66,8 @@ module clmm_pool::rewarder {
         &arg0.balances
     }
     
-    public(friend) fun borrow_mut_rewarder<T0>(arg0: &mut RewarderManager) : &mut Rewarder {
-        let v0 = 0;
+    public(package) fun borrow_mut_rewarder<T0>(arg0: &mut RewarderManager) : &mut Rewarder {
+        let mut v0 = 0;
         while (v0 < std::vector::length<Rewarder>(&arg0.rewarders)) {
             if (std::vector::borrow<Rewarder>(&arg0.rewarders, v0).reward_coin == std::type_name::get<T0>()) {
                 return std::vector::borrow_mut<Rewarder>(&mut arg0.rewarders, v0)
@@ -78,7 +78,7 @@ module clmm_pool::rewarder {
     }
     
     public fun borrow_rewarder<T0>(arg0: &RewarderManager) : &Rewarder {
-        let v0 = 0;
+        let mut v0 = 0;
         while (v0 < std::vector::length<Rewarder>(&arg0.rewarders)) {
             if (std::vector::borrow<Rewarder>(&arg0.rewarders, v0).reward_coin == std::type_name::get<T0>()) {
                 return std::vector::borrow<Rewarder>(&arg0.rewarders, v0)
@@ -150,7 +150,7 @@ module clmm_pool::rewarder {
     }
     
     public fun rewarder_index<T0>(arg0: &RewarderManager) : std::option::Option<u64> {
-        let v0 = 0;
+        let mut v0 = 0;
         while (v0 < std::vector::length<Rewarder>(&arg0.rewarders)) {
             if (std::vector::borrow<Rewarder>(&arg0.rewarders, v0).reward_coin == std::type_name::get<T0>()) {
                 return std::option::some<u64>(v0)
@@ -165,8 +165,8 @@ module clmm_pool::rewarder {
     }
     
     public fun rewards_growth_global(arg0: &RewarderManager) : vector<u128> {
-        let v0 = 0;
-        let v1 = std::vector::empty<u128>();
+        let mut v0 = 0;
+        let mut v1 = std::vector::empty<u128>();
         while (v0 < std::vector::length<Rewarder>(&arg0.rewarders)) {
             std::vector::push_back<u128>(&mut v1, std::vector::borrow<Rewarder>(&arg0.rewarders, v0).growth_global);
             v0 = v0 + 1;
@@ -174,7 +174,7 @@ module clmm_pool::rewarder {
         v1
     }
     
-    public(friend) fun settle(arg0: &mut RewarderManager, arg1: u128, arg2: u64) {
+    public(package) fun settle(arg0: &mut RewarderManager, arg1: u128, arg2: u64) {
         let v0 = arg0.last_updated_time;
         arg0.last_updated_time = arg2;
         assert!(v0 <= arg2, 3);
@@ -182,7 +182,7 @@ module clmm_pool::rewarder {
             return
         };
         let v1 = arg2 - v0;
-        let v2 = 0;
+        let mut v2 = 0;
         while (v2 < std::vector::length<Rewarder>(&arg0.rewarders)) {
             std::vector::borrow_mut<Rewarder>(&mut arg0.rewarders, v2).growth_global = std::vector::borrow<Rewarder>(&arg0.rewarders, v2).growth_global + integer_mate::full_math_u128::mul_div_floor(v1 as u128, std::vector::borrow<Rewarder>(&arg0.rewarders, v2).emissions_per_second, arg1);
             v2 = v2 + 1;
@@ -191,7 +191,7 @@ module clmm_pool::rewarder {
         arg0.points_growth_global = arg0.points_growth_global + integer_mate::full_math_u128::mul_div_floor(v1 as u128, 18446744073709551616000000, arg1);
     }
     
-    public(friend) fun update_emission<T0>(arg0: &RewarderGlobalVault, arg1: &mut RewarderManager, arg2: u128, arg3: u128, arg4: u64) {
+    public(package) fun update_emission<T0>(arg0: &RewarderGlobalVault, arg1: &mut RewarderManager, arg2: u128, arg3: u128, arg4: u64) {
         settle(arg1, arg2, arg4);
         if (arg3 > 0) {
             let v0 = std::type_name::get<T0>();
@@ -201,7 +201,7 @@ module clmm_pool::rewarder {
         borrow_mut_rewarder<T0>(arg1).emissions_per_second = arg3;
     }
     
-    public(friend) fun withdraw_reward<T0>(arg0: &mut RewarderGlobalVault, arg1: u64) : sui::balance::Balance<T0> {
+    public(package) fun withdraw_reward<T0>(arg0: &mut RewarderGlobalVault, arg1: u64) : sui::balance::Balance<T0> {
         sui::balance::split<T0>(sui::bag::borrow_mut<std::type_name::TypeName, sui::balance::Balance<T0>>(&mut arg0.balances, std::type_name::get<T0>()), arg1)
     }
     

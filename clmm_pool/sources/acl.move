@@ -1,9 +1,9 @@
 module clmm_pool::acl {
-    struct ACL has store {
+    public struct ACL has store {
         permissions: move_stl::linked_table::LinkedTable<address, u128>,
     }
     
-    struct Member has copy, drop, store {
+    public struct Member has copy, drop, store {
         address: address,
         permission: u128,
     }
@@ -23,8 +23,8 @@ module clmm_pool::acl {
     }
     
     public fun get_members(arg0: &ACL) : vector<Member> {
-        let v0 = std::vector::empty<Member>();
-        let v1 = move_stl::linked_table::head<address, u128>(&arg0.permissions);
+        let mut v0 = std::vector::empty<Member>();
+        let mut v1 = move_stl::linked_table::head<address, u128>(&arg0.permissions);
         while (std::option::is_some<address>(&v1)) {
             let v2 = *std::option::borrow<address>(&v1);
             let v3 = move_stl::linked_table::borrow_node<address, u128>(&arg0.permissions, v2);

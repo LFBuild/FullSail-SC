@@ -1,18 +1,18 @@
 module clmm_pool::config {
-    struct AdminCap has store, key {
+    public struct AdminCap has store, key {
         id: sui::object::UID,
     }
     
-    struct ProtocolFeeClaimCap has store, key {
+    public struct ProtocolFeeClaimCap has store, key {
         id: sui::object::UID,
     }
     
-    struct FeeTier has copy, drop, store {
+    public struct FeeTier has copy, drop, store {
         tick_spacing: u32,
         fee_rate: u64,
     }
     
-    struct GlobalConfig has store, key {
+    public struct GlobalConfig has store, key {
         id: sui::object::UID,
         protocol_fee_rate: u64,
         unstaked_liquidity_fee_rate: u64,
@@ -22,57 +22,57 @@ module clmm_pool::config {
         alive_gauges: sui::vec_set::VecSet<sui::object::ID>,
     }
     
-    struct InitConfigEvent has copy, drop {
+    public struct InitConfigEvent has copy, drop {
         admin_cap_id: sui::object::ID,
         global_config_id: sui::object::ID,
     }
     
-    struct UpdateFeeRateEvent has copy, drop {
+    public struct UpdateFeeRateEvent has copy, drop {
         old_fee_rate: u64,
         new_fee_rate: u64,
     }
     
-    struct UpdateUnstakedLiquidityFeeRateEvent has copy, drop {
+    public struct UpdateUnstakedLiquidityFeeRateEvent has copy, drop {
         old_fee_rate: u64,
         new_fee_rate: u64,
     }
     
-    struct AddFeeTierEvent has copy, drop {
+    public struct AddFeeTierEvent has copy, drop {
         tick_spacing: u32,
         fee_rate: u64,
     }
     
-    struct UpdateFeeTierEvent has copy, drop {
+    public struct UpdateFeeTierEvent has copy, drop {
         tick_spacing: u32,
         old_fee_rate: u64,
         new_fee_rate: u64,
     }
     
-    struct DeleteFeeTierEvent has copy, drop {
+    public struct DeleteFeeTierEvent has copy, drop {
         tick_spacing: u32,
         fee_rate: u64,
     }
     
-    struct SetRolesEvent has copy, drop {
+    public struct SetRolesEvent has copy, drop {
         member: address,
         roles: u128,
     }
     
-    struct AddRoleEvent has copy, drop {
+    public struct AddRoleEvent has copy, drop {
         member: address,
         role: u8,
     }
     
-    struct RemoveRoleEvent has copy, drop {
+    public struct RemoveRoleEvent has copy, drop {
         member: address,
         role: u8,
     }
     
-    struct RemoveMemberEvent has copy, drop {
+    public struct RemoveMemberEvent has copy, drop {
         member: address,
     }
     
-    struct SetPackageVersion has copy, drop {
+    public struct SetPackageVersion has copy, drop {
         new_version: u64,
         old_version: u64,
     }
@@ -214,7 +214,7 @@ module clmm_pool::config {
     }
     
     fun init(arg0: &mut sui::tx_context::TxContext) {
-        let v0 = GlobalConfig{
+        let mut v0 = GlobalConfig{
             id                          : sui::object::new(arg0), 
             protocol_fee_rate           : 0, 
             unstaked_liquidity_fee_rate : 1000, 
@@ -286,7 +286,7 @@ module clmm_pool::config {
     }
     
     public fun update_gauge_liveness(arg0: &mut GlobalConfig, arg1: vector<sui::object::ID>, arg2: bool, arg3: &mut sui::tx_context::TxContext) {
-        let v0 = 0;
+        let mut v0 = 0;
         let v1 = std::vector::length<sui::object::ID>(&arg1);
         checked_package_version(arg0);
         check_pool_manager_role(arg0, sui::tx_context::sender(arg3));

@@ -1,16 +1,16 @@
 module clmm_pool::partner {
-    struct Partners has key {
+    public struct Partners has key {
         id: sui::object::UID,
         partners: sui::vec_map::VecMap<std::string::String, sui::object::ID>,
     }
     
-    struct PartnerCap has store, key {
+    public struct PartnerCap has store, key {
         id: sui::object::UID,
         name: std::string::String,
         partner_id: sui::object::ID,
     }
     
-    struct Partner has store, key {
+    public struct Partner has store, key {
         id: sui::object::UID,
         name: std::string::String,
         ref_fee_rate: u64,
@@ -19,11 +19,11 @@ module clmm_pool::partner {
         balances: sui::bag::Bag,
     }
     
-    struct InitPartnerEvent has copy, drop {
+    public struct InitPartnerEvent has copy, drop {
         partners_id: sui::object::ID,
     }
     
-    struct CreatePartnerEvent has copy, drop {
+    public struct CreatePartnerEvent has copy, drop {
         recipient: address,
         partner_id: sui::object::ID,
         partner_cap_id: sui::object::ID,
@@ -33,25 +33,25 @@ module clmm_pool::partner {
         end_time: u64,
     }
     
-    struct UpdateRefFeeRateEvent has copy, drop {
+    public struct UpdateRefFeeRateEvent has copy, drop {
         partner_id: sui::object::ID,
         old_fee_rate: u64,
         new_fee_rate: u64,
     }
     
-    struct UpdateTimeRangeEvent has copy, drop {
+    public struct UpdateTimeRangeEvent has copy, drop {
         partner_id: sui::object::ID,
         start_time: u64,
         end_time: u64,
     }
     
-    struct ReceiveRefFeeEvent has copy, drop {
+    public struct ReceiveRefFeeEvent has copy, drop {
         partner_id: sui::object::ID,
         amount: u64,
         type_name: std::string::String,
     }
     
-    struct ClaimRefFeeEvent has copy, drop {
+    public struct ClaimRefFeeEvent has copy, drop {
         partner_id: sui::object::ID,
         amount: u64,
         type_name: std::string::String,

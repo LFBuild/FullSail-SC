@@ -14,7 +14,7 @@ module clmm_pool::tick_math {
         } else {
             18446744073709551616
         };
-        let v2 = v1;
+        let mut v2 = v1;
         if (v0 & 2 != 0) {
             v2 = integer_mate::full_math_u128::mul_shr(v1, 18444899583751176498, 64);
         };
@@ -79,7 +79,7 @@ module clmm_pool::tick_math {
         } else {
             79228162514264337593543950336
         };
-        let v2 = v1;
+        let mut v2 = v1;
         if (v0 & 2 != 0) {
             v2 = integer_mate::full_math_u128::mul_shr(v1, 79236085330515764027303304731, 96);
         };
@@ -160,14 +160,14 @@ module clmm_pool::tick_math {
         let v9 = v7 >> v8;
         let v10 = as_u8(v9 >= 4) << 1;
         let v11 = 0 | v0 | v2 | v4 | v6 | v8 | v10 | as_u8(v9 >> v10 >= 2) << 0;
-        let v12 = integer_mate::i128::shl(integer_mate::i128::sub(integer_mate::i128::from(v11 as u128), integer_mate::i128::from(64)), 32);
+        let mut v12 = integer_mate::i128::shl(integer_mate::i128::sub(integer_mate::i128::from(v11 as u128), integer_mate::i128::from(64)), 32);
         let v13 = if (v11 >= 64) {
             arg0 >> v11 - 63
         } else {
             arg0 << 63 - v11
         };
-        let v14 = v13;
-        let v15 = 31;
+        let mut v14 = v13;
+        let mut v15 = 31;
         while (v15 >= 18) {
             let v16 = v14 * v14 >> 63;
             let v17 = (v16 >> 64) as u8;

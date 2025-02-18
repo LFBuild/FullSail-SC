@@ -1,10 +1,10 @@
 module clmm_pool::tick {
-    struct TickManager has store {
+    public struct TickManager has store {
         tick_spacing: u32,
         ticks: move_stl::skip_list::SkipList<Tick>,
     }
     
-    struct Tick has copy, drop, store {
+    public struct Tick has copy, drop, store {
         index: integer_mate::i32::I32,
         sqrt_price: u128,
         liquidity_net: integer_mate::i128::I128,
@@ -17,7 +17,7 @@ module clmm_pool::tick {
         magma_distribution_growth_outside: u128,
     }
     
-    public(friend) fun new(arg0: u32, arg1: u64, arg2: &mut sui::tx_context::TxContext) : TickManager {
+    public(package) fun new(arg0: u32, arg1: u64, arg2: &mut sui::tx_context::TxContext) : TickManager {
         TickManager{
             tick_spacing : arg0, 
             ticks        : move_stl::skip_list::new<Tick>(16, 2, arg1, arg2),
@@ -38,7 +38,7 @@ module clmm_pool::tick {
         (move_stl::skip_list::borrow_value<Tick>(v0), v1)
     }
     
-    public(friend) fun cross_by_swap(arg0: &mut TickManager, arg1: integer_mate::i32::I32, arg2: bool, arg3: u128, arg4: u128, arg5: u128, arg6: u128, arg7: u128, arg8: vector<u128>, arg9: u128) : (u128, u128) {
+    public(package) fun cross_by_swap(arg0: &mut TickManager, arg1: integer_mate::i32::I32, arg2: bool, arg3: u128, arg4: u128, arg5: u128, arg6: u128, arg7: u128, arg8: vector<u128>, arg9: u128) : (u128, u128) {
         let v0 = move_stl::skip_list::borrow_mut<Tick>(&mut arg0.ticks, tick_score(arg1));
         let (v1, v2) = if (arg2) {
             (integer_mate::i128::neg(v0.liquidity_net), integer_mate::i128::neg(v0.magma_distribution_staked_liquidity_net))
@@ -60,7 +60,7 @@ module clmm_pool::tick {
         };
         v0.fee_growth_outside_a = integer_mate::math_u128::wrapping_sub(arg5, v0.fee_growth_outside_a);
         v0.fee_growth_outside_b = integer_mate::math_u128::wrapping_sub(arg6, v0.fee_growth_outside_b);
-        let v9 = 0;
+        let mut v9 = 0;
         while (v9 < std::vector::length<u128>(&arg8)) {
             let v10 = *std::vector::borrow<u128>(&arg8, v9);
             if (std::vector::length<u128>(&v0.rewards_growth_outside) > v9) {
@@ -76,7 +76,7 @@ module clmm_pool::tick {
         (v3, v4)
     }
     
-    public(friend) fun decrease_liquidity(arg0: &mut TickManager, arg1: integer_mate::i32::I32, arg2: integer_mate::i32::I32, arg3: integer_mate::i32::I32, arg4: u128, arg5: u128, arg6: u128, arg7: u128, arg8: vector<u128>, arg9: u128) {
+    public(package) fun decrease_liquidity(arg0: &mut TickManager, arg1: integer_mate::i32::I32, arg2: integer_mate::i32::I32, arg3: integer_mate::i32::I32, arg4: u128, arg5: u128, arg6: u128, arg7: u128, arg8: vector<u128>, arg9: u128) {
         if (arg4 == 0) {
             return
         };
@@ -111,8 +111,8 @@ module clmm_pool::tick {
         if (arg0 <= 0) {
             std::vector::empty<u128>()
         } else {
-            let v1 = std::vector::empty<u128>();
-            let v2 = 0;
+            let mut v1 = std::vector::empty<u128>();
+            let mut v2 = 0;
             while (v2 < arg0) {
                 std::vector::push_back<u128>(&mut v1, 0);
                 v2 = v2 + 1;
@@ -126,14 +126,14 @@ module clmm_pool::tick {
     }
     
     public fun fetch_ticks(arg0: &TickManager, arg1: vector<u32>, arg2: u64) : vector<Tick> {
-        let v0 = std::vector::empty<Tick>();
+        let mut v0 = std::vector::empty<Tick>();
         let v1 = if (std::vector::is_empty<u32>(&arg1)) {
             move_stl::skip_list::head<Tick>(&arg0.ticks)
         } else {
             move_stl::skip_list::find_next<Tick>(&arg0.ticks, tick_score(integer_mate::i32::from_u32(*std::vector::borrow<u32>(&arg1, 0))), false)
         };
-        let v2 = v1;
-        let v3 = 0;
+        let mut v2 = v1;
+        let mut v3 = 0;
         while (move_stl::option_u64::is_some(&v2)) {
             let v4 = move_stl::skip_list::borrow_node<Tick>(&arg0.ticks, move_stl::option_u64::borrow(&v2));
             std::vector::push_back<Tick>(&mut v0, *move_stl::skip_list::borrow_value<Tick>(v4));
@@ -247,8 +247,8 @@ module clmm_pool::tick {
     }
     
     public fun get_rewards_in_range(arg0: integer_mate::i32::I32, arg1: vector<u128>, arg2: std::option::Option<Tick>, arg3: std::option::Option<Tick>) : vector<u128> {
-        let v0 = std::vector::empty<u128>();
-        let v1 = 0;
+        let mut v0 = std::vector::empty<u128>();
+        let mut v1 = 0;
         while (v1 < std::vector::length<u128>(&arg1)) {
             let v2 = *std::vector::borrow<u128>(&arg1, v1);
             let v3 = if (std::option::is_none<Tick>(&arg2)) {
@@ -280,14 +280,14 @@ module clmm_pool::tick {
         v0
     }
     
-    public(friend) fun increase_liquidity(arg0: &mut TickManager, arg1: integer_mate::i32::I32, arg2: integer_mate::i32::I32, arg3: integer_mate::i32::I32, arg4: u128, arg5: u128, arg6: u128, arg7: u128, arg8: vector<u128>, arg9: u128) {
+    public(package) fun increase_liquidity(arg0: &mut TickManager, arg1: integer_mate::i32::I32, arg2: integer_mate::i32::I32, arg3: integer_mate::i32::I32, arg4: u128, arg5: u128, arg6: u128, arg7: u128, arg8: vector<u128>, arg9: u128) {
         if (arg4 == 0) {
             return
         };
         let v0 = tick_score(arg2);
         let v1 = tick_score(arg3);
-        let v2 = false;
-        let v3 = false;
+        let mut v2 = false;
+        let mut v3 = false;
         if (!move_stl::skip_list::contains<Tick>(&arg0.ticks, v0)) {
             move_stl::skip_list::insert<Tick>(&mut arg0.ticks, v0, default(arg2));
             v3 = true;
@@ -342,7 +342,7 @@ module clmm_pool::tick {
         arg0.tick_spacing
     }
     
-    public(friend) fun try_borrow_tick(arg0: &TickManager, arg1: integer_mate::i32::I32) : std::option::Option<Tick> {
+    public(package) fun try_borrow_tick(arg0: &TickManager, arg1: integer_mate::i32::I32) : std::option::Option<Tick> {
         let v0 = tick_score(arg1);
         if (!move_stl::skip_list::contains<Tick>(&arg0.ticks, v0)) {
             return std::option::none<Tick>()
@@ -403,7 +403,7 @@ module clmm_pool::tick {
         v0
     }
     
-    public(friend) fun update_magma_stake(arg0: &mut TickManager, arg1: integer_mate::i32::I32, arg2: integer_mate::i128::I128, arg3: bool) {
+    public(package) fun update_magma_stake(arg0: &mut TickManager, arg1: integer_mate::i32::I32, arg2: integer_mate::i128::I128, arg3: bool) {
         let v0 = move_stl::skip_list::borrow_mut<Tick>(&mut arg0.ticks, tick_score(arg1));
         if (arg3) {
             v0.magma_distribution_staked_liquidity_net = integer_mate::i128::wrapping_sub(v0.magma_distribution_staked_liquidity_net, arg2);

@@ -10,7 +10,7 @@ module clmm_pool::clmm_math {
         };
         let (v0, v1, v2, v3) = if (arg6) {
             let v4 = integer_mate::full_math_u64::mul_div_floor(arg3, 1000000 - arg4, 1000000);
-            let v5 = v4;
+            let mut v5 = v4;
             if (arg4 > 0 && v4 == arg3) {
                 v5 = v4 - 1;
             };
@@ -30,7 +30,7 @@ module clmm_pool::clmm_math {
             };
             let v13 = get_delta_up_from_input(arg0, v12, arg2, arg5) as u64;
             let v14 = integer_mate::full_math_u64::mul_div_ceil(v13, arg4, 1000000 - arg4);
-            let v15 = v14;
+            let mut v15 = v14;
             if (arg4 > 0 && v14 == 0) {
                 v15 = 1;
             };
