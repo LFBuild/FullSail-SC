@@ -36,6 +36,8 @@
 - Nothing depends on fullsail_config contracts.
 - Integrate depends on distribution contracts.
 - Nothing depends on integrate contracts.
+- clmm_pool depends on move_stl contracts.
+- Integrate depends on move_stl contracts.
 
 
 

@@ -7,7 +7,7 @@ module clmm_pool::position {
     struct PositionManager has store {
         tick_spacing: u32,
         position_index: u64,
-        positions: 0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::linked_table::LinkedTable<0x2::object::ID, PositionInfo>,
+        positions: move_stl::linked_table::LinkedTable<0x2::object::ID, PositionInfo>,
     }
     
     struct POSITION has drop {
@@ -77,20 +77,20 @@ module clmm_pool::position {
         PositionManager{
             tick_spacing   : arg0, 
             position_index : 0, 
-            positions      : 0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::linked_table::new<0x2::object::ID, PositionInfo>(arg1),
+            positions      : move_stl::linked_table::new<0x2::object::ID, PositionInfo>(arg1),
         }
     }
     
     fun borrow_mut_position_info(arg0: &mut PositionManager, arg1: 0x2::object::ID) : &mut PositionInfo {
-        assert!(0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::linked_table::contains<0x2::object::ID, PositionInfo>(&arg0.positions, arg1), 6);
-        let v0 = 0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::linked_table::borrow_mut<0x2::object::ID, PositionInfo>(&mut arg0.positions, arg1);
+        assert!(move_stl::linked_table::contains<0x2::object::ID, PositionInfo>(&arg0.positions, arg1), 6);
+        let v0 = move_stl::linked_table::borrow_mut<0x2::object::ID, PositionInfo>(&mut arg0.positions, arg1);
         assert!(v0.position_id == arg1, 6);
         v0
     }
     
     public fun borrow_position_info(arg0: &PositionManager, arg1: 0x2::object::ID) : &PositionInfo {
-        assert!(0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::linked_table::contains<0x2::object::ID, PositionInfo>(&arg0.positions, arg1), 6);
-        let v0 = 0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::linked_table::borrow<0x2::object::ID, PositionInfo>(&arg0.positions, arg1);
+        assert!(move_stl::linked_table::contains<0x2::object::ID, PositionInfo>(&arg0.positions, arg1), 6);
+        let v0 = move_stl::linked_table::borrow<0x2::object::ID, PositionInfo>(&arg0.positions, arg1);
         assert!(v0.position_id == arg1, 6);
         v0
     }
@@ -121,7 +121,7 @@ module clmm_pool::position {
         if (!is_empty(borrow_mut_position_info(arg0, v0))) {
             abort 7
         };
-        0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::linked_table::remove<0x2::object::ID, PositionInfo>(&mut arg0.positions, v0);
+        move_stl::linked_table::remove<0x2::object::ID, PositionInfo>(&mut arg0.positions, v0);
         destroy(arg1);
     }
     
@@ -164,16 +164,16 @@ module clmm_pool::position {
     public fun fetch_positions(arg0: &PositionManager, arg1: vector<0x2::object::ID>, arg2: u64) : vector<PositionInfo> {
         let v0 = 0x1::vector::empty<PositionInfo>();
         let v1 = if (0x1::vector::is_empty<0x2::object::ID>(&arg1)) {
-            0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::linked_table::head<0x2::object::ID, PositionInfo>(&arg0.positions)
+            move_stl::linked_table::head<0x2::object::ID, PositionInfo>(&arg0.positions)
         } else {
-            0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::linked_table::next<0x2::object::ID, PositionInfo>(0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::linked_table::borrow_node<0x2::object::ID, PositionInfo>(&arg0.positions, *0x1::vector::borrow<0x2::object::ID>(&arg1, 0)))
+            move_stl::linked_table::next<0x2::object::ID, PositionInfo>(move_stl::linked_table::borrow_node<0x2::object::ID, PositionInfo>(&arg0.positions, *0x1::vector::borrow<0x2::object::ID>(&arg1, 0)))
         };
         let v2 = v1;
         let v3 = 0;
         while (0x1::option::is_some<0x2::object::ID>(&v2)) {
-            let v4 = 0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::linked_table::borrow_node<0x2::object::ID, PositionInfo>(&arg0.positions, *0x1::option::borrow<0x2::object::ID>(&v2));
-            v2 = 0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::linked_table::next<0x2::object::ID, PositionInfo>(v4);
-            0x1::vector::push_back<PositionInfo>(&mut v0, *0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::linked_table::borrow_value<0x2::object::ID, PositionInfo>(v4));
+            let v4 = move_stl::linked_table::borrow_node<0x2::object::ID, PositionInfo>(&arg0.positions, *0x1::option::borrow<0x2::object::ID>(&v2));
+            v2 = move_stl::linked_table::next<0x2::object::ID, PositionInfo>(v4);
+            0x1::vector::push_back<PositionInfo>(&mut v0, *move_stl::linked_table::borrow_value<0x2::object::ID, PositionInfo>(v4));
             let v5 = v3 + 1;
             v3 = v5;
             if (v5 == arg2) {
@@ -262,11 +262,11 @@ module clmm_pool::position {
     }
     
     public fun inited_rewards_count(arg0: &PositionManager, arg1: 0x2::object::ID) : u64 {
-        0x1::vector::length<PositionReward>(&0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::linked_table::borrow<0x2::object::ID, PositionInfo>(&arg0.positions, arg1).rewards)
+        0x1::vector::length<PositionReward>(&move_stl::linked_table::borrow<0x2::object::ID, PositionInfo>(&arg0.positions, arg1).rewards)
     }
     
     public fun is_position_exist(arg0: &PositionManager, arg1: 0x2::object::ID) : bool {
-        0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::linked_table::contains<0x2::object::ID, PositionInfo>(&arg0.positions, arg1)
+        move_stl::linked_table::contains<0x2::object::ID, PositionInfo>(&arg0.positions, arg1)
     }
     
     public fun is_staked(arg0: &PositionInfo) : bool {
@@ -333,7 +333,7 @@ module clmm_pool::position {
             magma_distribution_growth_inside : 0, 
             magma_distribution_owned         : 0,
         };
-        0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::linked_table::push_back<0x2::object::ID, PositionInfo>(&mut arg0.positions, v2, v3);
+        move_stl::linked_table::push_back<0x2::object::ID, PositionInfo>(&mut arg0.positions, v2, v3);
         arg0.position_index = v0;
         v1
     }

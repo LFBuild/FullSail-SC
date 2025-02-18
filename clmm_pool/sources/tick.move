@@ -1,7 +1,7 @@
 module clmm_pool::tick {
     struct TickManager has store {
         tick_spacing: u32,
-        ticks: 0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::skip_list::SkipList<Tick>,
+        ticks: move_stl::skip_list::SkipList<Tick>,
     }
     
     struct Tick has copy, drop, store {
@@ -20,26 +20,26 @@ module clmm_pool::tick {
     public(friend) fun new(arg0: u32, arg1: u64, arg2: &mut 0x2::tx_context::TxContext) : TickManager {
         TickManager{
             tick_spacing : arg0, 
-            ticks        : 0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::skip_list::new<Tick>(16, 2, arg1, arg2),
+            ticks        : move_stl::skip_list::new<Tick>(16, 2, arg1, arg2),
         }
     }
     
     public fun borrow_tick(arg0: &TickManager, arg1: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32) : &Tick {
-        0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::skip_list::borrow<Tick>(&arg0.ticks, tick_score(arg1))
+        move_stl::skip_list::borrow<Tick>(&arg0.ticks, tick_score(arg1))
     }
     
-    public fun borrow_tick_for_swap(arg0: &TickManager, arg1: u64, arg2: bool) : (&Tick, 0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::option_u64::OptionU64) {
-        let v0 = 0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::skip_list::borrow_node<Tick>(&arg0.ticks, arg1);
+    public fun borrow_tick_for_swap(arg0: &TickManager, arg1: u64, arg2: bool) : (&Tick, move_stl::option_u64::OptionU64) {
+        let v0 = move_stl::skip_list::borrow_node<Tick>(&arg0.ticks, arg1);
         let v1 = if (arg2) {
-            0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::skip_list::prev_score<Tick>(v0)
+            move_stl::skip_list::prev_score<Tick>(v0)
         } else {
-            0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::skip_list::next_score<Tick>(v0)
+            move_stl::skip_list::next_score<Tick>(v0)
         };
-        (0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::skip_list::borrow_value<Tick>(v0), v1)
+        (move_stl::skip_list::borrow_value<Tick>(v0), v1)
     }
     
     public(friend) fun cross_by_swap(arg0: &mut TickManager, arg1: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg2: bool, arg3: u128, arg4: u128, arg5: u128, arg6: u128, arg7: u128, arg8: vector<u128>, arg9: u128) : (u128, u128) {
-        let v0 = 0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::skip_list::borrow_mut<Tick>(&mut arg0.ticks, tick_score(arg1));
+        let v0 = move_stl::skip_list::borrow_mut<Tick>(&mut arg0.ticks, tick_score(arg1));
         let (v1, v2) = if (arg2) {
             (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::neg(v0.liquidity_net), 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::neg(v0.magma_distribution_staked_liquidity_net))
         } else {
@@ -82,13 +82,13 @@ module clmm_pool::tick {
         };
         let v0 = tick_score(arg2);
         let v1 = tick_score(arg3);
-        assert!(0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::skip_list::contains<Tick>(&arg0.ticks, v0), 3);
-        assert!(0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::skip_list::contains<Tick>(&arg0.ticks, v1), 3);
-        if (update_by_liquidity(0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::skip_list::borrow_mut<Tick>(&mut arg0.ticks, v0), arg1, arg4, false, false, false, arg5, arg6, arg7, arg8, arg9) == 0) {
-            0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::skip_list::remove<Tick>(&mut arg0.ticks, v0);
+        assert!(move_stl::skip_list::contains<Tick>(&arg0.ticks, v0), 3);
+        assert!(move_stl::skip_list::contains<Tick>(&arg0.ticks, v1), 3);
+        if (update_by_liquidity(move_stl::skip_list::borrow_mut<Tick>(&mut arg0.ticks, v0), arg1, arg4, false, false, false, arg5, arg6, arg7, arg8, arg9) == 0) {
+            move_stl::skip_list::remove<Tick>(&mut arg0.ticks, v0);
         };
-        if (update_by_liquidity(0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::skip_list::borrow_mut<Tick>(&mut arg0.ticks, v1), arg1, arg4, false, false, true, arg5, arg6, arg7, arg8, arg9) == 0) {
-            0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::skip_list::remove<Tick>(&mut arg0.ticks, v1);
+        if (update_by_liquidity(move_stl::skip_list::borrow_mut<Tick>(&mut arg0.ticks, v1), arg1, arg4, false, false, true, arg5, arg6, arg7, arg8, arg9) == 0) {
+            move_stl::skip_list::remove<Tick>(&mut arg0.ticks, v1);
         };
     }
     
@@ -128,16 +128,16 @@ module clmm_pool::tick {
     public fun fetch_ticks(arg0: &TickManager, arg1: vector<u32>, arg2: u64) : vector<Tick> {
         let v0 = 0x1::vector::empty<Tick>();
         let v1 = if (0x1::vector::is_empty<u32>(&arg1)) {
-            0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::skip_list::head<Tick>(&arg0.ticks)
+            move_stl::skip_list::head<Tick>(&arg0.ticks)
         } else {
-            0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::skip_list::find_next<Tick>(&arg0.ticks, tick_score(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::from_u32(*0x1::vector::borrow<u32>(&arg1, 0))), false)
+            move_stl::skip_list::find_next<Tick>(&arg0.ticks, tick_score(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::from_u32(*0x1::vector::borrow<u32>(&arg1, 0))), false)
         };
         let v2 = v1;
         let v3 = 0;
-        while (0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::option_u64::is_some(&v2)) {
-            let v4 = 0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::skip_list::borrow_node<Tick>(&arg0.ticks, 0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::option_u64::borrow(&v2));
-            0x1::vector::push_back<Tick>(&mut v0, *0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::skip_list::borrow_value<Tick>(v4));
-            v2 = 0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::skip_list::next_score<Tick>(v4);
+        while (move_stl::option_u64::is_some(&v2)) {
+            let v4 = move_stl::skip_list::borrow_node<Tick>(&arg0.ticks, move_stl::option_u64::borrow(&v2));
+            0x1::vector::push_back<Tick>(&mut v0, *move_stl::skip_list::borrow_value<Tick>(v4));
+            v2 = move_stl::skip_list::next_score<Tick>(v4);
             let v5 = v3 + 1;
             v3 = v5;
             if (v5 == arg2) {
@@ -147,14 +147,14 @@ module clmm_pool::tick {
         v0
     }
     
-    public fun first_score_for_swap(arg0: &TickManager, arg1: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg2: bool) : 0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::option_u64::OptionU64 {
+    public fun first_score_for_swap(arg0: &TickManager, arg1: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg2: bool) : move_stl::option_u64::OptionU64 {
         if (arg2) {
-            0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::skip_list::find_prev<Tick>(&arg0.ticks, tick_score(arg1), true)
+            move_stl::skip_list::find_prev<Tick>(&arg0.ticks, tick_score(arg1), true)
         } else {
             let v1 = if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::eq(arg1, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::neg_from(clmm_pool::tick_math::tick_bound() + 1))) {
-                0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::skip_list::find_next<Tick>(&arg0.ticks, tick_score(clmm_pool::tick_math::min_tick()), true)
+                move_stl::skip_list::find_next<Tick>(&arg0.ticks, tick_score(clmm_pool::tick_math::min_tick()), true)
             } else {
-                0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::skip_list::find_next<Tick>(&arg0.ticks, tick_score(arg1), false)
+                move_stl::skip_list::find_next<Tick>(&arg0.ticks, tick_score(arg1), false)
             };
             v1
         }
@@ -288,16 +288,16 @@ module clmm_pool::tick {
         let v1 = tick_score(arg3);
         let v2 = false;
         let v3 = false;
-        if (!0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::skip_list::contains<Tick>(&arg0.ticks, v0)) {
-            0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::skip_list::insert<Tick>(&mut arg0.ticks, v0, default(arg2));
+        if (!move_stl::skip_list::contains<Tick>(&arg0.ticks, v0)) {
+            move_stl::skip_list::insert<Tick>(&mut arg0.ticks, v0, default(arg2));
             v3 = true;
         };
-        if (!0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::skip_list::contains<Tick>(&arg0.ticks, v1)) {
-            0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::skip_list::insert<Tick>(&mut arg0.ticks, v1, default(arg3));
+        if (!move_stl::skip_list::contains<Tick>(&arg0.ticks, v1)) {
+            move_stl::skip_list::insert<Tick>(&mut arg0.ticks, v1, default(arg3));
             v2 = true;
         };
-        update_by_liquidity(0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::skip_list::borrow_mut<Tick>(&mut arg0.ticks, v0), arg1, arg4, v3, true, false, arg5, arg6, arg7, arg8, arg9);
-        update_by_liquidity(0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::skip_list::borrow_mut<Tick>(&mut arg0.ticks, v1), arg1, arg4, v2, true, true, arg5, arg6, arg7, arg8, arg9);
+        update_by_liquidity(move_stl::skip_list::borrow_mut<Tick>(&mut arg0.ticks, v0), arg1, arg4, v3, true, false, arg5, arg6, arg7, arg8, arg9);
+        update_by_liquidity(move_stl::skip_list::borrow_mut<Tick>(&mut arg0.ticks, v1), arg1, arg4, v2, true, true, arg5, arg6, arg7, arg8, arg9);
     }
     
     public fun index(arg0: &Tick) : 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32 {
@@ -344,10 +344,10 @@ module clmm_pool::tick {
     
     public(friend) fun try_borrow_tick(arg0: &TickManager, arg1: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32) : 0x1::option::Option<Tick> {
         let v0 = tick_score(arg1);
-        if (!0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::skip_list::contains<Tick>(&arg0.ticks, v0)) {
+        if (!move_stl::skip_list::contains<Tick>(&arg0.ticks, v0)) {
             return 0x1::option::none<Tick>()
         };
-        0x1::option::some<Tick>(*0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::skip_list::borrow<Tick>(&arg0.ticks, v0))
+        0x1::option::some<Tick>(*move_stl::skip_list::borrow<Tick>(&arg0.ticks, v0))
     }
     
     fun update_by_liquidity(arg0: &mut Tick, arg1: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg2: u128, arg3: bool, arg4: bool, arg5: bool, arg6: u128, arg7: u128, arg8: u128, arg9: vector<u128>, arg10: u128) : u128 {
@@ -404,7 +404,7 @@ module clmm_pool::tick {
     }
     
     public(friend) fun update_magma_stake(arg0: &mut TickManager, arg1: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg2: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::I128, arg3: bool) {
-        let v0 = 0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::skip_list::borrow_mut<Tick>(&mut arg0.ticks, tick_score(arg1));
+        let v0 = move_stl::skip_list::borrow_mut<Tick>(&mut arg0.ticks, tick_score(arg1));
         if (arg3) {
             v0.magma_distribution_staked_liquidity_net = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::wrapping_sub(v0.magma_distribution_staked_liquidity_net, arg2);
         } else {

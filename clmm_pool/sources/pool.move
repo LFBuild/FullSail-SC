@@ -481,11 +481,11 @@ module clmm_pool::pool {
             arg1.unstaked_liquidity_fee_rate
         };
         while (v4 > 0) {
-            if (0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::option_u64::is_none(&v5)) {
+            if (move_stl::option_u64::is_none(&v5)) {
                 v6.is_exceed = true;
                 break
             };
-            let (v8, v9) = clmm_pool::tick::borrow_tick_for_swap(&arg1.tick_manager, 0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::option_u64::borrow(&v5), arg2);
+            let (v8, v9) = clmm_pool::tick::borrow_tick_for_swap(&arg1.tick_manager, move_stl::option_u64::borrow(&v5), arg2);
             v5 = v9;
             let v10 = clmm_pool::tick::sqrt_price(v8);
             let (v11, v12, v13, v14) = clmm_pool::clmm_math::compute_swap_step(v0, v10, v1, v4, arg1.fee_rate, arg2, arg3);
@@ -576,11 +576,11 @@ module clmm_pool::pool {
             arg1.unstaked_liquidity_fee_rate
         };
         while (v4 > 0) {
-            if (0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::option_u64::is_none(&v5)) {
+            if (move_stl::option_u64::is_none(&v5)) {
                 v6.is_exceed = true;
                 break
             };
-            let (v8, v9) = clmm_pool::tick::borrow_tick_for_swap(&arg1.tick_manager, 0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::option_u64::borrow(&v5), arg2);
+            let (v8, v9) = clmm_pool::tick::borrow_tick_for_swap(&arg1.tick_manager, move_stl::option_u64::borrow(&v5), arg2);
             v5 = v9;
             let v10 = clmm_pool::tick::sqrt_price(v8);
             let (v11, v12, v13, v14) = clmm_pool::clmm_math::compute_swap_step(v0, v10, v1, v4, arg1.fee_rate, arg2, arg3);
@@ -1232,10 +1232,10 @@ module clmm_pool::pool {
         let v1 = arg4;
         let v2 = clmm_pool::tick::first_score_for_swap(&arg0.tick_manager, arg0.current_tick_index, arg1);
         while (v1 > 0 && arg0.current_sqrt_price != arg3) {
-            if (0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::option_u64::is_none(&v2)) {
+            if (move_stl::option_u64::is_none(&v2)) {
                 abort 20
             };
-            let (v3, v4) = clmm_pool::tick::borrow_tick_for_swap(&arg0.tick_manager, 0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::option_u64::borrow(&v2), arg1);
+            let (v3, v4) = clmm_pool::tick::borrow_tick_for_swap(&arg0.tick_manager, move_stl::option_u64::borrow(&v2), arg1);
             v2 = v4;
             let v5 = clmm_pool::tick::index(v3);
             let v6 = clmm_pool::tick::sqrt_price(v3);

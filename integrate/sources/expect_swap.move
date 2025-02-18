@@ -48,11 +48,11 @@ module integrate::expect_swap {
             step_results     : 0x1::vector::empty<SwapStepResult>(),
         };
         while (v3 > 0) {
-            if (0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::option_u64::is_none(&v4)) {
+            if (move_stl::option_u64::is_none(&v4)) {
                 v5.is_exceed = true;
                 break
             };
-            let (v6, v7) = clmm_pool::tick::borrow_tick_for_swap(clmm_pool::pool::tick_manager<T0, T1>(arg0), 0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::option_u64::borrow(&v4), arg1);
+            let (v6, v7) = clmm_pool::tick::borrow_tick_for_swap(clmm_pool::pool::tick_manager<T0, T1>(arg0), move_stl::option_u64::borrow(&v4), arg1);
             v4 = v7;
             let v8 = clmm_pool::tick::sqrt_price(v6);
             let (v9, v10, v11, v12) = compute_swap_step(v0, v8, v1, v3, clmm_pool::pool::fee_rate<T0, T1>(arg0), arg1, arg2);
