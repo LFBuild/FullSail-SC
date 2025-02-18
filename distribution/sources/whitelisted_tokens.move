@@ -10,14 +10,14 @@ module distribution::whitelisted_tokens {
         token: std::type_name::TypeName,
     }
 
-    public(friend) fun create<T0>(arg0: sui::object::ID) : WhitelistedToken {
+    public(package) fun create<T0>(arg0: sui::object::ID) : WhitelistedToken {
         WhitelistedToken{
             voter : arg0,
             token : std::type_name::get<T0>(),
         }
     }
 
-    public(friend) fun create_pair<T0, T1>(arg0: sui::object::ID) : WhitelistedTokenPair {
+    public(package) fun create_pair<T0, T1>(arg0: sui::object::ID) : WhitelistedTokenPair {
         WhitelistedTokenPair{
             voter  : arg0,
             token0 : std::type_name::get<T0>(),

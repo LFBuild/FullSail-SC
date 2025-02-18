@@ -1,5 +1,5 @@
 module distribution::lock_owner {
-    struct OwnerProof {
+    public struct OwnerProof {
         prover: sui::object::ID,
         lock: sui::object::ID,
         owner: address,
@@ -14,7 +14,7 @@ module distribution::lock_owner {
         (v0, v1, v2)
     }
     
-    public(friend) fun issue(arg0: sui::object::ID, arg1: sui::object::ID, arg2: address) : OwnerProof {
+    public(package) fun issue(arg0: sui::object::ID, arg1: sui::object::ID, arg2: address) : OwnerProof {
         OwnerProof{
             prover : arg0, 
             lock   : arg1, 

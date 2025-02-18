@@ -1,11 +1,11 @@
 module distribution::locked_managed_reward {
-    struct LockedManagedReward has store, key {
+    public struct LockedManagedReward has store, key {
         id: sui::object::UID,
         reward: distribution::reward::Reward,
     }
     
-    public(friend) fun create(arg0: sui::object::ID, arg1: sui::object::ID, arg2: std::type_name::TypeName, arg3: &mut sui::tx_context::TxContext) : LockedManagedReward {
-        let v0 = std::vector::empty<std::type_name::TypeName>();
+    public(package) fun create(arg0: sui::object::ID, arg1: sui::object::ID, arg2: std::type_name::TypeName, arg3: &mut sui::tx_context::TxContext) : LockedManagedReward {
+        let mut v0 = std::vector::empty<std::type_name::TypeName>();
         std::vector::push_back<std::type_name::TypeName>(&mut v0, arg2);
         LockedManagedReward{
             id     : sui::object::new(arg3), 
@@ -44,7 +44,7 @@ module distribution::locked_managed_reward {
     public fun get_reward<T0>(arg0: &mut LockedManagedReward, arg1: &distribution::reward_authorized_cap::RewardAuthorizedCap, arg2: sui::object::ID, arg3: &sui::clock::Clock, arg4: &mut sui::tx_context::TxContext) : sui::balance::Balance<T0> {
         distribution::reward_authorized_cap::validate(arg1, distribution::reward::ve(&arg0.reward));
         let v0 = distribution::reward::ve(&arg0.reward);
-        let v1 = distribution::reward::get_reward_internal<T0>(&mut arg0.reward, sui::object::id_to_address(&v0), arg2, arg3, arg4);
+        let mut v1 = distribution::reward::get_reward_internal<T0>(&mut arg0.reward, sui::object::id_to_address(&v0), arg2, arg3, arg4);
         let v2 = if (std::option::is_some<sui::balance::Balance<T0>>(&v1)) {
             std::option::extract<sui::balance::Balance<T0>>(&mut v1)
         } else {

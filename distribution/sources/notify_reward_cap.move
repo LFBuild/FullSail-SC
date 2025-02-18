@@ -1,9 +1,9 @@
 module distribution::notify_reward_cap {
-    struct NOTIFY_REWARD_CAP has drop {
+    public struct NOTIFY_REWARD_CAP has drop {
         dummy_field: bool,
     }
     
-    struct NotifyRewardCap has store, key {
+    public struct NotifyRewardCap has store, key {
         id: sui::object::UID,
         voter_id: sui::object::ID,
         who: sui::object::ID,
@@ -17,7 +17,7 @@ module distribution::notify_reward_cap {
         }
     }
     
-    public(friend) fun create_internal(arg0: sui::object::ID, arg1: &mut sui::tx_context::TxContext) : NotifyRewardCap {
+    public(package) fun create_internal(arg0: sui::object::ID, arg1: &mut sui::tx_context::TxContext) : NotifyRewardCap {
         NotifyRewardCap{
             id       : sui::object::new(arg1), 
             voter_id : arg0, 

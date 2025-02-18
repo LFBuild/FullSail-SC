@@ -1,28 +1,28 @@
 module distribution::voter {
-    struct VOTER has drop {
+    public struct VOTER has drop {
         dummy_field: bool,
     }
     
-    struct PoolID has copy, drop, store {
+    public struct PoolID has copy, drop, store {
         id: sui::object::ID,
     }
     
-    struct LockID has copy, drop, store {
+    public struct LockID has copy, drop, store {
         id: sui::object::ID,
     }
     
-    struct GaugeID has copy, drop, store {
+    public struct GaugeID has copy, drop, store {
         id: sui::object::ID,
     }
     
-    struct GaugeRepresent has drop, store {
+    public struct GaugeRepresent has drop, store {
         gauger_id: sui::object::ID,
         pool_id: sui::object::ID,
         weight: u64,
         last_reward_time: u64,
     }
     
-    struct Voter<phantom T0> has store, key {
+    public struct Voter<phantom T0> has store, key {
         id: sui::object::UID,
         flag_distribution: bool,
         governors: sui::vec_set::VecSet<sui::object::ID>,
@@ -54,38 +54,38 @@ module distribution::voter {
         gauge_to_bribe: sui::table::Table<GaugeID, distribution::bribe_voting_reward::BribeVotingReward>,
     }
     
-    struct EventNotifyReward has copy, drop, store {
+    public struct EventNotifyReward has copy, drop, store {
         notifier: sui::object::ID,
         token: std::type_name::TypeName,
         amount: u64,
     }
     
-    struct EventExtractClaimable has copy, drop, store {
+    public struct EventExtractClaimable has copy, drop, store {
         gauger: sui::object::ID,
         amount: u64,
     }
     
-    struct EventWhitelistToken has copy, drop, store {
+    public struct EventWhitelistToken has copy, drop, store {
         sender: address,
         token: std::type_name::TypeName,
         listed: bool,
     }
     
-    struct EventWhitelistNFT has copy, drop, store {
+    public struct EventWhitelistNFT has copy, drop, store {
         sender: address,
         id: sui::object::ID,
         listed: bool,
     }
     
-    struct EventKillGauge has copy, drop, store {
+    public struct EventKillGauge has copy, drop, store {
         id: sui::object::ID,
     }
     
-    struct EventReviveGauge has copy, drop, store {
+    public struct EventReviveGauge has copy, drop, store {
         id: sui::object::ID,
     }
     
-    struct EventVoted has copy, drop, store {
+    public struct EventVoted has copy, drop, store {
         sender: address,
         pool: sui::object::ID,
         lock: sui::object::ID,
@@ -93,7 +93,7 @@ module distribution::voter {
         pool_weight: u64,
     }
     
-    struct EventAbstained has copy, drop, store {
+    public struct EventAbstained has copy, drop, store {
         sender: address,
         pool: sui::object::ID,
         lock: sui::object::ID,
@@ -101,26 +101,26 @@ module distribution::voter {
         pool_weight: u64,
     }
     
-    struct EventAddGovernor has copy, drop, store {
+    public struct EventAddGovernor has copy, drop, store {
         who: address,
     }
     
-    struct EventRemoveGovernor has copy, drop, store {
+    public struct EventRemoveGovernor has copy, drop, store {
         who: address,
     }
     
-    struct EventAddEpochGovernor has copy, drop, store {
+    public struct EventAddEpochGovernor has copy, drop, store {
         who: address,
     }
     
-    struct EventRemoveEpochGovernor has copy, drop, store {
+    public struct EventRemoveEpochGovernor has copy, drop, store {
         who: address,
     }
     
     public fun create<T0>(arg0: &sui::package::Publisher, arg1: vector<std::type_name::TypeName>, arg2: &mut sui::tx_context::TxContext) : (Voter<T0>, distribution::notify_reward_cap::NotifyRewardCap) {
         let v0 = sui::object::new(arg2);
         let v1 = *sui::object::uid_as_inner(&v0);
-        let v2 = Voter<T0>{
+        let mut v2 = Voter<T0>{
             id                            : v0, 
             flag_distribution             : false, 
             governors                     : sui::vec_set::empty<sui::object::ID>(), 
@@ -151,7 +151,7 @@ module distribution::voter {
             gauge_to_bribe_authorized_cap : distribution::reward_authorized_cap::create(v1, arg2), 
             gauge_to_bribe                : sui::table::new<GaugeID, distribution::bribe_voting_reward::BribeVotingReward>(arg2),
         };
-        let v3 = 0;
+        let mut v3 = 0;
         while (v3 < std::vector::length<std::type_name::TypeName>(&arg1)) {
             whitelist_token_internal<T0>(&mut v2, *std::vector::borrow<std::type_name::TypeName>(&arg1, v3), true, sui::tx_context::sender(arg2));
             v3 = v3 + 1;
@@ -238,7 +238,7 @@ module distribution::voter {
         let v0 = std::vector::length<sui::object::ID>(arg1);
         assert!(v0 == std::vector::length<u64>(arg2), 9223374162864308236);
         assert!(v0 <= arg0.max_voting_num, 9223374167160586272);
-        let v1 = 0;
+        let mut v1 = 0;
         while (v1 < v0) {
             assert!(sui::table::contains<PoolID, GaugeID>(&arg0.pool_to_gauger, into_pool_id(*std::vector::borrow<sui::object::ID>(arg1, v1))), 9223374184339275790);
             assert!(*std::vector::borrow<u64>(arg2, v1) <= 10000, 9223374188634374160);
@@ -248,7 +248,7 @@ module distribution::voter {
     
     public fun claim_voting_bribe<T0, T1>(arg0: &mut Voter<T0>, arg1: &mut distribution::voting_escrow::VotingEscrow<T0>, arg2: &distribution::voting_escrow::Lock, arg3: &sui::clock::Clock, arg4: &mut sui::tx_context::TxContext) {
         let v0 = sui::table::borrow<LockID, vector<PoolID>>(&arg0.pool_vote, into_lock_id(sui::object::id<distribution::voting_escrow::Lock>(arg2)));
-        let v1 = 0;
+        let mut v1 = 0;
         while (v1 < std::vector::length<PoolID>(v0)) {
             distribution::bribe_voting_reward::get_reward<T0, T1>(sui::table::borrow_mut<GaugeID, distribution::bribe_voting_reward::BribeVotingReward>(&mut arg0.gauge_to_bribe, *sui::table::borrow<PoolID, GaugeID>(&arg0.pool_to_gauger, *std::vector::borrow<PoolID>(v0, v1))), arg1, arg2, arg3, arg4);
             v1 = v1 + 1;
@@ -257,7 +257,7 @@ module distribution::voter {
     
     public fun claim_voting_fee_reward<T0, T1>(arg0: &mut Voter<T0>, arg1: &mut distribution::voting_escrow::VotingEscrow<T0>, arg2: &distribution::voting_escrow::Lock, arg3: &sui::clock::Clock, arg4: &mut sui::tx_context::TxContext) {
         let v0 = sui::table::borrow<LockID, vector<PoolID>>(&arg0.pool_vote, into_lock_id(sui::object::id<distribution::voting_escrow::Lock>(arg2)));
-        let v1 = 0;
+        let mut v1 = 0;
         while (v1 < std::vector::length<PoolID>(v0)) {
             distribution::fee_voting_reward::get_reward<T0, T1>(sui::table::borrow_mut<GaugeID, distribution::fee_voting_reward::FeeVotingReward>(&mut arg0.gauge_to_fee, *sui::table::borrow<PoolID, GaugeID>(&arg0.pool_to_gauger, *std::vector::borrow<PoolID>(v0, v1))), arg1, arg2, arg3, arg4);
             v1 = v1 + 1;
@@ -276,8 +276,8 @@ module distribution::voter {
     public fun create_gauge<T0, T1, T2>(arg0: &mut Voter<T2>, arg1: &gauge_cap::gauge_cap::CreateCap, arg2: &distribution::voter_cap::GovernorCap, arg3: &distribution::voting_escrow::VotingEscrow<T2>, arg4: &mut clmm_pool::pool::Pool<T0, T1>, arg5: &sui::clock::Clock, arg6: &mut sui::tx_context::TxContext) : distribution::gauge::Gauge<T0, T1, T2> {
         distribution::voter_cap::validate_governor_voter_id(arg2, sui::object::id<Voter<T2>>(arg0));
         assert!(is_governor<T2>(arg0, distribution::voter_cap::who(arg2)), 9223373604519346200);
-        let v0 = return_new_gauge<T0, T1, T2>(arg1, arg4, arg6);
-        let v1 = std::vector::empty<std::type_name::TypeName>();
+        let mut v0 = return_new_gauge<T0, T1, T2>(arg1, arg4, arg6);
+        let mut v1 = std::vector::empty<std::type_name::TypeName>();
         std::vector::push_back<std::type_name::TypeName>(&mut v1, std::type_name::get<T0>());
         std::vector::push_back<std::type_name::TypeName>(&mut v1, std::type_name::get<T1>());
         let v2 = sui::object::id<distribution::gauge::Gauge<T0, T1, T2>>(&v0);
@@ -343,15 +343,15 @@ module distribution::voter {
         sui::package::claim_and_keep<VOTER>(arg0, arg1);
     }
     
-    public(friend) fun into_gauge_id(arg0: sui::object::ID) : GaugeID {
+    public(package) fun into_gauge_id(arg0: sui::object::ID) : GaugeID {
         GaugeID{id: arg0}
     }
     
-    public(friend) fun into_lock_id(arg0: sui::object::ID) : LockID {
+    public(package) fun into_lock_id(arg0: sui::object::ID) : LockID {
         LockID{id: arg0}
     }
     
-    public(friend) fun into_pool_id(arg0: sui::object::ID) : PoolID {
+    public(package) fun into_pool_id(arg0: sui::object::ID) : PoolID {
         PoolID{id: arg0}
     }
     
@@ -381,7 +381,7 @@ module distribution::voter {
         assert!(sui::table::borrow<GaugeID, bool>(&arg0.is_alive, v0) == &v1, 9223374016835944468);
         update_for_internal<T0>(arg0, v0);
         let v2 = sui::table::remove<GaugeID, u64>(&mut arg0.claimable, v0);
-        let v3 = sui::balance::zero<T0>();
+        let mut v3 = sui::balance::zero<T0>();
         if (v2 > 0) {
             sui::balance::join<T0>(&mut v3, sui::balance::split<T0>(sui::bag::borrow_mut<std::type_name::TypeName, sui::balance::Balance<T0>>(&mut arg0.balances, std::type_name::get<T0>()), v2));
         };
@@ -402,7 +402,7 @@ module distribution::voter {
         } else {
             sui::balance::zero<T0>()
         };
-        let v4 = v3;
+        let mut v4 = v3;
         sui::balance::join<T0>(&mut v4, v0);
         sui::bag::add<std::type_name::TypeName, sui::balance::Balance<T0>>(&mut arg0.balances, v2, v4);
         let v5 = if (arg0.total_weight == 0) {
@@ -436,10 +436,10 @@ module distribution::voter {
             0
         };
         if (v1 > 0) {
-            let v2 = std::vector::empty<u64>();
-            let v3 = 0;
+            let mut v2 = std::vector::empty<u64>();
+            let mut v3 = 0;
             let v4 = sui::table::borrow<LockID, vector<PoolID>>(&arg0.pool_vote, v0);
-            let v5 = std::vector::empty<sui::object::ID>();
+            let mut v5 = std::vector::empty<sui::object::ID>();
             assert!(sui::table::contains<LockID, sui::table::Table<PoolID, u64>>(&arg0.votes, v0), 9223374510758756396);
             while (v3 < v1) {
                 std::vector::push_back<sui::object::ID>(&mut v5, std::vector::borrow<PoolID>(v4, v3).id);
@@ -520,8 +520,8 @@ module distribution::voter {
         } else {
             0
         };
-        let v2 = 0;
-        let v3 = 0;
+        let mut v2 = 0;
+        let mut v3 = 0;
         while (v3 < v1) {
             let v4 = *std::vector::borrow<PoolID>(sui::table::borrow<LockID, vector<PoolID>>(&arg0.pool_vote, v0), v3);
             let v5 = *sui::table::borrow<PoolID, u64>(sui::table::borrow<LockID, sui::table::Table<PoolID, u64>>(&arg0.votes, v0), v4);
@@ -554,9 +554,9 @@ module distribution::voter {
         };
     }
     
-    public(friend) fun return_new_gauge<T0, T1, T2>(arg0: &gauge_cap::gauge_cap::CreateCap, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: &mut sui::tx_context::TxContext) : distribution::gauge::Gauge<T0, T1, T2> {
+    public(package) fun return_new_gauge<T0, T1, T2>(arg0: &gauge_cap::gauge_cap::CreateCap, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: &mut sui::tx_context::TxContext) : distribution::gauge::Gauge<T0, T1, T2> {
         let v0 = sui::object::id<clmm_pool::pool::Pool<T0, T1>>(arg1);
-        let v1 = distribution::gauge::create<T0, T1, T2>(v0, arg2);
+        let mut v1 = distribution::gauge::create<T0, T1, T2>(v0, arg2);
         let v2 = gauge_cap::gauge_cap::create_gauge_cap(arg0, v0, sui::object::id<distribution::gauge::Gauge<T0, T1, T2>>(&v1), arg2);
         clmm_pool::pool::init_magma_distribution_gauge<T0, T1>(arg1, &v2);
         distribution::gauge::receive_gauge_cap<T0, T1, T2>(&mut v1, v2);
@@ -632,7 +632,7 @@ module distribution::voter {
     }
     
     public fun update_for_many<T0>(arg0: &mut Voter<T0>, arg1: vector<sui::object::ID>) {
-        let v0 = 0;
+        let mut v0 = 0;
         while (v0 < std::vector::length<sui::object::ID>(&arg1)) {
             update_for_internal<T0>(arg0, into_gauge_id(*std::vector::borrow<sui::object::ID>(&arg1, v0)));
             v0 = v0 + 1;
@@ -640,7 +640,7 @@ module distribution::voter {
     }
     
     public fun update_for_range<T0>(arg0: &mut Voter<T0>, arg1: u64, arg2: u64) {
-        let v0 = 0;
+        let mut v0 = 0;
         while (arg1 + v0 < arg2) {
             update_for_internal<T0>(arg0, *sui::table::borrow<PoolID, GaugeID>(&arg0.pool_to_gauger, *std::vector::borrow<PoolID>(&arg0.pools, arg1 + v0)));
             v0 = v0 + 1;
@@ -679,10 +679,10 @@ module distribution::voter {
     fun vote_internal<T0>(arg0: &mut Voter<T0>, arg1: &mut distribution::voting_escrow::VotingEscrow<T0>, arg2: &distribution::voting_escrow::Lock, arg3: u64, arg4: vector<sui::object::ID>, arg5: vector<u64>, arg6: &sui::clock::Clock, arg7: &mut sui::tx_context::TxContext) {
         let v0 = into_lock_id(sui::object::id<distribution::voting_escrow::Lock>(arg2));
         reset_internal<T0>(arg0, arg1, arg2, arg6, arg7);
-        let v1 = 0;
-        let v2 = 0;
-        let v3 = 0;
-        let v4 = 0;
+        let mut v1 = 0;
+        let mut v2 = 0;
+        let mut v3 = 0;
+        let mut v4 = 0;
         let v5 = std::vector::length<sui::object::ID>(&arg4);
         while (v4 < v5) {
             let v6 = std::vector::borrow<u64>(&arg5, v4);
@@ -756,7 +756,7 @@ module distribution::voter {
     }
     
     public fun voted_pools<T0>(arg0: &Voter<T0>, arg1: sui::object::ID) : vector<sui::object::ID> {
-        let v0 = std::vector::empty<sui::object::ID>();
+        let mut v0 = std::vector::empty<sui::object::ID>();
         let v1 = into_lock_id(arg1);
         let v2 = if (sui::table::contains<LockID, vector<PoolID>>(&arg0.pool_vote, v1)) {
             sui::table::borrow<LockID, vector<PoolID>>(&arg0.pool_vote, v1)
@@ -764,7 +764,7 @@ module distribution::voter {
             let v3 = std::vector::empty<PoolID>();
             &v3
         };
-        let v4 = 0;
+        let mut v4 = 0;
         while (v4 < std::vector::length<PoolID>(v2)) {
             std::vector::push_back<sui::object::ID>(&mut v0, std::vector::borrow<PoolID>(v2, v4).id);
             v4 = v4 + 1;

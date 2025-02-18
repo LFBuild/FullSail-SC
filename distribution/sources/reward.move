@@ -1,40 +1,40 @@
 module distribution::reward {
-    struct EventDeposit has copy, drop, store {
+    public struct EventDeposit has copy, drop, store {
         sender: address,
         lock_id: sui::object::ID,
         amount: u64,
     }
     
-    struct EventWithdraw has copy, drop, store {
+    public struct EventWithdraw has copy, drop, store {
         sender: address,
         lock_id: sui::object::ID,
         amount: u64,
     }
     
-    struct EventClaimRewards has copy, drop, store {
+    public struct EventClaimRewards has copy, drop, store {
         recipient: address,
         token_name: std::type_name::TypeName,
         reward_amount: u64,
     }
     
-    struct EventNotifyReward has copy, drop, store {
+    public struct EventNotifyReward has copy, drop, store {
         sender: address,
         token_name: std::type_name::TypeName,
         epoch_start: u64,
         amount: u64,
     }
     
-    struct Checkpoint has drop, store {
+    public struct Checkpoint has drop, store {
         timestamp: u64,
         balance_of: u64,
     }
     
-    struct SupplyCheckpoint has drop, store {
+    public struct SupplyCheckpoint has drop, store {
         timestamp: u64,
         supply: u64,
     }
     
-    struct Reward has store, key {
+    public struct Reward has store, key {
         id: sui::object::UID,
         voter: sui::object::ID,
         ve: sui::object::ID,
@@ -55,7 +55,7 @@ module distribution::reward {
         sui::balance::value<T0>(sui::bag::borrow<std::type_name::TypeName, sui::balance::Balance<T0>>(&arg0.balances, std::type_name::get<T0>()))
     }
     
-    public(friend) fun add_reward_token(arg0: &mut Reward, arg1: std::type_name::TypeName) {
+    public(package) fun add_reward_token(arg0: &mut Reward, arg1: std::type_name::TypeName) {
         sui::vec_set::insert<std::type_name::TypeName>(&mut arg0.rewards, arg1);
     }
     
@@ -63,8 +63,8 @@ module distribution::reward {
         arg0.authorized
     }
     
-    public(friend) fun create(arg0: sui::object::ID, arg1: sui::object::ID, arg2: sui::object::ID, arg3: vector<std::type_name::TypeName>, arg4: &mut sui::tx_context::TxContext) : Reward {
-        let v0 = Reward{
+    public(package) fun create(arg0: sui::object::ID, arg1: sui::object::ID, arg2: sui::object::ID, arg3: vector<std::type_name::TypeName>, arg4: &mut sui::tx_context::TxContext) : Reward {
+        let mut v0 = Reward{
             id                      : sui::object::new(arg4), 
             voter                   : arg0, 
             ve                      : arg1, 
@@ -80,7 +80,7 @@ module distribution::reward {
             supply_num_checkpoints  : 0, 
             balances                : sui::bag::new(arg4),
         };
-        let v1 = 0;
+        let mut v1 = 0;
         while (v1 < std::vector::length<std::type_name::TypeName>(&arg3)) {
             sui::vec_set::insert<std::type_name::TypeName>(&mut v0.rewards, *std::vector::borrow<std::type_name::TypeName>(&arg3, v1));
             v1 = v1 + 1;
@@ -88,7 +88,7 @@ module distribution::reward {
         v0
     }
     
-    public(friend) fun deposit(arg0: &mut Reward, arg1: &distribution::reward_authorized_cap::RewardAuthorizedCap, arg2: u64, arg3: sui::object::ID, arg4: &sui::clock::Clock, arg5: &mut sui::tx_context::TxContext) {
+    public(package) fun deposit(arg0: &mut Reward, arg1: &distribution::reward_authorized_cap::RewardAuthorizedCap, arg2: u64, arg3: sui::object::ID, arg4: &sui::clock::Clock, arg5: &mut sui::tx_context::TxContext) {
         distribution::reward_authorized_cap::validate(arg1, arg0.authorized);
         arg0.total_supply = arg0.total_supply + arg2;
         let v0 = if (sui::table::contains<sui::object::ID, u64>(&arg0.balance_of, arg3)) {
@@ -109,7 +109,7 @@ module distribution::reward {
         sui::event::emit<EventDeposit>(v3);
     }
     
-    public(friend) fun earned<T0>(arg0: &Reward, arg1: sui::object::ID, arg2: &sui::clock::Clock) : u64 {
+    public(package) fun earned<T0>(arg0: &Reward, arg1: sui::object::ID, arg2: &sui::clock::Clock) : u64 {
         let v0 = if (!sui::table::contains<sui::object::ID, u64>(&arg0.num_checkpoints, arg1)) {
             true
         } else {
@@ -120,7 +120,7 @@ module distribution::reward {
             return 0
         };
         let v2 = std::type_name::get<T0>();
-        let v3 = 0;
+        let mut v3 = 0;
         let v4 = if (sui::table::contains<std::type_name::TypeName, sui::table::Table<sui::object::ID, u64>>(&arg0.last_earn, v2) && sui::table::contains<sui::object::ID, u64>(sui::table::borrow<std::type_name::TypeName, sui::table::Table<sui::object::ID, u64>>(&arg0.last_earn, v2), arg1)) {
             distribution::common::epoch_start(*sui::table::borrow<sui::object::ID, u64>(sui::table::borrow<std::type_name::TypeName, sui::table::Table<sui::object::ID, u64>>(&arg0.last_earn, v2), arg1))
         } else {
@@ -132,10 +132,10 @@ module distribution::reward {
         } else {
             distribution::common::epoch_start(v5.timestamp)
         };
-        let v7 = v6;
+        let mut v7 = v6;
         let v8 = (distribution::common::epoch_start(distribution::common::current_timestamp(arg2)) - v6) / 604800;
         if (v8 > 0) {
-            let v9 = 0;
+            let mut v9 = 0;
             while (v9 < v8) {
                 let v10 = sui::table::borrow<u64, Checkpoint>(sui::table::borrow<sui::object::ID, sui::table::Table<u64, Checkpoint>>(&arg0.checkpoints, arg1), get_prior_balance_index(arg0, arg1, v7 + 604800 - 1));
                 let v11 = get_prior_supply_index(arg0, v7 + 604800 - 1);
@@ -143,7 +143,7 @@ module distribution::reward {
                     1
                 } else {
                     let v13 = sui::table::borrow<u64, SupplyCheckpoint>(&arg0.supply_checkpoints, v11).supply;
-                    let v14 = v13;
+                    let mut v14 = v13;
                     if (v13 == 0) {
                         v14 = 1;
                     };
@@ -178,8 +178,8 @@ module distribution::reward {
         if (sui::table::borrow<u64, Checkpoint>(sui::table::borrow<sui::object::ID, sui::table::Table<u64, Checkpoint>>(&arg0.checkpoints, arg1), 0).timestamp > arg2) {
             return 0
         };
-        let v1 = 0;
-        let v2 = v0 - 1;
+        let mut v1 = 0;
+        let mut v2 = v0 - 1;
         while (v2 > v1) {
             let v3 = v2 - (v2 - v1) / 2;
             let v4 = sui::table::borrow<u64, Checkpoint>(sui::table::borrow<sui::object::ID, sui::table::Table<u64, Checkpoint>>(&arg0.checkpoints, arg1), v3);
@@ -206,8 +206,8 @@ module distribution::reward {
         if (sui::table::borrow<u64, SupplyCheckpoint>(&arg0.supply_checkpoints, 0).timestamp > arg1) {
             return 0
         };
-        let v1 = 0;
-        let v2 = v0 - 1;
+        let mut v1 = 0;
+        let mut v2 = v0 - 1;
         while (v2 > v1) {
             let v3 = v2 - (v2 - v1) / 2;
             let v4 = sui::table::borrow<u64, SupplyCheckpoint>(&arg0.supply_checkpoints, v3);
@@ -223,7 +223,7 @@ module distribution::reward {
         v1
     }
     
-    public(friend) fun get_reward_internal<T0>(arg0: &mut Reward, arg1: address, arg2: sui::object::ID, arg3: &sui::clock::Clock, arg4: &mut sui::tx_context::TxContext) : std::option::Option<sui::balance::Balance<T0>> {
+    public(package) fun get_reward_internal<T0>(arg0: &mut Reward, arg1: address, arg2: sui::object::ID, arg3: &sui::clock::Clock, arg4: &mut sui::tx_context::TxContext) : std::option::Option<sui::balance::Balance<T0>> {
         let v0 = earned<T0>(arg0, arg2, arg3);
         let v1 = std::type_name::get<T0>();
         if (!sui::table::contains<std::type_name::TypeName, sui::table::Table<sui::object::ID, u64>>(&arg0.last_earn, v1)) {
@@ -246,7 +246,7 @@ module distribution::reward {
         std::option::none<sui::balance::Balance<T0>>()
     }
     
-    public(friend) fun notify_reward_amount_internal<T0>(arg0: &mut Reward, arg1: sui::balance::Balance<T0>, arg2: &sui::clock::Clock, arg3: &mut sui::tx_context::TxContext) {
+    public(package) fun notify_reward_amount_internal<T0>(arg0: &mut Reward, arg1: sui::balance::Balance<T0>, arg2: &sui::clock::Clock, arg3: &mut sui::tx_context::TxContext) {
         let v0 = sui::balance::value<T0>(&arg1);
         let v1 = std::type_name::get<T0>();
         let v2 = distribution::common::epoch_start(distribution::common::current_timestamp(arg2));
@@ -282,7 +282,7 @@ module distribution::reward {
         sui::vec_set::into_keys<std::type_name::TypeName>(arg0.rewards)
     }
     
-    public(friend) fun rewards_list_length(arg0: &Reward) : u64 {
+    public(package) fun rewards_list_length(arg0: &Reward) : u64 {
         sui::vec_set::size<std::type_name::TypeName>(&arg0.rewards)
     }
     
@@ -294,7 +294,7 @@ module distribution::reward {
         arg0.voter
     }
     
-    public(friend) fun withdraw(arg0: &mut Reward, arg1: &distribution::reward_authorized_cap::RewardAuthorizedCap, arg2: u64, arg3: sui::object::ID, arg4: &sui::clock::Clock, arg5: &mut sui::tx_context::TxContext) {
+    public(package) fun withdraw(arg0: &mut Reward, arg1: &distribution::reward_authorized_cap::RewardAuthorizedCap, arg2: u64, arg3: sui::object::ID, arg4: &sui::clock::Clock, arg5: &mut sui::tx_context::TxContext) {
         distribution::reward_authorized_cap::validate(arg1, arg0.authorized);
         arg0.total_supply = arg0.total_supply - arg2;
         let v0 = sui::table::remove<sui::object::ID, u64>(&mut arg0.balance_of, arg3);

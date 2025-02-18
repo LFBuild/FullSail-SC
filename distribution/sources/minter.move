@@ -1,38 +1,38 @@
 module distribution::minter {
-    struct AdminCap has store, key {
+    public struct AdminCap has store, key {
         id: sui::object::UID,
     }
     
-    struct MINTER has drop {
+    public struct MINTER has drop {
         dummy_field: bool,
     }
     
-    struct EventUpdateEpoch has copy, drop, store {
+    public struct EventUpdateEpoch has copy, drop, store {
         new_period: u64,
         new_epoch: u64,
         new_emissions: u64,
     }
     
-    struct EventPauseEmission has copy, drop, store {
+    public struct EventPauseEmission has copy, drop, store {
         dummy_field: bool,
     }
     
-    struct EventUnpauseEmission has copy, drop, store {
+    public struct EventUnpauseEmission has copy, drop, store {
         dummy_field: bool,
     }
     
-    struct EventNudge has copy, drop, store {
+    public struct EventNudge has copy, drop, store {
         period: u64,
         old_rate: u64,
         new_rate: u64,
     }
     
-    struct EventGrantAdmin has copy, drop, store {
+    public struct EventGrantAdmin has copy, drop, store {
         who: address,
         admin_cap: sui::object::ID,
     }
     
-    struct Minter<phantom T0> has store, key {
+    public struct Minter<phantom T0> has store, key {
         id: sui::object::UID,
         revoked_admins: sui::vec_set::VecSet<sui::object::ID>,
         paused: bool,
@@ -42,7 +42,7 @@ module distribution::minter {
         total_emissions: u64,
         last_epoch_update_time: u64,
         epoch_emissions: u64,
-        minter_cap: std::option::Option<distribution::magma_token::MinterCap<T0>>,
+        minter_cap: std::option::Option<distribution::fullsail_token::MinterCap<T0>>,
         base_supply: u64,
         epoch_grow_rate: u64,
         epoch_decay_rate: u64,
@@ -57,7 +57,7 @@ module distribution::minter {
     }
     
     public fun total_supply<T0>(arg0: &Minter<T0>) : u64 {
-        distribution::magma_token::total_supply<T0>(std::option::borrow<distribution::magma_token::MinterCap<T0>>(&arg0.minter_cap))
+        distribution::fullsail_token::total_supply<T0>(std::option::borrow<distribution::fullsail_token::MinterCap<T0>>(&arg0.minter_cap))
     }
     
     public fun activate<T0>(arg0: &mut Minter<T0>, arg1: &AdminCap, arg2: &mut distribution::reward_distributor::RewardDistributor<T0>, arg3: &sui::clock::Clock) {
@@ -86,7 +86,7 @@ module distribution::minter {
     
     public fun calculate_epoch_emissions<T0>(arg0: &Minter<T0>) : (u64, u64) {
         if (arg0.epoch_emissions < 8969150000000) {
-            (integer_mate::full_math_u64::mul_div_ceil(distribution::magma_token::total_supply<T0>(std::option::borrow<distribution::magma_token::MinterCap<T0>>(&arg0.minter_cap)), arg0.tail_emission_rate, 10000), arg0.epoch_emissions)
+            (integer_mate::full_math_u64::mul_div_ceil(distribution::fullsail_token::total_supply<T0>(std::option::borrow<distribution::fullsail_token::MinterCap<T0>>(&arg0.minter_cap)), arg0.tail_emission_rate, 10000), arg0.epoch_emissions)
         } else {
             let (v2, v3) = if (arg0.epoch_count < 14) {
                 let v4 = if (arg0.epoch_emissions == 0) {
@@ -112,7 +112,7 @@ module distribution::minter {
         assert!(!sui::vec_set::contains<sui::object::ID>(&arg0.revoked_admins, &v0), 9223372809948889087);
     }
     
-    public fun create<T0>(arg0: &sui::package::Publisher, arg1: std::option::Option<distribution::magma_token::MinterCap<T0>>, arg2: &mut sui::tx_context::TxContext) : (Minter<T0>, AdminCap) {
+    public fun create<T0>(arg0: &sui::package::Publisher, arg1: std::option::Option<distribution::fullsail_token::MinterCap<T0>>, arg2: &mut sui::tx_context::TxContext) : (Minter<T0>, AdminCap) {
         let v0 = Minter<T0>{
             id                     : sui::object::new(arg2), 
             revoked_admins         : sui::vec_set::empty<sui::object::ID>(), 
@@ -193,10 +193,10 @@ module distribution::minter {
         sui::vec_set::insert<sui::object::ID>(&mut arg0.revoked_admins, arg2);
     }
     
-    public fun set_minter_cap<T0>(arg0: &mut Minter<T0>, arg1: &AdminCap, arg2: distribution::magma_token::MinterCap<T0>) {
+    public fun set_minter_cap<T0>(arg0: &mut Minter<T0>, arg1: &AdminCap, arg2: distribution::fullsail_token::MinterCap<T0>) {
         check_admin<T0>(arg0, arg1);
-        assert!(std::option::is_none<distribution::magma_token::MinterCap<T0>>(&arg0.minter_cap), 9223372831423725567);
-        std::option::fill<distribution::magma_token::MinterCap<T0>>(&mut arg0.minter_cap, arg2);
+        assert!(std::option::is_none<distribution::fullsail_token::MinterCap<T0>>(&arg0.minter_cap), 9223372831423725567);
+        std::option::fill<distribution::fullsail_token::MinterCap<T0>>(&mut arg0.minter_cap, arg2);
     }
     
     public fun set_notify_reward_cap<T0>(arg0: &mut Minter<T0>, arg1: &AdminCap, arg2: distribution::notify_reward_cap::NotifyRewardCap) {
@@ -235,13 +235,13 @@ module distribution::minter {
         assert!(is_active<T0>(arg0, arg4), 9223373394064900104);
         assert!(arg0.active_period + distribution::common::week() < distribution::common::current_timestamp(arg4), 9223373406950588436);
         let (v0, v1) = calculate_epoch_emissions<T0>(arg0);
-        let v2 = calculate_rebase_growth(v0, distribution::magma_token::total_supply<T0>(std::option::borrow<distribution::magma_token::MinterCap<T0>>(&arg0.minter_cap)), distribution::voting_escrow::total_locked<T0>(arg2));
+        let v2 = calculate_rebase_growth(v0, distribution::fullsail_token::total_supply<T0>(std::option::borrow<distribution::fullsail_token::MinterCap<T0>>(&arg0.minter_cap)), distribution::voting_escrow::total_locked<T0>(arg2));
         let v3 = sui::object::id_address<Minter<T0>>(arg0);
         if (arg0.team_emission_rate > 0 && arg0.team_wallet != @0x0) {
-            sui::transfer::public_transfer<sui::coin::Coin<T0>>(distribution::magma_token::mint<T0>(std::option::borrow_mut<distribution::magma_token::MinterCap<T0>>(&mut arg0.minter_cap), integer_mate::full_math_u64::mul_div_floor(arg0.team_emission_rate, v2 + v0, 10000 - arg0.team_emission_rate), v3, arg5), arg0.team_wallet);
+            sui::transfer::public_transfer<sui::coin::Coin<T0>>(distribution::fullsail_token::mint<T0>(std::option::borrow_mut<distribution::fullsail_token::MinterCap<T0>>(&mut arg0.minter_cap), integer_mate::full_math_u64::mul_div_floor(arg0.team_emission_rate, v2 + v0, 10000 - arg0.team_emission_rate), v3, arg5), arg0.team_wallet);
         };
-        distribution::reward_distributor::checkpoint_token<T0>(arg3, std::option::borrow<distribution::reward_distributor_cap::RewardDistributorCap>(&arg0.reward_distributor_cap), distribution::magma_token::mint<T0>(std::option::borrow_mut<distribution::magma_token::MinterCap<T0>>(&mut arg0.minter_cap), v2, v3, arg5), arg4, arg5);
-        distribution::voter::notify_rewards<T0>(arg1, std::option::borrow<distribution::notify_reward_cap::NotifyRewardCap>(&arg0.notify_reward_cap), distribution::magma_token::mint<T0>(std::option::borrow_mut<distribution::magma_token::MinterCap<T0>>(&mut arg0.minter_cap), v0, sui::object::id_address<Minter<T0>>(arg0), arg5), arg5);
+        distribution::reward_distributor::checkpoint_token<T0>(arg3, std::option::borrow<distribution::reward_distributor_cap::RewardDistributorCap>(&arg0.reward_distributor_cap), distribution::fullsail_token::mint<T0>(std::option::borrow_mut<distribution::fullsail_token::MinterCap<T0>>(&mut arg0.minter_cap), v2, v3, arg5), arg4, arg5);
+        distribution::voter::notify_rewards<T0>(arg1, std::option::borrow<distribution::notify_reward_cap::NotifyRewardCap>(&arg0.notify_reward_cap), distribution::fullsail_token::mint<T0>(std::option::borrow_mut<distribution::fullsail_token::MinterCap<T0>>(&mut arg0.minter_cap), v0, sui::object::id_address<Minter<T0>>(arg0), arg5), arg5);
         arg0.active_period = distribution::common::current_period(arg4);
         arg0.epoch_count = arg0.epoch_count + 1;
         arg0.epoch_emissions = v1;

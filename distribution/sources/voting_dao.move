@@ -1,19 +1,19 @@
 module distribution::voting_dao {
-    struct VotingDAO has store {
+    public struct VotingDAO has store {
         delegates: sui::table::Table<sui::object::ID, sui::object::ID>,
         nonces: sui::table::Table<address, u64>,
         num_checkpoints: sui::table::Table<sui::object::ID, u64>,
         checkpoints: sui::table::Table<sui::object::ID, sui::table::Table<u64, Checkpoint>>,
     }
     
-    struct Checkpoint has copy, drop, store {
+    public struct Checkpoint has copy, drop, store {
         from_timestamp: u64,
         owner: address,
         delegated_balance: u64,
         delegatee: sui::object::ID,
     }
     
-    public(friend) fun checkpoint_delegatee(arg0: &mut VotingDAO, arg1: sui::object::ID, arg2: u64, arg3: bool, arg4: &sui::clock::Clock, arg5: &mut sui::tx_context::TxContext) {
+    public(package) fun checkpoint_delegatee(arg0: &mut VotingDAO, arg1: sui::object::ID, arg2: u64, arg3: bool, arg4: &sui::clock::Clock, arg5: &mut sui::tx_context::TxContext) {
         if (arg1 == sui::object::id_from_address(@0x0)) {
             return
         };
@@ -33,7 +33,7 @@ module distribution::voting_dao {
         };
         let v2 = v1;
         assert!(sui::table::length<u64, Checkpoint>(sui::table::borrow<sui::object::ID, sui::table::Table<u64, Checkpoint>>(&arg0.checkpoints, arg1)) == v0, 9223372307437715455);
-        let v3 = create_checkpoint();
+        let mut v3 = create_checkpoint();
         v3.from_timestamp = get_block_timestamp(arg4);
         assert!(v2.owner != @0x0, 9223372346092421119);
         v3.owner = v2.owner;
@@ -59,7 +59,7 @@ module distribution::voting_dao {
         };
     }
     
-    public(friend) fun checkpoint_delegator(arg0: &mut VotingDAO, arg1: sui::object::ID, arg2: u64, arg3: sui::object::ID, arg4: address, arg5: &sui::clock::Clock, arg6: &mut sui::tx_context::TxContext) {
+    public(package) fun checkpoint_delegator(arg0: &mut VotingDAO, arg1: sui::object::ID, arg2: u64, arg3: sui::object::ID, arg4: address, arg5: &sui::clock::Clock, arg6: &mut sui::tx_context::TxContext) {
         let v0 = if (sui::table::contains<sui::object::ID, u64>(&arg0.num_checkpoints, arg1)) {
             *sui::table::borrow<sui::object::ID, u64>(&arg0.num_checkpoints, arg1)
         } else {
@@ -77,7 +77,7 @@ module distribution::voting_dao {
         let v2 = v1;
         assert!(sui::table::length<u64, Checkpoint>(sui::table::borrow<sui::object::ID, sui::table::Table<u64, Checkpoint>>(&arg0.checkpoints, arg1)) == v0, 9223372608085426175);
         checkpoint_delegatee(arg0, v2.delegatee, arg2, false, arg5, arg6);
-        let v3 = create_checkpoint();
+        let mut v3 = create_checkpoint();
         v3.from_timestamp = get_block_timestamp(arg5);
         v3.delegated_balance = v2.delegated_balance;
         v3.delegatee = arg3;
@@ -95,7 +95,7 @@ module distribution::voting_dao {
         sui::table::add<sui::object::ID, sui::object::ID>(&mut arg0.delegates, arg1, arg3);
     }
     
-    public(friend) fun create(arg0: &mut sui::tx_context::TxContext) : VotingDAO {
+    public(package) fun create(arg0: &mut sui::tx_context::TxContext) : VotingDAO {
         VotingDAO{
             delegates       : sui::table::new<sui::object::ID, sui::object::ID>(arg0), 
             nonces          : sui::table::new<address, u64>(arg0), 
@@ -113,7 +113,7 @@ module distribution::voting_dao {
         }
     }
     
-    public(friend) fun delegatee(arg0: &VotingDAO, arg1: sui::object::ID) : sui::object::ID {
+    public(package) fun delegatee(arg0: &VotingDAO, arg1: sui::object::ID) : sui::object::ID {
         *sui::table::borrow<sui::object::ID, sui::object::ID>(&arg0.delegates, arg1)
     }
     

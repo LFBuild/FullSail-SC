@@ -1,10 +1,10 @@
 module distribution::reward_authorized_cap {
-    struct RewardAuthorizedCap has store, key {
+    public struct RewardAuthorizedCap has store, key {
         id: sui::object::UID,
         authorized: sui::object::ID,
     }
     
-    public(friend) fun create(arg0: sui::object::ID, arg1: &mut sui::tx_context::TxContext) : RewardAuthorizedCap {
+    public(package) fun create(arg0: sui::object::ID, arg1: &mut sui::tx_context::TxContext) : RewardAuthorizedCap {
         RewardAuthorizedCap{
             id         : sui::object::new(arg1), 
             authorized : arg0,

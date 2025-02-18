@@ -1,24 +1,24 @@
 module distribution::reward_distributor {
-    struct REWARD_DISTRIBUTOR has drop {
+    public struct REWARD_DISTRIBUTOR has drop {
         dummy_field: bool,
     }
     
-    struct EventStart has copy, drop, store {
+    public struct EventStart has copy, drop, store {
         dummy_field: bool,
     }
     
-    struct EventCheckpointToken has copy, drop, store {
+    public struct EventCheckpointToken has copy, drop, store {
         to_distribute: u64,
     }
     
-    struct EventClaimed has copy, drop, store {
+    public struct EventClaimed has copy, drop, store {
         id: sui::object::ID,
         epoch_start: u64,
         epoch_end: u64,
         amount: u64,
     }
     
-    struct RewardDistributor<phantom T0> has store, key {
+    public struct RewardDistributor<phantom T0> has store, key {
         id: sui::object::UID,
         start_time: u64,
         time_cursor_of: sui::table::Table<sui::object::ID, u64>,
@@ -55,11 +55,11 @@ module distribution::reward_distributor {
         let v1 = v0 - arg0.token_last_balance;
         arg0.token_last_balance = v0;
         let v2 = arg0.last_token_time;
-        let v3 = v2;
+        let mut v3 = v2;
         let v4 = arg1 - v2;
         arg0.last_token_time = arg1;
-        let v5 = distribution::common::to_period(v2);
-        let v6 = 0;
+        let mut v5 = distribution::common::to_period(v2);
+        let mut v6 = 0;
         while (v6 < 20) {
             let v7 = if (!sui::table::contains<u64, u64>(&arg0.tokens_per_period, v5)) {
                 0
@@ -137,9 +137,9 @@ module distribution::reward_distributor {
         } else {
             0
         };
-        let v1 = v0;
-        let v2 = v0;
-        let v3 = 0;
+        let mut v1 = v0;
+        let mut v2 = v0;
+        let mut v3 = 0;
         if (distribution::voting_escrow::user_point_epoch<T0>(arg1, arg2) == 0) {
             return (0, v0, v0)
         };
@@ -155,7 +155,7 @@ module distribution::reward_distributor {
         if (v1 < arg0.start_time) {
             v1 = arg0.start_time;
         };
-        let v6 = 0;
+        let mut v6 = 0;
         while (v6 < 50) {
             if (v1 >= arg3) {
                 break
@@ -194,7 +194,7 @@ module distribution::reward_distributor {
         sui::event::emit<EventStart>(v1);
     }
     
-    public(friend) fun update_active_period<T0>(arg0: &mut RewardDistributor<T0>, arg1: &distribution::reward_distributor_cap::RewardDistributorCap, arg2: u64) {
+    public(package) fun update_active_period<T0>(arg0: &mut RewardDistributor<T0>, arg1: &distribution::reward_distributor_cap::RewardDistributorCap, arg2: u64) {
         distribution::reward_distributor_cap::validate(arg1, sui::object::id<RewardDistributor<T0>>(arg0));
         arg0.minter_active_period = arg2;
     }

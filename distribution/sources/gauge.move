@@ -1,57 +1,57 @@
 module distribution::gauge {
-    struct TRANSFORMER has drop {
+    public struct TRANSFORMER has drop {
         dummy_field: bool,
     }
     
-    struct AdminCap has store, key {
+    public struct AdminCap has store, key {
         id: sui::object::UID,
     }
     
-    struct EventNotifyReward has copy, drop, store {
+    public struct EventNotifyReward has copy, drop, store {
         sender: sui::object::ID,
         amount: u64,
     }
     
-    struct EventClaimFees has copy, drop, store {
+    public struct EventClaimFees has copy, drop, store {
         amount_a: u64,
         amount_b: u64,
     }
     
-    struct RewardProfile has store {
+    public struct RewardProfile has store {
         growth_inside: u128,
         amount: u64,
         last_update_time: u64,
     }
     
-    struct EventClaimReward has copy, drop, store {
+    public struct EventClaimReward has copy, drop, store {
         from: address,
         position_id: sui::object::ID,
         receiver: address,
         amount: u64,
     }
     
-    struct EventWithdrawPosition has copy, drop, store {
+    public struct EventWithdrawPosition has copy, drop, store {
         position_id: sui::object::ID,
         gauger_id: sui::object::ID,
     }
     
-    struct EventDepositGauge has copy, drop, store {
+    public struct EventDepositGauge has copy, drop, store {
         gauger_id: sui::object::ID,
         pool_id: sui::object::ID,
         position_id: sui::object::ID,
     }
     
-    struct EventGaugeCreated has copy, drop, store {
+    public struct EventGaugeCreated has copy, drop, store {
         id: sui::object::ID,
         pool_id: sui::object::ID,
     }
     
-    struct EventGaugeSetVoter has copy, drop, store {
+    public struct EventGaugeSetVoter has copy, drop, store {
         id: sui::object::ID,
         voter_id: sui::object::ID,
     }
     
-    struct Gauge<phantom T0, phantom T1, phantom T2> has store, key {
+    public struct Gauge<phantom T0, phantom T1, phantom T2> has store, key {
         id: sui::object::UID,
         pool_id: sui::object::ID,
         gauge_cap: std::option::Option<gauge_cap::gauge_cap::GaugeCap>,
@@ -68,7 +68,7 @@ module distribution::gauge {
         rewards: sui::table::Table<sui::object::ID, RewardProfile>,
     }
     
-    struct PositionStakeInfo has drop, store {
+    public struct PositionStakeInfo has drop, store {
         from: address,
         received: bool,
     }
@@ -119,7 +119,7 @@ module distribution::gauge {
         (sui::balance::zero<T0>(), sui::balance::zero<T1>())
     }
     
-    public(friend) fun create<T0, T1, T2>(arg0: sui::object::ID, arg1: &mut sui::tx_context::TxContext) : Gauge<T0, T1, T2> {
+    public(package) fun create<T0, T1, T2>(arg0: sui::object::ID, arg1: &mut sui::tx_context::TxContext) : Gauge<T0, T1, T2> {
         let v0 = sui::object::new(arg1);
         let v1 = EventGaugeCreated{
             id      : sui::object::uid_to_inner(&v0), 
@@ -163,7 +163,7 @@ module distribution::gauge {
         sui::transfer::public_transfer<sui::coin::Coin<T1>>(sui::coin::from_balance<T1>(v5, arg5), v0);
         let (v6, v7) = clmm_pool::position::tick_range(&arg3);
         if (!sui::table::contains<address, vector<sui::object::ID>>(&arg1.stakes, v0)) {
-            let v8 = std::vector::empty<sui::object::ID>();
+            let mut v8 = std::vector::empty<sui::object::ID>();
             std::vector::push_back<sui::object::ID>(&mut v8, v2);
             sui::table::add<address, vector<sui::object::ID>>(&mut arg1.stakes, v0, v8);
         } else {
@@ -196,8 +196,8 @@ module distribution::gauge {
     public fun earned_by_account<T0, T1, T2>(arg0: &Gauge<T0, T1, T2>, arg1: &clmm_pool::pool::Pool<T0, T1>, arg2: address, arg3: &sui::clock::Clock) : u64 {
         assert!(check_gauger_pool<T0, T1, T2>(arg0, arg1), 9223372724050001928);
         let v0 = sui::table::borrow<address, vector<sui::object::ID>>(&arg0.stakes, arg2);
-        let v1 = 0;
-        let v2 = 0;
+        let mut v1 = 0;
+        let mut v2 = 0;
         while (v1 < std::vector::length<sui::object::ID>(v0)) {
             v2 = v2 + earned_internal<T0, T1, T2>(arg0, arg1, *std::vector::borrow<sui::object::ID>(v0, v1), sui::clock::timestamp_ms(arg3) / 1000);
             v1 = v1 + 1;
@@ -214,7 +214,7 @@ module distribution::gauge {
     fun earned_internal<T0, T1, T2>(arg0: &Gauge<T0, T1, T2>, arg1: &clmm_pool::pool::Pool<T0, T1>, arg2: sui::object::ID, arg3: u64) : u64 {
         let v0 = arg3 - clmm_pool::pool::get_magma_distribution_last_updated<T0, T1>(arg1);
         let v1 = clmm_pool::pool::get_magma_distribution_growth_global<T0, T1>(arg1);
-        let v2 = v1;
+        let mut v2 = v1;
         let v3 = (clmm_pool::pool::get_magma_distribution_reserve<T0, T1>(arg1) as u128) * 18446744073709551616;
         let v4 = clmm_pool::pool::get_magma_distribution_staked_liquidity<T0, T1>(arg1);
         let v5 = if (v0 >= 0) {
@@ -228,7 +228,7 @@ module distribution::gauge {
         };
         if (v5) {
             let v6 = arg0.reward_rate * (v0 as u128);
-            let v7 = v6;
+            let mut v7 = v6;
             if (v6 > v3) {
                 v7 = v3;
             };
@@ -250,14 +250,14 @@ module distribution::gauge {
         let v0 = sui::tx_context::sender(arg3);
         assert!(sui::table::contains<address, vector<sui::object::ID>>(&arg0.stakes, v0), 9223373462784638988);
         let v1 = sui::table::borrow<address, vector<sui::object::ID>>(&arg0.stakes, v0);
-        let v2 = std::vector::empty<sui::object::ID>();
-        let v3 = 0;
+        let mut v2 = std::vector::empty<sui::object::ID>();
+        let mut v3 = 0;
         while (v3 < std::vector::length<sui::object::ID>(v1)) {
             std::vector::push_back<sui::object::ID>(&mut v2, *std::vector::borrow<sui::object::ID>(v1, v3));
             v3 = v3 + 1;
         };
         let v4 = v2;
-        let v5 = 0;
+        let mut v5 = 0;
         while (v5 < std::vector::length<sui::object::ID>(&v4)) {
             get_reward_internal<T0, T1, T2>(arg0, arg1, *std::vector::borrow<sui::object::ID>(&v4, v5), arg2, arg3);
             v5 = v5 + 1;
@@ -268,14 +268,14 @@ module distribution::gauge {
         assert!(check_gauger_pool<T0, T1, T2>(arg0, arg1), 9223373510029017096);
         assert!(sui::table::contains<address, vector<sui::object::ID>>(&arg0.stakes, arg2), 9223373514324246540);
         let v0 = sui::table::borrow<address, vector<sui::object::ID>>(&arg0.stakes, arg2);
-        let v1 = std::vector::empty<sui::object::ID>();
-        let v2 = 0;
+        let mut v1 = std::vector::empty<sui::object::ID>();
+        let mut v2 = 0;
         while (v2 < std::vector::length<sui::object::ID>(v0)) {
             std::vector::push_back<sui::object::ID>(&mut v1, *std::vector::borrow<sui::object::ID>(v0, v2));
             v2 = v2 + 1;
         };
         let v3 = v1;
-        let v4 = 0;
+        let mut v4 = 0;
         while (v4 < std::vector::length<sui::object::ID>(&v3)) {
             get_reward_internal<T0, T1, T2>(arg0, arg1, *std::vector::borrow<sui::object::ID>(&v3, v4), arg3, arg4);
             v4 = v4 + 1;
@@ -357,7 +357,7 @@ module distribution::gauge {
         arg0.period_finish
     }
     
-    public(friend) fun receive_gauge_cap<T0, T1, T2>(arg0: &mut Gauge<T0, T1, T2>, arg1: gauge_cap::gauge_cap::GaugeCap) {
+    public(package) fun receive_gauge_cap<T0, T1, T2>(arg0: &mut Gauge<T0, T1, T2>, arg1: gauge_cap::gauge_cap::GaugeCap) {
         assert!(arg0.pool_id == gauge_cap::gauge_cap::get_pool_id(&arg1), 9223373119186534399);
         std::option::fill<gauge_cap::gauge_cap::GaugeCap>(&mut arg0.gauge_cap, arg1);
     }
@@ -374,7 +374,7 @@ module distribution::gauge {
         *sui::table::borrow<u64, u128>(&arg0.reward_rate_by_epoch, arg1)
     }
     
-    public(friend) fun set_voter<T0, T1, T2>(arg0: &mut Gauge<T0, T1, T2>, arg1: sui::object::ID, arg2: &mut sui::tx_context::TxContext) {
+    public(package) fun set_voter<T0, T1, T2>(arg0: &mut Gauge<T0, T1, T2>, arg1: sui::object::ID, arg2: &mut sui::tx_context::TxContext) {
         std::option::fill<sui::object::ID>(&mut arg0.voter, arg1);
         let v0 = EventGaugeSetVoter{
             id       : sui::object::id<Gauge<T0, T1, T2>>(arg0), 
@@ -385,8 +385,8 @@ module distribution::gauge {
     
     public fun stakes<T0, T1, T2>(arg0: &Gauge<T0, T1, T2>, arg1: address) : vector<sui::object::ID> {
         let v0 = sui::table::borrow<address, vector<sui::object::ID>>(&arg0.stakes, arg1);
-        let v1 = std::vector::empty<sui::object::ID>();
-        let v2 = 0;
+        let mut v1 = std::vector::empty<sui::object::ID>();
+        let mut v2 = 0;
         while (v2 < std::vector::length<sui::object::ID>(v0)) {
             std::vector::push_back<sui::object::ID>(&mut v1, *std::vector::borrow<sui::object::ID>(v0, v2));
             v2 = v2 + 1;

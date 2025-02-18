@@ -1,6 +1,6 @@
 module integrate::setup_distribution {
     public entry fun create<T0>(arg0: &sui::package::Publisher, arg1: address, arg2: &sui::clock::Clock, arg3: &mut sui::tx_context::TxContext) {
-        let (v0, v1) = distribution::minter::create<T0>(arg0, std::option::none<distribution::magma_token::MinterCap<T0>>(), arg3);
+        let (v0, v1) = distribution::minter::create<T0>(arg0, std::option::none<distribution::fullsail_token::MinterCap<T0>>(), arg3);
         let v2 = v1;
         let v3 = v0;
         let v4 = std::vector::empty<std::type_name::TypeName>();

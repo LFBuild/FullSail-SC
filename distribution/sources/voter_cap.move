@@ -1,28 +1,28 @@
 module distribution::voter_cap {
-    struct VoterCap has store, key {
+    public struct VoterCap has store, key {
         id: sui::object::UID,
         voter_id: sui::object::ID,
     }
     
-    struct GovernorCap has store, key {
+    public struct GovernorCap has store, key {
         id: sui::object::UID,
         voter_id: sui::object::ID,
         who: sui::object::ID,
     }
     
-    struct EpochGovernorCap has store, key {
+    public struct EpochGovernorCap has store, key {
         id: sui::object::UID,
         voter_id: sui::object::ID,
     }
     
-    public(friend) fun create_epoch_governor_cap(arg0: sui::object::ID, arg1: &mut sui::tx_context::TxContext) : EpochGovernorCap {
+    public(package) fun create_epoch_governor_cap(arg0: sui::object::ID, arg1: &mut sui::tx_context::TxContext) : EpochGovernorCap {
         EpochGovernorCap{
             id       : sui::object::new(arg1), 
             voter_id : arg0,
         }
     }
     
-    public(friend) fun create_governor_cap(arg0: sui::object::ID, arg1: address, arg2: &mut sui::tx_context::TxContext) : GovernorCap {
+    public(package) fun create_governor_cap(arg0: sui::object::ID, arg1: address, arg2: &mut sui::tx_context::TxContext) : GovernorCap {
         GovernorCap{
             id       : sui::object::new(arg2), 
             voter_id : arg0, 
@@ -30,7 +30,7 @@ module distribution::voter_cap {
         }
     }
     
-    public(friend) fun create_voter_cap(arg0: sui::object::ID, arg1: &mut sui::tx_context::TxContext) : VoterCap {
+    public(package) fun create_voter_cap(arg0: sui::object::ID, arg1: &mut sui::tx_context::TxContext) : VoterCap {
         VoterCap{
             id       : sui::object::new(arg1), 
             voter_id : arg0,

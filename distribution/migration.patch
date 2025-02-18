@@ -1,0 +1,430 @@
+--- ./sources/bribe_voting_reward.move
++++ ./sources/bribe_voting_reward.move
+@@ -2 +2 @@
+-    struct BribeVotingReward has store, key {
++    public struct BribeVotingReward has store, key {
+@@ -47 +47 @@
+-        let v2 = distribution::reward::get_reward_internal<T1>(&mut arg0.reward, v1, v0, arg3, arg4);
++        let mut v2 = distribution::reward::get_reward_internal<T1>(&mut arg0.reward, v1, v0, arg3, arg4);
+@@ -54 +54 @@
+-    public fun notify_reward_amount<T0>(arg0: &mut BribeVotingReward, arg1: std::option::Option<distribution::whitelisted_tokens::WhitelistedToken>, arg2: sui::coin::Coin<T0>, arg3: &sui::clock::Clock, arg4: &mut sui::tx_context::TxContext) {
++    public fun notify_reward_amount<T0>(arg0: &mut BribeVotingReward, mut arg1: std::option::Option<distribution::whitelisted_tokens::WhitelistedToken>, arg2: sui::coin::Coin<T0>, arg3: &sui::clock::Clock, arg4: &mut sui::tx_context::TxContext) {
+@@ -71 +71 @@
+-        let v0 = distribution::reward::get_reward_internal<T1>(&mut arg0.reward, distribution::voting_escrow::owner_of<T0>(arg2, arg3), arg3, arg4, arg5);
++        let mut v0 = distribution::reward::get_reward_internal<T1>(&mut arg0.reward, distribution::voting_escrow::owner_of<T0>(arg2, arg3), arg3, arg4, arg5);
+--- ./sources/emergency_council.move
++++ ./sources/emergency_council.move
+@@ -2 +2 @@
+-    struct EmergencyCouncilCap has store, key {
++    public struct EmergencyCouncilCap has store, key {
+--- ./sources/fee_voting_reward.move
++++ ./sources/fee_voting_reward.move
+@@ -2 +2 @@
+-    struct FeeVotingReward has store, key {
++    public struct FeeVotingReward has store, key {
+@@ -51 +51 @@
+-        let v2 = distribution::reward::get_reward_internal<T1>(&mut arg0.reward, v1, v0, arg3, arg4);
++        let mut v2 = distribution::reward::get_reward_internal<T1>(&mut arg0.reward, v1, v0, arg3, arg4);
+@@ -66 +66 @@
+-        let v0 = distribution::reward::get_reward_internal<T1>(&mut arg0.reward, distribution::voting_escrow::owner_of<T0>(arg2, arg3), arg3, arg4, arg5);
++        let mut v0 = distribution::reward::get_reward_internal<T1>(&mut arg0.reward, distribution::voting_escrow::owner_of<T0>(arg2, arg3), arg3, arg4, arg5);
+--- ./sources/free_managed_reward.move
++++ ./sources/free_managed_reward.move
+@@ -2 +2 @@
+-    struct FreeManagedReward has store, key {
++    public struct FreeManagedReward has store, key {
+@@ -8 +8 @@
+-        let v0 = std::vector::empty<std::type_name::TypeName>();
++        let mut v0 = std::vector::empty<std::type_name::TypeName>();
+@@ -51 +51 @@
+-        let v3 = distribution::reward::get_reward_internal<T0>(&mut arg0.reward, sui::tx_context::sender(arg3), v1, arg2, arg3);
++        let mut v3 = distribution::reward::get_reward_internal<T0>(&mut arg0.reward, sui::tx_context::sender(arg3), v1, arg2, arg3);
+@@ -58 +58 @@
+-    public fun notify_reward_amount<T0>(arg0: &mut FreeManagedReward, arg1: std::option::Option<distribution::whitelisted_tokens::WhitelistedToken>, arg2: sui::coin::Coin<T0>, arg3: &sui::clock::Clock, arg4: &mut sui::tx_context::TxContext) {
++    public fun notify_reward_amount<T0>(arg0: &mut FreeManagedReward, mut arg1: std::option::Option<distribution::whitelisted_tokens::WhitelistedToken>, arg2: sui::coin::Coin<T0>, arg3: &sui::clock::Clock, arg4: &mut sui::tx_context::TxContext) {
+--- ./sources/fullsail_token.move
++++ ./sources/fullsail_token.move
+@@ -2 +2 @@
+-    struct FULLSAIL_TOKEN has drop {
++    public struct FULLSAIL_TOKEN has drop {
+@@ -6 +6 @@
+-    struct MinterCap<phantom T0> has store, key {
++    public struct MinterCap<phantom T0> has store, key {
+--- ./sources/gauge.move
++++ ./sources/gauge.move
+@@ -2 +2 @@
+-    struct TRANSFORMER has drop {
++    public struct TRANSFORMER has drop {
+@@ -6 +6 @@
+-    struct AdminCap has store, key {
++    public struct AdminCap has store, key {
+@@ -10 +10 @@
+-    struct EventNotifyReward has copy, drop, store {
++    public struct EventNotifyReward has copy, drop, store {
+@@ -15 +15 @@
+-    struct EventClaimFees has copy, drop, store {
++    public struct EventClaimFees has copy, drop, store {
+@@ -20 +20 @@
+-    struct RewardProfile has store {
++    public struct RewardProfile has store {
+@@ -26 +26 @@
+-    struct EventClaimReward has copy, drop, store {
++    public struct EventClaimReward has copy, drop, store {
+@@ -33 +33 @@
+-    struct EventWithdrawPosition has copy, drop, store {
++    public struct EventWithdrawPosition has copy, drop, store {
+@@ -38 +38 @@
+-    struct EventDepositGauge has copy, drop, store {
++    public struct EventDepositGauge has copy, drop, store {
+@@ -44 +44 @@
+-    struct EventGaugeCreated has copy, drop, store {
++    public struct EventGaugeCreated has copy, drop, store {
+@@ -49 +49 @@
+-    struct EventGaugeSetVoter has copy, drop, store {
++    public struct EventGaugeSetVoter has copy, drop, store {
+@@ -54 +54 @@
+-    struct Gauge<phantom T0, phantom T1, phantom T2> has store, key {
++    public struct Gauge<phantom T0, phantom T1, phantom T2> has store, key {
+@@ -71 +71 @@
+-    struct PositionStakeInfo has drop, store {
++    public struct PositionStakeInfo has drop, store {
+@@ -166 +166 @@
+-            let v8 = std::vector::empty<sui::object::ID>();
++            let mut v8 = std::vector::empty<sui::object::ID>();
+@@ -199,2 +199,2 @@
+-        let v1 = 0;
+-        let v2 = 0;
++        let mut v1 = 0;
++        let mut v2 = 0;
+@@ -217 +217 @@
+-        let v2 = v1;
++        let mut v2 = v1;
+@@ -231 +231 @@
+-            let v7 = v6;
++            let mut v7 = v6;
+@@ -253,2 +253,2 @@
+-        let v2 = std::vector::empty<sui::object::ID>();
+-        let v3 = 0;
++        let mut v2 = std::vector::empty<sui::object::ID>();
++        let mut v3 = 0;
+@@ -260 +260 @@
+-        let v5 = 0;
++        let mut v5 = 0;
+@@ -271,2 +271,2 @@
+-        let v1 = std::vector::empty<sui::object::ID>();
+-        let v2 = 0;
++        let mut v1 = std::vector::empty<sui::object::ID>();
++        let mut v2 = 0;
+@@ -278 +278 @@
+-        let v4 = 0;
++        let mut v4 = 0;
+@@ -388,2 +388,2 @@
+-        let v1 = std::vector::empty<sui::object::ID>();
+-        let v2 = 0;
++        let mut v1 = std::vector::empty<sui::object::ID>();
++        let mut v2 = 0;
+--- ./sources/gauge_to_fee.move
++++ ./sources/gauge_to_fee.move
+@@ -2 +2 @@
+-    struct GaugeToFeeProof {
++    public struct GaugeToFeeProof {
+--- ./sources/lock_owner.move
++++ ./sources/lock_owner.move
+@@ -2 +2 @@
+-    struct OwnerProof {
++    public struct OwnerProof {
+--- ./sources/locked_managed_reward.move
++++ ./sources/locked_managed_reward.move
+@@ -2 +2 @@
+-    struct LockedManagedReward has store, key {
++    public struct LockedManagedReward has store, key {
+@@ -8 +8 @@
+-        let v0 = std::vector::empty<std::type_name::TypeName>();
++        let mut v0 = std::vector::empty<std::type_name::TypeName>();
+@@ -47 +47 @@
+-        let v1 = distribution::reward::get_reward_internal<T0>(&mut arg0.reward, sui::object::id_to_address(&v0), arg2, arg3, arg4);
++        let mut v1 = distribution::reward::get_reward_internal<T0>(&mut arg0.reward, sui::object::id_to_address(&v0), arg2, arg3, arg4);
+--- ./sources/minter.move
++++ ./sources/minter.move
+@@ -2 +2 @@
+-    struct AdminCap has store, key {
++    public struct AdminCap has store, key {
+@@ -6 +6 @@
+-    struct MINTER has drop {
++    public struct MINTER has drop {
+@@ -10 +10 @@
+-    struct EventUpdateEpoch has copy, drop, store {
++    public struct EventUpdateEpoch has copy, drop, store {
+@@ -16 +16 @@
+-    struct EventPauseEmission has copy, drop, store {
++    public struct EventPauseEmission has copy, drop, store {
+@@ -20 +20 @@
+-    struct EventUnpauseEmission has copy, drop, store {
++    public struct EventUnpauseEmission has copy, drop, store {
+@@ -24 +24 @@
+-    struct EventNudge has copy, drop, store {
++    public struct EventNudge has copy, drop, store {
+@@ -30 +30 @@
+-    struct EventGrantAdmin has copy, drop, store {
++    public struct EventGrantAdmin has copy, drop, store {
+@@ -35 +35 @@
+-    struct Minter<phantom T0> has store, key {
++    public struct Minter<phantom T0> has store, key {
+--- ./sources/notify_reward_cap.move
++++ ./sources/notify_reward_cap.move
+@@ -2 +2 @@
+-    struct NOTIFY_REWARD_CAP has drop {
++    public struct NOTIFY_REWARD_CAP has drop {
+@@ -6 +6 @@
+-    struct NotifyRewardCap has store, key {
++    public struct NotifyRewardCap has store, key {
+--- ./sources/reward.move
++++ ./sources/reward.move
+@@ -2 +2 @@
+-    struct EventDeposit has copy, drop, store {
++    public struct EventDeposit has copy, drop, store {
+@@ -8 +8 @@
+-    struct EventWithdraw has copy, drop, store {
++    public struct EventWithdraw has copy, drop, store {
+@@ -14 +14 @@
+-    struct EventClaimRewards has copy, drop, store {
++    public struct EventClaimRewards has copy, drop, store {
+@@ -20 +20 @@
+-    struct EventNotifyReward has copy, drop, store {
++    public struct EventNotifyReward has copy, drop, store {
+@@ -27 +27 @@
+-    struct Checkpoint has drop, store {
++    public struct Checkpoint has drop, store {
+@@ -32 +32 @@
+-    struct SupplyCheckpoint has drop, store {
++    public struct SupplyCheckpoint has drop, store {
+@@ -37 +37 @@
+-    struct Reward has store, key {
++    public struct Reward has store, key {
+@@ -67 +67 @@
+-        let v0 = Reward{
++        let mut v0 = Reward{
+@@ -83 +83 @@
+-        let v1 = 0;
++        let mut v1 = 0;
+@@ -123 +123 @@
+-        let v3 = 0;
++        let mut v3 = 0;
+@@ -135 +135 @@
+-        let v7 = v6;
++        let mut v7 = v6;
+@@ -138 +138 @@
+-            let v9 = 0;
++            let mut v9 = 0;
+@@ -146 +146 @@
+-                    let v14 = v13;
++                    let mut v14 = v13;
+@@ -181,2 +181,2 @@
+-        let v1 = 0;
+-        let v2 = v0 - 1;
++        let mut v1 = 0;
++        let mut v2 = v0 - 1;
+@@ -209,2 +209,2 @@
+-        let v1 = 0;
+-        let v2 = v0 - 1;
++        let mut v1 = 0;
++        let mut v2 = v0 - 1;
+--- ./sources/reward_authorized_cap.move
++++ ./sources/reward_authorized_cap.move
+@@ -2 +2 @@
+-    struct RewardAuthorizedCap has store, key {
++    public struct RewardAuthorizedCap has store, key {
+--- ./sources/reward_distributor.move
++++ ./sources/reward_distributor.move
+@@ -2 +2 @@
+-    struct REWARD_DISTRIBUTOR has drop {
++    public struct REWARD_DISTRIBUTOR has drop {
+@@ -6 +6 @@
+-    struct EventStart has copy, drop, store {
++    public struct EventStart has copy, drop, store {
+@@ -10 +10 @@
+-    struct EventCheckpointToken has copy, drop, store {
++    public struct EventCheckpointToken has copy, drop, store {
+@@ -14 +14 @@
+-    struct EventClaimed has copy, drop, store {
++    public struct EventClaimed has copy, drop, store {
+@@ -21 +21 @@
+-    struct RewardDistributor<phantom T0> has store, key {
++    public struct RewardDistributor<phantom T0> has store, key {
+@@ -58 +58 @@
+-        let v3 = v2;
++        let mut v3 = v2;
+@@ -61,2 +61,2 @@
+-        let v5 = distribution::common::to_period(v2);
+-        let v6 = 0;
++        let mut v5 = distribution::common::to_period(v2);
++        let mut v6 = 0;
+@@ -140,3 +140,3 @@
+-        let v1 = v0;
+-        let v2 = v0;
+-        let v3 = 0;
++        let mut v1 = v0;
++        let mut v2 = v0;
++        let mut v3 = 0;
+@@ -158 +158 @@
+-        let v6 = 0;
++        let mut v6 = 0;
+--- ./sources/reward_distributor_cap.move
++++ ./sources/reward_distributor_cap.move
+@@ -2 +2 @@
+-    struct RewardDistributorCap has store, key {
++    public struct RewardDistributorCap has store, key {
+--- ./sources/team_cap.move
++++ ./sources/team_cap.move
+@@ -2 +2 @@
+-    struct TeamCap has store, key {
++    public struct TeamCap has store, key {
+--- ./sources/voter.move
++++ ./sources/voter.move
+@@ -2 +2 @@
+-    struct VOTER has drop {
++    public struct VOTER has drop {
+@@ -6 +6 @@
+-    struct PoolID has copy, drop, store {
++    public struct PoolID has copy, drop, store {
+@@ -10 +10 @@
+-    struct LockID has copy, drop, store {
++    public struct LockID has copy, drop, store {
+@@ -14 +14 @@
+-    struct GaugeID has copy, drop, store {
++    public struct GaugeID has copy, drop, store {
+@@ -18 +18 @@
+-    struct GaugeRepresent has drop, store {
++    public struct GaugeRepresent has drop, store {
+@@ -25 +25 @@
+-    struct Voter<phantom T0> has store, key {
++    public struct Voter<phantom T0> has store, key {
+@@ -57 +57 @@
+-    struct EventNotifyReward has copy, drop, store {
++    public struct EventNotifyReward has copy, drop, store {
+@@ -63 +63 @@
+-    struct EventExtractClaimable has copy, drop, store {
++    public struct EventExtractClaimable has copy, drop, store {
+@@ -68 +68 @@
+-    struct EventWhitelistToken has copy, drop, store {
++    public struct EventWhitelistToken has copy, drop, store {
+@@ -74 +74 @@
+-    struct EventWhitelistNFT has copy, drop, store {
++    public struct EventWhitelistNFT has copy, drop, store {
+@@ -80 +80 @@
+-    struct EventKillGauge has copy, drop, store {
++    public struct EventKillGauge has copy, drop, store {
+@@ -84 +84 @@
+-    struct EventReviveGauge has copy, drop, store {
++    public struct EventReviveGauge has copy, drop, store {
+@@ -88 +88 @@
+-    struct EventVoted has copy, drop, store {
++    public struct EventVoted has copy, drop, store {
+@@ -96 +96 @@
+-    struct EventAbstained has copy, drop, store {
++    public struct EventAbstained has copy, drop, store {
+@@ -104 +104 @@
+-    struct EventAddGovernor has copy, drop, store {
++    public struct EventAddGovernor has copy, drop, store {
+@@ -108 +108 @@
+-    struct EventRemoveGovernor has copy, drop, store {
++    public struct EventRemoveGovernor has copy, drop, store {
+@@ -112 +112 @@
+-    struct EventAddEpochGovernor has copy, drop, store {
++    public struct EventAddEpochGovernor has copy, drop, store {
+@@ -116 +116 @@
+-    struct EventRemoveEpochGovernor has copy, drop, store {
++    public struct EventRemoveEpochGovernor has copy, drop, store {
+@@ -123 +123 @@
+-        let v2 = Voter<T0>{
++        let mut v2 = Voter<T0>{
+@@ -154 +154 @@
+-        let v3 = 0;
++        let mut v3 = 0;
+@@ -241 +241 @@
+-        let v1 = 0;
++        let mut v1 = 0;
+@@ -251 +251 @@
+-        let v1 = 0;
++        let mut v1 = 0;
+@@ -260 +260 @@
+-        let v1 = 0;
++        let mut v1 = 0;
+@@ -279,2 +279,2 @@
+-        let v0 = return_new_gauge<T0, T1, T2>(arg1, arg4, arg6);
+-        let v1 = std::vector::empty<std::type_name::TypeName>();
++        let mut v0 = return_new_gauge<T0, T1, T2>(arg1, arg4, arg6);
++        let mut v1 = std::vector::empty<std::type_name::TypeName>();
+@@ -384 +384 @@
+-        let v3 = sui::balance::zero<T0>();
++        let mut v3 = sui::balance::zero<T0>();
+@@ -405 +405 @@
+-        let v4 = v3;
++        let mut v4 = v3;
+@@ -439,2 +439,2 @@
+-            let v2 = std::vector::empty<u64>();
+-            let v3 = 0;
++            let mut v2 = std::vector::empty<u64>();
++            let mut v3 = 0;
+@@ -442 +442 @@
+-            let v5 = std::vector::empty<sui::object::ID>();
++            let mut v5 = std::vector::empty<sui::object::ID>();
+@@ -523,2 +523,2 @@
+-        let v2 = 0;
+-        let v3 = 0;
++        let mut v2 = 0;
++        let mut v3 = 0;
+@@ -559 +559 @@
+-        let v1 = distribution::gauge::create<T0, T1, T2>(v0, arg2);
++        let mut v1 = distribution::gauge::create<T0, T1, T2>(v0, arg2);
+@@ -635 +635 @@
+-        let v0 = 0;
++        let mut v0 = 0;
+@@ -643 +643 @@
+-        let v0 = 0;
++        let mut v0 = 0;
+@@ -682,4 +682,4 @@
+-        let v1 = 0;
+-        let v2 = 0;
+-        let v3 = 0;
+-        let v4 = 0;
++        let mut v1 = 0;
++        let mut v2 = 0;
++        let mut v3 = 0;
++        let mut v4 = 0;
+@@ -759 +759 @@
+-        let v0 = std::vector::empty<sui::object::ID>();
++        let mut v0 = std::vector::empty<sui::object::ID>();
+@@ -767 +767 @@
+-        let v4 = 0;
++        let mut v4 = 0;
+--- ./sources/voter_cap.move
++++ ./sources/voter_cap.move
+@@ -2 +2 @@
+-    struct VoterCap has store, key {
++    public struct VoterCap has store, key {
+@@ -7 +7 @@
+-    struct GovernorCap has store, key {
++    public struct GovernorCap has store, key {
+@@ -13 +13 @@
+-    struct EpochGovernorCap has store, key {
++    public struct EpochGovernorCap has store, key {
+--- ./sources/voting_dao.move
++++ ./sources/voting_dao.move
+@@ -2 +2 @@
+-    struct VotingDAO has store {
++    public struct VotingDAO has store {
+@@ -9 +9 @@
+-    struct Checkpoint has copy, drop, store {
++    public struct Checkpoint has copy, drop, store {
+@@ -36 +36 @@
+-        let v3 = create_checkpoint();
++        let mut v3 = create_checkpoint();
+@@ -80 +80 @@
+-        let v3 = create_checkpoint();
++        let mut v3 = create_checkpoint();
+--- ./sources/voting_escrow.move
++++ ./sources/voting_escrow.move
+@@ -771 +771 @@
+-    fun get_past_global_point_index<T0>(arg0: &VotingEscrow<T0>, arg1: u64, arg2: u64) : u64 {
++    fun get_past_global_point_index<T0>(arg0: &VotingEscrow<T0>, mut arg1: u64, arg2: u64) : u64 {

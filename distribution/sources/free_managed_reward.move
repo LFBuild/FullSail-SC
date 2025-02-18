@@ -1,11 +1,11 @@
 module distribution::free_managed_reward {
-    struct FreeManagedReward has store, key {
+    public struct FreeManagedReward has store, key {
         id: sui::object::UID,
         reward: distribution::reward::Reward,
     }
     
-    public(friend) fun create(arg0: sui::object::ID, arg1: sui::object::ID, arg2: std::type_name::TypeName, arg3: &mut sui::tx_context::TxContext) : FreeManagedReward {
-        let v0 = std::vector::empty<std::type_name::TypeName>();
+    public(package) fun create(arg0: sui::object::ID, arg1: sui::object::ID, arg2: std::type_name::TypeName, arg3: &mut sui::tx_context::TxContext) : FreeManagedReward {
+        let mut v0 = std::vector::empty<std::type_name::TypeName>();
         std::vector::push_back<std::type_name::TypeName>(&mut v0, arg2);
         FreeManagedReward{
             id     : sui::object::new(arg3), 
@@ -48,14 +48,14 @@ module distribution::free_managed_reward {
     public fun get_reward<T0>(arg0: &mut FreeManagedReward, arg1: distribution::lock_owner::OwnerProof, arg2: &sui::clock::Clock, arg3: &mut sui::tx_context::TxContext) {
         let (v0, v1, v2) = distribution::lock_owner::consume(arg1);
         assert!(distribution::reward::ve(&arg0.reward) == v0, 9223372337502486527);
-        let v3 = distribution::reward::get_reward_internal<T0>(&mut arg0.reward, sui::tx_context::sender(arg3), v1, arg2, arg3);
+        let mut v3 = distribution::reward::get_reward_internal<T0>(&mut arg0.reward, sui::tx_context::sender(arg3), v1, arg2, arg3);
         if (std::option::is_some<sui::balance::Balance<T0>>(&v3)) {
             sui::transfer::public_transfer<sui::coin::Coin<T0>>(sui::coin::from_balance<T0>(std::option::extract<sui::balance::Balance<T0>>(&mut v3), arg3), v2);
         };
         std::option::destroy_none<sui::balance::Balance<T0>>(v3);
     }
     
-    public fun notify_reward_amount<T0>(arg0: &mut FreeManagedReward, arg1: std::option::Option<distribution::whitelisted_tokens::WhitelistedToken>, arg2: sui::coin::Coin<T0>, arg3: &sui::clock::Clock, arg4: &mut sui::tx_context::TxContext) {
+    public fun notify_reward_amount<T0>(arg0: &mut FreeManagedReward, mut arg1: std::option::Option<distribution::whitelisted_tokens::WhitelistedToken>, arg2: sui::coin::Coin<T0>, arg3: &sui::clock::Clock, arg4: &mut sui::tx_context::TxContext) {
         let v0 = std::type_name::get<T0>();
         if (!distribution::reward::rewards_contains(&arg0.reward, v0)) {
             assert!(std::option::is_some<distribution::whitelisted_tokens::WhitelistedToken>(&arg1), 9223372389042094079);

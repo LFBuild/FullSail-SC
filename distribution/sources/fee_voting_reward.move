@@ -1,5 +1,5 @@
 module distribution::fee_voting_reward {
-    struct FeeVotingReward has store, key {
+    public struct FeeVotingReward has store, key {
         id: sui::object::UID,
         gauge: sui::object::ID,
         reward: distribution::reward::Reward,
@@ -9,7 +9,7 @@ module distribution::fee_voting_reward {
         distribution::reward::balance<T0>(&arg0.reward)
     }
     
-    public(friend) fun create(arg0: sui::object::ID, arg1: sui::object::ID, arg2: sui::object::ID, arg3: vector<std::type_name::TypeName>, arg4: &mut sui::tx_context::TxContext) : FeeVotingReward {
+    public(package) fun create(arg0: sui::object::ID, arg1: sui::object::ID, arg2: sui::object::ID, arg3: vector<std::type_name::TypeName>, arg4: &mut sui::tx_context::TxContext) : FeeVotingReward {
         FeeVotingReward{
             id     : sui::object::new(arg4), 
             gauge  : arg2, 
@@ -48,7 +48,7 @@ module distribution::fee_voting_reward {
     public fun get_reward<T0, T1>(arg0: &mut FeeVotingReward, arg1: &distribution::voting_escrow::VotingEscrow<T0>, arg2: &distribution::voting_escrow::Lock, arg3: &sui::clock::Clock, arg4: &mut sui::tx_context::TxContext) {
         let v0 = sui::object::id<distribution::voting_escrow::Lock>(arg2);
         let v1 = distribution::voting_escrow::owner_of<T0>(arg1, v0);
-        let v2 = distribution::reward::get_reward_internal<T1>(&mut arg0.reward, v1, v0, arg3, arg4);
+        let mut v2 = distribution::reward::get_reward_internal<T1>(&mut arg0.reward, v1, v0, arg3, arg4);
         if (std::option::is_some<sui::balance::Balance<T1>>(&v2)) {
             sui::transfer::public_transfer<sui::coin::Coin<T1>>(sui::coin::from_balance<T1>(std::option::extract<sui::balance::Balance<T1>>(&mut v2), arg4), v1);
         };
@@ -63,7 +63,7 @@ module distribution::fee_voting_reward {
     
     public fun voter_get_reward<T0, T1>(arg0: &mut FeeVotingReward, arg1: &distribution::voter_cap::VoterCap, arg2: &distribution::voting_escrow::VotingEscrow<T0>, arg3: sui::object::ID, arg4: &sui::clock::Clock, arg5: &mut sui::tx_context::TxContext) : sui::balance::Balance<T1> {
         assert!(distribution::voter_cap::get_voter_id(arg1) == distribution::reward::voter(&arg0.reward), 9223372358977323007);
-        let v0 = distribution::reward::get_reward_internal<T1>(&mut arg0.reward, distribution::voting_escrow::owner_of<T0>(arg2, arg3), arg3, arg4, arg5);
+        let mut v0 = distribution::reward::get_reward_internal<T1>(&mut arg0.reward, distribution::voting_escrow::owner_of<T0>(arg2, arg3), arg3, arg4, arg5);
         let v1 = if (std::option::is_some<sui::balance::Balance<T1>>(&v0)) {
             std::option::extract<sui::balance::Balance<T1>>(&mut v0)
         } else {

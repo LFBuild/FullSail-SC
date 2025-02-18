@@ -1,10 +1,10 @@
 module distribution::reward_distributor_cap {
-    struct RewardDistributorCap has store, key {
+    public struct RewardDistributorCap has store, key {
         id: sui::object::UID,
         reward_distributor: sui::object::ID,
     }
     
-    public(friend) fun create(arg0: sui::object::ID, arg1: &mut sui::tx_context::TxContext) : RewardDistributorCap {
+    public(package) fun create(arg0: sui::object::ID, arg1: &mut sui::tx_context::TxContext) : RewardDistributorCap {
         RewardDistributorCap{
             id                 : sui::object::new(arg1), 
             reward_distributor : arg0,

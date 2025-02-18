@@ -1,5 +1,5 @@
 module distribution::emergency_council {
-    struct EmergencyCouncilCap has store, key {
+    public struct EmergencyCouncilCap has store, key {
         id: sui::object::UID,
         voter: sui::object::ID,
     }
