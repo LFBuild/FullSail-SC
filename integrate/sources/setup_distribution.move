@@ -1,10 +1,10 @@
 module integrate::setup_distribution {
     public entry fun create<T0>(arg0: &0x2::package::Publisher, arg1: address, arg2: &0x2::clock::Clock, arg3: &mut 0x2::tx_context::TxContext) {
-        let (v0, v1) = distribution::minter::create<T0>(arg0, 0x1::option::none<distribution::magma_token::MinterCap<T0>>(), arg3);
+        let (v0, v1) = distribution::minter::create<T0>(arg0, std::option::none<distribution::magma_token::MinterCap<T0>>(), arg3);
         let v2 = v1;
         let v3 = v0;
-        let v4 = 0x1::vector::empty<0x1::type_name::TypeName>();
-        0x1::vector::push_back<0x1::type_name::TypeName>(&mut v4, 0x1::type_name::get<T0>());
+        let v4 = std::vector::empty<std::type_name::TypeName>();
+        std::vector::push_back<std::type_name::TypeName>(&mut v4, std::type_name::get<T0>());
         let (v5, v6) = distribution::voter::create<T0>(arg0, v4, arg3);
         let v7 = v5;
         let (v8, v9) = distribution::reward_distributor::create<T0>(arg0, arg2, arg3);

@@ -1,16 +1,16 @@
 module clmm_pool::utils {
-    public fun str(arg0: u64) : 0x1::string::String {
+    public fun str(arg0: u64) : std::string::String {
         if (arg0 == 0) {
-            return 0x1::string::utf8(b"0")
+            return std::string::utf8(b"0")
         };
-        let v0 = 0x1::vector::empty<u8>();
+        let v0 = std::vector::empty<u8>();
         while (arg0 > 0) {
             let v1 = (arg0 % 10) as u8;
             arg0 = arg0 / 10;
-            0x1::vector::push_back<u8>(&mut v0, v1 + 48);
+            std::vector::push_back<u8>(&mut v0, v1 + 48);
         };
-        0x1::vector::reverse<u8>(&mut v0);
-        0x1::string::utf8(v0)
+        std::vector::reverse<u8>(&mut v0);
+        std::string::utf8(v0)
     }
     
     // decompiled from Move bytecode v6

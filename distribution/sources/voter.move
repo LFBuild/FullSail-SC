@@ -43,7 +43,7 @@ module distribution::voter {
         index: u128,
         supply_index: 0x2::table::Table<GaugeID, u128>,
         claimable: 0x2::table::Table<GaugeID, u64>,
-        is_whitelisted_token: 0x2::table::Table<0x1::type_name::TypeName, bool>,
+        is_whitelisted_token: 0x2::table::Table<std::type_name::TypeName, bool>,
         is_whitelisted_nft: 0x2::table::Table<LockID, bool>,
         max_voting_num: u64,
         last_voted: 0x2::table::Table<LockID, u64>,
@@ -56,7 +56,7 @@ module distribution::voter {
     
     struct EventNotifyReward has copy, drop, store {
         notifier: 0x2::object::ID,
-        token: 0x1::type_name::TypeName,
+        token: std::type_name::TypeName,
         amount: u64,
     }
     
@@ -67,7 +67,7 @@ module distribution::voter {
     
     struct EventWhitelistToken has copy, drop, store {
         sender: address,
-        token: 0x1::type_name::TypeName,
+        token: std::type_name::TypeName,
         listed: bool,
     }
     
@@ -117,7 +117,7 @@ module distribution::voter {
         who: address,
     }
     
-    public fun create<T0>(arg0: &0x2::package::Publisher, arg1: vector<0x1::type_name::TypeName>, arg2: &mut 0x2::tx_context::TxContext) : (Voter<T0>, distribution::notify_reward_cap::NotifyRewardCap) {
+    public fun create<T0>(arg0: &0x2::package::Publisher, arg1: vector<std::type_name::TypeName>, arg2: &mut 0x2::tx_context::TxContext) : (Voter<T0>, distribution::notify_reward_cap::NotifyRewardCap) {
         let v0 = 0x2::object::new(arg2);
         let v1 = *0x2::object::uid_as_inner(&v0);
         let v2 = Voter<T0>{
@@ -129,7 +129,7 @@ module distribution::voter {
             is_alive                      : 0x2::table::new<GaugeID, bool>(arg2), 
             total_weight                  : 0, 
             used_weights                  : 0x2::table::new<LockID, u64>(arg2), 
-            pools                         : 0x1::vector::empty<PoolID>(), 
+            pools                         : std::vector::empty<PoolID>(), 
             pool_to_gauger                : 0x2::table::new<PoolID, GaugeID>(arg2), 
             gauge_represents              : 0x2::table::new<GaugeID, GaugeRepresent>(arg2), 
             votes                         : 0x2::table::new<LockID, 0x2::table::Table<PoolID, u64>>(arg2), 
@@ -141,7 +141,7 @@ module distribution::voter {
             index                         : 0, 
             supply_index                  : 0x2::table::new<GaugeID, u128>(arg2), 
             claimable                     : 0x2::table::new<GaugeID, u64>(arg2), 
-            is_whitelisted_token          : 0x2::table::new<0x1::type_name::TypeName, bool>(arg2), 
+            is_whitelisted_token          : 0x2::table::new<std::type_name::TypeName, bool>(arg2), 
             is_whitelisted_nft            : 0x2::table::new<LockID, bool>(arg2), 
             max_voting_num                : 10, 
             last_voted                    : 0x2::table::new<LockID, u64>(arg2), 
@@ -152,8 +152,8 @@ module distribution::voter {
             gauge_to_bribe                : 0x2::table::new<GaugeID, distribution::bribe_voting_reward::BribeVotingReward>(arg2),
         };
         let v3 = 0;
-        while (v3 < 0x1::vector::length<0x1::type_name::TypeName>(&arg1)) {
-            whitelist_token_internal<T0>(&mut v2, *0x1::vector::borrow<0x1::type_name::TypeName>(&arg1, v3), true, 0x2::tx_context::sender(arg2));
+        while (v3 < std::vector::length<std::type_name::TypeName>(&arg1)) {
+            whitelist_token_internal<T0>(&mut v2, *std::vector::borrow<std::type_name::TypeName>(&arg1, v3), true, 0x2::tx_context::sender(arg2));
             v3 = v3 + 1;
         };
         (v2, distribution::notify_reward_cap::create_internal(0x2::object::id<Voter<T0>>(&v2), arg2))
@@ -235,13 +235,13 @@ module distribution::voter {
     }
     
     fun check_vote<T0>(arg0: &Voter<T0>, arg1: &vector<0x2::object::ID>, arg2: &vector<u64>) {
-        let v0 = 0x1::vector::length<0x2::object::ID>(arg1);
-        assert!(v0 == 0x1::vector::length<u64>(arg2), 9223374162864308236);
+        let v0 = std::vector::length<0x2::object::ID>(arg1);
+        assert!(v0 == std::vector::length<u64>(arg2), 9223374162864308236);
         assert!(v0 <= arg0.max_voting_num, 9223374167160586272);
         let v1 = 0;
         while (v1 < v0) {
-            assert!(0x2::table::contains<PoolID, GaugeID>(&arg0.pool_to_gauger, into_pool_id(*0x1::vector::borrow<0x2::object::ID>(arg1, v1))), 9223374184339275790);
-            assert!(*0x1::vector::borrow<u64>(arg2, v1) <= 10000, 9223374188634374160);
+            assert!(0x2::table::contains<PoolID, GaugeID>(&arg0.pool_to_gauger, into_pool_id(*std::vector::borrow<0x2::object::ID>(arg1, v1))), 9223374184339275790);
+            assert!(*std::vector::borrow<u64>(arg2, v1) <= 10000, 9223374188634374160);
             v1 = v1 + 1;
         };
     }
@@ -249,8 +249,8 @@ module distribution::voter {
     public fun claim_voting_bribe<T0, T1>(arg0: &mut Voter<T0>, arg1: &mut distribution::voting_escrow::VotingEscrow<T0>, arg2: &distribution::voting_escrow::Lock, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
         let v0 = 0x2::table::borrow<LockID, vector<PoolID>>(&arg0.pool_vote, into_lock_id(0x2::object::id<distribution::voting_escrow::Lock>(arg2)));
         let v1 = 0;
-        while (v1 < 0x1::vector::length<PoolID>(v0)) {
-            distribution::bribe_voting_reward::get_reward<T0, T1>(0x2::table::borrow_mut<GaugeID, distribution::bribe_voting_reward::BribeVotingReward>(&mut arg0.gauge_to_bribe, *0x2::table::borrow<PoolID, GaugeID>(&arg0.pool_to_gauger, *0x1::vector::borrow<PoolID>(v0, v1))), arg1, arg2, arg3, arg4);
+        while (v1 < std::vector::length<PoolID>(v0)) {
+            distribution::bribe_voting_reward::get_reward<T0, T1>(0x2::table::borrow_mut<GaugeID, distribution::bribe_voting_reward::BribeVotingReward>(&mut arg0.gauge_to_bribe, *0x2::table::borrow<PoolID, GaugeID>(&arg0.pool_to_gauger, *std::vector::borrow<PoolID>(v0, v1))), arg1, arg2, arg3, arg4);
             v1 = v1 + 1;
         };
     }
@@ -258,8 +258,8 @@ module distribution::voter {
     public fun claim_voting_fee_reward<T0, T1>(arg0: &mut Voter<T0>, arg1: &mut distribution::voting_escrow::VotingEscrow<T0>, arg2: &distribution::voting_escrow::Lock, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
         let v0 = 0x2::table::borrow<LockID, vector<PoolID>>(&arg0.pool_vote, into_lock_id(0x2::object::id<distribution::voting_escrow::Lock>(arg2)));
         let v1 = 0;
-        while (v1 < 0x1::vector::length<PoolID>(v0)) {
-            distribution::fee_voting_reward::get_reward<T0, T1>(0x2::table::borrow_mut<GaugeID, distribution::fee_voting_reward::FeeVotingReward>(&mut arg0.gauge_to_fee, *0x2::table::borrow<PoolID, GaugeID>(&arg0.pool_to_gauger, *0x1::vector::borrow<PoolID>(v0, v1))), arg1, arg2, arg3, arg4);
+        while (v1 < std::vector::length<PoolID>(v0)) {
+            distribution::fee_voting_reward::get_reward<T0, T1>(0x2::table::borrow_mut<GaugeID, distribution::fee_voting_reward::FeeVotingReward>(&mut arg0.gauge_to_fee, *0x2::table::borrow<PoolID, GaugeID>(&arg0.pool_to_gauger, *std::vector::borrow<PoolID>(v0, v1))), arg1, arg2, arg3, arg4);
             v1 = v1 + 1;
         };
     }
@@ -277,14 +277,14 @@ module distribution::voter {
         distribution::voter_cap::validate_governor_voter_id(arg2, 0x2::object::id<Voter<T2>>(arg0));
         assert!(is_governor<T2>(arg0, distribution::voter_cap::who(arg2)), 9223373604519346200);
         let v0 = return_new_gauge<T0, T1, T2>(arg1, arg4, arg6);
-        let v1 = 0x1::vector::empty<0x1::type_name::TypeName>();
-        0x1::vector::push_back<0x1::type_name::TypeName>(&mut v1, 0x1::type_name::get<T0>());
-        0x1::vector::push_back<0x1::type_name::TypeName>(&mut v1, 0x1::type_name::get<T1>());
+        let v1 = std::vector::empty<std::type_name::TypeName>();
+        std::vector::push_back<std::type_name::TypeName>(&mut v1, std::type_name::get<T0>());
+        std::vector::push_back<std::type_name::TypeName>(&mut v1, std::type_name::get<T1>());
         let v2 = 0x2::object::id<distribution::gauge::Gauge<T0, T1, T2>>(&v0);
         let v3 = 0x2::object::id<Voter<T2>>(arg0);
         let v4 = 0x2::object::id<distribution::voting_escrow::VotingEscrow<T2>>(arg3);
         0x2::table::add<GaugeID, distribution::fee_voting_reward::FeeVotingReward>(&mut arg0.gauge_to_fee, into_gauge_id(v2), distribution::fee_voting_reward::create(v3, v4, v2, v1, arg6));
-        0x1::vector::push_back<0x1::type_name::TypeName>(&mut v1, 0x1::type_name::get<T2>());
+        std::vector::push_back<std::type_name::TypeName>(&mut v1, std::type_name::get<T2>());
         0x2::table::add<GaugeID, distribution::bribe_voting_reward::BribeVotingReward>(&mut arg0.gauge_to_bribe, into_gauge_id(v2), distribution::bribe_voting_reward::create(v3, v4, v2, v1, arg6));
         receive_gauger<T0, T1, T2>(arg0, arg2, &mut v0, arg5, arg6);
         v0
@@ -314,7 +314,7 @@ module distribution::voter {
             amount : v1,
         };
         0x2::event::emit<EventExtractClaimable>(v2);
-        0x2::balance::split<T0>(0x2::bag::borrow_mut<0x1::type_name::TypeName, 0x2::balance::Balance<T0>>(&mut arg0.balances, 0x1::type_name::get<T0>()), v1)
+        0x2::balance::split<T0>(0x2::bag::borrow_mut<std::type_name::TypeName, 0x2::balance::Balance<T0>>(&mut arg0.balances, std::type_name::get<T0>()), v1)
     }
     
     public fun fee_voting_reward_balance<T0, T1>(arg0: &Voter<T0>, arg1: 0x2::object::ID) : u64 {
@@ -364,10 +364,10 @@ module distribution::voter {
     }
     
     public fun is_whitelisted_token<T0, T1>(arg0: &Voter<T0>) : bool {
-        let v0 = 0x1::type_name::get<T1>();
-        if (0x2::table::contains<0x1::type_name::TypeName, bool>(&arg0.is_whitelisted_token, v0)) {
+        let v0 = std::type_name::get<T1>();
+        if (0x2::table::contains<std::type_name::TypeName, bool>(&arg0.is_whitelisted_token, v0)) {
             let v2 = true;
-            &v2 == 0x2::table::borrow<0x1::type_name::TypeName, bool>(&arg0.is_whitelisted_token, v0)
+            &v2 == 0x2::table::borrow<std::type_name::TypeName, bool>(&arg0.is_whitelisted_token, v0)
         } else {
             false
         }
@@ -383,7 +383,7 @@ module distribution::voter {
         let v2 = 0x2::table::remove<GaugeID, u64>(&mut arg0.claimable, v0);
         let v3 = 0x2::balance::zero<T0>();
         if (v2 > 0) {
-            0x2::balance::join<T0>(&mut v3, 0x2::balance::split<T0>(0x2::bag::borrow_mut<0x1::type_name::TypeName, 0x2::balance::Balance<T0>>(&mut arg0.balances, 0x1::type_name::get<T0>()), v2));
+            0x2::balance::join<T0>(&mut v3, 0x2::balance::split<T0>(0x2::bag::borrow_mut<std::type_name::TypeName, 0x2::balance::Balance<T0>>(&mut arg0.balances, std::type_name::get<T0>()), v2));
         };
         0x2::table::remove<GaugeID, bool>(&mut arg0.is_alive, v0);
         0x2::table::add<GaugeID, bool>(&mut arg0.is_alive, v0, false);
@@ -396,15 +396,15 @@ module distribution::voter {
         distribution::notify_reward_cap::validate_notify_reward_voter_id(arg1, 0x2::object::id<Voter<T0>>(arg0));
         let v0 = 0x2::coin::into_balance<T0>(arg2);
         let v1 = 0x2::balance::value<T0>(&v0);
-        let v2 = 0x1::type_name::get<T0>();
-        let v3 = if (0x2::bag::contains<0x1::type_name::TypeName>(&arg0.balances, v2)) {
-            0x2::bag::remove<0x1::type_name::TypeName, 0x2::balance::Balance<T0>>(&mut arg0.balances, v2)
+        let v2 = std::type_name::get<T0>();
+        let v3 = if (0x2::bag::contains<std::type_name::TypeName>(&arg0.balances, v2)) {
+            0x2::bag::remove<std::type_name::TypeName, 0x2::balance::Balance<T0>>(&mut arg0.balances, v2)
         } else {
             0x2::balance::zero<T0>()
         };
         let v4 = v3;
         0x2::balance::join<T0>(&mut v4, v0);
-        0x2::bag::add<0x1::type_name::TypeName, 0x2::balance::Balance<T0>>(&mut arg0.balances, v2, v4);
+        0x2::bag::add<std::type_name::TypeName, 0x2::balance::Balance<T0>>(&mut arg0.balances, v2, v4);
         let v5 = if (arg0.total_weight == 0) {
             1
         } else {
@@ -431,21 +431,21 @@ module distribution::voter {
     fun poke_internal<T0>(arg0: &mut Voter<T0>, arg1: &mut distribution::voting_escrow::VotingEscrow<T0>, arg2: &distribution::voting_escrow::Lock, arg3: u64, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
         let v0 = into_lock_id(0x2::object::id<distribution::voting_escrow::Lock>(arg2));
         let v1 = if (0x2::table::contains<LockID, vector<PoolID>>(&arg0.pool_vote, v0)) {
-            0x1::vector::length<PoolID>(0x2::table::borrow<LockID, vector<PoolID>>(&arg0.pool_vote, v0))
+            std::vector::length<PoolID>(0x2::table::borrow<LockID, vector<PoolID>>(&arg0.pool_vote, v0))
         } else {
             0
         };
         if (v1 > 0) {
-            let v2 = 0x1::vector::empty<u64>();
+            let v2 = std::vector::empty<u64>();
             let v3 = 0;
             let v4 = 0x2::table::borrow<LockID, vector<PoolID>>(&arg0.pool_vote, v0);
-            let v5 = 0x1::vector::empty<0x2::object::ID>();
+            let v5 = std::vector::empty<0x2::object::ID>();
             assert!(0x2::table::contains<LockID, 0x2::table::Table<PoolID, u64>>(&arg0.votes, v0), 9223374510758756396);
             while (v3 < v1) {
-                0x1::vector::push_back<0x2::object::ID>(&mut v5, 0x1::vector::borrow<PoolID>(v4, v3).id);
+                std::vector::push_back<0x2::object::ID>(&mut v5, std::vector::borrow<PoolID>(v4, v3).id);
                 let v6 = 0x2::table::borrow<LockID, 0x2::table::Table<PoolID, u64>>(&arg0.votes, v0);
-                assert!(0x2::table::contains<PoolID, u64>(v6, *0x1::vector::borrow<PoolID>(v4, v3)), 9223374527938625580);
-                0x1::vector::push_back<u64>(&mut v2, *0x2::table::borrow<PoolID, u64>(v6, *0x1::vector::borrow<PoolID>(v4, v3)));
+                assert!(0x2::table::contains<PoolID, u64>(v6, *std::vector::borrow<PoolID>(v4, v3)), 9223374527938625580);
+                std::vector::push_back<u64>(&mut v2, *0x2::table::borrow<PoolID, u64>(v6, *std::vector::borrow<PoolID>(v4, v3)));
                 v3 = v3 + 1;
             };
             vote_internal<T0>(arg0, arg1, arg2, arg3, v5, v2, arg4, arg5);
@@ -482,7 +482,7 @@ module distribution::voter {
         0x2::table::add<GaugeID, GaugeRepresent>(&mut arg0.gauge_represents, v0, v2);
         0x2::table::add<GaugeID, 0x2::balance::Balance<T2>>(&mut arg0.rewards, v0, 0x2::balance::zero<T2>());
         0x2::table::add<GaugeID, u64>(&mut arg0.weights, v0, 0);
-        0x1::vector::push_back<PoolID>(&mut arg0.pools, v1);
+        std::vector::push_back<PoolID>(&mut arg0.pools, v1);
         0x2::table::add<GaugeID, bool>(&mut arg0.is_alive, v0, true);
         0x2::table::add<PoolID, GaugeID>(&mut arg0.pool_to_gauger, v1, v0);
         distribution::gauge::set_voter<T0, T1, T2>(arg2, 0x2::object::id<Voter<T2>>(arg0), arg4);
@@ -516,14 +516,14 @@ module distribution::voter {
     fun reset_internal<T0>(arg0: &mut Voter<T0>, arg1: &mut distribution::voting_escrow::VotingEscrow<T0>, arg2: &distribution::voting_escrow::Lock, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
         let v0 = into_lock_id(0x2::object::id<distribution::voting_escrow::Lock>(arg2));
         let v1 = if (0x2::table::contains<LockID, vector<PoolID>>(&arg0.pool_vote, v0)) {
-            0x1::vector::length<PoolID>(0x2::table::borrow<LockID, vector<PoolID>>(&arg0.pool_vote, v0))
+            std::vector::length<PoolID>(0x2::table::borrow<LockID, vector<PoolID>>(&arg0.pool_vote, v0))
         } else {
             0
         };
         let v2 = 0;
         let v3 = 0;
         while (v3 < v1) {
-            let v4 = *0x1::vector::borrow<PoolID>(0x2::table::borrow<LockID, vector<PoolID>>(&arg0.pool_vote, v0), v3);
+            let v4 = *std::vector::borrow<PoolID>(0x2::table::borrow<LockID, vector<PoolID>>(&arg0.pool_vote, v0), v3);
             let v5 = *0x2::table::borrow<PoolID, u64>(0x2::table::borrow<LockID, 0x2::table::Table<PoolID, u64>>(&arg0.votes, v0), v4);
             let v6 = *0x2::table::borrow<PoolID, GaugeID>(&arg0.pool_to_gauger, v4);
             if (v5 != 0) {
@@ -633,8 +633,8 @@ module distribution::voter {
     
     public fun update_for_many<T0>(arg0: &mut Voter<T0>, arg1: vector<0x2::object::ID>) {
         let v0 = 0;
-        while (v0 < 0x1::vector::length<0x2::object::ID>(&arg1)) {
-            update_for_internal<T0>(arg0, into_gauge_id(*0x1::vector::borrow<0x2::object::ID>(&arg1, v0)));
+        while (v0 < std::vector::length<0x2::object::ID>(&arg1)) {
+            update_for_internal<T0>(arg0, into_gauge_id(*std::vector::borrow<0x2::object::ID>(&arg1, v0)));
             v0 = v0 + 1;
         };
     }
@@ -642,7 +642,7 @@ module distribution::voter {
     public fun update_for_range<T0>(arg0: &mut Voter<T0>, arg1: u64, arg2: u64) {
         let v0 = 0;
         while (arg1 + v0 < arg2) {
-            update_for_internal<T0>(arg0, *0x2::table::borrow<PoolID, GaugeID>(&arg0.pool_to_gauger, *0x1::vector::borrow<PoolID>(&arg0.pools, arg1 + v0)));
+            update_for_internal<T0>(arg0, *0x2::table::borrow<PoolID, GaugeID>(&arg0.pool_to_gauger, *std::vector::borrow<PoolID>(&arg0.pools, arg1 + v0)));
             v0 = v0 + 1;
         };
     }
@@ -683,19 +683,19 @@ module distribution::voter {
         let v2 = 0;
         let v3 = 0;
         let v4 = 0;
-        let v5 = 0x1::vector::length<0x2::object::ID>(&arg4);
+        let v5 = std::vector::length<0x2::object::ID>(&arg4);
         while (v4 < v5) {
-            let v6 = 0x1::vector::borrow<u64>(&arg5, v4);
+            let v6 = std::vector::borrow<u64>(&arg5, v4);
             v1 = v1 + *v6;
             v4 = v4 + 1;
         };
         v4 = 0;
         while (v4 < v5) {
-            let v7 = into_pool_id(*0x1::vector::borrow<0x2::object::ID>(&arg4, v4));
+            let v7 = into_pool_id(*std::vector::borrow<0x2::object::ID>(&arg4, v4));
             assert!(0x2::table::contains<PoolID, GaugeID>(&arg0.pool_to_gauger, v7), 9223374798519205896);
             let v8 = *0x2::table::borrow<PoolID, GaugeID>(&arg0.pool_to_gauger, v7);
             assert!(is_gauge_alive<T0>(arg0, v8), 9223374807109926932);
-            let v9 = integer_mate::full_math_u64::mul_div_floor(*0x1::vector::borrow<u64>(&arg5, v4), arg3, v1);
+            let v9 = integer_mate::full_math_u64::mul_div_floor(*std::vector::borrow<u64>(&arg5, v4), arg3, v1);
             let v10 = if (0x2::table::contains<LockID, 0x2::table::Table<PoolID, u64>>(&arg0.votes, v0)) {
                 if (0x2::table::contains<PoolID, u64>(0x2::table::borrow<LockID, 0x2::table::Table<PoolID, u64>>(&arg0.votes, v0), v7)) {
                     let v11 = 0;
@@ -712,9 +712,9 @@ module distribution::voter {
             assert!(v9 > 0, 9223374841471107114);
             update_for_internal<T0>(arg0, v8);
             if (!0x2::table::contains<LockID, vector<PoolID>>(&arg0.pool_vote, v0)) {
-                0x2::table::add<LockID, vector<PoolID>>(&mut arg0.pool_vote, v0, 0x1::vector::empty<PoolID>());
+                0x2::table::add<LockID, vector<PoolID>>(&mut arg0.pool_vote, v0, std::vector::empty<PoolID>());
             };
-            0x1::vector::push_back<PoolID>(0x2::table::borrow_mut<LockID, vector<PoolID>>(&mut arg0.pool_vote, v0), v7);
+            std::vector::push_back<PoolID>(0x2::table::borrow_mut<LockID, vector<PoolID>>(&mut arg0.pool_vote, v0), v7);
             let v12 = if (0x2::table::contains<GaugeID, u64>(&arg0.weights, v8)) {
                 0x2::table::remove<GaugeID, u64>(&mut arg0.weights, v8)
             } else {
@@ -756,17 +756,17 @@ module distribution::voter {
     }
     
     public fun voted_pools<T0>(arg0: &Voter<T0>, arg1: 0x2::object::ID) : vector<0x2::object::ID> {
-        let v0 = 0x1::vector::empty<0x2::object::ID>();
+        let v0 = std::vector::empty<0x2::object::ID>();
         let v1 = into_lock_id(arg1);
         let v2 = if (0x2::table::contains<LockID, vector<PoolID>>(&arg0.pool_vote, v1)) {
             0x2::table::borrow<LockID, vector<PoolID>>(&arg0.pool_vote, v1)
         } else {
-            let v3 = 0x1::vector::empty<PoolID>();
+            let v3 = std::vector::empty<PoolID>();
             &v3
         };
         let v4 = 0;
-        while (v4 < 0x1::vector::length<PoolID>(v2)) {
-            0x1::vector::push_back<0x2::object::ID>(&mut v0, 0x1::vector::borrow<PoolID>(v2, v4).id);
+        while (v4 < std::vector::length<PoolID>(v2)) {
+            std::vector::push_back<0x2::object::ID>(&mut v0, std::vector::borrow<PoolID>(v2, v4).id);
             v4 = v4 + 1;
         };
         v0
@@ -791,14 +791,14 @@ module distribution::voter {
     public fun whitelist_token<T0, T1>(arg0: &mut Voter<T0>, arg1: &distribution::voter_cap::GovernorCap, arg2: bool, arg3: &mut 0x2::tx_context::TxContext) {
         distribution::voter_cap::validate_governor_voter_id(arg1, 0x2::object::id<Voter<T0>>(arg0));
         assert!(is_governor<T0>(arg0, distribution::voter_cap::who(arg1)), 9223373896577122328);
-        whitelist_token_internal<T0>(arg0, 0x1::type_name::get<T1>(), arg2, 0x2::tx_context::sender(arg3));
+        whitelist_token_internal<T0>(arg0, std::type_name::get<T1>(), arg2, 0x2::tx_context::sender(arg3));
     }
     
-    fun whitelist_token_internal<T0>(arg0: &mut Voter<T0>, arg1: 0x1::type_name::TypeName, arg2: bool, arg3: address) {
-        if (0x2::table::contains<0x1::type_name::TypeName, bool>(&arg0.is_whitelisted_token, arg1)) {
-            0x2::table::remove<0x1::type_name::TypeName, bool>(&mut arg0.is_whitelisted_token, arg1);
+    fun whitelist_token_internal<T0>(arg0: &mut Voter<T0>, arg1: std::type_name::TypeName, arg2: bool, arg3: address) {
+        if (0x2::table::contains<std::type_name::TypeName, bool>(&arg0.is_whitelisted_token, arg1)) {
+            0x2::table::remove<std::type_name::TypeName, bool>(&mut arg0.is_whitelisted_token, arg1);
         };
-        0x2::table::add<0x1::type_name::TypeName, bool>(&mut arg0.is_whitelisted_token, arg1, arg2);
+        0x2::table::add<std::type_name::TypeName, bool>(&mut arg0.is_whitelisted_token, arg1, arg2);
         let v0 = EventWhitelistToken{
             sender : arg3, 
             token  : arg1, 

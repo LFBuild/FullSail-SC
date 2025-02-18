@@ -287,22 +287,22 @@ module clmm_pool::config {
     
     public fun update_gauge_liveness(arg0: &mut GlobalConfig, arg1: vector<0x2::object::ID>, arg2: bool, arg3: &mut 0x2::tx_context::TxContext) {
         let v0 = 0;
-        let v1 = 0x1::vector::length<0x2::object::ID>(&arg1);
+        let v1 = std::vector::length<0x2::object::ID>(&arg1);
         checked_package_version(arg0);
         check_pool_manager_role(arg0, 0x2::tx_context::sender(arg3));
         assert!(v1 > 0, 9223373316755030015);
         if (arg2) {
             while (v0 < v1) {
-                if (!0x2::vec_set::contains<0x2::object::ID>(&arg0.alive_gauges, 0x1::vector::borrow<0x2::object::ID>(&arg1, v0))) {
-                    let v2 = *0x1::vector::borrow<0x2::object::ID>(&arg1, v0);
+                if (!0x2::vec_set::contains<0x2::object::ID>(&arg0.alive_gauges, std::vector::borrow<0x2::object::ID>(&arg1, v0))) {
+                    let v2 = *std::vector::borrow<0x2::object::ID>(&arg1, v0);
                     0x2::vec_set::insert<0x2::object::ID>(&mut arg0.alive_gauges, v2);
                 };
                 v0 = v0 + 1;
             };
         } else {
             while (v0 < v1) {
-                if (0x2::vec_set::contains<0x2::object::ID>(&arg0.alive_gauges, 0x1::vector::borrow<0x2::object::ID>(&arg1, v0))) {
-                    let v3 = 0x1::vector::borrow<0x2::object::ID>(&arg1, v0);
+                if (0x2::vec_set::contains<0x2::object::ID>(&arg0.alive_gauges, std::vector::borrow<0x2::object::ID>(&arg1, v0))) {
+                    let v3 = std::vector::borrow<0x2::object::ID>(&arg1, v0);
                     0x2::vec_set::remove<0x2::object::ID>(&mut arg0.alive_gauges, v3);
                 };
                 v0 = v0 + 1;

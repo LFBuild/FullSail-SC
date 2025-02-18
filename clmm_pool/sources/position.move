@@ -18,11 +18,11 @@ module clmm_pool::position {
         id: 0x2::object::UID,
         pool: 0x2::object::ID,
         index: u64,
-        coin_type_a: 0x1::type_name::TypeName,
-        coin_type_b: 0x1::type_name::TypeName,
-        name: 0x1::string::String,
-        description: 0x1::string::String,
-        url: 0x1::string::String,
+        coin_type_a: std::type_name::TypeName,
+        coin_type_b: std::type_name::TypeName,
+        name: std::string::String,
+        description: std::string::String,
+        url: std::string::String,
         tick_lower_index: integer_mate::i32::I32,
         tick_upper_index: integer_mate::i32::I32,
         liquidity: u128,
@@ -53,8 +53,8 @@ module clmm_pool::position {
     public fun is_empty(arg0: &PositionInfo) : bool {
         let v0 = true;
         let v1 = 0;
-        while (v1 < 0x1::vector::length<PositionReward>(&arg0.rewards)) {
-            let v2 = 0x1::vector::borrow<PositionReward>(&arg0.rewards, v1).amount_owned == 0;
+        while (v1 < std::vector::length<PositionReward>(&arg0.rewards)) {
+            let v2 = std::vector::borrow<PositionReward>(&arg0.rewards, v1).amount_owned == 0;
             v0 = v2;
             if (!v2) {
                 break
@@ -140,7 +140,7 @@ module clmm_pool::position {
         v0.liquidity
     }
     
-    public fun description(arg0: &Position) : 0x1::string::String {
+    public fun description(arg0: &Position) : std::string::String {
         arg0.description
     }
     
@@ -162,18 +162,18 @@ module clmm_pool::position {
     }
     
     public fun fetch_positions(arg0: &PositionManager, arg1: vector<0x2::object::ID>, arg2: u64) : vector<PositionInfo> {
-        let v0 = 0x1::vector::empty<PositionInfo>();
-        let v1 = if (0x1::vector::is_empty<0x2::object::ID>(&arg1)) {
+        let v0 = std::vector::empty<PositionInfo>();
+        let v1 = if (std::vector::is_empty<0x2::object::ID>(&arg1)) {
             move_stl::linked_table::head<0x2::object::ID, PositionInfo>(&arg0.positions)
         } else {
-            move_stl::linked_table::next<0x2::object::ID, PositionInfo>(move_stl::linked_table::borrow_node<0x2::object::ID, PositionInfo>(&arg0.positions, *0x1::vector::borrow<0x2::object::ID>(&arg1, 0)))
+            move_stl::linked_table::next<0x2::object::ID, PositionInfo>(move_stl::linked_table::borrow_node<0x2::object::ID, PositionInfo>(&arg0.positions, *std::vector::borrow<0x2::object::ID>(&arg1, 0)))
         };
         let v2 = v1;
         let v3 = 0;
-        while (0x1::option::is_some<0x2::object::ID>(&v2)) {
-            let v4 = move_stl::linked_table::borrow_node<0x2::object::ID, PositionInfo>(&arg0.positions, *0x1::option::borrow<0x2::object::ID>(&v2));
+        while (std::option::is_some<0x2::object::ID>(&v2)) {
+            let v4 = move_stl::linked_table::borrow_node<0x2::object::ID, PositionInfo>(&arg0.positions, *std::option::borrow<0x2::object::ID>(&v2));
             v2 = move_stl::linked_table::next<0x2::object::ID, PositionInfo>(v4);
-            0x1::vector::push_back<PositionInfo>(&mut v0, *move_stl::linked_table::borrow_value<0x2::object::ID, PositionInfo>(v4));
+            std::vector::push_back<PositionInfo>(&mut v0, *move_stl::linked_table::borrow_value<0x2::object::ID, PositionInfo>(v4));
             let v5 = v3 + 1;
             v3 = v5;
             if (v5 == arg2) {
@@ -236,24 +236,24 @@ module clmm_pool::position {
     }
     
     fun init(arg0: POSITION, arg1: &mut 0x2::tx_context::TxContext) {
-        let v0 = 0x1::vector::empty<0x1::string::String>();
-        0x1::vector::push_back<0x1::string::String>(&mut v0, 0x1::string::utf8(b"name"));
-        0x1::vector::push_back<0x1::string::String>(&mut v0, 0x1::string::utf8(b"coin_a"));
-        0x1::vector::push_back<0x1::string::String>(&mut v0, 0x1::string::utf8(b"coin_b"));
-        0x1::vector::push_back<0x1::string::String>(&mut v0, 0x1::string::utf8(b"link"));
-        0x1::vector::push_back<0x1::string::String>(&mut v0, 0x1::string::utf8(b"image_url"));
-        0x1::vector::push_back<0x1::string::String>(&mut v0, 0x1::string::utf8(b"description"));
-        0x1::vector::push_back<0x1::string::String>(&mut v0, 0x1::string::utf8(b"project_url"));
-        0x1::vector::push_back<0x1::string::String>(&mut v0, 0x1::string::utf8(b"creator"));
-        let v1 = 0x1::vector::empty<0x1::string::String>();
-        0x1::vector::push_back<0x1::string::String>(&mut v1, 0x1::string::utf8(b"{name}"));
-        0x1::vector::push_back<0x1::string::String>(&mut v1, 0x1::string::utf8(b"{coin_type_a}"));
-        0x1::vector::push_back<0x1::string::String>(&mut v1, 0x1::string::utf8(b"{coin_type_b}"));
-        0x1::vector::push_back<0x1::string::String>(&mut v1, 0x1::string::utf8(b"https://app.cetus.zone/position?chain=sui&id={id}"));
-        0x1::vector::push_back<0x1::string::String>(&mut v1, 0x1::string::utf8(b"{url}"));
-        0x1::vector::push_back<0x1::string::String>(&mut v1, 0x1::string::utf8(b"{description}"));
-        0x1::vector::push_back<0x1::string::String>(&mut v1, 0x1::string::utf8(b"https://cetus.zone"));
-        0x1::vector::push_back<0x1::string::String>(&mut v1, 0x1::string::utf8(b"Cetus"));
+        let v0 = std::vector::empty<std::string::String>();
+        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"name"));
+        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"coin_a"));
+        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"coin_b"));
+        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"link"));
+        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"image_url"));
+        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"description"));
+        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"project_url"));
+        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"creator"));
+        let v1 = std::vector::empty<std::string::String>();
+        std::vector::push_back<std::string::String>(&mut v1, std::string::utf8(b"{name}"));
+        std::vector::push_back<std::string::String>(&mut v1, std::string::utf8(b"{coin_type_a}"));
+        std::vector::push_back<std::string::String>(&mut v1, std::string::utf8(b"{coin_type_b}"));
+        std::vector::push_back<std::string::String>(&mut v1, std::string::utf8(b"https://app.cetus.zone/position?chain=sui&id={id}"));
+        std::vector::push_back<std::string::String>(&mut v1, std::string::utf8(b"{url}"));
+        std::vector::push_back<std::string::String>(&mut v1, std::string::utf8(b"{description}"));
+        std::vector::push_back<std::string::String>(&mut v1, std::string::utf8(b"https://cetus.zone"));
+        std::vector::push_back<std::string::String>(&mut v1, std::string::utf8(b"Cetus"));
         let v2 = 0x2::package::claim<POSITION>(arg0, arg1);
         let v3 = 0x2::display::new_with_fields<Position>(&v2, v0, v1, arg1);
         0x2::display::update_version<Position>(&mut v3);
@@ -262,7 +262,7 @@ module clmm_pool::position {
     }
     
     public fun inited_rewards_count(arg0: &PositionManager, arg1: 0x2::object::ID) : u64 {
-        0x1::vector::length<PositionReward>(&move_stl::linked_table::borrow<0x2::object::ID, PositionInfo>(&arg0.positions, arg1).rewards)
+        std::vector::length<PositionReward>(&move_stl::linked_table::borrow<0x2::object::ID, PositionInfo>(&arg0.positions, arg1).rewards)
     }
     
     public fun is_position_exist(arg0: &PositionManager, arg1: 0x2::object::ID) : bool {
@@ -288,29 +288,29 @@ module clmm_pool::position {
         0x2::event::emit<StakePositionEvent>(v1);
     }
     
-    public fun name(arg0: &Position) : 0x1::string::String {
+    public fun name(arg0: &Position) : std::string::String {
         arg0.name
     }
     
-    fun new_position_name(arg0: u64, arg1: u64) : 0x1::string::String {
-        let v0 = 0x1::string::utf8(b"Magma position:");
-        0x1::string::append(&mut v0, clmm_pool::utils::str(arg0));
-        0x1::string::append_utf8(&mut v0, b"-");
-        0x1::string::append(&mut v0, clmm_pool::utils::str(arg1));
+    fun new_position_name(arg0: u64, arg1: u64) : std::string::String {
+        let v0 = std::string::utf8(b"Magma position:");
+        std::string::append(&mut v0, clmm_pool::utils::str(arg0));
+        std::string::append_utf8(&mut v0, b"-");
+        std::string::append(&mut v0, clmm_pool::utils::str(arg1));
         v0
     }
     
-    public(friend) fun open_position<T0, T1>(arg0: &mut PositionManager, arg1: 0x2::object::ID, arg2: u64, arg3: 0x1::string::String, arg4: integer_mate::i32::I32, arg5: integer_mate::i32::I32, arg6: &mut 0x2::tx_context::TxContext) : Position {
+    public(friend) fun open_position<T0, T1>(arg0: &mut PositionManager, arg1: 0x2::object::ID, arg2: u64, arg3: std::string::String, arg4: integer_mate::i32::I32, arg5: integer_mate::i32::I32, arg6: &mut 0x2::tx_context::TxContext) : Position {
         check_position_tick_range(arg4, arg5, arg0.tick_spacing);
         let v0 = arg0.position_index + 1;
         let v1 = Position{
             id               : 0x2::object::new(arg6), 
             pool             : arg1, 
             index            : v0, 
-            coin_type_a      : 0x1::type_name::get<T0>(), 
-            coin_type_b      : 0x1::type_name::get<T1>(), 
+            coin_type_a      : std::type_name::get<T0>(), 
+            coin_type_b      : std::type_name::get<T1>(), 
             name             : new_position_name(arg2, v0), 
-            description      : 0x1::string::utf8(b"Magma Liquidity Position"), 
+            description      : std::string::utf8(b"Magma Liquidity Position"), 
             url              : arg3, 
             tick_lower_index : arg4, 
             tick_upper_index : arg5, 
@@ -328,7 +328,7 @@ module clmm_pool::position {
             fee_owned_b                      : 0, 
             points_owned                     : 0, 
             points_growth_inside             : 0, 
-            rewards                          : 0x1::vector::empty<PositionReward>(), 
+            rewards                          : std::vector::empty<PositionReward>(), 
             magma_distribution_staked        : false, 
             magma_distribution_growth_inside : 0, 
             magma_distribution_owned         : 0,
@@ -350,7 +350,7 @@ module clmm_pool::position {
     }
     
     public(friend) fun reset_rewarder(arg0: &mut PositionManager, arg1: 0x2::object::ID, arg2: u64) : u64 {
-        let v0 = 0x1::vector::borrow_mut<PositionReward>(&mut borrow_mut_position_info(arg0, arg1).rewards, arg2);
+        let v0 = std::vector::borrow_mut<PositionReward>(&mut borrow_mut_position_info(arg0, arg1).rewards, arg2);
         v0.amount_owned = 0;
         v0.amount_owned
     }
@@ -366,38 +366,38 @@ module clmm_pool::position {
     public(friend) fun rewards_amount_owned(arg0: &PositionManager, arg1: 0x2::object::ID) : vector<u64> {
         let v0 = info_rewards(borrow_position_info(arg0, arg1));
         let v1 = 0;
-        let v2 = 0x1::vector::empty<u64>();
-        while (v1 < 0x1::vector::length<PositionReward>(v0)) {
-            0x1::vector::push_back<u64>(&mut v2, reward_amount_owned(0x1::vector::borrow<PositionReward>(v0, v1)));
+        let v2 = std::vector::empty<u64>();
+        while (v1 < std::vector::length<PositionReward>(v0)) {
+            std::vector::push_back<u64>(&mut v2, reward_amount_owned(std::vector::borrow<PositionReward>(v0, v1)));
             v1 = v1 + 1;
         };
         v2
     }
     
-    public fun set_description(arg0: &mut Position, arg1: 0x1::string::String) {
+    public fun set_description(arg0: &mut Position, arg1: std::string::String) {
         arg0.description = arg1;
     }
     
-    public fun set_display(arg0: &clmm_pool::config::GlobalConfig, arg1: &0x2::package::Publisher, arg2: 0x1::string::String, arg3: 0x1::string::String, arg4: 0x1::string::String, arg5: 0x1::string::String, arg6: &mut 0x2::tx_context::TxContext) {
+    public fun set_display(arg0: &clmm_pool::config::GlobalConfig, arg1: &0x2::package::Publisher, arg2: std::string::String, arg3: std::string::String, arg4: std::string::String, arg5: std::string::String, arg6: &mut 0x2::tx_context::TxContext) {
         clmm_pool::config::checked_package_version(arg0);
-        let v0 = 0x1::vector::empty<0x1::string::String>();
-        0x1::vector::push_back<0x1::string::String>(&mut v0, 0x1::string::utf8(b"name"));
-        0x1::vector::push_back<0x1::string::String>(&mut v0, 0x1::string::utf8(b"coin_a"));
-        0x1::vector::push_back<0x1::string::String>(&mut v0, 0x1::string::utf8(b"coin_b"));
-        0x1::vector::push_back<0x1::string::String>(&mut v0, 0x1::string::utf8(b"link"));
-        0x1::vector::push_back<0x1::string::String>(&mut v0, 0x1::string::utf8(b"image_url"));
-        0x1::vector::push_back<0x1::string::String>(&mut v0, 0x1::string::utf8(b"description"));
-        0x1::vector::push_back<0x1::string::String>(&mut v0, 0x1::string::utf8(b"project_url"));
-        0x1::vector::push_back<0x1::string::String>(&mut v0, 0x1::string::utf8(b"creator"));
-        let v1 = 0x1::vector::empty<0x1::string::String>();
-        0x1::vector::push_back<0x1::string::String>(&mut v1, 0x1::string::utf8(b"{name}"));
-        0x1::vector::push_back<0x1::string::String>(&mut v1, 0x1::string::utf8(b"{coin_type_a}"));
-        0x1::vector::push_back<0x1::string::String>(&mut v1, 0x1::string::utf8(b"{coin_type_b}"));
-        0x1::vector::push_back<0x1::string::String>(&mut v1, arg3);
-        0x1::vector::push_back<0x1::string::String>(&mut v1, 0x1::string::utf8(b"{url}"));
-        0x1::vector::push_back<0x1::string::String>(&mut v1, arg2);
-        0x1::vector::push_back<0x1::string::String>(&mut v1, arg4);
-        0x1::vector::push_back<0x1::string::String>(&mut v1, arg5);
+        let v0 = std::vector::empty<std::string::String>();
+        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"name"));
+        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"coin_a"));
+        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"coin_b"));
+        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"link"));
+        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"image_url"));
+        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"description"));
+        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"project_url"));
+        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"creator"));
+        let v1 = std::vector::empty<std::string::String>();
+        std::vector::push_back<std::string::String>(&mut v1, std::string::utf8(b"{name}"));
+        std::vector::push_back<std::string::String>(&mut v1, std::string::utf8(b"{coin_type_a}"));
+        std::vector::push_back<std::string::String>(&mut v1, std::string::utf8(b"{coin_type_b}"));
+        std::vector::push_back<std::string::String>(&mut v1, arg3);
+        std::vector::push_back<std::string::String>(&mut v1, std::string::utf8(b"{url}"));
+        std::vector::push_back<std::string::String>(&mut v1, arg2);
+        std::vector::push_back<std::string::String>(&mut v1, arg4);
+        std::vector::push_back<std::string::String>(&mut v1, arg5);
         let v2 = 0x2::display::new_with_fields<Position>(arg1, v0, v1, arg6);
         0x2::display::update_version<Position>(&mut v2);
         0x2::transfer::public_transfer<0x2::display::Display<Position>>(v2, 0x2::tx_context::sender(arg6));
@@ -423,10 +423,10 @@ module clmm_pool::position {
     }
     
     public(friend) fun update_and_reset_rewards(arg0: &mut PositionManager, arg1: 0x2::object::ID, arg2: vector<u128>, arg3: u64) : u64 {
-        assert!(0x1::vector::length<u128>(&arg2) > arg3, 10);
+        assert!(std::vector::length<u128>(&arg2) > arg3, 10);
         let v0 = borrow_mut_position_info(arg0, arg1);
         update_rewards_internal(v0, arg2);
-        let v1 = 0x1::vector::borrow_mut<PositionReward>(&mut v0.rewards, arg3);
+        let v1 = std::vector::borrow_mut<PositionReward>(&mut v0.rewards, arg3);
         v1.amount_owned = 0;
         v1.amount_owned
     }
@@ -479,9 +479,9 @@ module clmm_pool::position {
         update_rewards_internal(v0, arg2);
         let v1 = info_rewards(v0);
         let v2 = 0;
-        let v3 = 0x1::vector::empty<u64>();
-        while (v2 < 0x1::vector::length<PositionReward>(v1)) {
-            0x1::vector::push_back<u64>(&mut v3, reward_amount_owned(0x1::vector::borrow<PositionReward>(v1, v2)));
+        let v3 = std::vector::empty<u64>();
+        while (v2 < std::vector::length<PositionReward>(v1)) {
+            std::vector::push_back<u64>(&mut v3, reward_amount_owned(std::vector::borrow<PositionReward>(v1, v2)));
             v2 = v2 + 1;
         };
         v3
@@ -489,10 +489,10 @@ module clmm_pool::position {
     
     fun update_rewards_internal(arg0: &mut PositionInfo, arg1: vector<u128>) {
         let v0 = 0;
-        while (v0 < 0x1::vector::length<u128>(&arg1)) {
-            let v1 = *0x1::vector::borrow<u128>(&arg1, v0);
-            if (0x1::vector::length<PositionReward>(&arg0.rewards) > v0) {
-                let v2 = 0x1::vector::borrow_mut<PositionReward>(&mut arg0.rewards, v0);
+        while (v0 < std::vector::length<u128>(&arg1)) {
+            let v1 = *std::vector::borrow<u128>(&arg1, v0);
+            if (std::vector::length<PositionReward>(&arg0.rewards) > v0) {
+                let v2 = std::vector::borrow_mut<PositionReward>(&mut arg0.rewards, v0);
                 let v3 = integer_mate::full_math_u128::mul_shr(integer_mate::math_u128::wrapping_sub(v1, v2.growth_inside), arg0.liquidity, 64) as u64;
                 assert!(integer_mate::math_u64::add_check(v2.amount_owned, v3), 1);
                 v2.growth_inside = v1;
@@ -502,13 +502,13 @@ module clmm_pool::position {
                     growth_inside : v1, 
                     amount_owned  : integer_mate::full_math_u128::mul_shr(v1, arg0.liquidity, 64) as u64,
                 };
-                0x1::vector::push_back<PositionReward>(&mut arg0.rewards, v4);
+                std::vector::push_back<PositionReward>(&mut arg0.rewards, v4);
             };
             v0 = v0 + 1;
         };
     }
     
-    public fun url(arg0: &Position) : 0x1::string::String {
+    public fun url(arg0: &Position) : std::string::String {
         arg0.url
     }
     

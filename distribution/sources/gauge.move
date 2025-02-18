@@ -54,13 +54,13 @@ module distribution::gauge {
     struct Gauge<phantom T0, phantom T1, phantom T2> has store, key {
         id: 0x2::object::UID,
         pool_id: 0x2::object::ID,
-        gauge_cap: 0x1::option::Option<gauge_cap::gauge_cap::GaugeCap>,
+        gauge_cap: std::option::Option<gauge_cap::gauge_cap::GaugeCap>,
         staked_positions: 0x2::object_table::ObjectTable<0x2::object::ID, clmm_pool::position::Position>,
         staked_position_infos: 0x2::table::Table<0x2::object::ID, PositionStakeInfo>,
         reserves_balance: 0x2::balance::Balance<T2>,
         fee_a: 0x2::balance::Balance<T0>,
         fee_b: 0x2::balance::Balance<T1>,
-        voter: 0x1::option::Option<0x2::object::ID>,
+        voter: std::option::Option<0x2::object::ID>,
         reward_rate: u128,
         period_finish: u64,
         reward_rate_by_epoch: 0x2::table::Table<u64, u128>,
@@ -83,7 +83,7 @@ module distribution::gauge {
     
     fun check_voter_cap<T0, T1, T2>(arg0: &Gauge<T0, T1, T2>, arg1: &distribution::voter_cap::VoterCap) {
         let v0 = distribution::voter_cap::get_voter_id(arg1);
-        assert!(&v0 == 0x1::option::borrow<0x2::object::ID>(&arg0.voter), 9223373656058429456);
+        assert!(&v0 == std::option::borrow<0x2::object::ID>(&arg0.voter), 9223373656058429456);
     }
     
     public fun claim_fees<T0, T1, T2>(arg0: &mut Gauge<T0, T1, T2>, arg1: &distribution::notify_reward_cap::NotifyRewardCap, arg2: &mut clmm_pool::pool::Pool<T0, T1>) : (0x2::balance::Balance<T0>, 0x2::balance::Balance<T1>) {
@@ -91,7 +91,7 @@ module distribution::gauge {
     }
     
     fun claim_fees_internal<T0, T1, T2>(arg0: &mut Gauge<T0, T1, T2>, arg1: &mut clmm_pool::pool::Pool<T0, T1>) : (0x2::balance::Balance<T0>, 0x2::balance::Balance<T1>) {
-        let (v0, v1) = clmm_pool::pool::collect_magma_distribution_gauger_fees<T0, T1>(arg1, 0x1::option::borrow<gauge_cap::gauge_cap::GaugeCap>(&arg0.gauge_cap));
+        let (v0, v1) = clmm_pool::pool::collect_magma_distribution_gauger_fees<T0, T1>(arg1, std::option::borrow<gauge_cap::gauge_cap::GaugeCap>(&arg0.gauge_cap));
         let v2 = v1;
         let v3 = v0;
         if (0x2::balance::value<T0>(&v3) > 0 || 0x2::balance::value<T1>(&v2) > 0) {
@@ -129,13 +129,13 @@ module distribution::gauge {
         Gauge<T0, T1, T2>{
             id                    : v0, 
             pool_id               : arg0, 
-            gauge_cap             : 0x1::option::none<gauge_cap::gauge_cap::GaugeCap>(), 
+            gauge_cap             : std::option::none<gauge_cap::gauge_cap::GaugeCap>(), 
             staked_positions      : 0x2::object_table::new<0x2::object::ID, clmm_pool::position::Position>(arg1), 
             staked_position_infos : 0x2::table::new<0x2::object::ID, PositionStakeInfo>(arg1), 
             reserves_balance      : 0x2::balance::zero<T2>(), 
             fee_a                 : 0x2::balance::zero<T0>(), 
             fee_b                 : 0x2::balance::zero<T1>(), 
-            voter                 : 0x1::option::none<0x2::object::ID>(), 
+            voter                 : std::option::none<0x2::object::ID>(), 
             reward_rate           : 0, 
             period_finish         : 0, 
             reward_rate_by_epoch  : 0x2::table::new<u64, u128>(arg1), 
@@ -163,11 +163,11 @@ module distribution::gauge {
         0x2::transfer::public_transfer<0x2::coin::Coin<T1>>(0x2::coin::from_balance<T1>(v5, arg5), v0);
         let (v6, v7) = clmm_pool::position::tick_range(&arg3);
         if (!0x2::table::contains<address, vector<0x2::object::ID>>(&arg1.stakes, v0)) {
-            let v8 = 0x1::vector::empty<0x2::object::ID>();
-            0x1::vector::push_back<0x2::object::ID>(&mut v8, v2);
+            let v8 = std::vector::empty<0x2::object::ID>();
+            std::vector::push_back<0x2::object::ID>(&mut v8, v2);
             0x2::table::add<address, vector<0x2::object::ID>>(&mut arg1.stakes, v0, v8);
         } else {
-            0x1::vector::push_back<0x2::object::ID>(0x2::table::borrow_mut<address, vector<0x2::object::ID>>(&mut arg1.stakes, v0), v2);
+            std::vector::push_back<0x2::object::ID>(0x2::table::borrow_mut<address, vector<0x2::object::ID>>(&mut arg1.stakes, v0), v2);
         };
         0x2::object_table::add<0x2::object::ID, clmm_pool::position::Position>(&mut arg1.staked_positions, v2, arg3);
         if (!0x2::table::contains<0x2::object::ID, RewardProfile>(&arg1.rewards, v2)) {
@@ -182,9 +182,9 @@ module distribution::gauge {
             v10.growth_inside = clmm_pool::pool::get_magma_distribution_growth_inside<T0, T1>(arg2, v6, v7, 0);
             v10.last_update_time = 0x2::clock::timestamp_ms(arg4) / 1000;
         };
-        clmm_pool::pool::mark_position_staked<T0, T1>(arg2, 0x1::option::borrow<gauge_cap::gauge_cap::GaugeCap>(&arg1.gauge_cap), v2);
+        clmm_pool::pool::mark_position_staked<T0, T1>(arg2, std::option::borrow<gauge_cap::gauge_cap::GaugeCap>(&arg1.gauge_cap), v2);
         0x2::table::borrow_mut<0x2::object::ID, PositionStakeInfo>(&mut arg1.staked_position_infos, v2).received = true;
-        clmm_pool::pool::stake_in_magma_distribution<T0, T1>(arg2, 0x1::option::borrow<gauge_cap::gauge_cap::GaugeCap>(&arg1.gauge_cap), clmm_pool::position::liquidity(&arg3), v6, v7, arg4);
+        clmm_pool::pool::stake_in_magma_distribution<T0, T1>(arg2, std::option::borrow<gauge_cap::gauge_cap::GaugeCap>(&arg1.gauge_cap), clmm_pool::position::liquidity(&arg3), v6, v7, arg4);
         let v11 = EventDepositGauge{
             gauger_id   : 0x2::object::id<Gauge<T0, T1, T2>>(arg1), 
             pool_id     : v1, 
@@ -198,8 +198,8 @@ module distribution::gauge {
         let v0 = 0x2::table::borrow<address, vector<0x2::object::ID>>(&arg0.stakes, arg2);
         let v1 = 0;
         let v2 = 0;
-        while (v1 < 0x1::vector::length<0x2::object::ID>(v0)) {
-            v2 = v2 + earned_internal<T0, T1, T2>(arg0, arg1, *0x1::vector::borrow<0x2::object::ID>(v0, v1), 0x2::clock::timestamp_ms(arg3) / 1000);
+        while (v1 < std::vector::length<0x2::object::ID>(v0)) {
+            v2 = v2 + earned_internal<T0, T1, T2>(arg0, arg1, *std::vector::borrow<0x2::object::ID>(v0, v1), 0x2::clock::timestamp_ms(arg3) / 1000);
             v1 = v1 + 1;
         };
         v2
@@ -250,16 +250,16 @@ module distribution::gauge {
         let v0 = 0x2::tx_context::sender(arg3);
         assert!(0x2::table::contains<address, vector<0x2::object::ID>>(&arg0.stakes, v0), 9223373462784638988);
         let v1 = 0x2::table::borrow<address, vector<0x2::object::ID>>(&arg0.stakes, v0);
-        let v2 = 0x1::vector::empty<0x2::object::ID>();
+        let v2 = std::vector::empty<0x2::object::ID>();
         let v3 = 0;
-        while (v3 < 0x1::vector::length<0x2::object::ID>(v1)) {
-            0x1::vector::push_back<0x2::object::ID>(&mut v2, *0x1::vector::borrow<0x2::object::ID>(v1, v3));
+        while (v3 < std::vector::length<0x2::object::ID>(v1)) {
+            std::vector::push_back<0x2::object::ID>(&mut v2, *std::vector::borrow<0x2::object::ID>(v1, v3));
             v3 = v3 + 1;
         };
         let v4 = v2;
         let v5 = 0;
-        while (v5 < 0x1::vector::length<0x2::object::ID>(&v4)) {
-            get_reward_internal<T0, T1, T2>(arg0, arg1, *0x1::vector::borrow<0x2::object::ID>(&v4, v5), arg2, arg3);
+        while (v5 < std::vector::length<0x2::object::ID>(&v4)) {
+            get_reward_internal<T0, T1, T2>(arg0, arg1, *std::vector::borrow<0x2::object::ID>(&v4, v5), arg2, arg3);
             v5 = v5 + 1;
         };
     }
@@ -268,16 +268,16 @@ module distribution::gauge {
         assert!(check_gauger_pool<T0, T1, T2>(arg0, arg1), 9223373510029017096);
         assert!(0x2::table::contains<address, vector<0x2::object::ID>>(&arg0.stakes, arg2), 9223373514324246540);
         let v0 = 0x2::table::borrow<address, vector<0x2::object::ID>>(&arg0.stakes, arg2);
-        let v1 = 0x1::vector::empty<0x2::object::ID>();
+        let v1 = std::vector::empty<0x2::object::ID>();
         let v2 = 0;
-        while (v2 < 0x1::vector::length<0x2::object::ID>(v0)) {
-            0x1::vector::push_back<0x2::object::ID>(&mut v1, *0x1::vector::borrow<0x2::object::ID>(v0, v2));
+        while (v2 < std::vector::length<0x2::object::ID>(v0)) {
+            std::vector::push_back<0x2::object::ID>(&mut v1, *std::vector::borrow<0x2::object::ID>(v0, v2));
             v2 = v2 + 1;
         };
         let v3 = v1;
         let v4 = 0;
-        while (v4 < 0x1::vector::length<0x2::object::ID>(&v3)) {
-            get_reward_internal<T0, T1, T2>(arg0, arg1, *0x1::vector::borrow<0x2::object::ID>(&v3, v4), arg3, arg4);
+        while (v4 < std::vector::length<0x2::object::ID>(&v3)) {
+            get_reward_internal<T0, T1, T2>(arg0, arg1, *std::vector::borrow<0x2::object::ID>(&v3, v4), arg3, arg4);
             v4 = v4 + 1;
         };
     }
@@ -318,23 +318,23 @@ module distribution::gauge {
     fun notify_reward_amount_internal<T0, T1, T2>(arg0: &mut Gauge<T0, T1, T2>, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: u64, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
         let v0 = 0x2::clock::timestamp_ms(arg3) / 1000;
         let v1 = clmm_pool::config::epoch_next(v0) - v0;
-        clmm_pool::pool::update_magma_distribution_growth_global<T0, T1>(arg1, 0x1::option::borrow<gauge_cap::gauge_cap::GaugeCap>(&arg0.gauge_cap), arg3);
+        clmm_pool::pool::update_magma_distribution_growth_global<T0, T1>(arg1, std::option::borrow<gauge_cap::gauge_cap::GaugeCap>(&arg0.gauge_cap), arg3);
         let v2 = v0 + v1;
         let v3 = arg2 + clmm_pool::pool::get_magma_distribution_rollover<T0, T1>(arg1);
         if (v0 >= arg0.period_finish) {
             arg0.reward_rate = integer_mate::full_math_u128::mul_div_floor(v3 as u128, 18446744073709551616, v1 as u128);
-            clmm_pool::pool::sync_magma_distribution_reward<T0, T1>(arg1, 0x1::option::borrow<gauge_cap::gauge_cap::GaugeCap>(&arg0.gauge_cap), arg0.reward_rate, 0x2::balance::value<T2>(&arg0.reserves_balance), v2);
+            clmm_pool::pool::sync_magma_distribution_reward<T0, T1>(arg1, std::option::borrow<gauge_cap::gauge_cap::GaugeCap>(&arg0.gauge_cap), arg0.reward_rate, 0x2::balance::value<T2>(&arg0.reserves_balance), v2);
         } else {
             let v4 = (v1 as u128) * arg0.reward_rate;
             arg0.reward_rate = integer_mate::full_math_u128::mul_div_floor((v3 as u128) + v4, 18446744073709551616, v1 as u128);
-            clmm_pool::pool::sync_magma_distribution_reward<T0, T1>(arg1, 0x1::option::borrow<gauge_cap::gauge_cap::GaugeCap>(&arg0.gauge_cap), arg0.reward_rate, 0x2::balance::value<T2>(&arg0.reserves_balance) + ((v4 / 18446744073709551616) as u64), v2);
+            clmm_pool::pool::sync_magma_distribution_reward<T0, T1>(arg1, std::option::borrow<gauge_cap::gauge_cap::GaugeCap>(&arg0.gauge_cap), arg0.reward_rate, 0x2::balance::value<T2>(&arg0.reserves_balance) + ((v4 / 18446744073709551616) as u64), v2);
         };
         0x2::table::add<u64, u128>(&mut arg0.reward_rate_by_epoch, clmm_pool::config::epoch_start(v0), arg0.reward_rate);
         assert!(arg0.reward_rate != 0, 9223373952411435028);
         assert!(arg0.reward_rate <= integer_mate::full_math_u128::mul_div_floor(0x2::balance::value<T2>(&arg0.reserves_balance) as u128, 18446744073709551616, v1 as u128), 9223373956706533398);
         arg0.period_finish = v2;
         let v5 = EventNotifyReward{
-            sender : *0x1::option::borrow<0x2::object::ID>(&arg0.voter), 
+            sender : *std::option::borrow<0x2::object::ID>(&arg0.voter), 
             amount : v3,
         };
         0x2::event::emit<EventNotifyReward>(v5);
@@ -359,7 +359,7 @@ module distribution::gauge {
     
     public(friend) fun receive_gauge_cap<T0, T1, T2>(arg0: &mut Gauge<T0, T1, T2>, arg1: gauge_cap::gauge_cap::GaugeCap) {
         assert!(arg0.pool_id == gauge_cap::gauge_cap::get_pool_id(&arg1), 9223373119186534399);
-        0x1::option::fill<gauge_cap::gauge_cap::GaugeCap>(&mut arg0.gauge_cap, arg1);
+        std::option::fill<gauge_cap::gauge_cap::GaugeCap>(&mut arg0.gauge_cap, arg1);
     }
     
     public fun reserves_balance<T0, T1, T2>(arg0: &Gauge<T0, T1, T2>) : u64 {
@@ -375,7 +375,7 @@ module distribution::gauge {
     }
     
     public(friend) fun set_voter<T0, T1, T2>(arg0: &mut Gauge<T0, T1, T2>, arg1: 0x2::object::ID, arg2: &mut 0x2::tx_context::TxContext) {
-        0x1::option::fill<0x2::object::ID>(&mut arg0.voter, arg1);
+        std::option::fill<0x2::object::ID>(&mut arg0.voter, arg1);
         let v0 = EventGaugeSetVoter{
             id       : 0x2::object::id<Gauge<T0, T1, T2>>(arg0), 
             voter_id : arg1,
@@ -385,10 +385,10 @@ module distribution::gauge {
     
     public fun stakes<T0, T1, T2>(arg0: &Gauge<T0, T1, T2>, arg1: address) : vector<0x2::object::ID> {
         let v0 = 0x2::table::borrow<address, vector<0x2::object::ID>>(&arg0.stakes, arg1);
-        let v1 = 0x1::vector::empty<0x2::object::ID>();
+        let v1 = std::vector::empty<0x2::object::ID>();
         let v2 = 0;
-        while (v2 < 0x1::vector::length<0x2::object::ID>(v0)) {
-            0x1::vector::push_back<0x2::object::ID>(&mut v1, *0x1::vector::borrow<0x2::object::ID>(v0, v2));
+        while (v2 < std::vector::length<0x2::object::ID>(v0)) {
+            std::vector::push_back<0x2::object::ID>(&mut v1, *std::vector::borrow<0x2::object::ID>(v0, v2));
             v2 = v2 + 1;
         };
         v1
@@ -401,7 +401,7 @@ module distribution::gauge {
             v1.amount = 0;
             return 0x2::balance::split<T2>(&mut arg0.reserves_balance, v1.amount)
         };
-        clmm_pool::pool::update_magma_distribution_growth_global<T0, T1>(arg1, 0x1::option::borrow<gauge_cap::gauge_cap::GaugeCap>(&arg0.gauge_cap), arg5);
+        clmm_pool::pool::update_magma_distribution_growth_global<T0, T1>(arg1, std::option::borrow<gauge_cap::gauge_cap::GaugeCap>(&arg0.gauge_cap), arg5);
         v1.last_update_time = v0;
         v1.amount = v1.amount + earned_internal<T0, T1, T2>(arg0, arg1, arg2, v0);
         v1.growth_inside = clmm_pool::pool::get_magma_distribution_growth_inside<T0, T1>(arg1, arg3, arg4, 0);
@@ -420,9 +420,9 @@ module distribution::gauge {
             let v2 = clmm_pool::position::liquidity(&v1);
             if (v2 > 0) {
                 let (v3, v4) = clmm_pool::position::tick_range(&v1);
-                clmm_pool::pool::unstake_from_magma_distribution<T0, T1>(arg1, 0x1::option::borrow<gauge_cap::gauge_cap::GaugeCap>(&arg0.gauge_cap), v2, v3, v4, arg3);
+                clmm_pool::pool::unstake_from_magma_distribution<T0, T1>(arg1, std::option::borrow<gauge_cap::gauge_cap::GaugeCap>(&arg0.gauge_cap), v2, v3, v4, arg3);
             };
-            clmm_pool::pool::mark_position_unstaked<T0, T1>(arg1, 0x1::option::borrow<gauge_cap::gauge_cap::GaugeCap>(&arg0.gauge_cap), arg2);
+            clmm_pool::pool::mark_position_unstaked<T0, T1>(arg1, std::option::borrow<gauge_cap::gauge_cap::GaugeCap>(&arg0.gauge_cap), arg2);
             0x2::transfer::public_transfer<clmm_pool::position::Position>(v1, v0.from);
             let v5 = EventWithdrawPosition{
                 position_id : arg2, 

@@ -61,13 +61,13 @@ module clmm_pool::tick {
         v0.fee_growth_outside_a = integer_mate::math_u128::wrapping_sub(arg5, v0.fee_growth_outside_a);
         v0.fee_growth_outside_b = integer_mate::math_u128::wrapping_sub(arg6, v0.fee_growth_outside_b);
         let v9 = 0;
-        while (v9 < 0x1::vector::length<u128>(&arg8)) {
-            let v10 = *0x1::vector::borrow<u128>(&arg8, v9);
-            if (0x1::vector::length<u128>(&v0.rewards_growth_outside) > v9) {
-                let v11 = 0x1::vector::borrow_mut<u128>(&mut v0.rewards_growth_outside, v9);
+        while (v9 < std::vector::length<u128>(&arg8)) {
+            let v10 = *std::vector::borrow<u128>(&arg8, v9);
+            if (std::vector::length<u128>(&v0.rewards_growth_outside) > v9) {
+                let v11 = std::vector::borrow_mut<u128>(&mut v0.rewards_growth_outside, v9);
                 *v11 = integer_mate::math_u128::wrapping_sub(v10, *v11);
             } else {
-                0x1::vector::push_back<u128>(&mut v0.rewards_growth_outside, v10);
+                std::vector::push_back<u128>(&mut v0.rewards_growth_outside, v10);
             };
             v9 = v9 + 1;
         };
@@ -101,7 +101,7 @@ module clmm_pool::tick {
             fee_growth_outside_a                    : 0, 
             fee_growth_outside_b                    : 0, 
             points_growth_outside                   : 0, 
-            rewards_growth_outside                  : 0x1::vector::empty<u128>(), 
+            rewards_growth_outside                  : std::vector::empty<u128>(), 
             magma_distribution_staked_liquidity_net : integer_mate::i128::from(0), 
             magma_distribution_growth_outside       : 0,
         }
@@ -109,12 +109,12 @@ module clmm_pool::tick {
     
     fun default_rewards_growth_outside(arg0: u64) : vector<u128> {
         if (arg0 <= 0) {
-            0x1::vector::empty<u128>()
+            std::vector::empty<u128>()
         } else {
-            let v1 = 0x1::vector::empty<u128>();
+            let v1 = std::vector::empty<u128>();
             let v2 = 0;
             while (v2 < arg0) {
-                0x1::vector::push_back<u128>(&mut v1, 0);
+                std::vector::push_back<u128>(&mut v1, 0);
                 v2 = v2 + 1;
             };
             v1
@@ -126,17 +126,17 @@ module clmm_pool::tick {
     }
     
     public fun fetch_ticks(arg0: &TickManager, arg1: vector<u32>, arg2: u64) : vector<Tick> {
-        let v0 = 0x1::vector::empty<Tick>();
-        let v1 = if (0x1::vector::is_empty<u32>(&arg1)) {
+        let v0 = std::vector::empty<Tick>();
+        let v1 = if (std::vector::is_empty<u32>(&arg1)) {
             move_stl::skip_list::head<Tick>(&arg0.ticks)
         } else {
-            move_stl::skip_list::find_next<Tick>(&arg0.ticks, tick_score(integer_mate::i32::from_u32(*0x1::vector::borrow<u32>(&arg1, 0))), false)
+            move_stl::skip_list::find_next<Tick>(&arg0.ticks, tick_score(integer_mate::i32::from_u32(*std::vector::borrow<u32>(&arg1, 0))), false)
         };
         let v2 = v1;
         let v3 = 0;
         while (move_stl::option_u64::is_some(&v2)) {
             let v4 = move_stl::skip_list::borrow_node<Tick>(&arg0.ticks, move_stl::option_u64::borrow(&v2));
-            0x1::vector::push_back<Tick>(&mut v0, *move_stl::skip_list::borrow_value<Tick>(v4));
+            std::vector::push_back<Tick>(&mut v0, *move_stl::skip_list::borrow_value<Tick>(v4));
             v2 = move_stl::skip_list::next_score<Tick>(v4);
             let v5 = v3 + 1;
             v3 = v5;
@@ -160,11 +160,11 @@ module clmm_pool::tick {
         }
     }
     
-    public fun get_fee_in_range(arg0: integer_mate::i32::I32, arg1: u128, arg2: u128, arg3: 0x1::option::Option<Tick>, arg4: 0x1::option::Option<Tick>) : (u128, u128) {
-        let (v0, v1) = if (0x1::option::is_none<Tick>(&arg3)) {
+    public fun get_fee_in_range(arg0: integer_mate::i32::I32, arg1: u128, arg2: u128, arg3: std::option::Option<Tick>, arg4: std::option::Option<Tick>) : (u128, u128) {
+        let (v0, v1) = if (std::option::is_none<Tick>(&arg3)) {
             (arg1, arg2)
         } else {
-            let v2 = 0x1::option::borrow<Tick>(&arg3);
+            let v2 = std::option::borrow<Tick>(&arg3);
             let (v3, v4) = if (integer_mate::i32::lt(arg0, v2.index)) {
                 (integer_mate::math_u128::wrapping_sub(arg1, v2.fee_growth_outside_a), integer_mate::math_u128::wrapping_sub(arg2, v2.fee_growth_outside_b))
             } else {
@@ -172,10 +172,10 @@ module clmm_pool::tick {
             };
             (v3, v4)
         };
-        let (v5, v6) = if (0x1::option::is_none<Tick>(&arg4)) {
+        let (v5, v6) = if (std::option::is_none<Tick>(&arg4)) {
             (0, 0)
         } else {
-            let v7 = 0x1::option::borrow<Tick>(&arg4);
+            let v7 = std::option::borrow<Tick>(&arg4);
             let (v8, v9) = if (integer_mate::i32::lt(arg0, v7.index)) {
                 (v7.fee_growth_outside_a, v7.fee_growth_outside_b)
             } else {
@@ -186,11 +186,11 @@ module clmm_pool::tick {
         (integer_mate::math_u128::wrapping_sub(integer_mate::math_u128::wrapping_sub(arg1, v0), v5), integer_mate::math_u128::wrapping_sub(integer_mate::math_u128::wrapping_sub(arg2, v1), v6))
     }
     
-    public fun get_magma_distribution_growth_in_range(arg0: integer_mate::i32::I32, arg1: u128, arg2: 0x1::option::Option<Tick>, arg3: 0x1::option::Option<Tick>) : u128 {
-        let v0 = if (0x1::option::is_none<Tick>(&arg2)) {
+    public fun get_magma_distribution_growth_in_range(arg0: integer_mate::i32::I32, arg1: u128, arg2: std::option::Option<Tick>, arg3: std::option::Option<Tick>) : u128 {
+        let v0 = if (std::option::is_none<Tick>(&arg2)) {
             arg1
         } else {
-            let v1 = 0x1::option::borrow<Tick>(&arg2);
+            let v1 = std::option::borrow<Tick>(&arg2);
             let v2 = if (integer_mate::i32::lt(arg0, v1.index)) {
                 integer_mate::math_u128::wrapping_sub(arg1, v1.magma_distribution_growth_outside)
             } else {
@@ -198,10 +198,10 @@ module clmm_pool::tick {
             };
             v2
         };
-        let v3 = if (0x1::option::is_none<Tick>(&arg3)) {
+        let v3 = if (std::option::is_none<Tick>(&arg3)) {
             0
         } else {
-            let v4 = 0x1::option::borrow<Tick>(&arg3);
+            let v4 = std::option::borrow<Tick>(&arg3);
             let v5 = if (integer_mate::i32::lt(arg0, v4.index)) {
                 v4.magma_distribution_growth_outside
             } else {
@@ -212,11 +212,11 @@ module clmm_pool::tick {
         integer_mate::math_u128::wrapping_sub(integer_mate::math_u128::wrapping_sub(arg1, v0), v3)
     }
     
-    public fun get_points_in_range(arg0: integer_mate::i32::I32, arg1: u128, arg2: 0x1::option::Option<Tick>, arg3: 0x1::option::Option<Tick>) : u128 {
-        let v0 = if (0x1::option::is_none<Tick>(&arg2)) {
+    public fun get_points_in_range(arg0: integer_mate::i32::I32, arg1: u128, arg2: std::option::Option<Tick>, arg3: std::option::Option<Tick>) : u128 {
+        let v0 = if (std::option::is_none<Tick>(&arg2)) {
             arg1
         } else {
-            let v1 = 0x1::option::borrow<Tick>(&arg2);
+            let v1 = std::option::borrow<Tick>(&arg2);
             let v2 = if (integer_mate::i32::lt(arg0, v1.index)) {
                 integer_mate::math_u128::wrapping_sub(arg1, v1.points_growth_outside)
             } else {
@@ -224,10 +224,10 @@ module clmm_pool::tick {
             };
             v2
         };
-        let v3 = if (0x1::option::is_none<Tick>(&arg3)) {
+        let v3 = if (std::option::is_none<Tick>(&arg3)) {
             0
         } else {
-            let v4 = 0x1::option::borrow<Tick>(&arg3);
+            let v4 = std::option::borrow<Tick>(&arg3);
             let v5 = if (integer_mate::i32::lt(arg0, v4.index)) {
                 v4.points_growth_outside
             } else {
@@ -239,22 +239,22 @@ module clmm_pool::tick {
     }
     
     public fun get_reward_growth_outside(arg0: &Tick, arg1: u64) : u128 {
-        if (0x1::vector::length<u128>(&arg0.rewards_growth_outside) <= arg1) {
+        if (std::vector::length<u128>(&arg0.rewards_growth_outside) <= arg1) {
             0
         } else {
-            *0x1::vector::borrow<u128>(&arg0.rewards_growth_outside, arg1)
+            *std::vector::borrow<u128>(&arg0.rewards_growth_outside, arg1)
         }
     }
     
-    public fun get_rewards_in_range(arg0: integer_mate::i32::I32, arg1: vector<u128>, arg2: 0x1::option::Option<Tick>, arg3: 0x1::option::Option<Tick>) : vector<u128> {
-        let v0 = 0x1::vector::empty<u128>();
+    public fun get_rewards_in_range(arg0: integer_mate::i32::I32, arg1: vector<u128>, arg2: std::option::Option<Tick>, arg3: std::option::Option<Tick>) : vector<u128> {
+        let v0 = std::vector::empty<u128>();
         let v1 = 0;
-        while (v1 < 0x1::vector::length<u128>(&arg1)) {
-            let v2 = *0x1::vector::borrow<u128>(&arg1, v1);
-            let v3 = if (0x1::option::is_none<Tick>(&arg2)) {
+        while (v1 < std::vector::length<u128>(&arg1)) {
+            let v2 = *std::vector::borrow<u128>(&arg1, v1);
+            let v3 = if (std::option::is_none<Tick>(&arg2)) {
                 v2
             } else {
-                let v4 = 0x1::option::borrow<Tick>(&arg2);
+                let v4 = std::option::borrow<Tick>(&arg2);
                 let v5 = if (integer_mate::i32::lt(arg0, v4.index)) {
                     integer_mate::math_u128::wrapping_sub(v2, get_reward_growth_outside(v4, v1))
                 } else {
@@ -262,10 +262,10 @@ module clmm_pool::tick {
                 };
                 v5
             };
-            let v6 = if (0x1::option::is_none<Tick>(&arg3)) {
+            let v6 = if (std::option::is_none<Tick>(&arg3)) {
                 0
             } else {
-                let v7 = 0x1::option::borrow<Tick>(&arg3);
+                let v7 = std::option::borrow<Tick>(&arg3);
                 let v8 = if (integer_mate::i32::lt(arg0, v7.index)) {
                     get_reward_growth_outside(v7, v1)
                 } else {
@@ -274,7 +274,7 @@ module clmm_pool::tick {
                 };
                 v8
             };
-            0x1::vector::push_back<u128>(&mut v0, integer_mate::math_u128::wrapping_sub(integer_mate::math_u128::wrapping_sub(v2, v3), v6));
+            std::vector::push_back<u128>(&mut v0, integer_mate::math_u128::wrapping_sub(integer_mate::math_u128::wrapping_sub(v2, v3), v6));
             v1 = v1 + 1;
         };
         v0
@@ -342,12 +342,12 @@ module clmm_pool::tick {
         arg0.tick_spacing
     }
     
-    public(friend) fun try_borrow_tick(arg0: &TickManager, arg1: integer_mate::i32::I32) : 0x1::option::Option<Tick> {
+    public(friend) fun try_borrow_tick(arg0: &TickManager, arg1: integer_mate::i32::I32) : std::option::Option<Tick> {
         let v0 = tick_score(arg1);
         if (!move_stl::skip_list::contains<Tick>(&arg0.ticks, v0)) {
-            return 0x1::option::none<Tick>()
+            return std::option::none<Tick>()
         };
-        0x1::option::some<Tick>(*move_stl::skip_list::borrow<Tick>(&arg0.ticks, v0))
+        std::option::some<Tick>(*move_stl::skip_list::borrow<Tick>(&arg0.ticks, v0))
     }
     
     fun update_by_liquidity(arg0: &mut Tick, arg1: integer_mate::i32::I32, arg2: u128, arg3: bool, arg4: bool, arg5: bool, arg6: u128, arg7: u128, arg8: u128, arg9: vector<u128>, arg10: u128) : u128 {
@@ -363,7 +363,7 @@ module clmm_pool::tick {
         };
         let (v1, v2, v3, v4, v5) = if (arg3) {
             let (v6, v7, v8, v9, v10) = if (integer_mate::i32::lt(arg1, arg0.index)) {
-                (0, 0, default_rewards_growth_outside(0x1::vector::length<u128>(&arg9)), 0, 0)
+                (0, 0, default_rewards_growth_outside(std::vector::length<u128>(&arg9)), 0, 0)
             } else {
                 (arg6, arg7, arg9, arg8, arg10)
             };

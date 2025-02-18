@@ -29,11 +29,11 @@ module integrate::pool_script_v2 {
         integrate::utils::send_coin<T1>(arg3, 0x2::tx_context::sender(arg10));
     }
     
-    public entry fun create_pool<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::factory::Pools, arg2: u32, arg3: u128, arg4: 0x1::string::String, arg5: &0x2::clock::Clock, arg6: &mut 0x2::tx_context::TxContext) {
+    public entry fun create_pool<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::factory::Pools, arg2: u32, arg3: u128, arg4: std::string::String, arg5: &0x2::clock::Clock, arg6: &mut 0x2::tx_context::TxContext) {
         clmm_pool::factory::create_pool<T0, T1>(arg1, arg0, arg2, arg3, arg4, arg5, arg6);
     }
     
-    public entry fun create_pool_with_liquidity<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::factory::Pools, arg2: u32, arg3: u128, arg4: 0x1::string::String, arg5: 0x2::coin::Coin<T0>, arg6: 0x2::coin::Coin<T1>, arg7: u32, arg8: u32, arg9: u64, arg10: u64, arg11: bool, arg12: &0x2::clock::Clock, arg13: &mut 0x2::tx_context::TxContext) {
+    public entry fun create_pool_with_liquidity<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::factory::Pools, arg2: u32, arg3: u128, arg4: std::string::String, arg5: 0x2::coin::Coin<T0>, arg6: 0x2::coin::Coin<T1>, arg7: u32, arg8: u32, arg9: u64, arg10: u64, arg11: bool, arg12: &0x2::clock::Clock, arg13: &mut 0x2::tx_context::TxContext) {
         let (v0, v1, v2) = clmm_pool::factory::create_pool_with_liquidity<T0, T1>(arg1, arg0, arg2, arg3, arg4, arg7, arg8, arg5, arg6, arg9, arg10, arg11, arg12, arg13);
         integrate::utils::send_coin<T0>(v1, 0x2::tx_context::sender(arg13));
         integrate::utils::send_coin<T1>(v2, 0x2::tx_context::sender(arg13));
@@ -103,7 +103,7 @@ module integrate::pool_script_v2 {
         integrate::utils::send_coin<T1>(arg4, 0x2::tx_context::sender(arg7));
     }
     
-    public entry fun set_display<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &0x2::package::Publisher, arg2: 0x1::string::String, arg3: 0x1::string::String, arg4: 0x1::string::String, arg5: 0x1::string::String, arg6: 0x1::string::String, arg7: 0x1::string::String, arg8: &mut 0x2::tx_context::TxContext) {
+    public entry fun set_display<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &0x2::package::Publisher, arg2: std::string::String, arg3: std::string::String, arg4: std::string::String, arg5: std::string::String, arg6: std::string::String, arg7: std::string::String, arg8: &mut 0x2::tx_context::TxContext) {
         clmm_pool::pool::set_display<T0, T1>(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
     }
     
@@ -111,7 +111,7 @@ module integrate::pool_script_v2 {
         clmm_pool::pool::update_fee_rate<T0, T1>(arg0, arg1, arg2, arg3);
     }
     
-    public entry fun update_position_url<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: 0x1::string::String, arg3: &mut 0x2::tx_context::TxContext) {
+    public entry fun update_position_url<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: std::string::String, arg3: &mut 0x2::tx_context::TxContext) {
         clmm_pool::pool::update_position_url<T0, T1>(arg0, arg1, arg2, arg3);
     }
     

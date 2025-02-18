@@ -100,7 +100,7 @@ module distribution::reward_distributor {
             if (distribution::common::current_timestamp(arg3) >= distribution::voting_escrow::end(&v4) && !distribution::voting_escrow::is_permanent(&v4)) {
                 0x2::transfer::public_transfer<0x2::coin::Coin<T0>>(0x2::coin::from_balance<T0>(0x2::balance::split<T0>(&mut arg0.balance, v1), arg4), distribution::voting_escrow::owner_of<T0>(arg1, v0));
             } else {
-                distribution::voting_escrow::deposit_for<T0>(arg1, 0x1::option::none<distribution::voting_escrow::DistributorCap>(), arg2, 0x2::coin::from_balance<T0>(0x2::balance::split<T0>(&mut arg0.balance, v1), arg4), arg3, arg4);
+                distribution::voting_escrow::deposit_for<T0>(arg1, std::option::none<distribution::voting_escrow::DistributorCap>(), arg2, 0x2::coin::from_balance<T0>(0x2::balance::split<T0>(&mut arg0.balance, v1), arg4), arg3, arg4);
             };
             arg0.token_last_balance = arg0.token_last_balance - v1;
         };

@@ -5,7 +5,7 @@ module distribution::bribe_voting_reward {
         reward: distribution::reward::Reward,
     }
     
-    public(friend) fun create(arg0: 0x2::object::ID, arg1: 0x2::object::ID, arg2: 0x2::object::ID, arg3: vector<0x1::type_name::TypeName>, arg4: &mut 0x2::tx_context::TxContext) : BribeVotingReward {
+    public(friend) fun create(arg0: 0x2::object::ID, arg1: 0x2::object::ID, arg2: 0x2::object::ID, arg3: vector<std::type_name::TypeName>, arg4: &mut 0x2::tx_context::TxContext) : BribeVotingReward {
         BribeVotingReward{
             id     : 0x2::object::new(arg4), 
             gauge  : arg2, 
@@ -45,23 +45,23 @@ module distribution::bribe_voting_reward {
         let v0 = 0x2::object::id<distribution::voting_escrow::Lock>(arg2);
         let v1 = distribution::voting_escrow::owner_of<T0>(arg1, v0);
         let v2 = distribution::reward::get_reward_internal<T1>(&mut arg0.reward, v1, v0, arg3, arg4);
-        if (0x1::option::is_some<0x2::balance::Balance<T1>>(&v2)) {
-            0x2::transfer::public_transfer<0x2::coin::Coin<T1>>(0x2::coin::from_balance<T1>(0x1::option::extract<0x2::balance::Balance<T1>>(&mut v2), arg4), v1);
+        if (std::option::is_some<0x2::balance::Balance<T1>>(&v2)) {
+            0x2::transfer::public_transfer<0x2::coin::Coin<T1>>(0x2::coin::from_balance<T1>(std::option::extract<0x2::balance::Balance<T1>>(&mut v2), arg4), v1);
         };
-        0x1::option::destroy_none<0x2::balance::Balance<T1>>(v2);
+        std::option::destroy_none<0x2::balance::Balance<T1>>(v2);
     }
     
-    public fun notify_reward_amount<T0>(arg0: &mut BribeVotingReward, arg1: 0x1::option::Option<distribution::whitelisted_tokens::WhitelistedToken>, arg2: 0x2::coin::Coin<T0>, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
-        let v0 = 0x1::type_name::get<T0>();
+    public fun notify_reward_amount<T0>(arg0: &mut BribeVotingReward, arg1: std::option::Option<distribution::whitelisted_tokens::WhitelistedToken>, arg2: 0x2::coin::Coin<T0>, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
+        let v0 = std::type_name::get<T0>();
         if (!distribution::reward::rewards_contains(&arg0.reward, v0)) {
-            assert!(0x1::option::is_some<distribution::whitelisted_tokens::WhitelistedToken>(&arg1), 9223372410516930559);
-            distribution::whitelisted_tokens::validate<T0>(0x1::option::extract<distribution::whitelisted_tokens::WhitelistedToken>(&mut arg1), distribution::reward::voter(&arg0.reward));
+            assert!(std::option::is_some<distribution::whitelisted_tokens::WhitelistedToken>(&arg1), 9223372410516930559);
+            distribution::whitelisted_tokens::validate<T0>(std::option::extract<distribution::whitelisted_tokens::WhitelistedToken>(&mut arg1), distribution::reward::voter(&arg0.reward));
             distribution::reward::add_reward_token(&mut arg0.reward, v0);
         };
-        if (0x1::option::is_some<distribution::whitelisted_tokens::WhitelistedToken>(&arg1)) {
-            distribution::whitelisted_tokens::validate<T0>(0x1::option::destroy_some<distribution::whitelisted_tokens::WhitelistedToken>(arg1), distribution::reward::voter(&arg0.reward));
+        if (std::option::is_some<distribution::whitelisted_tokens::WhitelistedToken>(&arg1)) {
+            distribution::whitelisted_tokens::validate<T0>(std::option::destroy_some<distribution::whitelisted_tokens::WhitelistedToken>(arg1), distribution::reward::voter(&arg0.reward));
         } else {
-            0x1::option::destroy_none<distribution::whitelisted_tokens::WhitelistedToken>(arg1);
+            std::option::destroy_none<distribution::whitelisted_tokens::WhitelistedToken>(arg1);
         };
         distribution::reward::notify_reward_amount_internal<T0>(&mut arg0.reward, 0x2::coin::into_balance<T0>(arg2), arg3, arg4);
     }
@@ -69,12 +69,12 @@ module distribution::bribe_voting_reward {
     public fun voter_get_reward<T0, T1>(arg0: &mut BribeVotingReward, arg1: &distribution::reward_authorized_cap::RewardAuthorizedCap, arg2: &distribution::voting_escrow::VotingEscrow<T0>, arg3: 0x2::object::ID, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) : 0x2::balance::Balance<T1> {
         distribution::reward_authorized_cap::validate(arg1, distribution::reward::authorized(&arg0.reward));
         let v0 = distribution::reward::get_reward_internal<T1>(&mut arg0.reward, distribution::voting_escrow::owner_of<T0>(arg2, arg3), arg3, arg4, arg5);
-        let v1 = if (0x1::option::is_some<0x2::balance::Balance<T1>>(&v0)) {
-            0x1::option::extract<0x2::balance::Balance<T1>>(&mut v0)
+        let v1 = if (std::option::is_some<0x2::balance::Balance<T1>>(&v0)) {
+            std::option::extract<0x2::balance::Balance<T1>>(&mut v0)
         } else {
             0x2::balance::zero<T1>()
         };
-        0x1::option::destroy_none<0x2::balance::Balance<T1>>(v0);
+        std::option::destroy_none<0x2::balance::Balance<T1>>(v0);
         v1
     }
     

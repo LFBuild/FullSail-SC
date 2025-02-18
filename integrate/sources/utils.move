@@ -1,10 +1,10 @@
 module integrate::utils {
     public fun merge_coins<T0>(arg0: vector<0x2::coin::Coin<T0>>, arg1: &mut 0x2::tx_context::TxContext) : 0x2::coin::Coin<T0> {
-        if (0x1::vector::is_empty<0x2::coin::Coin<T0>>(&arg0)) {
-            0x1::vector::destroy_empty<0x2::coin::Coin<T0>>(arg0);
+        if (std::vector::is_empty<0x2::coin::Coin<T0>>(&arg0)) {
+            std::vector::destroy_empty<0x2::coin::Coin<T0>>(arg0);
             0x2::coin::zero<T0>(arg1)
         } else {
-            let v1 = 0x1::vector::pop_back<0x2::coin::Coin<T0>>(&mut arg0);
+            let v1 = std::vector::pop_back<0x2::coin::Coin<T0>>(&mut arg0);
             0x2::pay::join_vec<T0>(&mut v1, arg0);
             v1
         }

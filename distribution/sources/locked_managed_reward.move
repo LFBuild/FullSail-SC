@@ -4,9 +4,9 @@ module distribution::locked_managed_reward {
         reward: distribution::reward::Reward,
     }
     
-    public(friend) fun create(arg0: 0x2::object::ID, arg1: 0x2::object::ID, arg2: 0x1::type_name::TypeName, arg3: &mut 0x2::tx_context::TxContext) : LockedManagedReward {
-        let v0 = 0x1::vector::empty<0x1::type_name::TypeName>();
-        0x1::vector::push_back<0x1::type_name::TypeName>(&mut v0, arg2);
+    public(friend) fun create(arg0: 0x2::object::ID, arg1: 0x2::object::ID, arg2: std::type_name::TypeName, arg3: &mut 0x2::tx_context::TxContext) : LockedManagedReward {
+        let v0 = std::vector::empty<std::type_name::TypeName>();
+        std::vector::push_back<std::type_name::TypeName>(&mut v0, arg2);
         LockedManagedReward{
             id     : 0x2::object::new(arg3), 
             reward : distribution::reward::create(arg0, arg1, arg1, v0, arg3),
@@ -45,12 +45,12 @@ module distribution::locked_managed_reward {
         distribution::reward_authorized_cap::validate(arg1, distribution::reward::ve(&arg0.reward));
         let v0 = distribution::reward::ve(&arg0.reward);
         let v1 = distribution::reward::get_reward_internal<T0>(&mut arg0.reward, 0x2::object::id_to_address(&v0), arg2, arg3, arg4);
-        let v2 = if (0x1::option::is_some<0x2::balance::Balance<T0>>(&v1)) {
-            0x1::option::extract<0x2::balance::Balance<T0>>(&mut v1)
+        let v2 = if (std::option::is_some<0x2::balance::Balance<T0>>(&v1)) {
+            std::option::extract<0x2::balance::Balance<T0>>(&mut v1)
         } else {
             0x2::balance::zero<T0>()
         };
-        0x1::option::destroy_none<0x2::balance::Balance<T0>>(v1);
+        std::option::destroy_none<0x2::balance::Balance<T0>>(v1);
         v2
     }
     

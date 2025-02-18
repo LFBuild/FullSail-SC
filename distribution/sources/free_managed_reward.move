@@ -4,9 +4,9 @@ module distribution::free_managed_reward {
         reward: distribution::reward::Reward,
     }
     
-    public(friend) fun create(arg0: 0x2::object::ID, arg1: 0x2::object::ID, arg2: 0x1::type_name::TypeName, arg3: &mut 0x2::tx_context::TxContext) : FreeManagedReward {
-        let v0 = 0x1::vector::empty<0x1::type_name::TypeName>();
-        0x1::vector::push_back<0x1::type_name::TypeName>(&mut v0, arg2);
+    public(friend) fun create(arg0: 0x2::object::ID, arg1: 0x2::object::ID, arg2: std::type_name::TypeName, arg3: &mut 0x2::tx_context::TxContext) : FreeManagedReward {
+        let v0 = std::vector::empty<std::type_name::TypeName>();
+        std::vector::push_back<std::type_name::TypeName>(&mut v0, arg2);
         FreeManagedReward{
             id     : 0x2::object::new(arg3), 
             reward : distribution::reward::create(arg0, arg1, arg1, v0, arg3),
@@ -25,7 +25,7 @@ module distribution::free_managed_reward {
         distribution::reward::get_prior_balance_index(&arg0.reward, arg1, arg2)
     }
     
-    public fun rewards_list(arg0: &FreeManagedReward) : vector<0x1::type_name::TypeName> {
+    public fun rewards_list(arg0: &FreeManagedReward) : vector<std::type_name::TypeName> {
         distribution::reward::rewards_list(&arg0.reward)
     }
     
@@ -49,20 +49,20 @@ module distribution::free_managed_reward {
         let (v0, v1, v2) = distribution::lock_owner::consume(arg1);
         assert!(distribution::reward::ve(&arg0.reward) == v0, 9223372337502486527);
         let v3 = distribution::reward::get_reward_internal<T0>(&mut arg0.reward, 0x2::tx_context::sender(arg3), v1, arg2, arg3);
-        if (0x1::option::is_some<0x2::balance::Balance<T0>>(&v3)) {
-            0x2::transfer::public_transfer<0x2::coin::Coin<T0>>(0x2::coin::from_balance<T0>(0x1::option::extract<0x2::balance::Balance<T0>>(&mut v3), arg3), v2);
+        if (std::option::is_some<0x2::balance::Balance<T0>>(&v3)) {
+            0x2::transfer::public_transfer<0x2::coin::Coin<T0>>(0x2::coin::from_balance<T0>(std::option::extract<0x2::balance::Balance<T0>>(&mut v3), arg3), v2);
         };
-        0x1::option::destroy_none<0x2::balance::Balance<T0>>(v3);
+        std::option::destroy_none<0x2::balance::Balance<T0>>(v3);
     }
     
-    public fun notify_reward_amount<T0>(arg0: &mut FreeManagedReward, arg1: 0x1::option::Option<distribution::whitelisted_tokens::WhitelistedToken>, arg2: 0x2::coin::Coin<T0>, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
-        let v0 = 0x1::type_name::get<T0>();
+    public fun notify_reward_amount<T0>(arg0: &mut FreeManagedReward, arg1: std::option::Option<distribution::whitelisted_tokens::WhitelistedToken>, arg2: 0x2::coin::Coin<T0>, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
+        let v0 = std::type_name::get<T0>();
         if (!distribution::reward::rewards_contains(&arg0.reward, v0)) {
-            assert!(0x1::option::is_some<distribution::whitelisted_tokens::WhitelistedToken>(&arg1), 9223372389042094079);
-            distribution::whitelisted_tokens::validate<T0>(0x1::option::extract<distribution::whitelisted_tokens::WhitelistedToken>(&mut arg1), distribution::reward::voter(&arg0.reward));
+            assert!(std::option::is_some<distribution::whitelisted_tokens::WhitelistedToken>(&arg1), 9223372389042094079);
+            distribution::whitelisted_tokens::validate<T0>(std::option::extract<distribution::whitelisted_tokens::WhitelistedToken>(&mut arg1), distribution::reward::voter(&arg0.reward));
             distribution::reward::add_reward_token(&mut arg0.reward, v0);
         };
-        0x1::option::destroy_none<distribution::whitelisted_tokens::WhitelistedToken>(arg1);
+        std::option::destroy_none<distribution::whitelisted_tokens::WhitelistedToken>(arg1);
         distribution::reward::notify_reward_amount_internal<T0>(&mut arg0.reward, 0x2::coin::into_balance<T0>(arg2), arg3, arg4);
     }
     

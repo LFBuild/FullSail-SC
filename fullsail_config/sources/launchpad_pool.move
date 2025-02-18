@@ -5,27 +5,27 @@ module fullsail_config::launchpad_pool {
     }
     
     struct MediaInfo has drop, store {
-        name: 0x1::string::String,
-        link: 0x1::string::String,
+        name: std::string::String,
+        link: std::string::String,
     }
     
     struct Pool has drop, store {
         pool_address: address,
         is_closed: bool,
         show_settle: bool,
-        coin_symbol: 0x1::string::String,
-        coin_name: 0x1::string::String,
-        coin_icon: 0x1::string::String,
-        banners: vector<0x1::string::String>,
-        introduction: 0x1::string::String,
-        website: 0x1::string::String,
-        tokenomics: 0x1::string::String,
-        social_media: 0x2::vec_map::VecMap<0x1::string::String, MediaInfo>,
-        terms: 0x1::string::String,
-        white_list_terms: 0x1::string::String,
-        regulation: 0x1::string::String,
-        project_details: 0x1::string::String,
-        extension_fields: 0x2::vec_map::VecMap<0x1::string::String, 0x1::string::String>,
+        coin_symbol: std::string::String,
+        coin_name: std::string::String,
+        coin_icon: std::string::String,
+        banners: vector<std::string::String>,
+        introduction: std::string::String,
+        website: std::string::String,
+        tokenomics: std::string::String,
+        social_media: 0x2::vec_map::VecMap<std::string::String, MediaInfo>,
+        terms: std::string::String,
+        white_list_terms: std::string::String,
+        regulation: std::string::String,
+        project_details: std::string::String,
+        extension_fields: 0x2::vec_map::VecMap<std::string::String, std::string::String>,
     }
     
     struct InitLaunchpadPoolsEvent has copy, drop, store {
@@ -46,13 +46,13 @@ module fullsail_config::launchpad_pool {
     
     struct AddMediaToPoolEvent has copy, drop, store {
         pool_address: address,
-        name: 0x1::string::String,
-        link: 0x1::string::String,
+        name: std::string::String,
+        link: std::string::String,
     }
     
     struct RemoveMediaFromPoolEvent has copy, drop, store {
         pool_address: address,
-        name: 0x1::string::String,
+        name: std::string::String,
     }
     
     struct ClosePoolEvent has copy, drop, store {
@@ -73,29 +73,29 @@ module fullsail_config::launchpad_pool {
     
     struct AddExtensionToPoolEvent has copy, drop, store {
         pool_address: address,
-        key: 0x1::string::String,
-        value: 0x1::string::String,
+        key: std::string::String,
+        value: std::string::String,
     }
     
     struct UpdateExtensionFromPoolEvent has copy, drop, store {
         pool_address: address,
-        key: 0x1::string::String,
-        old_value: 0x1::string::String,
-        new_value: 0x1::string::String,
+        key: std::string::String,
+        old_value: std::string::String,
+        new_value: std::string::String,
     }
     
     struct RemoveExtensionFromPoolEvent has copy, drop, store {
         pool_address: address,
-        key: 0x1::string::String,
+        key: std::string::String,
     }
     
-    public entry fun add_extension_to_pool(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: 0x1::string::String, arg4: 0x1::string::String, arg5: &0x2::tx_context::TxContext) {
+    public entry fun add_extension_to_pool(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: std::string::String, arg4: std::string::String, arg5: &0x2::tx_context::TxContext) {
         fullsail_config::config::checked_package_version(arg0);
         fullsail_config::config::checked_has_add_role(arg0, 0x2::tx_context::sender(arg5));
         assert!(0x2::table::contains<address, Pool>(&arg1.pools, arg2), 1);
         let v0 = 0x2::table::borrow_mut<address, Pool>(&mut arg1.pools, arg2);
-        assert!(!0x2::vec_map::contains<0x1::string::String, 0x1::string::String>(&v0.extension_fields, &arg3), 3);
-        0x2::vec_map::insert<0x1::string::String, 0x1::string::String>(&mut v0.extension_fields, arg3, arg4);
+        assert!(!0x2::vec_map::contains<std::string::String, std::string::String>(&v0.extension_fields, &arg3), 3);
+        0x2::vec_map::insert<std::string::String, std::string::String>(&mut v0.extension_fields, arg3, arg4);
         let v1 = AddExtensionToPoolEvent{
             pool_address : arg2, 
             key          : arg3, 
@@ -104,7 +104,7 @@ module fullsail_config::launchpad_pool {
         0x2::event::emit<AddExtensionToPoolEvent>(v1);
     }
     
-    public entry fun add_launchpad_pool(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: bool, arg4: bool, arg5: 0x1::string::String, arg6: 0x1::string::String, arg7: 0x1::string::String, arg8: vector<0x1::string::String>, arg9: 0x1::string::String, arg10: 0x1::string::String, arg11: 0x1::string::String, arg12: 0x1::string::String, arg13: 0x1::string::String, arg14: 0x1::string::String, arg15: 0x1::string::String, arg16: &0x2::tx_context::TxContext) {
+    public entry fun add_launchpad_pool(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: bool, arg4: bool, arg5: std::string::String, arg6: std::string::String, arg7: std::string::String, arg8: vector<std::string::String>, arg9: std::string::String, arg10: std::string::String, arg11: std::string::String, arg12: std::string::String, arg13: std::string::String, arg14: std::string::String, arg15: std::string::String, arg16: &0x2::tx_context::TxContext) {
         fullsail_config::config::checked_package_version(arg0);
         fullsail_config::config::checked_has_add_role(arg0, 0x2::tx_context::sender(arg16));
         assert!(!0x2::table::contains<address, Pool>(&arg1.pools, arg2), 0);
@@ -119,29 +119,29 @@ module fullsail_config::launchpad_pool {
             introduction     : arg9, 
             website          : arg10, 
             tokenomics       : arg11, 
-            social_media     : 0x2::vec_map::empty<0x1::string::String, MediaInfo>(), 
+            social_media     : 0x2::vec_map::empty<std::string::String, MediaInfo>(), 
             terms            : arg12, 
             white_list_terms : arg13, 
             regulation       : arg14, 
             project_details  : arg15, 
-            extension_fields : 0x2::vec_map::empty<0x1::string::String, 0x1::string::String>(),
+            extension_fields : 0x2::vec_map::empty<std::string::String, std::string::String>(),
         };
         0x2::table::add<address, Pool>(&mut arg1.pools, arg2, v0);
         let v1 = AddPoolEvent{pool_address: arg2};
         0x2::event::emit<AddPoolEvent>(v1);
     }
     
-    public fun add_media_to_pool(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: 0x1::string::String, arg4: 0x1::string::String, arg5: &0x2::tx_context::TxContext) {
+    public fun add_media_to_pool(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: std::string::String, arg4: std::string::String, arg5: &0x2::tx_context::TxContext) {
         fullsail_config::config::checked_package_version(arg0);
         fullsail_config::config::checked_has_add_role(arg0, 0x2::tx_context::sender(arg5));
         assert!(0x2::table::contains<address, Pool>(&arg1.pools, arg2), 1);
         let v0 = 0x2::table::borrow_mut<address, Pool>(&mut arg1.pools, arg2);
-        assert!(!0x2::vec_map::contains<0x1::string::String, MediaInfo>(&v0.social_media, &arg3), 3);
+        assert!(!0x2::vec_map::contains<std::string::String, MediaInfo>(&v0.social_media, &arg3), 3);
         let v1 = MediaInfo{
             name : arg3, 
             link : arg4,
         };
-        0x2::vec_map::insert<0x1::string::String, MediaInfo>(&mut v0.social_media, arg3, v1);
+        0x2::vec_map::insert<std::string::String, MediaInfo>(&mut v0.social_media, arg3, v1);
         let v2 = AddMediaToPoolEvent{
             pool_address : arg2, 
             name         : arg3, 
@@ -196,13 +196,13 @@ module fullsail_config::launchpad_pool {
         0x2::event::emit<OpenSettleEvent>(v0);
     }
     
-    public entry fun remove_extension_from_pool(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: 0x1::string::String, arg4: &0x2::tx_context::TxContext) {
+    public entry fun remove_extension_from_pool(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: std::string::String, arg4: &0x2::tx_context::TxContext) {
         fullsail_config::config::checked_package_version(arg0);
         fullsail_config::config::checked_has_delete_role(arg0, 0x2::tx_context::sender(arg4));
         assert!(0x2::table::contains<address, Pool>(&arg1.pools, arg2), 1);
         let v0 = 0x2::table::borrow_mut<address, Pool>(&mut arg1.pools, arg2);
-        assert!(0x2::vec_map::contains<0x1::string::String, 0x1::string::String>(&v0.extension_fields, &arg3), 2);
-        let (_, _) = 0x2::vec_map::remove<0x1::string::String, 0x1::string::String>(&mut v0.extension_fields, &arg3);
+        assert!(0x2::vec_map::contains<std::string::String, std::string::String>(&v0.extension_fields, &arg3), 2);
+        let (_, _) = 0x2::vec_map::remove<std::string::String, std::string::String>(&mut v0.extension_fields, &arg3);
         let v3 = RemoveExtensionFromPoolEvent{
             pool_address : arg2, 
             key          : arg3,
@@ -219,13 +219,13 @@ module fullsail_config::launchpad_pool {
         0x2::event::emit<RemovePoolEvent>(v0);
     }
     
-    public fun remove_media_from_pool(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: 0x1::string::String, arg4: &0x2::tx_context::TxContext) {
+    public fun remove_media_from_pool(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: std::string::String, arg4: &0x2::tx_context::TxContext) {
         fullsail_config::config::checked_package_version(arg0);
         fullsail_config::config::checked_has_delete_role(arg0, 0x2::tx_context::sender(arg4));
         assert!(0x2::table::contains<address, Pool>(&arg1.pools, arg2), 1);
         let v0 = 0x2::table::borrow_mut<address, Pool>(&mut arg1.pools, arg2);
-        assert!(0x2::vec_map::contains<0x1::string::String, MediaInfo>(&v0.social_media, &arg3), 2);
-        let (_, _) = 0x2::vec_map::remove<0x1::string::String, MediaInfo>(&mut v0.social_media, &arg3);
+        assert!(0x2::vec_map::contains<std::string::String, MediaInfo>(&v0.social_media, &arg3), 2);
+        let (_, _) = 0x2::vec_map::remove<std::string::String, MediaInfo>(&mut v0.social_media, &arg3);
         let v3 = RemoveMediaFromPoolEvent{
             pool_address : arg2, 
             name         : arg3,
@@ -233,13 +233,13 @@ module fullsail_config::launchpad_pool {
         0x2::event::emit<RemoveMediaFromPoolEvent>(v3);
     }
     
-    public entry fun update_extension_from_pool(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: 0x1::string::String, arg4: 0x1::string::String, arg5: &0x2::tx_context::TxContext) {
+    public entry fun update_extension_from_pool(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: std::string::String, arg4: std::string::String, arg5: &0x2::tx_context::TxContext) {
         fullsail_config::config::checked_package_version(arg0);
         fullsail_config::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg5));
         assert!(0x2::table::contains<address, Pool>(&arg1.pools, arg2), 1);
         let v0 = 0x2::table::borrow_mut<address, Pool>(&mut arg1.pools, arg2);
-        assert!(0x2::vec_map::contains<0x1::string::String, 0x1::string::String>(&v0.extension_fields, &arg3), 2);
-        let v1 = 0x2::vec_map::get_mut<0x1::string::String, 0x1::string::String>(&mut v0.extension_fields, &arg3);
+        assert!(0x2::vec_map::contains<std::string::String, std::string::String>(&v0.extension_fields, &arg3), 2);
+        let v1 = 0x2::vec_map::get_mut<std::string::String, std::string::String>(&mut v0.extension_fields, &arg3);
         *v1 = arg4;
         let v2 = UpdateExtensionFromPoolEvent{
             pool_address : arg2, 
@@ -250,7 +250,7 @@ module fullsail_config::launchpad_pool {
         0x2::event::emit<UpdateExtensionFromPoolEvent>(v2);
     }
     
-    public fun update_launchpad_pool(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: bool, arg4: bool, arg5: 0x1::string::String, arg6: 0x1::string::String, arg7: 0x1::string::String, arg8: vector<0x1::string::String>, arg9: 0x1::string::String, arg10: 0x1::string::String, arg11: 0x1::string::String, arg12: 0x1::string::String, arg13: 0x1::string::String, arg14: 0x1::string::String, arg15: 0x1::string::String, arg16: &0x2::tx_context::TxContext) {
+    public fun update_launchpad_pool(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: bool, arg4: bool, arg5: std::string::String, arg6: std::string::String, arg7: std::string::String, arg8: vector<std::string::String>, arg9: std::string::String, arg10: std::string::String, arg11: std::string::String, arg12: std::string::String, arg13: std::string::String, arg14: std::string::String, arg15: std::string::String, arg16: &0x2::tx_context::TxContext) {
         fullsail_config::config::checked_package_version(arg0);
         fullsail_config::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg16));
         assert!(0x2::table::contains<address, Pool>(&arg1.pools, arg2), 1);

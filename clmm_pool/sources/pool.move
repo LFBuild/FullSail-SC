@@ -21,9 +21,9 @@ module clmm_pool::pool {
         position_manager: clmm_pool::position::PositionManager,
         is_pause: bool,
         index: u64,
-        url: 0x1::string::String,
+        url: std::string::String,
         unstaked_liquidity_fee_rate: u64,
-        magma_distribution_gauger_id: 0x1::option::Option<0x2::object::ID>,
+        magma_distribution_gauger_id: std::option::Option<0x2::object::ID>,
         magma_distribution_growth_global: u128,
         magma_distribution_rate: u128,
         magma_distribution_reserve: u64,
@@ -161,13 +161,13 @@ module clmm_pool::pool {
     
     struct UpdateEmissionEvent has copy, drop, store {
         pool: 0x2::object::ID,
-        rewarder_type: 0x1::type_name::TypeName,
+        rewarder_type: std::type_name::TypeName,
         emissions_per_second: u128,
     }
     
     struct AddRewarderEvent has copy, drop, store {
         pool: 0x2::object::ID,
-        rewarder_type: 0x1::type_name::TypeName,
+        rewarder_type: std::type_name::TypeName,
     }
     
     struct CollectRewardEvent has copy, drop, store {
@@ -188,7 +188,7 @@ module clmm_pool::pool {
         new_fee_rate: u64,
     }
     
-    public(friend) fun new<T0, T1>(arg0: u32, arg1: u128, arg2: u64, arg3: 0x1::string::String, arg4: u64, arg5: &0x2::clock::Clock, arg6: &mut 0x2::tx_context::TxContext) : Pool<T0, T1> {
+    public(friend) fun new<T0, T1>(arg0: u32, arg1: u128, arg2: u64, arg3: std::string::String, arg4: u64, arg5: &0x2::clock::Clock, arg6: &mut 0x2::tx_context::TxContext) : Pool<T0, T1> {
         let v0 = PoolFee{
             coin_a : 0, 
             coin_b : 0,
@@ -213,7 +213,7 @@ module clmm_pool::pool {
             index                               : arg4, 
             url                                 : arg3, 
             unstaked_liquidity_fee_rate         : clmm_pool::config::default_unstaked_fee_rate(), 
-            magma_distribution_gauger_id        : 0x1::option::none<0x2::object::ID>(), 
+            magma_distribution_gauger_id        : std::option::none<0x2::object::ID>(), 
             magma_distribution_growth_global    : 0, 
             magma_distribution_rate             : 0, 
             magma_distribution_reserve          : 0, 
@@ -302,7 +302,7 @@ module clmm_pool::pool {
         clmm_pool::rewarder::update_emission<T2>(arg2, &mut arg1.rewarder_manager, arg1.liquidity, arg3, 0x2::clock::timestamp_ms(arg4) / 1000);
         let v0 = UpdateEmissionEvent{
             pool                 : 0x2::object::id<Pool<T0, T1>>(arg1), 
-            rewarder_type        : 0x1::type_name::get<T2>(), 
+            rewarder_type        : std::type_name::get<T2>(), 
             emissions_per_second : arg3,
         };
         0x2::event::emit<UpdateEmissionEvent>(v0);
@@ -423,9 +423,9 @@ module clmm_pool::pool {
     
     public fun calculate_and_update_reward<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: 0x2::object::ID, arg3: &0x2::clock::Clock) : u64 {
         let v0 = clmm_pool::rewarder::rewarder_index<T2>(&arg1.rewarder_manager);
-        assert!(0x1::option::is_some<u64>(&v0), 17);
+        assert!(std::option::is_some<u64>(&v0), 17);
         let v1 = calculate_and_update_rewards<T0, T1>(arg0, arg1, arg2, arg3);
-        *0x1::vector::borrow<u64>(&v1, 0x1::option::extract<u64>(&mut v0))
+        *std::vector::borrow<u64>(&v1, std::option::extract<u64>(&mut v0))
     }
     
     public fun calculate_and_update_rewards<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: 0x2::object::ID, arg3: &0x2::clock::Clock) : vector<u64> {
@@ -473,7 +473,7 @@ module clmm_pool::pool {
             protocol_fee_amount : 0, 
             after_sqrt_price    : arg1.current_sqrt_price, 
             is_exceed           : false, 
-            step_results        : 0x1::vector::empty<SwapStepResult>(),
+            step_results        : std::vector::empty<SwapStepResult>(),
         };
         let v7 = if (arg1.unstaked_liquidity_fee_rate == clmm_pool::config::default_unstaked_fee_rate()) {
             clmm_pool::config::unstaked_liquidity_fee_rate(arg0)
@@ -510,7 +510,7 @@ module clmm_pool::pool {
                 fee_amount         : v14, 
                 remainder_amount   : v4,
             };
-            0x1::vector::push_back<SwapStepResult>(&mut v6.step_results, v20);
+            std::vector::push_back<SwapStepResult>(&mut v6.step_results, v20);
             if (v13 == v10) {
                 v0 = v10;
                 let (v21, v22) = if (arg2) {
@@ -568,7 +568,7 @@ module clmm_pool::pool {
             protocol_fee_amount : 0, 
             after_sqrt_price    : arg1.current_sqrt_price, 
             is_exceed           : false, 
-            step_results        : 0x1::vector::empty<SwapStepResult>(),
+            step_results        : std::vector::empty<SwapStepResult>(),
         };
         let v7 = if (arg1.unstaked_liquidity_fee_rate == clmm_pool::config::default_unstaked_fee_rate()) {
             clmm_pool::config::unstaked_liquidity_fee_rate(arg0)
@@ -616,7 +616,7 @@ module clmm_pool::pool {
                 fee_amount         : v14, 
                 remainder_amount   : v4,
             };
-            0x1::vector::push_back<SwapStepResult>(&mut v6.step_results, v25);
+            std::vector::push_back<SwapStepResult>(&mut v6.step_results, v25);
             if (v13 == v10) {
                 v0 = v10;
                 let (v26, v27) = if (arg2) {
@@ -675,19 +675,19 @@ module clmm_pool::pool {
     }
     
     public fun calculated_swap_result_step_swap_result(arg0: &CalculatedSwapResult, arg1: u64) : &SwapStepResult {
-        0x1::vector::borrow<SwapStepResult>(&arg0.step_results, arg1)
+        std::vector::borrow<SwapStepResult>(&arg0.step_results, arg1)
     }
     
     public fun calculated_swap_result_steps_length(arg0: &CalculatedSwapResult) : u64 {
-        0x1::vector::length<SwapStepResult>(&arg0.step_results)
+        std::vector::length<SwapStepResult>(&arg0.step_results)
     }
     
     fun check_gauge_cap<T0, T1>(arg0: &Pool<T0, T1>, arg1: &gauge_cap::gauge_cap::GaugeCap) {
         let v0 = if (gauge_cap::gauge_cap::get_pool_id(arg1) == 0x2::object::id<Pool<T0, T1>>(arg0)) {
             let v1 = &arg0.magma_distribution_gauger_id;
-            let v2 = if (0x1::option::is_some<0x2::object::ID>(v1)) {
+            let v2 = if (std::option::is_some<0x2::object::ID>(v1)) {
                 let v3 = gauge_cap::gauge_cap::get_gauge_id(arg1);
-                0x1::option::borrow<0x2::object::ID>(v1) == &v3
+                std::option::borrow<0x2::object::ID>(v1) == &v3
             } else {
                 false
             };
@@ -790,8 +790,8 @@ module clmm_pool::pool {
         clmm_pool::rewarder::settle(&mut arg1.rewarder_manager, arg1.liquidity, 0x2::clock::timestamp_ms(arg5) / 1000);
         let v0 = 0x2::object::id<clmm_pool::position::Position>(arg2);
         let v1 = clmm_pool::rewarder::rewarder_index<T2>(&arg1.rewarder_manager);
-        assert!(0x1::option::is_some<u64>(&v1), 17);
-        let v2 = 0x1::option::extract<u64>(&mut v1);
+        assert!(std::option::is_some<u64>(&v1), 17);
+        let v2 = std::option::extract<u64>(&mut v1);
         let v3 = if (arg4 && clmm_pool::position::liquidity(arg2) != 0 || clmm_pool::position::inited_rewards_count(&arg1.position_manager, v0) <= v2) {
             let (v4, v5) = clmm_pool::position::tick_range(arg2);
             clmm_pool::position::update_and_reset_rewards(&mut arg1.position_manager, v0, get_rewards_in_tick_range<T0, T1>(arg1, v4, v5), v2)
@@ -936,8 +936,8 @@ module clmm_pool::pool {
     }
     
     public fun get_magma_distribution_gauger_id<T0, T1>(arg0: &Pool<T0, T1>) : 0x2::object::ID {
-        assert!(0x1::option::is_some<0x2::object::ID>(&arg0.magma_distribution_gauger_id), 9223379295349506047);
-        *0x1::option::borrow<0x2::object::ID>(&arg0.magma_distribution_gauger_id)
+        assert!(std::option::is_some<0x2::object::ID>(&arg0.magma_distribution_gauger_id), 9223379295349506047);
+        *std::option::borrow<0x2::object::ID>(&arg0.magma_distribution_gauger_id)
     }
     
     public fun get_magma_distribution_growth_global<T0, T1>(arg0: &Pool<T0, T1>) : u128 {
@@ -949,7 +949,7 @@ module clmm_pool::pool {
         if (arg3 == 0) {
             arg3 = arg0.magma_distribution_growth_global;
         };
-        clmm_pool::tick::get_magma_distribution_growth_in_range(arg0.current_tick_index, arg3, 0x1::option::some<clmm_pool::tick::Tick>(*borrow_tick<T0, T1>(arg0, arg1)), 0x1::option::some<clmm_pool::tick::Tick>(*borrow_tick<T0, T1>(arg0, arg2)))
+        clmm_pool::tick::get_magma_distribution_growth_in_range(arg0.current_tick_index, arg3, std::option::some<clmm_pool::tick::Tick>(*borrow_tick<T0, T1>(arg0, arg1)), std::option::some<clmm_pool::tick::Tick>(*borrow_tick<T0, T1>(arg0, arg2)))
     }
     
     public fun get_magma_distribution_last_updated<T0, T1>(arg0: &Pool<T0, T1>) : u64 {
@@ -988,9 +988,9 @@ module clmm_pool::pool {
     
     public fun get_position_reward<T0, T1, T2>(arg0: &Pool<T0, T1>, arg1: 0x2::object::ID) : u64 {
         let v0 = clmm_pool::rewarder::rewarder_index<T2>(&arg0.rewarder_manager);
-        assert!(0x1::option::is_some<u64>(&v0), 17);
+        assert!(std::option::is_some<u64>(&v0), 17);
         let v1 = clmm_pool::position::rewards_amount_owned(&arg0.position_manager, arg1);
-        *0x1::vector::borrow<u64>(&v1, 0x1::option::extract<u64>(&mut v0))
+        *std::vector::borrow<u64>(&v1, std::option::extract<u64>(&mut v0))
     }
     
     public fun get_position_rewards<T0, T1>(arg0: &Pool<T0, T1>, arg1: 0x2::object::ID) : vector<u64> {
@@ -1007,7 +1007,7 @@ module clmm_pool::pool {
     
     public fun init_magma_distribution_gauge<T0, T1>(arg0: &mut Pool<T0, T1>, arg1: &gauge_cap::gauge_cap::GaugeCap) {
         assert!(gauge_cap::gauge_cap::get_pool_id(arg1) == 0x2::object::id<Pool<T0, T1>>(arg0), 9223379334004211711);
-        0x1::option::fill<0x2::object::ID>(&mut arg0.magma_distribution_gauger_id, gauge_cap::gauge_cap::get_gauge_id(arg1));
+        std::option::fill<0x2::object::ID>(&mut arg0.magma_distribution_gauger_id, gauge_cap::gauge_cap::get_gauge_id(arg1));
     }
     
     public fun initialize_rewarder<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: &mut 0x2::tx_context::TxContext) {
@@ -1017,7 +1017,7 @@ module clmm_pool::pool {
         clmm_pool::rewarder::add_rewarder<T2>(&mut arg1.rewarder_manager);
         let v0 = AddRewarderEvent{
             pool          : 0x2::object::id<Pool<T0, T1>>(arg1), 
-            rewarder_type : 0x1::type_name::get<T2>(),
+            rewarder_type : std::type_name::get<T2>(),
         };
         0x2::event::emit<AddRewarderEvent>(v0);
     }
@@ -1160,26 +1160,26 @@ module clmm_pool::pool {
         &arg0.rewarder_manager
     }
     
-    public fun set_display<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &0x2::package::Publisher, arg2: 0x1::string::String, arg3: 0x1::string::String, arg4: 0x1::string::String, arg5: 0x1::string::String, arg6: 0x1::string::String, arg7: 0x1::string::String, arg8: &mut 0x2::tx_context::TxContext) {
+    public fun set_display<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &0x2::package::Publisher, arg2: std::string::String, arg3: std::string::String, arg4: std::string::String, arg5: std::string::String, arg6: std::string::String, arg7: std::string::String, arg8: &mut 0x2::tx_context::TxContext) {
         clmm_pool::config::checked_package_version(arg0);
-        let v0 = 0x1::vector::empty<0x1::string::String>();
-        0x1::vector::push_back<0x1::string::String>(&mut v0, 0x1::string::utf8(b"name"));
-        0x1::vector::push_back<0x1::string::String>(&mut v0, 0x1::string::utf8(b"coin_a"));
-        0x1::vector::push_back<0x1::string::String>(&mut v0, 0x1::string::utf8(b"coin_b"));
-        0x1::vector::push_back<0x1::string::String>(&mut v0, 0x1::string::utf8(b"link"));
-        0x1::vector::push_back<0x1::string::String>(&mut v0, 0x1::string::utf8(b"image_url"));
-        0x1::vector::push_back<0x1::string::String>(&mut v0, 0x1::string::utf8(b"description"));
-        0x1::vector::push_back<0x1::string::String>(&mut v0, 0x1::string::utf8(b"project_url"));
-        0x1::vector::push_back<0x1::string::String>(&mut v0, 0x1::string::utf8(b"creator"));
-        let v1 = 0x1::vector::empty<0x1::string::String>();
-        0x1::vector::push_back<0x1::string::String>(&mut v1, arg2);
-        0x1::vector::push_back<0x1::string::String>(&mut v1, 0x1::string::from_ascii(0x1::type_name::into_string(0x1::type_name::get<T0>())));
-        0x1::vector::push_back<0x1::string::String>(&mut v1, 0x1::string::from_ascii(0x1::type_name::into_string(0x1::type_name::get<T1>())));
-        0x1::vector::push_back<0x1::string::String>(&mut v1, arg5);
-        0x1::vector::push_back<0x1::string::String>(&mut v1, arg4);
-        0x1::vector::push_back<0x1::string::String>(&mut v1, arg3);
-        0x1::vector::push_back<0x1::string::String>(&mut v1, arg6);
-        0x1::vector::push_back<0x1::string::String>(&mut v1, arg7);
+        let v0 = std::vector::empty<std::string::String>();
+        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"name"));
+        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"coin_a"));
+        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"coin_b"));
+        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"link"));
+        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"image_url"));
+        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"description"));
+        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"project_url"));
+        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"creator"));
+        let v1 = std::vector::empty<std::string::String>();
+        std::vector::push_back<std::string::String>(&mut v1, arg2);
+        std::vector::push_back<std::string::String>(&mut v1, std::string::from_ascii(std::type_name::into_string(std::type_name::get<T0>())));
+        std::vector::push_back<std::string::String>(&mut v1, std::string::from_ascii(std::type_name::into_string(std::type_name::get<T1>())));
+        std::vector::push_back<std::string::String>(&mut v1, arg5);
+        std::vector::push_back<std::string::String>(&mut v1, arg4);
+        std::vector::push_back<std::string::String>(&mut v1, arg3);
+        std::vector::push_back<std::string::String>(&mut v1, arg6);
+        std::vector::push_back<std::string::String>(&mut v1, arg7);
         let v2 = 0x2::display::new_with_fields<Pool<T0, T1>>(arg1, v0, v1, arg8);
         0x2::display::update_version<Pool<T0, T1>>(&mut v2);
         0x2::transfer::public_transfer<0x2::display::Display<Pool<T0, T1>>>(v2, 0x2::tx_context::sender(arg8));
@@ -1408,15 +1408,15 @@ module clmm_pool::pool {
         };
         let v2 = clmm_pool::tick::try_borrow_tick(&arg0.tick_manager, arg2);
         let v3 = clmm_pool::tick::try_borrow_tick(&arg0.tick_manager, arg3);
-        if (0x1::option::is_some<clmm_pool::tick::Tick>(&v2)) {
+        if (std::option::is_some<clmm_pool::tick::Tick>(&v2)) {
             clmm_pool::tick::update_magma_stake(&mut arg0.tick_manager, arg2, arg1, false);
         };
-        if (0x1::option::is_some<clmm_pool::tick::Tick>(&v3)) {
+        if (std::option::is_some<clmm_pool::tick::Tick>(&v3)) {
             clmm_pool::tick::update_magma_stake(&mut arg0.tick_manager, arg3, arg1, true);
         };
     }
     
-    public fun update_position_url<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: 0x1::string::String, arg3: &mut 0x2::tx_context::TxContext) {
+    public fun update_position_url<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: std::string::String, arg3: &mut 0x2::tx_context::TxContext) {
         clmm_pool::config::checked_package_version(arg0);
         assert!(!arg1.is_pause, 13);
         clmm_pool::config::check_pool_manager_role(arg0, 0x2::tx_context::sender(arg3));
@@ -1451,7 +1451,7 @@ module clmm_pool::pool {
         0x2::event::emit<UpdateUnstakedLiquidityFeeRateEvent>(v0);
     }
     
-    public fun url<T0, T1>(arg0: &Pool<T0, T1>) : 0x1::string::String {
+    public fun url<T0, T1>(arg0: &Pool<T0, T1>) : std::string::String {
         arg0.url
     }
     

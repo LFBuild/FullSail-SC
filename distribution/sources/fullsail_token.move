@@ -22,7 +22,7 @@ module distribution::fullsail_token {
     }
     
     fun init(arg0: MAGMA_TOKEN, arg1: &mut 0x2::tx_context::TxContext) {
-        let (v0, v1) = 0x2::coin::create_currency<MAGMA_TOKEN>(arg0, 6, b"MGM", b"Magma", b"Magma Protocol Governance Token", 0x1::option::none<0x2::url::Url>(), arg1);
+        let (v0, v1) = 0x2::coin::create_currency<MAGMA_TOKEN>(arg0, 6, b"MGM", b"Magma", b"Magma Protocol Governance Token", std::option::none<0x2::url::Url>(), arg1);
         let v2 = MinterCap<MAGMA_TOKEN>{
             id  : 0x2::object::new(arg1), 
             cap : v0,

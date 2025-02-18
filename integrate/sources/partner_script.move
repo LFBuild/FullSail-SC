@@ -3,7 +3,7 @@ module integrate::partner_script {
         clmm_pool::partner::claim_ref_fee<T0>(arg0, arg1, arg2, arg3);
     }
     
-    public entry fun create_partner(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::partner::Partners, arg2: 0x1::string::String, arg3: u64, arg4: u64, arg5: u64, arg6: address, arg7: &0x2::clock::Clock, arg8: &mut 0x2::tx_context::TxContext) {
+    public entry fun create_partner(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::partner::Partners, arg2: std::string::String, arg3: u64, arg4: u64, arg5: u64, arg6: address, arg7: &0x2::clock::Clock, arg8: &mut 0x2::tx_context::TxContext) {
         clmm_pool::partner::create_partner(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
     }
     

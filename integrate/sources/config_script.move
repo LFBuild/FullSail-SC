@@ -38,7 +38,7 @@ module integrate::config_script {
         clmm_pool::config::add_fee_tier(arg0, 200, 10000, arg2);
     }
     
-    public entry fun set_position_display(arg0: &clmm_pool::config::GlobalConfig, arg1: &0x2::package::Publisher, arg2: 0x1::string::String, arg3: 0x1::string::String, arg4: 0x1::string::String, arg5: 0x1::string::String, arg6: &mut 0x2::tx_context::TxContext) {
+    public entry fun set_position_display(arg0: &clmm_pool::config::GlobalConfig, arg1: &0x2::package::Publisher, arg2: std::string::String, arg3: std::string::String, arg4: std::string::String, arg5: std::string::String, arg6: &mut 0x2::tx_context::TxContext) {
         clmm_pool::position::set_display(arg0, arg1, arg2, arg3, arg4, arg5, arg6);
     }
     

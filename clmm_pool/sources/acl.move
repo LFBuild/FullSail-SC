@@ -23,16 +23,16 @@ module clmm_pool::acl {
     }
     
     public fun get_members(arg0: &ACL) : vector<Member> {
-        let v0 = 0x1::vector::empty<Member>();
+        let v0 = std::vector::empty<Member>();
         let v1 = move_stl::linked_table::head<address, u128>(&arg0.permissions);
-        while (0x1::option::is_some<address>(&v1)) {
-            let v2 = *0x1::option::borrow<address>(&v1);
+        while (std::option::is_some<address>(&v1)) {
+            let v2 = *std::option::borrow<address>(&v1);
             let v3 = move_stl::linked_table::borrow_node<address, u128>(&arg0.permissions, v2);
             let v4 = Member{
                 address    : v2, 
                 permission : *move_stl::linked_table::borrow_value<address, u128>(v3),
             };
-            0x1::vector::push_back<Member>(&mut v0, v4);
+            std::vector::push_back<Member>(&mut v0, v4);
             v1 = move_stl::linked_table::next<address, u128>(v3);
         };
         v0

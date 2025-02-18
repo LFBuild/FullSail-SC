@@ -48,8 +48,8 @@ module integrate::voting_escrow {
     }
     
     public entry fun create_lock_single_coin<T0>(arg0: &mut distribution::voting_escrow::VotingEscrow<T0>, arg1: 0x2::coin::Coin<T0>, arg2: u64, arg3: bool, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
-        let v0 = 0x1::vector::empty<0x2::coin::Coin<T0>>();
-        0x1::vector::push_back<0x2::coin::Coin<T0>>(&mut v0, arg1);
+        let v0 = std::vector::empty<0x2::coin::Coin<T0>>();
+        std::vector::push_back<0x2::coin::Coin<T0>>(&mut v0, arg1);
         create_lock<T0>(arg0, v0, arg2, arg3, arg4, arg5);
     }
     
@@ -65,8 +65,8 @@ module integrate::voting_escrow {
         let v0 = 0;
         let v1 = distribution::voter::voted_pools<T0>(arg0, arg3);
         let v2 = 0;
-        while (v2 < 0x1::vector::length<0x2::object::ID>(&v1)) {
-            let v3 = distribution::voter::pool_to_gauge<T0>(arg0, *0x1::vector::borrow<0x2::object::ID>(&v1, v2));
+        while (v2 < std::vector::length<0x2::object::ID>(&v1)) {
+            let v3 = distribution::voter::pool_to_gauge<T0>(arg0, *std::vector::borrow<0x2::object::ID>(&v1, v2));
             let v4 = v0 + distribution::fee_voting_reward::earned<T0>(distribution::voter::borrow_fee_voting_reward<T0>(arg0, v3), arg3, arg4);
             v0 = v4 + distribution::bribe_voting_reward::earned<T0>(distribution::voter::borrow_bribe_voting_reward<T0>(arg0, v3), arg3, arg4);
             v2 = v2 + 1;

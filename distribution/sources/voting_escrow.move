@@ -345,7 +345,7 @@ module distribution::voting_escrow {
         distribution::voting_dao::checkpoint_delegator(&mut arg0.voting_dao, v0, arg2.amount, 0x2::object::id_from_address(@0x0), @0x0, arg3, arg4);
         0x2::table::remove<0x2::object::ID, address>(&mut arg0.owner_of, v0);
         0x2::table::remove<0x2::object::ID, LockedBalance>(&mut arg0.locked, v0);
-        checkpoint_internal<T0>(arg0, 0x1::option::some<0x2::object::ID>(v0), arg2, locked_balance(0, 0, false), arg3, arg4);
+        checkpoint_internal<T0>(arg0, std::option::some<0x2::object::ID>(v0), arg2, locked_balance(0, 0, false), arg3, arg4);
         let Lock {
             id        : v1,
             escrow    : _,
@@ -358,10 +358,10 @@ module distribution::voting_escrow {
     }
 
     public fun checkpoint<T0>(arg0: &mut VotingEscrow<T0>, arg1: &0x2::clock::Clock, arg2: &mut 0x2::tx_context::TxContext) {
-        checkpoint_internal<T0>(arg0, 0x1::option::none<0x2::object::ID>(), locked_balance(0, 0, false), locked_balance(0, 0, false), arg1, arg2);
+        checkpoint_internal<T0>(arg0, std::option::none<0x2::object::ID>(), locked_balance(0, 0, false), locked_balance(0, 0, false), arg1, arg2);
     }
 
-    fun checkpoint_internal<T0>(arg0: &mut VotingEscrow<T0>, arg1: 0x1::option::Option<0x2::object::ID>, arg2: LockedBalance, arg3: LockedBalance, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
+    fun checkpoint_internal<T0>(arg0: &mut VotingEscrow<T0>, arg1: std::option::Option<0x2::object::ID>, arg2: LockedBalance, arg3: LockedBalance, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
         let mut v0 = create_user_point();
         let mut v1 = create_user_point();
         let mut v2 = integer_mate::i128::from(0);
@@ -369,7 +369,7 @@ module distribution::voting_escrow {
         let v4 = arg0.epoch;
         let mut v5 = v4;
         let v6 = distribution::common::current_timestamp(arg4);
-        if (0x1::option::is_some<0x2::object::ID>(&arg1)) {
+        if (std::option::is_some<0x2::object::ID>(&arg1)) {
             let mut v7 = if (arg3.is_permanent) {
                 arg3.amount
             } else {
@@ -444,7 +444,7 @@ module distribution::voting_escrow {
             set_point_history<T0>(arg0, v18, v11);
             v14 = v14 + 1;
         };
-        if (0x1::option::is_some<0x2::object::ID>(&arg1)) {
+        if (std::option::is_some<0x2::object::ID>(&arg1)) {
             v11.slope = integer_mate::i128::add(v11.slope, integer_mate::i128::sub(v1.slope, v0.slope));
             v11.bias = integer_mate::i128::add(v11.bias, integer_mate::i128::sub(v1.bias, v0.bias));
             if (integer_mate::i128::is_neg(v11.slope)) {
@@ -470,7 +470,7 @@ module distribution::voting_escrow {
             arg0.epoch = v5;
             set_point_history<T0>(arg0, v5, v11);
         };
-        if (0x1::option::is_some<0x2::object::ID>(&arg1)) {
+        if (std::option::is_some<0x2::object::ID>(&arg1)) {
             if (arg2.end > v6) {
                 let v20 = integer_mate::i128::add(v2, v0.slope);
                 v2 = v20;
@@ -484,7 +484,7 @@ module distribution::voting_escrow {
                     set_slope_changes<T0>(arg0, arg3.end, integer_mate::i128::sub(v3, v1.slope));
                 };
             };
-            let v21 = *0x1::option::borrow<0x2::object::ID>(&arg1);
+            let v21 = *std::option::borrow<0x2::object::ID>(&arg1);
             v1.ts = v6;
             let mut v22 = if (0x2::table::contains<0x2::object::ID, u64>(&arg0.user_point_epoch, v21)) {
                 *0x2::table::borrow<0x2::object::ID, u64>(&arg0.user_point_epoch, v21)
@@ -578,7 +578,7 @@ module distribution::voting_escrow {
         let v4 = 0x2::object::id<Lock>(&v3);
         0x2::transfer::transfer<Lock>(v3, arg1);
         0x2::table::add<0x2::object::ID, EscrowType>(&mut arg0.escrow_type, v4, EscrowType::MANAGED{});
-        let v5 = 0x1::type_name::get<T0>();
+        let v5 = std::type_name::get<T0>();
         let v6 = distribution::locked_managed_reward::create(arg0.voter, 0x2::object::id<VotingEscrow<T0>>(arg0), v5, arg3);
         let v7 = distribution::free_managed_reward::create(arg0.voter, 0x2::object::id<VotingEscrow<T0>>(arg0), v5, arg3);
         let v8 = EventCreateManaged{
@@ -608,7 +608,7 @@ module distribution::voting_escrow {
         0x2::table::add<0x2::object::ID, address>(&mut arg0.owner_of, v1, arg1);
         0x2::table::add<0x2::object::ID, u64>(&mut arg0.ownership_change_at, v1, 0x2::clock::timestamp_ms(arg6));
         distribution::voting_dao::checkpoint_delegator(&mut arg0.voting_dao, v1, arg5.amount, 0x2::object::id_from_address(@0x0), arg1, arg6, arg7);
-        checkpoint_internal<T0>(arg0, 0x1::option::some<0x2::object::ID>(0x2::object::id<Lock>(&v0)), locked_balance(0, 0, false), arg5, arg6, arg7);
+        checkpoint_internal<T0>(arg0, std::option::some<0x2::object::ID>(0x2::object::id<Lock>(&v0)), locked_balance(0, 0, false), arg5, arg6, arg7);
         v0
     }
 
@@ -653,13 +653,13 @@ module distribution::voting_escrow {
         0x2::event::emit<EventDelegateChanged>(v5);
     }
 
-    public fun deposit_for<T0>(arg0: &mut VotingEscrow<T0>, mut arg1: 0x1::option::Option<DistributorCap>, arg2: &mut Lock, arg3: 0x2::coin::Coin<T0>, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
+    public fun deposit_for<T0>(arg0: &mut VotingEscrow<T0>, mut arg1: std::option::Option<DistributorCap>, arg2: &mut Lock, arg3: 0x2::coin::Coin<T0>, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
         let v0 = 0x2::object::id<Lock>(arg2);
         if (escrow_type<T0>(arg0, v0) == EscrowType::MANAGED{}) {
-            if (0x1::option::is_none<DistributorCap>(&arg1)) {
+            if (std::option::is_none<DistributorCap>(&arg1)) {
                 abort 9223374605247840297
             };
-            let v1 = 0x1::option::extract<DistributorCap>(&mut arg1);
+            let v1 = std::option::extract<DistributorCap>(&mut arg1);
             if (v1.ve != 0x2::object::id<VotingEscrow<T0>>(arg0)) {
                 0x2::transfer::transfer<DistributorCap>(v1, 0x2::tx_context::sender(arg5));
                 abort 9223374626722676777
@@ -669,7 +669,7 @@ module distribution::voting_escrow {
         let v2 = 0x2::coin::value<T0>(&arg3);
         0x2::balance::join<T0>(&mut arg0.balance, 0x2::coin::into_balance<T0>(arg3));
         increase_amount_for_internal<T0>(arg0, v0, v2, DepositType::DEPOSIT_FOR_TYPE{}, arg4, arg5);
-        0x1::option::destroy_none<DistributorCap>(arg1);
+        std::option::destroy_none<DistributorCap>(arg1);
         arg2.amount = arg2.amount + v2;
     }
 
@@ -682,7 +682,7 @@ module distribution::voting_escrow {
             v1.end = arg3;
         };
         set_locked<T0>(arg0, arg1, v1);
-        checkpoint_internal<T0>(arg0, 0x1::option::some<0x2::object::ID>(arg1), arg4, v1, arg6, arg7);
+        checkpoint_internal<T0>(arg0, std::option::some<0x2::object::ID>(arg1), arg4, v1, arg6, arg7);
         let v2 = EventDeposit{
             lock_id      : arg1,
             deposit_type : arg5,
@@ -709,7 +709,7 @@ module distribution::voting_escrow {
             arg0.permanent_lock_balance = arg0.permanent_lock_balance - v1.amount;
             delegate_internal<T0>(arg0, arg2, 0x2::object::id_from_address(@0x0), arg4, arg5);
         };
-        checkpoint_internal<T0>(arg0, 0x1::option::some<0x2::object::ID>(v0), v1, locked_balance(0, 0, false), arg4, arg5);
+        checkpoint_internal<T0>(arg0, std::option::some<0x2::object::ID>(v0), v1, locked_balance(0, 0, false), arg4, arg5);
         0x2::table::remove<0x2::object::ID, LockedBalance>(&mut arg0.locked, v0);
         0x2::table::add<0x2::object::ID, LockedBalance>(&mut arg0.locked, v0, locked_balance(0, 0, false));
         arg0.permanent_lock_balance = arg0.permanent_lock_balance + v2;
@@ -717,7 +717,7 @@ module distribution::voting_escrow {
         v3.amount = v3.amount + v2;
         distribution::voting_dao::checkpoint_delegatee(&mut arg0.voting_dao, distribution::voting_dao::delegatee(&arg0.voting_dao, arg3), v2, true, arg4, arg5);
         let v4 = 0x2::table::remove<0x2::object::ID, LockedBalance>(&mut arg0.locked, arg3);
-        checkpoint_internal<T0>(arg0, 0x1::option::some<0x2::object::ID>(arg3), v4, v3, arg4, arg5);
+        checkpoint_internal<T0>(arg0, std::option::some<0x2::object::ID>(arg3), v4, v3, arg4, arg5);
         0x2::table::add<0x2::object::ID, LockedBalance>(&mut arg0.locked, arg3, v3);
         if (!0x2::table::contains<0x2::object::ID, 0x2::table::Table<0x2::object::ID, u64>>(&arg0.managed_weights, v0)) {
             0x2::table::add<0x2::object::ID, 0x2::table::Table<0x2::object::ID, u64>>(&mut arg0.managed_weights, v0, 0x2::table::new<0x2::object::ID, u64>(arg5));
@@ -760,11 +760,11 @@ module distribution::voting_escrow {
         distribution::free_managed_reward::get_reward<T0>(0x2::table::borrow_mut<0x2::object::ID, distribution::free_managed_reward::FreeManagedReward>(&mut arg0.managed_to_free, *0x2::table::borrow<0x2::object::ID, 0x2::object::ID>(&arg0.id_to_managed, 0x2::object::id<Lock>(arg1))), v0, arg2, arg3);
     }
 
-    public fun free_managed_reward_notify_reward<T0>(arg0: &mut VotingEscrow<T0>, arg1: 0x1::option::Option<distribution::whitelisted_tokens::WhitelistedToken>, arg2: 0x2::coin::Coin<T0>, arg3: 0x2::object::ID, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
+    public fun free_managed_reward_notify_reward<T0>(arg0: &mut VotingEscrow<T0>, arg1: std::option::Option<distribution::whitelisted_tokens::WhitelistedToken>, arg2: 0x2::coin::Coin<T0>, arg3: 0x2::object::ID, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
         distribution::free_managed_reward::notify_reward_amount<T0>(0x2::table::borrow_mut<0x2::object::ID, distribution::free_managed_reward::FreeManagedReward>(&mut arg0.managed_to_free, *0x2::table::borrow<0x2::object::ID, 0x2::object::ID>(&arg0.id_to_managed, arg3)), arg1, arg2, arg4, arg5);
     }
 
-    public fun free_managed_reward_token_list<T0>(arg0: &mut VotingEscrow<T0>, arg1: 0x2::object::ID) : vector<0x1::type_name::TypeName> {
+    public fun free_managed_reward_token_list<T0>(arg0: &mut VotingEscrow<T0>, arg1: 0x2::object::ID) : vector<std::type_name::TypeName> {
         distribution::free_managed_reward::rewards_list(0x2::table::borrow<0x2::object::ID, distribution::free_managed_reward::FreeManagedReward>(&arg0.managed_to_free, *0x2::table::borrow<0x2::object::ID, 0x2::object::ID>(&arg0.id_to_managed, arg1)))
     }
 
@@ -957,7 +957,7 @@ module distribution::voting_escrow {
         v1.end = 0;
         v1.is_permanent = true;
         let v2 = *0x2::table::borrow<0x2::object::ID, LockedBalance>(&arg0.locked, v0);
-        checkpoint_internal<T0>(arg0, 0x1::option::some<0x2::object::ID>(v0), v2, v1, arg2, arg3);
+        checkpoint_internal<T0>(arg0, std::option::some<0x2::object::ID>(v0), v2, v1, arg2, arg3);
         0x2::table::remove<0x2::object::ID, LockedBalance>(&mut arg0.locked, v0);
         0x2::table::add<0x2::object::ID, LockedBalance>(&mut arg0.locked, v0, v1);
         let v3 = EventLockPermanent{
@@ -1025,7 +1025,7 @@ module distribution::voting_escrow {
             arg0.permanent_lock_balance = arg0.permanent_lock_balance + v4.amount;
         };
         distribution::voting_dao::checkpoint_delegatee(&mut arg0.voting_dao, distribution::voting_dao::delegatee(&arg0.voting_dao, v1), v4.amount, true, arg3, arg4);
-        checkpoint_internal<T0>(arg0, 0x1::option::some<0x2::object::ID>(v1), v3, v7, arg3, arg4);
+        checkpoint_internal<T0>(arg0, std::option::some<0x2::object::ID>(v1), v3, v7, arg3, arg4);
         0x2::table::remove<0x2::object::ID, LockedBalance>(&mut arg0.locked, v1);
         0x2::table::add<0x2::object::ID, LockedBalance>(&mut arg0.locked, v1, v7);
         arg2.amount = v7.amount;
@@ -1187,7 +1187,7 @@ module distribution::voting_escrow {
         v5.is_permanent = false;
         delegate_internal<T0>(arg0, arg1, 0x2::object::id_from_address(@0x0), arg2, arg3);
         let v7 = *0x2::table::borrow<0x2::object::ID, LockedBalance>(&arg0.locked, v1);
-        checkpoint_internal<T0>(arg0, 0x1::option::some<0x2::object::ID>(v1), v7, v5, arg2, arg3);
+        checkpoint_internal<T0>(arg0, std::option::some<0x2::object::ID>(v1), v7, v5, arg2, arg3);
         0x2::table::remove<0x2::object::ID, LockedBalance>(&mut arg0.locked, v1);
         0x2::table::add<0x2::object::ID, LockedBalance>(&mut arg0.locked, v1, v5);
         arg1.permanent = false;
@@ -1243,7 +1243,7 @@ module distribution::voting_escrow {
         distribution::free_managed_reward::get_reward<T0>(0x2::table::borrow_mut<0x2::object::ID, distribution::free_managed_reward::FreeManagedReward>(&mut arg0.managed_to_free, v0), arg3, arg4, arg5);
         let v5 = 0x2::table::remove<0x2::object::ID, LockedBalance>(&mut arg0.locked, arg2);
         let v6 = locked_balance(v3, distribution::common::to_period(distribution::common::current_timestamp(arg4) + distribution::common::max_lock_time()), false);
-        checkpoint_internal<T0>(arg0, 0x1::option::some<0x2::object::ID>(arg2), v5, v6, arg4, arg5);
+        checkpoint_internal<T0>(arg0, std::option::some<0x2::object::ID>(arg2), v5, v6, arg4, arg5);
         0x2::table::add<0x2::object::ID, LockedBalance>(&mut arg0.locked, arg2, v6);
         let mut v7 = *0x2::table::borrow<0x2::object::ID, LockedBalance>(&arg0.locked, v0);
         let mut v8 = if (v3 < v7.amount) {
@@ -1260,7 +1260,7 @@ module distribution::voting_escrow {
         arg0.permanent_lock_balance = arg0.permanent_lock_balance - v9;
         distribution::voting_dao::checkpoint_delegatee(&mut arg0.voting_dao, distribution::voting_dao::delegatee(&arg0.voting_dao, v0), v3, false, arg4, arg5);
         let v10 = 0x2::table::remove<0x2::object::ID, LockedBalance>(&mut arg0.locked, v0);
-        checkpoint_internal<T0>(arg0, 0x1::option::some<0x2::object::ID>(v0), v10, v7, arg4, arg5);
+        checkpoint_internal<T0>(arg0, std::option::some<0x2::object::ID>(v0), v10, v7, arg4, arg5);
         0x2::table::add<0x2::object::ID, LockedBalance>(&mut arg0.locked, v0, v7);
         distribution::locked_managed_reward::withdraw(0x2::table::borrow_mut<0x2::object::ID, distribution::locked_managed_reward::LockedManagedReward>(&mut arg0.managed_to_locked, v0), &arg0.locked_managed_reward_authorized_cap, v2, arg2, arg4, arg5);
         distribution::free_managed_reward::withdraw(0x2::table::borrow_mut<0x2::object::ID, distribution::free_managed_reward::FreeManagedReward>(&mut arg0.managed_to_free, v0), &arg0.free_managed_reward_authorized_cap, v2, arg2, arg4, arg5);

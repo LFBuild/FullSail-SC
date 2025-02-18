@@ -13,13 +13,13 @@ module distribution::reward {
     
     struct EventClaimRewards has copy, drop, store {
         recipient: address,
-        token_name: 0x1::type_name::TypeName,
+        token_name: std::type_name::TypeName,
         reward_amount: u64,
     }
     
     struct EventNotifyReward has copy, drop, store {
         sender: address,
-        token_name: 0x1::type_name::TypeName,
+        token_name: std::type_name::TypeName,
         epoch_start: u64,
         amount: u64,
     }
@@ -41,9 +41,9 @@ module distribution::reward {
         authorized: 0x2::object::ID,
         total_supply: u64,
         balance_of: 0x2::table::Table<0x2::object::ID, u64>,
-        token_rewards_per_epoch: 0x2::table::Table<0x1::type_name::TypeName, 0x2::table::Table<u64, u64>>,
-        last_earn: 0x2::table::Table<0x1::type_name::TypeName, 0x2::table::Table<0x2::object::ID, u64>>,
-        rewards: 0x2::vec_set::VecSet<0x1::type_name::TypeName>,
+        token_rewards_per_epoch: 0x2::table::Table<std::type_name::TypeName, 0x2::table::Table<u64, u64>>,
+        last_earn: 0x2::table::Table<std::type_name::TypeName, 0x2::table::Table<0x2::object::ID, u64>>,
+        rewards: 0x2::vec_set::VecSet<std::type_name::TypeName>,
         checkpoints: 0x2::table::Table<0x2::object::ID, 0x2::table::Table<u64, Checkpoint>>,
         num_checkpoints: 0x2::table::Table<0x2::object::ID, u64>,
         supply_checkpoints: 0x2::table::Table<u64, SupplyCheckpoint>,
@@ -52,18 +52,18 @@ module distribution::reward {
     }
     
     public fun balance<T0>(arg0: &Reward) : u64 {
-        0x2::balance::value<T0>(0x2::bag::borrow<0x1::type_name::TypeName, 0x2::balance::Balance<T0>>(&arg0.balances, 0x1::type_name::get<T0>()))
+        0x2::balance::value<T0>(0x2::bag::borrow<std::type_name::TypeName, 0x2::balance::Balance<T0>>(&arg0.balances, std::type_name::get<T0>()))
     }
     
-    public(friend) fun add_reward_token(arg0: &mut Reward, arg1: 0x1::type_name::TypeName) {
-        0x2::vec_set::insert<0x1::type_name::TypeName>(&mut arg0.rewards, arg1);
+    public(friend) fun add_reward_token(arg0: &mut Reward, arg1: std::type_name::TypeName) {
+        0x2::vec_set::insert<std::type_name::TypeName>(&mut arg0.rewards, arg1);
     }
     
     public fun authorized(arg0: &Reward) : 0x2::object::ID {
         arg0.authorized
     }
     
-    public(friend) fun create(arg0: 0x2::object::ID, arg1: 0x2::object::ID, arg2: 0x2::object::ID, arg3: vector<0x1::type_name::TypeName>, arg4: &mut 0x2::tx_context::TxContext) : Reward {
+    public(friend) fun create(arg0: 0x2::object::ID, arg1: 0x2::object::ID, arg2: 0x2::object::ID, arg3: vector<std::type_name::TypeName>, arg4: &mut 0x2::tx_context::TxContext) : Reward {
         let v0 = Reward{
             id                      : 0x2::object::new(arg4), 
             voter                   : arg0, 
@@ -71,9 +71,9 @@ module distribution::reward {
             authorized              : arg2, 
             total_supply            : 0, 
             balance_of              : 0x2::table::new<0x2::object::ID, u64>(arg4), 
-            token_rewards_per_epoch : 0x2::table::new<0x1::type_name::TypeName, 0x2::table::Table<u64, u64>>(arg4), 
-            last_earn               : 0x2::table::new<0x1::type_name::TypeName, 0x2::table::Table<0x2::object::ID, u64>>(arg4), 
-            rewards                 : 0x2::vec_set::empty<0x1::type_name::TypeName>(), 
+            token_rewards_per_epoch : 0x2::table::new<std::type_name::TypeName, 0x2::table::Table<u64, u64>>(arg4), 
+            last_earn               : 0x2::table::new<std::type_name::TypeName, 0x2::table::Table<0x2::object::ID, u64>>(arg4), 
+            rewards                 : 0x2::vec_set::empty<std::type_name::TypeName>(), 
             checkpoints             : 0x2::table::new<0x2::object::ID, 0x2::table::Table<u64, Checkpoint>>(arg4), 
             num_checkpoints         : 0x2::table::new<0x2::object::ID, u64>(arg4), 
             supply_checkpoints      : 0x2::table::new<u64, SupplyCheckpoint>(arg4), 
@@ -81,8 +81,8 @@ module distribution::reward {
             balances                : 0x2::bag::new(arg4),
         };
         let v1 = 0;
-        while (v1 < 0x1::vector::length<0x1::type_name::TypeName>(&arg3)) {
-            0x2::vec_set::insert<0x1::type_name::TypeName>(&mut v0.rewards, *0x1::vector::borrow<0x1::type_name::TypeName>(&arg3, v1));
+        while (v1 < std::vector::length<std::type_name::TypeName>(&arg3)) {
+            0x2::vec_set::insert<std::type_name::TypeName>(&mut v0.rewards, *std::vector::borrow<std::type_name::TypeName>(&arg3, v1));
             v1 = v1 + 1;
         };
         v0
@@ -119,10 +119,10 @@ module distribution::reward {
         if (v0) {
             return 0
         };
-        let v2 = 0x1::type_name::get<T0>();
+        let v2 = std::type_name::get<T0>();
         let v3 = 0;
-        let v4 = if (0x2::table::contains<0x1::type_name::TypeName, 0x2::table::Table<0x2::object::ID, u64>>(&arg0.last_earn, v2) && 0x2::table::contains<0x2::object::ID, u64>(0x2::table::borrow<0x1::type_name::TypeName, 0x2::table::Table<0x2::object::ID, u64>>(&arg0.last_earn, v2), arg1)) {
-            distribution::common::epoch_start(*0x2::table::borrow<0x2::object::ID, u64>(0x2::table::borrow<0x1::type_name::TypeName, 0x2::table::Table<0x2::object::ID, u64>>(&arg0.last_earn, v2), arg1))
+        let v4 = if (0x2::table::contains<std::type_name::TypeName, 0x2::table::Table<0x2::object::ID, u64>>(&arg0.last_earn, v2) && 0x2::table::contains<0x2::object::ID, u64>(0x2::table::borrow<std::type_name::TypeName, 0x2::table::Table<0x2::object::ID, u64>>(&arg0.last_earn, v2), arg1)) {
+            distribution::common::epoch_start(*0x2::table::borrow<0x2::object::ID, u64>(0x2::table::borrow<std::type_name::TypeName, 0x2::table::Table<0x2::object::ID, u64>>(&arg0.last_earn, v2), arg1))
         } else {
             0
         };
@@ -149,10 +149,10 @@ module distribution::reward {
                     };
                     v14
                 };
-                if (!0x2::table::contains<0x1::type_name::TypeName, 0x2::table::Table<u64, u64>>(&arg0.token_rewards_per_epoch, v2)) {
+                if (!0x2::table::contains<std::type_name::TypeName, 0x2::table::Table<u64, u64>>(&arg0.token_rewards_per_epoch, v2)) {
                     break
                 };
-                let v15 = 0x2::table::borrow<0x1::type_name::TypeName, 0x2::table::Table<u64, u64>>(&arg0.token_rewards_per_epoch, v2);
+                let v15 = 0x2::table::borrow<std::type_name::TypeName, 0x2::table::Table<u64, u64>>(&arg0.token_rewards_per_epoch, v2);
                 let v16 = if (0x2::table::contains<u64, u64>(v15, v7)) {
                     let v17 = 0x2::table::borrow<u64, u64>(v15, v7);
                     *v17
@@ -223,13 +223,13 @@ module distribution::reward {
         v1
     }
     
-    public(friend) fun get_reward_internal<T0>(arg0: &mut Reward, arg1: address, arg2: 0x2::object::ID, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) : 0x1::option::Option<0x2::balance::Balance<T0>> {
+    public(friend) fun get_reward_internal<T0>(arg0: &mut Reward, arg1: address, arg2: 0x2::object::ID, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) : std::option::Option<0x2::balance::Balance<T0>> {
         let v0 = earned<T0>(arg0, arg2, arg3);
-        let v1 = 0x1::type_name::get<T0>();
-        if (!0x2::table::contains<0x1::type_name::TypeName, 0x2::table::Table<0x2::object::ID, u64>>(&arg0.last_earn, v1)) {
-            0x2::table::add<0x1::type_name::TypeName, 0x2::table::Table<0x2::object::ID, u64>>(&mut arg0.last_earn, v1, 0x2::table::new<0x2::object::ID, u64>(arg4));
+        let v1 = std::type_name::get<T0>();
+        if (!0x2::table::contains<std::type_name::TypeName, 0x2::table::Table<0x2::object::ID, u64>>(&arg0.last_earn, v1)) {
+            0x2::table::add<std::type_name::TypeName, 0x2::table::Table<0x2::object::ID, u64>>(&mut arg0.last_earn, v1, 0x2::table::new<0x2::object::ID, u64>(arg4));
         };
-        let v2 = 0x2::table::borrow_mut<0x1::type_name::TypeName, 0x2::table::Table<0x2::object::ID, u64>>(&mut arg0.last_earn, v1);
+        let v2 = 0x2::table::borrow_mut<std::type_name::TypeName, 0x2::table::Table<0x2::object::ID, u64>>(&mut arg0.last_earn, v1);
         if (0x2::table::contains<0x2::object::ID, u64>(v2, arg2)) {
             0x2::table::remove<0x2::object::ID, u64>(v2, arg2);
         };
@@ -241,29 +241,29 @@ module distribution::reward {
         };
         0x2::event::emit<EventClaimRewards>(v3);
         if (v0 > 0) {
-            return 0x1::option::some<0x2::balance::Balance<T0>>(0x2::balance::split<T0>(0x2::bag::borrow_mut<0x1::type_name::TypeName, 0x2::balance::Balance<T0>>(&mut arg0.balances, v1), v0))
+            return std::option::some<0x2::balance::Balance<T0>>(0x2::balance::split<T0>(0x2::bag::borrow_mut<std::type_name::TypeName, 0x2::balance::Balance<T0>>(&mut arg0.balances, v1), v0))
         };
-        0x1::option::none<0x2::balance::Balance<T0>>()
+        std::option::none<0x2::balance::Balance<T0>>()
     }
     
     public(friend) fun notify_reward_amount_internal<T0>(arg0: &mut Reward, arg1: 0x2::balance::Balance<T0>, arg2: &0x2::clock::Clock, arg3: &mut 0x2::tx_context::TxContext) {
         let v0 = 0x2::balance::value<T0>(&arg1);
-        let v1 = 0x1::type_name::get<T0>();
+        let v1 = std::type_name::get<T0>();
         let v2 = distribution::common::epoch_start(distribution::common::current_timestamp(arg2));
-        if (!0x2::table::contains<0x1::type_name::TypeName, 0x2::table::Table<u64, u64>>(&arg0.token_rewards_per_epoch, v1)) {
-            0x2::table::add<0x1::type_name::TypeName, 0x2::table::Table<u64, u64>>(&mut arg0.token_rewards_per_epoch, v1, 0x2::table::new<u64, u64>(arg3));
+        if (!0x2::table::contains<std::type_name::TypeName, 0x2::table::Table<u64, u64>>(&arg0.token_rewards_per_epoch, v1)) {
+            0x2::table::add<std::type_name::TypeName, 0x2::table::Table<u64, u64>>(&mut arg0.token_rewards_per_epoch, v1, 0x2::table::new<u64, u64>(arg3));
         };
-        let v3 = 0x2::table::borrow_mut<0x1::type_name::TypeName, 0x2::table::Table<u64, u64>>(&mut arg0.token_rewards_per_epoch, v1);
+        let v3 = 0x2::table::borrow_mut<std::type_name::TypeName, 0x2::table::Table<u64, u64>>(&mut arg0.token_rewards_per_epoch, v1);
         let v4 = if (0x2::table::contains<u64, u64>(v3, v2)) {
             0x2::table::remove<u64, u64>(v3, v2)
         } else {
             0
         };
         0x2::table::add<u64, u64>(v3, v2, v4 + v0);
-        if (!0x2::bag::contains<0x1::type_name::TypeName>(&arg0.balances, v1)) {
-            0x2::bag::add<0x1::type_name::TypeName, 0x2::balance::Balance<T0>>(&mut arg0.balances, v1, arg1);
+        if (!0x2::bag::contains<std::type_name::TypeName>(&arg0.balances, v1)) {
+            0x2::bag::add<std::type_name::TypeName, 0x2::balance::Balance<T0>>(&mut arg0.balances, v1, arg1);
         } else {
-            0x2::balance::join<T0>(0x2::bag::borrow_mut<0x1::type_name::TypeName, 0x2::balance::Balance<T0>>(&mut arg0.balances, v1), arg1);
+            0x2::balance::join<T0>(0x2::bag::borrow_mut<std::type_name::TypeName, 0x2::balance::Balance<T0>>(&mut arg0.balances, v1), arg1);
         };
         let v5 = EventNotifyReward{
             sender      : 0x2::tx_context::sender(arg3), 
@@ -274,16 +274,16 @@ module distribution::reward {
         0x2::event::emit<EventNotifyReward>(v5);
     }
     
-    public fun rewards_contains(arg0: &Reward, arg1: 0x1::type_name::TypeName) : bool {
-        0x2::vec_set::contains<0x1::type_name::TypeName>(&arg0.rewards, &arg1)
+    public fun rewards_contains(arg0: &Reward, arg1: std::type_name::TypeName) : bool {
+        0x2::vec_set::contains<std::type_name::TypeName>(&arg0.rewards, &arg1)
     }
     
-    public fun rewards_list(arg0: &Reward) : vector<0x1::type_name::TypeName> {
-        0x2::vec_set::into_keys<0x1::type_name::TypeName>(arg0.rewards)
+    public fun rewards_list(arg0: &Reward) : vector<std::type_name::TypeName> {
+        0x2::vec_set::into_keys<std::type_name::TypeName>(arg0.rewards)
     }
     
     public(friend) fun rewards_list_length(arg0: &Reward) : u64 {
-        0x2::vec_set::size<0x1::type_name::TypeName>(&arg0.rewards)
+        0x2::vec_set::size<std::type_name::TypeName>(&arg0.rewards)
     }
     
     public fun ve(arg0: &Reward) : 0x2::object::ID {

@@ -45,7 +45,7 @@ module integrate::expect_swap {
             fee_rate         : clmm_pool::pool::fee_rate<T0, T1>(arg0), 
             after_sqrt_price : clmm_pool::pool::current_sqrt_price<T0, T1>(arg0), 
             is_exceed        : false, 
-            step_results     : 0x1::vector::empty<SwapStepResult>(),
+            step_results     : std::vector::empty<SwapStepResult>(),
         };
         while (v3 > 0) {
             if (move_stl::option_u64::is_none(&v4)) {
@@ -75,7 +75,7 @@ module integrate::expect_swap {
                 fee_amount         : v12, 
                 remainder_amount   : v3,
             };
-            0x1::vector::push_back<SwapStepResult>(&mut v5.step_results, v15);
+            std::vector::push_back<SwapStepResult>(&mut v5.step_results, v15);
             if (v11 == v8) {
                 v0 = v8;
                 let v16 = if (arg1) {
@@ -174,11 +174,11 @@ module integrate::expect_swap {
     }
     
     public fun expect_swap_result_step_swap_result(arg0: &ExpectSwapResult, arg1: u64) : &SwapStepResult {
-        0x1::vector::borrow<SwapStepResult>(&arg0.step_results, arg1)
+        std::vector::borrow<SwapStepResult>(&arg0.step_results, arg1)
     }
     
     public fun expect_swap_result_steps_length(arg0: &ExpectSwapResult) : u64 {
-        0x1::vector::length<SwapStepResult>(&arg0.step_results)
+        std::vector::length<SwapStepResult>(&arg0.step_results)
     }
     
     public entry fun get_expect_swap_result<T0, T1>(arg0: &clmm_pool::pool::Pool<T0, T1>, arg1: bool, arg2: bool, arg3: u64) {
