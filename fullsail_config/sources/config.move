@@ -1,17 +1,17 @@
 module fullsail_config::config {
     struct AdminCap has store, key {
-        id: 0x2::object::UID,
+        id: sui::object::UID,
     }
     
     struct GlobalConfig has store, key {
-        id: 0x2::object::UID,
+        id: sui::object::UID,
         acl: fullsail_config::acl::ACL,
         package_version: u64,
     }
     
     struct InitConfigEvent has copy, drop {
-        admin_cap_id: 0x2::object::ID,
-        global_config_id: 0x2::object::ID,
+        admin_cap_id: sui::object::ID,
+        global_config_id: sui::object::ID,
     }
     
     struct SetRolesEvent has copy, drop {
@@ -40,14 +40,14 @@ module fullsail_config::config {
             member : arg2, 
             role   : arg3,
         };
-        0x2::event::emit<AddRoleEvent>(v0);
+        sui::event::emit<AddRoleEvent>(v0);
     }
     
     public entry fun remove_member(arg0: &AdminCap, arg1: &mut GlobalConfig, arg2: address) {
         checked_package_version(arg1);
         fullsail_config::acl::remove_member(&mut arg1.acl, arg2);
         let v0 = RemoveMemberEvent{member: arg2};
-        0x2::event::emit<RemoveMemberEvent>(v0);
+        sui::event::emit<RemoveMemberEvent>(v0);
     }
     
     public entry fun remove_role(arg0: &AdminCap, arg1: &mut GlobalConfig, arg2: address, arg3: u8) {
@@ -57,7 +57,7 @@ module fullsail_config::config {
             member : arg2, 
             role   : arg3,
         };
-        0x2::event::emit<RemoveRoleEvent>(v0);
+        sui::event::emit<RemoveRoleEvent>(v0);
     }
     
     public entry fun set_roles(arg0: &AdminCap, arg1: &mut GlobalConfig, arg2: address, arg3: u128) {
@@ -67,7 +67,7 @@ module fullsail_config::config {
             member : arg2, 
             roles  : arg3,
         };
-        0x2::event::emit<SetRolesEvent>(v0);
+        sui::event::emit<SetRolesEvent>(v0);
     }
     
     public fun checked_has_add_role(arg0: &GlobalConfig, arg1: address) {
@@ -86,23 +86,23 @@ module fullsail_config::config {
         assert!(arg0.package_version == 1, 1);
     }
     
-    fun init(arg0: &mut 0x2::tx_context::TxContext) {
+    fun init(arg0: &mut sui::tx_context::TxContext) {
         let v0 = GlobalConfig{
-            id              : 0x2::object::new(arg0), 
+            id              : sui::object::new(arg0), 
             acl             : fullsail_config::acl::new(), 
             package_version : 1,
         };
-        let v1 = AdminCap{id: 0x2::object::new(arg0)};
+        let v1 = AdminCap{id: sui::object::new(arg0)};
         let v2 = v0;
-        let v3 = 0x2::tx_context::sender(arg0);
+        let v3 = sui::tx_context::sender(arg0);
         set_roles(&v1, &mut v2, v3, 0 | 1 << 0 | 1 << 1 | 1 << 2);
-        0x2::transfer::transfer<AdminCap>(v1, v3);
-        0x2::transfer::share_object<GlobalConfig>(v2);
+        sui::transfer::transfer<AdminCap>(v1, v3);
+        sui::transfer::share_object<GlobalConfig>(v2);
         let v4 = InitConfigEvent{
-            admin_cap_id     : 0x2::object::id<AdminCap>(&v1), 
-            global_config_id : 0x2::object::id<GlobalConfig>(&v2),
+            admin_cap_id     : sui::object::id<AdminCap>(&v1), 
+            global_config_id : sui::object::id<GlobalConfig>(&v2),
         };
-        0x2::event::emit<InitConfigEvent>(v4);
+        sui::event::emit<InitConfigEvent>(v4);
     }
     
     // decompiled from Move bytecode v6

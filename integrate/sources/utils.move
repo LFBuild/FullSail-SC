@@ -1,28 +1,28 @@
 module integrate::utils {
-    public fun merge_coins<T0>(arg0: vector<0x2::coin::Coin<T0>>, arg1: &mut 0x2::tx_context::TxContext) : 0x2::coin::Coin<T0> {
-        if (std::vector::is_empty<0x2::coin::Coin<T0>>(&arg0)) {
-            std::vector::destroy_empty<0x2::coin::Coin<T0>>(arg0);
-            0x2::coin::zero<T0>(arg1)
+    public fun merge_coins<T0>(arg0: vector<sui::coin::Coin<T0>>, arg1: &mut sui::tx_context::TxContext) : sui::coin::Coin<T0> {
+        if (std::vector::is_empty<sui::coin::Coin<T0>>(&arg0)) {
+            std::vector::destroy_empty<sui::coin::Coin<T0>>(arg0);
+            sui::coin::zero<T0>(arg1)
         } else {
-            let v1 = std::vector::pop_back<0x2::coin::Coin<T0>>(&mut arg0);
-            0x2::pay::join_vec<T0>(&mut v1, arg0);
+            let v1 = std::vector::pop_back<sui::coin::Coin<T0>>(&mut arg0);
+            sui::pay::join_vec<T0>(&mut v1, arg0);
             v1
         }
     }
     
-    public fun send_coin<T0>(arg0: 0x2::coin::Coin<T0>, arg1: address) {
-        if (0x2::coin::value<T0>(&arg0) > 0) {
-            0x2::transfer::public_transfer<0x2::coin::Coin<T0>>(arg0, arg1);
+    public fun send_coin<T0>(arg0: sui::coin::Coin<T0>, arg1: address) {
+        if (sui::coin::value<T0>(&arg0) > 0) {
+            sui::transfer::public_transfer<sui::coin::Coin<T0>>(arg0, arg1);
         } else {
-            0x2::coin::destroy_zero<T0>(arg0);
+            sui::coin::destroy_zero<T0>(arg0);
         };
     }
     
-    public fun transfer_coin_to_sender<T0>(arg0: 0x2::coin::Coin<T0>, arg1: &mut 0x2::tx_context::TxContext) {
-        if (0x2::coin::value<T0>(&arg0) > 0) {
-            0x2::transfer::public_transfer<0x2::coin::Coin<T0>>(arg0, 0x2::tx_context::sender(arg1));
+    public fun transfer_coin_to_sender<T0>(arg0: sui::coin::Coin<T0>, arg1: &mut sui::tx_context::TxContext) {
+        if (sui::coin::value<T0>(&arg0) > 0) {
+            sui::transfer::public_transfer<sui::coin::Coin<T0>>(arg0, sui::tx_context::sender(arg1));
         } else {
-            0x2::coin::destroy_zero<T0>(arg0);
+            sui::coin::destroy_zero<T0>(arg0);
         };
     }
     

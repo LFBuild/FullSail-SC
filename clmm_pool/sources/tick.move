@@ -17,7 +17,7 @@ module clmm_pool::tick {
         magma_distribution_growth_outside: u128,
     }
     
-    public(friend) fun new(arg0: u32, arg1: u64, arg2: &mut 0x2::tx_context::TxContext) : TickManager {
+    public(friend) fun new(arg0: u32, arg1: u64, arg2: &mut sui::tx_context::TxContext) : TickManager {
         TickManager{
             tick_spacing : arg0, 
             ticks        : move_stl::skip_list::new<Tick>(16, 2, arg1, arg2),

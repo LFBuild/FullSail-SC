@@ -1,11 +1,11 @@
 module distribution::lock_owner {
     struct OwnerProof {
-        prover: 0x2::object::ID,
-        lock: 0x2::object::ID,
+        prover: sui::object::ID,
+        lock: sui::object::ID,
         owner: address,
     }
     
-    public fun consume(arg0: OwnerProof) : (0x2::object::ID, 0x2::object::ID, address) {
+    public fun consume(arg0: OwnerProof) : (sui::object::ID, sui::object::ID, address) {
         let OwnerProof {
             prover : v0,
             lock   : v1,
@@ -14,7 +14,7 @@ module distribution::lock_owner {
         (v0, v1, v2)
     }
     
-    public(friend) fun issue(arg0: 0x2::object::ID, arg1: 0x2::object::ID, arg2: address) : OwnerProof {
+    public(friend) fun issue(arg0: sui::object::ID, arg1: sui::object::ID, arg2: address) : OwnerProof {
         OwnerProof{
             prover : arg0, 
             lock   : arg1, 

@@ -13,12 +13,12 @@ module clmm_pool::rewarder {
     }
     
     struct RewarderGlobalVault has store, key {
-        id: 0x2::object::UID,
-        balances: 0x2::bag::Bag,
+        id: sui::object::UID,
+        balances: sui::bag::Bag,
     }
     
     struct RewarderInitEvent has copy, drop {
-        global_vault_id: 0x2::object::ID,
+        global_vault_id: sui::object::ID,
     }
     
     struct DepositEvent has copy, drop, store {
@@ -56,13 +56,13 @@ module clmm_pool::rewarder {
     
     public fun balance_of<T0>(arg0: &RewarderGlobalVault) : u64 {
         let v0 = std::type_name::get<T0>();
-        if (!0x2::bag::contains<std::type_name::TypeName>(&arg0.balances, v0)) {
+        if (!sui::bag::contains<std::type_name::TypeName>(&arg0.balances, v0)) {
             return 0
         };
-        0x2::balance::value<T0>(0x2::bag::borrow<std::type_name::TypeName, 0x2::balance::Balance<T0>>(&arg0.balances, v0))
+        sui::balance::value<T0>(sui::bag::borrow<std::type_name::TypeName, sui::balance::Balance<T0>>(&arg0.balances, v0))
     }
     
-    public fun balances(arg0: &RewarderGlobalVault) : &0x2::bag::Bag {
+    public fun balances(arg0: &RewarderGlobalVault) : &sui::bag::Bag {
         &arg0.balances
     }
     
@@ -88,30 +88,30 @@ module clmm_pool::rewarder {
         abort 5
     }
     
-    public fun deposit_reward<T0>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut RewarderGlobalVault, arg2: 0x2::balance::Balance<T0>) : u64 {
+    public fun deposit_reward<T0>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut RewarderGlobalVault, arg2: sui::balance::Balance<T0>) : u64 {
         clmm_pool::config::checked_package_version(arg0);
         let v0 = std::type_name::get<T0>();
-        if (!0x2::bag::contains<std::type_name::TypeName>(&arg1.balances, v0)) {
-            0x2::bag::add<std::type_name::TypeName, 0x2::balance::Balance<T0>>(&mut arg1.balances, v0, 0x2::balance::zero<T0>());
+        if (!sui::bag::contains<std::type_name::TypeName>(&arg1.balances, v0)) {
+            sui::bag::add<std::type_name::TypeName, sui::balance::Balance<T0>>(&mut arg1.balances, v0, sui::balance::zero<T0>());
         };
-        let v1 = 0x2::balance::join<T0>(0x2::bag::borrow_mut<std::type_name::TypeName, 0x2::balance::Balance<T0>>(&mut arg1.balances, v0), arg2);
+        let v1 = sui::balance::join<T0>(sui::bag::borrow_mut<std::type_name::TypeName, sui::balance::Balance<T0>>(&mut arg1.balances, v0), arg2);
         let v2 = DepositEvent{
             reward_type    : v0, 
-            deposit_amount : 0x2::balance::value<T0>(&arg2), 
+            deposit_amount : sui::balance::value<T0>(&arg2), 
             after_amount   : v1,
         };
-        0x2::event::emit<DepositEvent>(v2);
+        sui::event::emit<DepositEvent>(v2);
         v1
     }
     
-    public fun emergent_withdraw<T0>(arg0: &clmm_pool::config::AdminCap, arg1: &clmm_pool::config::GlobalConfig, arg2: &mut RewarderGlobalVault, arg3: u64) : 0x2::balance::Balance<T0> {
+    public fun emergent_withdraw<T0>(arg0: &clmm_pool::config::AdminCap, arg1: &clmm_pool::config::GlobalConfig, arg2: &mut RewarderGlobalVault, arg3: u64) : sui::balance::Balance<T0> {
         clmm_pool::config::checked_package_version(arg1);
         let v0 = EmergentWithdrawEvent{
             reward_type     : std::type_name::get<T0>(), 
             withdraw_amount : arg3, 
             after_amount    : balance_of<T0>(arg2),
         };
-        0x2::event::emit<EmergentWithdrawEvent>(v0);
+        sui::event::emit<EmergentWithdrawEvent>(v0);
         withdraw_reward<T0>(arg2, arg3)
     }
     
@@ -123,14 +123,14 @@ module clmm_pool::rewarder {
         arg0.growth_global
     }
     
-    fun init(arg0: &mut 0x2::tx_context::TxContext) {
+    fun init(arg0: &mut sui::tx_context::TxContext) {
         let v0 = RewarderGlobalVault{
-            id       : 0x2::object::new(arg0), 
-            balances : 0x2::bag::new(arg0),
+            id       : sui::object::new(arg0), 
+            balances : sui::bag::new(arg0),
         };
-        0x2::transfer::share_object<RewarderGlobalVault>(v0);
-        let v1 = RewarderInitEvent{global_vault_id: 0x2::object::id<RewarderGlobalVault>(&v0)};
-        0x2::event::emit<RewarderInitEvent>(v1);
+        sui::transfer::share_object<RewarderGlobalVault>(v0);
+        let v1 = RewarderInitEvent{global_vault_id: sui::object::id<RewarderGlobalVault>(&v0)};
+        sui::event::emit<RewarderInitEvent>(v1);
     }
     
     public fun last_update_time(arg0: &RewarderManager) : u64 {
@@ -195,14 +195,14 @@ module clmm_pool::rewarder {
         settle(arg1, arg2, arg4);
         if (arg3 > 0) {
             let v0 = std::type_name::get<T0>();
-            assert!(0x2::bag::contains<std::type_name::TypeName>(&arg0.balances, v0), 5);
-            assert!((0x2::balance::value<T0>(0x2::bag::borrow<std::type_name::TypeName, 0x2::balance::Balance<T0>>(&arg0.balances, v0)) as u128) << 64 >= 86400 * arg3, 4);
+            assert!(sui::bag::contains<std::type_name::TypeName>(&arg0.balances, v0), 5);
+            assert!((sui::balance::value<T0>(sui::bag::borrow<std::type_name::TypeName, sui::balance::Balance<T0>>(&arg0.balances, v0)) as u128) << 64 >= 86400 * arg3, 4);
         };
         borrow_mut_rewarder<T0>(arg1).emissions_per_second = arg3;
     }
     
-    public(friend) fun withdraw_reward<T0>(arg0: &mut RewarderGlobalVault, arg1: u64) : 0x2::balance::Balance<T0> {
-        0x2::balance::split<T0>(0x2::bag::borrow_mut<std::type_name::TypeName, 0x2::balance::Balance<T0>>(&mut arg0.balances, std::type_name::get<T0>()), arg1)
+    public(friend) fun withdraw_reward<T0>(arg0: &mut RewarderGlobalVault, arg1: u64) : sui::balance::Balance<T0> {
+        sui::balance::split<T0>(sui::bag::borrow_mut<std::type_name::TypeName, sui::balance::Balance<T0>>(&mut arg0.balances, std::type_name::get<T0>()), arg1)
     }
     
     // decompiled from Move bytecode v6

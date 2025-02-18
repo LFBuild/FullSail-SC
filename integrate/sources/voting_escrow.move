@@ -15,7 +15,7 @@ module integrate::voting_escrow {
         fee_incentive_total: u64,
     }
     
-    public entry fun transfer<T0>(arg0: &mut distribution::voting_escrow::VotingEscrow<T0>, arg1: distribution::voting_escrow::Lock, arg2: address, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
+    public entry fun transfer<T0>(arg0: &mut distribution::voting_escrow::VotingEscrow<T0>, arg1: distribution::voting_escrow::Lock, arg2: address, arg3: &sui::clock::Clock, arg4: &mut sui::tx_context::TxContext) {
         distribution::voting_escrow::transfer<T0>(arg1, arg0, arg2, arg3, arg4);
     }
     
@@ -23,66 +23,66 @@ module integrate::voting_escrow {
         100000000
     }
     
-    public entry fun create<T0>(arg0: &0x2::package::Publisher, arg1: 0x2::object::ID, arg2: &0x2::clock::Clock, arg3: &mut 0x2::tx_context::TxContext) {
-        0x2::transfer::public_share_object<distribution::voting_escrow::VotingEscrow<T0>>(distribution::voting_escrow::create<T0>(arg0, arg1, arg2, arg3));
+    public entry fun create<T0>(arg0: &sui::package::Publisher, arg1: sui::object::ID, arg2: &sui::clock::Clock, arg3: &mut sui::tx_context::TxContext) {
+        sui::transfer::public_share_object<distribution::voting_escrow::VotingEscrow<T0>>(distribution::voting_escrow::create<T0>(arg0, arg1, arg2, arg3));
     }
     
-    public entry fun create_lock<T0>(arg0: &mut distribution::voting_escrow::VotingEscrow<T0>, arg1: vector<0x2::coin::Coin<T0>>, arg2: u64, arg3: bool, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
+    public entry fun create_lock<T0>(arg0: &mut distribution::voting_escrow::VotingEscrow<T0>, arg1: vector<sui::coin::Coin<T0>>, arg2: u64, arg3: bool, arg4: &sui::clock::Clock, arg5: &mut sui::tx_context::TxContext) {
         distribution::voting_escrow::create_lock<T0>(arg0, integrate::utils::merge_coins<T0>(arg1, arg5), arg2, arg3, arg4, arg5);
     }
     
-    public entry fun increase_amount<T0>(arg0: &mut distribution::voting_escrow::VotingEscrow<T0>, arg1: &mut distribution::voting_escrow::Lock, arg2: vector<0x2::coin::Coin<T0>>, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
+    public entry fun increase_amount<T0>(arg0: &mut distribution::voting_escrow::VotingEscrow<T0>, arg1: &mut distribution::voting_escrow::Lock, arg2: vector<sui::coin::Coin<T0>>, arg3: &sui::clock::Clock, arg4: &mut sui::tx_context::TxContext) {
         distribution::voting_escrow::increase_amount<T0>(arg0, arg1, integrate::utils::merge_coins<T0>(arg2, arg4), arg3, arg4);
     }
     
-    public entry fun increase_unlock_time<T0>(arg0: &mut distribution::voting_escrow::VotingEscrow<T0>, arg1: &mut distribution::voting_escrow::Lock, arg2: u64, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
+    public entry fun increase_unlock_time<T0>(arg0: &mut distribution::voting_escrow::VotingEscrow<T0>, arg1: &mut distribution::voting_escrow::Lock, arg2: u64, arg3: &sui::clock::Clock, arg4: &mut sui::tx_context::TxContext) {
         distribution::voting_escrow::increase_unlock_time<T0>(arg0, arg1, arg2, arg3, arg4);
     }
     
-    public entry fun lock_permanent<T0>(arg0: &mut distribution::voting_escrow::VotingEscrow<T0>, arg1: &mut distribution::voting_escrow::Lock, arg2: &0x2::clock::Clock, arg3: &mut 0x2::tx_context::TxContext) {
+    public entry fun lock_permanent<T0>(arg0: &mut distribution::voting_escrow::VotingEscrow<T0>, arg1: &mut distribution::voting_escrow::Lock, arg2: &sui::clock::Clock, arg3: &mut sui::tx_context::TxContext) {
         distribution::voting_escrow::lock_permanent<T0>(arg0, arg1, arg2, arg3);
     }
     
-    public entry fun unlock_permanent<T0>(arg0: &mut distribution::voting_escrow::VotingEscrow<T0>, arg1: &mut distribution::voting_escrow::Lock, arg2: &0x2::clock::Clock, arg3: &mut 0x2::tx_context::TxContext) {
+    public entry fun unlock_permanent<T0>(arg0: &mut distribution::voting_escrow::VotingEscrow<T0>, arg1: &mut distribution::voting_escrow::Lock, arg2: &sui::clock::Clock, arg3: &mut sui::tx_context::TxContext) {
         distribution::voting_escrow::unlock_permanent<T0>(arg0, arg1, arg2, arg3);
     }
     
-    public entry fun create_lock_single_coin<T0>(arg0: &mut distribution::voting_escrow::VotingEscrow<T0>, arg1: 0x2::coin::Coin<T0>, arg2: u64, arg3: bool, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
-        let v0 = std::vector::empty<0x2::coin::Coin<T0>>();
-        std::vector::push_back<0x2::coin::Coin<T0>>(&mut v0, arg1);
+    public entry fun create_lock_single_coin<T0>(arg0: &mut distribution::voting_escrow::VotingEscrow<T0>, arg1: sui::coin::Coin<T0>, arg2: u64, arg3: bool, arg4: &sui::clock::Clock, arg5: &mut sui::tx_context::TxContext) {
+        let v0 = std::vector::empty<sui::coin::Coin<T0>>();
+        std::vector::push_back<sui::coin::Coin<T0>>(&mut v0, arg1);
         create_lock<T0>(arg0, v0, arg2, arg3, arg4, arg5);
     }
     
-    public entry fun increase_amount_single_coin<T0>(arg0: &mut distribution::voting_escrow::VotingEscrow<T0>, arg1: &mut distribution::voting_escrow::Lock, arg2: 0x2::coin::Coin<T0>, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
+    public entry fun increase_amount_single_coin<T0>(arg0: &mut distribution::voting_escrow::VotingEscrow<T0>, arg1: &mut distribution::voting_escrow::Lock, arg2: sui::coin::Coin<T0>, arg3: &sui::clock::Clock, arg4: &mut sui::tx_context::TxContext) {
         distribution::voting_escrow::increase_amount<T0>(arg0, arg1, arg2, arg3, arg4);
     }
     
-    public entry fun lock_summary<T0>(arg0: &distribution::voter::Voter<T0>, arg1: &distribution::voting_escrow::VotingEscrow<T0>, arg2: &distribution::reward_distributor::RewardDistributor<T0>, arg3: 0x2::object::ID, arg4: &0x2::clock::Clock) {
-        0x2::event::emit<LockSummary>(lock_summary_internal<T0>(arg0, arg1, arg2, arg3, arg4));
+    public entry fun lock_summary<T0>(arg0: &distribution::voter::Voter<T0>, arg1: &distribution::voting_escrow::VotingEscrow<T0>, arg2: &distribution::reward_distributor::RewardDistributor<T0>, arg3: sui::object::ID, arg4: &sui::clock::Clock) {
+        sui::event::emit<LockSummary>(lock_summary_internal<T0>(arg0, arg1, arg2, arg3, arg4));
     }
     
-    fun lock_summary_internal<T0>(arg0: &distribution::voter::Voter<T0>, arg1: &distribution::voting_escrow::VotingEscrow<T0>, arg2: &distribution::reward_distributor::RewardDistributor<T0>, arg3: 0x2::object::ID, arg4: &0x2::clock::Clock) : LockSummary {
+    fun lock_summary_internal<T0>(arg0: &distribution::voter::Voter<T0>, arg1: &distribution::voting_escrow::VotingEscrow<T0>, arg2: &distribution::reward_distributor::RewardDistributor<T0>, arg3: sui::object::ID, arg4: &sui::clock::Clock) : LockSummary {
         let v0 = 0;
         let v1 = distribution::voter::voted_pools<T0>(arg0, arg3);
         let v2 = 0;
-        while (v2 < std::vector::length<0x2::object::ID>(&v1)) {
-            let v3 = distribution::voter::pool_to_gauge<T0>(arg0, *std::vector::borrow<0x2::object::ID>(&v1, v2));
+        while (v2 < std::vector::length<sui::object::ID>(&v1)) {
+            let v3 = distribution::voter::pool_to_gauge<T0>(arg0, *std::vector::borrow<sui::object::ID>(&v1, v2));
             let v4 = v0 + distribution::fee_voting_reward::earned<T0>(distribution::voter::borrow_fee_voting_reward<T0>(arg0, v3), arg3, arg4);
             v0 = v4 + distribution::bribe_voting_reward::earned<T0>(distribution::voter::borrow_bribe_voting_reward<T0>(arg0, v3), arg3, arg4);
             v2 = v2 + 1;
         };
         LockSummary{
-            voting_power                 : distribution::voting_escrow::balance_of_nft_at<T0>(arg1, arg3, 0x2::clock::timestamp_ms(arg4) / 1000), 
+            voting_power                 : distribution::voting_escrow::balance_of_nft_at<T0>(arg1, arg3, sui::clock::timestamp_ms(arg4) / 1000), 
             reward_distributor_claimable : distribution::reward_distributor::claimable<T0>(arg2, arg1, arg3), 
             fee_incentive_total          : v0,
         }
     }
     
-    public entry fun merge_locks<T0>(arg0: &mut distribution::voting_escrow::VotingEscrow<T0>, arg1: distribution::voting_escrow::Lock, arg2: &mut distribution::voting_escrow::Lock, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
+    public entry fun merge_locks<T0>(arg0: &mut distribution::voting_escrow::VotingEscrow<T0>, arg1: distribution::voting_escrow::Lock, arg2: &mut distribution::voting_escrow::Lock, arg3: &sui::clock::Clock, arg4: &mut sui::tx_context::TxContext) {
         distribution::voting_escrow::merge<T0>(arg0, arg1, arg2, arg3, arg4);
     }
     
-    public entry fun summary<T0>(arg0: &distribution::minter::Minter<T0>, arg1: &distribution::voter::Voter<T0>, arg2: &distribution::voting_escrow::VotingEscrow<T0>, arg3: &0x2::clock::Clock) {
+    public entry fun summary<T0>(arg0: &distribution::minter::Minter<T0>, arg1: &distribution::voter::Voter<T0>, arg2: &distribution::voting_escrow::VotingEscrow<T0>, arg3: &sui::clock::Clock) {
         let v0 = distribution::common::current_timestamp(arg3);
         let v1 = distribution::voting_escrow::total_locked<T0>(arg2);
         let v2 = distribution::minter::epoch_emissions<T0>(arg0);
@@ -96,7 +96,7 @@ module integrate::voting_escrow {
             current_epoch_vote_end : distribution::common::epoch_vote_end(v0), 
             team_emission_rate     : distribution::minter::team_emission_rate<T0>(arg0),
         };
-        0x2::event::emit<Summary>(v4);
+        sui::event::emit<Summary>(v4);
     }
     
     // decompiled from Move bytecode v6

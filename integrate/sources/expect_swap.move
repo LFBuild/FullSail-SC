@@ -186,7 +186,7 @@ module integrate::expect_swap {
             data               : expect_swap<T0, T1>(arg0, arg1, arg2, arg3), 
             current_sqrt_price : clmm_pool::pool::current_sqrt_price<T0, T1>(arg0),
         };
-        0x2::event::emit<ExpectSwapResultEvent>(v0);
+        sui::event::emit<ExpectSwapResultEvent>(v0);
     }
     
     public fun step_swap_result_amount_in(arg0: &SwapStepResult) : u256 {

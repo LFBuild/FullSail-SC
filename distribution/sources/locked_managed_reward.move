@@ -1,27 +1,27 @@
 module distribution::locked_managed_reward {
     struct LockedManagedReward has store, key {
-        id: 0x2::object::UID,
+        id: sui::object::UID,
         reward: distribution::reward::Reward,
     }
     
-    public(friend) fun create(arg0: 0x2::object::ID, arg1: 0x2::object::ID, arg2: std::type_name::TypeName, arg3: &mut 0x2::tx_context::TxContext) : LockedManagedReward {
+    public(friend) fun create(arg0: sui::object::ID, arg1: sui::object::ID, arg2: std::type_name::TypeName, arg3: &mut sui::tx_context::TxContext) : LockedManagedReward {
         let v0 = std::vector::empty<std::type_name::TypeName>();
         std::vector::push_back<std::type_name::TypeName>(&mut v0, arg2);
         LockedManagedReward{
-            id     : 0x2::object::new(arg3), 
+            id     : sui::object::new(arg3), 
             reward : distribution::reward::create(arg0, arg1, arg1, v0, arg3),
         }
     }
     
-    public fun deposit(arg0: &mut LockedManagedReward, arg1: &distribution::reward_authorized_cap::RewardAuthorizedCap, arg2: u64, arg3: 0x2::object::ID, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
+    public fun deposit(arg0: &mut LockedManagedReward, arg1: &distribution::reward_authorized_cap::RewardAuthorizedCap, arg2: u64, arg3: sui::object::ID, arg4: &sui::clock::Clock, arg5: &mut sui::tx_context::TxContext) {
         distribution::reward::deposit(&mut arg0.reward, arg1, arg2, arg3, arg4, arg5);
     }
     
-    public fun earned<T0>(arg0: &LockedManagedReward, arg1: 0x2::object::ID, arg2: &0x2::clock::Clock) : u64 {
+    public fun earned<T0>(arg0: &LockedManagedReward, arg1: sui::object::ID, arg2: &sui::clock::Clock) : u64 {
         distribution::reward::earned<T0>(&arg0.reward, arg1, arg2)
     }
     
-    public fun get_prior_balance_index(arg0: &LockedManagedReward, arg1: 0x2::object::ID, arg2: u64) : u64 {
+    public fun get_prior_balance_index(arg0: &LockedManagedReward, arg1: sui::object::ID, arg2: u64) : u64 {
         distribution::reward::get_prior_balance_index(&arg0.reward, arg1, arg2)
     }
     
@@ -33,7 +33,7 @@ module distribution::locked_managed_reward {
         distribution::reward::rewards_list_length(&arg0.reward)
     }
     
-    public fun withdraw(arg0: &mut LockedManagedReward, arg1: &distribution::reward_authorized_cap::RewardAuthorizedCap, arg2: u64, arg3: 0x2::object::ID, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
+    public fun withdraw(arg0: &mut LockedManagedReward, arg1: &distribution::reward_authorized_cap::RewardAuthorizedCap, arg2: u64, arg3: sui::object::ID, arg4: &sui::clock::Clock, arg5: &mut sui::tx_context::TxContext) {
         distribution::reward::withdraw(&mut arg0.reward, arg1, arg2, arg3, arg4, arg5);
     }
     
@@ -41,22 +41,22 @@ module distribution::locked_managed_reward {
         &arg0.reward
     }
     
-    public fun get_reward<T0>(arg0: &mut LockedManagedReward, arg1: &distribution::reward_authorized_cap::RewardAuthorizedCap, arg2: 0x2::object::ID, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) : 0x2::balance::Balance<T0> {
+    public fun get_reward<T0>(arg0: &mut LockedManagedReward, arg1: &distribution::reward_authorized_cap::RewardAuthorizedCap, arg2: sui::object::ID, arg3: &sui::clock::Clock, arg4: &mut sui::tx_context::TxContext) : sui::balance::Balance<T0> {
         distribution::reward_authorized_cap::validate(arg1, distribution::reward::ve(&arg0.reward));
         let v0 = distribution::reward::ve(&arg0.reward);
-        let v1 = distribution::reward::get_reward_internal<T0>(&mut arg0.reward, 0x2::object::id_to_address(&v0), arg2, arg3, arg4);
-        let v2 = if (std::option::is_some<0x2::balance::Balance<T0>>(&v1)) {
-            std::option::extract<0x2::balance::Balance<T0>>(&mut v1)
+        let v1 = distribution::reward::get_reward_internal<T0>(&mut arg0.reward, sui::object::id_to_address(&v0), arg2, arg3, arg4);
+        let v2 = if (std::option::is_some<sui::balance::Balance<T0>>(&v1)) {
+            std::option::extract<sui::balance::Balance<T0>>(&mut v1)
         } else {
-            0x2::balance::zero<T0>()
+            sui::balance::zero<T0>()
         };
-        std::option::destroy_none<0x2::balance::Balance<T0>>(v1);
+        std::option::destroy_none<sui::balance::Balance<T0>>(v1);
         v2
     }
     
-    public fun notify_reward_amount<T0>(arg0: &mut LockedManagedReward, arg1: &distribution::reward_authorized_cap::RewardAuthorizedCap, arg2: 0x2::coin::Coin<T0>, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
+    public fun notify_reward_amount<T0>(arg0: &mut LockedManagedReward, arg1: &distribution::reward_authorized_cap::RewardAuthorizedCap, arg2: sui::coin::Coin<T0>, arg3: &sui::clock::Clock, arg4: &mut sui::tx_context::TxContext) {
         distribution::reward_authorized_cap::validate(arg1, distribution::reward::ve(&arg0.reward));
-        distribution::reward::notify_reward_amount_internal<T0>(&mut arg0.reward, 0x2::coin::into_balance<T0>(arg2), arg3, arg4);
+        distribution::reward::notify_reward_amount_internal<T0>(&mut arg0.reward, sui::coin::into_balance<T0>(arg2), arg3, arg4);
     }
     
     // decompiled from Move bytecode v6

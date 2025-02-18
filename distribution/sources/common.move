@@ -1,10 +1,10 @@
 module distribution::common {
-    public fun current_period(arg0: &0x2::clock::Clock) : u64 {
+    public fun current_period(arg0: &sui::clock::Clock) : u64 {
         to_period(current_timestamp(arg0))
     }
     
-    public fun current_timestamp(arg0: &0x2::clock::Clock) : u64 {
-        0x2::clock::timestamp_ms(arg0) / 1000
+    public fun current_timestamp(arg0: &sui::clock::Clock) : u64 {
+        sui::clock::timestamp_ms(arg0) / 1000
     }
     
     public fun day() : u64 {

@@ -1,10 +1,10 @@
 module clmm_pool::config {
     struct AdminCap has store, key {
-        id: 0x2::object::UID,
+        id: sui::object::UID,
     }
     
     struct ProtocolFeeClaimCap has store, key {
-        id: 0x2::object::UID,
+        id: sui::object::UID,
     }
     
     struct FeeTier has copy, drop, store {
@@ -13,18 +13,18 @@ module clmm_pool::config {
     }
     
     struct GlobalConfig has store, key {
-        id: 0x2::object::UID,
+        id: sui::object::UID,
         protocol_fee_rate: u64,
         unstaked_liquidity_fee_rate: u64,
-        fee_tiers: 0x2::vec_map::VecMap<u32, FeeTier>,
+        fee_tiers: sui::vec_map::VecMap<u32, FeeTier>,
         acl: clmm_pool::acl::ACL,
         package_version: u64,
-        alive_gauges: 0x2::vec_set::VecSet<0x2::object::ID>,
+        alive_gauges: sui::vec_set::VecSet<sui::object::ID>,
     }
     
     struct InitConfigEvent has copy, drop {
-        admin_cap_id: 0x2::object::ID,
-        global_config_id: 0x2::object::ID,
+        admin_cap_id: sui::object::ID,
+        global_config_id: sui::object::ID,
     }
     
     struct UpdateFeeRateEvent has copy, drop {
@@ -88,7 +88,7 @@ module clmm_pool::config {
             member : arg2, 
             role   : arg3,
         };
-        0x2::event::emit<AddRoleEvent>(v0);
+        sui::event::emit<AddRoleEvent>(v0);
     }
     
     public fun get_members(arg0: &GlobalConfig) : vector<clmm_pool::acl::Member> {
@@ -99,7 +99,7 @@ module clmm_pool::config {
         checked_package_version(arg1);
         clmm_pool::acl::remove_member(&mut arg1.acl, arg2);
         let v0 = RemoveMemberEvent{member: arg2};
-        0x2::event::emit<RemoveMemberEvent>(v0);
+        sui::event::emit<RemoveMemberEvent>(v0);
     }
     
     public fun remove_role(arg0: &AdminCap, arg1: &mut GlobalConfig, arg2: address, arg3: u8) {
@@ -109,7 +109,7 @@ module clmm_pool::config {
             member : arg2, 
             role   : arg3,
         };
-        0x2::event::emit<RemoveRoleEvent>(v0);
+        sui::event::emit<RemoveRoleEvent>(v0);
     }
     
     public fun set_roles(arg0: &AdminCap, arg1: &mut GlobalConfig, arg2: address, arg3: u128) {
@@ -119,24 +119,24 @@ module clmm_pool::config {
             member : arg2, 
             roles  : arg3,
         };
-        0x2::event::emit<SetRolesEvent>(v0);
+        sui::event::emit<SetRolesEvent>(v0);
     }
     
-    public fun add_fee_tier(arg0: &mut GlobalConfig, arg1: u32, arg2: u64, arg3: &mut 0x2::tx_context::TxContext) {
+    public fun add_fee_tier(arg0: &mut GlobalConfig, arg1: u32, arg2: u64, arg3: &mut sui::tx_context::TxContext) {
         assert!(arg2 <= max_fee_rate(), 3);
-        assert!(!0x2::vec_map::contains<u32, FeeTier>(&arg0.fee_tiers, &arg1), 1);
+        assert!(!sui::vec_map::contains<u32, FeeTier>(&arg0.fee_tiers, &arg1), 1);
         checked_package_version(arg0);
-        check_fee_tier_manager_role(arg0, 0x2::tx_context::sender(arg3));
+        check_fee_tier_manager_role(arg0, sui::tx_context::sender(arg3));
         let v0 = FeeTier{
             tick_spacing : arg1, 
             fee_rate     : arg2,
         };
-        0x2::vec_map::insert<u32, FeeTier>(&mut arg0.fee_tiers, arg1, v0);
+        sui::vec_map::insert<u32, FeeTier>(&mut arg0.fee_tiers, arg1, v0);
         let v1 = AddFeeTierEvent{
             tick_spacing : arg1, 
             fee_rate     : arg2,
         };
-        0x2::event::emit<AddFeeTierEvent>(v1);
+        sui::event::emit<AddFeeTierEvent>(v1);
     }
     
     public fun check_fee_tier_manager_role(arg0: &GlobalConfig, arg1: address) {
@@ -167,17 +167,17 @@ module clmm_pool::config {
         72057594037927935
     }
     
-    public fun delete_fee_tier(arg0: &mut GlobalConfig, arg1: u32, arg2: &mut 0x2::tx_context::TxContext) {
-        assert!(0x2::vec_map::contains<u32, FeeTier>(&arg0.fee_tiers, &arg1), 2);
+    public fun delete_fee_tier(arg0: &mut GlobalConfig, arg1: u32, arg2: &mut sui::tx_context::TxContext) {
+        assert!(sui::vec_map::contains<u32, FeeTier>(&arg0.fee_tiers, &arg1), 2);
         checked_package_version(arg0);
-        check_fee_tier_manager_role(arg0, 0x2::tx_context::sender(arg2));
-        let (_, v1) = 0x2::vec_map::remove<u32, FeeTier>(&mut arg0.fee_tiers, &arg1);
+        check_fee_tier_manager_role(arg0, sui::tx_context::sender(arg2));
+        let (_, v1) = sui::vec_map::remove<u32, FeeTier>(&mut arg0.fee_tiers, &arg1);
         let v2 = v1;
         let v3 = DeleteFeeTierEvent{
             tick_spacing : arg1, 
             fee_rate     : v2.fee_rate,
         };
-        0x2::event::emit<DeleteFeeTierEvent>(v3);
+        sui::event::emit<DeleteFeeTierEvent>(v3);
     }
     
     public fun epoch(arg0: u64) : u64 {
@@ -200,42 +200,42 @@ module clmm_pool::config {
         1000000
     }
     
-    public fun fee_tiers(arg0: &GlobalConfig) : &0x2::vec_map::VecMap<u32, FeeTier> {
+    public fun fee_tiers(arg0: &GlobalConfig) : &sui::vec_map::VecMap<u32, FeeTier> {
         &arg0.fee_tiers
     }
     
     public fun get_fee_rate(arg0: u32, arg1: &GlobalConfig) : u64 {
-        assert!(0x2::vec_map::contains<u32, FeeTier>(&arg1.fee_tiers, &arg0), 2);
-        0x2::vec_map::get<u32, FeeTier>(&arg1.fee_tiers, &arg0).fee_rate
+        assert!(sui::vec_map::contains<u32, FeeTier>(&arg1.fee_tiers, &arg0), 2);
+        sui::vec_map::get<u32, FeeTier>(&arg1.fee_tiers, &arg0).fee_rate
     }
     
     public fun get_protocol_fee_rate(arg0: &GlobalConfig) : u64 {
         arg0.protocol_fee_rate
     }
     
-    fun init(arg0: &mut 0x2::tx_context::TxContext) {
+    fun init(arg0: &mut sui::tx_context::TxContext) {
         let v0 = GlobalConfig{
-            id                          : 0x2::object::new(arg0), 
+            id                          : sui::object::new(arg0), 
             protocol_fee_rate           : 0, 
             unstaked_liquidity_fee_rate : 1000, 
-            fee_tiers                   : 0x2::vec_map::empty<u32, FeeTier>(), 
+            fee_tiers                   : sui::vec_map::empty<u32, FeeTier>(), 
             acl                         : clmm_pool::acl::new(arg0), 
             package_version             : 1, 
-            alive_gauges                : 0x2::vec_set::empty<0x2::object::ID>(),
+            alive_gauges                : sui::vec_set::empty<sui::object::ID>(),
         };
-        let v1 = AdminCap{id: 0x2::object::new(arg0)};
-        set_roles(&v1, &mut v0, 0x2::tx_context::sender(arg0), 27);
+        let v1 = AdminCap{id: sui::object::new(arg0)};
+        set_roles(&v1, &mut v0, sui::tx_context::sender(arg0), 27);
         let v2 = InitConfigEvent{
-            admin_cap_id     : 0x2::object::id<AdminCap>(&v1), 
-            global_config_id : 0x2::object::id<GlobalConfig>(&v0),
+            admin_cap_id     : sui::object::id<AdminCap>(&v1), 
+            global_config_id : sui::object::id<GlobalConfig>(&v0),
         };
-        0x2::transfer::transfer<AdminCap>(v1, 0x2::tx_context::sender(arg0));
-        0x2::transfer::share_object<GlobalConfig>(v0);
-        0x2::event::emit<InitConfigEvent>(v2);
+        sui::transfer::transfer<AdminCap>(v1, sui::tx_context::sender(arg0));
+        sui::transfer::share_object<GlobalConfig>(v0);
+        sui::event::emit<InitConfigEvent>(v2);
     }
     
-    public fun is_gauge_alive(arg0: &GlobalConfig, arg1: 0x2::object::ID) : bool {
-        0x2::vec_set::contains<0x2::object::ID>(&arg0.alive_gauges, &arg1)
+    public fun is_gauge_alive(arg0: &GlobalConfig, arg1: sui::object::ID) : bool {
+        sui::vec_set::contains<sui::object::ID>(&arg0.alive_gauges, &arg1)
     }
     
     public fun max_fee_rate() : u64 {
@@ -270,40 +270,40 @@ module clmm_pool::config {
         10000
     }
     
-    public fun update_fee_tier(arg0: &mut GlobalConfig, arg1: u32, arg2: u64, arg3: &mut 0x2::tx_context::TxContext) {
-        assert!(0x2::vec_map::contains<u32, FeeTier>(&arg0.fee_tiers, &arg1), 2);
+    public fun update_fee_tier(arg0: &mut GlobalConfig, arg1: u32, arg2: u64, arg3: &mut sui::tx_context::TxContext) {
+        assert!(sui::vec_map::contains<u32, FeeTier>(&arg0.fee_tiers, &arg1), 2);
         assert!(arg2 <= max_fee_rate(), 3);
         checked_package_version(arg0);
-        check_fee_tier_manager_role(arg0, 0x2::tx_context::sender(arg3));
-        let v0 = 0x2::vec_map::get_mut<u32, FeeTier>(&mut arg0.fee_tiers, &arg1);
+        check_fee_tier_manager_role(arg0, sui::tx_context::sender(arg3));
+        let v0 = sui::vec_map::get_mut<u32, FeeTier>(&mut arg0.fee_tiers, &arg1);
         v0.fee_rate = arg2;
         let v1 = UpdateFeeTierEvent{
             tick_spacing : arg1, 
             old_fee_rate : v0.fee_rate, 
             new_fee_rate : arg2,
         };
-        0x2::event::emit<UpdateFeeTierEvent>(v1);
+        sui::event::emit<UpdateFeeTierEvent>(v1);
     }
     
-    public fun update_gauge_liveness(arg0: &mut GlobalConfig, arg1: vector<0x2::object::ID>, arg2: bool, arg3: &mut 0x2::tx_context::TxContext) {
+    public fun update_gauge_liveness(arg0: &mut GlobalConfig, arg1: vector<sui::object::ID>, arg2: bool, arg3: &mut sui::tx_context::TxContext) {
         let v0 = 0;
-        let v1 = std::vector::length<0x2::object::ID>(&arg1);
+        let v1 = std::vector::length<sui::object::ID>(&arg1);
         checked_package_version(arg0);
-        check_pool_manager_role(arg0, 0x2::tx_context::sender(arg3));
+        check_pool_manager_role(arg0, sui::tx_context::sender(arg3));
         assert!(v1 > 0, 9223373316755030015);
         if (arg2) {
             while (v0 < v1) {
-                if (!0x2::vec_set::contains<0x2::object::ID>(&arg0.alive_gauges, std::vector::borrow<0x2::object::ID>(&arg1, v0))) {
-                    let v2 = *std::vector::borrow<0x2::object::ID>(&arg1, v0);
-                    0x2::vec_set::insert<0x2::object::ID>(&mut arg0.alive_gauges, v2);
+                if (!sui::vec_set::contains<sui::object::ID>(&arg0.alive_gauges, std::vector::borrow<sui::object::ID>(&arg1, v0))) {
+                    let v2 = *std::vector::borrow<sui::object::ID>(&arg1, v0);
+                    sui::vec_set::insert<sui::object::ID>(&mut arg0.alive_gauges, v2);
                 };
                 v0 = v0 + 1;
             };
         } else {
             while (v0 < v1) {
-                if (0x2::vec_set::contains<0x2::object::ID>(&arg0.alive_gauges, std::vector::borrow<0x2::object::ID>(&arg1, v0))) {
-                    let v3 = std::vector::borrow<0x2::object::ID>(&arg1, v0);
-                    0x2::vec_set::remove<0x2::object::ID>(&mut arg0.alive_gauges, v3);
+                if (sui::vec_set::contains<sui::object::ID>(&arg0.alive_gauges, std::vector::borrow<sui::object::ID>(&arg1, v0))) {
+                    let v3 = std::vector::borrow<sui::object::ID>(&arg1, v0);
+                    sui::vec_set::remove<sui::object::ID>(&mut arg0.alive_gauges, v3);
                 };
                 v0 = v0 + 1;
             };
@@ -316,31 +316,31 @@ module clmm_pool::config {
             new_version : arg2, 
             old_version : arg1.package_version,
         };
-        0x2::event::emit<SetPackageVersion>(v0);
+        sui::event::emit<SetPackageVersion>(v0);
     }
     
-    public fun update_protocol_fee_rate(arg0: &mut GlobalConfig, arg1: u64, arg2: &mut 0x2::tx_context::TxContext) {
+    public fun update_protocol_fee_rate(arg0: &mut GlobalConfig, arg1: u64, arg2: &mut sui::tx_context::TxContext) {
         assert!(arg1 <= 3000, 4);
         checked_package_version(arg0);
-        check_pool_manager_role(arg0, 0x2::tx_context::sender(arg2));
+        check_pool_manager_role(arg0, sui::tx_context::sender(arg2));
         arg0.protocol_fee_rate = arg1;
         let v0 = UpdateFeeRateEvent{
             old_fee_rate : arg0.protocol_fee_rate, 
             new_fee_rate : arg1,
         };
-        0x2::event::emit<UpdateFeeRateEvent>(v0);
+        sui::event::emit<UpdateFeeRateEvent>(v0);
     }
     
-    public fun update_unstaked_liquidity_fee_rate(arg0: &mut GlobalConfig, arg1: u64, arg2: &mut 0x2::tx_context::TxContext) {
+    public fun update_unstaked_liquidity_fee_rate(arg0: &mut GlobalConfig, arg1: u64, arg2: &mut sui::tx_context::TxContext) {
         assert!(arg1 <= max_unstaked_liquidity_fee_rate(), 11);
         checked_package_version(arg0);
-        check_pool_manager_role(arg0, 0x2::tx_context::sender(arg2));
+        check_pool_manager_role(arg0, sui::tx_context::sender(arg2));
         arg0.unstaked_liquidity_fee_rate = arg1;
         let v0 = UpdateUnstakedLiquidityFeeRateEvent{
             old_fee_rate : arg0.unstaked_liquidity_fee_rate, 
             new_fee_rate : arg1,
         };
-        0x2::event::emit<UpdateUnstakedLiquidityFeeRateEvent>(v0);
+        sui::event::emit<UpdateUnstakedLiquidityFeeRateEvent>(v0);
     }
     
     public fun week() : u64 {

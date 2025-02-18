@@ -1,6 +1,6 @@
 module distribution::minter {
     struct AdminCap has store, key {
-        id: 0x2::object::UID,
+        id: sui::object::UID,
     }
     
     struct MINTER has drop {
@@ -29,12 +29,12 @@ module distribution::minter {
     
     struct EventGrantAdmin has copy, drop, store {
         who: address,
-        admin_cap: 0x2::object::ID,
+        admin_cap: sui::object::ID,
     }
     
     struct Minter<phantom T0> has store, key {
-        id: 0x2::object::UID,
-        revoked_admins: 0x2::vec_set::VecSet<0x2::object::ID>,
+        id: sui::object::UID,
+        revoked_admins: sui::vec_set::VecSet<sui::object::ID>,
         paused: bool,
         activated_at: u64,
         active_period: u64,
@@ -53,14 +53,14 @@ module distribution::minter {
         team_wallet: address,
         reward_distributor_cap: std::option::Option<distribution::reward_distributor_cap::RewardDistributorCap>,
         notify_reward_cap: std::option::Option<distribution::notify_reward_cap::NotifyRewardCap>,
-        nudges: 0x2::vec_set::VecSet<u64>,
+        nudges: sui::vec_set::VecSet<u64>,
     }
     
     public fun total_supply<T0>(arg0: &Minter<T0>) : u64 {
         distribution::magma_token::total_supply<T0>(std::option::borrow<distribution::magma_token::MinterCap<T0>>(&arg0.minter_cap))
     }
     
-    public fun activate<T0>(arg0: &mut Minter<T0>, arg1: &AdminCap, arg2: &mut distribution::reward_distributor::RewardDistributor<T0>, arg3: &0x2::clock::Clock) {
+    public fun activate<T0>(arg0: &mut Minter<T0>, arg1: &AdminCap, arg2: &mut distribution::reward_distributor::RewardDistributor<T0>, arg3: &sui::clock::Clock) {
         check_admin<T0>(arg0, arg1);
         assert!(!is_active<T0>(arg0, arg3), 9223373106302222346);
         assert!(std::option::is_some<distribution::reward_distributor_cap::RewardDistributorCap>(&arg0.reward_distributor_cap), 9223373110598238234);
@@ -108,14 +108,14 @@ module distribution::minter {
     }
     
     public fun check_admin<T0>(arg0: &Minter<T0>, arg1: &AdminCap) {
-        let v0 = 0x2::object::id<AdminCap>(arg1);
-        assert!(!0x2::vec_set::contains<0x2::object::ID>(&arg0.revoked_admins, &v0), 9223372809948889087);
+        let v0 = sui::object::id<AdminCap>(arg1);
+        assert!(!sui::vec_set::contains<sui::object::ID>(&arg0.revoked_admins, &v0), 9223372809948889087);
     }
     
-    public fun create<T0>(arg0: &0x2::package::Publisher, arg1: std::option::Option<distribution::magma_token::MinterCap<T0>>, arg2: &mut 0x2::tx_context::TxContext) : (Minter<T0>, AdminCap) {
+    public fun create<T0>(arg0: &sui::package::Publisher, arg1: std::option::Option<distribution::magma_token::MinterCap<T0>>, arg2: &mut sui::tx_context::TxContext) : (Minter<T0>, AdminCap) {
         let v0 = Minter<T0>{
-            id                     : 0x2::object::new(arg2), 
-            revoked_admins         : 0x2::vec_set::empty<0x2::object::ID>(), 
+            id                     : sui::object::new(arg2), 
+            revoked_admins         : sui::vec_set::empty<sui::object::ID>(), 
             paused                 : false, 
             activated_at           : 0, 
             active_period          : 0, 
@@ -134,9 +134,9 @@ module distribution::minter {
             team_wallet            : @0x0, 
             reward_distributor_cap : std::option::none<distribution::reward_distributor_cap::RewardDistributorCap>(), 
             notify_reward_cap      : std::option::none<distribution::notify_reward_cap::NotifyRewardCap>(), 
-            nudges                 : 0x2::vec_set::empty<u64>(),
+            nudges                 : sui::vec_set::empty<u64>(),
         };
-        let v1 = AdminCap{id: 0x2::object::new(arg2)};
+        let v1 = AdminCap{id: sui::object::new(arg2)};
         (v0, v1)
     }
     
@@ -148,21 +148,21 @@ module distribution::minter {
         arg0.epoch_emissions
     }
     
-    public fun grant_admin(arg0: &0x2::package::Publisher, arg1: address, arg2: &mut 0x2::tx_context::TxContext) {
-        let v0 = AdminCap{id: 0x2::object::new(arg2)};
+    public fun grant_admin(arg0: &sui::package::Publisher, arg1: address, arg2: &mut sui::tx_context::TxContext) {
+        let v0 = AdminCap{id: sui::object::new(arg2)};
         let v1 = EventGrantAdmin{
             who       : arg1, 
-            admin_cap : 0x2::object::id<AdminCap>(&v0),
+            admin_cap : sui::object::id<AdminCap>(&v0),
         };
-        0x2::event::emit<EventGrantAdmin>(v1);
-        0x2::transfer::transfer<AdminCap>(v0, arg1);
+        sui::event::emit<EventGrantAdmin>(v1);
+        sui::transfer::transfer<AdminCap>(v0, arg1);
     }
     
-    fun init(arg0: MINTER, arg1: &mut 0x2::tx_context::TxContext) {
-        0x2::package::claim_and_keep<MINTER>(arg0, arg1);
+    fun init(arg0: MINTER, arg1: &mut sui::tx_context::TxContext) {
+        sui::package::claim_and_keep<MINTER>(arg0, arg1);
     }
     
-    public fun is_active<T0>(arg0: &Minter<T0>, arg1: &0x2::clock::Clock) : bool {
+    public fun is_active<T0>(arg0: &Minter<T0>, arg1: &sui::clock::Clock) : bool {
         if (arg0.activated_at > 0) {
             if (!arg0.paused) {
                 distribution::common::current_period(arg1) >= arg0.active_period
@@ -186,11 +186,11 @@ module distribution::minter {
         check_admin<T0>(arg0, arg1);
         arg0.paused = true;
         let v0 = EventPauseEmission{dummy_field: false};
-        0x2::event::emit<EventPauseEmission>(v0);
+        sui::event::emit<EventPauseEmission>(v0);
     }
     
-    public fun revoke_admin<T0>(arg0: &mut Minter<T0>, arg1: &0x2::package::Publisher, arg2: 0x2::object::ID) {
-        0x2::vec_set::insert<0x2::object::ID>(&mut arg0.revoked_admins, arg2);
+    public fun revoke_admin<T0>(arg0: &mut Minter<T0>, arg1: &sui::package::Publisher, arg2: sui::object::ID) {
+        sui::vec_set::insert<sui::object::ID>(&mut arg0.revoked_admins, arg2);
     }
     
     public fun set_minter_cap<T0>(arg0: &mut Minter<T0>, arg1: &AdminCap, arg2: distribution::magma_token::MinterCap<T0>) {
@@ -228,20 +228,20 @@ module distribution::minter {
         check_admin<T0>(arg0, arg1);
         arg0.paused = false;
         let v0 = EventUnpauseEmission{dummy_field: false};
-        0x2::event::emit<EventUnpauseEmission>(v0);
+        sui::event::emit<EventUnpauseEmission>(v0);
     }
     
-    public fun update_period<T0>(arg0: &mut Minter<T0>, arg1: &mut distribution::voter::Voter<T0>, arg2: &distribution::voting_escrow::VotingEscrow<T0>, arg3: &mut distribution::reward_distributor::RewardDistributor<T0>, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
+    public fun update_period<T0>(arg0: &mut Minter<T0>, arg1: &mut distribution::voter::Voter<T0>, arg2: &distribution::voting_escrow::VotingEscrow<T0>, arg3: &mut distribution::reward_distributor::RewardDistributor<T0>, arg4: &sui::clock::Clock, arg5: &mut sui::tx_context::TxContext) {
         assert!(is_active<T0>(arg0, arg4), 9223373394064900104);
         assert!(arg0.active_period + distribution::common::week() < distribution::common::current_timestamp(arg4), 9223373406950588436);
         let (v0, v1) = calculate_epoch_emissions<T0>(arg0);
         let v2 = calculate_rebase_growth(v0, distribution::magma_token::total_supply<T0>(std::option::borrow<distribution::magma_token::MinterCap<T0>>(&arg0.minter_cap)), distribution::voting_escrow::total_locked<T0>(arg2));
-        let v3 = 0x2::object::id_address<Minter<T0>>(arg0);
+        let v3 = sui::object::id_address<Minter<T0>>(arg0);
         if (arg0.team_emission_rate > 0 && arg0.team_wallet != @0x0) {
-            0x2::transfer::public_transfer<0x2::coin::Coin<T0>>(distribution::magma_token::mint<T0>(std::option::borrow_mut<distribution::magma_token::MinterCap<T0>>(&mut arg0.minter_cap), integer_mate::full_math_u64::mul_div_floor(arg0.team_emission_rate, v2 + v0, 10000 - arg0.team_emission_rate), v3, arg5), arg0.team_wallet);
+            sui::transfer::public_transfer<sui::coin::Coin<T0>>(distribution::magma_token::mint<T0>(std::option::borrow_mut<distribution::magma_token::MinterCap<T0>>(&mut arg0.minter_cap), integer_mate::full_math_u64::mul_div_floor(arg0.team_emission_rate, v2 + v0, 10000 - arg0.team_emission_rate), v3, arg5), arg0.team_wallet);
         };
         distribution::reward_distributor::checkpoint_token<T0>(arg3, std::option::borrow<distribution::reward_distributor_cap::RewardDistributorCap>(&arg0.reward_distributor_cap), distribution::magma_token::mint<T0>(std::option::borrow_mut<distribution::magma_token::MinterCap<T0>>(&mut arg0.minter_cap), v2, v3, arg5), arg4, arg5);
-        distribution::voter::notify_rewards<T0>(arg1, std::option::borrow<distribution::notify_reward_cap::NotifyRewardCap>(&arg0.notify_reward_cap), distribution::magma_token::mint<T0>(std::option::borrow_mut<distribution::magma_token::MinterCap<T0>>(&mut arg0.minter_cap), v0, 0x2::object::id_address<Minter<T0>>(arg0), arg5), arg5);
+        distribution::voter::notify_rewards<T0>(arg1, std::option::borrow<distribution::notify_reward_cap::NotifyRewardCap>(&arg0.notify_reward_cap), distribution::magma_token::mint<T0>(std::option::borrow_mut<distribution::magma_token::MinterCap<T0>>(&mut arg0.minter_cap), v0, sui::object::id_address<Minter<T0>>(arg0), arg5), arg5);
         arg0.active_period = distribution::common::current_period(arg4);
         arg0.epoch_count = arg0.epoch_count + 1;
         arg0.epoch_emissions = v1;
@@ -251,7 +251,7 @@ module distribution::minter {
             new_epoch     : arg0.epoch_count, 
             new_emissions : arg0.epoch_emissions,
         };
-        0x2::event::emit<EventUpdateEpoch>(v4);
+        sui::event::emit<EventUpdateEpoch>(v4);
     }
     
     // decompiled from Move bytecode v6

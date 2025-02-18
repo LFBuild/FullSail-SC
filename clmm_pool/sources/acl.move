@@ -8,7 +8,7 @@ module clmm_pool::acl {
         permission: u128,
     }
     
-    public fun new(arg0: &mut 0x2::tx_context::TxContext) : ACL {
+    public fun new(arg0: &mut sui::tx_context::TxContext) : ACL {
         ACL{permissions: move_stl::linked_table::new<address, u128>(arg0)}
     }
     
