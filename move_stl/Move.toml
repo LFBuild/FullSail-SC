@@ -1,9 +1,8 @@
 [package]
 name = "move_stl"
-version = "mainnet-v1.39.4"
 
 [dependencies]
-Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "mainnet-v1.39.4" }
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet", override = true }
 
 [addresses]
 move_stl = "0x0"
