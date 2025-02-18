@@ -1,13 +1,13 @@
 module gauge_cap::gauge_cap {
-    struct GAUGE_CAP has drop {
+    public struct GAUGE_CAP has drop {
         dummy_field: bool,
     }
     
-    struct CreateCap has store, key {
+    public struct CreateCap has store, key {
         id: sui::object::UID,
     }
     
-    struct GaugeCap has store, key {
+    public struct GaugeCap has store, key {
         id: sui::object::UID,
         gauge_id: sui::object::ID,
         pool_id: sui::object::ID,
