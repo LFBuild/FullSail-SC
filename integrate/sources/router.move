@@ -1,4 +1,4 @@
-module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::router {
+module integrate::router {
     struct CalculatedRouterSwapResult has copy, drop, store {
         amount_in: u64,
         amount_medium: u64,
@@ -52,9 +52,9 @@ module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::route
     
     public fun calculate_router_swap_result<T0, T1, T2, T3>(arg0: &mut clmm_pool::pool::Pool<T0, T1>, arg1: &mut clmm_pool::pool::Pool<T2, T3>, arg2: bool, arg3: bool, arg4: bool, arg5: u64) {
         if (arg4) {
-            let v0 = 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::expect_swap::expect_swap<T0, T1>(arg0, arg2, arg4, arg5);
-            let v1 = 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::expect_swap::expect_swap_result_amount_out(&v0);
-            if (0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::expect_swap::expect_swap_result_is_exceed(&v0) || v1 > 18446744073709551615) {
+            let v0 = integrate::expect_swap::expect_swap<T0, T1>(arg0, arg2, arg4, arg5);
+            let v1 = integrate::expect_swap::expect_swap_result_amount_out(&v0);
+            if (integrate::expect_swap::expect_swap_result_is_exceed(&v0) || v1 > 18446744073709551615) {
                 let v2 = CalculatedRouterSwapResult{
                     amount_in             : 0, 
                     amount_medium         : 0, 
@@ -69,8 +69,8 @@ module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::route
                 0x2::event::emit<CalculatedRouterSwapResultEvent>(v3);
             } else {
                 let v4 = v1 as u64;
-                let v5 = 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::expect_swap::expect_swap<T2, T3>(arg1, arg3, arg4, v4);
-                let v6 = 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::expect_swap::expect_swap_result_amount_out(&v5);
+                let v5 = integrate::expect_swap::expect_swap<T2, T3>(arg1, arg3, arg4, v4);
+                let v6 = integrate::expect_swap::expect_swap_result_amount_out(&v5);
                 if (v6 > 18446744073709551615) {
                     let v7 = CalculatedRouterSwapResult{
                         amount_in             : 0, 
@@ -85,7 +85,7 @@ module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::route
                     let v8 = CalculatedRouterSwapResultEvent{data: v7};
                     0x2::event::emit<CalculatedRouterSwapResultEvent>(v8);
                 } else {
-                    let v9 = 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::expect_swap::expect_swap_result_is_exceed(&v0) || 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::expect_swap::expect_swap_result_is_exceed(&v5);
+                    let v9 = integrate::expect_swap::expect_swap_result_is_exceed(&v0) || integrate::expect_swap::expect_swap_result_is_exceed(&v5);
                     let v10 = CalculatedRouterSwapResult{
                         amount_in             : arg5, 
                         amount_medium         : v4, 
@@ -93,17 +93,17 @@ module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::route
                         is_exceed             : v9, 
                         current_sqrt_price_ab : clmm_pool::pool::current_sqrt_price<T0, T1>(arg0), 
                         current_sqrt_price_cd : clmm_pool::pool::current_sqrt_price<T2, T3>(arg1), 
-                        target_sqrt_price_ab  : 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::expect_swap::expect_swap_result_after_sqrt_price(&v0), 
-                        target_sqrt_price_cd  : 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::expect_swap::expect_swap_result_after_sqrt_price(&v5),
+                        target_sqrt_price_ab  : integrate::expect_swap::expect_swap_result_after_sqrt_price(&v0), 
+                        target_sqrt_price_cd  : integrate::expect_swap::expect_swap_result_after_sqrt_price(&v5),
                     };
                     let v11 = CalculatedRouterSwapResultEvent{data: v10};
                     0x2::event::emit<CalculatedRouterSwapResultEvent>(v11);
                 };
             };
         } else {
-            let v12 = 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::expect_swap::expect_swap<T2, T3>(arg1, arg3, arg4, arg5);
-            let v13 = 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::expect_swap::expect_swap_result_is_exceed(&v12);
-            let v14 = 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::expect_swap::expect_swap_result_amount_in(&v12);
+            let v12 = integrate::expect_swap::expect_swap<T2, T3>(arg1, arg3, arg4, arg5);
+            let v13 = integrate::expect_swap::expect_swap_result_is_exceed(&v12);
+            let v14 = integrate::expect_swap::expect_swap_result_amount_in(&v12);
             if (v13 || v14 > 18446744073709551615) {
                 let v15 = CalculatedRouterSwapResult{
                     amount_in             : 0, 
@@ -119,9 +119,9 @@ module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::route
                 0x2::event::emit<CalculatedRouterSwapResultEvent>(v16);
             } else {
                 let v17 = v14 as u64;
-                let v18 = 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::expect_swap::expect_swap_result_fee_amount(&v12) as u64;
-                let v19 = 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::expect_swap::expect_swap<T0, T1>(arg0, arg2, arg4, v17 + v18);
-                let v20 = 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::expect_swap::expect_swap_result_amount_in(&v19);
+                let v18 = integrate::expect_swap::expect_swap_result_fee_amount(&v12) as u64;
+                let v19 = integrate::expect_swap::expect_swap<T0, T1>(arg0, arg2, arg4, v17 + v18);
+                let v20 = integrate::expect_swap::expect_swap_result_amount_in(&v19);
                 if (v20 > 18446744073709551615) {
                     let v21 = CalculatedRouterSwapResult{
                         amount_in             : 0, 
@@ -136,16 +136,16 @@ module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::route
                     let v22 = CalculatedRouterSwapResultEvent{data: v21};
                     0x2::event::emit<CalculatedRouterSwapResultEvent>(v22);
                 } else {
-                    let v23 = 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::expect_swap::expect_swap_result_is_exceed(&v19) || v13;
+                    let v23 = integrate::expect_swap::expect_swap_result_is_exceed(&v19) || v13;
                     let v24 = CalculatedRouterSwapResult{
-                        amount_in             : (v20 as u64) + (0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::expect_swap::expect_swap_result_fee_amount(&v19) as u64), 
+                        amount_in             : (v20 as u64) + (integrate::expect_swap::expect_swap_result_fee_amount(&v19) as u64), 
                         amount_medium         : v17 + v18, 
                         amount_out            : arg5, 
                         is_exceed             : v23, 
                         current_sqrt_price_ab : clmm_pool::pool::current_sqrt_price<T0, T1>(arg0), 
                         current_sqrt_price_cd : clmm_pool::pool::current_sqrt_price<T2, T3>(arg1), 
-                        target_sqrt_price_ab  : 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::expect_swap::expect_swap_result_after_sqrt_price(&v19), 
-                        target_sqrt_price_cd  : 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::expect_swap::expect_swap_result_after_sqrt_price(&v12),
+                        target_sqrt_price_ab  : integrate::expect_swap::expect_swap_result_after_sqrt_price(&v19), 
+                        target_sqrt_price_cd  : integrate::expect_swap::expect_swap_result_after_sqrt_price(&v12),
                     };
                     let v25 = CalculatedRouterSwapResultEvent{data: v24};
                     0x2::event::emit<CalculatedRouterSwapResultEvent>(v25);

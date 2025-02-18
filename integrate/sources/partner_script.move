@@ -1,4 +1,4 @@
-module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::partner_script {
+module integrate::partner_script {
     public entry fun claim_ref_fee<T0>(arg0: &clmm_pool::config::GlobalConfig, arg1: &clmm_pool::partner::PartnerCap, arg2: &mut clmm_pool::partner::Partner, arg3: &mut 0x2::tx_context::TxContext) {
         clmm_pool::partner::claim_ref_fee<T0>(arg0, arg1, arg2, arg3);
     }

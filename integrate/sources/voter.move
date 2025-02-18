@@ -1,4 +1,4 @@
-module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::voter {
+module integrate::voter {
     struct EventDistributeReward has copy, drop, store {
         sender: address,
         gauge: 0x2::object::ID,

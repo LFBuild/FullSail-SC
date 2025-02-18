@@ -1,4 +1,4 @@
-module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::fetcher_script {
+module integrate::fetcher_script {
     struct FetchTicksResultEvent has copy, drop, store {
         ticks: vector<clmm_pool::tick::Tick>,
     }

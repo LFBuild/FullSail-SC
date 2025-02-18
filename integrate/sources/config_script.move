@@ -1,4 +1,4 @@
-module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::config_script {
+module integrate::config_script {
     public entry fun add_fee_tier(arg0: &mut clmm_pool::config::GlobalConfig, arg1: u32, arg2: u64, arg3: &mut 0x2::tx_context::TxContext) {
         clmm_pool::config::add_fee_tier(arg0, arg1, arg2, arg3);
     }

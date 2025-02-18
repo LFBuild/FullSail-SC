@@ -1,4 +1,4 @@
-module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::expect_swap {
+module integrate::expect_swap {
     struct ExpectSwapResult has copy, drop, store {
         amount_in: u256,
         amount_out: u256,

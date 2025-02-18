@@ -1,4 +1,4 @@
-module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::setup_distribution {
+module integrate::setup_distribution {
     public entry fun create<T0>(arg0: &0x2::package::Publisher, arg1: address, arg2: &0x2::clock::Clock, arg3: &mut 0x2::tx_context::TxContext) {
         let (v0, v1) = distribution::minter::create<T0>(arg0, 0x1::option::none<distribution::magma_token::MinterCap<T0>>(), arg3);
         let v2 = v1;

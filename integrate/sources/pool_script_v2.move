@@ -1,4 +1,4 @@
-module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::pool_script_v2 {
+module integrate::pool_script_v2 {
     fun swap<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: 0x2::coin::Coin<T0>, arg3: 0x2::coin::Coin<T1>, arg4: bool, arg5: bool, arg6: u64, arg7: u64, arg8: u128, arg9: &0x2::clock::Clock, arg10: &mut 0x2::tx_context::TxContext) {
         let (v0, v1, v2) = clmm_pool::pool::flash_swap<T0, T1>(arg0, arg1, arg4, arg5, arg6, arg8, arg9);
         let v3 = v2;
@@ -25,8 +25,8 @@ module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::pool_
         clmm_pool::pool::repay_flash_swap<T0, T1>(arg0, arg1, v8, v9, v3);
         0x2::coin::join<T1>(&mut arg3, 0x2::coin::from_balance<T1>(v4, arg10));
         0x2::coin::join<T0>(&mut arg2, 0x2::coin::from_balance<T0>(v5, arg10));
-        0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::utils::send_coin<T0>(arg2, 0x2::tx_context::sender(arg10));
-        0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::utils::send_coin<T1>(arg3, 0x2::tx_context::sender(arg10));
+        integrate::utils::send_coin<T0>(arg2, 0x2::tx_context::sender(arg10));
+        integrate::utils::send_coin<T1>(arg3, 0x2::tx_context::sender(arg10));
     }
     
     public entry fun create_pool<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::factory::Pools, arg2: u32, arg3: u128, arg4: 0x1::string::String, arg5: &0x2::clock::Clock, arg6: &mut 0x2::tx_context::TxContext) {
@@ -35,8 +35,8 @@ module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::pool_
     
     public entry fun create_pool_with_liquidity<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::factory::Pools, arg2: u32, arg3: u128, arg4: 0x1::string::String, arg5: 0x2::coin::Coin<T0>, arg6: 0x2::coin::Coin<T1>, arg7: u32, arg8: u32, arg9: u64, arg10: u64, arg11: bool, arg12: &0x2::clock::Clock, arg13: &mut 0x2::tx_context::TxContext) {
         let (v0, v1, v2) = clmm_pool::factory::create_pool_with_liquidity<T0, T1>(arg1, arg0, arg2, arg3, arg4, arg7, arg8, arg5, arg6, arg9, arg10, arg11, arg12, arg13);
-        0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::utils::send_coin<T0>(v1, 0x2::tx_context::sender(arg13));
-        0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::utils::send_coin<T1>(v2, 0x2::tx_context::sender(arg13));
+        integrate::utils::send_coin<T0>(v1, 0x2::tx_context::sender(arg13));
+        integrate::utils::send_coin<T1>(v2, 0x2::tx_context::sender(arg13));
         0x2::transfer::public_transfer<clmm_pool::position::Position>(v0, 0x2::tx_context::sender(arg13));
     }
     
@@ -56,21 +56,21 @@ module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::pool_
         let (v0, v1) = clmm_pool::pool::collect_fee<T0, T1>(arg0, arg1, arg2, true);
         0x2::coin::join<T0>(&mut arg3, 0x2::coin::from_balance<T0>(v0, arg5));
         0x2::coin::join<T1>(&mut arg4, 0x2::coin::from_balance<T1>(v1, arg5));
-        0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::utils::send_coin<T0>(arg3, 0x2::tx_context::sender(arg5));
-        0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::utils::send_coin<T1>(arg4, 0x2::tx_context::sender(arg5));
+        integrate::utils::send_coin<T0>(arg3, 0x2::tx_context::sender(arg5));
+        integrate::utils::send_coin<T1>(arg4, 0x2::tx_context::sender(arg5));
     }
     
     public entry fun collect_protocol_fee<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: 0x2::coin::Coin<T0>, arg3: 0x2::coin::Coin<T1>, arg4: &mut 0x2::tx_context::TxContext) {
         let (v0, v1) = clmm_pool::pool::collect_protocol_fee<T0, T1>(arg0, arg1, arg4);
         0x2::coin::join<T0>(&mut arg2, 0x2::coin::from_balance<T0>(v0, arg4));
         0x2::coin::join<T1>(&mut arg3, 0x2::coin::from_balance<T1>(v1, arg4));
-        0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::utils::send_coin<T0>(arg2, 0x2::tx_context::sender(arg4));
-        0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::utils::send_coin<T1>(arg3, 0x2::tx_context::sender(arg4));
+        integrate::utils::send_coin<T0>(arg2, 0x2::tx_context::sender(arg4));
+        integrate::utils::send_coin<T1>(arg3, 0x2::tx_context::sender(arg4));
     }
     
     public entry fun collect_reward<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: &mut clmm_pool::position::Position, arg3: &mut clmm_pool::rewarder::RewarderGlobalVault, arg4: 0x2::coin::Coin<T2>, arg5: &0x2::clock::Clock, arg6: &mut 0x2::tx_context::TxContext) {
         0x2::coin::join<T2>(&mut arg4, 0x2::coin::from_balance<T2>(clmm_pool::pool::collect_reward<T0, T1, T2>(arg0, arg1, arg2, arg3, true, arg5), arg6));
-        0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::utils::send_coin<T2>(arg4, 0x2::tx_context::sender(arg6));
+        integrate::utils::send_coin<T2>(arg4, 0x2::tx_context::sender(arg6));
     }
     
     public entry fun initialize_rewarder<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: &mut 0x2::tx_context::TxContext) {
@@ -90,8 +90,8 @@ module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::pool_
         let (v4, v5) = clmm_pool::pool::collect_fee<T0, T1>(arg0, arg1, arg2, false);
         0x2::balance::join<T0>(&mut v3, v4);
         0x2::balance::join<T1>(&mut v2, v5);
-        0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::utils::send_coin<T0>(0x2::coin::from_balance<T0>(v3, arg7), 0x2::tx_context::sender(arg7));
-        0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::utils::send_coin<T1>(0x2::coin::from_balance<T1>(v2, arg7), 0x2::tx_context::sender(arg7));
+        integrate::utils::send_coin<T0>(0x2::coin::from_balance<T0>(v3, arg7), 0x2::tx_context::sender(arg7));
+        integrate::utils::send_coin<T1>(0x2::coin::from_balance<T1>(v2, arg7), 0x2::tx_context::sender(arg7));
     }
     
     fun repay_add_liquidity<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: clmm_pool::pool::AddLiquidityReceipt<T0, T1>, arg3: 0x2::coin::Coin<T0>, arg4: 0x2::coin::Coin<T1>, arg5: u64, arg6: u64, arg7: &mut 0x2::tx_context::TxContext) {
@@ -99,8 +99,8 @@ module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::pool_
         assert!(v0 <= arg5, 0);
         assert!(v1 <= arg6, 0);
         clmm_pool::pool::repay_add_liquidity<T0, T1>(arg0, arg1, 0x2::coin::into_balance<T0>(0x2::coin::split<T0>(&mut arg3, v0, arg7)), 0x2::coin::into_balance<T1>(0x2::coin::split<T1>(&mut arg4, v1, arg7)), arg2);
-        0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::utils::send_coin<T0>(arg3, 0x2::tx_context::sender(arg7));
-        0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::utils::send_coin<T1>(arg4, 0x2::tx_context::sender(arg7));
+        integrate::utils::send_coin<T0>(arg3, 0x2::tx_context::sender(arg7));
+        integrate::utils::send_coin<T1>(arg4, 0x2::tx_context::sender(arg7));
     }
     
     public entry fun set_display<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &0x2::package::Publisher, arg2: 0x1::string::String, arg3: 0x1::string::String, arg4: 0x1::string::String, arg5: 0x1::string::String, arg6: 0x1::string::String, arg7: 0x1::string::String, arg8: &mut 0x2::tx_context::TxContext) {
@@ -187,8 +187,8 @@ module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::pool_
         clmm_pool::pool::repay_flash_swap_with_partner<T0, T1>(arg0, arg1, arg2, v8, v9, v3);
         0x2::coin::join<T1>(&mut arg4, 0x2::coin::from_balance<T1>(v4, arg11));
         0x2::coin::join<T0>(&mut arg3, 0x2::coin::from_balance<T0>(v5, arg11));
-        0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::utils::send_coin<T0>(arg3, 0x2::tx_context::sender(arg11));
-        0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::utils::send_coin<T1>(arg4, 0x2::tx_context::sender(arg11));
+        integrate::utils::send_coin<T0>(arg3, 0x2::tx_context::sender(arg11));
+        integrate::utils::send_coin<T1>(arg4, 0x2::tx_context::sender(arg11));
     }
     
     public entry fun unpause_pool<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: &mut 0x2::tx_context::TxContext) {

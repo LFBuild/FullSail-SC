@@ -1,4 +1,4 @@
-module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::reward_distributor {
+module integrate::reward_distributor {
     struct Claimable has copy, drop, store {
         lock_id: 0x2::object::ID,
         amount: u64,

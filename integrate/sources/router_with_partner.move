@@ -1,4 +1,4 @@
-module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::router_with_partner {
+module integrate::router_with_partner {
     public fun swap_ab_bc_with_partner<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: &mut clmm_pool::pool::Pool<T1, T2>, arg3: &mut clmm_pool::partner::Partner, arg4: 0x2::coin::Coin<T0>, arg5: 0x2::coin::Coin<T2>, arg6: bool, arg7: u64, arg8: u64, arg9: u128, arg10: u128, arg11: &0x2::clock::Clock, arg12: &mut 0x2::tx_context::TxContext) : (0x2::coin::Coin<T0>, 0x2::coin::Coin<T2>) {
         if (arg6) {
             let (v2, v3) = swap_with_partner<T0, T1>(arg0, arg1, arg3, arg4, 0x2::coin::zero<T1>(arg12), true, true, arg7, arg9, false, arg11, arg12);

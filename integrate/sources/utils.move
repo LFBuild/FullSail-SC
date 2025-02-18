@@ -1,4 +1,4 @@
-module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::utils {
+module integrate::utils {
     public fun merge_coins<T0>(arg0: vector<0x2::coin::Coin<T0>>, arg1: &mut 0x2::tx_context::TxContext) : 0x2::coin::Coin<T0> {
         if (0x1::vector::is_empty<0x2::coin::Coin<T0>>(&arg0)) {
             0x1::vector::destroy_empty<0x2::coin::Coin<T0>>(arg0);

@@ -1,4 +1,4 @@
-module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::pool_script_v3 {
+module integrate::pool_script_v3 {
     public entry fun collect_fee<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: &mut clmm_pool::position::Position, arg3: &mut 0x2::coin::Coin<T0>, arg4: &mut 0x2::coin::Coin<T1>, arg5: &mut 0x2::tx_context::TxContext) {
         let (v0, v1) = clmm_pool::pool::collect_fee<T0, T1>(arg0, arg1, arg2, true);
         0x2::coin::join<T0>(arg3, 0x2::coin::from_balance<T0>(v0, arg5));
