@@ -232,11 +232,11 @@ module distribution::gauge {
             if (v6 > v3) {
                 v7 = v3;
             };
-            v2 = v1 + 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::checked_div_round(v7, v4, false);
+            v2 = v1 + integer_mate::math_u128::checked_div_round(v7, v4, false);
         };
         let v8 = 0x2::object_table::borrow<0x2::object::ID, clmm_pool::position::Position>(&arg0.staked_positions, arg2);
         let (v9, v10) = clmm_pool::position::tick_range(v8);
-        0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u128::mul_div_floor(clmm_pool::pool::get_magma_distribution_growth_inside<T0, T1>(arg1, v9, v10, v2) - 0x2::table::borrow<0x2::object::ID, RewardProfile>(&arg0.rewards, arg2).growth_inside, clmm_pool::position::liquidity(v8), 18446744073709551616) as u64
+        integer_mate::full_math_u128::mul_div_floor(clmm_pool::pool::get_magma_distribution_growth_inside<T0, T1>(arg1, v9, v10, v2) - 0x2::table::borrow<0x2::object::ID, RewardProfile>(&arg0.rewards, arg2).growth_inside, clmm_pool::position::liquidity(v8), 18446744073709551616) as u64
     }
     
     public fun get_position_reward<T0, T1, T2>(arg0: &mut Gauge<T0, T1, T2>, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: 0x2::object::ID, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
@@ -322,16 +322,16 @@ module distribution::gauge {
         let v2 = v0 + v1;
         let v3 = arg2 + clmm_pool::pool::get_magma_distribution_rollover<T0, T1>(arg1);
         if (v0 >= arg0.period_finish) {
-            arg0.reward_rate = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u128::mul_div_floor(v3 as u128, 18446744073709551616, v1 as u128);
+            arg0.reward_rate = integer_mate::full_math_u128::mul_div_floor(v3 as u128, 18446744073709551616, v1 as u128);
             clmm_pool::pool::sync_magma_distribution_reward<T0, T1>(arg1, 0x1::option::borrow<0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784::gauge_cap::GaugeCap>(&arg0.gauge_cap), arg0.reward_rate, 0x2::balance::value<T2>(&arg0.reserves_balance), v2);
         } else {
             let v4 = (v1 as u128) * arg0.reward_rate;
-            arg0.reward_rate = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u128::mul_div_floor((v3 as u128) + v4, 18446744073709551616, v1 as u128);
+            arg0.reward_rate = integer_mate::full_math_u128::mul_div_floor((v3 as u128) + v4, 18446744073709551616, v1 as u128);
             clmm_pool::pool::sync_magma_distribution_reward<T0, T1>(arg1, 0x1::option::borrow<0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784::gauge_cap::GaugeCap>(&arg0.gauge_cap), arg0.reward_rate, 0x2::balance::value<T2>(&arg0.reserves_balance) + ((v4 / 18446744073709551616) as u64), v2);
         };
         0x2::table::add<u64, u128>(&mut arg0.reward_rate_by_epoch, clmm_pool::config::epoch_start(v0), arg0.reward_rate);
         assert!(arg0.reward_rate != 0, 9223373952411435028);
-        assert!(arg0.reward_rate <= 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u128::mul_div_floor(0x2::balance::value<T2>(&arg0.reserves_balance) as u128, 18446744073709551616, v1 as u128), 9223373956706533398);
+        assert!(arg0.reward_rate <= integer_mate::full_math_u128::mul_div_floor(0x2::balance::value<T2>(&arg0.reserves_balance) as u128, 18446744073709551616, v1 as u128), 9223373956706533398);
         arg0.period_finish = v2;
         let v5 = EventNotifyReward{
             sender : *0x1::option::borrow<0x2::object::ID>(&arg0.voter), 
@@ -394,7 +394,7 @@ module distribution::gauge {
         v1
     }
     
-    fun update_reward_internal<T0, T1, T2>(arg0: &mut Gauge<T0, T1, T2>, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: 0x2::object::ID, arg3: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg4: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg5: &0x2::clock::Clock) : 0x2::balance::Balance<T2> {
+    fun update_reward_internal<T0, T1, T2>(arg0: &mut Gauge<T0, T1, T2>, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: 0x2::object::ID, arg3: integer_mate::i32::I32, arg4: integer_mate::i32::I32, arg5: &0x2::clock::Clock) : 0x2::balance::Balance<T2> {
         let v0 = 0x2::clock::timestamp_ms(arg5) / 1000;
         let v1 = 0x2::table::borrow_mut<0x2::object::ID, RewardProfile>(&mut arg0.rewards, arg2);
         if (v1.last_update_time >= v0) {

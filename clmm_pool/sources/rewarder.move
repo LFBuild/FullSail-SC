@@ -184,11 +184,11 @@ module clmm_pool::rewarder {
         let v1 = arg2 - v0;
         let v2 = 0;
         while (v2 < 0x1::vector::length<Rewarder>(&arg0.rewarders)) {
-            0x1::vector::borrow_mut<Rewarder>(&mut arg0.rewarders, v2).growth_global = 0x1::vector::borrow<Rewarder>(&arg0.rewarders, v2).growth_global + 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u128::mul_div_floor(v1 as u128, 0x1::vector::borrow<Rewarder>(&arg0.rewarders, v2).emissions_per_second, arg1);
+            0x1::vector::borrow_mut<Rewarder>(&mut arg0.rewarders, v2).growth_global = 0x1::vector::borrow<Rewarder>(&arg0.rewarders, v2).growth_global + integer_mate::full_math_u128::mul_div_floor(v1 as u128, 0x1::vector::borrow<Rewarder>(&arg0.rewarders, v2).emissions_per_second, arg1);
             v2 = v2 + 1;
         };
         arg0.points_released = arg0.points_released + (v1 as u128) * 18446744073709551616000000;
-        arg0.points_growth_global = arg0.points_growth_global + 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u128::mul_div_floor(v1 as u128, 18446744073709551616000000, arg1);
+        arg0.points_growth_global = arg0.points_growth_global + integer_mate::full_math_u128::mul_div_floor(v1 as u128, 18446744073709551616000000, arg1);
     }
     
     public(friend) fun update_emission<T0>(arg0: &RewarderGlobalVault, arg1: &mut RewarderManager, arg2: u128, arg3: u128, arg4: u64) {

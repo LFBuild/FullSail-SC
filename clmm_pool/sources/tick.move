@@ -5,15 +5,15 @@ module clmm_pool::tick {
     }
     
     struct Tick has copy, drop, store {
-        index: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32,
+        index: integer_mate::i32::I32,
         sqrt_price: u128,
-        liquidity_net: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::I128,
+        liquidity_net: integer_mate::i128::I128,
         liquidity_gross: u128,
         fee_growth_outside_a: u128,
         fee_growth_outside_b: u128,
         points_growth_outside: u128,
         rewards_growth_outside: vector<u128>,
-        magma_distribution_staked_liquidity_net: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::I128,
+        magma_distribution_staked_liquidity_net: integer_mate::i128::I128,
         magma_distribution_growth_outside: u128,
     }
     
@@ -24,7 +24,7 @@ module clmm_pool::tick {
         }
     }
     
-    public fun borrow_tick(arg0: &TickManager, arg1: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32) : &Tick {
+    public fun borrow_tick(arg0: &TickManager, arg1: integer_mate::i32::I32) : &Tick {
         move_stl::skip_list::borrow<Tick>(&arg0.ticks, tick_score(arg1))
     }
     
@@ -38,45 +38,45 @@ module clmm_pool::tick {
         (move_stl::skip_list::borrow_value<Tick>(v0), v1)
     }
     
-    public(friend) fun cross_by_swap(arg0: &mut TickManager, arg1: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg2: bool, arg3: u128, arg4: u128, arg5: u128, arg6: u128, arg7: u128, arg8: vector<u128>, arg9: u128) : (u128, u128) {
+    public(friend) fun cross_by_swap(arg0: &mut TickManager, arg1: integer_mate::i32::I32, arg2: bool, arg3: u128, arg4: u128, arg5: u128, arg6: u128, arg7: u128, arg8: vector<u128>, arg9: u128) : (u128, u128) {
         let v0 = move_stl::skip_list::borrow_mut<Tick>(&mut arg0.ticks, tick_score(arg1));
         let (v1, v2) = if (arg2) {
-            (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::neg(v0.liquidity_net), 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::neg(v0.magma_distribution_staked_liquidity_net))
+            (integer_mate::i128::neg(v0.liquidity_net), integer_mate::i128::neg(v0.magma_distribution_staked_liquidity_net))
         } else {
             (v0.liquidity_net, v0.magma_distribution_staked_liquidity_net)
         };
-        let (v3, v4) = if (!0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::is_neg(v1)) {
-            let v5 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::abs_u128(v1);
-            assert!(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::add_check(v5, arg3), 1);
-            let v6 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::abs_u128(v2);
-            assert!(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::add_check(v6, arg4), 1);
+        let (v3, v4) = if (!integer_mate::i128::is_neg(v1)) {
+            let v5 = integer_mate::i128::abs_u128(v1);
+            assert!(integer_mate::math_u128::add_check(v5, arg3), 1);
+            let v6 = integer_mate::i128::abs_u128(v2);
+            assert!(integer_mate::math_u128::add_check(v6, arg4), 1);
             (arg3 + v5, arg4 + v6)
         } else {
-            let v7 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::abs_u128(v1);
+            let v7 = integer_mate::i128::abs_u128(v1);
             assert!(arg3 >= v7, 1);
-            let v8 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::abs_u128(v2);
+            let v8 = integer_mate::i128::abs_u128(v2);
             assert!(arg4 >= v8, 9223372401926995967);
             (arg3 - v7, arg4 - v8)
         };
-        v0.fee_growth_outside_a = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::wrapping_sub(arg5, v0.fee_growth_outside_a);
-        v0.fee_growth_outside_b = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::wrapping_sub(arg6, v0.fee_growth_outside_b);
+        v0.fee_growth_outside_a = integer_mate::math_u128::wrapping_sub(arg5, v0.fee_growth_outside_a);
+        v0.fee_growth_outside_b = integer_mate::math_u128::wrapping_sub(arg6, v0.fee_growth_outside_b);
         let v9 = 0;
         while (v9 < 0x1::vector::length<u128>(&arg8)) {
             let v10 = *0x1::vector::borrow<u128>(&arg8, v9);
             if (0x1::vector::length<u128>(&v0.rewards_growth_outside) > v9) {
                 let v11 = 0x1::vector::borrow_mut<u128>(&mut v0.rewards_growth_outside, v9);
-                *v11 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::wrapping_sub(v10, *v11);
+                *v11 = integer_mate::math_u128::wrapping_sub(v10, *v11);
             } else {
                 0x1::vector::push_back<u128>(&mut v0.rewards_growth_outside, v10);
             };
             v9 = v9 + 1;
         };
-        v0.points_growth_outside = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::wrapping_sub(arg7, v0.points_growth_outside);
-        v0.magma_distribution_growth_outside = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::wrapping_sub(arg9, v0.magma_distribution_growth_outside);
+        v0.points_growth_outside = integer_mate::math_u128::wrapping_sub(arg7, v0.points_growth_outside);
+        v0.magma_distribution_growth_outside = integer_mate::math_u128::wrapping_sub(arg9, v0.magma_distribution_growth_outside);
         (v3, v4)
     }
     
-    public(friend) fun decrease_liquidity(arg0: &mut TickManager, arg1: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg2: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg3: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg4: u128, arg5: u128, arg6: u128, arg7: u128, arg8: vector<u128>, arg9: u128) {
+    public(friend) fun decrease_liquidity(arg0: &mut TickManager, arg1: integer_mate::i32::I32, arg2: integer_mate::i32::I32, arg3: integer_mate::i32::I32, arg4: u128, arg5: u128, arg6: u128, arg7: u128, arg8: vector<u128>, arg9: u128) {
         if (arg4 == 0) {
             return
         };
@@ -92,17 +92,17 @@ module clmm_pool::tick {
         };
     }
     
-    fun default(arg0: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32) : Tick {
+    fun default(arg0: integer_mate::i32::I32) : Tick {
         Tick{
             index                                   : arg0, 
             sqrt_price                              : clmm_pool::tick_math::get_sqrt_price_at_tick(arg0), 
-            liquidity_net                           : 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(0), 
+            liquidity_net                           : integer_mate::i128::from(0), 
             liquidity_gross                         : 0, 
             fee_growth_outside_a                    : 0, 
             fee_growth_outside_b                    : 0, 
             points_growth_outside                   : 0, 
             rewards_growth_outside                  : 0x1::vector::empty<u128>(), 
-            magma_distribution_staked_liquidity_net : 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(0), 
+            magma_distribution_staked_liquidity_net : integer_mate::i128::from(0), 
             magma_distribution_growth_outside       : 0,
         }
     }
@@ -130,7 +130,7 @@ module clmm_pool::tick {
         let v1 = if (0x1::vector::is_empty<u32>(&arg1)) {
             move_stl::skip_list::head<Tick>(&arg0.ticks)
         } else {
-            move_stl::skip_list::find_next<Tick>(&arg0.ticks, tick_score(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::from_u32(*0x1::vector::borrow<u32>(&arg1, 0))), false)
+            move_stl::skip_list::find_next<Tick>(&arg0.ticks, tick_score(integer_mate::i32::from_u32(*0x1::vector::borrow<u32>(&arg1, 0))), false)
         };
         let v2 = v1;
         let v3 = 0;
@@ -147,11 +147,11 @@ module clmm_pool::tick {
         v0
     }
     
-    public fun first_score_for_swap(arg0: &TickManager, arg1: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg2: bool) : move_stl::option_u64::OptionU64 {
+    public fun first_score_for_swap(arg0: &TickManager, arg1: integer_mate::i32::I32, arg2: bool) : move_stl::option_u64::OptionU64 {
         if (arg2) {
             move_stl::skip_list::find_prev<Tick>(&arg0.ticks, tick_score(arg1), true)
         } else {
-            let v1 = if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::eq(arg1, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::neg_from(clmm_pool::tick_math::tick_bound() + 1))) {
+            let v1 = if (integer_mate::i32::eq(arg1, integer_mate::i32::neg_from(clmm_pool::tick_math::tick_bound() + 1))) {
                 move_stl::skip_list::find_next<Tick>(&arg0.ticks, tick_score(clmm_pool::tick_math::min_tick()), true)
             } else {
                 move_stl::skip_list::find_next<Tick>(&arg0.ticks, tick_score(arg1), false)
@@ -160,13 +160,13 @@ module clmm_pool::tick {
         }
     }
     
-    public fun get_fee_in_range(arg0: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg1: u128, arg2: u128, arg3: 0x1::option::Option<Tick>, arg4: 0x1::option::Option<Tick>) : (u128, u128) {
+    public fun get_fee_in_range(arg0: integer_mate::i32::I32, arg1: u128, arg2: u128, arg3: 0x1::option::Option<Tick>, arg4: 0x1::option::Option<Tick>) : (u128, u128) {
         let (v0, v1) = if (0x1::option::is_none<Tick>(&arg3)) {
             (arg1, arg2)
         } else {
             let v2 = 0x1::option::borrow<Tick>(&arg3);
-            let (v3, v4) = if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::lt(arg0, v2.index)) {
-                (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::wrapping_sub(arg1, v2.fee_growth_outside_a), 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::wrapping_sub(arg2, v2.fee_growth_outside_b))
+            let (v3, v4) = if (integer_mate::i32::lt(arg0, v2.index)) {
+                (integer_mate::math_u128::wrapping_sub(arg1, v2.fee_growth_outside_a), integer_mate::math_u128::wrapping_sub(arg2, v2.fee_growth_outside_b))
             } else {
                 (v2.fee_growth_outside_a, v2.fee_growth_outside_b)
             };
@@ -176,23 +176,23 @@ module clmm_pool::tick {
             (0, 0)
         } else {
             let v7 = 0x1::option::borrow<Tick>(&arg4);
-            let (v8, v9) = if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::lt(arg0, v7.index)) {
+            let (v8, v9) = if (integer_mate::i32::lt(arg0, v7.index)) {
                 (v7.fee_growth_outside_a, v7.fee_growth_outside_b)
             } else {
-                (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::wrapping_sub(arg1, v7.fee_growth_outside_a), 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::wrapping_sub(arg2, v7.fee_growth_outside_b))
+                (integer_mate::math_u128::wrapping_sub(arg1, v7.fee_growth_outside_a), integer_mate::math_u128::wrapping_sub(arg2, v7.fee_growth_outside_b))
             };
             (v8, v9)
         };
-        (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::wrapping_sub(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::wrapping_sub(arg1, v0), v5), 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::wrapping_sub(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::wrapping_sub(arg2, v1), v6))
+        (integer_mate::math_u128::wrapping_sub(integer_mate::math_u128::wrapping_sub(arg1, v0), v5), integer_mate::math_u128::wrapping_sub(integer_mate::math_u128::wrapping_sub(arg2, v1), v6))
     }
     
-    public fun get_magma_distribution_growth_in_range(arg0: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg1: u128, arg2: 0x1::option::Option<Tick>, arg3: 0x1::option::Option<Tick>) : u128 {
+    public fun get_magma_distribution_growth_in_range(arg0: integer_mate::i32::I32, arg1: u128, arg2: 0x1::option::Option<Tick>, arg3: 0x1::option::Option<Tick>) : u128 {
         let v0 = if (0x1::option::is_none<Tick>(&arg2)) {
             arg1
         } else {
             let v1 = 0x1::option::borrow<Tick>(&arg2);
-            let v2 = if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::lt(arg0, v1.index)) {
-                0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::wrapping_sub(arg1, v1.magma_distribution_growth_outside)
+            let v2 = if (integer_mate::i32::lt(arg0, v1.index)) {
+                integer_mate::math_u128::wrapping_sub(arg1, v1.magma_distribution_growth_outside)
             } else {
                 v1.magma_distribution_growth_outside
             };
@@ -202,23 +202,23 @@ module clmm_pool::tick {
             0
         } else {
             let v4 = 0x1::option::borrow<Tick>(&arg3);
-            let v5 = if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::lt(arg0, v4.index)) {
+            let v5 = if (integer_mate::i32::lt(arg0, v4.index)) {
                 v4.magma_distribution_growth_outside
             } else {
-                0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::wrapping_sub(arg1, v4.magma_distribution_growth_outside)
+                integer_mate::math_u128::wrapping_sub(arg1, v4.magma_distribution_growth_outside)
             };
             v5
         };
-        0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::wrapping_sub(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::wrapping_sub(arg1, v0), v3)
+        integer_mate::math_u128::wrapping_sub(integer_mate::math_u128::wrapping_sub(arg1, v0), v3)
     }
     
-    public fun get_points_in_range(arg0: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg1: u128, arg2: 0x1::option::Option<Tick>, arg3: 0x1::option::Option<Tick>) : u128 {
+    public fun get_points_in_range(arg0: integer_mate::i32::I32, arg1: u128, arg2: 0x1::option::Option<Tick>, arg3: 0x1::option::Option<Tick>) : u128 {
         let v0 = if (0x1::option::is_none<Tick>(&arg2)) {
             arg1
         } else {
             let v1 = 0x1::option::borrow<Tick>(&arg2);
-            let v2 = if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::lt(arg0, v1.index)) {
-                0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::wrapping_sub(arg1, v1.points_growth_outside)
+            let v2 = if (integer_mate::i32::lt(arg0, v1.index)) {
+                integer_mate::math_u128::wrapping_sub(arg1, v1.points_growth_outside)
             } else {
                 v1.points_growth_outside
             };
@@ -228,14 +228,14 @@ module clmm_pool::tick {
             0
         } else {
             let v4 = 0x1::option::borrow<Tick>(&arg3);
-            let v5 = if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::lt(arg0, v4.index)) {
+            let v5 = if (integer_mate::i32::lt(arg0, v4.index)) {
                 v4.points_growth_outside
             } else {
-                0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::wrapping_sub(arg1, v4.points_growth_outside)
+                integer_mate::math_u128::wrapping_sub(arg1, v4.points_growth_outside)
             };
             v5
         };
-        0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::wrapping_sub(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::wrapping_sub(arg1, v0), v3)
+        integer_mate::math_u128::wrapping_sub(integer_mate::math_u128::wrapping_sub(arg1, v0), v3)
     }
     
     public fun get_reward_growth_outside(arg0: &Tick, arg1: u64) : u128 {
@@ -246,7 +246,7 @@ module clmm_pool::tick {
         }
     }
     
-    public fun get_rewards_in_range(arg0: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg1: vector<u128>, arg2: 0x1::option::Option<Tick>, arg3: 0x1::option::Option<Tick>) : vector<u128> {
+    public fun get_rewards_in_range(arg0: integer_mate::i32::I32, arg1: vector<u128>, arg2: 0x1::option::Option<Tick>, arg3: 0x1::option::Option<Tick>) : vector<u128> {
         let v0 = 0x1::vector::empty<u128>();
         let v1 = 0;
         while (v1 < 0x1::vector::length<u128>(&arg1)) {
@@ -255,8 +255,8 @@ module clmm_pool::tick {
                 v2
             } else {
                 let v4 = 0x1::option::borrow<Tick>(&arg2);
-                let v5 = if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::lt(arg0, v4.index)) {
-                    0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::wrapping_sub(v2, get_reward_growth_outside(v4, v1))
+                let v5 = if (integer_mate::i32::lt(arg0, v4.index)) {
+                    integer_mate::math_u128::wrapping_sub(v2, get_reward_growth_outside(v4, v1))
                 } else {
                     get_reward_growth_outside(v4, v1)
                 };
@@ -266,21 +266,21 @@ module clmm_pool::tick {
                 0
             } else {
                 let v7 = 0x1::option::borrow<Tick>(&arg3);
-                let v8 = if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::lt(arg0, v7.index)) {
+                let v8 = if (integer_mate::i32::lt(arg0, v7.index)) {
                     get_reward_growth_outside(v7, v1)
                 } else {
                     let v9 = get_reward_growth_outside(v7, v1);
-                    0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::wrapping_sub(v2, v9)
+                    integer_mate::math_u128::wrapping_sub(v2, v9)
                 };
                 v8
             };
-            0x1::vector::push_back<u128>(&mut v0, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::wrapping_sub(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::wrapping_sub(v2, v3), v6));
+            0x1::vector::push_back<u128>(&mut v0, integer_mate::math_u128::wrapping_sub(integer_mate::math_u128::wrapping_sub(v2, v3), v6));
             v1 = v1 + 1;
         };
         v0
     }
     
-    public(friend) fun increase_liquidity(arg0: &mut TickManager, arg1: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg2: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg3: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg4: u128, arg5: u128, arg6: u128, arg7: u128, arg8: vector<u128>, arg9: u128) {
+    public(friend) fun increase_liquidity(arg0: &mut TickManager, arg1: integer_mate::i32::I32, arg2: integer_mate::i32::I32, arg3: integer_mate::i32::I32, arg4: u128, arg5: u128, arg6: u128, arg7: u128, arg8: vector<u128>, arg9: u128) {
         if (arg4 == 0) {
             return
         };
@@ -300,7 +300,7 @@ module clmm_pool::tick {
         update_by_liquidity(move_stl::skip_list::borrow_mut<Tick>(&mut arg0.ticks, v1), arg1, arg4, v2, true, true, arg5, arg6, arg7, arg8, arg9);
     }
     
-    public fun index(arg0: &Tick) : 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32 {
+    public fun index(arg0: &Tick) : integer_mate::i32::I32 {
         arg0.index
     }
     
@@ -308,7 +308,7 @@ module clmm_pool::tick {
         arg0.liquidity_gross
     }
     
-    public fun liquidity_net(arg0: &Tick) : 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::I128 {
+    public fun liquidity_net(arg0: &Tick) : integer_mate::i128::I128 {
         arg0.liquidity_net
     }
     
@@ -316,7 +316,7 @@ module clmm_pool::tick {
         arg0.magma_distribution_growth_outside
     }
     
-    public fun magma_distribution_staked_liquidity_net(arg0: &Tick) : 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::I128 {
+    public fun magma_distribution_staked_liquidity_net(arg0: &Tick) : integer_mate::i128::I128 {
         arg0.magma_distribution_staked_liquidity_net
     }
     
@@ -332,8 +332,8 @@ module clmm_pool::tick {
         arg0.sqrt_price
     }
     
-    fun tick_score(arg0: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32) : u64 {
-        let v0 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::as_u32(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::add(arg0, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::from(clmm_pool::tick_math::tick_bound())));
+    fun tick_score(arg0: integer_mate::i32::I32) : u64 {
+        let v0 = integer_mate::i32::as_u32(integer_mate::i32::add(arg0, integer_mate::i32::from(clmm_pool::tick_math::tick_bound())));
         assert!(v0 >= 0 && v0 <= clmm_pool::tick_math::tick_bound() * 2, 2);
         v0 as u64
     }
@@ -342,7 +342,7 @@ module clmm_pool::tick {
         arg0.tick_spacing
     }
     
-    public(friend) fun try_borrow_tick(arg0: &TickManager, arg1: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32) : 0x1::option::Option<Tick> {
+    public(friend) fun try_borrow_tick(arg0: &TickManager, arg1: integer_mate::i32::I32) : 0x1::option::Option<Tick> {
         let v0 = tick_score(arg1);
         if (!move_stl::skip_list::contains<Tick>(&arg0.ticks, v0)) {
             return 0x1::option::none<Tick>()
@@ -350,9 +350,9 @@ module clmm_pool::tick {
         0x1::option::some<Tick>(*move_stl::skip_list::borrow<Tick>(&arg0.ticks, v0))
     }
     
-    fun update_by_liquidity(arg0: &mut Tick, arg1: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg2: u128, arg3: bool, arg4: bool, arg5: bool, arg6: u128, arg7: u128, arg8: u128, arg9: vector<u128>, arg10: u128) : u128 {
+    fun update_by_liquidity(arg0: &mut Tick, arg1: integer_mate::i32::I32, arg2: u128, arg3: bool, arg4: bool, arg5: bool, arg6: u128, arg7: u128, arg8: u128, arg9: vector<u128>, arg10: u128) : u128 {
         let v0 = if (arg4) {
-            assert!(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::add_check(arg0.liquidity_gross, arg2), 0);
+            assert!(integer_mate::math_u128::add_check(arg0.liquidity_gross, arg2), 0);
             arg0.liquidity_gross + arg2
         } else {
             assert!(arg0.liquidity_gross >= arg2, 1);
@@ -362,7 +362,7 @@ module clmm_pool::tick {
             return 0
         };
         let (v1, v2, v3, v4, v5) = if (arg3) {
-            let (v6, v7, v8, v9, v10) = if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::lt(arg1, arg0.index)) {
+            let (v6, v7, v8, v9, v10) = if (integer_mate::i32::lt(arg1, arg0.index)) {
                 (0, 0, default_rewards_growth_outside(0x1::vector::length<u128>(&arg9)), 0, 0)
             } else {
                 (arg6, arg7, arg9, arg8, arg10)
@@ -373,19 +373,19 @@ module clmm_pool::tick {
         };
         let (v11, v12) = if (arg4) {
             let (v13, v14) = if (arg5) {
-                let (v15, v16) = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::overflowing_sub(arg0.liquidity_net, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(arg2));
+                let (v15, v16) = integer_mate::i128::overflowing_sub(arg0.liquidity_net, integer_mate::i128::from(arg2));
                 (v15, v16)
             } else {
-                let (v17, v18) = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::overflowing_add(arg0.liquidity_net, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(arg2));
+                let (v17, v18) = integer_mate::i128::overflowing_add(arg0.liquidity_net, integer_mate::i128::from(arg2));
                 (v17, v18)
             };
             (v13, v14)
         } else {
             let (v19, v20) = if (arg5) {
-                let (v21, v22) = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::overflowing_add(arg0.liquidity_net, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(arg2));
+                let (v21, v22) = integer_mate::i128::overflowing_add(arg0.liquidity_net, integer_mate::i128::from(arg2));
                 (v21, v22)
             } else {
-                let (v23, v24) = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::overflowing_sub(arg0.liquidity_net, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(arg2));
+                let (v23, v24) = integer_mate::i128::overflowing_sub(arg0.liquidity_net, integer_mate::i128::from(arg2));
                 (v23, v24)
             };
             (v19, v20)
@@ -403,12 +403,12 @@ module clmm_pool::tick {
         v0
     }
     
-    public(friend) fun update_magma_stake(arg0: &mut TickManager, arg1: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg2: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::I128, arg3: bool) {
+    public(friend) fun update_magma_stake(arg0: &mut TickManager, arg1: integer_mate::i32::I32, arg2: integer_mate::i128::I128, arg3: bool) {
         let v0 = move_stl::skip_list::borrow_mut<Tick>(&mut arg0.ticks, tick_score(arg1));
         if (arg3) {
-            v0.magma_distribution_staked_liquidity_net = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::wrapping_sub(v0.magma_distribution_staked_liquidity_net, arg2);
+            v0.magma_distribution_staked_liquidity_net = integer_mate::i128::wrapping_sub(v0.magma_distribution_staked_liquidity_net, arg2);
         } else {
-            v0.magma_distribution_staked_liquidity_net = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::wrapping_add(v0.magma_distribution_staked_liquidity_net, arg2);
+            v0.magma_distribution_staked_liquidity_net = integer_mate::i128::wrapping_add(v0.magma_distribution_staked_liquidity_net, arg2);
         };
     }
     

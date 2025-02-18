@@ -23,16 +23,16 @@ module clmm_pool::position {
         name: 0x1::string::String,
         description: 0x1::string::String,
         url: 0x1::string::String,
-        tick_lower_index: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32,
-        tick_upper_index: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32,
+        tick_lower_index: integer_mate::i32::I32,
+        tick_upper_index: integer_mate::i32::I32,
         liquidity: u128,
     }
     
     struct PositionInfo has copy, drop, store {
         position_id: 0x2::object::ID,
         liquidity: u128,
-        tick_lower_index: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32,
-        tick_upper_index: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32,
+        tick_lower_index: integer_mate::i32::I32,
+        tick_upper_index: integer_mate::i32::I32,
         fee_growth_inside_a: u128,
         fee_growth_inside_b: u128,
         fee_owned_a: u64,
@@ -95,12 +95,12 @@ module clmm_pool::position {
         v0
     }
     
-    public fun check_position_tick_range(arg0: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg1: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg2: u32) {
-        let v0 = if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::lt(arg0, arg1)) {
-            if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::gte(arg0, clmm_pool::tick_math::min_tick())) {
-                if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::lte(arg1, clmm_pool::tick_math::max_tick())) {
-                    if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::mod(arg0, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::from(arg2)) == 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::zero()) {
-                        0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::mod(arg1, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::from(arg2)) == 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::zero()
+    public fun check_position_tick_range(arg0: integer_mate::i32::I32, arg1: integer_mate::i32::I32, arg2: u32) {
+        let v0 = if (integer_mate::i32::lt(arg0, arg1)) {
+            if (integer_mate::i32::gte(arg0, clmm_pool::tick_math::min_tick())) {
+                if (integer_mate::i32::lte(arg1, clmm_pool::tick_math::max_tick())) {
+                    if (integer_mate::i32::mod(arg0, integer_mate::i32::from(arg2)) == integer_mate::i32::zero()) {
+                        integer_mate::i32::mod(arg1, integer_mate::i32::from(arg2)) == integer_mate::i32::zero()
                     } else {
                         false
                     }
@@ -189,7 +189,7 @@ module clmm_pool::position {
         update_points_internal(v0, arg5);
         update_rewards_internal(v0, arg6);
         update_magma_distribution_internal(v0, arg7);
-        assert!(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::add_check(v0.liquidity, arg2), 8);
+        assert!(integer_mate::math_u128::add_check(v0.liquidity, arg2), 8);
         v0.liquidity = v0.liquidity + arg2;
         arg1.liquidity = v0.liquidity;
         v0.liquidity
@@ -231,7 +231,7 @@ module clmm_pool::position {
         &arg0.rewards
     }
     
-    public fun info_tick_range(arg0: &PositionInfo) : (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32) {
+    public fun info_tick_range(arg0: &PositionInfo) : (integer_mate::i32::I32, integer_mate::i32::I32) {
         (arg0.tick_lower_index, arg0.tick_upper_index)
     }
     
@@ -300,7 +300,7 @@ module clmm_pool::position {
         v0
     }
     
-    public(friend) fun open_position<T0, T1>(arg0: &mut PositionManager, arg1: 0x2::object::ID, arg2: u64, arg3: 0x1::string::String, arg4: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg5: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg6: &mut 0x2::tx_context::TxContext) : Position {
+    public(friend) fun open_position<T0, T1>(arg0: &mut PositionManager, arg1: 0x2::object::ID, arg2: u64, arg3: 0x1::string::String, arg4: integer_mate::i32::I32, arg5: integer_mate::i32::I32, arg6: &mut 0x2::tx_context::TxContext) : Position {
         check_position_tick_range(arg4, arg5, arg0.tick_spacing);
         let v0 = arg0.position_index + 1;
         let v1 = Position{
@@ -403,7 +403,7 @@ module clmm_pool::position {
         0x2::transfer::public_transfer<0x2::display::Display<Position>>(v2, 0x2::tx_context::sender(arg6));
     }
     
-    public fun tick_range(arg0: &Position) : (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32) {
+    public fun tick_range(arg0: &Position) : (integer_mate::i32::I32, integer_mate::i32::I32) {
         (arg0.tick_lower_index, arg0.tick_upper_index)
     }
     
@@ -438,10 +438,10 @@ module clmm_pool::position {
     }
     
     fun update_fee_internal(arg0: &mut PositionInfo, arg1: u128, arg2: u128) {
-        let v0 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u128::mul_shr(arg0.liquidity, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::wrapping_sub(arg1, arg0.fee_growth_inside_a), 64) as u64;
-        let v1 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u128::mul_shr(arg0.liquidity, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::wrapping_sub(arg2, arg0.fee_growth_inside_b), 64) as u64;
-        assert!(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u64::add_check(arg0.fee_owned_a, v0), 1);
-        assert!(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u64::add_check(arg0.fee_owned_b, v1), 1);
+        let v0 = integer_mate::full_math_u128::mul_shr(arg0.liquidity, integer_mate::math_u128::wrapping_sub(arg1, arg0.fee_growth_inside_a), 64) as u64;
+        let v1 = integer_mate::full_math_u128::mul_shr(arg0.liquidity, integer_mate::math_u128::wrapping_sub(arg2, arg0.fee_growth_inside_b), 64) as u64;
+        assert!(integer_mate::math_u64::add_check(arg0.fee_owned_a, v0), 1);
+        assert!(integer_mate::math_u64::add_check(arg0.fee_owned_b, v1), 1);
         arg0.fee_owned_a = arg0.fee_owned_a + v0;
         arg0.fee_owned_b = arg0.fee_owned_b + v1;
         arg0.fee_growth_inside_a = arg1;
@@ -455,8 +455,8 @@ module clmm_pool::position {
     }
     
     fun update_magma_distribution_internal(arg0: &mut PositionInfo, arg1: u128) {
-        let v0 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u128::mul_shr(arg0.liquidity, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::wrapping_sub(arg1, arg0.magma_distribution_growth_inside), 64) as u64;
-        assert!(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u64::add_check(arg0.magma_distribution_owned, v0), 9223374347547181055);
+        let v0 = integer_mate::full_math_u128::mul_shr(arg0.liquidity, integer_mate::math_u128::wrapping_sub(arg1, arg0.magma_distribution_growth_inside), 64) as u64;
+        assert!(integer_mate::math_u64::add_check(arg0.magma_distribution_owned, v0), 9223374347547181055);
         arg0.magma_distribution_owned = arg0.magma_distribution_owned + v0;
         arg0.magma_distribution_growth_inside = arg1;
     }
@@ -468,8 +468,8 @@ module clmm_pool::position {
     }
     
     fun update_points_internal(arg0: &mut PositionInfo, arg1: u128) {
-        let v0 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u128::mul_shr(arg0.liquidity, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::wrapping_sub(arg1, arg0.points_growth_inside), 64);
-        assert!(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::add_check(arg0.points_owned, v0), 3);
+        let v0 = integer_mate::full_math_u128::mul_shr(arg0.liquidity, integer_mate::math_u128::wrapping_sub(arg1, arg0.points_growth_inside), 64);
+        assert!(integer_mate::math_u128::add_check(arg0.points_owned, v0), 3);
         arg0.points_owned = arg0.points_owned + v0;
         arg0.points_growth_inside = arg1;
     }
@@ -493,14 +493,14 @@ module clmm_pool::position {
             let v1 = *0x1::vector::borrow<u128>(&arg1, v0);
             if (0x1::vector::length<PositionReward>(&arg0.rewards) > v0) {
                 let v2 = 0x1::vector::borrow_mut<PositionReward>(&mut arg0.rewards, v0);
-                let v3 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u128::mul_shr(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::wrapping_sub(v1, v2.growth_inside), arg0.liquidity, 64) as u64;
-                assert!(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u64::add_check(v2.amount_owned, v3), 1);
+                let v3 = integer_mate::full_math_u128::mul_shr(integer_mate::math_u128::wrapping_sub(v1, v2.growth_inside), arg0.liquidity, 64) as u64;
+                assert!(integer_mate::math_u64::add_check(v2.amount_owned, v3), 1);
                 v2.growth_inside = v1;
                 v2.amount_owned = v2.amount_owned + v3;
             } else {
                 let v4 = PositionReward{
                     growth_inside : v1, 
-                    amount_owned  : 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u128::mul_shr(v1, arg0.liquidity, 64) as u64,
+                    amount_owned  : integer_mate::full_math_u128::mul_shr(v1, arg0.liquidity, 64) as u64,
                 };
                 0x1::vector::push_back<PositionReward>(&mut arg0.rewards, v4);
             };

@@ -28,8 +28,8 @@ module distribution::voting_escrow {
     }
 
     public struct GlobalPoint has copy, drop, store {
-        bias: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::I128,
-        slope: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::I128,
+        bias: integer_mate::i128::I128,
+        slope: integer_mate::i128::I128,
         ts: u64,
         permanent_lock_balance: u64,
     }
@@ -146,7 +146,7 @@ module distribution::voting_escrow {
         voted: 0x2::table::Table<0x2::object::ID, bool>,
         locked: 0x2::table::Table<0x2::object::ID, LockedBalance>,
         owner_of: 0x2::table::Table<0x2::object::ID, address>,
-        slope_changes: 0x2::table::Table<u64, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::I128>,
+        slope_changes: 0x2::table::Table<u64, integer_mate::i128::I128>,
         permanent_lock_balance: u64,
         escrow_type: 0x2::table::Table<0x2::object::ID, EscrowType>,
         voting_dao: distribution::voting_dao::VotingDAO,
@@ -161,8 +161,8 @@ module distribution::voting_escrow {
     }
 
     public struct UserPoint has copy, drop, store {
-        bias: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::I128,
-        slope: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::I128,
+        bias: integer_mate::i128::I128,
+        slope: integer_mate::i128::I128,
         ts: u64,
         permanent: u64,
     }
@@ -262,7 +262,7 @@ module distribution::voting_escrow {
             voted                                : 0x2::table::new<0x2::object::ID, bool>(arg3),
             locked                               : 0x2::table::new<0x2::object::ID, LockedBalance>(arg3),
             owner_of                             : 0x2::table::new<0x2::object::ID, address>(arg3),
-            slope_changes                        : 0x2::table::new<u64, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::I128>(arg3),
+            slope_changes                        : 0x2::table::new<u64, integer_mate::i128::I128>(arg3),
             permanent_lock_balance               : 0,
             escrow_type                          : 0x2::table::new<0x2::object::ID, EscrowType>(arg3),
             voting_dao                           : distribution::voting_dao::create(arg3),
@@ -276,8 +276,8 @@ module distribution::voting_escrow {
             free_managed_reward_authorized_cap   : distribution::reward_authorized_cap::create(v1, arg3),
         };
         let v3 = GlobalPoint{
-            bias                   : 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(0),
-            slope                  : 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(0),
+            bias                   : integer_mate::i128::from(0),
+            slope                  : integer_mate::i128::from(0),
             ts                     : distribution::common::current_timestamp(arg2),
             permanent_lock_balance : 0,
         };
@@ -332,11 +332,11 @@ module distribution::voting_escrow {
         if (v1.permanent > 0) {
             v1.permanent
         } else {
-            v1.bias = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::sub(v1.bias, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::div(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::mul(v1.slope, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::sub(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from((arg2 as u128)), 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from((v1.ts as u128)))), 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(18446744073709551616)));
-            if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::is_neg(v1.bias)) {
-                v1.bias = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(0);
+            v1.bias = integer_mate::i128::sub(v1.bias, integer_mate::i128::div(integer_mate::i128::mul(v1.slope, integer_mate::i128::sub(integer_mate::i128::from((arg2 as u128)), integer_mate::i128::from((v1.ts as u128)))), integer_mate::i128::from(18446744073709551616)));
+            if (integer_mate::i128::is_neg(v1.bias)) {
+                v1.bias = integer_mate::i128::from(0);
             };
-            (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::as_u128(v1.bias) as u64)
+            (integer_mate::i128::as_u128(v1.bias) as u64)
         }
     }
 
@@ -364,8 +364,8 @@ module distribution::voting_escrow {
     fun checkpoint_internal<T0>(arg0: &mut VotingEscrow<T0>, arg1: 0x1::option::Option<0x2::object::ID>, arg2: LockedBalance, arg3: LockedBalance, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
         let mut v0 = create_user_point();
         let mut v1 = create_user_point();
-        let mut v2 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(0);
-        let mut v3 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(0);
+        let mut v2 = integer_mate::i128::from(0);
+        let mut v3 = integer_mate::i128::from(0);
         let v4 = arg0.epoch;
         let mut v5 = v4;
         let v6 = distribution::common::current_timestamp(arg4);
@@ -377,27 +377,27 @@ module distribution::voting_escrow {
             };
             v1.permanent = v7;
             if (arg2.end > v6 && arg2.amount > 0) {
-                v0.slope = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u128::mul_div_floor((arg2.amount as u128), 18446744073709551616, (distribution::common::max_lock_time() as u128)));
-                v0.bias = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::div(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::mul(v0.slope, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(((arg2.end - v6) as u128))), 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(18446744073709551616));
+                v0.slope = integer_mate::i128::from(integer_mate::full_math_u128::mul_div_floor((arg2.amount as u128), 18446744073709551616, (distribution::common::max_lock_time() as u128)));
+                v0.bias = integer_mate::i128::div(integer_mate::i128::mul(v0.slope, integer_mate::i128::from(((arg2.end - v6) as u128))), integer_mate::i128::from(18446744073709551616));
             };
             if (arg3.end > v6 && arg3.amount > 0) {
-                v1.slope = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u128::mul_div_floor((arg3.amount as u128), 18446744073709551616, (distribution::common::max_lock_time() as u128)));
-                v1.bias = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::div(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::mul(v1.slope, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(((arg3.end - v6) as u128))), 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(18446744073709551616));
+                v1.slope = integer_mate::i128::from(integer_mate::full_math_u128::mul_div_floor((arg3.amount as u128), 18446744073709551616, (distribution::common::max_lock_time() as u128)));
+                v1.bias = integer_mate::i128::div(integer_mate::i128::mul(v1.slope, integer_mate::i128::from(((arg3.end - v6) as u128))), integer_mate::i128::from(18446744073709551616));
             };
-            let mut v8 = if (0x2::table::contains<u64, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::I128>(&arg0.slope_changes, arg2.end)) {
-                *0x2::table::borrow<u64, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::I128>(&arg0.slope_changes, arg2.end)
+            let mut v8 = if (0x2::table::contains<u64, integer_mate::i128::I128>(&arg0.slope_changes, arg2.end)) {
+                *0x2::table::borrow<u64, integer_mate::i128::I128>(&arg0.slope_changes, arg2.end)
             } else {
-                0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(0)
+                integer_mate::i128::from(0)
             };
             v2 = v8;
             if (arg3.end != 0) {
                 if (arg3.end == arg2.end) {
                     v3 = v8;
                 } else {
-                    let mut v9 = if (0x2::table::contains<u64, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::I128>(&arg0.slope_changes, arg3.end)) {
-                        *0x2::table::borrow<u64, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::I128>(&arg0.slope_changes, arg3.end)
+                    let mut v9 = if (0x2::table::contains<u64, integer_mate::i128::I128>(&arg0.slope_changes, arg3.end)) {
+                        *0x2::table::borrow<u64, integer_mate::i128::I128>(&arg0.slope_changes, arg3.end)
                     } else {
-                        0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(0)
+                        integer_mate::i128::from(0)
                     };
                     v3 = v9;
                 };
@@ -406,7 +406,7 @@ module distribution::voting_escrow {
         let mut v10 = if (v4 > 0) {
             *0x2::table::borrow<u64, GlobalPoint>(&arg0.point_history, v4)
         } else {
-            GlobalPoint{bias: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(0), slope: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(0), ts: v6, permanent_lock_balance: 0}
+            GlobalPoint{bias: integer_mate::i128::from(0), slope: integer_mate::i128::from(0), ts: v6, permanent_lock_balance: 0}
         };
         let mut v11 = v10;
         let v12 = v11.ts;
@@ -416,24 +416,24 @@ module distribution::voting_escrow {
         while (v14 < 255) {
             let v15 = v13 + distribution::common::week();
             v13 = v15;
-            let mut v16 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(0);
+            let mut v16 = integer_mate::i128::from(0);
             if (v15 > v6) {
                 v13 = v6;
             } else {
-                let mut v17 = if (0x2::table::contains<u64, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::I128>(&arg0.slope_changes, v15)) {
-                    *0x2::table::borrow<u64, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::I128>(&arg0.slope_changes, v15)
+                let mut v17 = if (0x2::table::contains<u64, integer_mate::i128::I128>(&arg0.slope_changes, v15)) {
+                    *0x2::table::borrow<u64, integer_mate::i128::I128>(&arg0.slope_changes, v15)
                 } else {
-                    0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(0)
+                    integer_mate::i128::from(0)
                 };
                 v16 = v17;
             };
-            v11.bias = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::sub(v11.bias, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::div(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::mul(v11.slope, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(((v13 - v12) as u128))), 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(18446744073709551616)));
-            v11.slope = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::add(v11.slope, v16);
-            if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::is_neg(v11.bias)) {
-                v11.bias = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(0);
+            v11.bias = integer_mate::i128::sub(v11.bias, integer_mate::i128::div(integer_mate::i128::mul(v11.slope, integer_mate::i128::from(((v13 - v12) as u128))), integer_mate::i128::from(18446744073709551616)));
+            v11.slope = integer_mate::i128::add(v11.slope, v16);
+            if (integer_mate::i128::is_neg(v11.bias)) {
+                v11.bias = integer_mate::i128::from(0);
             };
-            if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::is_neg(v11.slope)) {
-                v11.slope = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(0);
+            if (integer_mate::i128::is_neg(v11.slope)) {
+                v11.slope = integer_mate::i128::from(0);
             };
             v11.ts = v13;
             let v18 = v5 + 1;
@@ -445,13 +445,13 @@ module distribution::voting_escrow {
             v14 = v14 + 1;
         };
         if (0x1::option::is_some<0x2::object::ID>(&arg1)) {
-            v11.slope = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::add(v11.slope, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::sub(v1.slope, v0.slope));
-            v11.bias = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::add(v11.bias, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::sub(v1.bias, v0.bias));
-            if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::is_neg(v11.slope)) {
-                v11.slope = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(0);
+            v11.slope = integer_mate::i128::add(v11.slope, integer_mate::i128::sub(v1.slope, v0.slope));
+            v11.bias = integer_mate::i128::add(v11.bias, integer_mate::i128::sub(v1.bias, v0.bias));
+            if (integer_mate::i128::is_neg(v11.slope)) {
+                v11.slope = integer_mate::i128::from(0);
             };
-            if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::is_neg(v11.bias)) {
-                v11.bias = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(0);
+            if (integer_mate::i128::is_neg(v11.bias)) {
+                v11.bias = integer_mate::i128::from(0);
             };
             v11.permanent_lock_balance = arg0.permanent_lock_balance;
         };
@@ -472,16 +472,16 @@ module distribution::voting_escrow {
         };
         if (0x1::option::is_some<0x2::object::ID>(&arg1)) {
             if (arg2.end > v6) {
-                let v20 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::add(v2, v0.slope);
+                let v20 = integer_mate::i128::add(v2, v0.slope);
                 v2 = v20;
                 if (arg3.end == arg2.end) {
-                    v2 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::sub(v20, v1.slope);
+                    v2 = integer_mate::i128::sub(v20, v1.slope);
                 };
                 set_slope_changes<T0>(arg0, arg2.end, v2);
             };
             if (arg3.end > v6) {
                 if (arg3.end > arg2.end) {
-                    set_slope_changes<T0>(arg0, arg3.end, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::sub(v3, v1.slope));
+                    set_slope_changes<T0>(arg0, arg3.end, integer_mate::i128::sub(v3, v1.slope));
                 };
             };
             let v21 = *0x1::option::borrow<0x2::object::ID>(&arg1);
@@ -614,8 +614,8 @@ module distribution::voting_escrow {
 
     fun create_user_point() : UserPoint {
         UserPoint{
-            bias      : 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(0),
-            slope     : 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(0),
+            bias      : integer_mate::i128::from(0),
+            slope     : integer_mate::i128::from(0),
             ts        : 0,
             permanent : 0,
         }
@@ -1083,11 +1083,11 @@ module distribution::voting_escrow {
         0x2::table::add<u64, GlobalPoint>(&mut arg0.point_history, arg1, arg2);
     }
 
-    fun set_slope_changes<T0>(arg0: &mut VotingEscrow<T0>, arg1: u64, arg2: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::I128) {
-        if (0x2::table::contains<u64, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::I128>(&arg0.slope_changes, arg1)) {
-            0x2::table::remove<u64, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::I128>(&mut arg0.slope_changes, arg1);
+    fun set_slope_changes<T0>(arg0: &mut VotingEscrow<T0>, arg1: u64, arg2: integer_mate::i128::I128) {
+        if (0x2::table::contains<u64, integer_mate::i128::I128>(&arg0.slope_changes, arg1)) {
+            0x2::table::remove<u64, integer_mate::i128::I128>(&mut arg0.slope_changes, arg1);
         };
-        0x2::table::add<u64, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::I128>(&mut arg0.slope_changes, arg1, arg2);
+        0x2::table::add<u64, integer_mate::i128::I128>(&mut arg0.slope_changes, arg1, arg2);
     }
 
     fun set_user_point_epoch<T0>(arg0: &mut VotingEscrow<T0>, arg1: 0x2::object::ID, arg2: u64) {
@@ -1143,28 +1143,28 @@ module distribution::voting_escrow {
         while (v6 < 255) {
             let v7 = v5 + distribution::common::week();
             v5 = v7;
-            let mut v8 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(0);
+            let mut v8 = integer_mate::i128::from(0);
             if (v7 > arg2) {
                 v5 = arg2;
             } else {
-                let mut v9 = if (0x2::table::contains<u64, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::I128>(&arg0.slope_changes, v7)) {
-                    *0x2::table::borrow<u64, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::I128>(&arg0.slope_changes, v7)
+                let mut v9 = if (0x2::table::contains<u64, integer_mate::i128::I128>(&arg0.slope_changes, v7)) {
+                    *0x2::table::borrow<u64, integer_mate::i128::I128>(&arg0.slope_changes, v7)
                 } else {
-                    0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(0)
+                    integer_mate::i128::from(0)
                 };
                 v8 = v9;
             };
-            v2 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::sub(v2, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::div(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::mul(v3, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(((v5 - v4) as u128))), 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(18446744073709551616)));
+            v2 = integer_mate::i128::sub(v2, integer_mate::i128::div(integer_mate::i128::mul(v3, integer_mate::i128::from(((v5 - v4) as u128))), integer_mate::i128::from(18446744073709551616)));
             if (v5 == arg2) {
                 break
             };
-            v3 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::add(v3, v8);
+            v3 = integer_mate::i128::add(v3, v8);
             v6 = v6 + 1;
         };
-        if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::is_neg(v2)) {
-            v2 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(0);
+        if (integer_mate::i128::is_neg(v2)) {
+            v2 = integer_mate::i128::from(0);
         };
-        (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::as_u128(v2) as u64) + v1.permanent_lock_balance
+        (integer_mate::i128::as_u128(v2) as u64) + v1.permanent_lock_balance
     }
 
     public fun unlock_permanent<T0>(arg0: &mut VotingEscrow<T0>, arg1: &mut Lock, arg2: &0x2::clock::Clock, arg3: &mut 0x2::tx_context::TxContext) {

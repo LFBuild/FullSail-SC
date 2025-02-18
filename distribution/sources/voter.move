@@ -410,7 +410,7 @@ module distribution::voter {
         } else {
             arg0.total_weight
         };
-        let v6 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u128::mul_div_floor(v1 as u128, 18446744073709551616, v5 as u128);
+        let v6 = integer_mate::full_math_u128::mul_div_floor(v1 as u128, 18446744073709551616, v5 as u128);
         if (v6 > 0) {
             arg0.index = arg0.index + v6;
         };
@@ -619,7 +619,7 @@ module distribution::voter {
                 } else {
                     0
                 };
-                0x2::table::add<GaugeID, u64>(&mut arg0.claimable, arg1, v6 + (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u128::mul_div_floor(v0 as u128, v3, 18446744073709551616) as u64));
+                0x2::table::add<GaugeID, u64>(&mut arg0.claimable, arg1, v6 + (integer_mate::full_math_u128::mul_div_floor(v0 as u128, v3, 18446744073709551616) as u64));
             };
         } else {
             if (0x2::table::contains<GaugeID, u128>(&arg0.supply_index, arg1)) {
@@ -695,7 +695,7 @@ module distribution::voter {
             assert!(0x2::table::contains<PoolID, GaugeID>(&arg0.pool_to_gauger, v7), 9223374798519205896);
             let v8 = *0x2::table::borrow<PoolID, GaugeID>(&arg0.pool_to_gauger, v7);
             assert!(is_gauge_alive<T0>(arg0, v8), 9223374807109926932);
-            let v9 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u64::mul_div_floor(*0x1::vector::borrow<u64>(&arg5, v4), arg3, v1);
+            let v9 = integer_mate::full_math_u64::mul_div_floor(*0x1::vector::borrow<u64>(&arg5, v4), arg3, v1);
             let v10 = if (0x2::table::contains<LockID, 0x2::table::Table<PoolID, u64>>(&arg0.votes, v0)) {
                 if (0x2::table::contains<PoolID, u64>(0x2::table::borrow<LockID, 0x2::table::Table<PoolID, u64>>(&arg0.votes, v0), v7)) {
                     let v11 = 0;

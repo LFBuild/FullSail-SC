@@ -10,7 +10,7 @@ module integrate::pool_script_v3 {
     }
     
     public entry fun update_rewarder_emission<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: &clmm_pool::rewarder::RewarderGlobalVault, arg3: u64, arg4: u64, arg5: &0x2::clock::Clock, arg6: &mut 0x2::tx_context::TxContext) {
-        clmm_pool::pool::update_emission<T0, T1, T2>(arg0, arg1, arg2, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u128::mul_div_floor(arg3 as u128, 18446744073709551616, arg4 as u128), arg5, arg6);
+        clmm_pool::pool::update_emission<T0, T1, T2>(arg0, arg1, arg2, integer_mate::full_math_u128::mul_div_floor(arg3 as u128, 18446744073709551616, arg4 as u128), arg5, arg6);
     }
     
     // decompiled from Move bytecode v6

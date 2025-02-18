@@ -43,6 +43,9 @@
 - Nothing depends on integrate contracts.
 - clmm_pool depends on move_stl contracts.
 - Integrate depends on move_stl contracts.
+- clmm_pool depends on integer_mate contracts.
+- distributor depends on integer_mate contracts.
+- integrate depends on integer_mate contracts.
 
 
 

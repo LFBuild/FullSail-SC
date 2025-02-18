@@ -7,7 +7,7 @@ module integrate::pool_creator_v2 {
         } else {
             v1
         };
-        let (_, v4, v5) = clmm_pool::clmm_math::get_liquidity_by_amount(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::from_u32(arg1), 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::from_u32(arg2), clmm_pool::tick_math::get_tick_at_sqrt_price(arg0), arg0, v2, arg5);
+        let (_, v4, v5) = clmm_pool::clmm_math::get_liquidity_by_amount(integer_mate::i32::from_u32(arg1), integer_mate::i32::from_u32(arg2), clmm_pool::tick_math::get_tick_at_sqrt_price(arg0), arg0, v2, arg5);
         assert!(v4 <= v0, 1);
         assert!(v5 <= v1, 1);
         (0x2::coin::split<T0>(arg3, v4, arg6), 0x2::coin::split<T1>(arg4, v5, arg6))

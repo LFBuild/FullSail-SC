@@ -86,7 +86,7 @@ module distribution::minter {
     
     public fun calculate_epoch_emissions<T0>(arg0: &Minter<T0>) : (u64, u64) {
         if (arg0.epoch_emissions < 8969150000000) {
-            (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u64::mul_div_ceil(distribution::magma_token::total_supply<T0>(0x1::option::borrow<distribution::magma_token::MinterCap<T0>>(&arg0.minter_cap)), arg0.tail_emission_rate, 10000), arg0.epoch_emissions)
+            (integer_mate::full_math_u64::mul_div_ceil(distribution::magma_token::total_supply<T0>(0x1::option::borrow<distribution::magma_token::MinterCap<T0>>(&arg0.minter_cap)), arg0.tail_emission_rate, 10000), arg0.epoch_emissions)
         } else {
             let (v2, v3) = if (arg0.epoch_count < 14) {
                 let v4 = if (arg0.epoch_emissions == 0) {
@@ -94,17 +94,17 @@ module distribution::minter {
                 } else {
                     arg0.epoch_emissions
                 };
-                (v4, v4 + 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u64::mul_div_ceil(v4, arg0.epoch_grow_rate, 10000))
+                (v4, v4 + integer_mate::full_math_u64::mul_div_ceil(v4, arg0.epoch_grow_rate, 10000))
             } else {
                 let v5 = arg0.epoch_emissions;
-                (v5, v5 - 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u64::mul_div_ceil(v5, arg0.epoch_decay_rate, 10000))
+                (v5, v5 - integer_mate::full_math_u64::mul_div_ceil(v5, arg0.epoch_decay_rate, 10000))
             };
             (v2, v3)
         }
     }
     
     public fun calculate_rebase_growth(arg0: u64, arg1: u64, arg2: u64) : u64 {
-        0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u64::mul_div_ceil(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u64::mul_div_ceil(arg0, arg1 - arg2, arg1), arg1 - arg2, arg1) / 2
+        integer_mate::full_math_u64::mul_div_ceil(integer_mate::full_math_u64::mul_div_ceil(arg0, arg1 - arg2, arg1), arg1 - arg2, arg1) / 2
     }
     
     public fun check_admin<T0>(arg0: &Minter<T0>, arg1: &AdminCap) {
@@ -238,7 +238,7 @@ module distribution::minter {
         let v2 = calculate_rebase_growth(v0, distribution::magma_token::total_supply<T0>(0x1::option::borrow<distribution::magma_token::MinterCap<T0>>(&arg0.minter_cap)), distribution::voting_escrow::total_locked<T0>(arg2));
         let v3 = 0x2::object::id_address<Minter<T0>>(arg0);
         if (arg0.team_emission_rate > 0 && arg0.team_wallet != @0x0) {
-            0x2::transfer::public_transfer<0x2::coin::Coin<T0>>(distribution::magma_token::mint<T0>(0x1::option::borrow_mut<distribution::magma_token::MinterCap<T0>>(&mut arg0.minter_cap), 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u64::mul_div_floor(arg0.team_emission_rate, v2 + v0, 10000 - arg0.team_emission_rate), v3, arg5), arg0.team_wallet);
+            0x2::transfer::public_transfer<0x2::coin::Coin<T0>>(distribution::magma_token::mint<T0>(0x1::option::borrow_mut<distribution::magma_token::MinterCap<T0>>(&mut arg0.minter_cap), integer_mate::full_math_u64::mul_div_floor(arg0.team_emission_rate, v2 + v0, 10000 - arg0.team_emission_rate), v3, arg5), arg0.team_wallet);
         };
         distribution::reward_distributor::checkpoint_token<T0>(arg3, 0x1::option::borrow<distribution::reward_distributor_cap::RewardDistributorCap>(&arg0.reward_distributor_cap), distribution::magma_token::mint<T0>(0x1::option::borrow_mut<distribution::magma_token::MinterCap<T0>>(&mut arg0.minter_cap), v2, v3, arg5), arg4, arg5);
         distribution::voter::notify_rewards<T0>(arg1, 0x1::option::borrow<distribution::notify_reward_cap::NotifyRewardCap>(&arg0.notify_reward_cap), distribution::magma_token::mint<T0>(0x1::option::borrow_mut<distribution::magma_token::MinterCap<T0>>(&mut arg0.minter_cap), v0, 0x2::object::id_address<Minter<T0>>(arg0), arg5), arg5);

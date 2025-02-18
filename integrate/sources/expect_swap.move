@@ -79,17 +79,17 @@ module integrate::expect_swap {
             if (v11 == v8) {
                 v0 = v8;
                 let v16 = if (arg1) {
-                    0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::neg(clmm_pool::tick::liquidity_net(v6))
+                    integer_mate::i128::neg(clmm_pool::tick::liquidity_net(v6))
                 } else {
                     clmm_pool::tick::liquidity_net(v6)
                 };
-                if (!0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::is_neg(v16)) {
-                    let v17 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::abs_u128(v16);
-                    assert!(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::add_check(v1, v17), 5);
+                if (!integer_mate::i128::is_neg(v16)) {
+                    let v17 = integer_mate::i128::abs_u128(v16);
+                    assert!(integer_mate::math_u128::add_check(v1, v17), 5);
                     v1 = v1 + v17;
                     continue
                 };
-                let v18 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::abs_u128(v16);
+                let v18 = integer_mate::i128::abs_u128(v16);
                 assert!(v1 >= v18, 5);
                 v1 = v1 - v18;
                 continue
@@ -118,12 +118,12 @@ module integrate::expect_swap {
             assert!(arg0 < arg1, 3);
         };
         let (v0, v1, v2, v3) = if (arg6) {
-            let v4 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u64::mul_div_floor(arg3, clmm_pool::clmm_math::fee_rate_denominator() - arg4, clmm_pool::clmm_math::fee_rate_denominator());
+            let v4 = integer_mate::full_math_u64::mul_div_floor(arg3, clmm_pool::clmm_math::fee_rate_denominator() - arg4, clmm_pool::clmm_math::fee_rate_denominator());
             let v5 = clmm_pool::clmm_math::get_delta_up_from_input(arg0, arg1, arg2, arg5);
             let (v6, v7, v8) = if (v5 > (v4 as u256)) {
                 (v4 as u256, (arg3 - v4) as u256, clmm_pool::clmm_math::get_next_sqrt_price_from_input(arg0, arg2, v4, arg5))
             } else {
-                (v5, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u64::mul_div_ceil(v5 as u64, arg4, clmm_pool::clmm_math::fee_rate_denominator() - arg4) as u256, arg1)
+                (v5, integer_mate::full_math_u64::mul_div_ceil(v5 as u64, arg4, clmm_pool::clmm_math::fee_rate_denominator() - arg4) as u256, arg1)
             };
             (v6, clmm_pool::clmm_math::get_delta_down_from_output(arg0, v8, arg2, arg5), v7, v8)
         } else {
@@ -134,7 +134,7 @@ module integrate::expect_swap {
                 (v9, arg1)
             };
             let v12 = clmm_pool::clmm_math::get_delta_up_from_input(arg0, v11, arg2, arg5);
-            (v12, v10, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u128::mul_div_ceil(v12 as u128, arg4 as u128, (clmm_pool::clmm_math::fee_rate_denominator() - arg4) as u128) as u256, v11)
+            (v12, v10, integer_mate::full_math_u128::mul_div_ceil(v12 as u128, arg4 as u128, (clmm_pool::clmm_math::fee_rate_denominator() - arg4) as u128) as u256, v11)
         };
         (v0, v1, v3, v2)
     }
@@ -218,9 +218,9 @@ module integrate::expect_swap {
     }
     
     fun update_swap_result(arg0: &mut SwapResult, arg1: u256, arg2: u256, arg3: u256) {
-        assert!(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u256::add_check(arg0.amount_in, arg1), 0);
-        assert!(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u256::add_check(arg0.amount_out, arg2), 1);
-        assert!(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u256::add_check(arg0.fee_amount, arg3), 2);
+        assert!(integer_mate::math_u256::add_check(arg0.amount_in, arg1), 0);
+        assert!(integer_mate::math_u256::add_check(arg0.amount_out, arg2), 1);
+        assert!(integer_mate::math_u256::add_check(arg0.fee_amount, arg3), 2);
         arg0.amount_in = arg0.amount_in + arg1;
         arg0.amount_out = arg0.amount_out + arg2;
         arg0.fee_amount = arg0.fee_amount + arg3;

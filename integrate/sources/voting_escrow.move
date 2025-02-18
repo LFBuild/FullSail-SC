@@ -91,7 +91,7 @@ module integrate::voting_escrow {
             total_locked           : v1, 
             total_voting_power     : distribution::voting_escrow::total_supply_at<T0>(arg2, distribution::common::current_timestamp(arg3)), 
             total_voted_power      : distribution::voter::total_weight<T0>(arg1), 
-            rebase_apr             : 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u64::mul_div_floor(v3, max_bps(), 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u64::mul_div_floor(v2 + v3, distribution::minter::max_bps(), distribution::minter::max_bps() - distribution::minter::team_emission_rate<T0>(arg0))), 
+            rebase_apr             : integer_mate::full_math_u64::mul_div_floor(v3, max_bps(), integer_mate::full_math_u64::mul_div_floor(v2 + v3, distribution::minter::max_bps(), distribution::minter::max_bps() - distribution::minter::team_emission_rate<T0>(arg0))), 
             current_epoch_end      : distribution::common::epoch_next(v0), 
             current_epoch_vote_end : distribution::common::epoch_vote_end(v0), 
             team_emission_rate     : distribution::minter::team_emission_rate<T0>(arg0),
