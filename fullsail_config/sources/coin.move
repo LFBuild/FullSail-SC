@@ -1,4 +1,4 @@
-module 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::coin {
+module fullsail_config::coin {
     struct CoinList has store, key {
         id: 0x2::object::UID,
         coins: 0x2::table::Table<0x1::type_name::TypeName, Coin>,
@@ -74,9 +74,9 @@ module 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::coin 
         key: 0x1::string::String,
     }
     
-    public entry fun add_coin<T0>(arg0: &0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::GlobalConfig, arg1: &mut CoinList, arg2: 0x1::string::String, arg3: 0x1::string::String, arg4: 0x1::string::String, arg5: 0x1::string::String, arg6: u8, arg7: 0x1::string::String, arg8: 0x1::string::String, arg9: &0x2::tx_context::TxContext) {
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_package_version(arg0);
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_has_add_role(arg0, 0x2::tx_context::sender(arg9));
+    public entry fun add_coin<T0>(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut CoinList, arg2: 0x1::string::String, arg3: 0x1::string::String, arg4: 0x1::string::String, arg5: 0x1::string::String, arg6: u8, arg7: 0x1::string::String, arg8: 0x1::string::String, arg9: &0x2::tx_context::TxContext) {
+        fullsail_config::config::checked_package_version(arg0);
+        fullsail_config::config::checked_has_add_role(arg0, 0x2::tx_context::sender(arg9));
         let v0 = 0x1::type_name::get<T0>();
         assert!(!0x2::table::contains<0x1::type_name::TypeName, Coin>(&arg1.coins, v0), 0);
         let v1 = Coin{
@@ -95,9 +95,9 @@ module 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::coin 
         0x2::event::emit<AddCoinEvent>(v2);
     }
     
-    public entry fun add_extension_to_coin<T0>(arg0: &0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::GlobalConfig, arg1: &mut CoinList, arg2: 0x1::string::String, arg3: 0x1::string::String, arg4: &0x2::tx_context::TxContext) {
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_package_version(arg0);
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_has_add_role(arg0, 0x2::tx_context::sender(arg4));
+    public entry fun add_extension_to_coin<T0>(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut CoinList, arg2: 0x1::string::String, arg3: 0x1::string::String, arg4: &0x2::tx_context::TxContext) {
+        fullsail_config::config::checked_package_version(arg0);
+        fullsail_config::config::checked_has_add_role(arg0, 0x2::tx_context::sender(arg4));
         let v0 = 0x1::type_name::get<T0>();
         assert!(0x2::table::contains<0x1::type_name::TypeName, Coin>(&arg1.coins, v0), 1);
         let v1 = 0x2::table::borrow_mut<0x1::type_name::TypeName, Coin>(&mut arg1.coins, v0);
@@ -121,9 +121,9 @@ module 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::coin 
         0x2::event::emit<InitCoinListEvent>(v1);
     }
     
-    public entry fun remove_coin<T0>(arg0: &0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::GlobalConfig, arg1: &mut CoinList, arg2: &0x2::tx_context::TxContext) {
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_package_version(arg0);
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_has_delete_role(arg0, 0x2::tx_context::sender(arg2));
+    public entry fun remove_coin<T0>(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut CoinList, arg2: &0x2::tx_context::TxContext) {
+        fullsail_config::config::checked_package_version(arg0);
+        fullsail_config::config::checked_has_delete_role(arg0, 0x2::tx_context::sender(arg2));
         let v0 = 0x1::type_name::get<T0>();
         assert!(0x2::table::contains<0x1::type_name::TypeName, Coin>(&arg1.coins, v0), 1);
         0x2::table::remove<0x1::type_name::TypeName, Coin>(&mut arg1.coins, v0);
@@ -131,9 +131,9 @@ module 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::coin 
         0x2::event::emit<RemoveCoinEvent>(v1);
     }
     
-    public entry fun remove_extension_from_coin<T0>(arg0: &0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::GlobalConfig, arg1: &mut CoinList, arg2: 0x1::string::String, arg3: &0x2::tx_context::TxContext) {
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_package_version(arg0);
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_has_delete_role(arg0, 0x2::tx_context::sender(arg3));
+    public entry fun remove_extension_from_coin<T0>(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut CoinList, arg2: 0x1::string::String, arg3: &0x2::tx_context::TxContext) {
+        fullsail_config::config::checked_package_version(arg0);
+        fullsail_config::config::checked_has_delete_role(arg0, 0x2::tx_context::sender(arg3));
         let v0 = 0x1::type_name::get<T0>();
         assert!(0x2::table::contains<0x1::type_name::TypeName, Coin>(&arg1.coins, v0), 1);
         let v1 = 0x2::table::borrow_mut<0x1::type_name::TypeName, Coin>(&mut arg1.coins, v0);
@@ -146,9 +146,9 @@ module 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::coin 
         0x2::event::emit<RemoveExtensionFromCoinEvent>(v4);
     }
     
-    public entry fun update_coin<T0>(arg0: &0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::GlobalConfig, arg1: &mut CoinList, arg2: 0x1::string::String, arg3: 0x1::string::String, arg4: 0x1::string::String, arg5: 0x1::string::String, arg6: u8, arg7: 0x1::string::String, arg8: 0x1::string::String, arg9: &0x2::tx_context::TxContext) {
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_package_version(arg0);
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg9));
+    public entry fun update_coin<T0>(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut CoinList, arg2: 0x1::string::String, arg3: 0x1::string::String, arg4: 0x1::string::String, arg5: 0x1::string::String, arg6: u8, arg7: 0x1::string::String, arg8: 0x1::string::String, arg9: &0x2::tx_context::TxContext) {
+        fullsail_config::config::checked_package_version(arg0);
+        fullsail_config::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg9));
         let v0 = 0x1::type_name::get<T0>();
         assert!(0x2::table::contains<0x1::type_name::TypeName, Coin>(&arg1.coins, v0), 1);
         let v1 = 0x2::table::borrow_mut<0x1::type_name::TypeName, Coin>(&mut arg1.coins, v0);
@@ -164,9 +164,9 @@ module 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::coin 
         0x2::event::emit<UpdateCoinEvent>(v2);
     }
     
-    public entry fun update_coin_name<T0>(arg0: &0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::GlobalConfig, arg1: &mut CoinList, arg2: 0x1::string::String, arg3: &0x2::tx_context::TxContext) {
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_package_version(arg0);
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg3));
+    public entry fun update_coin_name<T0>(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut CoinList, arg2: 0x1::string::String, arg3: &0x2::tx_context::TxContext) {
+        fullsail_config::config::checked_package_version(arg0);
+        fullsail_config::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg3));
         let v0 = 0x1::type_name::get<T0>();
         assert!(0x2::table::contains<0x1::type_name::TypeName, Coin>(&arg1.coins, v0), 1);
         let v1 = 0x2::table::borrow_mut<0x1::type_name::TypeName, Coin>(&mut arg1.coins, v0);
@@ -179,9 +179,9 @@ module 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::coin 
         0x2::event::emit<UpdateCoinNameEvent>(v2);
     }
     
-    public entry fun update_coin_symbol<T0>(arg0: &0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::GlobalConfig, arg1: &mut CoinList, arg2: 0x1::string::String, arg3: &0x2::tx_context::TxContext) {
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_package_version(arg0);
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg3));
+    public entry fun update_coin_symbol<T0>(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut CoinList, arg2: 0x1::string::String, arg3: &0x2::tx_context::TxContext) {
+        fullsail_config::config::checked_package_version(arg0);
+        fullsail_config::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg3));
         let v0 = 0x1::type_name::get<T0>();
         assert!(0x2::table::contains<0x1::type_name::TypeName, Coin>(&arg1.coins, v0), 1);
         let v1 = 0x2::table::borrow_mut<0x1::type_name::TypeName, Coin>(&mut arg1.coins, v0);
@@ -194,9 +194,9 @@ module 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::coin 
         0x2::event::emit<UpdateCoinSymbolEvent>(v2);
     }
     
-    public entry fun update_coingecko_id<T0>(arg0: &0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::GlobalConfig, arg1: &mut CoinList, arg2: 0x1::string::String, arg3: &0x2::tx_context::TxContext) {
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_package_version(arg0);
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg3));
+    public entry fun update_coingecko_id<T0>(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut CoinList, arg2: 0x1::string::String, arg3: &0x2::tx_context::TxContext) {
+        fullsail_config::config::checked_package_version(arg0);
+        fullsail_config::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg3));
         let v0 = 0x1::type_name::get<T0>();
         assert!(0x2::table::contains<0x1::type_name::TypeName, Coin>(&arg1.coins, v0), 1);
         let v1 = 0x2::table::borrow_mut<0x1::type_name::TypeName, Coin>(&mut arg1.coins, v0);
@@ -209,9 +209,9 @@ module 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::coin 
         0x2::event::emit<UpdateCoingeckoIDEvent>(v2);
     }
     
-    public entry fun update_extension_from_coin<T0>(arg0: &0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::GlobalConfig, arg1: &mut CoinList, arg2: 0x1::string::String, arg3: 0x1::string::String, arg4: &0x2::tx_context::TxContext) {
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_package_version(arg0);
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg4));
+    public entry fun update_extension_from_coin<T0>(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut CoinList, arg2: 0x1::string::String, arg3: 0x1::string::String, arg4: &0x2::tx_context::TxContext) {
+        fullsail_config::config::checked_package_version(arg0);
+        fullsail_config::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg4));
         let v0 = 0x1::type_name::get<T0>();
         assert!(0x2::table::contains<0x1::type_name::TypeName, Coin>(&arg1.coins, v0), 1);
         let v1 = 0x2::table::borrow_mut<0x1::type_name::TypeName, Coin>(&mut arg1.coins, v0);
@@ -227,9 +227,9 @@ module 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::coin 
         0x2::event::emit<UpdateExtensionFromCoinEvent>(v3);
     }
     
-    public entry fun update_pyth_id<T0>(arg0: &0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::GlobalConfig, arg1: &mut CoinList, arg2: 0x1::string::String, arg3: &0x2::tx_context::TxContext) {
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_package_version(arg0);
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg3));
+    public entry fun update_pyth_id<T0>(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut CoinList, arg2: 0x1::string::String, arg3: &0x2::tx_context::TxContext) {
+        fullsail_config::config::checked_package_version(arg0);
+        fullsail_config::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg3));
         let v0 = 0x1::type_name::get<T0>();
         assert!(0x2::table::contains<0x1::type_name::TypeName, Coin>(&arg1.coins, v0), 1);
         let v1 = 0x2::table::borrow_mut<0x1::type_name::TypeName, Coin>(&mut arg1.coins, v0);

@@ -1,4 +1,4 @@
-module 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::acl {
+module fullsail_config::acl {
     struct ACL has store {
         permissions: 0x2::vec_map::VecMap<address, u128>,
     }

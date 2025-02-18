@@ -1,4 +1,4 @@
-module 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::clmm_pool {
+module fullsail_config::clmm_pool {
     struct ClmmPools has store, key {
         id: 0x2::object::UID,
         pools: 0x2::table::Table<address, Pool>,
@@ -70,9 +70,9 @@ module 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::clmm_
         is_show_rewarder: bool,
     }
     
-    public entry fun add_clmm_pool(arg0: &0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::GlobalConfig, arg1: &mut ClmmPools, arg2: address, arg3: 0x1::string::String, arg4: 0x1::string::String, arg5: bool, arg6: bool, arg7: bool, arg8: bool, arg9: bool, arg10: &0x2::tx_context::TxContext) {
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_package_version(arg0);
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_has_add_role(arg0, 0x2::tx_context::sender(arg10));
+    public entry fun add_clmm_pool(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut ClmmPools, arg2: address, arg3: 0x1::string::String, arg4: 0x1::string::String, arg5: bool, arg6: bool, arg7: bool, arg8: bool, arg9: bool, arg10: &0x2::tx_context::TxContext) {
+        fullsail_config::config::checked_package_version(arg0);
+        fullsail_config::config::checked_has_add_role(arg0, 0x2::tx_context::sender(arg10));
         assert!(!0x2::table::contains<address, Pool>(&arg1.pools, arg2), 0);
         let v0 = Pool{
             pool_address     : arg2, 
@@ -90,9 +90,9 @@ module 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::clmm_
         0x2::event::emit<AddPoolEvent>(v1);
     }
     
-    public entry fun add_extension_to_pool(arg0: &0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::GlobalConfig, arg1: &mut ClmmPools, arg2: address, arg3: 0x1::string::String, arg4: 0x1::string::String, arg5: &0x2::tx_context::TxContext) {
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_package_version(arg0);
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_has_add_role(arg0, 0x2::tx_context::sender(arg5));
+    public entry fun add_extension_to_pool(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut ClmmPools, arg2: address, arg3: 0x1::string::String, arg4: 0x1::string::String, arg5: &0x2::tx_context::TxContext) {
+        fullsail_config::config::checked_package_version(arg0);
+        fullsail_config::config::checked_has_add_role(arg0, 0x2::tx_context::sender(arg5));
         assert!(0x2::table::contains<address, Pool>(&arg1.pools, arg2), 1);
         let v0 = 0x2::table::borrow_mut<address, Pool>(&mut arg1.pools, arg2);
         assert!(!0x2::vec_map::contains<0x1::string::String, 0x1::string::String>(&v0.extension_fields, &arg3), 3);
@@ -105,9 +105,9 @@ module 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::clmm_
         0x2::event::emit<AddExtensionToPoolEvent>(v1);
     }
     
-    public entry fun close_clmm_pool(arg0: &0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::GlobalConfig, arg1: &mut ClmmPools, arg2: address, arg3: &0x2::tx_context::TxContext) {
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_package_version(arg0);
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg3));
+    public entry fun close_clmm_pool(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut ClmmPools, arg2: address, arg3: &0x2::tx_context::TxContext) {
+        fullsail_config::config::checked_package_version(arg0);
+        fullsail_config::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg3));
         assert!(0x2::table::contains<address, Pool>(&arg1.pools, arg2), 1);
         0x2::table::borrow_mut<address, Pool>(&mut arg1.pools, arg2).is_closed = true;
         let v0 = ClosePoolEvent{pool_address: arg2};
@@ -124,27 +124,27 @@ module 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::clmm_
         0x2::event::emit<InitClmmPoolsEvent>(v1);
     }
     
-    public entry fun open_clmm_pool(arg0: &0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::GlobalConfig, arg1: &mut ClmmPools, arg2: address, arg3: &0x2::tx_context::TxContext) {
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_package_version(arg0);
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg3));
+    public entry fun open_clmm_pool(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut ClmmPools, arg2: address, arg3: &0x2::tx_context::TxContext) {
+        fullsail_config::config::checked_package_version(arg0);
+        fullsail_config::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg3));
         assert!(0x2::table::contains<address, Pool>(&arg1.pools, arg2), 1);
         0x2::table::borrow_mut<address, Pool>(&mut arg1.pools, arg2).is_closed = false;
         let v0 = OpenPoolEvent{pool_address: arg2};
         0x2::event::emit<OpenPoolEvent>(v0);
     }
     
-    public entry fun remove_clmm_pool(arg0: &0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::GlobalConfig, arg1: &mut ClmmPools, arg2: address, arg3: &0x2::tx_context::TxContext) {
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_package_version(arg0);
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_has_delete_role(arg0, 0x2::tx_context::sender(arg3));
+    public entry fun remove_clmm_pool(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut ClmmPools, arg2: address, arg3: &0x2::tx_context::TxContext) {
+        fullsail_config::config::checked_package_version(arg0);
+        fullsail_config::config::checked_has_delete_role(arg0, 0x2::tx_context::sender(arg3));
         assert!(0x2::table::contains<address, Pool>(&arg1.pools, arg2), 1);
         0x2::table::remove<address, Pool>(&mut arg1.pools, arg2);
         let v0 = RemovePoolEvent{pool_address: arg2};
         0x2::event::emit<RemovePoolEvent>(v0);
     }
     
-    public entry fun remove_extension_from_pool(arg0: &0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::GlobalConfig, arg1: &mut ClmmPools, arg2: address, arg3: 0x1::string::String, arg4: &0x2::tx_context::TxContext) {
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_package_version(arg0);
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_has_delete_role(arg0, 0x2::tx_context::sender(arg4));
+    public entry fun remove_extension_from_pool(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut ClmmPools, arg2: address, arg3: 0x1::string::String, arg4: &0x2::tx_context::TxContext) {
+        fullsail_config::config::checked_package_version(arg0);
+        fullsail_config::config::checked_has_delete_role(arg0, 0x2::tx_context::sender(arg4));
         assert!(0x2::table::contains<address, Pool>(&arg1.pools, arg2), 1);
         let v0 = 0x2::table::borrow_mut<address, Pool>(&mut arg1.pools, arg2);
         assert!(0x2::vec_map::contains<0x1::string::String, 0x1::string::String>(&v0.extension_fields, &arg3), 2);
@@ -156,9 +156,9 @@ module 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::clmm_
         0x2::event::emit<RemoveExtensionFromPoolEvent>(v3);
     }
     
-    public entry fun update_clmm_pool(arg0: &0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::GlobalConfig, arg1: &mut ClmmPools, arg2: address, arg3: 0x1::string::String, arg4: 0x1::string::String, arg5: bool, arg6: bool, arg7: bool, arg8: bool, arg9: bool, arg10: &0x2::tx_context::TxContext) {
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_package_version(arg0);
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg10));
+    public entry fun update_clmm_pool(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut ClmmPools, arg2: address, arg3: 0x1::string::String, arg4: 0x1::string::String, arg5: bool, arg6: bool, arg7: bool, arg8: bool, arg9: bool, arg10: &0x2::tx_context::TxContext) {
+        fullsail_config::config::checked_package_version(arg0);
+        fullsail_config::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg10));
         assert!(0x2::table::contains<address, Pool>(&arg1.pools, arg2), 1);
         let v0 = 0x2::table::borrow_mut<address, Pool>(&mut arg1.pools, arg2);
         v0.pool_address = arg2;
@@ -173,9 +173,9 @@ module 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::clmm_
         0x2::event::emit<UpdatePoolEvent>(v1);
     }
     
-    public entry fun update_extension_from_pool(arg0: &0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::GlobalConfig, arg1: &mut ClmmPools, arg2: address, arg3: 0x1::string::String, arg4: 0x1::string::String, arg5: &0x2::tx_context::TxContext) {
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_package_version(arg0);
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg5));
+    public entry fun update_extension_from_pool(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut ClmmPools, arg2: address, arg3: 0x1::string::String, arg4: 0x1::string::String, arg5: &0x2::tx_context::TxContext) {
+        fullsail_config::config::checked_package_version(arg0);
+        fullsail_config::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg5));
         assert!(0x2::table::contains<address, Pool>(&arg1.pools, arg2), 1);
         let v0 = 0x2::table::borrow_mut<address, Pool>(&mut arg1.pools, arg2);
         assert!(0x2::vec_map::contains<0x1::string::String, 0x1::string::String>(&v0.extension_fields, &arg3), 2);
@@ -190,9 +190,9 @@ module 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::clmm_
         0x2::event::emit<UpdateExtensionFromPoolEvent>(v2);
     }
     
-    public entry fun update_pool_type(arg0: &0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::GlobalConfig, arg1: &mut ClmmPools, arg2: address, arg3: 0x1::string::String, arg4: &0x2::tx_context::TxContext) {
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_package_version(arg0);
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg4));
+    public entry fun update_pool_type(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut ClmmPools, arg2: address, arg3: 0x1::string::String, arg4: &0x2::tx_context::TxContext) {
+        fullsail_config::config::checked_package_version(arg0);
+        fullsail_config::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg4));
         assert!(0x2::table::contains<address, Pool>(&arg1.pools, arg2), 1);
         let v0 = 0x2::table::borrow_mut<address, Pool>(&mut arg1.pools, arg2);
         v0.pool_type = arg3;
@@ -204,9 +204,9 @@ module 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::clmm_
         0x2::event::emit<UpdatePoolTypeEvent>(v1);
     }
     
-    public entry fun update_rewarder_display(arg0: &0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::GlobalConfig, arg1: &mut ClmmPools, arg2: address, arg3: u64, arg4: bool, arg5: &0x2::tx_context::TxContext) {
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_package_version(arg0);
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg5));
+    public entry fun update_rewarder_display(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut ClmmPools, arg2: address, arg3: u64, arg4: bool, arg5: &0x2::tx_context::TxContext) {
+        fullsail_config::config::checked_package_version(arg0);
+        fullsail_config::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg5));
         assert!(0x2::table::contains<address, Pool>(&arg1.pools, arg2), 1);
         let v0 = if (arg3 == 0) {
             &mut 0x2::table::borrow_mut<address, Pool>(&mut arg1.pools, arg2).is_show_rewarder

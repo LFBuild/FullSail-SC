@@ -1,11 +1,11 @@
-module 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config {
+module fullsail_config::config {
     struct AdminCap has store, key {
         id: 0x2::object::UID,
     }
     
     struct GlobalConfig has store, key {
         id: 0x2::object::UID,
-        acl: 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::acl::ACL,
+        acl: fullsail_config::acl::ACL,
         package_version: u64,
     }
     
@@ -35,7 +35,7 @@ module 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::confi
     
     public entry fun add_role(arg0: &AdminCap, arg1: &mut GlobalConfig, arg2: address, arg3: u8) {
         checked_package_version(arg1);
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::acl::add_role(&mut arg1.acl, arg2, arg3);
+        fullsail_config::acl::add_role(&mut arg1.acl, arg2, arg3);
         let v0 = AddRoleEvent{
             member : arg2, 
             role   : arg3,
@@ -45,14 +45,14 @@ module 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::confi
     
     public entry fun remove_member(arg0: &AdminCap, arg1: &mut GlobalConfig, arg2: address) {
         checked_package_version(arg1);
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::acl::remove_member(&mut arg1.acl, arg2);
+        fullsail_config::acl::remove_member(&mut arg1.acl, arg2);
         let v0 = RemoveMemberEvent{member: arg2};
         0x2::event::emit<RemoveMemberEvent>(v0);
     }
     
     public entry fun remove_role(arg0: &AdminCap, arg1: &mut GlobalConfig, arg2: address, arg3: u8) {
         checked_package_version(arg1);
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::acl::remove_role(&mut arg1.acl, arg2, arg3);
+        fullsail_config::acl::remove_role(&mut arg1.acl, arg2, arg3);
         let v0 = RemoveRoleEvent{
             member : arg2, 
             role   : arg3,
@@ -62,7 +62,7 @@ module 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::confi
     
     public entry fun set_roles(arg0: &AdminCap, arg1: &mut GlobalConfig, arg2: address, arg3: u128) {
         checked_package_version(arg1);
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::acl::set_roles(&mut arg1.acl, arg2, arg3);
+        fullsail_config::acl::set_roles(&mut arg1.acl, arg2, arg3);
         let v0 = SetRolesEvent{
             member : arg2, 
             roles  : arg3,
@@ -71,15 +71,15 @@ module 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::confi
     }
     
     public fun checked_has_add_role(arg0: &GlobalConfig, arg1: address) {
-        assert!(0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::acl::has_role(&arg0.acl, arg1, 0), 2);
+        assert!(fullsail_config::acl::has_role(&arg0.acl, arg1, 0), 2);
     }
     
     public fun checked_has_delete_role(arg0: &GlobalConfig, arg1: address) {
-        assert!(0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::acl::has_role(&arg0.acl, arg1, 2), 4);
+        assert!(fullsail_config::acl::has_role(&arg0.acl, arg1, 2), 4);
     }
     
     public fun checked_has_update_role(arg0: &GlobalConfig, arg1: address) {
-        assert!(0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::acl::has_role(&arg0.acl, arg1, 1), 3);
+        assert!(fullsail_config::acl::has_role(&arg0.acl, arg1, 1), 3);
     }
     
     public fun checked_package_version(arg0: &GlobalConfig) {
@@ -89,7 +89,7 @@ module 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::confi
     fun init(arg0: &mut 0x2::tx_context::TxContext) {
         let v0 = GlobalConfig{
             id              : 0x2::object::new(arg0), 
-            acl             : 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::acl::new(), 
+            acl             : fullsail_config::acl::new(), 
             package_version : 1,
         };
         let v1 = AdminCap{id: 0x2::object::new(arg0)};

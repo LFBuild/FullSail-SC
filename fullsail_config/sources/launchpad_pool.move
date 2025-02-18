@@ -1,4 +1,4 @@
-module 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::launchpad_pool {
+module fullsail_config::launchpad_pool {
     struct LaunchpadPools has store, key {
         id: 0x2::object::UID,
         pools: 0x2::table::Table<address, Pool>,
@@ -89,9 +89,9 @@ module 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::launc
         key: 0x1::string::String,
     }
     
-    public entry fun add_extension_to_pool(arg0: &0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: 0x1::string::String, arg4: 0x1::string::String, arg5: &0x2::tx_context::TxContext) {
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_package_version(arg0);
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_has_add_role(arg0, 0x2::tx_context::sender(arg5));
+    public entry fun add_extension_to_pool(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: 0x1::string::String, arg4: 0x1::string::String, arg5: &0x2::tx_context::TxContext) {
+        fullsail_config::config::checked_package_version(arg0);
+        fullsail_config::config::checked_has_add_role(arg0, 0x2::tx_context::sender(arg5));
         assert!(0x2::table::contains<address, Pool>(&arg1.pools, arg2), 1);
         let v0 = 0x2::table::borrow_mut<address, Pool>(&mut arg1.pools, arg2);
         assert!(!0x2::vec_map::contains<0x1::string::String, 0x1::string::String>(&v0.extension_fields, &arg3), 3);
@@ -104,9 +104,9 @@ module 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::launc
         0x2::event::emit<AddExtensionToPoolEvent>(v1);
     }
     
-    public entry fun add_launchpad_pool(arg0: &0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: bool, arg4: bool, arg5: 0x1::string::String, arg6: 0x1::string::String, arg7: 0x1::string::String, arg8: vector<0x1::string::String>, arg9: 0x1::string::String, arg10: 0x1::string::String, arg11: 0x1::string::String, arg12: 0x1::string::String, arg13: 0x1::string::String, arg14: 0x1::string::String, arg15: 0x1::string::String, arg16: &0x2::tx_context::TxContext) {
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_package_version(arg0);
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_has_add_role(arg0, 0x2::tx_context::sender(arg16));
+    public entry fun add_launchpad_pool(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: bool, arg4: bool, arg5: 0x1::string::String, arg6: 0x1::string::String, arg7: 0x1::string::String, arg8: vector<0x1::string::String>, arg9: 0x1::string::String, arg10: 0x1::string::String, arg11: 0x1::string::String, arg12: 0x1::string::String, arg13: 0x1::string::String, arg14: 0x1::string::String, arg15: 0x1::string::String, arg16: &0x2::tx_context::TxContext) {
+        fullsail_config::config::checked_package_version(arg0);
+        fullsail_config::config::checked_has_add_role(arg0, 0x2::tx_context::sender(arg16));
         assert!(!0x2::table::contains<address, Pool>(&arg1.pools, arg2), 0);
         let v0 = Pool{
             pool_address     : arg2, 
@@ -131,9 +131,9 @@ module 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::launc
         0x2::event::emit<AddPoolEvent>(v1);
     }
     
-    public fun add_media_to_pool(arg0: &0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: 0x1::string::String, arg4: 0x1::string::String, arg5: &0x2::tx_context::TxContext) {
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_package_version(arg0);
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_has_add_role(arg0, 0x2::tx_context::sender(arg5));
+    public fun add_media_to_pool(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: 0x1::string::String, arg4: 0x1::string::String, arg5: &0x2::tx_context::TxContext) {
+        fullsail_config::config::checked_package_version(arg0);
+        fullsail_config::config::checked_has_add_role(arg0, 0x2::tx_context::sender(arg5));
         assert!(0x2::table::contains<address, Pool>(&arg1.pools, arg2), 1);
         let v0 = 0x2::table::borrow_mut<address, Pool>(&mut arg1.pools, arg2);
         assert!(!0x2::vec_map::contains<0x1::string::String, MediaInfo>(&v0.social_media, &arg3), 3);
@@ -150,18 +150,18 @@ module 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::launc
         0x2::event::emit<AddMediaToPoolEvent>(v2);
     }
     
-    public fun close_launchpad_pool(arg0: &0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: &0x2::tx_context::TxContext) {
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_package_version(arg0);
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg3));
+    public fun close_launchpad_pool(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: &0x2::tx_context::TxContext) {
+        fullsail_config::config::checked_package_version(arg0);
+        fullsail_config::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg3));
         assert!(0x2::table::contains<address, Pool>(&arg1.pools, arg2), 1);
         0x2::table::borrow_mut<address, Pool>(&mut arg1.pools, arg2).is_closed = true;
         let v0 = ClosePoolEvent{pool_address: arg2};
         0x2::event::emit<ClosePoolEvent>(v0);
     }
     
-    public fun close_settle(arg0: &0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: &0x2::tx_context::TxContext) {
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_package_version(arg0);
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg3));
+    public fun close_settle(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: &0x2::tx_context::TxContext) {
+        fullsail_config::config::checked_package_version(arg0);
+        fullsail_config::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg3));
         assert!(0x2::table::contains<address, Pool>(&arg1.pools, arg2), 1);
         0x2::table::borrow_mut<address, Pool>(&mut arg1.pools, arg2).show_settle = false;
         let v0 = CloseSettleEvent{pool_address: arg2};
@@ -178,27 +178,27 @@ module 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::launc
         0x2::event::emit<InitLaunchpadPoolsEvent>(v1);
     }
     
-    public fun open_launchpad_pool(arg0: &0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: &0x2::tx_context::TxContext) {
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_package_version(arg0);
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg3));
+    public fun open_launchpad_pool(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: &0x2::tx_context::TxContext) {
+        fullsail_config::config::checked_package_version(arg0);
+        fullsail_config::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg3));
         assert!(0x2::table::contains<address, Pool>(&arg1.pools, arg2), 1);
         0x2::table::borrow_mut<address, Pool>(&mut arg1.pools, arg2).is_closed = false;
         let v0 = OpenPoolEvent{pool_address: arg2};
         0x2::event::emit<OpenPoolEvent>(v0);
     }
     
-    public fun open_settle(arg0: &0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: &0x2::tx_context::TxContext) {
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_package_version(arg0);
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg3));
+    public fun open_settle(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: &0x2::tx_context::TxContext) {
+        fullsail_config::config::checked_package_version(arg0);
+        fullsail_config::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg3));
         assert!(0x2::table::contains<address, Pool>(&arg1.pools, arg2), 1);
         0x2::table::borrow_mut<address, Pool>(&mut arg1.pools, arg2).show_settle = true;
         let v0 = OpenSettleEvent{pool_address: arg2};
         0x2::event::emit<OpenSettleEvent>(v0);
     }
     
-    public entry fun remove_extension_from_pool(arg0: &0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: 0x1::string::String, arg4: &0x2::tx_context::TxContext) {
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_package_version(arg0);
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_has_delete_role(arg0, 0x2::tx_context::sender(arg4));
+    public entry fun remove_extension_from_pool(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: 0x1::string::String, arg4: &0x2::tx_context::TxContext) {
+        fullsail_config::config::checked_package_version(arg0);
+        fullsail_config::config::checked_has_delete_role(arg0, 0x2::tx_context::sender(arg4));
         assert!(0x2::table::contains<address, Pool>(&arg1.pools, arg2), 1);
         let v0 = 0x2::table::borrow_mut<address, Pool>(&mut arg1.pools, arg2);
         assert!(0x2::vec_map::contains<0x1::string::String, 0x1::string::String>(&v0.extension_fields, &arg3), 2);
@@ -210,18 +210,18 @@ module 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::launc
         0x2::event::emit<RemoveExtensionFromPoolEvent>(v3);
     }
     
-    public fun remove_launchpad_pool(arg0: &0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: &0x2::tx_context::TxContext) {
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_package_version(arg0);
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_has_delete_role(arg0, 0x2::tx_context::sender(arg3));
+    public fun remove_launchpad_pool(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: &0x2::tx_context::TxContext) {
+        fullsail_config::config::checked_package_version(arg0);
+        fullsail_config::config::checked_has_delete_role(arg0, 0x2::tx_context::sender(arg3));
         assert!(0x2::table::contains<address, Pool>(&arg1.pools, arg2), 1);
         0x2::table::remove<address, Pool>(&mut arg1.pools, arg2);
         let v0 = RemovePoolEvent{pool_address: arg2};
         0x2::event::emit<RemovePoolEvent>(v0);
     }
     
-    public fun remove_media_from_pool(arg0: &0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: 0x1::string::String, arg4: &0x2::tx_context::TxContext) {
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_package_version(arg0);
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_has_delete_role(arg0, 0x2::tx_context::sender(arg4));
+    public fun remove_media_from_pool(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: 0x1::string::String, arg4: &0x2::tx_context::TxContext) {
+        fullsail_config::config::checked_package_version(arg0);
+        fullsail_config::config::checked_has_delete_role(arg0, 0x2::tx_context::sender(arg4));
         assert!(0x2::table::contains<address, Pool>(&arg1.pools, arg2), 1);
         let v0 = 0x2::table::borrow_mut<address, Pool>(&mut arg1.pools, arg2);
         assert!(0x2::vec_map::contains<0x1::string::String, MediaInfo>(&v0.social_media, &arg3), 2);
@@ -233,9 +233,9 @@ module 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::launc
         0x2::event::emit<RemoveMediaFromPoolEvent>(v3);
     }
     
-    public entry fun update_extension_from_pool(arg0: &0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: 0x1::string::String, arg4: 0x1::string::String, arg5: &0x2::tx_context::TxContext) {
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_package_version(arg0);
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg5));
+    public entry fun update_extension_from_pool(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: 0x1::string::String, arg4: 0x1::string::String, arg5: &0x2::tx_context::TxContext) {
+        fullsail_config::config::checked_package_version(arg0);
+        fullsail_config::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg5));
         assert!(0x2::table::contains<address, Pool>(&arg1.pools, arg2), 1);
         let v0 = 0x2::table::borrow_mut<address, Pool>(&mut arg1.pools, arg2);
         assert!(0x2::vec_map::contains<0x1::string::String, 0x1::string::String>(&v0.extension_fields, &arg3), 2);
@@ -250,9 +250,9 @@ module 0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::launc
         0x2::event::emit<UpdateExtensionFromPoolEvent>(v2);
     }
     
-    public fun update_launchpad_pool(arg0: &0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: bool, arg4: bool, arg5: 0x1::string::String, arg6: 0x1::string::String, arg7: 0x1::string::String, arg8: vector<0x1::string::String>, arg9: 0x1::string::String, arg10: 0x1::string::String, arg11: 0x1::string::String, arg12: 0x1::string::String, arg13: 0x1::string::String, arg14: 0x1::string::String, arg15: 0x1::string::String, arg16: &0x2::tx_context::TxContext) {
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_package_version(arg0);
-        0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg16));
+    public fun update_launchpad_pool(arg0: &fullsail_config::config::GlobalConfig, arg1: &mut LaunchpadPools, arg2: address, arg3: bool, arg4: bool, arg5: 0x1::string::String, arg6: 0x1::string::String, arg7: 0x1::string::String, arg8: vector<0x1::string::String>, arg9: 0x1::string::String, arg10: 0x1::string::String, arg11: 0x1::string::String, arg12: 0x1::string::String, arg13: 0x1::string::String, arg14: 0x1::string::String, arg15: 0x1::string::String, arg16: &0x2::tx_context::TxContext) {
+        fullsail_config::config::checked_package_version(arg0);
+        fullsail_config::config::checked_has_update_role(arg0, 0x2::tx_context::sender(arg16));
         assert!(0x2::table::contains<address, Pool>(&arg1.pools, arg2), 1);
         let v0 = 0x2::table::borrow_mut<address, Pool>(&mut arg1.pools, arg2);
         v0.pool_address = arg2;

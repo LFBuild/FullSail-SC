@@ -33,6 +33,7 @@
 
 Distribution contracts depend on clmm_pool contracts.
 Integrate depends on clmm_pool contracts.
+Nothing depends on fullsail_config contracts.
 
 
 
