@@ -37,19 +37,18 @@
 
 ## Contract dependencies
 
-- Distribution contracts depend on clmm_pool contracts.
-- Integrate depends on clmm_pool contracts.
-- Nothing depends on fullsail_config contracts.
-- Integrate depends on distribution contracts.
-- Nothing depends on integrate contracts.
-- clmm_pool depends on move_stl contracts.
-- Integrate depends on move_stl contracts.
-- clmm_pool depends on integer_mate contracts.
-- distributor depends on integer_mate contracts.
-- integrate depends on integer_mate contracts.
-- clmm_pool depends on gauge_cap contracts.
-- distribution depends on gauge_cap contracts.
-- integrate depends on gauge_cap contracts.
+Below is the dependency graph showing the relationships between the smart contract packages. Each arrow ("→") points from a contract to the contract it depends on. For instance, the edge
+
+`integrate → clmm_pool`
+
+indicates that Integrate depends on clmm_pool.
+
+![Dependency Graph](dependency_graph.svg)
+
+So to be more specific:
+- integrate depends on nearly all the contracts.
+- fullsail_config does not depend on any contracts and none of the contracts depends on it.
+
 
 
 

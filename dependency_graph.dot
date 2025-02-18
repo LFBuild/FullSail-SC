@@ -1,0 +1,24 @@
+digraph Dependencies {
+    rankdir=LR;
+    node [shape=box];
+
+    // Nodes with no incoming dependencies
+    "fullsail_config";
+    "integrate";
+
+    // Dependency relationships:
+    "distribution" -> "clmm_pool";
+    "integrate"    -> "clmm_pool";
+    "integrate"    -> "distribution";
+
+    "clmm_pool"    -> "move_stl";
+    "integrate"    -> "move_stl";
+
+    "clmm_pool"    -> "integer_mate";
+    "integrate"    -> "integer_mate";
+    "distribution"  -> "integer_mate";
+
+    "clmm_pool"    -> "gauge_cap";
+    "distribution" -> "gauge_cap";
+    "integrate"    -> "gauge_cap";
+}
