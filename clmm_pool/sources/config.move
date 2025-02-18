@@ -1,4 +1,4 @@
-module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config {
+module clmm_pool::config {
     struct AdminCap has store, key {
         id: 0x2::object::UID,
     }
@@ -17,7 +17,7 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::confi
         protocol_fee_rate: u64,
         unstaked_liquidity_fee_rate: u64,
         fee_tiers: 0x2::vec_map::VecMap<u32, FeeTier>,
-        acl: 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::acl::ACL,
+        acl: clmm_pool::acl::ACL,
         package_version: u64,
         alive_gauges: 0x2::vec_set::VecSet<0x2::object::ID>,
     }
@@ -77,13 +77,13 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::confi
         old_version: u64,
     }
     
-    public fun acl(arg0: &GlobalConfig) : &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::acl::ACL {
+    public fun acl(arg0: &GlobalConfig) : &clmm_pool::acl::ACL {
         &arg0.acl
     }
     
     public fun add_role(arg0: &AdminCap, arg1: &mut GlobalConfig, arg2: address, arg3: u8) {
         checked_package_version(arg1);
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::acl::add_role(&mut arg1.acl, arg2, arg3);
+        clmm_pool::acl::add_role(&mut arg1.acl, arg2, arg3);
         let v0 = AddRoleEvent{
             member : arg2, 
             role   : arg3,
@@ -91,20 +91,20 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::confi
         0x2::event::emit<AddRoleEvent>(v0);
     }
     
-    public fun get_members(arg0: &GlobalConfig) : vector<0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::acl::Member> {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::acl::get_members(&arg0.acl)
+    public fun get_members(arg0: &GlobalConfig) : vector<clmm_pool::acl::Member> {
+        clmm_pool::acl::get_members(&arg0.acl)
     }
     
     public fun remove_member(arg0: &AdminCap, arg1: &mut GlobalConfig, arg2: address) {
         checked_package_version(arg1);
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::acl::remove_member(&mut arg1.acl, arg2);
+        clmm_pool::acl::remove_member(&mut arg1.acl, arg2);
         let v0 = RemoveMemberEvent{member: arg2};
         0x2::event::emit<RemoveMemberEvent>(v0);
     }
     
     public fun remove_role(arg0: &AdminCap, arg1: &mut GlobalConfig, arg2: address, arg3: u8) {
         checked_package_version(arg1);
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::acl::remove_role(&mut arg1.acl, arg2, arg3);
+        clmm_pool::acl::remove_role(&mut arg1.acl, arg2, arg3);
         let v0 = RemoveRoleEvent{
             member : arg2, 
             role   : arg3,
@@ -114,7 +114,7 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::confi
     
     public fun set_roles(arg0: &AdminCap, arg1: &mut GlobalConfig, arg2: address, arg3: u128) {
         checked_package_version(arg1);
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::acl::set_roles(&mut arg1.acl, arg2, arg3);
+        clmm_pool::acl::set_roles(&mut arg1.acl, arg2, arg3);
         let v0 = SetRolesEvent{
             member : arg2, 
             roles  : arg3,
@@ -140,23 +140,23 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::confi
     }
     
     public fun check_fee_tier_manager_role(arg0: &GlobalConfig, arg1: address) {
-        assert!(0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::acl::has_role(&arg0.acl, arg1, 1), 6);
+        assert!(clmm_pool::acl::has_role(&arg0.acl, arg1, 1), 6);
     }
     
     public fun check_partner_manager_role(arg0: &GlobalConfig, arg1: address) {
-        assert!(0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::acl::has_role(&arg0.acl, arg1, 3), 7);
+        assert!(clmm_pool::acl::has_role(&arg0.acl, arg1, 3), 7);
     }
     
     public fun check_pool_manager_role(arg0: &GlobalConfig, arg1: address) {
-        assert!(0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::acl::has_role(&arg0.acl, arg1, 0), 5);
+        assert!(clmm_pool::acl::has_role(&arg0.acl, arg1, 0), 5);
     }
     
     public fun check_protocol_fee_claim_role(arg0: &GlobalConfig, arg1: address) {
-        assert!(0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::acl::has_role(&arg0.acl, arg1, 2), 9);
+        assert!(clmm_pool::acl::has_role(&arg0.acl, arg1, 2), 9);
     }
     
     public fun check_rewarder_manager_role(arg0: &GlobalConfig, arg1: address) {
-        assert!(0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::acl::has_role(&arg0.acl, arg1, 4), 8);
+        assert!(clmm_pool::acl::has_role(&arg0.acl, arg1, 4), 8);
     }
     
     public fun checked_package_version(arg0: &GlobalConfig) {
@@ -219,7 +219,7 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::confi
             protocol_fee_rate           : 0, 
             unstaked_liquidity_fee_rate : 1000, 
             fee_tiers                   : 0x2::vec_map::empty<u32, FeeTier>(), 
-            acl                         : 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::acl::new(arg0), 
+            acl                         : clmm_pool::acl::new(arg0), 
             package_version             : 1, 
             alive_gauges                : 0x2::vec_set::empty<0x2::object::ID>(),
         };

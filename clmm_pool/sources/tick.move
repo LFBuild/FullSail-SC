@@ -1,4 +1,4 @@
-module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick {
+module clmm_pool::tick {
     struct TickManager has store {
         tick_spacing: u32,
         ticks: 0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::skip_list::SkipList<Tick>,
@@ -95,7 +95,7 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick 
     fun default(arg0: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32) : Tick {
         Tick{
             index                                   : arg0, 
-            sqrt_price                              : 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::get_sqrt_price_at_tick(arg0), 
+            sqrt_price                              : clmm_pool::tick_math::get_sqrt_price_at_tick(arg0), 
             liquidity_net                           : 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(0), 
             liquidity_gross                         : 0, 
             fee_growth_outside_a                    : 0, 
@@ -151,8 +151,8 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick 
         if (arg2) {
             0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::skip_list::find_prev<Tick>(&arg0.ticks, tick_score(arg1), true)
         } else {
-            let v1 = if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::eq(arg1, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::neg_from(0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::tick_bound() + 1))) {
-                0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::skip_list::find_next<Tick>(&arg0.ticks, tick_score(0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::min_tick()), true)
+            let v1 = if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::eq(arg1, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::neg_from(clmm_pool::tick_math::tick_bound() + 1))) {
+                0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::skip_list::find_next<Tick>(&arg0.ticks, tick_score(clmm_pool::tick_math::min_tick()), true)
             } else {
                 0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::skip_list::find_next<Tick>(&arg0.ticks, tick_score(arg1), false)
             };
@@ -333,8 +333,8 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick 
     }
     
     fun tick_score(arg0: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32) : u64 {
-        let v0 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::as_u32(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::add(arg0, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::from(0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::tick_bound())));
-        assert!(v0 >= 0 && v0 <= 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::tick_bound() * 2, 2);
+        let v0 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::as_u32(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::add(arg0, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::from(clmm_pool::tick_math::tick_bound())));
+        assert!(v0 >= 0 && v0 <= clmm_pool::tick_math::tick_bound() * 2, 2);
         v0 as u64
     }
     

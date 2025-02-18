@@ -1,4 +1,4 @@
-module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math {
+module clmm_pool::tick_math {
     fun as_u8(arg0: bool) : u8 {
         if (arg0) {
             1

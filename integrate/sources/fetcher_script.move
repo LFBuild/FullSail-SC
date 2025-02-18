@@ -1,18 +1,18 @@
 module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::fetcher_script {
     struct FetchTicksResultEvent has copy, drop, store {
-        ticks: vector<0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::Tick>,
+        ticks: vector<clmm_pool::tick::Tick>,
     }
     
     struct CalculatedSwapResultEvent has copy, drop, store {
-        data: 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::CalculatedSwapResult,
+        data: clmm_pool::pool::CalculatedSwapResult,
     }
     
     struct FetchPositionsEvent has copy, drop, store {
-        positions: vector<0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::PositionInfo>,
+        positions: vector<clmm_pool::position::PositionInfo>,
     }
     
     struct FetchPoolsEvent has copy, drop, store {
-        pools: vector<0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::factory::PoolSimpleInfo>,
+        pools: vector<clmm_pool::factory::PoolSimpleInfo>,
     }
     
     struct FetchPositionRewardsEvent has copy, drop, store {
@@ -36,28 +36,28 @@ module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::fetch
         distribution: u64,
     }
     
-    public entry fun fetch_pools(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::factory::Pools, arg1: vector<0x2::object::ID>, arg2: u64) {
-        let v0 = FetchPoolsEvent{pools: 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::factory::fetch_pools(arg0, arg1, arg2)};
+    public entry fun fetch_pools(arg0: &clmm_pool::factory::Pools, arg1: vector<0x2::object::ID>, arg2: u64) {
+        let v0 = FetchPoolsEvent{pools: clmm_pool::factory::fetch_pools(arg0, arg1, arg2)};
         0x2::event::emit<FetchPoolsEvent>(v0);
     }
     
-    public entry fun calculate_swap_result<T0, T1>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::Pool<T0, T1>, arg2: bool, arg3: bool, arg4: u64) {
-        let v0 = CalculatedSwapResultEvent{data: 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::calculate_swap_result<T0, T1>(arg0, arg1, arg2, arg3, arg4)};
+    public entry fun calculate_swap_result<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &clmm_pool::pool::Pool<T0, T1>, arg2: bool, arg3: bool, arg4: u64) {
+        let v0 = CalculatedSwapResultEvent{data: clmm_pool::pool::calculate_swap_result<T0, T1>(arg0, arg1, arg2, arg3, arg4)};
         0x2::event::emit<CalculatedSwapResultEvent>(v0);
     }
     
-    public entry fun fetch_positions<T0, T1>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::Pool<T0, T1>, arg1: vector<0x2::object::ID>, arg2: u64) {
-        let v0 = FetchPositionsEvent{positions: 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::fetch_positions<T0, T1>(arg0, arg1, arg2)};
+    public entry fun fetch_positions<T0, T1>(arg0: &clmm_pool::pool::Pool<T0, T1>, arg1: vector<0x2::object::ID>, arg2: u64) {
+        let v0 = FetchPositionsEvent{positions: clmm_pool::pool::fetch_positions<T0, T1>(arg0, arg1, arg2)};
         0x2::event::emit<FetchPositionsEvent>(v0);
     }
     
-    public entry fun fetch_ticks<T0, T1>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::Pool<T0, T1>, arg1: vector<u32>, arg2: u64) {
-        let v0 = FetchTicksResultEvent{ticks: 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::fetch_ticks<T0, T1>(arg0, arg1, arg2)};
+    public entry fun fetch_ticks<T0, T1>(arg0: &clmm_pool::pool::Pool<T0, T1>, arg1: vector<u32>, arg2: u64) {
+        let v0 = FetchTicksResultEvent{ticks: clmm_pool::pool::fetch_ticks<T0, T1>(arg0, arg1, arg2)};
         0x2::event::emit<FetchTicksResultEvent>(v0);
     }
     
-    public entry fun fetch_position_fees<T0, T1>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::Pool<T0, T1>, arg2: 0x2::object::ID) {
-        let (v0, v1) = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::calculate_and_update_fee<T0, T1>(arg0, arg1, arg2);
+    public entry fun fetch_position_fees<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: 0x2::object::ID) {
+        let (v0, v1) = clmm_pool::pool::calculate_and_update_fee<T0, T1>(arg0, arg1, arg2);
         let v2 = FetchPositionFeesEvent{
             position_id : arg2, 
             fee_owned_a : v0, 
@@ -66,25 +66,25 @@ module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::fetch
         0x2::event::emit<FetchPositionFeesEvent>(v2);
     }
     
-    public entry fun fetch_position_magma_distribution<T0, T1>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::Pool<T0, T1>, arg2: 0x2::object::ID, arg3: &0x2::clock::Clock) {
+    public entry fun fetch_position_magma_distribution<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: 0x2::object::ID, arg3: &0x2::clock::Clock) {
         let v0 = FetchPositionMagmaDistributionEvent{
             position_id  : arg2, 
-            distribution : 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::calculate_and_update_magma_distribution<T0, T1>(arg0, arg1, arg2),
+            distribution : clmm_pool::pool::calculate_and_update_magma_distribution<T0, T1>(arg0, arg1, arg2),
         };
         0x2::event::emit<FetchPositionMagmaDistributionEvent>(v0);
     }
     
-    public entry fun fetch_position_points<T0, T1>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::Pool<T0, T1>, arg2: 0x2::object::ID, arg3: &0x2::clock::Clock) {
+    public entry fun fetch_position_points<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: 0x2::object::ID, arg3: &0x2::clock::Clock) {
         let v0 = FetchPositionPointsEvent{
             position_id  : arg2, 
-            points_owned : 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::calculate_and_update_points<T0, T1>(arg0, arg1, arg2, arg3),
+            points_owned : clmm_pool::pool::calculate_and_update_points<T0, T1>(arg0, arg1, arg2, arg3),
         };
         0x2::event::emit<FetchPositionPointsEvent>(v0);
     }
     
-    public entry fun fetch_position_rewards<T0, T1>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::Pool<T0, T1>, arg2: 0x2::object::ID, arg3: &0x2::clock::Clock) {
+    public entry fun fetch_position_rewards<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: 0x2::object::ID, arg3: &0x2::clock::Clock) {
         let v0 = FetchPositionRewardsEvent{
-            data        : 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::calculate_and_update_rewards<T0, T1>(arg0, arg1, arg2, arg3), 
+            data        : clmm_pool::pool::calculate_and_update_rewards<T0, T1>(arg0, arg1, arg2, arg3), 
             position_id : arg2,
         };
         0x2::event::emit<FetchPositionRewardsEvent>(v0);

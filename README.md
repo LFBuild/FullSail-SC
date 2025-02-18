@@ -29,6 +29,13 @@
     - Install SUI. You can reference this link: https://docs.sui.io/guides/developer/getting-started/sui-install
     - Need to have SUI Wallet Extension or App for interacting with SUI chain by GUI
 
+## Contract dependencies
+
+Distribution contracts depend on clmm_pool contracts.
+Integrate depends on clmm_pool contracts.
+
+
+
 ## Tech Stack Used and Why
 
     Move language used for SUI smart contract

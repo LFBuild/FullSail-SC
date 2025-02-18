@@ -32,18 +32,18 @@ module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::expec
         current_sqrt_price: u128,
     }
     
-    public fun expect_swap<T0, T1>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::Pool<T0, T1>, arg1: bool, arg2: bool, arg3: u64) : ExpectSwapResult {
-        let v0 = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::current_sqrt_price<T0, T1>(arg0);
-        let v1 = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::liquidity<T0, T1>(arg0);
+    public fun expect_swap<T0, T1>(arg0: &clmm_pool::pool::Pool<T0, T1>, arg1: bool, arg2: bool, arg3: u64) : ExpectSwapResult {
+        let v0 = clmm_pool::pool::current_sqrt_price<T0, T1>(arg0);
+        let v1 = clmm_pool::pool::liquidity<T0, T1>(arg0);
         let v2 = default_swap_result();
         let v3 = arg3;
-        let v4 = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::first_score_for_swap(0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::tick_manager<T0, T1>(arg0), 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::current_tick_index<T0, T1>(arg0), arg1);
+        let v4 = clmm_pool::tick::first_score_for_swap(clmm_pool::pool::tick_manager<T0, T1>(arg0), clmm_pool::pool::current_tick_index<T0, T1>(arg0), arg1);
         let v5 = ExpectSwapResult{
             amount_in        : 0, 
             amount_out       : 0, 
             fee_amount       : 0, 
-            fee_rate         : 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::fee_rate<T0, T1>(arg0), 
-            after_sqrt_price : 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::current_sqrt_price<T0, T1>(arg0), 
+            fee_rate         : clmm_pool::pool::fee_rate<T0, T1>(arg0), 
+            after_sqrt_price : clmm_pool::pool::current_sqrt_price<T0, T1>(arg0), 
             is_exceed        : false, 
             step_results     : 0x1::vector::empty<SwapStepResult>(),
         };
@@ -52,10 +52,10 @@ module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::expec
                 v5.is_exceed = true;
                 break
             };
-            let (v6, v7) = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::borrow_tick_for_swap(0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::tick_manager<T0, T1>(arg0), 0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::option_u64::borrow(&v4), arg1);
+            let (v6, v7) = clmm_pool::tick::borrow_tick_for_swap(clmm_pool::pool::tick_manager<T0, T1>(arg0), 0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::option_u64::borrow(&v4), arg1);
             v4 = v7;
-            let v8 = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::sqrt_price(v6);
-            let (v9, v10, v11, v12) = compute_swap_step(v0, v8, v1, v3, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::fee_rate<T0, T1>(arg0), arg1, arg2);
+            let v8 = clmm_pool::tick::sqrt_price(v6);
+            let (v9, v10, v11, v12) = compute_swap_step(v0, v8, v1, v3, clmm_pool::pool::fee_rate<T0, T1>(arg0), arg1, arg2);
             if (v9 != 0 || v12 != 0) {
                 let v13 = if (arg2) {
                     let v14 = check_remainer_amount_sub(v3, v9 as u64);
@@ -79,9 +79,9 @@ module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::expec
             if (v11 == v8) {
                 v0 = v8;
                 let v16 = if (arg1) {
-                    0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::neg(0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::liquidity_net(v6))
+                    0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::neg(clmm_pool::tick::liquidity_net(v6))
                 } else {
-                    0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::liquidity_net(v6)
+                    clmm_pool::tick::liquidity_net(v6)
                 };
                 if (!0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::is_neg(v16)) {
                     let v17 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::abs_u128(v16);
@@ -118,23 +118,23 @@ module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::expec
             assert!(arg0 < arg1, 3);
         };
         let (v0, v1, v2, v3) = if (arg6) {
-            let v4 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u64::mul_div_floor(arg3, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::clmm_math::fee_rate_denominator() - arg4, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::clmm_math::fee_rate_denominator());
-            let v5 = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::clmm_math::get_delta_up_from_input(arg0, arg1, arg2, arg5);
+            let v4 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u64::mul_div_floor(arg3, clmm_pool::clmm_math::fee_rate_denominator() - arg4, clmm_pool::clmm_math::fee_rate_denominator());
+            let v5 = clmm_pool::clmm_math::get_delta_up_from_input(arg0, arg1, arg2, arg5);
             let (v6, v7, v8) = if (v5 > (v4 as u256)) {
-                (v4 as u256, (arg3 - v4) as u256, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::clmm_math::get_next_sqrt_price_from_input(arg0, arg2, v4, arg5))
+                (v4 as u256, (arg3 - v4) as u256, clmm_pool::clmm_math::get_next_sqrt_price_from_input(arg0, arg2, v4, arg5))
             } else {
-                (v5, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u64::mul_div_ceil(v5 as u64, arg4, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::clmm_math::fee_rate_denominator() - arg4) as u256, arg1)
+                (v5, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u64::mul_div_ceil(v5 as u64, arg4, clmm_pool::clmm_math::fee_rate_denominator() - arg4) as u256, arg1)
             };
-            (v6, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::clmm_math::get_delta_down_from_output(arg0, v8, arg2, arg5), v7, v8)
+            (v6, clmm_pool::clmm_math::get_delta_down_from_output(arg0, v8, arg2, arg5), v7, v8)
         } else {
-            let v9 = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::clmm_math::get_delta_down_from_output(arg0, arg1, arg2, arg5);
+            let v9 = clmm_pool::clmm_math::get_delta_down_from_output(arg0, arg1, arg2, arg5);
             let (v10, v11) = if (v9 > (arg3 as u256)) {
-                (arg3 as u256, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::clmm_math::get_next_sqrt_price_from_output(arg0, arg2, arg3, arg5))
+                (arg3 as u256, clmm_pool::clmm_math::get_next_sqrt_price_from_output(arg0, arg2, arg3, arg5))
             } else {
                 (v9, arg1)
             };
-            let v12 = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::clmm_math::get_delta_up_from_input(arg0, v11, arg2, arg5);
-            (v12, v10, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u128::mul_div_ceil(v12 as u128, arg4 as u128, (0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::clmm_math::fee_rate_denominator() - arg4) as u128) as u256, v11)
+            let v12 = clmm_pool::clmm_math::get_delta_up_from_input(arg0, v11, arg2, arg5);
+            (v12, v10, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u128::mul_div_ceil(v12 as u128, arg4 as u128, (clmm_pool::clmm_math::fee_rate_denominator() - arg4) as u128) as u256, v11)
         };
         (v0, v1, v3, v2)
     }
@@ -181,10 +181,10 @@ module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::expec
         0x1::vector::length<SwapStepResult>(&arg0.step_results)
     }
     
-    public entry fun get_expect_swap_result<T0, T1>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::Pool<T0, T1>, arg1: bool, arg2: bool, arg3: u64) {
+    public entry fun get_expect_swap_result<T0, T1>(arg0: &clmm_pool::pool::Pool<T0, T1>, arg1: bool, arg2: bool, arg3: u64) {
         let v0 = ExpectSwapResultEvent{
             data               : expect_swap<T0, T1>(arg0, arg1, arg2, arg3), 
-            current_sqrt_price : 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::current_sqrt_price<T0, T1>(arg0),
+            current_sqrt_price : clmm_pool::pool::current_sqrt_price<T0, T1>(arg0),
         };
         0x2::event::emit<ExpectSwapResultEvent>(v0);
     }

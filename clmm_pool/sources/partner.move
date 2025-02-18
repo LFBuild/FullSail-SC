@@ -1,4 +1,4 @@
-module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::partner {
+module clmm_pool::partner {
     struct Partners has key {
         id: 0x2::object::UID,
         partners: 0x2::vec_map::VecMap<0x1::string::String, 0x2::object::ID>,
@@ -61,8 +61,8 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::partn
         &arg0.balances
     }
     
-    public fun claim_ref_fee<T0>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &PartnerCap, arg2: &mut Partner, arg3: &mut 0x2::tx_context::TxContext) {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::checked_package_version(arg0);
+    public fun claim_ref_fee<T0>(arg0: &clmm_pool::config::GlobalConfig, arg1: &PartnerCap, arg2: &mut Partner, arg3: &mut 0x2::tx_context::TxContext) {
+        clmm_pool::config::checked_package_version(arg0);
         assert!(arg1.partner_id == 0x2::object::id<Partner>(arg2), 3);
         let v0 = 0x1::string::from_ascii(0x1::type_name::into_string(0x1::type_name::get<T0>()));
         assert!(0x2::bag::contains<0x1::string::String>(&arg2.balances, v0), 4);
@@ -76,14 +76,14 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::partn
         0x2::event::emit<ClaimRefFeeEvent>(v2);
     }
     
-    public fun create_partner(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut Partners, arg2: 0x1::string::String, arg3: u64, arg4: u64, arg5: u64, arg6: address, arg7: &0x2::clock::Clock, arg8: &mut 0x2::tx_context::TxContext) {
+    public fun create_partner(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Partners, arg2: 0x1::string::String, arg3: u64, arg4: u64, arg5: u64, arg6: address, arg7: &0x2::clock::Clock, arg8: &mut 0x2::tx_context::TxContext) {
         assert!(arg5 > arg4, 6);
         assert!(arg4 >= 0x2::clock::timestamp_ms(arg7) / 1000, 7);
         assert!(arg3 < 10000, 2);
         assert!(!0x1::string::is_empty(&arg2), 5);
         assert!(!0x2::vec_map::contains<0x1::string::String, 0x2::object::ID>(&arg1.partners, &arg2), 5);
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::checked_package_version(arg0);
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::check_partner_manager_role(arg0, 0x2::tx_context::sender(arg8));
+        clmm_pool::config::checked_package_version(arg0);
+        clmm_pool::config::check_partner_manager_role(arg0, 0x2::tx_context::sender(arg8));
         let v0 = Partner{
             id           : 0x2::object::new(arg8), 
             name         : arg2, 
@@ -161,10 +161,10 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::partn
         arg0.start_time
     }
     
-    public fun update_ref_fee_rate(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut Partner, arg2: u64, arg3: &mut 0x2::tx_context::TxContext) {
+    public fun update_ref_fee_rate(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Partner, arg2: u64, arg3: &mut 0x2::tx_context::TxContext) {
         assert!(arg2 < 10000, 2);
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::checked_package_version(arg0);
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::check_partner_manager_role(arg0, 0x2::tx_context::sender(arg3));
+        clmm_pool::config::checked_package_version(arg0);
+        clmm_pool::config::check_partner_manager_role(arg0, 0x2::tx_context::sender(arg3));
         arg1.ref_fee_rate = arg2;
         let v0 = UpdateRefFeeRateEvent{
             partner_id   : 0x2::object::id<Partner>(arg1), 
@@ -174,11 +174,11 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::partn
         0x2::event::emit<UpdateRefFeeRateEvent>(v0);
     }
     
-    public fun update_time_range(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut Partner, arg2: u64, arg3: u64, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
+    public fun update_time_range(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Partner, arg2: u64, arg3: u64, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
         assert!(arg3 > arg2, 6);
         assert!(arg3 > 0x2::clock::timestamp_ms(arg4) / 1000, 6);
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::checked_package_version(arg0);
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::check_partner_manager_role(arg0, 0x2::tx_context::sender(arg5));
+        clmm_pool::config::checked_package_version(arg0);
+        clmm_pool::config::check_partner_manager_role(arg0, 0x2::tx_context::sender(arg5));
         arg1.start_time = arg2;
         arg1.end_time = arg3;
         let v0 = UpdateTimeRangeEvent{

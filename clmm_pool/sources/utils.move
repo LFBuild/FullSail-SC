@@ -1,4 +1,4 @@
-module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::utils {
+module clmm_pool::utils {
     public fun str(arg0: u64) : 0x1::string::String {
         if (arg0 == 0) {
             return 0x1::string::utf8(b"0")

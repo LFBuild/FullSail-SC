@@ -1,4 +1,4 @@
-module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position {
+module clmm_pool::position {
     struct StakePositionEvent has copy, drop {
         position_id: 0x2::object::ID,
         staked: bool,
@@ -97,8 +97,8 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::posit
     
     public fun check_position_tick_range(arg0: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg1: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg2: u32) {
         let v0 = if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::lt(arg0, arg1)) {
-            if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::gte(arg0, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::min_tick())) {
-                if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::lte(arg1, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::max_tick())) {
+            if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::gte(arg0, clmm_pool::tick_math::min_tick())) {
+                if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::lte(arg1, clmm_pool::tick_math::max_tick())) {
                     if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::mod(arg0, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::from(arg2)) == 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::zero()) {
                         0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::mod(arg1, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::from(arg2)) == 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::zero()
                     } else {
@@ -294,9 +294,9 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::posit
     
     fun new_position_name(arg0: u64, arg1: u64) : 0x1::string::String {
         let v0 = 0x1::string::utf8(b"Magma position:");
-        0x1::string::append(&mut v0, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::utils::str(arg0));
+        0x1::string::append(&mut v0, clmm_pool::utils::str(arg0));
         0x1::string::append_utf8(&mut v0, b"-");
-        0x1::string::append(&mut v0, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::utils::str(arg1));
+        0x1::string::append(&mut v0, clmm_pool::utils::str(arg1));
         v0
     }
     
@@ -378,8 +378,8 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::posit
         arg0.description = arg1;
     }
     
-    public fun set_display(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &0x2::package::Publisher, arg2: 0x1::string::String, arg3: 0x1::string::String, arg4: 0x1::string::String, arg5: 0x1::string::String, arg6: &mut 0x2::tx_context::TxContext) {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::checked_package_version(arg0);
+    public fun set_display(arg0: &clmm_pool::config::GlobalConfig, arg1: &0x2::package::Publisher, arg2: 0x1::string::String, arg3: 0x1::string::String, arg4: 0x1::string::String, arg5: 0x1::string::String, arg6: &mut 0x2::tx_context::TxContext) {
+        clmm_pool::config::checked_package_version(arg0);
         let v0 = 0x1::vector::empty<0x1::string::String>();
         0x1::vector::push_back<0x1::string::String>(&mut v0, 0x1::string::utf8(b"name"));
         0x1::vector::push_back<0x1::string::String>(&mut v0, 0x1::string::utf8(b"coin_a"));

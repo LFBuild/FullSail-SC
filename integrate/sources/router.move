@@ -14,7 +14,7 @@ module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::route
         data: CalculatedRouterSwapResult,
     }
     
-    public fun swap<T0, T1>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::Pool<T0, T1>, arg2: 0x2::coin::Coin<T0>, arg3: 0x2::coin::Coin<T1>, arg4: bool, arg5: bool, arg6: u64, arg7: u128, arg8: bool, arg9: &0x2::clock::Clock, arg10: &mut 0x2::tx_context::TxContext) : (0x2::coin::Coin<T0>, 0x2::coin::Coin<T1>) {
+    public fun swap<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: 0x2::coin::Coin<T0>, arg3: 0x2::coin::Coin<T1>, arg4: bool, arg5: bool, arg6: u64, arg7: u128, arg8: bool, arg9: &0x2::clock::Clock, arg10: &mut 0x2::tx_context::TxContext) : (0x2::coin::Coin<T0>, 0x2::coin::Coin<T1>) {
         if (arg5 && arg8) {
             let v0 = if (arg4) {
                 0x2::coin::value<T0>(&arg2)
@@ -23,11 +23,11 @@ module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::route
             };
             arg6 = v0;
         };
-        let (v1, v2, v3) = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::flash_swap<T0, T1>(arg0, arg1, arg4, arg5, arg6, arg7, arg9);
+        let (v1, v2, v3) = clmm_pool::pool::flash_swap<T0, T1>(arg0, arg1, arg4, arg5, arg6, arg7, arg9);
         let v4 = v3;
         let v5 = v2;
         let v6 = v1;
-        let v7 = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::swap_pay_amount<T0, T1>(&v4);
+        let v7 = clmm_pool::pool::swap_pay_amount<T0, T1>(&v4);
         let v8 = if (arg4) {
             0x2::balance::value<T1>(&v5)
         } else {
@@ -46,11 +46,11 @@ module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::route
         };
         0x2::coin::join<T0>(&mut arg2, 0x2::coin::from_balance<T0>(v6, arg10));
         0x2::coin::join<T1>(&mut arg3, 0x2::coin::from_balance<T1>(v5, arg10));
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::repay_flash_swap<T0, T1>(arg0, arg1, v9, v10, v4);
+        clmm_pool::pool::repay_flash_swap<T0, T1>(arg0, arg1, v9, v10, v4);
         (arg2, arg3)
     }
     
-    public fun calculate_router_swap_result<T0, T1, T2, T3>(arg0: &mut 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::Pool<T0, T1>, arg1: &mut 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::Pool<T2, T3>, arg2: bool, arg3: bool, arg4: bool, arg5: u64) {
+    public fun calculate_router_swap_result<T0, T1, T2, T3>(arg0: &mut clmm_pool::pool::Pool<T0, T1>, arg1: &mut clmm_pool::pool::Pool<T2, T3>, arg2: bool, arg3: bool, arg4: bool, arg5: u64) {
         if (arg4) {
             let v0 = 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::expect_swap::expect_swap<T0, T1>(arg0, arg2, arg4, arg5);
             let v1 = 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::expect_swap::expect_swap_result_amount_out(&v0);
@@ -91,8 +91,8 @@ module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::route
                         amount_medium         : v4, 
                         amount_out            : v6 as u64, 
                         is_exceed             : v9, 
-                        current_sqrt_price_ab : 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::current_sqrt_price<T0, T1>(arg0), 
-                        current_sqrt_price_cd : 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::current_sqrt_price<T2, T3>(arg1), 
+                        current_sqrt_price_ab : clmm_pool::pool::current_sqrt_price<T0, T1>(arg0), 
+                        current_sqrt_price_cd : clmm_pool::pool::current_sqrt_price<T2, T3>(arg1), 
                         target_sqrt_price_ab  : 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::expect_swap::expect_swap_result_after_sqrt_price(&v0), 
                         target_sqrt_price_cd  : 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::expect_swap::expect_swap_result_after_sqrt_price(&v5),
                     };
@@ -142,8 +142,8 @@ module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::route
                         amount_medium         : v17 + v18, 
                         amount_out            : arg5, 
                         is_exceed             : v23, 
-                        current_sqrt_price_ab : 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::current_sqrt_price<T0, T1>(arg0), 
-                        current_sqrt_price_cd : 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::current_sqrt_price<T2, T3>(arg1), 
+                        current_sqrt_price_ab : clmm_pool::pool::current_sqrt_price<T0, T1>(arg0), 
+                        current_sqrt_price_cd : clmm_pool::pool::current_sqrt_price<T2, T3>(arg1), 
                         target_sqrt_price_ab  : 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::expect_swap::expect_swap_result_after_sqrt_price(&v19), 
                         target_sqrt_price_cd  : 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::expect_swap::expect_swap_result_after_sqrt_price(&v12),
                     };
@@ -158,7 +158,7 @@ module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::route
         assert!(0x2::coin::value<T0>(arg0) >= arg1, 4);
     }
     
-    public fun swap_ab_bc<T0, T1, T2>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::Pool<T0, T1>, arg2: &mut 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::Pool<T1, T2>, arg3: 0x2::coin::Coin<T0>, arg4: 0x2::coin::Coin<T2>, arg5: bool, arg6: u64, arg7: u64, arg8: u128, arg9: u128, arg10: &0x2::clock::Clock, arg11: &mut 0x2::tx_context::TxContext) : (0x2::coin::Coin<T0>, 0x2::coin::Coin<T2>) {
+    public fun swap_ab_bc<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: &mut clmm_pool::pool::Pool<T1, T2>, arg3: 0x2::coin::Coin<T0>, arg4: 0x2::coin::Coin<T2>, arg5: bool, arg6: u64, arg7: u64, arg8: u128, arg9: u128, arg10: &0x2::clock::Clock, arg11: &mut 0x2::tx_context::TxContext) : (0x2::coin::Coin<T0>, 0x2::coin::Coin<T2>) {
         if (arg5) {
             let (v2, v3) = swap<T0, T1>(arg0, arg1, arg3, 0x2::coin::zero<T1>(arg11), true, true, arg6, arg8, false, arg10, arg11);
             let v4 = v3;
@@ -168,16 +168,16 @@ module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::route
             0x2::coin::destroy_zero<T1>(v7);
             (v2, v6)
         } else {
-            let (v8, v9, v10) = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::flash_swap<T1, T2>(arg0, arg2, true, false, arg7, arg9, arg10);
+            let (v8, v9, v10) = clmm_pool::pool::flash_swap<T1, T2>(arg0, arg2, true, false, arg7, arg9, arg10);
             let v11 = v10;
-            let (v12, v13) = swap<T0, T1>(arg0, arg1, arg3, 0x2::coin::from_balance<T1>(v8, arg11), true, false, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::swap_pay_amount<T1, T2>(&v11), arg8, false, arg10, arg11);
-            0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::repay_flash_swap<T1, T2>(arg0, arg2, 0x2::coin::into_balance<T1>(v13), 0x2::balance::zero<T2>(), v11);
+            let (v12, v13) = swap<T0, T1>(arg0, arg1, arg3, 0x2::coin::from_balance<T1>(v8, arg11), true, false, clmm_pool::pool::swap_pay_amount<T1, T2>(&v11), arg8, false, arg10, arg11);
+            clmm_pool::pool::repay_flash_swap<T1, T2>(arg0, arg2, 0x2::coin::into_balance<T1>(v13), 0x2::balance::zero<T2>(), v11);
             0x2::coin::join<T2>(&mut arg4, 0x2::coin::from_balance<T2>(v9, arg11));
             (v12, arg4)
         }
     }
     
-    public fun swap_ab_cb<T0, T1, T2>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::Pool<T0, T1>, arg2: &mut 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::Pool<T2, T1>, arg3: 0x2::coin::Coin<T0>, arg4: 0x2::coin::Coin<T2>, arg5: bool, arg6: u64, arg7: u64, arg8: u128, arg9: u128, arg10: &0x2::clock::Clock, arg11: &mut 0x2::tx_context::TxContext) : (0x2::coin::Coin<T0>, 0x2::coin::Coin<T2>) {
+    public fun swap_ab_cb<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: &mut clmm_pool::pool::Pool<T2, T1>, arg3: 0x2::coin::Coin<T0>, arg4: 0x2::coin::Coin<T2>, arg5: bool, arg6: u64, arg7: u64, arg8: u128, arg9: u128, arg10: &0x2::clock::Clock, arg11: &mut 0x2::tx_context::TxContext) : (0x2::coin::Coin<T0>, 0x2::coin::Coin<T2>) {
         if (arg5) {
             let (v2, v3) = swap<T0, T1>(arg0, arg1, arg3, 0x2::coin::zero<T1>(arg11), true, arg5, arg6, arg8, false, arg10, arg11);
             let v4 = v3;
@@ -187,16 +187,16 @@ module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::route
             0x2::coin::destroy_zero<T1>(v7);
             (v2, v5)
         } else {
-            let (v8, v9, v10) = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::flash_swap<T2, T1>(arg0, arg2, false, false, arg7, arg9, arg10);
+            let (v8, v9, v10) = clmm_pool::pool::flash_swap<T2, T1>(arg0, arg2, false, false, arg7, arg9, arg10);
             let v11 = v10;
-            let (v12, v13) = swap<T0, T1>(arg0, arg1, arg3, 0x2::coin::from_balance<T1>(v9, arg11), true, false, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::swap_pay_amount<T2, T1>(&v11), arg8, false, arg10, arg11);
-            0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::repay_flash_swap<T2, T1>(arg0, arg2, 0x2::balance::zero<T2>(), 0x2::coin::into_balance<T1>(v13), v11);
+            let (v12, v13) = swap<T0, T1>(arg0, arg1, arg3, 0x2::coin::from_balance<T1>(v9, arg11), true, false, clmm_pool::pool::swap_pay_amount<T2, T1>(&v11), arg8, false, arg10, arg11);
+            clmm_pool::pool::repay_flash_swap<T2, T1>(arg0, arg2, 0x2::balance::zero<T2>(), 0x2::coin::into_balance<T1>(v13), v11);
             0x2::coin::join<T2>(&mut arg4, 0x2::coin::from_balance<T2>(v8, arg11));
             (v12, arg4)
         }
     }
     
-    public fun swap_ba_bc<T0, T1, T2>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::Pool<T1, T0>, arg2: &mut 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::Pool<T1, T2>, arg3: 0x2::coin::Coin<T0>, arg4: 0x2::coin::Coin<T2>, arg5: bool, arg6: u64, arg7: u64, arg8: u128, arg9: u128, arg10: &0x2::clock::Clock, arg11: &mut 0x2::tx_context::TxContext) : (0x2::coin::Coin<T0>, 0x2::coin::Coin<T2>) {
+    public fun swap_ba_bc<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T1, T0>, arg2: &mut clmm_pool::pool::Pool<T1, T2>, arg3: 0x2::coin::Coin<T0>, arg4: 0x2::coin::Coin<T2>, arg5: bool, arg6: u64, arg7: u64, arg8: u128, arg9: u128, arg10: &0x2::clock::Clock, arg11: &mut 0x2::tx_context::TxContext) : (0x2::coin::Coin<T0>, 0x2::coin::Coin<T2>) {
         if (arg5) {
             let (v2, v3) = swap<T1, T0>(arg0, arg1, 0x2::coin::zero<T1>(arg11), arg3, false, arg5, arg6, arg8, false, arg10, arg11);
             let v4 = v2;
@@ -206,16 +206,16 @@ module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::route
             0x2::coin::destroy_zero<T1>(v7);
             (v3, v6)
         } else {
-            let (v8, v9, v10) = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::flash_swap<T1, T2>(arg0, arg2, true, false, arg7, arg9, arg10);
+            let (v8, v9, v10) = clmm_pool::pool::flash_swap<T1, T2>(arg0, arg2, true, false, arg7, arg9, arg10);
             let v11 = v10;
-            let (v12, v13) = swap<T1, T0>(arg0, arg1, 0x2::coin::from_balance<T1>(v8, arg11), arg3, false, false, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::swap_pay_amount<T1, T2>(&v11), arg8, false, arg10, arg11);
-            0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::repay_flash_swap<T1, T2>(arg0, arg2, 0x2::coin::into_balance<T1>(v12), 0x2::balance::zero<T2>(), v11);
+            let (v12, v13) = swap<T1, T0>(arg0, arg1, 0x2::coin::from_balance<T1>(v8, arg11), arg3, false, false, clmm_pool::pool::swap_pay_amount<T1, T2>(&v11), arg8, false, arg10, arg11);
+            clmm_pool::pool::repay_flash_swap<T1, T2>(arg0, arg2, 0x2::coin::into_balance<T1>(v12), 0x2::balance::zero<T2>(), v11);
             0x2::coin::join<T2>(&mut arg4, 0x2::coin::from_balance<T2>(v9, arg11));
             (v13, arg4)
         }
     }
     
-    public fun swap_ba_cb<T0, T1, T2>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::Pool<T1, T0>, arg2: &mut 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::Pool<T2, T1>, arg3: 0x2::coin::Coin<T0>, arg4: 0x2::coin::Coin<T2>, arg5: bool, arg6: u64, arg7: u64, arg8: u128, arg9: u128, arg10: &0x2::clock::Clock, arg11: &mut 0x2::tx_context::TxContext) : (0x2::coin::Coin<T0>, 0x2::coin::Coin<T2>) {
+    public fun swap_ba_cb<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T1, T0>, arg2: &mut clmm_pool::pool::Pool<T2, T1>, arg3: 0x2::coin::Coin<T0>, arg4: 0x2::coin::Coin<T2>, arg5: bool, arg6: u64, arg7: u64, arg8: u128, arg9: u128, arg10: &0x2::clock::Clock, arg11: &mut 0x2::tx_context::TxContext) : (0x2::coin::Coin<T0>, 0x2::coin::Coin<T2>) {
         if (arg5) {
             let (v2, v3) = swap<T1, T0>(arg0, arg1, 0x2::coin::zero<T1>(arg11), arg3, false, true, arg6, arg8, false, arg10, arg11);
             let v4 = v2;
@@ -225,10 +225,10 @@ module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::route
             0x2::coin::destroy_zero<T1>(v7);
             (v3, v5)
         } else {
-            let (v8, v9, v10) = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::flash_swap<T2, T1>(arg0, arg2, false, false, arg7, arg9, arg10);
+            let (v8, v9, v10) = clmm_pool::pool::flash_swap<T2, T1>(arg0, arg2, false, false, arg7, arg9, arg10);
             let v11 = v10;
-            let (v12, v13) = swap<T1, T0>(arg0, arg1, 0x2::coin::from_balance<T1>(v9, arg11), arg3, false, false, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::swap_pay_amount<T2, T1>(&v11), arg8, false, arg10, arg11);
-            0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::repay_flash_swap<T2, T1>(arg0, arg2, 0x2::balance::zero<T2>(), 0x2::coin::into_balance<T1>(v12), v11);
+            let (v12, v13) = swap<T1, T0>(arg0, arg1, 0x2::coin::from_balance<T1>(v9, arg11), arg3, false, false, clmm_pool::pool::swap_pay_amount<T2, T1>(&v11), arg8, false, arg10, arg11);
+            clmm_pool::pool::repay_flash_swap<T2, T1>(arg0, arg2, 0x2::balance::zero<T2>(), 0x2::coin::into_balance<T1>(v12), v11);
             0x2::coin::join<T2>(&mut arg4, 0x2::coin::from_balance<T2>(v8, arg11));
             (v13, arg4)
         }

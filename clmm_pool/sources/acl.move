@@ -1,4 +1,4 @@
-module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::acl {
+module clmm_pool::acl {
     struct ACL has store {
         permissions: 0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::linked_table::LinkedTable<address, u128>,
     }

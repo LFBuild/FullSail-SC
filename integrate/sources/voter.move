@@ -30,7 +30,7 @@ module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::voter
         0x2::transfer::public_transfer<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::notify_reward_cap::NotifyRewardCap>(v2, 0x2::tx_context::sender(arg1));
     }
     
-    public entry fun create_gauge<T0, T1, T2>(arg0: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter::Voter<T2>, arg1: &0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784::gauge_cap::CreateCap, arg2: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::GovernorCap, arg3: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::VotingEscrow<T2>, arg4: &mut 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::Pool<T0, T1>, arg5: &0x2::clock::Clock, arg6: &mut 0x2::tx_context::TxContext) {
+    public entry fun create_gauge<T0, T1, T2>(arg0: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter::Voter<T2>, arg1: &0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784::gauge_cap::CreateCap, arg2: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::GovernorCap, arg3: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::VotingEscrow<T2>, arg4: &mut clmm_pool::pool::Pool<T0, T1>, arg5: &0x2::clock::Clock, arg6: &mut 0x2::tx_context::TxContext) {
         0x2::transfer::public_share_object<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::gauge::Gauge<T0, T1, T2>>(0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter::create_gauge<T0, T1, T2>(arg0, arg1, arg2, arg3, arg4, arg5, arg6));
     }
     
@@ -138,11 +138,11 @@ module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::voter
         v2
     }
     
-    public entry fun distribute<T0, T1, T2>(arg0: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::minter::Minter<T2>, arg1: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter::Voter<T2>, arg2: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::VotingEscrow<T2>, arg3: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::reward_distributor::RewardDistributor<T2>, arg4: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::gauge::Gauge<T0, T1, T2>, arg5: &mut 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::Pool<T0, T1>, arg6: &0x2::clock::Clock, arg7: &mut 0x2::tx_context::TxContext) {
+    public entry fun distribute<T0, T1, T2>(arg0: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::minter::Minter<T2>, arg1: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter::Voter<T2>, arg2: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::VotingEscrow<T2>, arg3: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::reward_distributor::RewardDistributor<T2>, arg4: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::gauge::Gauge<T0, T1, T2>, arg5: &mut clmm_pool::pool::Pool<T0, T1>, arg6: &0x2::clock::Clock, arg7: &mut 0x2::tx_context::TxContext) {
         if (0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::minter::active_period<T2>(arg0) + 604800 < 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::current_timestamp(arg6)) {
             0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::minter::update_period<T2>(arg0, arg1, arg2, arg3, arg6, arg7);
         };
-        assert!(0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::gauge::pool_id<T0, T1, T2>(arg4) == 0x2::object::id<0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::Pool<T0, T1>>(arg5), 9223373041877123071);
+        assert!(0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::gauge::pool_id<T0, T1, T2>(arg4) == 0x2::object::id<clmm_pool::pool::Pool<T0, T1>>(arg5), 9223373041877123071);
         let v0 = EventDistributeReward{
             sender : 0x2::tx_context::sender(arg7), 
             gauge  : 0x2::object::id<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::gauge::Gauge<T0, T1, T2>>(arg4), 

@@ -1,4 +1,4 @@
-module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::clmm_math {
+module clmm_pool::clmm_math {
     public fun compute_swap_step(arg0: u128, arg1: u128, arg2: u128, arg3: u64, arg4: u64, arg5: bool, arg6: bool) : (u64, u64, u128, u64) {
         if (arg2 == 0) {
             return (0, 0, arg1, 0)
@@ -48,12 +48,12 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::clmm_
             return (0, 0)
         };
         if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::lt(arg2, arg0)) {
-            (get_delta_a(0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::get_sqrt_price_at_tick(arg0), 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::get_sqrt_price_at_tick(arg1), arg4, arg5), 0)
+            (get_delta_a(clmm_pool::tick_math::get_sqrt_price_at_tick(arg0), clmm_pool::tick_math::get_sqrt_price_at_tick(arg1), arg4, arg5), 0)
         } else {
             let (v2, v3) = if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::lt(arg2, arg1)) {
-                (get_delta_a(arg3, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::get_sqrt_price_at_tick(arg1), arg4, arg5), get_delta_b(0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::get_sqrt_price_at_tick(arg0), arg3, arg4, arg5))
+                (get_delta_a(arg3, clmm_pool::tick_math::get_sqrt_price_at_tick(arg1), arg4, arg5), get_delta_b(clmm_pool::tick_math::get_sqrt_price_at_tick(arg0), arg3, arg4, arg5))
             } else {
-                (0, get_delta_b(0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::get_sqrt_price_at_tick(arg0), 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::get_sqrt_price_at_tick(arg1), arg4, arg5))
+                (0, get_delta_b(clmm_pool::tick_math::get_sqrt_price_at_tick(arg0), clmm_pool::tick_math::get_sqrt_price_at_tick(arg1), arg4, arg5))
             };
             (v2, v3)
         }
@@ -140,20 +140,20 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::clmm_
     public fun get_liquidity_by_amount(arg0: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg1: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg2: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg3: u128, arg4: u64, arg5: bool) : (u128, u64, u64) {
         if (arg5) {
             let (v3, v4) = if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::lt(arg2, arg0)) {
-                (get_liquidity_from_a(0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::get_sqrt_price_at_tick(arg0), 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::get_sqrt_price_at_tick(arg1), arg4, false), 0)
+                (get_liquidity_from_a(clmm_pool::tick_math::get_sqrt_price_at_tick(arg0), clmm_pool::tick_math::get_sqrt_price_at_tick(arg1), arg4, false), 0)
             } else {
                 assert!(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::lt(arg2, arg1), 3018);
-                let v5 = get_liquidity_from_a(arg3, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::get_sqrt_price_at_tick(arg1), arg4, false);
-                (v5, get_delta_b(arg3, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::get_sqrt_price_at_tick(arg0), v5, true))
+                let v5 = get_liquidity_from_a(arg3, clmm_pool::tick_math::get_sqrt_price_at_tick(arg1), arg4, false);
+                (v5, get_delta_b(arg3, clmm_pool::tick_math::get_sqrt_price_at_tick(arg0), v5, true))
             };
             (v3, arg4, v4)
         } else {
             let (v6, v7) = if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::gte(arg2, arg1)) {
-                (get_liquidity_from_b(0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::get_sqrt_price_at_tick(arg0), 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::get_sqrt_price_at_tick(arg1), arg4, false), 0)
+                (get_liquidity_from_b(clmm_pool::tick_math::get_sqrt_price_at_tick(arg0), clmm_pool::tick_math::get_sqrt_price_at_tick(arg1), arg4, false), 0)
             } else {
                 assert!(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::gte(arg2, arg0), 3018);
-                let v8 = get_liquidity_from_b(0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::get_sqrt_price_at_tick(arg0), arg3, arg4, false);
-                (v8, get_delta_a(arg3, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::get_sqrt_price_at_tick(arg1), v8, true))
+                let v8 = get_liquidity_from_b(clmm_pool::tick_math::get_sqrt_price_at_tick(arg0), arg3, arg4, false);
+                (v8, get_delta_a(arg3, clmm_pool::tick_math::get_sqrt_price_at_tick(arg1), v8, true))
             };
             (v6, v7, arg4)
         }
@@ -190,10 +190,10 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::clmm_
         } else {
             0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u256::div_round(v0, ((arg1 as u256) << 64) - 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u128::full_mul(arg0, arg2 as u128), true) as u128
         };
-        if (v2 > 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::max_sqrt_price()) {
+        if (v2 > clmm_pool::tick_math::max_sqrt_price()) {
             abort 0
         };
-        if (v2 < 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::min_sqrt_price()) {
+        if (v2 < clmm_pool::tick_math::min_sqrt_price()) {
             abort 1
         };
         v2
@@ -205,10 +205,10 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::clmm_
         } else {
             arg0 - 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::checked_div_round((arg2 as u128) << 64, arg1, !arg3)
         };
-        if (v0 > 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::max_sqrt_price()) {
+        if (v0 > clmm_pool::tick_math::max_sqrt_price()) {
             abort 0
         };
-        if (v0 < 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::min_sqrt_price()) {
+        if (v0 < clmm_pool::tick_math::min_sqrt_price()) {
             abort 1
         };
         v0

@@ -1,4 +1,4 @@
-module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::factory {
+module clmm_pool::factory {
     struct FACTORY has drop {
         dummy_field: bool,
     }
@@ -32,18 +32,18 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::facto
         (arg0.coin_type_a, arg0.coin_type_b)
     }
     
-    public fun create_pool<T0, T1>(arg0: &mut Pools, arg1: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg2: u32, arg3: u128, arg4: 0x1::string::String, arg5: &0x2::clock::Clock, arg6: &mut 0x2::tx_context::TxContext) {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::checked_package_version(arg1);
-        0x2::transfer::public_share_object<0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::Pool<T0, T1>>(create_pool_internal<T0, T1>(arg0, arg1, arg2, arg3, arg4, arg5, arg6));
+    public fun create_pool<T0, T1>(arg0: &mut Pools, arg1: &clmm_pool::config::GlobalConfig, arg2: u32, arg3: u128, arg4: 0x1::string::String, arg5: &0x2::clock::Clock, arg6: &mut 0x2::tx_context::TxContext) {
+        clmm_pool::config::checked_package_version(arg1);
+        0x2::transfer::public_share_object<clmm_pool::pool::Pool<T0, T1>>(create_pool_internal<T0, T1>(arg0, arg1, arg2, arg3, arg4, arg5, arg6));
     }
     
-    public fun create_pool_<T0, T1>(arg0: &mut Pools, arg1: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg2: u32, arg3: u128, arg4: 0x1::string::String, arg5: &0x2::clock::Clock, arg6: &mut 0x2::tx_context::TxContext) : 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::Pool<T0, T1> {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::checked_package_version(arg1);
+    public fun create_pool_<T0, T1>(arg0: &mut Pools, arg1: &clmm_pool::config::GlobalConfig, arg2: u32, arg3: u128, arg4: 0x1::string::String, arg5: &0x2::clock::Clock, arg6: &mut 0x2::tx_context::TxContext) : clmm_pool::pool::Pool<T0, T1> {
+        clmm_pool::config::checked_package_version(arg1);
         create_pool_internal<T0, T1>(arg0, arg1, arg2, arg3, arg4, arg5, arg6)
     }
     
-    fun create_pool_internal<T0, T1>(arg0: &mut Pools, arg1: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg2: u32, arg3: u128, arg4: 0x1::string::String, arg5: &0x2::clock::Clock, arg6: &mut 0x2::tx_context::TxContext) : 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::Pool<T0, T1> {
-        assert!(arg3 >= 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::min_sqrt_price() && arg3 <= 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::max_sqrt_price(), 2);
+    fun create_pool_internal<T0, T1>(arg0: &mut Pools, arg1: &clmm_pool::config::GlobalConfig, arg2: u32, arg3: u128, arg4: 0x1::string::String, arg5: &0x2::clock::Clock, arg6: &mut 0x2::tx_context::TxContext) : clmm_pool::pool::Pool<T0, T1> {
+        assert!(arg3 >= clmm_pool::tick_math::min_sqrt_price() && arg3 <= clmm_pool::tick_math::max_sqrt_price(), 2);
         let v0 = 0x1::type_name::get<T0>();
         let v1 = 0x1::type_name::get<T1>();
         assert!(v0 != v1, 3);
@@ -56,9 +56,9 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::facto
         } else {
             arg4
         };
-        let v4 = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::new<T0, T1>(arg2, arg3, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::get_fee_rate(arg2, arg1), v3, arg0.index, arg5, arg6);
+        let v4 = clmm_pool::pool::new<T0, T1>(arg2, arg3, clmm_pool::config::get_fee_rate(arg2, arg1), v3, arg0.index, arg5, arg6);
         arg0.index = arg0.index + 1;
-        let v5 = 0x2::object::id<0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::Pool<T0, T1>>(&v4);
+        let v5 = 0x2::object::id<clmm_pool::pool::Pool<T0, T1>>(&v4);
         let v6 = PoolSimpleInfo{
             pool_id      : v5, 
             pool_key     : v2, 
@@ -77,24 +77,24 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::facto
         v4
     }
     
-    public fun create_pool_with_liquidity<T0, T1>(arg0: &mut Pools, arg1: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg2: u32, arg3: u128, arg4: 0x1::string::String, arg5: u32, arg6: u32, arg7: 0x2::coin::Coin<T0>, arg8: 0x2::coin::Coin<T1>, arg9: u64, arg10: u64, arg11: bool, arg12: &0x2::clock::Clock, arg13: &mut 0x2::tx_context::TxContext) : (0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::Position, 0x2::coin::Coin<T0>, 0x2::coin::Coin<T1>) {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::checked_package_version(arg1);
+    public fun create_pool_with_liquidity<T0, T1>(arg0: &mut Pools, arg1: &clmm_pool::config::GlobalConfig, arg2: u32, arg3: u128, arg4: 0x1::string::String, arg5: u32, arg6: u32, arg7: 0x2::coin::Coin<T0>, arg8: 0x2::coin::Coin<T1>, arg9: u64, arg10: u64, arg11: bool, arg12: &0x2::clock::Clock, arg13: &mut 0x2::tx_context::TxContext) : (clmm_pool::position::Position, 0x2::coin::Coin<T0>, 0x2::coin::Coin<T1>) {
+        clmm_pool::config::checked_package_version(arg1);
         let v0 = create_pool_internal<T0, T1>(arg0, arg1, arg2, arg3, arg4, arg12, arg13);
-        let v1 = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::open_position<T0, T1>(arg1, &mut v0, arg5, arg6, arg13);
+        let v1 = clmm_pool::pool::open_position<T0, T1>(arg1, &mut v0, arg5, arg6, arg13);
         let v2 = if (arg11) {
             arg9
         } else {
             arg10
         };
-        let v3 = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::add_liquidity_fix_coin<T0, T1>(arg1, &mut v0, &mut v1, v2, arg11, arg12, arg13);
-        let (v4, v5) = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::add_liquidity_pay_amount<T0, T1>(&v3);
+        let v3 = clmm_pool::pool::add_liquidity_fix_coin<T0, T1>(arg1, &mut v0, &mut v1, v2, arg11, arg12, arg13);
+        let (v4, v5) = clmm_pool::pool::add_liquidity_pay_amount<T0, T1>(&v3);
         if (arg11) {
             assert!(v5 <= arg10, 4);
         } else {
             assert!(v4 <= arg9, 5);
         };
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::repay_add_liquidity<T0, T1>(arg1, &mut v0, 0x2::coin::into_balance<T0>(0x2::coin::split<T0>(&mut arg7, v4, arg13)), 0x2::coin::into_balance<T1>(0x2::coin::split<T1>(&mut arg8, v5, arg13)), v3);
-        0x2::transfer::public_share_object<0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::Pool<T0, T1>>(v0);
+        clmm_pool::pool::repay_add_liquidity<T0, T1>(arg1, &mut v0, 0x2::coin::into_balance<T0>(0x2::coin::split<T0>(&mut arg7, v4, arg13)), 0x2::coin::into_balance<T1>(0x2::coin::split<T1>(&mut arg8, v5, arg13)), v3);
+        0x2::transfer::public_share_object<clmm_pool::pool::Pool<T0, T1>>(v0);
         (v1, arg7, arg8)
     }
     

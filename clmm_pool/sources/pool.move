@@ -1,4 +1,4 @@
-module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool {
+module clmm_pool::pool {
     struct POOL has drop {
         dummy_field: bool,
     }
@@ -16,9 +16,9 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
         fee_growth_global_b: u128,
         fee_protocol_coin_a: u64,
         fee_protocol_coin_b: u64,
-        tick_manager: 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::TickManager,
-        rewarder_manager: 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::rewarder::RewarderManager,
-        position_manager: 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::PositionManager,
+        tick_manager: clmm_pool::tick::TickManager,
+        rewarder_manager: clmm_pool::rewarder::RewarderManager,
+        position_manager: clmm_pool::position::PositionManager,
         is_pause: bool,
         index: u64,
         url: 0x1::string::String,
@@ -201,18 +201,18 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
             fee_rate                            : arg2, 
             liquidity                           : 0, 
             current_sqrt_price                  : arg1, 
-            current_tick_index                  : 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::get_tick_at_sqrt_price(arg1), 
+            current_tick_index                  : clmm_pool::tick_math::get_tick_at_sqrt_price(arg1), 
             fee_growth_global_a                 : 0, 
             fee_growth_global_b                 : 0, 
             fee_protocol_coin_a                 : 0, 
             fee_protocol_coin_b                 : 0, 
-            tick_manager                        : 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::new(arg0, 0x2::clock::timestamp_ms(arg5), arg6), 
-            rewarder_manager                    : 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::rewarder::new(), 
-            position_manager                    : 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::new(arg0, arg6), 
+            tick_manager                        : clmm_pool::tick::new(arg0, 0x2::clock::timestamp_ms(arg5), arg6), 
+            rewarder_manager                    : clmm_pool::rewarder::new(), 
+            position_manager                    : clmm_pool::position::new(arg0, arg6), 
             is_pause                            : false, 
             index                               : arg4, 
             url                                 : arg3, 
-            unstaked_liquidity_fee_rate         : 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::default_unstaked_fee_rate(), 
+            unstaked_liquidity_fee_rate         : clmm_pool::config::default_unstaked_fee_rate(), 
             magma_distribution_gauger_id        : 0x1::option::none<0x2::object::ID>(), 
             magma_distribution_growth_global    : 0, 
             magma_distribution_rate             : 0, 
@@ -230,12 +230,12 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
             return (0, 0)
         };
         if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::lt(arg2, arg0)) {
-            (0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::clmm_math::get_delta_a(0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::get_sqrt_price_at_tick(arg0), 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::get_sqrt_price_at_tick(arg1), arg4, arg5), 0)
+            (clmm_pool::clmm_math::get_delta_a(clmm_pool::tick_math::get_sqrt_price_at_tick(arg0), clmm_pool::tick_math::get_sqrt_price_at_tick(arg1), arg4, arg5), 0)
         } else {
             let (v2, v3) = if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::lt(arg2, arg1)) {
-                (0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::clmm_math::get_delta_a(arg3, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::get_sqrt_price_at_tick(arg1), arg4, arg5), 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::clmm_math::get_delta_b(0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::get_sqrt_price_at_tick(arg0), arg3, arg4, arg5))
+                (clmm_pool::clmm_math::get_delta_a(arg3, clmm_pool::tick_math::get_sqrt_price_at_tick(arg1), arg4, arg5), clmm_pool::clmm_math::get_delta_b(clmm_pool::tick_math::get_sqrt_price_at_tick(arg0), arg3, arg4, arg5))
             } else {
-                (0, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::clmm_math::get_delta_b(0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::get_sqrt_price_at_tick(arg0), 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::get_sqrt_price_at_tick(arg1), arg4, arg5))
+                (0, clmm_pool::clmm_math::get_delta_b(clmm_pool::tick_math::get_sqrt_price_at_tick(arg0), clmm_pool::tick_math::get_sqrt_price_at_tick(arg1), arg4, arg5))
             };
             (v2, v3)
         }
@@ -245,27 +245,27 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
         arg0.unstaked_liquidity_fee_rate
     }
     
-    public fun borrow_position_info<T0, T1>(arg0: &Pool<T0, T1>, arg1: 0x2::object::ID) : &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::PositionInfo {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::borrow_position_info(&arg0.position_manager, arg1)
+    public fun borrow_position_info<T0, T1>(arg0: &Pool<T0, T1>, arg1: 0x2::object::ID) : &clmm_pool::position::PositionInfo {
+        clmm_pool::position::borrow_position_info(&arg0.position_manager, arg1)
     }
     
-    public fun close_position<T0, T1>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::Position) {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::checked_package_version(arg0);
+    public fun close_position<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: clmm_pool::position::Position) {
+        clmm_pool::config::checked_package_version(arg0);
         assert!(!arg1.is_pause, 13);
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::close_position(&mut arg1.position_manager, arg2);
+        clmm_pool::position::close_position(&mut arg1.position_manager, arg2);
         let v0 = ClosePositionEvent{
             pool     : 0x2::object::id<Pool<T0, T1>>(arg1), 
-            position : 0x2::object::id<0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::Position>(&arg2),
+            position : 0x2::object::id<clmm_pool::position::Position>(&arg2),
         };
         0x2::event::emit<ClosePositionEvent>(v0);
     }
     
-    public fun fetch_positions<T0, T1>(arg0: &Pool<T0, T1>, arg1: vector<0x2::object::ID>, arg2: u64) : vector<0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::PositionInfo> {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::fetch_positions(&arg0.position_manager, arg1, arg2)
+    public fun fetch_positions<T0, T1>(arg0: &Pool<T0, T1>, arg1: vector<0x2::object::ID>, arg2: u64) : vector<clmm_pool::position::PositionInfo> {
+        clmm_pool::position::fetch_positions(&arg0.position_manager, arg1, arg2)
     }
     
     public fun is_position_exist<T0, T1>(arg0: &Pool<T0, T1>, arg1: 0x2::object::ID) : bool {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::is_position_exist(&arg0.position_manager, arg1)
+        clmm_pool::position::is_position_exist(&arg0.position_manager, arg1)
     }
     
     public fun liquidity<T0, T1>(arg0: &Pool<T0, T1>) : u128 {
@@ -275,31 +275,31 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
     public fun mark_position_staked<T0, T1>(arg0: &mut Pool<T0, T1>, arg1: &0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784::gauge_cap::GaugeCap, arg2: 0x2::object::ID) {
         assert!(!arg0.is_pause, 13);
         check_gauge_cap<T0, T1>(arg0, arg1);
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::mark_position_staked(&mut arg0.position_manager, arg2, true);
+        clmm_pool::position::mark_position_staked(&mut arg0.position_manager, arg2, true);
     }
     
-    public fun open_position<T0, T1>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: u32, arg3: u32, arg4: &mut 0x2::tx_context::TxContext) : 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::Position {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::checked_package_version(arg0);
+    public fun open_position<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: u32, arg3: u32, arg4: &mut 0x2::tx_context::TxContext) : clmm_pool::position::Position {
+        clmm_pool::config::checked_package_version(arg0);
         assert!(!arg1.is_pause, 13);
         let v0 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::from_u32(arg2);
         let v1 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::from_u32(arg3);
         let v2 = 0x2::object::id<Pool<T0, T1>>(arg1);
-        let v3 = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::open_position<T0, T1>(&mut arg1.position_manager, v2, arg1.index, arg1.url, v0, v1, arg4);
+        let v3 = clmm_pool::position::open_position<T0, T1>(&mut arg1.position_manager, v2, arg1.index, arg1.url, v0, v1, arg4);
         let v4 = OpenPositionEvent{
             pool       : v2, 
             tick_lower : v0, 
             tick_upper : v1, 
-            position   : 0x2::object::id<0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::Position>(&v3),
+            position   : 0x2::object::id<clmm_pool::position::Position>(&v3),
         };
         0x2::event::emit<OpenPositionEvent>(v4);
         v3
     }
     
-    public fun update_emission<T0, T1, T2>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::rewarder::RewarderGlobalVault, arg3: u128, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::checked_package_version(arg0);
+    public fun update_emission<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: &clmm_pool::rewarder::RewarderGlobalVault, arg3: u128, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
+        clmm_pool::config::checked_package_version(arg0);
         assert!(!arg1.is_pause, 13);
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::check_rewarder_manager_role(arg0, 0x2::tx_context::sender(arg5));
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::rewarder::update_emission<T2>(arg2, &mut arg1.rewarder_manager, arg1.liquidity, arg3, 0x2::clock::timestamp_ms(arg4) / 1000);
+        clmm_pool::config::check_rewarder_manager_role(arg0, 0x2::tx_context::sender(arg5));
+        clmm_pool::rewarder::update_emission<T2>(arg2, &mut arg1.rewarder_manager, arg1.liquidity, arg3, 0x2::clock::timestamp_ms(arg4) / 1000);
         let v0 = UpdateEmissionEvent{
             pool                 : 0x2::object::id<Pool<T0, T1>>(arg1), 
             rewarder_type        : 0x1::type_name::get<T2>(), 
@@ -308,55 +308,55 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
         0x2::event::emit<UpdateEmissionEvent>(v0);
     }
     
-    public fun borrow_tick<T0, T1>(arg0: &Pool<T0, T1>, arg1: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32) : &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::Tick {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::borrow_tick(&arg0.tick_manager, arg1)
+    public fun borrow_tick<T0, T1>(arg0: &Pool<T0, T1>, arg1: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32) : &clmm_pool::tick::Tick {
+        clmm_pool::tick::borrow_tick(&arg0.tick_manager, arg1)
     }
     
-    public fun fetch_ticks<T0, T1>(arg0: &Pool<T0, T1>, arg1: vector<u32>, arg2: u64) : vector<0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::Tick> {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::fetch_ticks(&arg0.tick_manager, arg1, arg2)
+    public fun fetch_ticks<T0, T1>(arg0: &Pool<T0, T1>, arg1: vector<u32>, arg2: u64) : vector<clmm_pool::tick::Tick> {
+        clmm_pool::tick::fetch_ticks(&arg0.tick_manager, arg1, arg2)
     }
     
     public fun index<T0, T1>(arg0: &Pool<T0, T1>) : u64 {
         arg0.index
     }
     
-    public fun add_liquidity<T0, T1>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: &mut 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::Position, arg3: u128, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) : AddLiquidityReceipt<T0, T1> {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::checked_package_version(arg0);
+    public fun add_liquidity<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: &mut clmm_pool::position::Position, arg3: u128, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) : AddLiquidityReceipt<T0, T1> {
+        clmm_pool::config::checked_package_version(arg0);
         assert!(arg3 != 0, 3);
         add_liquidity_internal<T0, T1>(arg1, arg2, false, arg3, 0, false, 0x2::clock::timestamp_ms(arg4) / 1000)
     }
     
-    public fun add_liquidity_fix_coin<T0, T1>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: &mut 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::Position, arg3: u64, arg4: bool, arg5: &0x2::clock::Clock, arg6: &mut 0x2::tx_context::TxContext) : AddLiquidityReceipt<T0, T1> {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::checked_package_version(arg0);
+    public fun add_liquidity_fix_coin<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: &mut clmm_pool::position::Position, arg3: u64, arg4: bool, arg5: &0x2::clock::Clock, arg6: &mut 0x2::tx_context::TxContext) : AddLiquidityReceipt<T0, T1> {
+        clmm_pool::config::checked_package_version(arg0);
         assert!(arg3 > 0, 0);
         add_liquidity_internal<T0, T1>(arg1, arg2, true, 0, arg3, arg4, 0x2::clock::timestamp_ms(arg5) / 1000)
     }
     
-    fun add_liquidity_internal<T0, T1>(arg0: &mut Pool<T0, T1>, arg1: &mut 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::Position, arg2: bool, arg3: u128, arg4: u64, arg5: bool, arg6: u64) : AddLiquidityReceipt<T0, T1> {
+    fun add_liquidity_internal<T0, T1>(arg0: &mut Pool<T0, T1>, arg1: &mut clmm_pool::position::Position, arg2: bool, arg3: u128, arg4: u64, arg5: bool, arg6: u64) : AddLiquidityReceipt<T0, T1> {
         assert!(!arg0.is_pause, 13);
         validate_pool_position<T0, T1>(arg0, arg1);
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::rewarder::settle(&mut arg0.rewarder_manager, arg0.liquidity, arg6);
-        let (v0, v1) = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::tick_range(arg1);
+        clmm_pool::rewarder::settle(&mut arg0.rewarder_manager, arg0.liquidity, arg6);
+        let (v0, v1) = clmm_pool::position::tick_range(arg1);
         let (v2, v3, v4) = if (arg2) {
-            let (v5, v6, v7) = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::clmm_math::get_liquidity_by_amount(v0, v1, arg0.current_tick_index, arg0.current_sqrt_price, arg4, arg5);
+            let (v5, v6, v7) = clmm_pool::clmm_math::get_liquidity_by_amount(v0, v1, arg0.current_tick_index, arg0.current_sqrt_price, arg4, arg5);
             (v5, v6, v7)
         } else {
-            let (v8, v9) = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::clmm_math::get_amount_by_liquidity(v0, v1, arg0.current_tick_index, arg0.current_sqrt_price, arg3, true);
+            let (v8, v9) = clmm_pool::clmm_math::get_amount_by_liquidity(v0, v1, arg0.current_tick_index, arg0.current_sqrt_price, arg3, true);
             (arg3, v8, v9)
         };
         let (v10, v11, v12, v13, v14) = get_all_growths_in_tick_range<T0, T1>(arg0, v0, v1);
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::increase_liquidity(&mut arg0.tick_manager, arg0.current_tick_index, v0, v1, v2, arg0.fee_growth_global_a, arg0.fee_growth_global_b, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::rewarder::points_growth_global(&arg0.rewarder_manager), 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::rewarder::rewards_growth_global(&arg0.rewarder_manager), arg0.magma_distribution_growth_global);
+        clmm_pool::tick::increase_liquidity(&mut arg0.tick_manager, arg0.current_tick_index, v0, v1, v2, arg0.fee_growth_global_a, arg0.fee_growth_global_b, clmm_pool::rewarder::points_growth_global(&arg0.rewarder_manager), clmm_pool::rewarder::rewards_growth_global(&arg0.rewarder_manager), arg0.magma_distribution_growth_global);
         if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::gte(arg0.current_tick_index, v0) && 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::lt(arg0.current_tick_index, v1)) {
             assert!(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::add_check(arg0.liquidity, v2), 1);
             arg0.liquidity = arg0.liquidity + v2;
         };
         let v15 = AddLiquidityEvent{
             pool            : 0x2::object::id<Pool<T0, T1>>(arg0), 
-            position        : 0x2::object::id<0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::Position>(arg1), 
+            position        : 0x2::object::id<clmm_pool::position::Position>(arg1), 
             tick_lower      : v0, 
             tick_upper      : v1, 
             liquidity       : arg3, 
-            after_liquidity : 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::increase_liquidity(&mut arg0.position_manager, arg1, v2, v10, v11, v13, v12, v14), 
+            after_liquidity : clmm_pool::position::increase_liquidity(&mut arg0.position_manager, arg1, v2, v10, v11, v13, v12, v14), 
             amount_a        : v3, 
             amount_b        : v4,
         };
@@ -381,63 +381,63 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
         (0x2::balance::value<T0>(&arg0.coin_a), 0x2::balance::value<T1>(&arg0.coin_b))
     }
     
-    public fun calculate_and_update_fee<T0, T1>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: 0x2::object::ID) : (u64, u64) {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::checked_package_version(arg0);
+    public fun calculate_and_update_fee<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: 0x2::object::ID) : (u64, u64) {
+        clmm_pool::config::checked_package_version(arg0);
         assert!(!arg1.is_pause, 13);
-        let v0 = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::borrow_position_info(&arg1.position_manager, arg2);
-        if (0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::info_liquidity(v0) != 0) {
-            let (v3, v4) = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::info_tick_range(v0);
+        let v0 = clmm_pool::position::borrow_position_info(&arg1.position_manager, arg2);
+        if (clmm_pool::position::info_liquidity(v0) != 0) {
+            let (v3, v4) = clmm_pool::position::info_tick_range(v0);
             let (v5, v6) = get_fee_in_tick_range<T0, T1>(arg1, v3, v4);
-            let (v7, v8) = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::update_fee(&mut arg1.position_manager, arg2, v5, v6);
+            let (v7, v8) = clmm_pool::position::update_fee(&mut arg1.position_manager, arg2, v5, v6);
             (v7, v8)
         } else {
-            let (v9, v10) = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::info_fee_owned(v0);
+            let (v9, v10) = clmm_pool::position::info_fee_owned(v0);
             (v9, v10)
         }
     }
     
-    public fun calculate_and_update_magma_distribution<T0, T1>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: 0x2::object::ID) : u64 {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::checked_package_version(arg0);
+    public fun calculate_and_update_magma_distribution<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: 0x2::object::ID) : u64 {
+        clmm_pool::config::checked_package_version(arg0);
         assert!(!arg1.is_pause, 13);
-        let v0 = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::borrow_position_info(&arg1.position_manager, arg2);
-        if (0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::info_liquidity(v0) != 0) {
-            let (v2, v3) = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::info_tick_range(v0);
-            0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::update_magma_distribution(&mut arg1.position_manager, arg2, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::get_magma_distribution_growth_in_range(arg1.current_tick_index, arg1.magma_distribution_growth_global, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::try_borrow_tick(&arg1.tick_manager, v2), 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::try_borrow_tick(&arg1.tick_manager, v3)))
+        let v0 = clmm_pool::position::borrow_position_info(&arg1.position_manager, arg2);
+        if (clmm_pool::position::info_liquidity(v0) != 0) {
+            let (v2, v3) = clmm_pool::position::info_tick_range(v0);
+            clmm_pool::position::update_magma_distribution(&mut arg1.position_manager, arg2, clmm_pool::tick::get_magma_distribution_growth_in_range(arg1.current_tick_index, arg1.magma_distribution_growth_global, clmm_pool::tick::try_borrow_tick(&arg1.tick_manager, v2), clmm_pool::tick::try_borrow_tick(&arg1.tick_manager, v3)))
         } else {
-            0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::info_magma_distribution_owned(v0)
+            clmm_pool::position::info_magma_distribution_owned(v0)
         }
     }
     
-    public fun calculate_and_update_points<T0, T1>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: 0x2::object::ID, arg3: &0x2::clock::Clock) : u128 {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::checked_package_version(arg0);
+    public fun calculate_and_update_points<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: 0x2::object::ID, arg3: &0x2::clock::Clock) : u128 {
+        clmm_pool::config::checked_package_version(arg0);
         assert!(!arg1.is_pause, 13);
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::rewarder::settle(&mut arg1.rewarder_manager, arg1.liquidity, 0x2::clock::timestamp_ms(arg3) / 1000);
-        let v0 = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::borrow_position_info(&arg1.position_manager, arg2);
-        if (0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::info_liquidity(v0) != 0) {
-            let (v2, v3) = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::info_tick_range(v0);
-            0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::update_points(&mut arg1.position_manager, arg2, get_points_in_tick_range<T0, T1>(arg1, v2, v3))
+        clmm_pool::rewarder::settle(&mut arg1.rewarder_manager, arg1.liquidity, 0x2::clock::timestamp_ms(arg3) / 1000);
+        let v0 = clmm_pool::position::borrow_position_info(&arg1.position_manager, arg2);
+        if (clmm_pool::position::info_liquidity(v0) != 0) {
+            let (v2, v3) = clmm_pool::position::info_tick_range(v0);
+            clmm_pool::position::update_points(&mut arg1.position_manager, arg2, get_points_in_tick_range<T0, T1>(arg1, v2, v3))
         } else {
-            0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::info_points_owned(0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::borrow_position_info(&arg1.position_manager, arg2))
+            clmm_pool::position::info_points_owned(clmm_pool::position::borrow_position_info(&arg1.position_manager, arg2))
         }
     }
     
-    public fun calculate_and_update_reward<T0, T1, T2>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: 0x2::object::ID, arg3: &0x2::clock::Clock) : u64 {
-        let v0 = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::rewarder::rewarder_index<T2>(&arg1.rewarder_manager);
+    public fun calculate_and_update_reward<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: 0x2::object::ID, arg3: &0x2::clock::Clock) : u64 {
+        let v0 = clmm_pool::rewarder::rewarder_index<T2>(&arg1.rewarder_manager);
         assert!(0x1::option::is_some<u64>(&v0), 17);
         let v1 = calculate_and_update_rewards<T0, T1>(arg0, arg1, arg2, arg3);
         *0x1::vector::borrow<u64>(&v1, 0x1::option::extract<u64>(&mut v0))
     }
     
-    public fun calculate_and_update_rewards<T0, T1>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: 0x2::object::ID, arg3: &0x2::clock::Clock) : vector<u64> {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::checked_package_version(arg0);
+    public fun calculate_and_update_rewards<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: 0x2::object::ID, arg3: &0x2::clock::Clock) : vector<u64> {
+        clmm_pool::config::checked_package_version(arg0);
         assert!(!arg1.is_pause, 13);
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::rewarder::settle(&mut arg1.rewarder_manager, arg1.liquidity, 0x2::clock::timestamp_ms(arg3) / 1000);
-        let v0 = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::borrow_position_info(&arg1.position_manager, arg2);
-        if (0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::info_liquidity(v0) != 0) {
-            let (v2, v3) = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::info_tick_range(v0);
-            0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::update_rewards(&mut arg1.position_manager, arg2, get_rewards_in_tick_range<T0, T1>(arg1, v2, v3))
+        clmm_pool::rewarder::settle(&mut arg1.rewarder_manager, arg1.liquidity, 0x2::clock::timestamp_ms(arg3) / 1000);
+        let v0 = clmm_pool::position::borrow_position_info(&arg1.position_manager, arg2);
+        if (clmm_pool::position::info_liquidity(v0) != 0) {
+            let (v2, v3) = clmm_pool::position::info_tick_range(v0);
+            clmm_pool::position::update_rewards(&mut arg1.position_manager, arg2, get_rewards_in_tick_range<T0, T1>(arg1, v2, v3))
         } else {
-            0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::rewards_amount_owned(&arg1.position_manager, arg2)
+            clmm_pool::position::rewards_amount_owned(&arg1.position_manager, arg2)
         }
     }
     
@@ -456,13 +456,13 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
         }
     }
     
-    public fun calculate_swap_result<T0, T1>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &Pool<T0, T1>, arg2: bool, arg3: bool, arg4: u64) : CalculatedSwapResult {
+    public fun calculate_swap_result<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &Pool<T0, T1>, arg2: bool, arg3: bool, arg4: u64) : CalculatedSwapResult {
         let v0 = arg1.current_sqrt_price;
         let v1 = arg1.liquidity;
         let v2 = arg1.magma_distribution_staked_liquidity;
         let v3 = default_swap_result();
         let v4 = arg4;
-        let v5 = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::first_score_for_swap(&arg1.tick_manager, arg1.current_tick_index, arg2);
+        let v5 = clmm_pool::tick::first_score_for_swap(&arg1.tick_manager, arg1.current_tick_index, arg2);
         let v6 = CalculatedSwapResult{
             amount_in           : 0, 
             amount_out          : 0, 
@@ -475,8 +475,8 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
             is_exceed           : false, 
             step_results        : 0x1::vector::empty<SwapStepResult>(),
         };
-        let v7 = if (arg1.unstaked_liquidity_fee_rate == 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::default_unstaked_fee_rate()) {
-            0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::unstaked_liquidity_fee_rate(arg0)
+        let v7 = if (arg1.unstaked_liquidity_fee_rate == clmm_pool::config::default_unstaked_fee_rate()) {
+            clmm_pool::config::unstaked_liquidity_fee_rate(arg0)
         } else {
             arg1.unstaked_liquidity_fee_rate
         };
@@ -485,10 +485,10 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
                 v6.is_exceed = true;
                 break
             };
-            let (v8, v9) = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::borrow_tick_for_swap(&arg1.tick_manager, 0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::option_u64::borrow(&v5), arg2);
+            let (v8, v9) = clmm_pool::tick::borrow_tick_for_swap(&arg1.tick_manager, 0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::option_u64::borrow(&v5), arg2);
             v5 = v9;
-            let v10 = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::sqrt_price(v8);
-            let (v11, v12, v13, v14) = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::clmm_math::compute_swap_step(v0, v10, v1, v4, arg1.fee_rate, arg2, arg3);
+            let v10 = clmm_pool::tick::sqrt_price(v8);
+            let (v11, v12, v13, v14) = clmm_pool::clmm_math::compute_swap_step(v0, v10, v1, v4, arg1.fee_rate, arg2, arg3);
             if (v11 != 0 || v14 != 0) {
                 let v15 = if (arg3) {
                     let v16 = check_remainer_amount_sub(v4, v11);
@@ -497,7 +497,7 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
                     check_remainer_amount_sub(v4, v12)
                 };
                 v4 = v15;
-                let v17 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u64::mul_div_ceil(v14, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::protocol_fee_rate(arg0), 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::protocol_fee_rate_denom());
+                let v17 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u64::mul_div_ceil(v14, clmm_pool::config::protocol_fee_rate(arg0), clmm_pool::config::protocol_fee_rate_denom());
                 let (_, v19) = calculate_fees<T0, T1>(arg1, v14 - v17, arg1.liquidity, arg1.magma_distribution_staked_liquidity, v7);
                 update_swap_result(&mut v3, v11, v12, v14, v17, 0, v19);
             };
@@ -514,9 +514,9 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
             if (v13 == v10) {
                 v0 = v10;
                 let (v21, v22) = if (arg2) {
-                    (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::neg(0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::liquidity_net(v8)), 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::neg(0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::magma_distribution_staked_liquidity_net(v8)))
+                    (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::neg(clmm_pool::tick::liquidity_net(v8)), 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::neg(clmm_pool::tick::magma_distribution_staked_liquidity_net(v8)))
                 } else {
-                    (0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::liquidity_net(v8), 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::magma_distribution_staked_liquidity_net(v8))
+                    (clmm_pool::tick::liquidity_net(v8), clmm_pool::tick::magma_distribution_staked_liquidity_net(v8))
                 };
                 let v23 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::abs_u128(v21);
                 let v24 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::abs_u128(v22);
@@ -551,13 +551,13 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
         &arg0.step_results
     }
     
-    public fun calculate_swap_result_with_partner<T0, T1>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &Pool<T0, T1>, arg2: bool, arg3: bool, arg4: u64, arg5: u64) : CalculatedSwapResult {
+    public fun calculate_swap_result_with_partner<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &Pool<T0, T1>, arg2: bool, arg3: bool, arg4: u64, arg5: u64) : CalculatedSwapResult {
         let v0 = arg1.current_sqrt_price;
         let v1 = arg1.liquidity;
         let v2 = arg1.magma_distribution_staked_liquidity;
         let v3 = default_swap_result();
         let v4 = arg4;
-        let v5 = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::first_score_for_swap(&arg1.tick_manager, arg1.current_tick_index, arg2);
+        let v5 = clmm_pool::tick::first_score_for_swap(&arg1.tick_manager, arg1.current_tick_index, arg2);
         let v6 = CalculatedSwapResult{
             amount_in           : 0, 
             amount_out          : 0, 
@@ -570,8 +570,8 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
             is_exceed           : false, 
             step_results        : 0x1::vector::empty<SwapStepResult>(),
         };
-        let v7 = if (arg1.unstaked_liquidity_fee_rate == 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::default_unstaked_fee_rate()) {
-            0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::unstaked_liquidity_fee_rate(arg0)
+        let v7 = if (arg1.unstaked_liquidity_fee_rate == clmm_pool::config::default_unstaked_fee_rate()) {
+            clmm_pool::config::unstaked_liquidity_fee_rate(arg0)
         } else {
             arg1.unstaked_liquidity_fee_rate
         };
@@ -580,10 +580,10 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
                 v6.is_exceed = true;
                 break
             };
-            let (v8, v9) = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::borrow_tick_for_swap(&arg1.tick_manager, 0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::option_u64::borrow(&v5), arg2);
+            let (v8, v9) = clmm_pool::tick::borrow_tick_for_swap(&arg1.tick_manager, 0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::option_u64::borrow(&v5), arg2);
             v5 = v9;
-            let v10 = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::sqrt_price(v8);
-            let (v11, v12, v13, v14) = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::clmm_math::compute_swap_step(v0, v10, v1, v4, arg1.fee_rate, arg2, arg3);
+            let v10 = clmm_pool::tick::sqrt_price(v8);
+            let (v11, v12, v13, v14) = clmm_pool::clmm_math::compute_swap_step(v0, v10, v1, v4, arg1.fee_rate, arg2, arg3);
             if (v11 != 0 || v14 != 0) {
                 let v15 = if (arg3) {
                     let v16 = check_remainer_amount_sub(v4, v11);
@@ -592,12 +592,12 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
                     check_remainer_amount_sub(v4, v12)
                 };
                 v4 = v15;
-                let v17 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u64::mul_div_ceil(v14, arg5, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::protocol_fee_rate_denom());
+                let v17 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u64::mul_div_ceil(v14, arg5, clmm_pool::config::protocol_fee_rate_denom());
                 let v18 = v14 - v17;
                 let v19 = 0;
                 let v20 = 0;
                 if (v18 > 0) {
-                    let v21 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u64::mul_div_ceil(v18, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::protocol_fee_rate(arg0), 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::protocol_fee_rate_denom());
+                    let v21 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u64::mul_div_ceil(v18, clmm_pool::config::protocol_fee_rate(arg0), clmm_pool::config::protocol_fee_rate_denom());
                     v20 = v21;
                     let v22 = v18 - v21;
                     if (v22 > 0) {
@@ -620,9 +620,9 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
             if (v13 == v10) {
                 v0 = v10;
                 let (v26, v27) = if (arg2) {
-                    (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::neg(0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::liquidity_net(v8)), 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::neg(0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::magma_distribution_staked_liquidity_net(v8)))
+                    (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::neg(clmm_pool::tick::liquidity_net(v8)), 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::neg(clmm_pool::tick::magma_distribution_staked_liquidity_net(v8)))
                 } else {
-                    (0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::liquidity_net(v8), 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::magma_distribution_staked_liquidity_net(v8))
+                    (clmm_pool::tick::liquidity_net(v8), clmm_pool::tick::magma_distribution_staked_liquidity_net(v8))
                 };
                 let v28 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::abs_u128(v26);
                 let v29 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::abs_u128(v27);
@@ -707,10 +707,10 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
         let v0 = if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::gte(arg0, arg1)) {
             true
         } else {
-            if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::lt(arg0, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::min_tick())) {
+            if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::lt(arg0, clmm_pool::tick_math::min_tick())) {
                 true
             } else {
-                0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::gt(arg1, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::max_tick())
+                0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::gt(arg1, clmm_pool::tick_math::max_tick())
             }
         };
         if (v0) {
@@ -719,20 +719,20 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
         true
     }
     
-    public fun collect_fee<T0, T1>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::Position, arg3: bool) : (0x2::balance::Balance<T0>, 0x2::balance::Balance<T1>) {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::checked_package_version(arg0);
+    public fun collect_fee<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: &clmm_pool::position::Position, arg3: bool) : (0x2::balance::Balance<T0>, 0x2::balance::Balance<T1>) {
+        clmm_pool::config::checked_package_version(arg0);
         assert!(!arg1.is_pause, 13);
-        let v0 = 0x2::object::id<0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::Position>(arg2);
-        if (0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::is_staked(borrow_position_info<T0, T1>(arg1, v0))) {
+        let v0 = 0x2::object::id<clmm_pool::position::Position>(arg2);
+        if (clmm_pool::position::is_staked(borrow_position_info<T0, T1>(arg1, v0))) {
             return (0x2::balance::zero<T0>(), 0x2::balance::zero<T1>())
         };
-        let (v1, v2) = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::tick_range(arg2);
-        let (v3, v4) = if (arg3 && 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::liquidity(arg2) != 0) {
+        let (v1, v2) = clmm_pool::position::tick_range(arg2);
+        let (v3, v4) = if (arg3 && clmm_pool::position::liquidity(arg2) != 0) {
             let (v5, v6) = get_fee_in_tick_range<T0, T1>(arg1, v1, v2);
-            let (v7, v8) = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::update_and_reset_fee(&mut arg1.position_manager, v0, v5, v6);
+            let (v7, v8) = clmm_pool::position::update_and_reset_fee(&mut arg1.position_manager, v0, v5, v6);
             (v7, v8)
         } else {
-            let (v9, v10) = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::reset_fee(&mut arg1.position_manager, v0);
+            let (v9, v10) = clmm_pool::position::reset_fee(&mut arg1.position_manager, v0);
             (v9, v10)
         };
         let v11 = CollectFeeEvent{
@@ -767,10 +767,10 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
         (v0, v1)
     }
     
-    public fun collect_protocol_fee<T0, T1>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: &mut 0x2::tx_context::TxContext) : (0x2::balance::Balance<T0>, 0x2::balance::Balance<T1>) {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::checked_package_version(arg0);
+    public fun collect_protocol_fee<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: &mut 0x2::tx_context::TxContext) : (0x2::balance::Balance<T0>, 0x2::balance::Balance<T1>) {
+        clmm_pool::config::checked_package_version(arg0);
         assert!(!arg1.is_pause, 13);
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::check_protocol_fee_claim_role(arg0, 0x2::tx_context::sender(arg2));
+        clmm_pool::config::check_protocol_fee_claim_role(arg0, 0x2::tx_context::sender(arg2));
         let v0 = arg1.fee_protocol_coin_a;
         let v1 = arg1.fee_protocol_coin_b;
         arg1.fee_protocol_coin_a = 0;
@@ -784,19 +784,19 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
         (0x2::balance::split<T0>(&mut arg1.coin_a, v0), 0x2::balance::split<T1>(&mut arg1.coin_b, v1))
     }
     
-    public fun collect_reward<T0, T1, T2>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::Position, arg3: &mut 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::rewarder::RewarderGlobalVault, arg4: bool, arg5: &0x2::clock::Clock) : 0x2::balance::Balance<T2> {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::checked_package_version(arg0);
+    public fun collect_reward<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: &clmm_pool::position::Position, arg3: &mut clmm_pool::rewarder::RewarderGlobalVault, arg4: bool, arg5: &0x2::clock::Clock) : 0x2::balance::Balance<T2> {
+        clmm_pool::config::checked_package_version(arg0);
         assert!(!arg1.is_pause, 13);
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::rewarder::settle(&mut arg1.rewarder_manager, arg1.liquidity, 0x2::clock::timestamp_ms(arg5) / 1000);
-        let v0 = 0x2::object::id<0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::Position>(arg2);
-        let v1 = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::rewarder::rewarder_index<T2>(&arg1.rewarder_manager);
+        clmm_pool::rewarder::settle(&mut arg1.rewarder_manager, arg1.liquidity, 0x2::clock::timestamp_ms(arg5) / 1000);
+        let v0 = 0x2::object::id<clmm_pool::position::Position>(arg2);
+        let v1 = clmm_pool::rewarder::rewarder_index<T2>(&arg1.rewarder_manager);
         assert!(0x1::option::is_some<u64>(&v1), 17);
         let v2 = 0x1::option::extract<u64>(&mut v1);
-        let v3 = if (arg4 && 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::liquidity(arg2) != 0 || 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::inited_rewards_count(&arg1.position_manager, v0) <= v2) {
-            let (v4, v5) = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::tick_range(arg2);
-            0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::update_and_reset_rewards(&mut arg1.position_manager, v0, get_rewards_in_tick_range<T0, T1>(arg1, v4, v5), v2)
+        let v3 = if (arg4 && clmm_pool::position::liquidity(arg2) != 0 || clmm_pool::position::inited_rewards_count(&arg1.position_manager, v0) <= v2) {
+            let (v4, v5) = clmm_pool::position::tick_range(arg2);
+            clmm_pool::position::update_and_reset_rewards(&mut arg1.position_manager, v0, get_rewards_in_tick_range<T0, T1>(arg1, v4, v5), v2)
         } else {
-            0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::reset_rewarder(&mut arg1.position_manager, v0, v2)
+            clmm_pool::position::reset_rewarder(&mut arg1.position_manager, v0, v2)
         };
         let v6 = CollectRewardEvent{
             position : v0, 
@@ -804,7 +804,7 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
             amount   : v3,
         };
         0x2::event::emit<CollectRewardEvent>(v6);
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::rewarder::withdraw_reward<T2>(arg3, v3)
+        clmm_pool::rewarder::withdraw_reward<T2>(arg3, v3)
     }
     
     public fun current_sqrt_price<T0, T1>(arg0: &Pool<T0, T1>) : u128 {
@@ -839,27 +839,27 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
         (arg0.fee_growth_global_a, arg0.fee_growth_global_b)
     }
     
-    public fun flash_swap<T0, T1>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: bool, arg3: bool, arg4: u64, arg5: u128, arg6: &0x2::clock::Clock) : (0x2::balance::Balance<T0>, 0x2::balance::Balance<T1>, FlashSwapReceipt<T0, T1>) {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::checked_package_version(arg0);
+    public fun flash_swap<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: bool, arg3: bool, arg4: u64, arg5: u128, arg6: &0x2::clock::Clock) : (0x2::balance::Balance<T0>, 0x2::balance::Balance<T1>, FlashSwapReceipt<T0, T1>) {
+        clmm_pool::config::checked_package_version(arg0);
         assert!(!arg1.is_pause, 13);
         flash_swap_internal<T0, T1>(arg1, arg0, 0x2::object::id_from_address(@0x0), 0, arg2, arg3, arg4, arg5, arg6)
     }
     
-    fun flash_swap_internal<T0, T1>(arg0: &mut Pool<T0, T1>, arg1: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg2: 0x2::object::ID, arg3: u64, arg4: bool, arg5: bool, arg6: u64, arg7: u128, arg8: &0x2::clock::Clock) : (0x2::balance::Balance<T0>, 0x2::balance::Balance<T1>, FlashSwapReceipt<T0, T1>) {
+    fun flash_swap_internal<T0, T1>(arg0: &mut Pool<T0, T1>, arg1: &clmm_pool::config::GlobalConfig, arg2: 0x2::object::ID, arg3: u64, arg4: bool, arg5: bool, arg6: u64, arg7: u128, arg8: &0x2::clock::Clock) : (0x2::balance::Balance<T0>, 0x2::balance::Balance<T1>, FlashSwapReceipt<T0, T1>) {
         assert!(arg6 > 0, 0);
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::rewarder::settle(&mut arg0.rewarder_manager, arg0.liquidity, 0x2::clock::timestamp_ms(arg8) / 1000);
+        clmm_pool::rewarder::settle(&mut arg0.rewarder_manager, arg0.liquidity, 0x2::clock::timestamp_ms(arg8) / 1000);
         if (arg4) {
-            assert!(arg0.current_sqrt_price > arg7 && arg7 >= 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::min_sqrt_price(), 11);
+            assert!(arg0.current_sqrt_price > arg7 && arg7 >= clmm_pool::tick_math::min_sqrt_price(), 11);
         } else {
-            assert!(arg0.current_sqrt_price < arg7 && arg7 <= 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::max_sqrt_price(), 11);
+            assert!(arg0.current_sqrt_price < arg7 && arg7 <= clmm_pool::tick_math::max_sqrt_price(), 11);
         };
         let v0 = arg0.unstaked_liquidity_fee_rate;
-        let v1 = if (v0 == 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::default_unstaked_fee_rate()) {
-            0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::unstaked_liquidity_fee_rate(arg1)
+        let v1 = if (v0 == clmm_pool::config::default_unstaked_fee_rate()) {
+            clmm_pool::config::unstaked_liquidity_fee_rate(arg1)
         } else {
             v0
         };
-        let v2 = swap_in_pool<T0, T1>(arg0, arg4, arg5, arg7, arg6, v1, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::protocol_fee_rate(arg1), arg3, arg8);
+        let v2 = swap_in_pool<T0, T1>(arg0, arg4, arg5, arg7, arg6, v1, clmm_pool::config::protocol_fee_rate(arg1), arg3, arg8);
         assert!(v2.amount_out > 0, 18);
         let (v3, v4) = if (arg4) {
             (0x2::balance::split<T1>(&mut arg0.coin_b, v2.amount_out), 0x2::balance::zero<T0>())
@@ -896,40 +896,40 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
         (v4, v3, v6)
     }
     
-    public fun flash_swap_with_partner<T0, T1>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::partner::Partner, arg3: bool, arg4: bool, arg5: u64, arg6: u128, arg7: &0x2::clock::Clock) : (0x2::balance::Balance<T0>, 0x2::balance::Balance<T1>, FlashSwapReceipt<T0, T1>) {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::checked_package_version(arg0);
+    public fun flash_swap_with_partner<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: &clmm_pool::partner::Partner, arg3: bool, arg4: bool, arg5: u64, arg6: u128, arg7: &0x2::clock::Clock) : (0x2::balance::Balance<T0>, 0x2::balance::Balance<T1>, FlashSwapReceipt<T0, T1>) {
+        clmm_pool::config::checked_package_version(arg0);
         assert!(!arg1.is_pause, 13);
-        flash_swap_internal<T0, T1>(arg1, arg0, 0x2::object::id<0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::partner::Partner>(arg2), 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::partner::current_ref_fee_rate(arg2, 0x2::clock::timestamp_ms(arg7) / 1000), arg3, arg4, arg5, arg6, arg7)
+        flash_swap_internal<T0, T1>(arg1, arg0, 0x2::object::id<clmm_pool::partner::Partner>(arg2), clmm_pool::partner::current_ref_fee_rate(arg2, 0x2::clock::timestamp_ms(arg7) / 1000), arg3, arg4, arg5, arg6, arg7)
     }
     
     public fun get_all_growths_in_tick_range<T0, T1>(arg0: &Pool<T0, T1>, arg1: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg2: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32) : (u128, u128, vector<u128>, u128, u128) {
-        let v0 = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::try_borrow_tick(&arg0.tick_manager, arg1);
-        let v1 = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::try_borrow_tick(&arg0.tick_manager, arg2);
-        let (v2, v3) = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::get_fee_in_range(arg0.current_tick_index, arg0.fee_growth_global_a, arg0.fee_growth_global_b, v0, v1);
-        (v2, v3, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::get_rewards_in_range(arg0.current_tick_index, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::rewarder::rewards_growth_global(&arg0.rewarder_manager), v0, v1), 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::get_points_in_range(arg0.current_tick_index, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::rewarder::points_growth_global(&arg0.rewarder_manager), v0, v1), 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::get_magma_distribution_growth_in_range(arg0.current_tick_index, arg0.magma_distribution_growth_global, v0, v1))
+        let v0 = clmm_pool::tick::try_borrow_tick(&arg0.tick_manager, arg1);
+        let v1 = clmm_pool::tick::try_borrow_tick(&arg0.tick_manager, arg2);
+        let (v2, v3) = clmm_pool::tick::get_fee_in_range(arg0.current_tick_index, arg0.fee_growth_global_a, arg0.fee_growth_global_b, v0, v1);
+        (v2, v3, clmm_pool::tick::get_rewards_in_range(arg0.current_tick_index, clmm_pool::rewarder::rewards_growth_global(&arg0.rewarder_manager), v0, v1), clmm_pool::tick::get_points_in_range(arg0.current_tick_index, clmm_pool::rewarder::points_growth_global(&arg0.rewarder_manager), v0, v1), clmm_pool::tick::get_magma_distribution_growth_in_range(arg0.current_tick_index, arg0.magma_distribution_growth_global, v0, v1))
     }
     
     public fun get_fee_in_tick_range<T0, T1>(arg0: &Pool<T0, T1>, arg1: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg2: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32) : (u128, u128) {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::get_fee_in_range(arg0.current_tick_index, arg0.fee_growth_global_a, arg0.fee_growth_global_b, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::try_borrow_tick(&arg0.tick_manager, arg1), 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::try_borrow_tick(&arg0.tick_manager, arg2))
+        clmm_pool::tick::get_fee_in_range(arg0.current_tick_index, arg0.fee_growth_global_a, arg0.fee_growth_global_b, clmm_pool::tick::try_borrow_tick(&arg0.tick_manager, arg1), clmm_pool::tick::try_borrow_tick(&arg0.tick_manager, arg2))
     }
     
     public fun get_liquidity_from_amount(arg0: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg1: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg2: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg3: u128, arg4: u64, arg5: bool) : (u128, u64, u64) {
         if (arg5) {
             let (v3, v4) = if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::lt(arg2, arg0)) {
-                (0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::clmm_math::get_liquidity_from_a(0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::get_sqrt_price_at_tick(arg0), 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::get_sqrt_price_at_tick(arg1), arg4, false), 0)
+                (clmm_pool::clmm_math::get_liquidity_from_a(clmm_pool::tick_math::get_sqrt_price_at_tick(arg0), clmm_pool::tick_math::get_sqrt_price_at_tick(arg1), arg4, false), 0)
             } else {
                 assert!(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::lt(arg2, arg1), 19);
-                let v5 = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::clmm_math::get_liquidity_from_a(arg3, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::get_sqrt_price_at_tick(arg1), arg4, false);
-                (v5, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::clmm_math::get_delta_b(arg3, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::get_sqrt_price_at_tick(arg0), v5, true))
+                let v5 = clmm_pool::clmm_math::get_liquidity_from_a(arg3, clmm_pool::tick_math::get_sqrt_price_at_tick(arg1), arg4, false);
+                (v5, clmm_pool::clmm_math::get_delta_b(arg3, clmm_pool::tick_math::get_sqrt_price_at_tick(arg0), v5, true))
             };
             (v3, arg4, v4)
         } else {
             let (v6, v7) = if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::gte(arg2, arg1)) {
-                (0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::clmm_math::get_liquidity_from_b(0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::get_sqrt_price_at_tick(arg0), 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::get_sqrt_price_at_tick(arg1), arg4, false), 0)
+                (clmm_pool::clmm_math::get_liquidity_from_b(clmm_pool::tick_math::get_sqrt_price_at_tick(arg0), clmm_pool::tick_math::get_sqrt_price_at_tick(arg1), arg4, false), 0)
             } else {
                 assert!(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::gte(arg2, arg0), 19);
-                let v8 = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::clmm_math::get_liquidity_from_b(0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::get_sqrt_price_at_tick(arg0), arg3, arg4, false);
-                (v8, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::clmm_math::get_delta_a(arg3, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::get_sqrt_price_at_tick(arg1), v8, true))
+                let v8 = clmm_pool::clmm_math::get_liquidity_from_b(clmm_pool::tick_math::get_sqrt_price_at_tick(arg0), arg3, arg4, false);
+                (v8, clmm_pool::clmm_math::get_delta_a(arg3, clmm_pool::tick_math::get_sqrt_price_at_tick(arg1), v8, true))
             };
             (v6, v7, arg4)
         }
@@ -949,7 +949,7 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
         if (arg3 == 0) {
             arg3 = arg0.magma_distribution_growth_global;
         };
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::get_magma_distribution_growth_in_range(arg0.current_tick_index, arg3, 0x1::option::some<0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::Tick>(*borrow_tick<T0, T1>(arg0, arg1)), 0x1::option::some<0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::Tick>(*borrow_tick<T0, T1>(arg0, arg2)))
+        clmm_pool::tick::get_magma_distribution_growth_in_range(arg0.current_tick_index, arg3, 0x1::option::some<clmm_pool::tick::Tick>(*borrow_tick<T0, T1>(arg0, arg1)), 0x1::option::some<clmm_pool::tick::Tick>(*borrow_tick<T0, T1>(arg0, arg2)))
     }
     
     public fun get_magma_distribution_last_updated<T0, T1>(arg0: &Pool<T0, T1>) : u64 {
@@ -969,36 +969,36 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
     }
     
     public fun get_points_in_tick_range<T0, T1>(arg0: &Pool<T0, T1>, arg1: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg2: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32) : u128 {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::get_points_in_range(arg0.current_tick_index, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::rewarder::points_growth_global(&arg0.rewarder_manager), 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::try_borrow_tick(&arg0.tick_manager, arg1), 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::try_borrow_tick(&arg0.tick_manager, arg2))
+        clmm_pool::tick::get_points_in_range(arg0.current_tick_index, clmm_pool::rewarder::points_growth_global(&arg0.rewarder_manager), clmm_pool::tick::try_borrow_tick(&arg0.tick_manager, arg1), clmm_pool::tick::try_borrow_tick(&arg0.tick_manager, arg2))
     }
     
     public fun get_position_amounts<T0, T1>(arg0: &mut Pool<T0, T1>, arg1: 0x2::object::ID) : (u64, u64) {
-        let v0 = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::borrow_position_info(&arg0.position_manager, arg1);
-        let (v1, v2) = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::info_tick_range(v0);
-        get_amount_by_liquidity(v1, v2, arg0.current_tick_index, arg0.current_sqrt_price, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::info_liquidity(v0), false)
+        let v0 = clmm_pool::position::borrow_position_info(&arg0.position_manager, arg1);
+        let (v1, v2) = clmm_pool::position::info_tick_range(v0);
+        get_amount_by_liquidity(v1, v2, arg0.current_tick_index, arg0.current_sqrt_price, clmm_pool::position::info_liquidity(v0), false)
     }
     
     public fun get_position_fee<T0, T1>(arg0: &Pool<T0, T1>, arg1: 0x2::object::ID) : (u64, u64) {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::info_fee_owned(0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::borrow_position_info(&arg0.position_manager, arg1))
+        clmm_pool::position::info_fee_owned(clmm_pool::position::borrow_position_info(&arg0.position_manager, arg1))
     }
     
     public fun get_position_points<T0, T1>(arg0: &Pool<T0, T1>, arg1: 0x2::object::ID) : u128 {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::info_points_owned(0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::borrow_position_info(&arg0.position_manager, arg1))
+        clmm_pool::position::info_points_owned(clmm_pool::position::borrow_position_info(&arg0.position_manager, arg1))
     }
     
     public fun get_position_reward<T0, T1, T2>(arg0: &Pool<T0, T1>, arg1: 0x2::object::ID) : u64 {
-        let v0 = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::rewarder::rewarder_index<T2>(&arg0.rewarder_manager);
+        let v0 = clmm_pool::rewarder::rewarder_index<T2>(&arg0.rewarder_manager);
         assert!(0x1::option::is_some<u64>(&v0), 17);
-        let v1 = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::rewards_amount_owned(&arg0.position_manager, arg1);
+        let v1 = clmm_pool::position::rewards_amount_owned(&arg0.position_manager, arg1);
         *0x1::vector::borrow<u64>(&v1, 0x1::option::extract<u64>(&mut v0))
     }
     
     public fun get_position_rewards<T0, T1>(arg0: &Pool<T0, T1>, arg1: 0x2::object::ID) : vector<u64> {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::rewards_amount_owned(&arg0.position_manager, arg1)
+        clmm_pool::position::rewards_amount_owned(&arg0.position_manager, arg1)
     }
     
     public fun get_rewards_in_tick_range<T0, T1>(arg0: &Pool<T0, T1>, arg1: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32, arg2: 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::I32) : vector<u128> {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::get_rewards_in_range(arg0.current_tick_index, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::rewarder::rewards_growth_global(&arg0.rewarder_manager), 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::try_borrow_tick(&arg0.tick_manager, arg1), 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::try_borrow_tick(&arg0.tick_manager, arg2))
+        clmm_pool::tick::get_rewards_in_range(arg0.current_tick_index, clmm_pool::rewarder::rewards_growth_global(&arg0.rewarder_manager), clmm_pool::tick::try_borrow_tick(&arg0.tick_manager, arg1), clmm_pool::tick::try_borrow_tick(&arg0.tick_manager, arg2))
     }
     
     fun init(arg0: POOL, arg1: &mut 0x2::tx_context::TxContext) {
@@ -1010,11 +1010,11 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
         0x1::option::fill<0x2::object::ID>(&mut arg0.magma_distribution_gauger_id, 0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784::gauge_cap::get_gauge_id(arg1));
     }
     
-    public fun initialize_rewarder<T0, T1, T2>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: &mut 0x2::tx_context::TxContext) {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::checked_package_version(arg0);
+    public fun initialize_rewarder<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: &mut 0x2::tx_context::TxContext) {
+        clmm_pool::config::checked_package_version(arg0);
         assert!(!arg1.is_pause, 13);
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::check_rewarder_manager_role(arg0, 0x2::tx_context::sender(arg2));
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::rewarder::add_rewarder<T2>(&mut arg1.rewarder_manager);
+        clmm_pool::config::check_rewarder_manager_role(arg0, 0x2::tx_context::sender(arg2));
+        clmm_pool::rewarder::add_rewarder<T2>(&mut arg1.rewarder_manager);
         let v0 = AddRewarderEvent{
             pool          : 0x2::object::id<Pool<T0, T1>>(arg1), 
             rewarder_type : 0x1::type_name::get<T2>(),
@@ -1036,12 +1036,12 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
     public fun mark_position_unstaked<T0, T1>(arg0: &mut Pool<T0, T1>, arg1: &0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784::gauge_cap::GaugeCap, arg2: 0x2::object::ID) {
         assert!(!arg0.is_pause, 13);
         check_gauge_cap<T0, T1>(arg0, arg1);
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::mark_position_staked(&mut arg0.position_manager, arg2, false);
+        clmm_pool::position::mark_position_staked(&mut arg0.position_manager, arg2, false);
     }
     
-    public fun pause<T0, T1>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: &mut 0x2::tx_context::TxContext) {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::checked_package_version(arg0);
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::check_pool_manager_role(arg0, 0x2::tx_context::sender(arg2));
+    public fun pause<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: &mut 0x2::tx_context::TxContext) {
+        clmm_pool::config::checked_package_version(arg0);
+        clmm_pool::config::check_pool_manager_role(arg0, 0x2::tx_context::sender(arg2));
         assert!(!arg1.is_pause, 9223376739843964927);
         arg1.is_pause = true;
     }
@@ -1050,7 +1050,7 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
         (arg0.coin_a, arg0.coin_b)
     }
     
-    public fun position_manager<T0, T1>(arg0: &Pool<T0, T1>) : &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::PositionManager {
+    public fun position_manager<T0, T1>(arg0: &Pool<T0, T1>) : &clmm_pool::position::PositionManager {
         &arg0.position_manager
     }
     
@@ -1058,25 +1058,25 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
         (arg0.fee_protocol_coin_a, arg0.fee_protocol_coin_b)
     }
     
-    public fun remove_liquidity<T0, T1>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: &mut 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::Position, arg3: u128, arg4: &0x2::clock::Clock) : (0x2::balance::Balance<T0>, 0x2::balance::Balance<T1>) {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::checked_package_version(arg0);
+    public fun remove_liquidity<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: &mut clmm_pool::position::Position, arg3: u128, arg4: &0x2::clock::Clock) : (0x2::balance::Balance<T0>, 0x2::balance::Balance<T1>) {
+        clmm_pool::config::checked_package_version(arg0);
         assert!(!arg1.is_pause, 13);
         assert!(arg3 > 0, 3);
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::rewarder::settle(&mut arg1.rewarder_manager, arg1.liquidity, 0x2::clock::timestamp_ms(arg4) / 1000);
-        let (v0, v1) = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::tick_range(arg2);
+        clmm_pool::rewarder::settle(&mut arg1.rewarder_manager, arg1.liquidity, 0x2::clock::timestamp_ms(arg4) / 1000);
+        let (v0, v1) = clmm_pool::position::tick_range(arg2);
         let (v2, v3, v4, v5, v6) = get_all_growths_in_tick_range<T0, T1>(arg1, v0, v1);
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::decrease_liquidity(&mut arg1.tick_manager, arg1.current_tick_index, v0, v1, arg3, arg1.fee_growth_global_a, arg1.fee_growth_global_b, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::rewarder::points_growth_global(&arg1.rewarder_manager), 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::rewarder::rewards_growth_global(&arg1.rewarder_manager), arg1.magma_distribution_growth_global);
+        clmm_pool::tick::decrease_liquidity(&mut arg1.tick_manager, arg1.current_tick_index, v0, v1, arg3, arg1.fee_growth_global_a, arg1.fee_growth_global_b, clmm_pool::rewarder::points_growth_global(&arg1.rewarder_manager), clmm_pool::rewarder::rewards_growth_global(&arg1.rewarder_manager), arg1.magma_distribution_growth_global);
         if (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::lte(v0, arg1.current_tick_index) && 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i32::lt(arg1.current_tick_index, v1)) {
             arg1.liquidity = arg1.liquidity - arg3;
         };
         let (v7, v8) = get_amount_by_liquidity(v0, v1, arg1.current_tick_index, arg1.current_sqrt_price, arg3, false);
         let v9 = RemoveLiquidityEvent{
             pool            : 0x2::object::id<Pool<T0, T1>>(arg1), 
-            position        : 0x2::object::id<0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::Position>(arg2), 
+            position        : 0x2::object::id<clmm_pool::position::Position>(arg2), 
             tick_lower      : v0, 
             tick_upper      : v1, 
             liquidity       : arg3, 
-            after_liquidity : 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::decrease_liquidity(&mut arg1.position_manager, arg2, arg3, v2, v3, v5, v4, v6), 
+            after_liquidity : clmm_pool::position::decrease_liquidity(&mut arg1.position_manager, arg2, arg3, v2, v3, v5, v4, v6), 
             amount_a        : v7, 
             amount_b        : v8,
         };
@@ -1084,8 +1084,8 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
         (0x2::balance::split<T0>(&mut arg1.coin_a, v7), 0x2::balance::split<T1>(&mut arg1.coin_b, v8))
     }
     
-    public fun repay_add_liquidity<T0, T1>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: 0x2::balance::Balance<T0>, arg3: 0x2::balance::Balance<T1>, arg4: AddLiquidityReceipt<T0, T1>) {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::checked_package_version(arg0);
+    public fun repay_add_liquidity<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: 0x2::balance::Balance<T0>, arg3: 0x2::balance::Balance<T1>, arg4: AddLiquidityReceipt<T0, T1>) {
+        clmm_pool::config::checked_package_version(arg0);
         let AddLiquidityReceipt {
             pool_id  : v0,
             amount_a : v1,
@@ -1098,8 +1098,8 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
         0x2::balance::join<T1>(&mut arg1.coin_b, arg3);
     }
     
-    public fun repay_flash_swap<T0, T1>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: 0x2::balance::Balance<T0>, arg3: 0x2::balance::Balance<T1>, arg4: FlashSwapReceipt<T0, T1>) {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::checked_package_version(arg0);
+    public fun repay_flash_swap<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: 0x2::balance::Balance<T0>, arg3: 0x2::balance::Balance<T1>, arg4: FlashSwapReceipt<T0, T1>) {
+        clmm_pool::config::checked_package_version(arg0);
         assert!(!arg1.is_pause, 13);
         let FlashSwapReceipt {
             pool_id             : v0,
@@ -1124,8 +1124,8 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
         };
     }
     
-    public fun repay_flash_swap_with_partner<T0, T1>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: &mut 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::partner::Partner, arg3: 0x2::balance::Balance<T0>, arg4: 0x2::balance::Balance<T1>, arg5: FlashSwapReceipt<T0, T1>) {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::checked_package_version(arg0);
+    public fun repay_flash_swap_with_partner<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: &mut clmm_pool::partner::Partner, arg3: 0x2::balance::Balance<T0>, arg4: 0x2::balance::Balance<T1>, arg5: FlashSwapReceipt<T0, T1>) {
+        clmm_pool::config::checked_package_version(arg0);
         assert!(!arg1.is_pause, 13);
         let FlashSwapReceipt {
             pool_id             : v0,
@@ -1138,30 +1138,30 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
             gauge_fee_amount    : _,
         } = arg5;
         assert!(0x2::object::id<Pool<T0, T1>>(arg1) == v0, 14);
-        assert!(0x2::object::id<0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::partner::Partner>(arg2) == v2, 14);
+        assert!(0x2::object::id<clmm_pool::partner::Partner>(arg2) == v2, 14);
         if (v1) {
             assert!(0x2::balance::value<T0>(&arg3) == v3, 0);
             if (v6 > 0) {
-                0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::partner::receive_ref_fee<T0>(arg2, 0x2::balance::split<T0>(&mut arg3, v6));
+                clmm_pool::partner::receive_ref_fee<T0>(arg2, 0x2::balance::split<T0>(&mut arg3, v6));
             };
             0x2::balance::join<T0>(&mut arg1.coin_a, arg3);
             0x2::balance::destroy_zero<T1>(arg4);
         } else {
             assert!(0x2::balance::value<T1>(&arg4) == v3, 0);
             if (v6 > 0) {
-                0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::partner::receive_ref_fee<T1>(arg2, 0x2::balance::split<T1>(&mut arg4, v6));
+                clmm_pool::partner::receive_ref_fee<T1>(arg2, 0x2::balance::split<T1>(&mut arg4, v6));
             };
             0x2::balance::join<T1>(&mut arg1.coin_b, arg4);
             0x2::balance::destroy_zero<T0>(arg3);
         };
     }
     
-    public fun rewarder_manager<T0, T1>(arg0: &Pool<T0, T1>) : &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::rewarder::RewarderManager {
+    public fun rewarder_manager<T0, T1>(arg0: &Pool<T0, T1>) : &clmm_pool::rewarder::RewarderManager {
         &arg0.rewarder_manager
     }
     
-    public fun set_display<T0, T1>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &0x2::package::Publisher, arg2: 0x1::string::String, arg3: 0x1::string::String, arg4: 0x1::string::String, arg5: 0x1::string::String, arg6: 0x1::string::String, arg7: 0x1::string::String, arg8: &mut 0x2::tx_context::TxContext) {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::checked_package_version(arg0);
+    public fun set_display<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &0x2::package::Publisher, arg2: 0x1::string::String, arg3: 0x1::string::String, arg4: 0x1::string::String, arg5: 0x1::string::String, arg6: 0x1::string::String, arg7: 0x1::string::String, arg8: &mut 0x2::tx_context::TxContext) {
+        clmm_pool::config::checked_package_version(arg0);
         let v0 = 0x1::vector::empty<0x1::string::String>();
         0x1::vector::push_back<0x1::string::String>(&mut v0, 0x1::string::utf8(b"name"));
         0x1::vector::push_back<0x1::string::String>(&mut v0, 0x1::string::utf8(b"coin_a"));
@@ -1230,21 +1230,21 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
         assert!(arg7 <= 10000, 16);
         let v0 = default_swap_result();
         let v1 = arg4;
-        let v2 = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::first_score_for_swap(&arg0.tick_manager, arg0.current_tick_index, arg1);
+        let v2 = clmm_pool::tick::first_score_for_swap(&arg0.tick_manager, arg0.current_tick_index, arg1);
         while (v1 > 0 && arg0.current_sqrt_price != arg3) {
             if (0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::option_u64::is_none(&v2)) {
                 abort 20
             };
-            let (v3, v4) = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::borrow_tick_for_swap(&arg0.tick_manager, 0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::option_u64::borrow(&v2), arg1);
+            let (v3, v4) = clmm_pool::tick::borrow_tick_for_swap(&arg0.tick_manager, 0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492::option_u64::borrow(&v2), arg1);
             v2 = v4;
-            let v5 = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::index(v3);
-            let v6 = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::sqrt_price(v3);
+            let v5 = clmm_pool::tick::index(v3);
+            let v6 = clmm_pool::tick::sqrt_price(v3);
             let v7 = if (arg1) {
                 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::max(arg3, v6)
             } else {
                 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::math_u128::min(arg3, v6)
             };
-            let (v8, v9, v10, v11) = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::clmm_math::compute_swap_step(arg0.current_sqrt_price, v7, arg0.liquidity, v1, arg0.fee_rate, arg1, arg2);
+            let (v8, v9, v10, v11) = clmm_pool::clmm_math::compute_swap_step(arg0.current_sqrt_price, v7, arg0.liquidity, v1, arg0.fee_rate, arg1, arg2);
             if (v8 != 0 || v11 != 0) {
                 if (arg2) {
                     let v12 = check_remainer_amount_sub(v1, v8);
@@ -1252,13 +1252,13 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
                 } else {
                     v1 = check_remainer_amount_sub(v1, v9);
                 };
-                let v13 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u64::mul_div_ceil(v11, arg7, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::protocol_fee_rate_denom());
+                let v13 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u64::mul_div_ceil(v11, arg7, clmm_pool::config::protocol_fee_rate_denom());
                 let v14 = v11 - v13;
                 let v15 = v14;
                 let v16 = 0;
                 let v17 = 0;
                 if (v14 > 0) {
-                    let v18 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u64::mul_div_ceil(v14, arg6, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::protocol_fee_rate_denom());
+                    let v18 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u64::mul_div_ceil(v14, arg6, clmm_pool::config::protocol_fee_rate_denom());
                     v17 = v18;
                     let v19 = v14 - v18;
                     v15 = v19;
@@ -1282,14 +1282,14 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
                 };
                 arg0.current_tick_index = v22;
                 update_magma_distribution_growth_global_internal<T0, T1>(arg0, arg8);
-                let (v23, v24) = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::cross_by_swap(&mut arg0.tick_manager, v5, arg1, arg0.liquidity, arg0.magma_distribution_staked_liquidity, arg0.fee_growth_global_a, arg0.fee_growth_global_b, 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::rewarder::points_growth_global(&arg0.rewarder_manager), 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::rewarder::rewards_growth_global(&arg0.rewarder_manager), arg0.magma_distribution_growth_global);
+                let (v23, v24) = clmm_pool::tick::cross_by_swap(&mut arg0.tick_manager, v5, arg1, arg0.liquidity, arg0.magma_distribution_staked_liquidity, arg0.fee_growth_global_a, arg0.fee_growth_global_b, clmm_pool::rewarder::points_growth_global(&arg0.rewarder_manager), clmm_pool::rewarder::rewards_growth_global(&arg0.rewarder_manager), arg0.magma_distribution_growth_global);
                 arg0.liquidity = v23;
                 arg0.magma_distribution_staked_liquidity = v24;
                 continue
             };
             if (arg0.current_sqrt_price != v10) {
                 arg0.current_sqrt_price = v10;
-                arg0.current_tick_index = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick_math::get_tick_at_sqrt_price(v10);
+                arg0.current_tick_index = clmm_pool::tick_math::get_tick_at_sqrt_price(v10);
                 continue
             };
         };
@@ -1316,7 +1316,7 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
         arg0.magma_distribution_rollover = 0;
     }
     
-    public fun tick_manager<T0, T1>(arg0: &Pool<T0, T1>) : &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::TickManager {
+    public fun tick_manager<T0, T1>(arg0: &Pool<T0, T1>) : &clmm_pool::tick::TickManager {
         &arg0.tick_manager
     }
     
@@ -1324,9 +1324,9 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
         arg0.tick_spacing
     }
     
-    public fun unpause<T0, T1>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: &mut 0x2::tx_context::TxContext) {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::checked_package_version(arg0);
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::check_pool_manager_role(arg0, 0x2::tx_context::sender(arg2));
+    public fun unpause<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: &mut 0x2::tx_context::TxContext) {
+        clmm_pool::config::checked_package_version(arg0);
+        clmm_pool::config::check_pool_manager_role(arg0, 0x2::tx_context::sender(arg2));
         assert!(arg1.is_pause, 9223378204427812863);
         arg1.is_pause = false;
     }
@@ -1349,13 +1349,13 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
         };
     }
     
-    public fun update_fee_rate<T0, T1>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: u64, arg3: &mut 0x2::tx_context::TxContext) {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::checked_package_version(arg0);
+    public fun update_fee_rate<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: u64, arg3: &mut 0x2::tx_context::TxContext) {
+        clmm_pool::config::checked_package_version(arg0);
         assert!(!arg1.is_pause, 13);
-        if (arg2 > 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::max_fee_rate()) {
+        if (arg2 > clmm_pool::config::max_fee_rate()) {
             abort 9
         };
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::check_pool_manager_role(arg0, 0x2::tx_context::sender(arg3));
+        clmm_pool::config::check_pool_manager_role(arg0, 0x2::tx_context::sender(arg3));
         arg1.fee_rate = arg2;
         let v0 = UpdateFeeRateEvent{
             pool         : 0x2::object::id<Pool<T0, T1>>(arg1), 
@@ -1406,20 +1406,20 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
             };
             arg0.magma_distribution_staked_liquidity = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::as_u128(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::add(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(arg0.magma_distribution_staked_liquidity), arg1));
         };
-        let v2 = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::try_borrow_tick(&arg0.tick_manager, arg2);
-        let v3 = 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::try_borrow_tick(&arg0.tick_manager, arg3);
-        if (0x1::option::is_some<0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::Tick>(&v2)) {
-            0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::update_magma_stake(&mut arg0.tick_manager, arg2, arg1, false);
+        let v2 = clmm_pool::tick::try_borrow_tick(&arg0.tick_manager, arg2);
+        let v3 = clmm_pool::tick::try_borrow_tick(&arg0.tick_manager, arg3);
+        if (0x1::option::is_some<clmm_pool::tick::Tick>(&v2)) {
+            clmm_pool::tick::update_magma_stake(&mut arg0.tick_manager, arg2, arg1, false);
         };
-        if (0x1::option::is_some<0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::Tick>(&v3)) {
-            0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::tick::update_magma_stake(&mut arg0.tick_manager, arg3, arg1, true);
+        if (0x1::option::is_some<clmm_pool::tick::Tick>(&v3)) {
+            clmm_pool::tick::update_magma_stake(&mut arg0.tick_manager, arg3, arg1, true);
         };
     }
     
-    public fun update_position_url<T0, T1>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: 0x1::string::String, arg3: &mut 0x2::tx_context::TxContext) {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::checked_package_version(arg0);
+    public fun update_position_url<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: 0x1::string::String, arg3: &mut 0x2::tx_context::TxContext) {
+        clmm_pool::config::checked_package_version(arg0);
         assert!(!arg1.is_pause, 13);
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::check_pool_manager_role(arg0, 0x2::tx_context::sender(arg3));
+        clmm_pool::config::check_pool_manager_role(arg0, 0x2::tx_context::sender(arg3));
         arg1.url = arg2;
     }
     
@@ -1436,12 +1436,12 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
         arg0.steps = arg0.steps + 1;
     }
     
-    public fun update_unstaked_liquidity_fee_rate<T0, T1>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: u64, arg3: &mut 0x2::tx_context::TxContext) {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::checked_package_version(arg0);
+    public fun update_unstaked_liquidity_fee_rate<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: u64, arg3: &mut 0x2::tx_context::TxContext) {
+        clmm_pool::config::checked_package_version(arg0);
         assert!(!arg1.is_pause, 13);
-        assert!(arg2 == 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::default_unstaked_fee_rate() || arg2 <= 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::max_unstaked_liquidity_fee_rate(), 9);
+        assert!(arg2 == clmm_pool::config::default_unstaked_fee_rate() || arg2 <= clmm_pool::config::max_unstaked_liquidity_fee_rate(), 9);
         assert!(arg2 != arg1.unstaked_liquidity_fee_rate, 9);
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::check_pool_manager_role(arg0, 0x2::tx_context::sender(arg3));
+        clmm_pool::config::check_pool_manager_role(arg0, 0x2::tx_context::sender(arg3));
         arg1.unstaked_liquidity_fee_rate = arg2;
         let v0 = UpdateUnstakedLiquidityFeeRateEvent{
             pool         : 0x2::object::id<Pool<T0, T1>>(arg1), 
@@ -1455,8 +1455,8 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool 
         arg0.url
     }
     
-    fun validate_pool_position<T0, T1>(arg0: &Pool<T0, T1>, arg1: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::Position) {
-        assert!(0x2::object::id<Pool<T0, T1>>(arg0) == 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::position::pool_id(arg1), 9223373806381301759);
+    fun validate_pool_position<T0, T1>(arg0: &Pool<T0, T1>, arg1: &clmm_pool::position::Position) {
+        assert!(0x2::object::id<Pool<T0, T1>>(arg0) == clmm_pool::position::pool_id(arg1), 9223373806381301759);
     }
     
     // decompiled from Move bytecode v6

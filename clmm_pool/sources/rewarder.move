@@ -1,4 +1,4 @@
-module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::rewarder {
+module clmm_pool::rewarder {
     struct RewarderManager has store {
         rewarders: vector<Rewarder>,
         points_released: u128,
@@ -88,8 +88,8 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::rewar
         abort 5
     }
     
-    public fun deposit_reward<T0>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg1: &mut RewarderGlobalVault, arg2: 0x2::balance::Balance<T0>) : u64 {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::checked_package_version(arg0);
+    public fun deposit_reward<T0>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut RewarderGlobalVault, arg2: 0x2::balance::Balance<T0>) : u64 {
+        clmm_pool::config::checked_package_version(arg0);
         let v0 = 0x1::type_name::get<T0>();
         if (!0x2::bag::contains<0x1::type_name::TypeName>(&arg1.balances, v0)) {
             0x2::bag::add<0x1::type_name::TypeName, 0x2::balance::Balance<T0>>(&mut arg1.balances, v0, 0x2::balance::zero<T0>());
@@ -104,8 +104,8 @@ module 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::rewar
         v1
     }
     
-    public fun emergent_withdraw<T0>(arg0: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::AdminCap, arg1: &0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::GlobalConfig, arg2: &mut RewarderGlobalVault, arg3: u64) : 0x2::balance::Balance<T0> {
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::config::checked_package_version(arg1);
+    public fun emergent_withdraw<T0>(arg0: &clmm_pool::config::AdminCap, arg1: &clmm_pool::config::GlobalConfig, arg2: &mut RewarderGlobalVault, arg3: u64) : 0x2::balance::Balance<T0> {
+        clmm_pool::config::checked_package_version(arg1);
         let v0 = EmergentWithdrawEvent{
             reward_type     : 0x1::type_name::get<T0>(), 
             withdraw_amount : arg3, 

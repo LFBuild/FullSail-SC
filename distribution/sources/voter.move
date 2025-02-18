@@ -273,7 +273,7 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter
         }
     }
     
-    public fun create_gauge<T0, T1, T2>(arg0: &mut Voter<T2>, arg1: &0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784::gauge_cap::CreateCap, arg2: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::GovernorCap, arg3: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::VotingEscrow<T2>, arg4: &mut 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::Pool<T0, T1>, arg5: &0x2::clock::Clock, arg6: &mut 0x2::tx_context::TxContext) : 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::gauge::Gauge<T0, T1, T2> {
+    public fun create_gauge<T0, T1, T2>(arg0: &mut Voter<T2>, arg1: &0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784::gauge_cap::CreateCap, arg2: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::GovernorCap, arg3: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::VotingEscrow<T2>, arg4: &mut clmm_pool::pool::Pool<T0, T1>, arg5: &0x2::clock::Clock, arg6: &mut 0x2::tx_context::TxContext) : 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::gauge::Gauge<T0, T1, T2> {
         0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::validate_governor_voter_id(arg2, 0x2::object::id<Voter<T2>>(arg0));
         assert!(is_governor<T2>(arg0, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::who(arg2)), 9223373604519346200);
         let v0 = return_new_gauge<T0, T1, T2>(arg1, arg4, arg6);
@@ -290,10 +290,10 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter
         v0
     }
     
-    public fun distribute_gauge<T0, T1, T2>(arg0: &mut Voter<T2>, arg1: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::gauge::Gauge<T0, T1, T2>, arg2: &mut 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::Pool<T0, T1>, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) : u64 {
+    public fun distribute_gauge<T0, T1, T2>(arg0: &mut Voter<T2>, arg1: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::gauge::Gauge<T0, T1, T2>, arg2: &mut clmm_pool::pool::Pool<T0, T1>, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) : u64 {
         let v0 = into_gauge_id(0x2::object::id<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::gauge::Gauge<T0, T1, T2>>(arg1));
         let v1 = 0x2::table::borrow<GaugeID, GaugeRepresent>(&arg0.gauge_represents, v0);
-        assert!(v1.pool_id == 0x2::object::id<0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::Pool<T0, T1>>(arg2) && v1.gauger_id == v0.id, 9223375983929720831);
+        assert!(v1.pool_id == 0x2::object::id<clmm_pool::pool::Pool<T0, T1>>(arg2) && v1.gauger_id == v0.id, 9223375983929720831);
         let v2 = extract_claimable_for<T2>(arg0, v0.id);
         let (v3, v4) = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::gauge::notify_reward<T0, T1, T2>(arg1, &arg0.voter_cap, arg2, v2, arg3, arg4);
         let v5 = 0x2::table::borrow_mut<GaugeID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::fee_voting_reward::FeeVotingReward>(&mut arg0.gauge_to_fee, v0);
@@ -554,11 +554,11 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter
         };
     }
     
-    public(friend) fun return_new_gauge<T0, T1, T2>(arg0: &0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784::gauge_cap::CreateCap, arg1: &mut 0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::Pool<T0, T1>, arg2: &mut 0x2::tx_context::TxContext) : 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::gauge::Gauge<T0, T1, T2> {
-        let v0 = 0x2::object::id<0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::Pool<T0, T1>>(arg1);
+    public(friend) fun return_new_gauge<T0, T1, T2>(arg0: &0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784::gauge_cap::CreateCap, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: &mut 0x2::tx_context::TxContext) : 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::gauge::Gauge<T0, T1, T2> {
+        let v0 = 0x2::object::id<clmm_pool::pool::Pool<T0, T1>>(arg1);
         let v1 = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::gauge::create<T0, T1, T2>(v0, arg2);
         let v2 = 0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784::gauge_cap::create_gauge_cap(arg0, v0, 0x2::object::id<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::gauge::Gauge<T0, T1, T2>>(&v1), arg2);
-        0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d::pool::init_magma_distribution_gauge<T0, T1>(arg1, &v2);
+        clmm_pool::pool::init_magma_distribution_gauge<T0, T1>(arg1, &v2);
         0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::gauge::receive_gauge_cap<T0, T1, T2>(&mut v1, v2);
         v1
     }
