@@ -1,20 +1,17 @@
 module move_stl::linked_table {
-    use std::option::{Option, none, is_none, is_some, swap_or_fill, some};
-    use std::option;
-    use sui::tx_context::TxContext;
-    use sui::object::{Self, UID};
+    use std::option::{none, is_none, is_some, swap_or_fill, some};
     use sui::dynamic_field as field;
 
     const  EListNotEmpty: u64 = 0;
 
-    struct LinkedTable<K: store + drop + copy, phantom V: store> has key, store {
+    public struct LinkedTable<K: store + drop + copy, phantom V: store> has key, store {
         id: UID,
         head: Option<K>,
         tail: Option<K>,
         size: u64
     }
 
-    struct Node<K: store + drop + copy, V: store> has store {
+    public struct Node<K: store + drop + copy, V: store> has store {
         prev: Option<K>,
         next: Option<K>,
         value: V
@@ -198,7 +195,7 @@ module move_stl::linked_table {
     #[lint_allow(self_transfer)]
     fun test_table_push_front() {
         let ctx = &mut tx_context::dummy();
-        let table = new<u64, u256>(ctx);
+        let mut table = new<u64, u256>(ctx);
         push_front(&mut table, 1, 1001);
         assert!(!is_empty(&table), 0);
         assert!((is_some(&table.head) && (*option::borrow(&table.head) == 1)), 0);
@@ -235,7 +232,7 @@ module move_stl::linked_table {
     #[lint_allow(self_transfer)]
     fun test_table_push_back() {
         let ctx = &mut tx_context::dummy();
-        let table = new<u64, u256>(ctx);
+        let mut table = new<u64, u256>(ctx);
         push_back(&mut table, 1, 1001);
         assert!(!is_empty(&table), 0);
         assert!((is_some(&table.head) && (*option::borrow(&table.head) == 1)), 0);
@@ -272,7 +269,7 @@ module move_stl::linked_table {
     #[lint_allow(self_transfer)]
     fun test_table_remove() {
         let ctx = &mut tx_context::dummy();
-        let table = new<u64, u256>(ctx);
+        let mut table = new<u64, u256>(ctx);
         push_back(&mut table, 5, 1005);
         push_back(&mut table, 6, 1006);
         push_back(&mut table, 7, 1007);
@@ -327,7 +324,7 @@ module move_stl::linked_table {
     #[lint_allow(self_transfer)]
     fun test_table_insert_before() {
         let ctx = &mut tx_context::dummy();
-        let table = new<u64, u256>(ctx);
+        let mut table = new<u64, u256>(ctx);
         push_back(&mut table, 2, 1002);
         push_back(&mut table, 4, 1004);
         push_back(&mut table, 6, 1006);
@@ -380,7 +377,7 @@ module move_stl::linked_table {
     #[lint_allow(self_transfer)]
     fun test_table_insert_after() {
         let ctx = &mut tx_context::dummy();
-        let table = new<u64, u256>(ctx);
+        let mut table = new<u64, u256>(ctx);
         push_back(&mut table, 2, 1002);
         push_back(&mut table, 4, 1004);
         push_back(&mut table, 6, 1006);
@@ -436,8 +433,8 @@ module move_stl::linked_table {
     #[lint_allow(self_transfer)]
     fun test_table_push_back_bench() {
         let ctx = &mut tx_context::dummy();
-        let table = new<u64, u256>(ctx);
-        let n = 0;
+        let mut table = new<u64, u256>(ctx);
+        let mut n = 0;
         while (n < 10000) {
             push_back(&mut table, n, (n as u256));
             n = n + 1;
@@ -449,8 +446,8 @@ module move_stl::linked_table {
     #[lint_allow(self_transfer)]
     fun test_table_push_front_bench() {
         let ctx = &mut tx_context::dummy();
-        let table = new<u64, u256>(ctx);
-        let n = 0;
+        let mut table = new<u64, u256>(ctx);
+        let mut n = 0;
         while (n < 10000) {
             push_front(&mut table, n, (n as u256));
             n = n + 1;
@@ -462,9 +459,9 @@ module move_stl::linked_table {
     #[lint_allow(self_transfer)]
     fun test_table_insert_before_bench() {
         let ctx = &mut tx_context::dummy();
-        let table = new<u64, u64>(ctx);
-        let n = 10000;
-        let current_key = 20000;
+        let mut table = new<u64, u64>(ctx);
+        let mut n = 10000;
+        let mut current_key = 20000;
         push_back(&mut table, 0, 0);
         push_back(&mut table, current_key, current_key);
         while (n > 0) {
@@ -479,9 +476,9 @@ module move_stl::linked_table {
     #[lint_allow(self_transfer)]
     fun test_table_insert_after_bench() {
         let ctx = &mut tx_context::dummy();
-        let table = new<u64, u64>(ctx);
-        let n = 1;
-        let current_key = 0;
+        let mut table = new<u64, u64>(ctx);
+        let mut n = 1;
+        let mut current_key = 0;
         push_back(&mut table, 0, 0);
         push_back(&mut table, 20000, 20000);
         while (n <= 10000) {

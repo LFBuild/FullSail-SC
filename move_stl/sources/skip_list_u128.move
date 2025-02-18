@@ -1,7 +1,5 @@
 module move_stl::skip_list_u128 {
-    use sui::object::{Self, UID};
-    use sui::tx_context::TxContext;
-    use std::vector::{Self, push_back};
+    use std::vector::{push_back};
     use sui::table;
     use move_stl::option_u128::{Self, OptionU128, none, some, is_none, is_some, swap_or_fill, is_some_and_lte};
     use move_stl::random::{Self, Random};
@@ -11,7 +9,7 @@ module move_stl::skip_list_u128 {
     const ESkipListNotEmpty: u64 = 3;
 
     /// The skip list.
-    struct SkipList<V: store> has key, store{
+    public struct SkipList<V: store> has key, store{
         /// The id of this skip list.
         id: UID,
         /// The skip list header of each level. i.e. the score of node.
@@ -33,7 +31,7 @@ module move_stl::skip_list_u128 {
     }
 
     /// The node of skip list.
-    struct SkipListNode<V: store> has store {
+    public struct SkipListNode<V: store> has store {
         /// The score of node.
         score: u128,
         /// The next node score of node's each level.
@@ -166,11 +164,11 @@ module move_stl::skip_list_u128 {
     /// Insert a score-value into skip list, abort if the score alread exist.
     public fun insert<V: store>(list: &mut SkipList<V>, score: u128, v: V) {
         assert!(!table::contains(&list.inner, score), ENodeAlreadyExist);
-        let (level, new_node) = create_node(list, score, v);
-        let (l, nexts, prev) = (list.level, &mut list.head, none());
-        let opt_l0_next_score = none();
+        let (level, mut new_node) = create_node(list, score, v);
+        let (mut l, mut nexts, mut prev) = (list.level, &mut list.head, none());
+        let mut opt_l0_next_score = none();
         while(l > 0) {
-            let opt_next_score = vector::borrow_mut(nexts, l - 1);
+            let mut opt_next_score = vector::borrow_mut(nexts, l - 1);
             while (is_some_and_lte(opt_next_score, score)) {
                 let node = table::borrow_mut(&mut list.inner, option_u128::borrow(opt_next_score));
                 prev = some(node.score);
@@ -202,10 +200,10 @@ module move_stl::skip_list_u128 {
     /// Remove the score-value from skip list, abort if the score not exist in list.
     public fun remove<V: store>(list: &mut SkipList<V>, score: u128): V {
         assert!(table::contains(&list.inner, score), ENodeDoesNotExist);
-        let (l, nexts) = (list.level, &mut list.head);
+        let (mut l, mut nexts) = (list.level, &mut list.head);
         let node = table::remove(&mut list.inner, score);
         while (l > 0) {
-            let opt_next_score = vector::borrow_mut(nexts, l - 1);
+            let mut opt_next_score = vector::borrow_mut(nexts, l - 1);
             while (is_some_and_lte(opt_next_score, score)) {
                 let next_score = option_u128::borrow(opt_next_score);
                 if (next_score == score) {
@@ -262,9 +260,9 @@ module move_stl::skip_list_u128 {
 
     /// Find the nearest score. 1. score, 2. prev, 3. next
     fun find<V: store>(list: &SkipList<V>, score: u128): OptionU128 {
-        let (l, nexts,current_score) = (list.level, &list.head, none());
+        let (mut l, mut nexts,mut current_score) = (list.level, &list.head, none());
         while (l > 0) {
-            let opt_next_score = *vector::borrow(nexts, l - 1);
+            let mut opt_next_score = *vector::borrow(nexts, l - 1);
             while(is_some_and_lte(&opt_next_score, score)) {
                 let next_score = option_u128::borrow(&opt_next_score);
                 if (next_score == score) {
@@ -285,8 +283,8 @@ module move_stl::skip_list_u128 {
     }
 
     fun rand_level<V: store>(seed: u64, list: &SkipList<V>): u64 {
-        let level = 1;
-        let mod = list.list_p;
+        let mut level = 1;
+        let mut mod = list.list_p;
         while ((seed % mod) == 0) {
             mod = mod * list.list_p;
             level = level + 1;
@@ -351,7 +349,7 @@ module move_stl::skip_list_u128 {
         if (length(list) == 0) {
             return
         };
-        let next_score = vector::borrow(&list.head, 0);
+        let mut next_score = vector::borrow(&list.head, 0);
         while (is_some(next_score)) {
             let node = table::borrow(&list.inner, option_u128::borrow(next_score));
             next_score = vector::borrow(&node.nexts, 0);
@@ -369,11 +367,11 @@ module move_stl::skip_list_u128 {
 
         // Check level 0
         let (
-            size,
-            opt_next_score,
-            tail,
-            prev,
-            current_score,
+            mut size,
+            mut opt_next_score,
+            mut tail,
+            mut prev,
+            mut current_score,
         ) = (
             0,
             vector::borrow(&list.head, 0),
@@ -408,10 +406,10 @@ module move_stl::skip_list_u128 {
         assert!(size == table::length(&list.inner), 0);
 
         // Check indexer levels
-        let l = list.level - 1;
+        let mut l = list.level - 1;
         while (l > 0) {
-            let opt_next_l_score = vector::borrow(&list.head, l);
-            let opt_next_0_score = vector::borrow(&list.head, 0);
+            let mut opt_next_l_score = vector::borrow(&list.head, l);
+            let mut opt_next_0_score = vector::borrow(&list.head, 0);
             while(is_some(opt_next_0_score)) {
                 let next_0_score = option_u128::borrow(opt_next_0_score);
                 let node = table::borrow(&list.inner, next_0_score);
@@ -432,7 +430,7 @@ module move_stl::skip_list_u128 {
     #[test_only]
     #[lint_allow(self_transfer)]
     fun get_all_socres<V: store>(list: &SkipList<V>): vector<u128> {
-        let (opt_next_score,scores ) = (vector::borrow(&list.head, 0), vector::empty<u128>());
+        let (mut opt_next_score,mut scores ) = (vector::borrow(&list.head, 0), vector::empty<u128>());
         while (is_some(opt_next_score)) {
             let next_score = option_u128::borrow(opt_next_score);
             let next_node = table::borrow(&list.inner, next_score);
@@ -455,8 +453,8 @@ module move_stl::skip_list_u128 {
     #[lint_allow(self_transfer)]
     fun test_create_node() {
         let ctx = &mut tx_context::dummy();
-        let skip_list = new<u256>(16, 2, 12345, ctx);
-        let n = 0;
+        let mut skip_list = new<u256>(16, 2, 12345, ctx);
+        let mut n = 0;
         while (n < 10) {
             let (_, node) = create_node(&mut skip_list, n, 0);
             let SkipListNode{score:_, value:_, nexts:_, prev:_} = node;
@@ -468,8 +466,8 @@ module move_stl::skip_list_u128 {
 
     #[test_only]
     fun add_node_for_test<V: store + copy + drop>(list: &mut SkipList<V>, size: u64, seed: u64, value: V) {
-        let random = random::new(seed);
-        let n = 0;
+        let mut random = random::new(seed);
+        let mut n = 0;
         while (n < size) {
             let score = (random::rand_n(&mut random, 1000000) as u128);
             if (contains(list, score)) {
@@ -485,7 +483,7 @@ module move_stl::skip_list_u128 {
     fun new_list_for_test<V: store + copy + drop>(
         max_leveL: u64, list_p: u64, size: u64, seed: u64, value: V, ctx: &mut TxContext
     ): SkipList<V> {
-        let list = new<V>(max_leveL, list_p, seed, ctx);
+        let mut list = new<V>(max_leveL, list_p, seed, ctx);
         add_node_for_test(&mut list, size, seed, value);
         list
     }
@@ -502,8 +500,8 @@ module move_stl::skip_list_u128 {
     #[lint_allow(self_transfer)]
     fun test_insert_bench() {
         let ctx = &mut tx_context::dummy();
-        let list = new<u256>(16, 2, 12345, ctx);
-        let n = 0;
+        let mut list = new<u256>(16, 2, 12345, ctx);
+        let mut n = 0;
         while (n < 5001) {
             insert(&mut list, 0 + n, 0);
             insert(&mut list, 1000000 - n, 0);
@@ -515,7 +513,7 @@ module move_stl::skip_list_u128 {
     }
 
     #[allow(unused_field)]
-    struct Item has drop, store {
+    public struct Item has drop, store {
         n: u64,
         score: u64,
         finded: OptionU128
@@ -529,7 +527,7 @@ module move_stl::skip_list_u128 {
         let scores = get_all_socres(&list);
 
         let length = vector::length(&scores);
-        let n = length;
+        let mut n = length;
         while ( n > 0) {
             let score = *vector::borrow(&scores, n - 1);
             let finded = find_prev(&list, score, true);
@@ -574,10 +572,10 @@ module move_stl::skip_list_u128 {
     fun test_find_bench() {
         let ctx = &mut tx_context::dummy();
         let list = new_list_for_test<u256>(16, 2, 1000, 12345, 0, ctx);
-        let random = random::new(12345);
-        let n = 0;
+        let mut random = random::new(12345);
+        let mut n = 0;
         while (n < 100) {
-            let score = (random::rand_n(&mut random, 1000000) as u128);
+            let mut score = (random::rand_n(&mut random, 1000000) as u128);
             if ((n % 3) == 0) {
                 score = score + 1;
             };
@@ -593,8 +591,8 @@ module move_stl::skip_list_u128 {
     fun test_find_next_bench() {
         let ctx = &mut tx_context::dummy();
         let list = new_list_for_test<u256>(16, 2, 1000, 12345, 0, ctx);
-        let n = 0;
-        let finded = find_next(&list, 99999, true);
+        let mut n = 0;
+        let mut finded = find_next(&list, 99999, true);
         while (n < 1 && is_some(&finded)) {
             let node = borrow_node(&list, option_u128::borrow(&finded));
             finded = next_score(node);
@@ -607,9 +605,9 @@ module move_stl::skip_list_u128 {
     #[lint_allow(self_transfer)]
     fun test_remove() {
         let ctx = &mut tx_context::dummy();
-        let list = new_list_for_test<u256>(16, 2, 1000, 5678, 0, ctx);
+        let mut list = new_list_for_test<u256>(16, 2, 1000, 5678, 0, ctx);
         let scores = get_all_socres(&list);
-        let (n, length) = (0, vector::length(&scores));
+        let (mut n, length) = (0, vector::length(&scores));
         let start = length / 2;
         while(n <= start) {
             let s1 = start - n;
@@ -626,8 +624,8 @@ module move_stl::skip_list_u128 {
 
         add_node_for_test(&mut list, 2000, 7890, 0);
         let scores = get_all_socres(&list);
-        let (n, length) = (0, vector::length(&scores));
-        let skip = 0;
+        let (mut n, length) = (0, vector::length(&scores));
+        let mut skip = 0;
         while(n < length) {
             remove(&mut list, *vector::borrow(&scores, n));
             skip = skip + 1;

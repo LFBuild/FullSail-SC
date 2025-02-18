@@ -4,7 +4,7 @@ module move_stl::option_u128 {
 
     const EOptionU128IsNone: u64 = 0;
 
-    struct OptionU128 has copy, drop, store {
+    public struct OptionU128 has copy, drop, store {
         is_none: bool,
         v: u128
     }
@@ -64,7 +64,7 @@ module move_stl::option_u128 {
     #[test]
     fun test_opt() {
         let a = some(10000u128);
-        let n = 0;
+        let mut n = 0;
         while (n < 10000) {
             _ = borrow(&a);
             n = n + 1;
@@ -74,7 +74,7 @@ module move_stl::option_u128 {
     #[test]
     fun test_option_contains() {
         let a = option::some(100000);
-        let n = 0;
+        let mut n = 0;
         while (n < 10000) {
             option::contains(&a, &100000);
             n = n + 1;
