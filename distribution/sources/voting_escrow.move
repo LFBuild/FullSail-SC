@@ -1,4 +1,4 @@
-module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow {
+module distribution::voting_escrow {
     public struct VOTING_ESCROW has drop {
         dummy_field: bool,
     }
@@ -149,15 +149,15 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::votin
         slope_changes: 0x2::table::Table<u64, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::I128>,
         permanent_lock_balance: u64,
         escrow_type: 0x2::table::Table<0x2::object::ID, EscrowType>,
-        voting_dao: 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_dao::VotingDAO,
+        voting_dao: distribution::voting_dao::VotingDAO,
         can_split: 0x2::table::Table<address, bool>,
         allowed_managers: 0x2::vec_set::VecSet<address>,
         managed_weights: 0x2::table::Table<0x2::object::ID, 0x2::table::Table<0x2::object::ID, u64>>,
-        managed_to_locked: 0x2::table::Table<0x2::object::ID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::locked_managed_reward::LockedManagedReward>,
-        managed_to_free: 0x2::table::Table<0x2::object::ID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::free_managed_reward::FreeManagedReward>,
+        managed_to_locked: 0x2::table::Table<0x2::object::ID, distribution::locked_managed_reward::LockedManagedReward>,
+        managed_to_free: 0x2::table::Table<0x2::object::ID, distribution::free_managed_reward::FreeManagedReward>,
         id_to_managed: 0x2::table::Table<0x2::object::ID, 0x2::object::ID>,
-        locked_managed_reward_authorized_cap: 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::reward_authorized_cap::RewardAuthorizedCap,
-        free_managed_reward_authorized_cap: 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::reward_authorized_cap::RewardAuthorizedCap,
+        locked_managed_reward_authorized_cap: distribution::reward_authorized_cap::RewardAuthorizedCap,
+        free_managed_reward_authorized_cap: distribution::reward_authorized_cap::RewardAuthorizedCap,
     }
 
     public struct UserPoint has copy, drop, store {
@@ -196,7 +196,7 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::votin
         let v4 = lock_has_voted<T0>(arg0, v0);
         assert!(!v4, 9223375910916980763);
         let v5 = *0x2::table::borrow<0x2::object::ID, LockedBalance>(&arg0.locked, v0);
-        assert!(v5.end > 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::current_timestamp(arg3) || v5.is_permanent, 9223375928095539207);
+        assert!(v5.end > distribution::common::current_timestamp(arg3) || v5.is_permanent, 9223375928095539207);
         assert!(arg2 > 0, 9223375932390375429);
         assert!(v5.amount > arg2, 9223375936686915613);
         let v6 = arg1.escrow;
@@ -226,7 +226,7 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::votin
             assert!(escrow_type<T0>(arg1, v0) != EscrowType::LOCKED{}, 9223376885873770511);
             let v1 = 0x2::table::remove<0x2::object::ID, address>(&mut arg1.owner_of, v0);
             assert!(v1 == 0x2::tx_context::sender(arg4), 9223376898757754879);
-            0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_dao::checkpoint_delegator(&mut arg1.voting_dao, v0, 0, 0x2::object::id_from_address(@0x0), arg2, arg3, arg4);
+            distribution::voting_dao::checkpoint_delegator(&mut arg1.voting_dao, v0, 0, 0x2::object::id_from_address(@0x0), arg2, arg3, arg4);
             0x2::table::add<0x2::object::ID, address>(&mut arg1.owner_of, v0, arg2);
             if (0x2::table::contains<0x2::object::ID, u64>(&arg1.ownership_change_at, v0)) {
                 0x2::table::remove<0x2::object::ID, u64>(&mut arg1.ownership_change_at, v0);
@@ -252,8 +252,8 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::votin
             total_locked                         : 0,
             point_history                        : 0x2::table::new<u64, GlobalPoint>(arg3),
             epoch                                : 0,
-            min_lock_time                        : 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::min_lock_time(),
-            max_lock_time                        : 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::max_lock_time(),
+            min_lock_time                        : distribution::common::min_lock_time(),
+            max_lock_time                        : distribution::common::max_lock_time(),
             lock_durations                       : 0x2::vec_set::empty<u64>(),
             deactivated                          : 0x2::table::new<0x2::object::ID, bool>(arg3),
             ownership_change_at                  : 0x2::table::new<0x2::object::ID, u64>(arg3),
@@ -265,20 +265,20 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::votin
             slope_changes                        : 0x2::table::new<u64, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::I128>(arg3),
             permanent_lock_balance               : 0,
             escrow_type                          : 0x2::table::new<0x2::object::ID, EscrowType>(arg3),
-            voting_dao                           : 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_dao::create(arg3),
+            voting_dao                           : distribution::voting_dao::create(arg3),
             can_split                            : 0x2::table::new<address, bool>(arg3),
             allowed_managers                     : 0x2::vec_set::empty<address>(),
             managed_weights                      : 0x2::table::new<0x2::object::ID, 0x2::table::Table<0x2::object::ID, u64>>(arg3),
-            managed_to_locked                    : 0x2::table::new<0x2::object::ID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::locked_managed_reward::LockedManagedReward>(arg3),
-            managed_to_free                      : 0x2::table::new<0x2::object::ID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::free_managed_reward::FreeManagedReward>(arg3),
+            managed_to_locked                    : 0x2::table::new<0x2::object::ID, distribution::locked_managed_reward::LockedManagedReward>(arg3),
+            managed_to_free                      : 0x2::table::new<0x2::object::ID, distribution::free_managed_reward::FreeManagedReward>(arg3),
             id_to_managed                        : 0x2::table::new<0x2::object::ID, 0x2::object::ID>(arg3),
-            locked_managed_reward_authorized_cap : 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::reward_authorized_cap::create(v1, arg3),
-            free_managed_reward_authorized_cap   : 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::reward_authorized_cap::create(v1, arg3),
+            locked_managed_reward_authorized_cap : distribution::reward_authorized_cap::create(v1, arg3),
+            free_managed_reward_authorized_cap   : distribution::reward_authorized_cap::create(v1, arg3),
         };
         let v3 = GlobalPoint{
             bias                   : 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(0),
             slope                  : 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(0),
-            ts                     : 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::current_timestamp(arg2),
+            ts                     : distribution::common::current_timestamp(arg2),
             permanent_lock_balance : 0,
         };
         0x2::table::add<u64, GlobalPoint>(&mut v2.point_history, 0, v3);
@@ -293,7 +293,7 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::votin
         assert!(!0x2::table::contains<0x2::object::ID, EscrowType>(&arg0.escrow_type, v1) || *0x2::table::borrow<0x2::object::ID, EscrowType>(&arg0.escrow_type, v1) == EscrowType::NORMAL{}, 9223376409133056025);
         let v3 = *0x2::table::borrow<0x2::object::ID, LockedBalance>(&arg0.locked, v1);
         assert!(!v3.is_permanent, 9223376422018613283);
-        assert!(0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::current_timestamp(arg2) >= v3.end, 9223376430606843913);
+        assert!(distribution::common::current_timestamp(arg2) >= v3.end, 9223376430606843913);
         let v4 = arg0.total_locked;
         arg0.total_locked = arg0.total_locked - v3.amount;
         burn_lock_internal<T0>(arg0, arg1, v3, arg2, arg3);
@@ -342,7 +342,7 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::votin
 
     fun burn_lock_internal<T0>(arg0: &mut VotingEscrow<T0>, arg1: Lock, arg2: LockedBalance, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
         let v0 = 0x2::object::id<Lock>(&arg1);
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_dao::checkpoint_delegator(&mut arg0.voting_dao, v0, arg2.amount, 0x2::object::id_from_address(@0x0), @0x0, arg3, arg4);
+        distribution::voting_dao::checkpoint_delegator(&mut arg0.voting_dao, v0, arg2.amount, 0x2::object::id_from_address(@0x0), @0x0, arg3, arg4);
         0x2::table::remove<0x2::object::ID, address>(&mut arg0.owner_of, v0);
         0x2::table::remove<0x2::object::ID, LockedBalance>(&mut arg0.locked, v0);
         checkpoint_internal<T0>(arg0, 0x1::option::some<0x2::object::ID>(v0), arg2, locked_balance(0, 0, false), arg3, arg4);
@@ -368,7 +368,7 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::votin
         let mut v3 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(0);
         let v4 = arg0.epoch;
         let mut v5 = v4;
-        let v6 = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::current_timestamp(arg4);
+        let v6 = distribution::common::current_timestamp(arg4);
         if (0x1::option::is_some<0x2::object::ID>(&arg1)) {
             let mut v7 = if (arg3.is_permanent) {
                 arg3.amount
@@ -377,11 +377,11 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::votin
             };
             v1.permanent = v7;
             if (arg2.end > v6 && arg2.amount > 0) {
-                v0.slope = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u128::mul_div_floor((arg2.amount as u128), 18446744073709551616, (0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::max_lock_time() as u128)));
+                v0.slope = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u128::mul_div_floor((arg2.amount as u128), 18446744073709551616, (distribution::common::max_lock_time() as u128)));
                 v0.bias = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::div(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::mul(v0.slope, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(((arg2.end - v6) as u128))), 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(18446744073709551616));
             };
             if (arg3.end > v6 && arg3.amount > 0) {
-                v1.slope = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u128::mul_div_floor((arg3.amount as u128), 18446744073709551616, (0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::max_lock_time() as u128)));
+                v1.slope = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u128::mul_div_floor((arg3.amount as u128), 18446744073709551616, (distribution::common::max_lock_time() as u128)));
                 v1.bias = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::div(0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::mul(v1.slope, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(((arg3.end - v6) as u128))), 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(18446744073709551616));
             };
             let mut v8 = if (0x2::table::contains<u64, 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::I128>(&arg0.slope_changes, arg2.end)) {
@@ -411,10 +411,10 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::votin
         let mut v11 = v10;
         let v12 = v11.ts;
         GlobalPoint{bias: v11.bias, slope: v11.slope, ts: v11.ts, permanent_lock_balance: v11.permanent_lock_balance};
-        let mut v13 = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::to_period(v12);
+        let mut v13 = distribution::common::to_period(v12);
         let mut v14 = 0;
         while (v14 < 255) {
-            let v15 = v13 + 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::week();
+            let v15 = v13 + distribution::common::week();
             v13 = v15;
             let mut v16 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(0);
             if (v15 > v6) {
@@ -513,9 +513,9 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::votin
         validate_lock_duration<T0>(arg0, arg2);
         let v0 = 0x2::coin::value<T0>(&arg1);
         assert!(v0 > 0, 9223374381907181573);
-        let v1 = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::current_timestamp(arg4);
+        let v1 = distribution::common::current_timestamp(arg4);
         let v2 = 0x2::tx_context::sender(arg5);
-        let (v3, v4) = create_lock_internal<T0>(arg0, v2, v0, v1, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::to_period(v1 + arg2 * 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::day()), arg3, arg4, arg5);
+        let (v3, v4) = create_lock_internal<T0>(arg0, v2, v0, v1, distribution::common::to_period(v1 + arg2 * distribution::common::day()), arg3, arg4, arg5);
         let mut v5 = v3;
         let CreateLockReceipt { amount: v6 } = v4;
         assert!(v6 == v0, 9223374416266657791);
@@ -531,8 +531,8 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::votin
         validate_lock_duration<T0>(arg0, arg3);
         let v0 = 0x2::coin::value<T0>(&arg2);
         assert!(v0 > 0, 9223374257353129989);
-        let v1 = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::current_timestamp(arg5);
-        let (v2, v3) = create_lock_internal<T0>(arg0, arg1, v0, v1, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::to_period(v1 + arg3 * 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::day()), arg4, arg5, arg6);
+        let v1 = distribution::common::current_timestamp(arg5);
+        let (v2, v3) = create_lock_internal<T0>(arg0, arg1, v0, v1, distribution::common::to_period(v1 + arg3 * distribution::common::day()), arg4, arg5, arg6);
         let mut v4 = v2;
         let CreateLockReceipt { amount: v5 } = v3;
         assert!(v5 == v0, 9223374287417638911);
@@ -558,7 +558,7 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::votin
         assert!(!0x2::table::contains<0x2::object::ID, LockedBalance>(&arg0.locked, v1), 9223374175748489215);
         0x2::table::add<0x2::object::ID, address>(&mut arg0.owner_of, v1, arg1);
         0x2::table::add<0x2::object::ID, u64>(&mut arg0.ownership_change_at, v1, 0x2::clock::timestamp_ms(arg6));
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_dao::checkpoint_delegator(&mut arg0.voting_dao, v1, arg2, 0x2::object::id_from_address(@0x0), arg1, arg6, arg7);
+        distribution::voting_dao::checkpoint_delegator(&mut arg0.voting_dao, v1, arg2, 0x2::object::id_from_address(@0x0), arg1, arg6, arg7);
         deposit_for_internal<T0>(arg0, v1, arg2, arg4, locked_balance(0, 0, arg5), DepositType::CREATE_LOCK_TYPE{}, arg6, arg7);
         let v2 = EventCreateLock{
             lock_id : v1,
@@ -572,25 +572,25 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::votin
     public fun create_managed_lock_for<T0>(arg0: &mut VotingEscrow<T0>, arg1: address, arg2: &0x2::clock::Clock, arg3: &mut 0x2::tx_context::TxContext) : 0x2::object::ID {
         let v0 = 0x2::tx_context::sender(arg3);
         assert!(0x2::vec_set::contains<address>(&arg0.allowed_managers, &v0), 9223377598838734869);
-        let (v1, v2) = create_lock_internal<T0>(arg0, arg1, 0, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::current_timestamp(arg2), 0, true, arg2, arg3);
+        let (v1, v2) = create_lock_internal<T0>(arg0, arg1, 0, distribution::common::current_timestamp(arg2), 0, true, arg2, arg3);
         let v3 = v1;
         let CreateLockReceipt {  } = v2;
         let v4 = 0x2::object::id<Lock>(&v3);
         0x2::transfer::transfer<Lock>(v3, arg1);
         0x2::table::add<0x2::object::ID, EscrowType>(&mut arg0.escrow_type, v4, EscrowType::MANAGED{});
         let v5 = 0x1::type_name::get<T0>();
-        let v6 = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::locked_managed_reward::create(arg0.voter, 0x2::object::id<VotingEscrow<T0>>(arg0), v5, arg3);
-        let v7 = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::free_managed_reward::create(arg0.voter, 0x2::object::id<VotingEscrow<T0>>(arg0), v5, arg3);
+        let v6 = distribution::locked_managed_reward::create(arg0.voter, 0x2::object::id<VotingEscrow<T0>>(arg0), v5, arg3);
+        let v7 = distribution::free_managed_reward::create(arg0.voter, 0x2::object::id<VotingEscrow<T0>>(arg0), v5, arg3);
         let v8 = EventCreateManaged{
             owner                 : arg1,
             lock_id               : v4,
             sender                : v0,
-            locked_managed_reward : 0x2::object::id<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::locked_managed_reward::LockedManagedReward>(&v6),
-            free_managed_reward   : 0x2::object::id<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::free_managed_reward::FreeManagedReward>(&v7),
+            locked_managed_reward : 0x2::object::id<distribution::locked_managed_reward::LockedManagedReward>(&v6),
+            free_managed_reward   : 0x2::object::id<distribution::free_managed_reward::FreeManagedReward>(&v7),
         };
         0x2::event::emit<EventCreateManaged>(v8);
-        0x2::table::add<0x2::object::ID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::locked_managed_reward::LockedManagedReward>(&mut arg0.managed_to_locked, v4, v6);
-        0x2::table::add<0x2::object::ID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::free_managed_reward::FreeManagedReward>(&mut arg0.managed_to_free, v4, v7);
+        0x2::table::add<0x2::object::ID, distribution::locked_managed_reward::LockedManagedReward>(&mut arg0.managed_to_locked, v4, v6);
+        0x2::table::add<0x2::object::ID, distribution::free_managed_reward::FreeManagedReward>(&mut arg0.managed_to_free, v4, v7);
         v4
     }
 
@@ -607,7 +607,7 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::votin
         0x2::table::add<0x2::object::ID, LockedBalance>(&mut arg0.locked, v1, arg5);
         0x2::table::add<0x2::object::ID, address>(&mut arg0.owner_of, v1, arg1);
         0x2::table::add<0x2::object::ID, u64>(&mut arg0.ownership_change_at, v1, 0x2::clock::timestamp_ms(arg6));
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_dao::checkpoint_delegator(&mut arg0.voting_dao, v1, arg5.amount, 0x2::object::id_from_address(@0x0), arg1, arg6, arg7);
+        distribution::voting_dao::checkpoint_delegator(&mut arg0.voting_dao, v1, arg5.amount, 0x2::object::id_from_address(@0x0), arg1, arg6, arg7);
         checkpoint_internal<T0>(arg0, 0x1::option::some<0x2::object::ID>(0x2::object::id<Lock>(&v0)), locked_balance(0, 0, false), arg5, arg6, arg7);
         v0
     }
@@ -639,13 +639,13 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::votin
         if (0x2::object::id<Lock>(arg1) == arg2) {
             arg2 = 0x2::object::id_from_address(@0x0);
         };
-        assert!(0x2::clock::timestamp_ms(arg3) - *0x2::table::borrow<0x2::object::ID, u64>(&arg0.ownership_change_at, v0) >= 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::get_time_to_finality(), 9223375683284107297);
-        let v4 = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_dao::delegatee(&arg0.voting_dao, v0);
+        assert!(0x2::clock::timestamp_ms(arg3) - *0x2::table::borrow<0x2::object::ID, u64>(&arg0.ownership_change_at, v0) >= distribution::common::get_time_to_finality(), 9223375683284107297);
+        let v4 = distribution::voting_dao::delegatee(&arg0.voting_dao, v0);
         if (v4 == arg2) {
             return
         };
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_dao::checkpoint_delegator(&mut arg0.voting_dao, v0, v3.amount, arg2, *0x2::table::borrow<0x2::object::ID, address>(&arg0.owner_of, v0), arg3, arg4);
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_dao::checkpoint_delegatee(&mut arg0.voting_dao, arg2, v3.amount, true, arg3, arg4);
+        distribution::voting_dao::checkpoint_delegator(&mut arg0.voting_dao, v0, v3.amount, arg2, *0x2::table::borrow<0x2::object::ID, address>(&arg0.owner_of, v0), arg3, arg4);
+        distribution::voting_dao::checkpoint_delegatee(&mut arg0.voting_dao, arg2, v3.amount, true, arg3, arg4);
         let v5 = EventDelegateChanged{
             old : v4,
             new : arg2,
@@ -697,12 +697,12 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::votin
         0x2::event::emit<EventSupply>(v3);
     }
 
-    public fun deposit_managed<T0>(arg0: &mut VotingEscrow<T0>, arg1: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::VoterCap, arg2: &mut Lock, arg3: 0x2::object::ID, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
-        assert!(0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::get_voter_id(arg1) == arg0.voter, 9223377701916639231);
+    public fun deposit_managed<T0>(arg0: &mut VotingEscrow<T0>, arg1: &distribution::voter_cap::VoterCap, arg2: &mut Lock, arg3: 0x2::object::ID, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
+        assert!(distribution::voter_cap::get_voter_id(arg1) == arg0.voter, 9223377701916639231);
         let v0 = 0x2::object::id<Lock>(arg2);
         assert!(escrow_type<T0>(arg0, arg3) == EscrowType::MANAGED{}, 9223377706214359083);
         assert!(escrow_type<T0>(arg0, v0) == EscrowType::NORMAL{}, 9223377710508146713);
-        assert!(balance_of_nft_at_internal<T0>(arg0, v0, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::current_timestamp(arg4)) > 0, 9223377719096770565);
+        assert!(balance_of_nft_at_internal<T0>(arg0, v0, distribution::common::current_timestamp(arg4)) > 0, 9223377719096770565);
         let v1 = *0x2::table::borrow<0x2::object::ID, LockedBalance>(&arg0.locked, v0);
         let v2 = v1.amount;
         if (v1.is_permanent) {
@@ -715,7 +715,7 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::votin
         arg0.permanent_lock_balance = arg0.permanent_lock_balance + v2;
         let mut v3 = *0x2::table::borrow<0x2::object::ID, LockedBalance>(&arg0.locked, arg3);
         v3.amount = v3.amount + v2;
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_dao::checkpoint_delegatee(&mut arg0.voting_dao, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_dao::delegatee(&arg0.voting_dao, arg3), v2, true, arg4, arg5);
+        distribution::voting_dao::checkpoint_delegatee(&mut arg0.voting_dao, distribution::voting_dao::delegatee(&arg0.voting_dao, arg3), v2, true, arg4, arg5);
         let v4 = 0x2::table::remove<0x2::object::ID, LockedBalance>(&mut arg0.locked, arg3);
         checkpoint_internal<T0>(arg0, 0x1::option::some<0x2::object::ID>(arg3), v4, v3, arg4, arg5);
         0x2::table::add<0x2::object::ID, LockedBalance>(&mut arg0.locked, arg3, v3);
@@ -725,8 +725,8 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::votin
         0x2::table::add<0x2::object::ID, u64>(0x2::table::borrow_mut<0x2::object::ID, 0x2::table::Table<0x2::object::ID, u64>>(&mut arg0.managed_weights, v0), arg3, v2);
         0x2::table::add<0x2::object::ID, 0x2::object::ID>(&mut arg0.id_to_managed, v0, arg3);
         0x2::table::add<0x2::object::ID, EscrowType>(&mut arg0.escrow_type, v0, EscrowType::LOCKED{});
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::locked_managed_reward::deposit(0x2::table::borrow_mut<0x2::object::ID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::locked_managed_reward::LockedManagedReward>(&mut arg0.managed_to_locked, arg3), &arg0.locked_managed_reward_authorized_cap, v2, v0, arg4, arg5);
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::free_managed_reward::deposit(0x2::table::borrow_mut<0x2::object::ID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::free_managed_reward::FreeManagedReward>(&mut arg0.managed_to_free, arg3), &arg0.free_managed_reward_authorized_cap, v2, v0, arg4, arg5);
+        distribution::locked_managed_reward::deposit(0x2::table::borrow_mut<0x2::object::ID, distribution::locked_managed_reward::LockedManagedReward>(&mut arg0.managed_to_locked, arg3), &arg0.locked_managed_reward_authorized_cap, v2, v0, arg4, arg5);
+        distribution::free_managed_reward::deposit(0x2::table::borrow_mut<0x2::object::ID, distribution::free_managed_reward::FreeManagedReward>(&mut arg0.managed_to_free, arg3), &arg0.free_managed_reward_authorized_cap, v2, v0, arg4, arg5);
         let v5 = EventDepositManaged{
             owner           : *0x2::table::borrow<0x2::object::ID, address>(&arg0.owner_of, v0),
             lock_id         : v0,
@@ -752,20 +752,20 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::votin
 
     public fun free_managed_reward_earned<T0>(arg0: &mut VotingEscrow<T0>, arg1: &mut Lock, arg2: &0x2::clock::Clock, arg3: &mut 0x2::tx_context::TxContext) : u64 {
         let v0 = 0x2::object::id<Lock>(arg1);
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::free_managed_reward::earned<T0>(0x2::table::borrow<0x2::object::ID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::free_managed_reward::FreeManagedReward>(&arg0.managed_to_free, *0x2::table::borrow<0x2::object::ID, 0x2::object::ID>(&arg0.id_to_managed, v0)), v0, arg2)
+        distribution::free_managed_reward::earned<T0>(0x2::table::borrow<0x2::object::ID, distribution::free_managed_reward::FreeManagedReward>(&arg0.managed_to_free, *0x2::table::borrow<0x2::object::ID, 0x2::object::ID>(&arg0.id_to_managed, v0)), v0, arg2)
     }
 
     public fun free_managed_reward_get_reward<T0>(arg0: &mut VotingEscrow<T0>, arg1: &mut Lock, arg2: &0x2::clock::Clock, arg3: &mut 0x2::tx_context::TxContext) {
         let v0 = owner_proof<T0>(arg0, arg1, arg3);
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::free_managed_reward::get_reward<T0>(0x2::table::borrow_mut<0x2::object::ID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::free_managed_reward::FreeManagedReward>(&mut arg0.managed_to_free, *0x2::table::borrow<0x2::object::ID, 0x2::object::ID>(&arg0.id_to_managed, 0x2::object::id<Lock>(arg1))), v0, arg2, arg3);
+        distribution::free_managed_reward::get_reward<T0>(0x2::table::borrow_mut<0x2::object::ID, distribution::free_managed_reward::FreeManagedReward>(&mut arg0.managed_to_free, *0x2::table::borrow<0x2::object::ID, 0x2::object::ID>(&arg0.id_to_managed, 0x2::object::id<Lock>(arg1))), v0, arg2, arg3);
     }
 
-    public fun free_managed_reward_notify_reward<T0>(arg0: &mut VotingEscrow<T0>, arg1: 0x1::option::Option<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::whitelisted_tokens::WhitelistedToken>, arg2: 0x2::coin::Coin<T0>, arg3: 0x2::object::ID, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::free_managed_reward::notify_reward_amount<T0>(0x2::table::borrow_mut<0x2::object::ID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::free_managed_reward::FreeManagedReward>(&mut arg0.managed_to_free, *0x2::table::borrow<0x2::object::ID, 0x2::object::ID>(&arg0.id_to_managed, arg3)), arg1, arg2, arg4, arg5);
+    public fun free_managed_reward_notify_reward<T0>(arg0: &mut VotingEscrow<T0>, arg1: 0x1::option::Option<distribution::whitelisted_tokens::WhitelistedToken>, arg2: 0x2::coin::Coin<T0>, arg3: 0x2::object::ID, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
+        distribution::free_managed_reward::notify_reward_amount<T0>(0x2::table::borrow_mut<0x2::object::ID, distribution::free_managed_reward::FreeManagedReward>(&mut arg0.managed_to_free, *0x2::table::borrow<0x2::object::ID, 0x2::object::ID>(&arg0.id_to_managed, arg3)), arg1, arg2, arg4, arg5);
     }
 
     public fun free_managed_reward_token_list<T0>(arg0: &mut VotingEscrow<T0>, arg1: 0x2::object::ID) : vector<0x1::type_name::TypeName> {
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::free_managed_reward::rewards_list(0x2::table::borrow<0x2::object::ID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::free_managed_reward::FreeManagedReward>(&arg0.managed_to_free, *0x2::table::borrow<0x2::object::ID, 0x2::object::ID>(&arg0.id_to_managed, arg1)))
+        distribution::free_managed_reward::rewards_list(0x2::table::borrow<0x2::object::ID, distribution::free_managed_reward::FreeManagedReward>(&arg0.managed_to_free, *0x2::table::borrow<0x2::object::ID, 0x2::object::ID>(&arg0.id_to_managed, arg1)))
     }
 
     fun get_past_global_point_index<T0>(arg0: &VotingEscrow<T0>, arg1: u64, arg2: u64) : u64 {
@@ -828,8 +828,8 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::votin
 
     public fun get_voting_power<T0>(arg0: &VotingEscrow<T0>, arg1: &Lock, arg2: &0x2::clock::Clock) : u64 {
         let v0 = 0x2::object::id<Lock>(arg1);
-        assert!(0x2::clock::timestamp_ms(arg2) - *0x2::table::borrow<0x2::object::ID, u64>(&arg0.ownership_change_at, v0) >= 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::get_time_to_finality(), 9223376997544099873);
-        balance_of_nft_at_internal<T0>(arg0, v0, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::current_timestamp(arg2))
+        assert!(0x2::clock::timestamp_ms(arg2) - *0x2::table::borrow<0x2::object::ID, u64>(&arg0.ownership_change_at, v0) >= distribution::common::get_time_to_finality(), 9223376997544099873);
+        balance_of_nft_at_internal<T0>(arg0, v0, distribution::common::current_timestamp(arg2))
     }
 
     public fun id_to_managed<T0>(arg0: &VotingEscrow<T0>, arg1: 0x2::object::ID) : 0x2::object::ID {
@@ -851,14 +851,14 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::votin
         let v3 = v1;
         assert!(v2, 9223374484986134527);
         assert!(v3.amount > 0, 9223374484987183121);
-        assert!(v3.end > 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::current_timestamp(arg4) || v3.is_permanent, 9223374493576462343);
+        assert!(v3.end > distribution::common::current_timestamp(arg4) || v3.is_permanent, 9223374493576462343);
         if (v3.is_permanent) {
             arg0.permanent_lock_balance = arg0.permanent_lock_balance + arg2;
         };
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_dao::checkpoint_delegatee(&mut arg0.voting_dao, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_dao::delegatee(&arg0.voting_dao, arg1), arg2, true, arg4, arg5);
+        distribution::voting_dao::checkpoint_delegatee(&mut arg0.voting_dao, distribution::voting_dao::delegatee(&arg0.voting_dao, arg1), arg2, true, arg4, arg5);
         deposit_for_internal<T0>(arg0, arg1, arg2, 0, v3, arg3, arg4, arg5);
         if (v0 == EscrowType::MANAGED{}) {
-            0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::locked_managed_reward::notify_reward_amount<T0>(0x2::table::borrow_mut<0x2::object::ID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::locked_managed_reward::LockedManagedReward>(&mut arg0.managed_to_locked, arg1), &arg0.locked_managed_reward_authorized_cap, 0x2::coin::from_balance<T0>(0x2::balance::split<T0>(&mut arg0.balance, arg2), arg5), arg4, arg5);
+            distribution::locked_managed_reward::notify_reward_amount<T0>(0x2::table::borrow_mut<0x2::object::ID, distribution::locked_managed_reward::LockedManagedReward>(&mut arg0.managed_to_locked, arg1), &arg0.locked_managed_reward_authorized_cap, 0x2::coin::from_balance<T0>(0x2::balance::split<T0>(&mut arg0.balance, arg2), arg5), arg4, arg5);
         };
         let v4 = EventMetadataUpdate{lock_id: arg1};
         0x2::event::emit<EventMetadataUpdate>(v4);
@@ -875,12 +875,12 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::votin
         assert!(v1, 9223376301758873625);
         let v3 = *0x2::table::borrow<0x2::object::ID, LockedBalance>(&arg0.locked, v0);
         assert!(!v3.is_permanent, 9223376314644430883);
-        let v4 = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::current_timestamp(arg3);
-        let v5 = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::to_period(v4 + arg2 * 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::day());
+        let v4 = distribution::common::current_timestamp(arg3);
+        let v5 = distribution::common::to_period(v4 + arg2 * distribution::common::day());
         assert!(v3.end > v4, 9223376331822465031);
         assert!(v3.amount > 0, 9223376336118087697);
         assert!(v5 > v3.end, 9223376340414365733);
-        assert!(v5 < v4 + (0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::max_lock_time() as u64), 9223376344709464103);
+        assert!(v5 < v4 + (distribution::common::max_lock_time() as u64), 9223376344709464103);
         deposit_for_internal<T0>(arg0, v0, 0, v5, v3, DepositType::INCREASE_UNLOCK_TIME{}, arg3, arg4);
         let v6 = EventMetadataUpdate{lock_id: v0};
         0x2::event::emit<EventMetadataUpdate>(v6);
@@ -945,7 +945,7 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::votin
         assert!(v1, 9223376525097173017);
         let v3 = *0x2::table::borrow<0x2::object::ID, LockedBalance>(&arg0.locked, v0);
         assert!(!v3.is_permanent, 9223376537982730275);
-        assert!(v3.end > 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::current_timestamp(arg2), 9223376542275862535);
+        assert!(v3.end > distribution::common::current_timestamp(arg2), 9223376542275862535);
         assert!(v3.amount > 0, 9223376546571485201);
         lock_permanent_internal<T0>(arg0, arg1, arg2, arg3);
     }
@@ -994,7 +994,7 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::votin
     }
 
     public fun managed_to_free<T0>(arg0: &VotingEscrow<T0>, arg1: 0x2::object::ID) : 0x2::object::ID {
-        0x2::object::id<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::free_managed_reward::FreeManagedReward>(0x2::table::borrow<0x2::object::ID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::free_managed_reward::FreeManagedReward>(&arg0.managed_to_free, arg1))
+        0x2::object::id<distribution::free_managed_reward::FreeManagedReward>(0x2::table::borrow<0x2::object::ID, distribution::free_managed_reward::FreeManagedReward>(&arg0.managed_to_free, arg1))
     }
 
     public fun merge<T0>(arg0: &mut VotingEscrow<T0>, arg1: Lock, arg2: &mut Lock, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
@@ -1006,7 +1006,7 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::votin
         assert!(escrow_type<T0>(arg0, v1) == EscrowType::NORMAL{}, 9223376082715541529);
         assert!(v0 != v1, 9223376087012474935);
         let v3 = *0x2::table::borrow<0x2::object::ID, LockedBalance>(&arg0.locked, v1);
-        assert!(v3.end > 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::current_timestamp(arg3) || v3.is_permanent == true, 9223376108484165639);
+        assert!(v3.end > distribution::common::current_timestamp(arg3) || v3.is_permanent == true, 9223376108484165639);
         let v4 = *0x2::table::borrow<0x2::object::ID, LockedBalance>(&arg0.locked, v0);
         assert!(v4.is_permanent == false, 9223376117075935267);
         let mut v5 = if (v4.end >= v3.end) {
@@ -1024,7 +1024,7 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::votin
         if (v7.is_permanent) {
             arg0.permanent_lock_balance = arg0.permanent_lock_balance + v4.amount;
         };
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_dao::checkpoint_delegatee(&mut arg0.voting_dao, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_dao::delegatee(&arg0.voting_dao, v1), v4.amount, true, arg3, arg4);
+        distribution::voting_dao::checkpoint_delegatee(&mut arg0.voting_dao, distribution::voting_dao::delegatee(&arg0.voting_dao, v1), v4.amount, true, arg3, arg4);
         checkpoint_internal<T0>(arg0, 0x1::option::some<0x2::object::ID>(v1), v3, v7, arg3, arg4);
         0x2::table::remove<0x2::object::ID, LockedBalance>(&mut arg0.locked, v1);
         0x2::table::add<0x2::object::ID, LockedBalance>(&mut arg0.locked, v1, v7);
@@ -1047,11 +1047,11 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::votin
         *0x2::table::borrow<0x2::object::ID, address>(&arg0.owner_of, arg1)
     }
 
-    public fun owner_proof<T0>(arg0: &VotingEscrow<T0>, arg1: &Lock, arg2: &mut 0x2::tx_context::TxContext) : 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::lock_owner::OwnerProof {
+    public fun owner_proof<T0>(arg0: &VotingEscrow<T0>, arg1: &Lock, arg2: &mut 0x2::tx_context::TxContext) : distribution::lock_owner::OwnerProof {
         validate_lock<T0>(arg0, arg1);
         let v0 = 0x2::tx_context::sender(arg2);
         assert!(0x2::table::borrow<0x2::object::ID, address>(&arg0.owner_of, 0x2::object::id<Lock>(arg1)) == &v0, 9223373209380847615);
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::lock_owner::issue(0x2::object::id<VotingEscrow<T0>>(arg0), 0x2::object::id<Lock>(arg1), 0x2::tx_context::sender(arg2))
+        distribution::lock_owner::issue(0x2::object::id<VotingEscrow<T0>>(arg0), 0x2::object::id<Lock>(arg1), 0x2::tx_context::sender(arg2))
     }
 
     public fun ownership_change_at<T0>(arg0: &VotingEscrow<T0>, arg1: 0x2::object::ID) : u64 {
@@ -1069,7 +1069,7 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::votin
         0x2::table::add<0x2::object::ID, LockedBalance>(&mut arg0.locked, arg1, arg2);
     }
 
-    public fun set_managed_state<T0>(arg0: &mut VotingEscrow<T0>, arg1: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::emergency_council::EmergencyCouncilCap, arg2: 0x2::object::ID, arg3: bool, arg4: &mut 0x2::tx_context::TxContext) {
+    public fun set_managed_state<T0>(arg0: &mut VotingEscrow<T0>, arg1: &distribution::emergency_council::EmergencyCouncilCap, arg2: 0x2::object::ID, arg3: bool, arg4: &mut 0x2::tx_context::TxContext) {
         assert!(escrow_type<T0>(arg0, arg2) == EscrowType::MANAGED{}, 9223378410588995627);
         assert!(0x2::table::borrow<0x2::object::ID, bool>(&arg0.deactivated, arg2) != &arg3, 9223378414884618293);
         0x2::table::remove<0x2::object::ID, bool>(&mut arg0.deactivated, arg2);
@@ -1108,8 +1108,8 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::votin
         0x2::table::add<u64, UserPoint>(v0, arg2, arg3);
     }
 
-    public fun toggle_split<T0>(arg0: &mut VotingEscrow<T0>, arg1: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::team_cap::TeamCap, arg2: address, arg3: bool) {
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::team_cap::validate(arg1, 0x2::object::id<VotingEscrow<T0>>(arg0));
+    public fun toggle_split<T0>(arg0: &mut VotingEscrow<T0>, arg1: &distribution::team_cap::TeamCap, arg2: address, arg3: bool) {
+        distribution::team_cap::validate(arg1, 0x2::object::id<VotingEscrow<T0>>(arg0));
         if (0x2::table::contains<address, bool>(&arg0.can_split, arg2)) {
             0x2::table::remove<address, bool>(&mut arg0.can_split, arg2);
         };
@@ -1138,10 +1138,10 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::votin
         let mut v2 = v1.bias;
         let mut v3 = v1.slope;
         let v4 = v1.ts;
-        let mut v5 = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::to_period(v4);
+        let mut v5 = distribution::common::to_period(v4);
         let mut v6 = 0;
         while (v6 < 255) {
-            let v7 = v5 + 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::week();
+            let v7 = v5 + distribution::common::week();
             v5 = v7;
             let mut v8 = 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::i128::from(0);
             if (v7 > arg2) {
@@ -1181,9 +1181,9 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::votin
         assert!(!v4, 9223376671126192155);
         let mut v5 = *0x2::table::borrow<0x2::object::ID, LockedBalance>(&arg0.locked, v1);
         assert!(v5.is_permanent, 9223376679715602451);
-        let v6 = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::current_timestamp(arg2);
+        let v6 = distribution::common::current_timestamp(arg2);
         arg0.permanent_lock_balance = arg0.permanent_lock_balance - v5.amount;
-        v5.end = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::to_period(v6 + 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::max_lock_time());
+        v5.end = distribution::common::to_period(v6 + distribution::common::max_lock_time());
         v5.is_permanent = false;
         delegate_internal<T0>(arg0, arg1, 0x2::object::id_from_address(@0x0), arg2, arg3);
         let v7 = *0x2::table::borrow<0x2::object::ID, LockedBalance>(&arg0.locked, v1);
@@ -1220,29 +1220,29 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::votin
     }
 
     fun validate_lock_duration<T0>(arg0: &VotingEscrow<T0>, arg1: u64) {
-        assert!(arg1 * 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::day() >= arg0.min_lock_time && arg1 * 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::day() <= arg0.max_lock_time, 9223374111324635147);
+        assert!(arg1 * distribution::common::day() >= arg0.min_lock_time && arg1 * distribution::common::day() <= arg0.max_lock_time, 9223374111324635147);
     }
 
-    public fun voting<T0>(arg0: &mut VotingEscrow<T0>, arg1: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::VoterCap, arg2: 0x2::object::ID, arg3: bool) {
-        assert!(arg0.voter == 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::get_voter_id(arg1), 9223374076964241407);
+    public fun voting<T0>(arg0: &mut VotingEscrow<T0>, arg1: &distribution::voter_cap::VoterCap, arg2: 0x2::object::ID, arg3: bool) {
+        assert!(arg0.voter == distribution::voter_cap::get_voter_id(arg1), 9223374076964241407);
         if (0x2::table::contains<0x2::object::ID, bool>(&arg0.voted, arg2)) {
             0x2::table::remove<0x2::object::ID, bool>(&mut arg0.voted, arg2);
         };
         0x2::table::add<0x2::object::ID, bool>(&mut arg0.voted, arg2, arg3);
     }
 
-    public fun withdraw_managed<T0>(arg0: &mut VotingEscrow<T0>, arg1: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::VoterCap, arg2: 0x2::object::ID, arg3: 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::lock_owner::OwnerProof, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) : 0x2::balance::Balance<T0> {
-        assert!(0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::get_voter_id(arg1) == arg0.voter, 9223377925257822253);
+    public fun withdraw_managed<T0>(arg0: &mut VotingEscrow<T0>, arg1: &distribution::voter_cap::VoterCap, arg2: 0x2::object::ID, arg3: distribution::lock_owner::OwnerProof, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) : 0x2::balance::Balance<T0> {
+        assert!(distribution::voter_cap::get_voter_id(arg1) == arg0.voter, 9223377925257822253);
         assert!(0x2::table::contains<0x2::object::ID, 0x2::object::ID>(&arg0.id_to_managed, arg2), 9223377929552920623);
         assert!(escrow_type<T0>(arg0, arg2) == EscrowType::LOCKED{}, 9223377933848018993);
         let v0 = *0x2::table::borrow<0x2::object::ID, 0x2::object::ID>(&arg0.id_to_managed, arg2);
-        let v1 = 0x2::table::borrow_mut<0x2::object::ID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::locked_managed_reward::LockedManagedReward>(&mut arg0.managed_to_locked, v0);
+        let v1 = 0x2::table::borrow_mut<0x2::object::ID, distribution::locked_managed_reward::LockedManagedReward>(&mut arg0.managed_to_locked, v0);
         let v2 = *0x2::table::borrow<0x2::object::ID, u64>(0x2::table::borrow<0x2::object::ID, 0x2::table::Table<0x2::object::ID, u64>>(&arg0.managed_weights, arg2), v0);
-        let v3 = v2 + 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::locked_managed_reward::earned<T0>(v1, arg2, arg4);
-        let v4 = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::locked_managed_reward::get_reward<T0>(v1, &arg0.locked_managed_reward_authorized_cap, arg2, arg4, arg5);
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::free_managed_reward::get_reward<T0>(0x2::table::borrow_mut<0x2::object::ID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::free_managed_reward::FreeManagedReward>(&mut arg0.managed_to_free, v0), arg3, arg4, arg5);
+        let v3 = v2 + distribution::locked_managed_reward::earned<T0>(v1, arg2, arg4);
+        let v4 = distribution::locked_managed_reward::get_reward<T0>(v1, &arg0.locked_managed_reward_authorized_cap, arg2, arg4, arg5);
+        distribution::free_managed_reward::get_reward<T0>(0x2::table::borrow_mut<0x2::object::ID, distribution::free_managed_reward::FreeManagedReward>(&mut arg0.managed_to_free, v0), arg3, arg4, arg5);
         let v5 = 0x2::table::remove<0x2::object::ID, LockedBalance>(&mut arg0.locked, arg2);
-        let v6 = locked_balance(v3, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::to_period(0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::current_timestamp(arg4) + 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::max_lock_time()), false);
+        let v6 = locked_balance(v3, distribution::common::to_period(distribution::common::current_timestamp(arg4) + distribution::common::max_lock_time()), false);
         checkpoint_internal<T0>(arg0, 0x1::option::some<0x2::object::ID>(arg2), v5, v6, arg4, arg5);
         0x2::table::add<0x2::object::ID, LockedBalance>(&mut arg0.locked, arg2, v6);
         let mut v7 = *0x2::table::borrow<0x2::object::ID, LockedBalance>(&arg0.locked, v0);
@@ -1258,12 +1258,12 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::votin
             arg0.permanent_lock_balance
         };
         arg0.permanent_lock_balance = arg0.permanent_lock_balance - v9;
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_dao::checkpoint_delegatee(&mut arg0.voting_dao, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_dao::delegatee(&arg0.voting_dao, v0), v3, false, arg4, arg5);
+        distribution::voting_dao::checkpoint_delegatee(&mut arg0.voting_dao, distribution::voting_dao::delegatee(&arg0.voting_dao, v0), v3, false, arg4, arg5);
         let v10 = 0x2::table::remove<0x2::object::ID, LockedBalance>(&mut arg0.locked, v0);
         checkpoint_internal<T0>(arg0, 0x1::option::some<0x2::object::ID>(v0), v10, v7, arg4, arg5);
         0x2::table::add<0x2::object::ID, LockedBalance>(&mut arg0.locked, v0, v7);
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::locked_managed_reward::withdraw(0x2::table::borrow_mut<0x2::object::ID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::locked_managed_reward::LockedManagedReward>(&mut arg0.managed_to_locked, v0), &arg0.locked_managed_reward_authorized_cap, v2, arg2, arg4, arg5);
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::free_managed_reward::withdraw(0x2::table::borrow_mut<0x2::object::ID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::free_managed_reward::FreeManagedReward>(&mut arg0.managed_to_free, v0), &arg0.free_managed_reward_authorized_cap, v2, arg2, arg4, arg5);
+        distribution::locked_managed_reward::withdraw(0x2::table::borrow_mut<0x2::object::ID, distribution::locked_managed_reward::LockedManagedReward>(&mut arg0.managed_to_locked, v0), &arg0.locked_managed_reward_authorized_cap, v2, arg2, arg4, arg5);
+        distribution::free_managed_reward::withdraw(0x2::table::borrow_mut<0x2::object::ID, distribution::free_managed_reward::FreeManagedReward>(&mut arg0.managed_to_free, v0), &arg0.free_managed_reward_authorized_cap, v2, arg2, arg4, arg5);
         0x2::table::remove<0x2::object::ID, 0x2::object::ID>(&mut arg0.id_to_managed, arg2);
         0x2::table::remove<0x2::object::ID, u64>(0x2::table::borrow_mut<0x2::object::ID, 0x2::table::Table<0x2::object::ID, u64>>(&mut arg0.managed_weights, arg2), v0);
         0x2::table::remove<0x2::object::ID, EscrowType>(&mut arg0.escrow_type, arg2);

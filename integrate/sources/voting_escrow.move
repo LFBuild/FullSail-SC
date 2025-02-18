@@ -15,8 +15,8 @@ module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::votin
         fee_incentive_total: u64,
     }
     
-    public entry fun transfer<T0>(arg0: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::VotingEscrow<T0>, arg1: 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::Lock, arg2: address, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::transfer<T0>(arg1, arg0, arg2, arg3, arg4);
+    public entry fun transfer<T0>(arg0: &mut distribution::voting_escrow::VotingEscrow<T0>, arg1: distribution::voting_escrow::Lock, arg2: address, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
+        distribution::voting_escrow::transfer<T0>(arg1, arg0, arg2, arg3, arg4);
     }
     
     public fun max_bps() : u64 {
@@ -24,77 +24,77 @@ module 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::votin
     }
     
     public entry fun create<T0>(arg0: &0x2::package::Publisher, arg1: 0x2::object::ID, arg2: &0x2::clock::Clock, arg3: &mut 0x2::tx_context::TxContext) {
-        0x2::transfer::public_share_object<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::VotingEscrow<T0>>(0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::create<T0>(arg0, arg1, arg2, arg3));
+        0x2::transfer::public_share_object<distribution::voting_escrow::VotingEscrow<T0>>(distribution::voting_escrow::create<T0>(arg0, arg1, arg2, arg3));
     }
     
-    public entry fun create_lock<T0>(arg0: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::VotingEscrow<T0>, arg1: vector<0x2::coin::Coin<T0>>, arg2: u64, arg3: bool, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::create_lock<T0>(arg0, 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::utils::merge_coins<T0>(arg1, arg5), arg2, arg3, arg4, arg5);
+    public entry fun create_lock<T0>(arg0: &mut distribution::voting_escrow::VotingEscrow<T0>, arg1: vector<0x2::coin::Coin<T0>>, arg2: u64, arg3: bool, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
+        distribution::voting_escrow::create_lock<T0>(arg0, 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::utils::merge_coins<T0>(arg1, arg5), arg2, arg3, arg4, arg5);
     }
     
-    public entry fun increase_amount<T0>(arg0: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::VotingEscrow<T0>, arg1: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::Lock, arg2: vector<0x2::coin::Coin<T0>>, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::increase_amount<T0>(arg0, arg1, 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::utils::merge_coins<T0>(arg2, arg4), arg3, arg4);
+    public entry fun increase_amount<T0>(arg0: &mut distribution::voting_escrow::VotingEscrow<T0>, arg1: &mut distribution::voting_escrow::Lock, arg2: vector<0x2::coin::Coin<T0>>, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
+        distribution::voting_escrow::increase_amount<T0>(arg0, arg1, 0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df::utils::merge_coins<T0>(arg2, arg4), arg3, arg4);
     }
     
-    public entry fun increase_unlock_time<T0>(arg0: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::VotingEscrow<T0>, arg1: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::Lock, arg2: u64, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::increase_unlock_time<T0>(arg0, arg1, arg2, arg3, arg4);
+    public entry fun increase_unlock_time<T0>(arg0: &mut distribution::voting_escrow::VotingEscrow<T0>, arg1: &mut distribution::voting_escrow::Lock, arg2: u64, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
+        distribution::voting_escrow::increase_unlock_time<T0>(arg0, arg1, arg2, arg3, arg4);
     }
     
-    public entry fun lock_permanent<T0>(arg0: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::VotingEscrow<T0>, arg1: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::Lock, arg2: &0x2::clock::Clock, arg3: &mut 0x2::tx_context::TxContext) {
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::lock_permanent<T0>(arg0, arg1, arg2, arg3);
+    public entry fun lock_permanent<T0>(arg0: &mut distribution::voting_escrow::VotingEscrow<T0>, arg1: &mut distribution::voting_escrow::Lock, arg2: &0x2::clock::Clock, arg3: &mut 0x2::tx_context::TxContext) {
+        distribution::voting_escrow::lock_permanent<T0>(arg0, arg1, arg2, arg3);
     }
     
-    public entry fun unlock_permanent<T0>(arg0: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::VotingEscrow<T0>, arg1: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::Lock, arg2: &0x2::clock::Clock, arg3: &mut 0x2::tx_context::TxContext) {
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::unlock_permanent<T0>(arg0, arg1, arg2, arg3);
+    public entry fun unlock_permanent<T0>(arg0: &mut distribution::voting_escrow::VotingEscrow<T0>, arg1: &mut distribution::voting_escrow::Lock, arg2: &0x2::clock::Clock, arg3: &mut 0x2::tx_context::TxContext) {
+        distribution::voting_escrow::unlock_permanent<T0>(arg0, arg1, arg2, arg3);
     }
     
-    public entry fun create_lock_single_coin<T0>(arg0: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::VotingEscrow<T0>, arg1: 0x2::coin::Coin<T0>, arg2: u64, arg3: bool, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
+    public entry fun create_lock_single_coin<T0>(arg0: &mut distribution::voting_escrow::VotingEscrow<T0>, arg1: 0x2::coin::Coin<T0>, arg2: u64, arg3: bool, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
         let v0 = 0x1::vector::empty<0x2::coin::Coin<T0>>();
         0x1::vector::push_back<0x2::coin::Coin<T0>>(&mut v0, arg1);
         create_lock<T0>(arg0, v0, arg2, arg3, arg4, arg5);
     }
     
-    public entry fun increase_amount_single_coin<T0>(arg0: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::VotingEscrow<T0>, arg1: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::Lock, arg2: 0x2::coin::Coin<T0>, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::increase_amount<T0>(arg0, arg1, arg2, arg3, arg4);
+    public entry fun increase_amount_single_coin<T0>(arg0: &mut distribution::voting_escrow::VotingEscrow<T0>, arg1: &mut distribution::voting_escrow::Lock, arg2: 0x2::coin::Coin<T0>, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
+        distribution::voting_escrow::increase_amount<T0>(arg0, arg1, arg2, arg3, arg4);
     }
     
-    public entry fun lock_summary<T0>(arg0: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter::Voter<T0>, arg1: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::VotingEscrow<T0>, arg2: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::reward_distributor::RewardDistributor<T0>, arg3: 0x2::object::ID, arg4: &0x2::clock::Clock) {
+    public entry fun lock_summary<T0>(arg0: &distribution::voter::Voter<T0>, arg1: &distribution::voting_escrow::VotingEscrow<T0>, arg2: &distribution::reward_distributor::RewardDistributor<T0>, arg3: 0x2::object::ID, arg4: &0x2::clock::Clock) {
         0x2::event::emit<LockSummary>(lock_summary_internal<T0>(arg0, arg1, arg2, arg3, arg4));
     }
     
-    fun lock_summary_internal<T0>(arg0: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter::Voter<T0>, arg1: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::VotingEscrow<T0>, arg2: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::reward_distributor::RewardDistributor<T0>, arg3: 0x2::object::ID, arg4: &0x2::clock::Clock) : LockSummary {
+    fun lock_summary_internal<T0>(arg0: &distribution::voter::Voter<T0>, arg1: &distribution::voting_escrow::VotingEscrow<T0>, arg2: &distribution::reward_distributor::RewardDistributor<T0>, arg3: 0x2::object::ID, arg4: &0x2::clock::Clock) : LockSummary {
         let v0 = 0;
-        let v1 = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter::voted_pools<T0>(arg0, arg3);
+        let v1 = distribution::voter::voted_pools<T0>(arg0, arg3);
         let v2 = 0;
         while (v2 < 0x1::vector::length<0x2::object::ID>(&v1)) {
-            let v3 = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter::pool_to_gauge<T0>(arg0, *0x1::vector::borrow<0x2::object::ID>(&v1, v2));
-            let v4 = v0 + 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::fee_voting_reward::earned<T0>(0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter::borrow_fee_voting_reward<T0>(arg0, v3), arg3, arg4);
-            v0 = v4 + 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::bribe_voting_reward::earned<T0>(0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter::borrow_bribe_voting_reward<T0>(arg0, v3), arg3, arg4);
+            let v3 = distribution::voter::pool_to_gauge<T0>(arg0, *0x1::vector::borrow<0x2::object::ID>(&v1, v2));
+            let v4 = v0 + distribution::fee_voting_reward::earned<T0>(distribution::voter::borrow_fee_voting_reward<T0>(arg0, v3), arg3, arg4);
+            v0 = v4 + distribution::bribe_voting_reward::earned<T0>(distribution::voter::borrow_bribe_voting_reward<T0>(arg0, v3), arg3, arg4);
             v2 = v2 + 1;
         };
         LockSummary{
-            voting_power                 : 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::balance_of_nft_at<T0>(arg1, arg3, 0x2::clock::timestamp_ms(arg4) / 1000), 
-            reward_distributor_claimable : 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::reward_distributor::claimable<T0>(arg2, arg1, arg3), 
+            voting_power                 : distribution::voting_escrow::balance_of_nft_at<T0>(arg1, arg3, 0x2::clock::timestamp_ms(arg4) / 1000), 
+            reward_distributor_claimable : distribution::reward_distributor::claimable<T0>(arg2, arg1, arg3), 
             fee_incentive_total          : v0,
         }
     }
     
-    public entry fun merge_locks<T0>(arg0: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::VotingEscrow<T0>, arg1: 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::Lock, arg2: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::Lock, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::merge<T0>(arg0, arg1, arg2, arg3, arg4);
+    public entry fun merge_locks<T0>(arg0: &mut distribution::voting_escrow::VotingEscrow<T0>, arg1: distribution::voting_escrow::Lock, arg2: &mut distribution::voting_escrow::Lock, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
+        distribution::voting_escrow::merge<T0>(arg0, arg1, arg2, arg3, arg4);
     }
     
-    public entry fun summary<T0>(arg0: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::minter::Minter<T0>, arg1: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter::Voter<T0>, arg2: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::VotingEscrow<T0>, arg3: &0x2::clock::Clock) {
-        let v0 = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::current_timestamp(arg3);
-        let v1 = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::total_locked<T0>(arg2);
-        let v2 = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::minter::epoch_emissions<T0>(arg0);
-        let v3 = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::minter::calculate_rebase_growth(v2, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::minter::total_supply<T0>(arg0), v1);
+    public entry fun summary<T0>(arg0: &distribution::minter::Minter<T0>, arg1: &distribution::voter::Voter<T0>, arg2: &distribution::voting_escrow::VotingEscrow<T0>, arg3: &0x2::clock::Clock) {
+        let v0 = distribution::common::current_timestamp(arg3);
+        let v1 = distribution::voting_escrow::total_locked<T0>(arg2);
+        let v2 = distribution::minter::epoch_emissions<T0>(arg0);
+        let v3 = distribution::minter::calculate_rebase_growth(v2, distribution::minter::total_supply<T0>(arg0), v1);
         let v4 = Summary{
             total_locked           : v1, 
-            total_voting_power     : 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::total_supply_at<T0>(arg2, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::current_timestamp(arg3)), 
-            total_voted_power      : 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter::total_weight<T0>(arg1), 
-            rebase_apr             : 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u64::mul_div_floor(v3, max_bps(), 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u64::mul_div_floor(v2 + v3, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::minter::max_bps(), 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::minter::max_bps() - 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::minter::team_emission_rate<T0>(arg0))), 
-            current_epoch_end      : 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::epoch_next(v0), 
-            current_epoch_vote_end : 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::epoch_vote_end(v0), 
-            team_emission_rate     : 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::minter::team_emission_rate<T0>(arg0),
+            total_voting_power     : distribution::voting_escrow::total_supply_at<T0>(arg2, distribution::common::current_timestamp(arg3)), 
+            total_voted_power      : distribution::voter::total_weight<T0>(arg1), 
+            rebase_apr             : 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u64::mul_div_floor(v3, max_bps(), 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u64::mul_div_floor(v2 + v3, distribution::minter::max_bps(), distribution::minter::max_bps() - distribution::minter::team_emission_rate<T0>(arg0))), 
+            current_epoch_end      : distribution::common::epoch_next(v0), 
+            current_epoch_vote_end : distribution::common::epoch_vote_end(v0), 
+            team_emission_rate     : distribution::minter::team_emission_rate<T0>(arg0),
         };
         0x2::event::emit<Summary>(v4);
     }

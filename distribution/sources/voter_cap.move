@@ -1,4 +1,4 @@
-module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap {
+module distribution::voter_cap {
     struct VoterCap has store, key {
         id: 0x2::object::UID,
         voter_id: 0x2::object::ID,

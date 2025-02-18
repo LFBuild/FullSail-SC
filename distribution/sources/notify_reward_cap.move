@@ -1,4 +1,4 @@
-module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::notify_reward_cap {
+module distribution::notify_reward_cap {
     struct NOTIFY_REWARD_CAP has drop {
         dummy_field: bool,
     }

@@ -1,4 +1,4 @@
-module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::minter {
+module distribution::minter {
     struct AdminCap has store, key {
         id: 0x2::object::UID,
     }
@@ -42,7 +42,7 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::minte
         total_emissions: u64,
         last_epoch_update_time: u64,
         epoch_emissions: u64,
-        minter_cap: 0x1::option::Option<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::magma_token::MinterCap<T0>>,
+        minter_cap: 0x1::option::Option<distribution::magma_token::MinterCap<T0>>,
         base_supply: u64,
         epoch_grow_rate: u64,
         epoch_decay_rate: u64,
@@ -51,25 +51,25 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::minte
         tail_emission_rate: u64,
         team_emission_rate: u64,
         team_wallet: address,
-        reward_distributor_cap: 0x1::option::Option<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::reward_distributor_cap::RewardDistributorCap>,
-        notify_reward_cap: 0x1::option::Option<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::notify_reward_cap::NotifyRewardCap>,
+        reward_distributor_cap: 0x1::option::Option<distribution::reward_distributor_cap::RewardDistributorCap>,
+        notify_reward_cap: 0x1::option::Option<distribution::notify_reward_cap::NotifyRewardCap>,
         nudges: 0x2::vec_set::VecSet<u64>,
     }
     
     public fun total_supply<T0>(arg0: &Minter<T0>) : u64 {
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::magma_token::total_supply<T0>(0x1::option::borrow<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::magma_token::MinterCap<T0>>(&arg0.minter_cap))
+        distribution::magma_token::total_supply<T0>(0x1::option::borrow<distribution::magma_token::MinterCap<T0>>(&arg0.minter_cap))
     }
     
-    public fun activate<T0>(arg0: &mut Minter<T0>, arg1: &AdminCap, arg2: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::reward_distributor::RewardDistributor<T0>, arg3: &0x2::clock::Clock) {
+    public fun activate<T0>(arg0: &mut Minter<T0>, arg1: &AdminCap, arg2: &mut distribution::reward_distributor::RewardDistributor<T0>, arg3: &0x2::clock::Clock) {
         check_admin<T0>(arg0, arg1);
         assert!(!is_active<T0>(arg0, arg3), 9223373106302222346);
-        assert!(0x1::option::is_some<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::reward_distributor_cap::RewardDistributorCap>(&arg0.reward_distributor_cap), 9223373110598238234);
-        let v0 = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::current_timestamp(arg3);
+        assert!(0x1::option::is_some<distribution::reward_distributor_cap::RewardDistributorCap>(&arg0.reward_distributor_cap), 9223373110598238234);
+        let v0 = distribution::common::current_timestamp(arg3);
         arg0.activated_at = v0;
-        arg0.active_period = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::to_period(arg0.activated_at);
+        arg0.active_period = distribution::common::to_period(arg0.activated_at);
         arg0.last_epoch_update_time = v0;
         arg0.epoch_emissions = arg0.base_supply;
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::reward_distributor::start<T0>(arg2, 0x1::option::borrow<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::reward_distributor_cap::RewardDistributorCap>(&arg0.reward_distributor_cap), arg0.active_period, arg3);
+        distribution::reward_distributor::start<T0>(arg2, 0x1::option::borrow<distribution::reward_distributor_cap::RewardDistributorCap>(&arg0.reward_distributor_cap), arg0.active_period, arg3);
     }
     
     public fun activated_at<T0>(arg0: &Minter<T0>) : u64 {
@@ -86,7 +86,7 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::minte
     
     public fun calculate_epoch_emissions<T0>(arg0: &Minter<T0>) : (u64, u64) {
         if (arg0.epoch_emissions < 8969150000000) {
-            (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u64::mul_div_ceil(0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::magma_token::total_supply<T0>(0x1::option::borrow<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::magma_token::MinterCap<T0>>(&arg0.minter_cap)), arg0.tail_emission_rate, 10000), arg0.epoch_emissions)
+            (0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u64::mul_div_ceil(distribution::magma_token::total_supply<T0>(0x1::option::borrow<distribution::magma_token::MinterCap<T0>>(&arg0.minter_cap)), arg0.tail_emission_rate, 10000), arg0.epoch_emissions)
         } else {
             let (v2, v3) = if (arg0.epoch_count < 14) {
                 let v4 = if (arg0.epoch_emissions == 0) {
@@ -112,7 +112,7 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::minte
         assert!(!0x2::vec_set::contains<0x2::object::ID>(&arg0.revoked_admins, &v0), 9223372809948889087);
     }
     
-    public fun create<T0>(arg0: &0x2::package::Publisher, arg1: 0x1::option::Option<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::magma_token::MinterCap<T0>>, arg2: &mut 0x2::tx_context::TxContext) : (Minter<T0>, AdminCap) {
+    public fun create<T0>(arg0: &0x2::package::Publisher, arg1: 0x1::option::Option<distribution::magma_token::MinterCap<T0>>, arg2: &mut 0x2::tx_context::TxContext) : (Minter<T0>, AdminCap) {
         let v0 = Minter<T0>{
             id                     : 0x2::object::new(arg2), 
             revoked_admins         : 0x2::vec_set::empty<0x2::object::ID>(), 
@@ -132,8 +132,8 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::minte
             tail_emission_rate     : 67, 
             team_emission_rate     : 500, 
             team_wallet            : @0x0, 
-            reward_distributor_cap : 0x1::option::none<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::reward_distributor_cap::RewardDistributorCap>(), 
-            notify_reward_cap      : 0x1::option::none<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::notify_reward_cap::NotifyRewardCap>(), 
+            reward_distributor_cap : 0x1::option::none<distribution::reward_distributor_cap::RewardDistributorCap>(), 
+            notify_reward_cap      : 0x1::option::none<distribution::notify_reward_cap::NotifyRewardCap>(), 
             nudges                 : 0x2::vec_set::empty<u64>(),
         };
         let v1 = AdminCap{id: 0x2::object::new(arg2)};
@@ -165,7 +165,7 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::minte
     public fun is_active<T0>(arg0: &Minter<T0>, arg1: &0x2::clock::Clock) : bool {
         if (arg0.activated_at > 0) {
             if (!arg0.paused) {
-                0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::current_period(arg1) >= arg0.active_period
+                distribution::common::current_period(arg1) >= arg0.active_period
             } else {
                 false
             }
@@ -193,20 +193,20 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::minte
         0x2::vec_set::insert<0x2::object::ID>(&mut arg0.revoked_admins, arg2);
     }
     
-    public fun set_minter_cap<T0>(arg0: &mut Minter<T0>, arg1: &AdminCap, arg2: 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::magma_token::MinterCap<T0>) {
+    public fun set_minter_cap<T0>(arg0: &mut Minter<T0>, arg1: &AdminCap, arg2: distribution::magma_token::MinterCap<T0>) {
         check_admin<T0>(arg0, arg1);
-        assert!(0x1::option::is_none<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::magma_token::MinterCap<T0>>(&arg0.minter_cap), 9223372831423725567);
-        0x1::option::fill<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::magma_token::MinterCap<T0>>(&mut arg0.minter_cap, arg2);
+        assert!(0x1::option::is_none<distribution::magma_token::MinterCap<T0>>(&arg0.minter_cap), 9223372831423725567);
+        0x1::option::fill<distribution::magma_token::MinterCap<T0>>(&mut arg0.minter_cap, arg2);
     }
     
-    public fun set_notify_reward_cap<T0>(arg0: &mut Minter<T0>, arg1: &AdminCap, arg2: 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::notify_reward_cap::NotifyRewardCap) {
+    public fun set_notify_reward_cap<T0>(arg0: &mut Minter<T0>, arg1: &AdminCap, arg2: distribution::notify_reward_cap::NotifyRewardCap) {
         check_admin<T0>(arg0, arg1);
-        0x1::option::fill<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::notify_reward_cap::NotifyRewardCap>(&mut arg0.notify_reward_cap, arg2);
+        0x1::option::fill<distribution::notify_reward_cap::NotifyRewardCap>(&mut arg0.notify_reward_cap, arg2);
     }
     
-    public fun set_reward_distributor_cap<T0>(arg0: &mut Minter<T0>, arg1: &AdminCap, arg2: 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::reward_distributor_cap::RewardDistributorCap) {
+    public fun set_reward_distributor_cap<T0>(arg0: &mut Minter<T0>, arg1: &AdminCap, arg2: distribution::reward_distributor_cap::RewardDistributorCap) {
         check_admin<T0>(arg0, arg1);
-        0x1::option::fill<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::reward_distributor_cap::RewardDistributorCap>(&mut arg0.reward_distributor_cap, arg2);
+        0x1::option::fill<distribution::reward_distributor_cap::RewardDistributorCap>(&mut arg0.reward_distributor_cap, arg2);
     }
     
     public fun set_team_emission_rate<T0>(arg0: &mut Minter<T0>, arg1: &AdminCap, arg2: u64) {
@@ -231,21 +231,21 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::minte
         0x2::event::emit<EventUnpauseEmission>(v0);
     }
     
-    public fun update_period<T0>(arg0: &mut Minter<T0>, arg1: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter::Voter<T0>, arg2: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::VotingEscrow<T0>, arg3: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::reward_distributor::RewardDistributor<T0>, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
+    public fun update_period<T0>(arg0: &mut Minter<T0>, arg1: &mut distribution::voter::Voter<T0>, arg2: &distribution::voting_escrow::VotingEscrow<T0>, arg3: &mut distribution::reward_distributor::RewardDistributor<T0>, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
         assert!(is_active<T0>(arg0, arg4), 9223373394064900104);
-        assert!(arg0.active_period + 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::week() < 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::current_timestamp(arg4), 9223373406950588436);
+        assert!(arg0.active_period + distribution::common::week() < distribution::common::current_timestamp(arg4), 9223373406950588436);
         let (v0, v1) = calculate_epoch_emissions<T0>(arg0);
-        let v2 = calculate_rebase_growth(v0, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::magma_token::total_supply<T0>(0x1::option::borrow<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::magma_token::MinterCap<T0>>(&arg0.minter_cap)), 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::total_locked<T0>(arg2));
+        let v2 = calculate_rebase_growth(v0, distribution::magma_token::total_supply<T0>(0x1::option::borrow<distribution::magma_token::MinterCap<T0>>(&arg0.minter_cap)), distribution::voting_escrow::total_locked<T0>(arg2));
         let v3 = 0x2::object::id_address<Minter<T0>>(arg0);
         if (arg0.team_emission_rate > 0 && arg0.team_wallet != @0x0) {
-            0x2::transfer::public_transfer<0x2::coin::Coin<T0>>(0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::magma_token::mint<T0>(0x1::option::borrow_mut<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::magma_token::MinterCap<T0>>(&mut arg0.minter_cap), 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u64::mul_div_floor(arg0.team_emission_rate, v2 + v0, 10000 - arg0.team_emission_rate), v3, arg5), arg0.team_wallet);
+            0x2::transfer::public_transfer<0x2::coin::Coin<T0>>(distribution::magma_token::mint<T0>(0x1::option::borrow_mut<distribution::magma_token::MinterCap<T0>>(&mut arg0.minter_cap), 0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f::full_math_u64::mul_div_floor(arg0.team_emission_rate, v2 + v0, 10000 - arg0.team_emission_rate), v3, arg5), arg0.team_wallet);
         };
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::reward_distributor::checkpoint_token<T0>(arg3, 0x1::option::borrow<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::reward_distributor_cap::RewardDistributorCap>(&arg0.reward_distributor_cap), 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::magma_token::mint<T0>(0x1::option::borrow_mut<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::magma_token::MinterCap<T0>>(&mut arg0.minter_cap), v2, v3, arg5), arg4, arg5);
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter::notify_rewards<T0>(arg1, 0x1::option::borrow<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::notify_reward_cap::NotifyRewardCap>(&arg0.notify_reward_cap), 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::magma_token::mint<T0>(0x1::option::borrow_mut<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::magma_token::MinterCap<T0>>(&mut arg0.minter_cap), v0, 0x2::object::id_address<Minter<T0>>(arg0), arg5), arg5);
-        arg0.active_period = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::current_period(arg4);
+        distribution::reward_distributor::checkpoint_token<T0>(arg3, 0x1::option::borrow<distribution::reward_distributor_cap::RewardDistributorCap>(&arg0.reward_distributor_cap), distribution::magma_token::mint<T0>(0x1::option::borrow_mut<distribution::magma_token::MinterCap<T0>>(&mut arg0.minter_cap), v2, v3, arg5), arg4, arg5);
+        distribution::voter::notify_rewards<T0>(arg1, 0x1::option::borrow<distribution::notify_reward_cap::NotifyRewardCap>(&arg0.notify_reward_cap), distribution::magma_token::mint<T0>(0x1::option::borrow_mut<distribution::magma_token::MinterCap<T0>>(&mut arg0.minter_cap), v0, 0x2::object::id_address<Minter<T0>>(arg0), arg5), arg5);
+        arg0.active_period = distribution::common::current_period(arg4);
         arg0.epoch_count = arg0.epoch_count + 1;
         arg0.epoch_emissions = v1;
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::reward_distributor::update_active_period<T0>(arg3, 0x1::option::borrow<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::reward_distributor_cap::RewardDistributorCap>(&arg0.reward_distributor_cap), arg0.active_period);
+        distribution::reward_distributor::update_active_period<T0>(arg3, 0x1::option::borrow<distribution::reward_distributor_cap::RewardDistributorCap>(&arg0.reward_distributor_cap), arg0.active_period);
         let v4 = EventUpdateEpoch{
             new_period    : arg0.active_period, 
             new_epoch     : arg0.epoch_count, 

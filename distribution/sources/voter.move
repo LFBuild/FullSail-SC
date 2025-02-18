@@ -1,4 +1,4 @@
-module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter {
+module distribution::voter {
     struct VOTER has drop {
         dummy_field: bool,
     }
@@ -38,7 +38,7 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter
         rewards: 0x2::table::Table<GaugeID, 0x2::balance::Balance<T0>>,
         weights: 0x2::table::Table<GaugeID, u64>,
         epoch: u64,
-        voter_cap: 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::VoterCap,
+        voter_cap: distribution::voter_cap::VoterCap,
         balances: 0x2::bag::Bag,
         index: u128,
         supply_index: 0x2::table::Table<GaugeID, u128>,
@@ -48,10 +48,10 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter
         max_voting_num: u64,
         last_voted: 0x2::table::Table<LockID, u64>,
         pool_vote: 0x2::table::Table<LockID, vector<PoolID>>,
-        gauge_to_fee_authorized_cap: 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::reward_authorized_cap::RewardAuthorizedCap,
-        gauge_to_fee: 0x2::table::Table<GaugeID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::fee_voting_reward::FeeVotingReward>,
-        gauge_to_bribe_authorized_cap: 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::reward_authorized_cap::RewardAuthorizedCap,
-        gauge_to_bribe: 0x2::table::Table<GaugeID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::bribe_voting_reward::BribeVotingReward>,
+        gauge_to_fee_authorized_cap: distribution::reward_authorized_cap::RewardAuthorizedCap,
+        gauge_to_fee: 0x2::table::Table<GaugeID, distribution::fee_voting_reward::FeeVotingReward>,
+        gauge_to_bribe_authorized_cap: distribution::reward_authorized_cap::RewardAuthorizedCap,
+        gauge_to_bribe: 0x2::table::Table<GaugeID, distribution::bribe_voting_reward::BribeVotingReward>,
     }
     
     struct EventNotifyReward has copy, drop, store {
@@ -117,7 +117,7 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter
         who: address,
     }
     
-    public fun create<T0>(arg0: &0x2::package::Publisher, arg1: vector<0x1::type_name::TypeName>, arg2: &mut 0x2::tx_context::TxContext) : (Voter<T0>, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::notify_reward_cap::NotifyRewardCap) {
+    public fun create<T0>(arg0: &0x2::package::Publisher, arg1: vector<0x1::type_name::TypeName>, arg2: &mut 0x2::tx_context::TxContext) : (Voter<T0>, distribution::notify_reward_cap::NotifyRewardCap) {
         let v0 = 0x2::object::new(arg2);
         let v1 = *0x2::object::uid_as_inner(&v0);
         let v2 = Voter<T0>{
@@ -136,7 +136,7 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter
             rewards                       : 0x2::table::new<GaugeID, 0x2::balance::Balance<T0>>(arg2), 
             weights                       : 0x2::table::new<GaugeID, u64>(arg2), 
             epoch                         : 0, 
-            voter_cap                     : 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::create_voter_cap(v1, arg2), 
+            voter_cap                     : distribution::voter_cap::create_voter_cap(v1, arg2), 
             balances                      : 0x2::bag::new(arg2), 
             index                         : 0, 
             supply_index                  : 0x2::table::new<GaugeID, u128>(arg2), 
@@ -146,42 +146,42 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter
             max_voting_num                : 10, 
             last_voted                    : 0x2::table::new<LockID, u64>(arg2), 
             pool_vote                     : 0x2::table::new<LockID, vector<PoolID>>(arg2), 
-            gauge_to_fee_authorized_cap   : 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::reward_authorized_cap::create(v1, arg2), 
-            gauge_to_fee                  : 0x2::table::new<GaugeID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::fee_voting_reward::FeeVotingReward>(arg2), 
-            gauge_to_bribe_authorized_cap : 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::reward_authorized_cap::create(v1, arg2), 
-            gauge_to_bribe                : 0x2::table::new<GaugeID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::bribe_voting_reward::BribeVotingReward>(arg2),
+            gauge_to_fee_authorized_cap   : distribution::reward_authorized_cap::create(v1, arg2), 
+            gauge_to_fee                  : 0x2::table::new<GaugeID, distribution::fee_voting_reward::FeeVotingReward>(arg2), 
+            gauge_to_bribe_authorized_cap : distribution::reward_authorized_cap::create(v1, arg2), 
+            gauge_to_bribe                : 0x2::table::new<GaugeID, distribution::bribe_voting_reward::BribeVotingReward>(arg2),
         };
         let v3 = 0;
         while (v3 < 0x1::vector::length<0x1::type_name::TypeName>(&arg1)) {
             whitelist_token_internal<T0>(&mut v2, *0x1::vector::borrow<0x1::type_name::TypeName>(&arg1, v3), true, 0x2::tx_context::sender(arg2));
             v3 = v3 + 1;
         };
-        (v2, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::notify_reward_cap::create_internal(0x2::object::id<Voter<T0>>(&v2), arg2))
+        (v2, distribution::notify_reward_cap::create_internal(0x2::object::id<Voter<T0>>(&v2), arg2))
     }
     
-    public fun deposit_managed<T0>(arg0: &mut Voter<T0>, arg1: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::VotingEscrow<T0>, arg2: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::Lock, arg3: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::Lock, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
-        let v0 = into_lock_id(0x2::object::id<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::Lock>(arg2));
+    public fun deposit_managed<T0>(arg0: &mut Voter<T0>, arg1: &mut distribution::voting_escrow::VotingEscrow<T0>, arg2: &mut distribution::voting_escrow::Lock, arg3: &mut distribution::voting_escrow::Lock, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
+        let v0 = into_lock_id(0x2::object::id<distribution::voting_escrow::Lock>(arg2));
         assert_only_new_epoch<T0>(arg0, v0, arg4);
-        assert!(0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::owner_of<T0>(arg1, v0.id) == 0x2::tx_context::sender(arg5), 9223375275260116991);
-        assert!(!0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::deactivated<T0>(arg1, v0.id), 9223375275262279714);
-        let v1 = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::id_to_managed<T0>(arg1, v0.id);
-        assert!(v1 == 0x2::object::id<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::Lock>(arg3), 9223375292439986175);
-        let v2 = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::current_timestamp(arg4);
-        assert!(v2 <= 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::epoch_vote_end(v2), 9223375301033263156);
+        assert!(distribution::voting_escrow::owner_of<T0>(arg1, v0.id) == 0x2::tx_context::sender(arg5), 9223375275260116991);
+        assert!(!distribution::voting_escrow::deactivated<T0>(arg1, v0.id), 9223375275262279714);
+        let v1 = distribution::voting_escrow::id_to_managed<T0>(arg1, v0.id);
+        assert!(v1 == 0x2::object::id<distribution::voting_escrow::Lock>(arg3), 9223375292439986175);
+        let v2 = distribution::common::current_timestamp(arg4);
+        assert!(v2 <= distribution::common::epoch_vote_end(v2), 9223375301033263156);
         if (0x2::table::contains<LockID, u64>(&arg0.last_voted, v0)) {
             0x2::table::remove<LockID, u64>(&mut arg0.last_voted, v0);
         };
         0x2::table::add<LockID, u64>(&mut arg0.last_voted, v0, v2);
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::deposit_managed<T0>(arg1, &arg0.voter_cap, arg2, v1, arg4, arg5);
-        poke_internal<T0>(arg0, arg1, arg3, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::balance_of_nft_at<T0>(arg1, v0.id, v2), arg4, arg5);
+        distribution::voting_escrow::deposit_managed<T0>(arg1, &arg0.voter_cap, arg2, v1, arg4, arg5);
+        poke_internal<T0>(arg0, arg1, arg3, distribution::voting_escrow::balance_of_nft_at<T0>(arg1, v0.id, v2), arg4, arg5);
     }
     
-    public fun withdraw_managed<T0>(arg0: &mut Voter<T0>, arg1: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::VotingEscrow<T0>, arg2: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::Lock, arg3: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::Lock, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
-        let v0 = into_lock_id(0x2::object::id<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::Lock>(arg2));
+    public fun withdraw_managed<T0>(arg0: &mut Voter<T0>, arg1: &mut distribution::voting_escrow::VotingEscrow<T0>, arg2: &mut distribution::voting_escrow::Lock, arg3: &mut distribution::voting_escrow::Lock, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
+        let v0 = into_lock_id(0x2::object::id<distribution::voting_escrow::Lock>(arg2));
         assert_only_new_epoch<T0>(arg0, v0, arg4);
-        let v1 = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::id_to_managed<T0>(arg1, v0.id);
-        assert!(v1 == 0x2::object::id<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::Lock>(arg3), 9223375378339332095);
-        let v2 = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::balance_of_nft_at<T0>(arg1, v1, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::current_timestamp(arg4));
+        let v1 = distribution::voting_escrow::id_to_managed<T0>(arg1, v0.id);
+        assert!(v1 == 0x2::object::id<distribution::voting_escrow::Lock>(arg3), 9223375378339332095);
+        let v2 = distribution::voting_escrow::balance_of_nft_at<T0>(arg1, v1, distribution::common::current_timestamp(arg4));
         if (v2 == 0) {
             reset_internal<T0>(arg0, arg1, arg3, arg4, arg5);
             if (0x2::table::contains<LockID, u64>(&arg0.last_voted, into_lock_id(v1))) {
@@ -190,47 +190,47 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter
         } else {
             poke_internal<T0>(arg0, arg1, arg3, v2, arg4, arg5);
         };
-        0x2::transfer::public_transfer<0x2::coin::Coin<T0>>(0x2::coin::from_balance<T0>(0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::withdraw_managed<T0>(arg1, &arg0.voter_cap, v0.id, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::owner_proof<T0>(arg1, arg2, arg5), arg4, arg5), arg5), 0x2::tx_context::sender(arg5));
+        0x2::transfer::public_transfer<0x2::coin::Coin<T0>>(0x2::coin::from_balance<T0>(distribution::voting_escrow::withdraw_managed<T0>(arg1, &arg0.voter_cap, v0.id, distribution::voting_escrow::owner_proof<T0>(arg1, arg2, arg5), arg4, arg5), arg5), 0x2::tx_context::sender(arg5));
     }
     
-    public fun add_epoch_governor<T0>(arg0: &mut Voter<T0>, arg1: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::GovernorCap, arg2: address, arg3: &mut 0x2::tx_context::TxContext) {
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::validate_governor_voter_id(arg1, 0x2::object::id<Voter<T0>>(arg0));
-        0x2::transfer::public_transfer<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::EpochGovernorCap>(0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::create_epoch_governor_cap(0x2::object::id<Voter<T0>>(arg0), arg3), arg2);
+    public fun add_epoch_governor<T0>(arg0: &mut Voter<T0>, arg1: &distribution::voter_cap::GovernorCap, arg2: address, arg3: &mut 0x2::tx_context::TxContext) {
+        distribution::voter_cap::validate_governor_voter_id(arg1, 0x2::object::id<Voter<T0>>(arg0));
+        0x2::transfer::public_transfer<distribution::voter_cap::EpochGovernorCap>(distribution::voter_cap::create_epoch_governor_cap(0x2::object::id<Voter<T0>>(arg0), arg3), arg2);
         let v0 = EventAddEpochGovernor{who: arg2};
         0x2::event::emit<EventAddEpochGovernor>(v0);
     }
     
     public fun add_governor<T0>(arg0: &mut Voter<T0>, arg1: &0x2::package::Publisher, arg2: address, arg3: &mut 0x2::tx_context::TxContext) {
-        0x2::transfer::public_transfer<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::GovernorCap>(0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::create_governor_cap(0x2::object::id<Voter<T0>>(arg0), arg2, arg3), arg2);
+        0x2::transfer::public_transfer<distribution::voter_cap::GovernorCap>(distribution::voter_cap::create_governor_cap(0x2::object::id<Voter<T0>>(arg0), arg2, arg3), arg2);
         0x2::vec_set::insert<0x2::object::ID>(&mut arg0.governors, 0x2::object::id_from_address(arg2));
         let v0 = EventAddGovernor{who: arg2};
         0x2::event::emit<EventAddGovernor>(v0);
     }
     
     fun assert_only_new_epoch<T0>(arg0: &Voter<T0>, arg1: LockID, arg2: &0x2::clock::Clock) {
-        let v0 = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::current_timestamp(arg2);
-        assert!(!0x2::table::contains<LockID, u64>(&arg0.last_voted, arg1) || 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::epoch_start(v0) > *0x2::table::borrow<LockID, u64>(&arg0.last_voted, arg1), 9223373329641701404);
-        assert!(v0 > 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::epoch_vote_start(v0), 9223373333936799774);
+        let v0 = distribution::common::current_timestamp(arg2);
+        assert!(!0x2::table::contains<LockID, u64>(&arg0.last_voted, arg1) || distribution::common::epoch_start(v0) > *0x2::table::borrow<LockID, u64>(&arg0.last_voted, arg1), 9223373329641701404);
+        assert!(v0 > distribution::common::epoch_vote_start(v0), 9223373333936799774);
     }
     
-    public fun borrow_bribe_voting_reward<T0>(arg0: &Voter<T0>, arg1: 0x2::object::ID) : &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::bribe_voting_reward::BribeVotingReward {
-        0x2::table::borrow<GaugeID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::bribe_voting_reward::BribeVotingReward>(&arg0.gauge_to_bribe, into_gauge_id(arg1))
+    public fun borrow_bribe_voting_reward<T0>(arg0: &Voter<T0>, arg1: 0x2::object::ID) : &distribution::bribe_voting_reward::BribeVotingReward {
+        0x2::table::borrow<GaugeID, distribution::bribe_voting_reward::BribeVotingReward>(&arg0.gauge_to_bribe, into_gauge_id(arg1))
     }
     
-    public fun borrow_bribe_voting_reward_mut<T0>(arg0: &mut Voter<T0>, arg1: 0x2::object::ID) : &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::bribe_voting_reward::BribeVotingReward {
-        0x2::table::borrow_mut<GaugeID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::bribe_voting_reward::BribeVotingReward>(&mut arg0.gauge_to_bribe, into_gauge_id(arg1))
+    public fun borrow_bribe_voting_reward_mut<T0>(arg0: &mut Voter<T0>, arg1: 0x2::object::ID) : &mut distribution::bribe_voting_reward::BribeVotingReward {
+        0x2::table::borrow_mut<GaugeID, distribution::bribe_voting_reward::BribeVotingReward>(&mut arg0.gauge_to_bribe, into_gauge_id(arg1))
     }
     
-    public fun borrow_fee_voting_reward<T0>(arg0: &Voter<T0>, arg1: 0x2::object::ID) : &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::fee_voting_reward::FeeVotingReward {
-        0x2::table::borrow<GaugeID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::fee_voting_reward::FeeVotingReward>(&arg0.gauge_to_fee, into_gauge_id(arg1))
+    public fun borrow_fee_voting_reward<T0>(arg0: &Voter<T0>, arg1: 0x2::object::ID) : &distribution::fee_voting_reward::FeeVotingReward {
+        0x2::table::borrow<GaugeID, distribution::fee_voting_reward::FeeVotingReward>(&arg0.gauge_to_fee, into_gauge_id(arg1))
     }
     
-    public fun borrow_fee_voting_reward_mut<T0>(arg0: &mut Voter<T0>, arg1: 0x2::object::ID) : &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::fee_voting_reward::FeeVotingReward {
-        0x2::table::borrow_mut<GaugeID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::fee_voting_reward::FeeVotingReward>(&mut arg0.gauge_to_fee, into_gauge_id(arg1))
+    public fun borrow_fee_voting_reward_mut<T0>(arg0: &mut Voter<T0>, arg1: 0x2::object::ID) : &mut distribution::fee_voting_reward::FeeVotingReward {
+        0x2::table::borrow_mut<GaugeID, distribution::fee_voting_reward::FeeVotingReward>(&mut arg0.gauge_to_fee, into_gauge_id(arg1))
     }
     
-    public fun borrow_voter_cap<T0>(arg0: &Voter<T0>, arg1: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::notify_reward_cap::NotifyRewardCap) : &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::VoterCap {
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::notify_reward_cap::validate_notify_reward_voter_id(arg1, 0x2::object::id<Voter<T0>>(arg0));
+    public fun borrow_voter_cap<T0>(arg0: &Voter<T0>, arg1: &distribution::notify_reward_cap::NotifyRewardCap) : &distribution::voter_cap::VoterCap {
+        distribution::notify_reward_cap::validate_notify_reward_voter_id(arg1, 0x2::object::id<Voter<T0>>(arg0));
         &arg0.voter_cap
     }
     
@@ -246,20 +246,20 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter
         };
     }
     
-    public fun claim_voting_bribe<T0, T1>(arg0: &mut Voter<T0>, arg1: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::VotingEscrow<T0>, arg2: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::Lock, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
-        let v0 = 0x2::table::borrow<LockID, vector<PoolID>>(&arg0.pool_vote, into_lock_id(0x2::object::id<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::Lock>(arg2)));
+    public fun claim_voting_bribe<T0, T1>(arg0: &mut Voter<T0>, arg1: &mut distribution::voting_escrow::VotingEscrow<T0>, arg2: &distribution::voting_escrow::Lock, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
+        let v0 = 0x2::table::borrow<LockID, vector<PoolID>>(&arg0.pool_vote, into_lock_id(0x2::object::id<distribution::voting_escrow::Lock>(arg2)));
         let v1 = 0;
         while (v1 < 0x1::vector::length<PoolID>(v0)) {
-            0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::bribe_voting_reward::get_reward<T0, T1>(0x2::table::borrow_mut<GaugeID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::bribe_voting_reward::BribeVotingReward>(&mut arg0.gauge_to_bribe, *0x2::table::borrow<PoolID, GaugeID>(&arg0.pool_to_gauger, *0x1::vector::borrow<PoolID>(v0, v1))), arg1, arg2, arg3, arg4);
+            distribution::bribe_voting_reward::get_reward<T0, T1>(0x2::table::borrow_mut<GaugeID, distribution::bribe_voting_reward::BribeVotingReward>(&mut arg0.gauge_to_bribe, *0x2::table::borrow<PoolID, GaugeID>(&arg0.pool_to_gauger, *0x1::vector::borrow<PoolID>(v0, v1))), arg1, arg2, arg3, arg4);
             v1 = v1 + 1;
         };
     }
     
-    public fun claim_voting_fee_reward<T0, T1>(arg0: &mut Voter<T0>, arg1: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::VotingEscrow<T0>, arg2: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::Lock, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
-        let v0 = 0x2::table::borrow<LockID, vector<PoolID>>(&arg0.pool_vote, into_lock_id(0x2::object::id<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::Lock>(arg2)));
+    public fun claim_voting_fee_reward<T0, T1>(arg0: &mut Voter<T0>, arg1: &mut distribution::voting_escrow::VotingEscrow<T0>, arg2: &distribution::voting_escrow::Lock, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
+        let v0 = 0x2::table::borrow<LockID, vector<PoolID>>(&arg0.pool_vote, into_lock_id(0x2::object::id<distribution::voting_escrow::Lock>(arg2)));
         let v1 = 0;
         while (v1 < 0x1::vector::length<PoolID>(v0)) {
-            0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::fee_voting_reward::get_reward<T0, T1>(0x2::table::borrow_mut<GaugeID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::fee_voting_reward::FeeVotingReward>(&mut arg0.gauge_to_fee, *0x2::table::borrow<PoolID, GaugeID>(&arg0.pool_to_gauger, *0x1::vector::borrow<PoolID>(v0, v1))), arg1, arg2, arg3, arg4);
+            distribution::fee_voting_reward::get_reward<T0, T1>(0x2::table::borrow_mut<GaugeID, distribution::fee_voting_reward::FeeVotingReward>(&mut arg0.gauge_to_fee, *0x2::table::borrow<PoolID, GaugeID>(&arg0.pool_to_gauger, *0x1::vector::borrow<PoolID>(v0, v1))), arg1, arg2, arg3, arg4);
             v1 = v1 + 1;
         };
     }
@@ -273,32 +273,32 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter
         }
     }
     
-    public fun create_gauge<T0, T1, T2>(arg0: &mut Voter<T2>, arg1: &0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784::gauge_cap::CreateCap, arg2: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::GovernorCap, arg3: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::VotingEscrow<T2>, arg4: &mut clmm_pool::pool::Pool<T0, T1>, arg5: &0x2::clock::Clock, arg6: &mut 0x2::tx_context::TxContext) : 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::gauge::Gauge<T0, T1, T2> {
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::validate_governor_voter_id(arg2, 0x2::object::id<Voter<T2>>(arg0));
-        assert!(is_governor<T2>(arg0, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::who(arg2)), 9223373604519346200);
+    public fun create_gauge<T0, T1, T2>(arg0: &mut Voter<T2>, arg1: &0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784::gauge_cap::CreateCap, arg2: &distribution::voter_cap::GovernorCap, arg3: &distribution::voting_escrow::VotingEscrow<T2>, arg4: &mut clmm_pool::pool::Pool<T0, T1>, arg5: &0x2::clock::Clock, arg6: &mut 0x2::tx_context::TxContext) : distribution::gauge::Gauge<T0, T1, T2> {
+        distribution::voter_cap::validate_governor_voter_id(arg2, 0x2::object::id<Voter<T2>>(arg0));
+        assert!(is_governor<T2>(arg0, distribution::voter_cap::who(arg2)), 9223373604519346200);
         let v0 = return_new_gauge<T0, T1, T2>(arg1, arg4, arg6);
         let v1 = 0x1::vector::empty<0x1::type_name::TypeName>();
         0x1::vector::push_back<0x1::type_name::TypeName>(&mut v1, 0x1::type_name::get<T0>());
         0x1::vector::push_back<0x1::type_name::TypeName>(&mut v1, 0x1::type_name::get<T1>());
-        let v2 = 0x2::object::id<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::gauge::Gauge<T0, T1, T2>>(&v0);
+        let v2 = 0x2::object::id<distribution::gauge::Gauge<T0, T1, T2>>(&v0);
         let v3 = 0x2::object::id<Voter<T2>>(arg0);
-        let v4 = 0x2::object::id<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::VotingEscrow<T2>>(arg3);
-        0x2::table::add<GaugeID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::fee_voting_reward::FeeVotingReward>(&mut arg0.gauge_to_fee, into_gauge_id(v2), 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::fee_voting_reward::create(v3, v4, v2, v1, arg6));
+        let v4 = 0x2::object::id<distribution::voting_escrow::VotingEscrow<T2>>(arg3);
+        0x2::table::add<GaugeID, distribution::fee_voting_reward::FeeVotingReward>(&mut arg0.gauge_to_fee, into_gauge_id(v2), distribution::fee_voting_reward::create(v3, v4, v2, v1, arg6));
         0x1::vector::push_back<0x1::type_name::TypeName>(&mut v1, 0x1::type_name::get<T2>());
-        0x2::table::add<GaugeID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::bribe_voting_reward::BribeVotingReward>(&mut arg0.gauge_to_bribe, into_gauge_id(v2), 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::bribe_voting_reward::create(v3, v4, v2, v1, arg6));
+        0x2::table::add<GaugeID, distribution::bribe_voting_reward::BribeVotingReward>(&mut arg0.gauge_to_bribe, into_gauge_id(v2), distribution::bribe_voting_reward::create(v3, v4, v2, v1, arg6));
         receive_gauger<T0, T1, T2>(arg0, arg2, &mut v0, arg5, arg6);
         v0
     }
     
-    public fun distribute_gauge<T0, T1, T2>(arg0: &mut Voter<T2>, arg1: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::gauge::Gauge<T0, T1, T2>, arg2: &mut clmm_pool::pool::Pool<T0, T1>, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) : u64 {
-        let v0 = into_gauge_id(0x2::object::id<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::gauge::Gauge<T0, T1, T2>>(arg1));
+    public fun distribute_gauge<T0, T1, T2>(arg0: &mut Voter<T2>, arg1: &mut distribution::gauge::Gauge<T0, T1, T2>, arg2: &mut clmm_pool::pool::Pool<T0, T1>, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) : u64 {
+        let v0 = into_gauge_id(0x2::object::id<distribution::gauge::Gauge<T0, T1, T2>>(arg1));
         let v1 = 0x2::table::borrow<GaugeID, GaugeRepresent>(&arg0.gauge_represents, v0);
         assert!(v1.pool_id == 0x2::object::id<clmm_pool::pool::Pool<T0, T1>>(arg2) && v1.gauger_id == v0.id, 9223375983929720831);
         let v2 = extract_claimable_for<T2>(arg0, v0.id);
-        let (v3, v4) = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::gauge::notify_reward<T0, T1, T2>(arg1, &arg0.voter_cap, arg2, v2, arg3, arg4);
-        let v5 = 0x2::table::borrow_mut<GaugeID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::fee_voting_reward::FeeVotingReward>(&mut arg0.gauge_to_fee, v0);
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::fee_voting_reward::notify_reward_amount<T0>(v5, &arg0.gauge_to_fee_authorized_cap, 0x2::coin::from_balance<T0>(v3, arg4), arg3, arg4);
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::fee_voting_reward::notify_reward_amount<T1>(v5, &arg0.gauge_to_fee_authorized_cap, 0x2::coin::from_balance<T1>(v4, arg4), arg3, arg4);
+        let (v3, v4) = distribution::gauge::notify_reward<T0, T1, T2>(arg1, &arg0.voter_cap, arg2, v2, arg3, arg4);
+        let v5 = 0x2::table::borrow_mut<GaugeID, distribution::fee_voting_reward::FeeVotingReward>(&mut arg0.gauge_to_fee, v0);
+        distribution::fee_voting_reward::notify_reward_amount<T0>(v5, &arg0.gauge_to_fee_authorized_cap, 0x2::coin::from_balance<T0>(v3, arg4), arg3, arg4);
+        distribution::fee_voting_reward::notify_reward_amount<T1>(v5, &arg0.gauge_to_fee_authorized_cap, 0x2::coin::from_balance<T1>(v4, arg4), arg3, arg4);
         0x2::balance::value<T2>(&v2)
     }
     
@@ -318,7 +318,7 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter
     }
     
     public fun fee_voting_reward_balance<T0, T1>(arg0: &Voter<T0>, arg1: 0x2::object::ID) : u64 {
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::fee_voting_reward::balance<T1>(0x2::table::borrow<GaugeID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::fee_voting_reward::FeeVotingReward>(&arg0.gauge_to_fee, into_gauge_id(arg1)))
+        distribution::fee_voting_reward::balance<T1>(0x2::table::borrow<GaugeID, distribution::fee_voting_reward::FeeVotingReward>(&arg0.gauge_to_fee, into_gauge_id(arg1)))
     }
     
     public fun get_gauge_weight<T0>(arg0: &Voter<T0>, arg1: GaugeID) : u64 {
@@ -373,8 +373,8 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter
         }
     }
     
-    public fun kill_gauger<T0>(arg0: &mut Voter<T0>, arg1: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::emergency_council::EmergencyCouncilCap, arg2: 0x2::object::ID, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) : 0x2::balance::Balance<T0> {
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::emergency_council::validate_emergency_council_voter_id(arg1, 0x2::object::id<Voter<T0>>(arg0));
+    public fun kill_gauger<T0>(arg0: &mut Voter<T0>, arg1: &distribution::emergency_council::EmergencyCouncilCap, arg2: 0x2::object::ID, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) : 0x2::balance::Balance<T0> {
+        distribution::emergency_council::validate_emergency_council_voter_id(arg1, 0x2::object::id<Voter<T0>>(arg0));
         let v0 = into_gauge_id(arg2);
         assert!(0x2::table::contains<GaugeID, bool>(&arg0.is_alive, v0), 9223374012540190728);
         let v1 = true;
@@ -392,8 +392,8 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter
         v3
     }
     
-    public fun notify_rewards<T0>(arg0: &mut Voter<T0>, arg1: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::notify_reward_cap::NotifyRewardCap, arg2: 0x2::coin::Coin<T0>, arg3: &mut 0x2::tx_context::TxContext) {
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::notify_reward_cap::validate_notify_reward_voter_id(arg1, 0x2::object::id<Voter<T0>>(arg0));
+    public fun notify_rewards<T0>(arg0: &mut Voter<T0>, arg1: &distribution::notify_reward_cap::NotifyRewardCap, arg2: 0x2::coin::Coin<T0>, arg3: &mut 0x2::tx_context::TxContext) {
+        distribution::notify_reward_cap::validate_notify_reward_voter_id(arg1, 0x2::object::id<Voter<T0>>(arg0));
         let v0 = 0x2::coin::into_balance<T0>(arg2);
         let v1 = 0x2::balance::value<T0>(&v0);
         let v2 = 0x1::type_name::get<T0>();
@@ -415,21 +415,21 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter
             arg0.index = arg0.index + v6;
         };
         let v7 = EventNotifyReward{
-            notifier : 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::notify_reward_cap::who(arg1), 
+            notifier : distribution::notify_reward_cap::who(arg1), 
             token    : v2, 
             amount   : v1,
         };
         0x2::event::emit<EventNotifyReward>(v7);
     }
     
-    public fun poke<T0>(arg0: &mut Voter<T0>, arg1: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::VotingEscrow<T0>, arg2: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::Lock, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
-        let v0 = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::current_timestamp(arg3);
-        assert!(v0 > 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::epoch_vote_start(v0), 9223374433448427550);
-        poke_internal<T0>(arg0, arg1, arg2, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::get_voting_power<T0>(arg1, arg2, arg3), arg3, arg4);
+    public fun poke<T0>(arg0: &mut Voter<T0>, arg1: &mut distribution::voting_escrow::VotingEscrow<T0>, arg2: &distribution::voting_escrow::Lock, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
+        let v0 = distribution::common::current_timestamp(arg3);
+        assert!(v0 > distribution::common::epoch_vote_start(v0), 9223374433448427550);
+        poke_internal<T0>(arg0, arg1, arg2, distribution::voting_escrow::get_voting_power<T0>(arg1, arg2, arg3), arg3, arg4);
     }
     
-    fun poke_internal<T0>(arg0: &mut Voter<T0>, arg1: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::VotingEscrow<T0>, arg2: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::Lock, arg3: u64, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
-        let v0 = into_lock_id(0x2::object::id<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::Lock>(arg2));
+    fun poke_internal<T0>(arg0: &mut Voter<T0>, arg1: &mut distribution::voting_escrow::VotingEscrow<T0>, arg2: &distribution::voting_escrow::Lock, arg3: u64, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
+        let v0 = into_lock_id(0x2::object::id<distribution::voting_escrow::Lock>(arg2));
         let v1 = if (0x2::table::contains<LockID, vector<PoolID>>(&arg0.pool_vote, v0)) {
             0x1::vector::length<PoolID>(0x2::table::borrow<LockID, vector<PoolID>>(&arg0.pool_vote, v0))
         } else {
@@ -456,26 +456,26 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter
         0x2::table::borrow<PoolID, GaugeID>(&arg0.pool_to_gauger, into_pool_id(arg1)).id
     }
     
-    public fun prove_pair_whitelisted<T0, T1, T2>(arg0: &Voter<T0>) : 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::whitelisted_tokens::WhitelistedTokenPair {
+    public fun prove_pair_whitelisted<T0, T1, T2>(arg0: &Voter<T0>) : distribution::whitelisted_tokens::WhitelistedTokenPair {
         assert!(is_whitelisted_token<T0, T1>(arg0), 9223373870805811199);
         assert!(is_whitelisted_token<T0, T2>(arg0), 9223373875100778495);
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::whitelisted_tokens::create_pair<T1, T2>(0x2::object::id<Voter<T0>>(arg0))
+        distribution::whitelisted_tokens::create_pair<T1, T2>(0x2::object::id<Voter<T0>>(arg0))
     }
     
-    public fun prove_token_whitelisted<T0, T1>(arg0: &Voter<T0>) : 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::whitelisted_tokens::WhitelistedToken {
+    public fun prove_token_whitelisted<T0, T1>(arg0: &Voter<T0>) : distribution::whitelisted_tokens::WhitelistedToken {
         assert!(is_whitelisted_token<T0, T1>(arg0), 9223373853625942015);
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::whitelisted_tokens::create<T1>(0x2::object::id<Voter<T0>>(arg0))
+        distribution::whitelisted_tokens::create<T1>(0x2::object::id<Voter<T0>>(arg0))
     }
     
-    public fun receive_gauger<T0, T1, T2>(arg0: &mut Voter<T2>, arg1: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::GovernorCap, arg2: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::gauge::Gauge<T0, T1, T2>, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::validate_governor_voter_id(arg1, 0x2::object::id<Voter<T2>>(arg0));
-        let v0 = into_gauge_id(0x2::object::id<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::gauge::Gauge<T0, T1, T2>>(arg2));
-        let v1 = into_pool_id(0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::gauge::pool_id<T0, T1, T2>(arg2));
+    public fun receive_gauger<T0, T1, T2>(arg0: &mut Voter<T2>, arg1: &distribution::voter_cap::GovernorCap, arg2: &mut distribution::gauge::Gauge<T0, T1, T2>, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
+        distribution::voter_cap::validate_governor_voter_id(arg1, 0x2::object::id<Voter<T2>>(arg0));
+        let v0 = into_gauge_id(0x2::object::id<distribution::gauge::Gauge<T0, T1, T2>>(arg2));
+        let v1 = into_pool_id(distribution::gauge::pool_id<T0, T1, T2>(arg2));
         assert!(!0x2::table::contains<GaugeID, GaugeRepresent>(&arg0.gauge_represents, v0), 9223373720482283526);
         assert!(!0x2::table::contains<PoolID, GaugeID>(&arg0.pool_to_gauger, v1), 9223373724779872302);
         let v2 = GaugeRepresent{
-            gauger_id        : 0x2::object::id<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::gauge::Gauge<T0, T1, T2>>(arg2), 
-            pool_id          : 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::gauge::pool_id<T0, T1, T2>(arg2), 
+            gauger_id        : 0x2::object::id<distribution::gauge::Gauge<T0, T1, T2>>(arg2), 
+            pool_id          : distribution::gauge::pool_id<T0, T1, T2>(arg2), 
             weight           : 0, 
             last_reward_time : 0x2::clock::timestamp_ms(arg3),
         };
@@ -485,7 +485,7 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter
         0x1::vector::push_back<PoolID>(&mut arg0.pools, v1);
         0x2::table::add<GaugeID, bool>(&mut arg0.is_alive, v0, true);
         0x2::table::add<PoolID, GaugeID>(&mut arg0.pool_to_gauger, v1, v0);
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::gauge::set_voter<T0, T1, T2>(arg2, 0x2::object::id<Voter<T2>>(arg0), arg4);
+        distribution::gauge::set_voter<T0, T1, T2>(arg2, 0x2::object::id<Voter<T2>>(arg0), arg4);
         whitelist_token<T2, T0>(arg0, arg1, true, arg4);
         whitelist_token<T2, T1>(arg0, arg1, true, arg4);
         if (!is_whitelisted_token<T2, T2>(arg0)) {
@@ -493,8 +493,8 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter
         };
     }
     
-    public fun remove_epoch_governor<T0>(arg0: &mut Voter<T0>, arg1: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::GovernorCap, arg2: address) {
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::validate_governor_voter_id(arg1, 0x2::object::id<Voter<T0>>(arg0));
+    public fun remove_epoch_governor<T0>(arg0: &mut Voter<T0>, arg1: &distribution::voter_cap::GovernorCap, arg2: address) {
+        distribution::voter_cap::validate_governor_voter_id(arg1, 0x2::object::id<Voter<T0>>(arg0));
         let v0 = 0x2::object::id_from_address(arg2);
         0x2::vec_set::remove<0x2::object::ID>(&mut arg0.epoch_governors, &v0);
         let v1 = EventRemoveEpochGovernor{who: arg2};
@@ -508,13 +508,13 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter
         0x2::event::emit<EventRemoveGovernor>(v1);
     }
     
-    public fun reset<T0>(arg0: &mut Voter<T0>, arg1: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::VotingEscrow<T0>, arg2: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::Lock, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
-        assert_only_new_epoch<T0>(arg0, into_lock_id(0x2::object::id<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::Lock>(arg2)), arg3);
+    public fun reset<T0>(arg0: &mut Voter<T0>, arg1: &mut distribution::voting_escrow::VotingEscrow<T0>, arg2: &distribution::voting_escrow::Lock, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
+        assert_only_new_epoch<T0>(arg0, into_lock_id(0x2::object::id<distribution::voting_escrow::Lock>(arg2)), arg3);
         reset_internal<T0>(arg0, arg1, arg2, arg3, arg4);
     }
     
-    fun reset_internal<T0>(arg0: &mut Voter<T0>, arg1: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::VotingEscrow<T0>, arg2: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::Lock, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
-        let v0 = into_lock_id(0x2::object::id<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::Lock>(arg2));
+    fun reset_internal<T0>(arg0: &mut Voter<T0>, arg1: &mut distribution::voting_escrow::VotingEscrow<T0>, arg2: &distribution::voting_escrow::Lock, arg3: &0x2::clock::Clock, arg4: &mut 0x2::tx_context::TxContext) {
+        let v0 = into_lock_id(0x2::object::id<distribution::voting_escrow::Lock>(arg2));
         let v1 = if (0x2::table::contains<LockID, vector<PoolID>>(&arg0.pool_vote, v0)) {
             0x1::vector::length<PoolID>(0x2::table::borrow<LockID, vector<PoolID>>(&arg0.pool_vote, v0))
         } else {
@@ -530,8 +530,8 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter
                 update_for_internal<T0>(arg0, v6);
                 0x2::table::add<GaugeID, u64>(&mut arg0.weights, v6, 0x2::table::remove<GaugeID, u64>(&mut arg0.weights, v6) - v5);
                 0x2::table::remove<PoolID, u64>(0x2::table::borrow_mut<LockID, 0x2::table::Table<PoolID, u64>>(&mut arg0.votes, v0), v4);
-                0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::fee_voting_reward::withdraw(0x2::table::borrow_mut<GaugeID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::fee_voting_reward::FeeVotingReward>(&mut arg0.gauge_to_fee, v6), &arg0.gauge_to_fee_authorized_cap, v5, v0.id, arg3, arg4);
-                0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::bribe_voting_reward::withdraw(0x2::table::borrow_mut<GaugeID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::bribe_voting_reward::BribeVotingReward>(&mut arg0.gauge_to_bribe, v6), &arg0.gauge_to_bribe_authorized_cap, v5, v0.id, arg3, arg4);
+                distribution::fee_voting_reward::withdraw(0x2::table::borrow_mut<GaugeID, distribution::fee_voting_reward::FeeVotingReward>(&mut arg0.gauge_to_fee, v6), &arg0.gauge_to_fee_authorized_cap, v5, v0.id, arg3, arg4);
+                distribution::bribe_voting_reward::withdraw(0x2::table::borrow_mut<GaugeID, distribution::bribe_voting_reward::BribeVotingReward>(&mut arg0.gauge_to_bribe, v6), &arg0.gauge_to_bribe_authorized_cap, v5, v0.id, arg3, arg4);
                 v2 = v2 + v5;
                 let v7 = EventAbstained{
                     sender      : 0x2::tx_context::sender(arg4), 
@@ -544,7 +544,7 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter
             };
             v3 = v3 + 1;
         };
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::voting<T0>(arg1, &arg0.voter_cap, v0.id, false);
+        distribution::voting_escrow::voting<T0>(arg1, &arg0.voter_cap, v0.id, false);
         arg0.total_weight = arg0.total_weight - v2;
         if (0x2::table::contains<LockID, u64>(&arg0.used_weights, v0)) {
             0x2::table::remove<LockID, u64>(&mut arg0.used_weights, v0);
@@ -554,17 +554,17 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter
         };
     }
     
-    public(friend) fun return_new_gauge<T0, T1, T2>(arg0: &0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784::gauge_cap::CreateCap, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: &mut 0x2::tx_context::TxContext) : 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::gauge::Gauge<T0, T1, T2> {
+    public(friend) fun return_new_gauge<T0, T1, T2>(arg0: &0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784::gauge_cap::CreateCap, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: &mut 0x2::tx_context::TxContext) : distribution::gauge::Gauge<T0, T1, T2> {
         let v0 = 0x2::object::id<clmm_pool::pool::Pool<T0, T1>>(arg1);
-        let v1 = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::gauge::create<T0, T1, T2>(v0, arg2);
-        let v2 = 0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784::gauge_cap::create_gauge_cap(arg0, v0, 0x2::object::id<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::gauge::Gauge<T0, T1, T2>>(&v1), arg2);
+        let v1 = distribution::gauge::create<T0, T1, T2>(v0, arg2);
+        let v2 = 0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784::gauge_cap::create_gauge_cap(arg0, v0, 0x2::object::id<distribution::gauge::Gauge<T0, T1, T2>>(&v1), arg2);
         clmm_pool::pool::init_magma_distribution_gauge<T0, T1>(arg1, &v2);
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::gauge::receive_gauge_cap<T0, T1, T2>(&mut v1, v2);
+        distribution::gauge::receive_gauge_cap<T0, T1, T2>(&mut v1, v2);
         v1
     }
     
-    public fun revive_gauger<T0>(arg0: &mut Voter<T0>, arg1: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::emergency_council::EmergencyCouncilCap, arg2: 0x2::object::ID) {
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::emergency_council::validate_emergency_council_voter_id(arg1, 0x2::object::id<Voter<T0>>(arg0));
+    public fun revive_gauger<T0>(arg0: &mut Voter<T0>, arg1: &distribution::emergency_council::EmergencyCouncilCap, arg2: 0x2::object::ID) {
+        distribution::emergency_council::validate_emergency_council_voter_id(arg1, 0x2::object::id<Voter<T0>>(arg0));
         let v0 = into_gauge_id(arg2);
         assert!(0x2::table::contains<GaugeID, bool>(&arg0.is_alive, v0), 9223374115619405832);
         let v1 = false;
@@ -575,9 +575,9 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter
         0x2::event::emit<EventReviveGauge>(v2);
     }
     
-    public fun set_max_voting_num<T0>(arg0: &mut Voter<T0>, arg1: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::GovernorCap, arg2: u64) {
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::validate_governor_voter_id(arg1, 0x2::object::id<Voter<T0>>(arg0));
-        assert!(is_governor<T0>(arg0, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::who(arg1)), 9223373183612551192);
+    public fun set_max_voting_num<T0>(arg0: &mut Voter<T0>, arg1: &distribution::voter_cap::GovernorCap, arg2: u64) {
+        distribution::voter_cap::validate_governor_voter_id(arg1, 0x2::object::id<Voter<T0>>(arg0));
+        assert!(is_governor<T0>(arg0, distribution::voter_cap::who(arg1)), 9223373183612551192);
         assert!(arg2 >= 10, 9223373187907649562);
         assert!(arg2 != arg0.max_voting_num, 9223373196495945727);
         arg0.max_voting_num = arg2;
@@ -651,14 +651,14 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter
         *0x2::table::borrow<LockID, u64>(&arg0.used_weights, into_lock_id(arg1))
     }
     
-    public fun vote<T0>(arg0: &mut Voter<T0>, arg1: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::VotingEscrow<T0>, arg2: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::Lock, arg3: vector<0x2::object::ID>, arg4: vector<u64>, arg5: &0x2::clock::Clock, arg6: &mut 0x2::tx_context::TxContext) {
-        let v0 = into_lock_id(0x2::object::id<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::Lock>(arg2));
+    public fun vote<T0>(arg0: &mut Voter<T0>, arg1: &mut distribution::voting_escrow::VotingEscrow<T0>, arg2: &distribution::voting_escrow::Lock, arg3: vector<0x2::object::ID>, arg4: vector<u64>, arg5: &0x2::clock::Clock, arg6: &mut 0x2::tx_context::TxContext) {
+        let v0 = into_lock_id(0x2::object::id<distribution::voting_escrow::Lock>(arg2));
         assert_only_new_epoch<T0>(arg0, v0, arg5);
         check_vote<T0>(arg0, &arg3, &arg4);
         assert!(!arg0.flag_distribution, 9223374626723266610);
-        assert!(!0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::deactivated<T0>(arg1, v0.id), 9223374631017185314);
-        let v1 = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::current_timestamp(arg5);
-        let v2 = if (v1 > 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::epoch_vote_end(v1)) {
+        assert!(!distribution::voting_escrow::deactivated<T0>(arg1, v0.id), 9223374631017185314);
+        let v1 = distribution::common::current_timestamp(arg5);
+        let v2 = if (v1 > distribution::common::epoch_vote_end(v1)) {
             let v3 = !0x2::table::contains<LockID, bool>(&arg0.is_whitelisted_nft, v0) || *0x2::table::borrow<LockID, bool>(&arg0.is_whitelisted_nft, v0) == false;
             v3
         } else {
@@ -671,13 +671,13 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter
             0x2::table::remove<LockID, u64>(&mut arg0.last_voted, v0);
         };
         0x2::table::add<LockID, u64>(&mut arg0.last_voted, v0, v1);
-        let v4 = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::get_voting_power<T0>(arg1, arg2, arg5);
+        let v4 = distribution::voting_escrow::get_voting_power<T0>(arg1, arg2, arg5);
         assert!(v4 > 0, 9223374686852022310);
         vote_internal<T0>(arg0, arg1, arg2, v4, arg3, arg4, arg5, arg6);
     }
     
-    fun vote_internal<T0>(arg0: &mut Voter<T0>, arg1: &mut 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::VotingEscrow<T0>, arg2: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::Lock, arg3: u64, arg4: vector<0x2::object::ID>, arg5: vector<u64>, arg6: &0x2::clock::Clock, arg7: &mut 0x2::tx_context::TxContext) {
-        let v0 = into_lock_id(0x2::object::id<0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::Lock>(arg2));
+    fun vote_internal<T0>(arg0: &mut Voter<T0>, arg1: &mut distribution::voting_escrow::VotingEscrow<T0>, arg2: &distribution::voting_escrow::Lock, arg3: u64, arg4: vector<0x2::object::ID>, arg5: vector<u64>, arg6: &0x2::clock::Clock, arg7: &mut 0x2::tx_context::TxContext) {
+        let v0 = into_lock_id(0x2::object::id<distribution::voting_escrow::Lock>(arg2));
         reset_internal<T0>(arg0, arg1, arg2, arg6, arg7);
         let v1 = 0;
         let v2 = 0;
@@ -731,8 +731,8 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter
                 0
             };
             0x2::table::add<PoolID, u64>(v13, v7, v14 + v9);
-            0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::fee_voting_reward::deposit(0x2::table::borrow_mut<GaugeID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::fee_voting_reward::FeeVotingReward>(&mut arg0.gauge_to_fee, v8), &arg0.gauge_to_fee_authorized_cap, v9, v0.id, arg6, arg7);
-            0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::bribe_voting_reward::deposit(0x2::table::borrow_mut<GaugeID, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::bribe_voting_reward::BribeVotingReward>(&mut arg0.gauge_to_bribe, v8), &arg0.gauge_to_bribe_authorized_cap, v9, v0.id, arg6, arg7);
+            distribution::fee_voting_reward::deposit(0x2::table::borrow_mut<GaugeID, distribution::fee_voting_reward::FeeVotingReward>(&mut arg0.gauge_to_fee, v8), &arg0.gauge_to_fee_authorized_cap, v9, v0.id, arg6, arg7);
+            distribution::bribe_voting_reward::deposit(0x2::table::borrow_mut<GaugeID, distribution::bribe_voting_reward::BribeVotingReward>(&mut arg0.gauge_to_bribe, v8), &arg0.gauge_to_bribe_authorized_cap, v9, v0.id, arg6, arg7);
             v2 = v2 + v9;
             v3 = v3 + v9;
             let v15 = EventVoted{
@@ -746,7 +746,7 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter
             v4 = v4 + 1;
         };
         if (v2 > 0) {
-            0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_escrow::voting<T0>(arg1, &arg0.voter_cap, v0.id, true);
+            distribution::voting_escrow::voting<T0>(arg1, &arg0.voter_cap, v0.id, true);
         };
         arg0.total_weight = arg0.total_weight + v3;
         if (0x2::table::contains<LockID, u64>(&arg0.used_weights, v0)) {
@@ -772,9 +772,9 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter
         v0
     }
     
-    public fun whitelist_nft<T0>(arg0: &mut Voter<T0>, arg1: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::GovernorCap, arg2: 0x2::object::ID, arg3: bool, arg4: &mut 0x2::tx_context::TxContext) {
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::validate_governor_voter_id(arg1, 0x2::object::id<Voter<T0>>(arg0));
-        assert!(is_governor<T0>(arg0, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::who(arg1)), 9223373956706664472);
+    public fun whitelist_nft<T0>(arg0: &mut Voter<T0>, arg1: &distribution::voter_cap::GovernorCap, arg2: 0x2::object::ID, arg3: bool, arg4: &mut 0x2::tx_context::TxContext) {
+        distribution::voter_cap::validate_governor_voter_id(arg1, 0x2::object::id<Voter<T0>>(arg0));
+        assert!(is_governor<T0>(arg0, distribution::voter_cap::who(arg1)), 9223373956706664472);
         let v0 = into_lock_id(arg2);
         if (0x2::table::contains<LockID, bool>(&arg0.is_whitelisted_nft, v0)) {
             0x2::table::remove<LockID, bool>(&mut arg0.is_whitelisted_nft, v0);
@@ -788,9 +788,9 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter
         0x2::event::emit<EventWhitelistNFT>(v1);
     }
     
-    public fun whitelist_token<T0, T1>(arg0: &mut Voter<T0>, arg1: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::GovernorCap, arg2: bool, arg3: &mut 0x2::tx_context::TxContext) {
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::validate_governor_voter_id(arg1, 0x2::object::id<Voter<T0>>(arg0));
-        assert!(is_governor<T0>(arg0, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::who(arg1)), 9223373896577122328);
+    public fun whitelist_token<T0, T1>(arg0: &mut Voter<T0>, arg1: &distribution::voter_cap::GovernorCap, arg2: bool, arg3: &mut 0x2::tx_context::TxContext) {
+        distribution::voter_cap::validate_governor_voter_id(arg1, 0x2::object::id<Voter<T0>>(arg0));
+        assert!(is_governor<T0>(arg0, distribution::voter_cap::who(arg1)), 9223373896577122328);
         whitelist_token_internal<T0>(arg0, 0x1::type_name::get<T1>(), arg2, 0x2::tx_context::sender(arg3));
     }
     

@@ -1,4 +1,4 @@
-module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common {
+module distribution::common {
     public fun current_period(arg0: &0x2::clock::Clock) : u64 {
         to_period(current_timestamp(arg0))
     }

@@ -1,4 +1,4 @@
-module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::reward_authorized_cap {
+module distribution::reward_authorized_cap {
     struct RewardAuthorizedCap has store, key {
         id: 0x2::object::UID,
         authorized: 0x2::object::ID,

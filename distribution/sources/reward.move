@@ -1,4 +1,4 @@
-module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::reward {
+module distribution::reward {
     struct EventDeposit has copy, drop, store {
         sender: address,
         lock_id: 0x2::object::ID,
@@ -88,8 +88,8 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::rewar
         v0
     }
     
-    public(friend) fun deposit(arg0: &mut Reward, arg1: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::reward_authorized_cap::RewardAuthorizedCap, arg2: u64, arg3: 0x2::object::ID, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::reward_authorized_cap::validate(arg1, arg0.authorized);
+    public(friend) fun deposit(arg0: &mut Reward, arg1: &distribution::reward_authorized_cap::RewardAuthorizedCap, arg2: u64, arg3: 0x2::object::ID, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
+        distribution::reward_authorized_cap::validate(arg1, arg0.authorized);
         arg0.total_supply = arg0.total_supply + arg2;
         let v0 = if (0x2::table::contains<0x2::object::ID, u64>(&arg0.balance_of, arg3)) {
             0x2::table::remove<0x2::object::ID, u64>(&mut arg0.balance_of, arg3)
@@ -98,7 +98,7 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::rewar
         };
         let v1 = v0 + arg2;
         0x2::table::add<0x2::object::ID, u64>(&mut arg0.balance_of, arg3, v1);
-        let v2 = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::current_timestamp(arg4);
+        let v2 = distribution::common::current_timestamp(arg4);
         write_checkpoint_internal(arg0, arg3, v1, v2, arg5);
         write_supply_checkpoint_internal(arg0, v2);
         let v3 = EventDeposit{
@@ -122,18 +122,18 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::rewar
         let v2 = 0x1::type_name::get<T0>();
         let v3 = 0;
         let v4 = if (0x2::table::contains<0x1::type_name::TypeName, 0x2::table::Table<0x2::object::ID, u64>>(&arg0.last_earn, v2) && 0x2::table::contains<0x2::object::ID, u64>(0x2::table::borrow<0x1::type_name::TypeName, 0x2::table::Table<0x2::object::ID, u64>>(&arg0.last_earn, v2), arg1)) {
-            0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::epoch_start(*0x2::table::borrow<0x2::object::ID, u64>(0x2::table::borrow<0x1::type_name::TypeName, 0x2::table::Table<0x2::object::ID, u64>>(&arg0.last_earn, v2), arg1))
+            distribution::common::epoch_start(*0x2::table::borrow<0x2::object::ID, u64>(0x2::table::borrow<0x1::type_name::TypeName, 0x2::table::Table<0x2::object::ID, u64>>(&arg0.last_earn, v2), arg1))
         } else {
             0
         };
         let v5 = 0x2::table::borrow<u64, Checkpoint>(0x2::table::borrow<0x2::object::ID, 0x2::table::Table<u64, Checkpoint>>(&arg0.checkpoints, arg1), get_prior_balance_index(arg0, arg1, v4));
-        let v6 = if (v4 >= 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::epoch_start(v5.timestamp)) {
+        let v6 = if (v4 >= distribution::common::epoch_start(v5.timestamp)) {
             v4
         } else {
-            0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::epoch_start(v5.timestamp)
+            distribution::common::epoch_start(v5.timestamp)
         };
         let v7 = v6;
-        let v8 = (0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::epoch_start(0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::current_timestamp(arg2)) - v6) / 604800;
+        let v8 = (distribution::common::epoch_start(distribution::common::current_timestamp(arg2)) - v6) / 604800;
         if (v8 > 0) {
             let v9 = 0;
             while (v9 < v8) {
@@ -233,7 +233,7 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::rewar
         if (0x2::table::contains<0x2::object::ID, u64>(v2, arg2)) {
             0x2::table::remove<0x2::object::ID, u64>(v2, arg2);
         };
-        0x2::table::add<0x2::object::ID, u64>(v2, arg2, 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::current_timestamp(arg3));
+        0x2::table::add<0x2::object::ID, u64>(v2, arg2, distribution::common::current_timestamp(arg3));
         let v3 = EventClaimRewards{
             recipient     : arg1, 
             token_name    : v1, 
@@ -249,7 +249,7 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::rewar
     public(friend) fun notify_reward_amount_internal<T0>(arg0: &mut Reward, arg1: 0x2::balance::Balance<T0>, arg2: &0x2::clock::Clock, arg3: &mut 0x2::tx_context::TxContext) {
         let v0 = 0x2::balance::value<T0>(&arg1);
         let v1 = 0x1::type_name::get<T0>();
-        let v2 = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::epoch_start(0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::current_timestamp(arg2));
+        let v2 = distribution::common::epoch_start(distribution::common::current_timestamp(arg2));
         if (!0x2::table::contains<0x1::type_name::TypeName, 0x2::table::Table<u64, u64>>(&arg0.token_rewards_per_epoch, v1)) {
             0x2::table::add<0x1::type_name::TypeName, 0x2::table::Table<u64, u64>>(&mut arg0.token_rewards_per_epoch, v1, 0x2::table::new<u64, u64>(arg3));
         };
@@ -294,12 +294,12 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::rewar
         arg0.voter
     }
     
-    public(friend) fun withdraw(arg0: &mut Reward, arg1: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::reward_authorized_cap::RewardAuthorizedCap, arg2: u64, arg3: 0x2::object::ID, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
-        0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::reward_authorized_cap::validate(arg1, arg0.authorized);
+    public(friend) fun withdraw(arg0: &mut Reward, arg1: &distribution::reward_authorized_cap::RewardAuthorizedCap, arg2: u64, arg3: 0x2::object::ID, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
+        distribution::reward_authorized_cap::validate(arg1, arg0.authorized);
         arg0.total_supply = arg0.total_supply - arg2;
         let v0 = 0x2::table::remove<0x2::object::ID, u64>(&mut arg0.balance_of, arg3);
         0x2::table::add<0x2::object::ID, u64>(&mut arg0.balance_of, arg3, v0 - arg2);
-        let v1 = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::current_timestamp(arg4);
+        let v1 = distribution::common::current_timestamp(arg4);
         write_checkpoint_internal(arg0, arg3, v0 - arg2, v1, arg5);
         write_supply_checkpoint_internal(arg0, v1);
         let v2 = EventWithdraw{
@@ -316,7 +316,7 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::rewar
         } else {
             0
         };
-        if (v0 > 0 && 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::epoch_start(0x2::table::borrow<u64, Checkpoint>(0x2::table::borrow<0x2::object::ID, 0x2::table::Table<u64, Checkpoint>>(&arg0.checkpoints, arg1), v0 - 1).timestamp) == 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::epoch_start(arg3)) {
+        if (v0 > 0 && distribution::common::epoch_start(0x2::table::borrow<u64, Checkpoint>(0x2::table::borrow<0x2::object::ID, 0x2::table::Table<u64, Checkpoint>>(&arg0.checkpoints, arg1), v0 - 1).timestamp) == distribution::common::epoch_start(arg3)) {
             let v1 = 0x2::table::borrow_mut<0x2::object::ID, 0x2::table::Table<u64, Checkpoint>>(&mut arg0.checkpoints, arg1);
             if (0x2::table::contains<u64, Checkpoint>(v1, v0 - 1)) {
                 0x2::table::remove<u64, Checkpoint>(v1, v0 - 1);
@@ -348,7 +348,7 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::rewar
     
     fun write_supply_checkpoint_internal(arg0: &mut Reward, arg1: u64) {
         let v0 = arg0.supply_num_checkpoints;
-        if (v0 > 0 && 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::epoch_start(0x2::table::borrow<u64, SupplyCheckpoint>(&arg0.supply_checkpoints, v0 - 1).timestamp) == 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::epoch_start(arg1)) {
+        if (v0 > 0 && distribution::common::epoch_start(0x2::table::borrow<u64, SupplyCheckpoint>(&arg0.supply_checkpoints, v0 - 1).timestamp) == distribution::common::epoch_start(arg1)) {
             if (0x2::table::contains<u64, SupplyCheckpoint>(&arg0.supply_checkpoints, v0 - 1)) {
                 0x2::table::remove<u64, SupplyCheckpoint>(&mut arg0.supply_checkpoints, v0 - 1);
             };

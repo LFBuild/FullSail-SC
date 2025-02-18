@@ -1,4 +1,4 @@
-module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voting_dao {
+module distribution::voting_dao {
     struct VotingDAO has store {
         delegates: 0x2::table::Table<0x2::object::ID, 0x2::object::ID>,
         nonces: 0x2::table::Table<address, u64>,
@@ -127,7 +127,7 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::votin
         } else {
             0
         };
-        let v1 = v0 > 0 && arg2 - 0x2::table::borrow<u64, Checkpoint>(0x2::table::borrow<0x2::object::ID, 0x2::table::Table<u64, Checkpoint>>(&arg0.checkpoints, arg1), v0 - 1).from_timestamp < 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::common::get_time_to_finality();
+        let v1 = v0 > 0 && arg2 - 0x2::table::borrow<u64, Checkpoint>(0x2::table::borrow<0x2::object::ID, 0x2::table::Table<u64, Checkpoint>>(&arg0.checkpoints, arg1), v0 - 1).from_timestamp < distribution::common::get_time_to_finality();
         !v1
     }
     

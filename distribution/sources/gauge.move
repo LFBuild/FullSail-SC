@@ -1,4 +1,4 @@
-module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::gauge {
+module distribution::gauge {
     struct TRANSFORMER has drop {
         dummy_field: bool,
     }
@@ -81,12 +81,12 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::gauge
         (arg0.pool_id != 0x2::object::id<clmm_pool::pool::Pool<T0, T1>>(arg1) || clmm_pool::pool::get_magma_distribution_gauger_id<T0, T1>(arg1) != 0x2::object::id<Gauge<T0, T1, T2>>(arg0)) && false || true
     }
     
-    fun check_voter_cap<T0, T1, T2>(arg0: &Gauge<T0, T1, T2>, arg1: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::VoterCap) {
-        let v0 = 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::get_voter_id(arg1);
+    fun check_voter_cap<T0, T1, T2>(arg0: &Gauge<T0, T1, T2>, arg1: &distribution::voter_cap::VoterCap) {
+        let v0 = distribution::voter_cap::get_voter_id(arg1);
         assert!(&v0 == 0x1::option::borrow<0x2::object::ID>(&arg0.voter), 9223373656058429456);
     }
     
-    public fun claim_fees<T0, T1, T2>(arg0: &mut Gauge<T0, T1, T2>, arg1: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::notify_reward_cap::NotifyRewardCap, arg2: &mut clmm_pool::pool::Pool<T0, T1>) : (0x2::balance::Balance<T0>, 0x2::balance::Balance<T1>) {
+    public fun claim_fees<T0, T1, T2>(arg0: &mut Gauge<T0, T1, T2>, arg1: &distribution::notify_reward_cap::NotifyRewardCap, arg2: &mut clmm_pool::pool::Pool<T0, T1>) : (0x2::balance::Balance<T0>, 0x2::balance::Balance<T1>) {
         claim_fees_internal<T0, T1, T2>(arg0, arg2)
     }
     
@@ -300,7 +300,7 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::gauge
         };
     }
     
-    public fun notify_reward<T0, T1, T2>(arg0: &mut Gauge<T0, T1, T2>, arg1: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::VoterCap, arg2: &mut clmm_pool::pool::Pool<T0, T1>, arg3: 0x2::balance::Balance<T2>, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) : (0x2::balance::Balance<T0>, 0x2::balance::Balance<T1>) {
+    public fun notify_reward<T0, T1, T2>(arg0: &mut Gauge<T0, T1, T2>, arg1: &distribution::voter_cap::VoterCap, arg2: &mut clmm_pool::pool::Pool<T0, T1>, arg3: 0x2::balance::Balance<T2>, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) : (0x2::balance::Balance<T0>, 0x2::balance::Balance<T1>) {
         check_voter_cap<T0, T1, T2>(arg0, arg1);
         let v0 = 0x2::balance::value<T2>(&arg3);
         assert!(v0 > 0, 9223373716188102674);
@@ -340,7 +340,7 @@ module 0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::gauge
         0x2::event::emit<EventNotifyReward>(v5);
     }
     
-    public fun notify_reward_without_claim<T0, T1, T2>(arg0: &mut Gauge<T0, T1, T2>, arg1: &0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::voter_cap::VoterCap, arg2: &mut clmm_pool::pool::Pool<T0, T1>, arg3: 0x2::balance::Balance<T2>, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
+    public fun notify_reward_without_claim<T0, T1, T2>(arg0: &mut Gauge<T0, T1, T2>, arg1: &distribution::voter_cap::VoterCap, arg2: &mut clmm_pool::pool::Pool<T0, T1>, arg3: 0x2::balance::Balance<T2>, arg4: &0x2::clock::Clock, arg5: &mut 0x2::tx_context::TxContext) {
         check_voter_cap<T0, T1, T2>(arg0, arg1);
         let v0 = 0x2::balance::value<T2>(&arg3);
         assert!(v0 > 0, 9223373819267317778);
