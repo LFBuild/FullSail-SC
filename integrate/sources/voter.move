@@ -30,7 +30,7 @@ module integrate::voter {
         0x2::transfer::public_transfer<distribution::notify_reward_cap::NotifyRewardCap>(v2, 0x2::tx_context::sender(arg1));
     }
     
-    public entry fun create_gauge<T0, T1, T2>(arg0: &mut distribution::voter::Voter<T2>, arg1: &0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784::gauge_cap::CreateCap, arg2: &distribution::voter_cap::GovernorCap, arg3: &distribution::voting_escrow::VotingEscrow<T2>, arg4: &mut clmm_pool::pool::Pool<T0, T1>, arg5: &0x2::clock::Clock, arg6: &mut 0x2::tx_context::TxContext) {
+    public entry fun create_gauge<T0, T1, T2>(arg0: &mut distribution::voter::Voter<T2>, arg1: &gauge_cap::gauge_cap::CreateCap, arg2: &distribution::voter_cap::GovernorCap, arg3: &distribution::voting_escrow::VotingEscrow<T2>, arg4: &mut clmm_pool::pool::Pool<T0, T1>, arg5: &0x2::clock::Clock, arg6: &mut 0x2::tx_context::TxContext) {
         0x2::transfer::public_share_object<distribution::gauge::Gauge<T0, T1, T2>>(distribution::voter::create_gauge<T0, T1, T2>(arg0, arg1, arg2, arg3, arg4, arg5, arg6));
     }
     

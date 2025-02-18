@@ -1,5 +1,5 @@
 [package]
-name = "integrate"
+name = "gauge_cap"
 edition = "2024.beta" # edition = "legacy" to use legacy (pre-2024) Move
 # license = ""           # e.g., "MIT", "GPL", "Apache 2.0"
 # authors = ["..."]      # e.g., ["Joe Smith (joesmith@noemail.com)", "John Snow (johnsnow@noemail.com)"]
@@ -19,12 +19,7 @@ Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-fram
 # Override = { local = "../conflicting/version", override = true }
 
 [addresses]
-integrate = "0x0"
-clmm_pool = "0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d"
-distribution = "0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1"
-move_stl = "0xabb0a538aa5ad5bdf2f8f76a90f6ea2117b4e4fd4a0756273d246f65c3c8e492"
-integer_mate = "0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f"
-gauge_cap = "0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784"
+gauge_cap = "0x0"
 
 # Named addresses will be accessible in Move as `@name`. They're also exported:
 # for example, `std = "0x1"` is exported by the Standard Library.

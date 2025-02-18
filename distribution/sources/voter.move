@@ -273,7 +273,7 @@ module distribution::voter {
         }
     }
     
-    public fun create_gauge<T0, T1, T2>(arg0: &mut Voter<T2>, arg1: &0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784::gauge_cap::CreateCap, arg2: &distribution::voter_cap::GovernorCap, arg3: &distribution::voting_escrow::VotingEscrow<T2>, arg4: &mut clmm_pool::pool::Pool<T0, T1>, arg5: &0x2::clock::Clock, arg6: &mut 0x2::tx_context::TxContext) : distribution::gauge::Gauge<T0, T1, T2> {
+    public fun create_gauge<T0, T1, T2>(arg0: &mut Voter<T2>, arg1: &gauge_cap::gauge_cap::CreateCap, arg2: &distribution::voter_cap::GovernorCap, arg3: &distribution::voting_escrow::VotingEscrow<T2>, arg4: &mut clmm_pool::pool::Pool<T0, T1>, arg5: &0x2::clock::Clock, arg6: &mut 0x2::tx_context::TxContext) : distribution::gauge::Gauge<T0, T1, T2> {
         distribution::voter_cap::validate_governor_voter_id(arg2, 0x2::object::id<Voter<T2>>(arg0));
         assert!(is_governor<T2>(arg0, distribution::voter_cap::who(arg2)), 9223373604519346200);
         let v0 = return_new_gauge<T0, T1, T2>(arg1, arg4, arg6);
@@ -554,10 +554,10 @@ module distribution::voter {
         };
     }
     
-    public(friend) fun return_new_gauge<T0, T1, T2>(arg0: &0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784::gauge_cap::CreateCap, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: &mut 0x2::tx_context::TxContext) : distribution::gauge::Gauge<T0, T1, T2> {
+    public(friend) fun return_new_gauge<T0, T1, T2>(arg0: &gauge_cap::gauge_cap::CreateCap, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: &mut 0x2::tx_context::TxContext) : distribution::gauge::Gauge<T0, T1, T2> {
         let v0 = 0x2::object::id<clmm_pool::pool::Pool<T0, T1>>(arg1);
         let v1 = distribution::gauge::create<T0, T1, T2>(v0, arg2);
-        let v2 = 0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784::gauge_cap::create_gauge_cap(arg0, v0, 0x2::object::id<distribution::gauge::Gauge<T0, T1, T2>>(&v1), arg2);
+        let v2 = gauge_cap::gauge_cap::create_gauge_cap(arg0, v0, 0x2::object::id<distribution::gauge::Gauge<T0, T1, T2>>(&v1), arg2);
         clmm_pool::pool::init_magma_distribution_gauge<T0, T1>(arg1, &v2);
         distribution::gauge::receive_gauge_cap<T0, T1, T2>(&mut v1, v2);
         v1

@@ -22,6 +22,7 @@ Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-fram
 distribution = "0x0"
 clmm_pool = "0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d"
 integer_mate = "0x1610277a9d5080de4673f4d1b3f4da1b7ab76cf89d9919f5607ea195b9f5da7f"
+gauge_cap = "0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784"
 
 # Named addresses will be accessible in Move as `@name`. They're also exported:
 # for example, `std = "0x1"` is exported by the Standard Library.

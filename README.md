@@ -10,6 +10,7 @@
     - [clmm_pool](https://testnet.suivision.xyz/package/0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d?tab=Code)
     - [distribution](https://testnet.suivision.xyz/package/0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1?tab=Code)
     - [integrate](https://testnet.suivision.xyz/package/0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df?tab=Code)
+    - [gauge_cap](https://testnet.suivision.xyz/package/0x05640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784?tab=Code)
 
     The reason why we are using this code is because it is the only ve(3,3) model on Sui and it is a good reference for us to build our own ve(3,3) model. And the code was not deployed on mainnet yet, so we had to use testnet version.
 
@@ -46,6 +47,9 @@
 - clmm_pool depends on integer_mate contracts.
 - distributor depends on integer_mate contracts.
 - integrate depends on integer_mate contracts.
+- clmm_pool depends on gauge_cap contracts.
+- distribution depends on gauge_cap contracts.
+- integrate depends on gauge_cap contracts.
 
 
 

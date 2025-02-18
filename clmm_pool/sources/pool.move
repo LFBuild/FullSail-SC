@@ -272,7 +272,7 @@ module clmm_pool::pool {
         arg0.liquidity
     }
     
-    public fun mark_position_staked<T0, T1>(arg0: &mut Pool<T0, T1>, arg1: &0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784::gauge_cap::GaugeCap, arg2: 0x2::object::ID) {
+    public fun mark_position_staked<T0, T1>(arg0: &mut Pool<T0, T1>, arg1: &gauge_cap::gauge_cap::GaugeCap, arg2: 0x2::object::ID) {
         assert!(!arg0.is_pause, 13);
         check_gauge_cap<T0, T1>(arg0, arg1);
         clmm_pool::position::mark_position_staked(&mut arg0.position_manager, arg2, true);
@@ -682,11 +682,11 @@ module clmm_pool::pool {
         0x1::vector::length<SwapStepResult>(&arg0.step_results)
     }
     
-    fun check_gauge_cap<T0, T1>(arg0: &Pool<T0, T1>, arg1: &0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784::gauge_cap::GaugeCap) {
-        let v0 = if (0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784::gauge_cap::get_pool_id(arg1) == 0x2::object::id<Pool<T0, T1>>(arg0)) {
+    fun check_gauge_cap<T0, T1>(arg0: &Pool<T0, T1>, arg1: &gauge_cap::gauge_cap::GaugeCap) {
+        let v0 = if (gauge_cap::gauge_cap::get_pool_id(arg1) == 0x2::object::id<Pool<T0, T1>>(arg0)) {
             let v1 = &arg0.magma_distribution_gauger_id;
             let v2 = if (0x1::option::is_some<0x2::object::ID>(v1)) {
-                let v3 = 0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784::gauge_cap::get_gauge_id(arg1);
+                let v3 = gauge_cap::gauge_cap::get_gauge_id(arg1);
                 0x1::option::borrow<0x2::object::ID>(v1) == &v3
             } else {
                 false
@@ -745,7 +745,7 @@ module clmm_pool::pool {
         (0x2::balance::split<T0>(&mut arg1.coin_a, v3), 0x2::balance::split<T1>(&mut arg1.coin_b, v4))
     }
     
-    public fun collect_magma_distribution_gauger_fees<T0, T1>(arg0: &mut Pool<T0, T1>, arg1: &0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784::gauge_cap::GaugeCap) : (0x2::balance::Balance<T0>, 0x2::balance::Balance<T1>) {
+    public fun collect_magma_distribution_gauger_fees<T0, T1>(arg0: &mut Pool<T0, T1>, arg1: &gauge_cap::gauge_cap::GaugeCap) : (0x2::balance::Balance<T0>, 0x2::balance::Balance<T1>) {
         assert!(!arg0.is_pause, 13);
         check_gauge_cap<T0, T1>(arg0, arg1);
         let v0 = 0x2::balance::zero<T0>();
@@ -1005,9 +1005,9 @@ module clmm_pool::pool {
         0x2::transfer::public_transfer<0x2::package::Publisher>(0x2::package::claim<POOL>(arg0, arg1), 0x2::tx_context::sender(arg1));
     }
     
-    public fun init_magma_distribution_gauge<T0, T1>(arg0: &mut Pool<T0, T1>, arg1: &0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784::gauge_cap::GaugeCap) {
-        assert!(0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784::gauge_cap::get_pool_id(arg1) == 0x2::object::id<Pool<T0, T1>>(arg0), 9223379334004211711);
-        0x1::option::fill<0x2::object::ID>(&mut arg0.magma_distribution_gauger_id, 0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784::gauge_cap::get_gauge_id(arg1));
+    public fun init_magma_distribution_gauge<T0, T1>(arg0: &mut Pool<T0, T1>, arg1: &gauge_cap::gauge_cap::GaugeCap) {
+        assert!(gauge_cap::gauge_cap::get_pool_id(arg1) == 0x2::object::id<Pool<T0, T1>>(arg0), 9223379334004211711);
+        0x1::option::fill<0x2::object::ID>(&mut arg0.magma_distribution_gauger_id, gauge_cap::gauge_cap::get_gauge_id(arg1));
     }
     
     public fun initialize_rewarder<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: &mut 0x2::tx_context::TxContext) {
@@ -1033,7 +1033,7 @@ module clmm_pool::pool {
         }
     }
     
-    public fun mark_position_unstaked<T0, T1>(arg0: &mut Pool<T0, T1>, arg1: &0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784::gauge_cap::GaugeCap, arg2: 0x2::object::ID) {
+    public fun mark_position_unstaked<T0, T1>(arg0: &mut Pool<T0, T1>, arg1: &gauge_cap::gauge_cap::GaugeCap, arg2: 0x2::object::ID) {
         assert!(!arg0.is_pause, 13);
         check_gauge_cap<T0, T1>(arg0, arg1);
         clmm_pool::position::mark_position_staked(&mut arg0.position_manager, arg2, false);
@@ -1191,7 +1191,7 @@ module clmm_pool::pool {
         (v1 as u64, v2 as u64)
     }
     
-    public fun stake_in_magma_distribution<T0, T1>(arg0: &mut Pool<T0, T1>, arg1: &0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784::gauge_cap::GaugeCap, arg2: u128, arg3: integer_mate::i32::I32, arg4: integer_mate::i32::I32, arg5: &0x2::clock::Clock) {
+    public fun stake_in_magma_distribution<T0, T1>(arg0: &mut Pool<T0, T1>, arg1: &gauge_cap::gauge_cap::GaugeCap, arg2: u128, arg3: integer_mate::i32::I32, arg4: integer_mate::i32::I32, arg5: &0x2::clock::Clock) {
         assert!(!arg0.is_pause, 13);
         assert!(arg2 != 0, 9223379140730683391);
         check_gauge_cap<T0, T1>(arg0, arg1);
@@ -1307,7 +1307,7 @@ module clmm_pool::pool {
         arg0.pay_amount
     }
     
-    public fun sync_magma_distribution_reward<T0, T1>(arg0: &mut Pool<T0, T1>, arg1: &0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784::gauge_cap::GaugeCap, arg2: u128, arg3: u64, arg4: u64) {
+    public fun sync_magma_distribution_reward<T0, T1>(arg0: &mut Pool<T0, T1>, arg1: &gauge_cap::gauge_cap::GaugeCap, arg2: u128, arg3: u64, arg4: u64) {
         assert!(!arg0.is_pause, 13);
         check_gauge_cap<T0, T1>(arg0, arg1);
         arg0.magma_distribution_rate = arg2;
@@ -1331,7 +1331,7 @@ module clmm_pool::pool {
         arg1.is_pause = false;
     }
     
-    public fun unstake_from_magma_distribution<T0, T1>(arg0: &mut Pool<T0, T1>, arg1: &0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784::gauge_cap::GaugeCap, arg2: u128, arg3: integer_mate::i32::I32, arg4: integer_mate::i32::I32, arg5: &0x2::clock::Clock) {
+    public fun unstake_from_magma_distribution<T0, T1>(arg0: &mut Pool<T0, T1>, arg1: &gauge_cap::gauge_cap::GaugeCap, arg2: u128, arg3: integer_mate::i32::I32, arg4: integer_mate::i32::I32, arg5: &0x2::clock::Clock) {
         assert!(!arg0.is_pause, 13);
         assert!(arg2 != 0, 9223379200860225535);
         check_gauge_cap<T0, T1>(arg0, arg1);
@@ -1365,7 +1365,7 @@ module clmm_pool::pool {
         0x2::event::emit<UpdateFeeRateEvent>(v0);
     }
     
-    public fun update_magma_distribution_growth_global<T0, T1>(arg0: &mut Pool<T0, T1>, arg1: &0x5640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784::gauge_cap::GaugeCap, arg2: &0x2::clock::Clock) {
+    public fun update_magma_distribution_growth_global<T0, T1>(arg0: &mut Pool<T0, T1>, arg1: &gauge_cap::gauge_cap::GaugeCap, arg2: &0x2::clock::Clock) {
         assert!(!arg0.is_pause, 13);
         check_gauge_cap<T0, T1>(arg0, arg1);
         update_magma_distribution_growth_global_internal<T0, T1>(arg0, arg2);
