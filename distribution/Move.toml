@@ -1,6 +1,7 @@
 [package]
 name = "distribution"
 edition = "2024"
+published-at = "0xf28f27c82e2c28e66ad54d8a3f483642ce8245077531dd87b7b233d08f79d17d"
 # license = ""           # e.g., "MIT", "GPL", "Apache 2.0"
 # authors = ["..."]      # e.g., ["Joe Smith (joesmith@noemail.com)", "John Snow (johnsnow@noemail.com)"]
 
