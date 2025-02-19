@@ -7,6 +7,8 @@ published-at = "0xde76b5100c777b0ef6154eb7485f2270ec390b2f7cd3786469e5772a9eb90b
 
 [dependencies]
 Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet", override = true }
+# Local deps have name conflicts, the solution is here https://stackoverflow.com/questions/73958046/local-dependency-cannot-be-resolved
+# Long story short, we need to set the package address in the [addresses] section of each package to be equal to the published-at address
 move_stl = { local = "../move_stl" }
 clmm_pool = { local = "../clmm_pool" }
 distribution = { local = "../distribution" }
