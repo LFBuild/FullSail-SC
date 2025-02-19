@@ -1,6 +1,5 @@
 module distribution::notify_reward_cap {
     public struct NOTIFY_REWARD_CAP has drop {
-        dummy_field: bool,
     }
     
     public struct NotifyRewardCap has store, key {
@@ -9,7 +8,7 @@ module distribution::notify_reward_cap {
         who: sui::object::ID,
     }
     
-    public fun create(arg0: &sui::package::Publisher, arg1: sui::object::ID, arg2: sui::object::ID, arg3: &mut sui::tx_context::TxContext) : NotifyRewardCap {
+    public fun create(_arg0: &sui::package::Publisher, arg1: sui::object::ID, arg2: sui::object::ID, arg3: &mut sui::tx_context::TxContext) : NotifyRewardCap {
         NotifyRewardCap{
             id       : sui::object::new(arg3), 
             voter_id : arg1, 
@@ -25,7 +24,7 @@ module distribution::notify_reward_cap {
         }
     }
     
-    public fun grant(arg0: &sui::package::Publisher, arg1: sui::object::ID, arg2: address, arg3: &mut sui::tx_context::TxContext) {
+    public fun grant(_arg0: &sui::package::Publisher, arg1: sui::object::ID, arg2: address, arg3: &mut sui::tx_context::TxContext) {
         assert!(arg2 != @0x0, 9223372191473598463);
         let v0 = NotifyRewardCap{
             id       : sui::object::new(arg3), 

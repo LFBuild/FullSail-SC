@@ -715,7 +715,8 @@ module distribution::voting_escrow {
         arg0.permanent_lock_balance = arg0.permanent_lock_balance + v2;
         let mut v3 = *sui::table::borrow<sui::object::ID, LockedBalance>(&arg0.locked, arg3);
         v3.amount = v3.amount + v2;
-        distribution::voting_dao::checkpoint_delegatee(&mut arg0.voting_dao, distribution::voting_dao::delegatee(&arg0.voting_dao, arg3), v2, true, arg4, arg5);
+        let delegatee = distribution::voting_dao::delegatee(&arg0.voting_dao, arg3);
+        distribution::voting_dao::checkpoint_delegatee(&mut arg0.voting_dao, delegatee, v2, true, arg4, arg5);
         let v4 = sui::table::remove<sui::object::ID, LockedBalance>(&mut arg0.locked, arg3);
         checkpoint_internal<T0>(arg0, std::option::some<sui::object::ID>(arg3), v4, v3, arg4, arg5);
         sui::table::add<sui::object::ID, LockedBalance>(&mut arg0.locked, arg3, v3);
@@ -855,7 +856,8 @@ module distribution::voting_escrow {
         if (v3.is_permanent) {
             arg0.permanent_lock_balance = arg0.permanent_lock_balance + arg2;
         };
-        distribution::voting_dao::checkpoint_delegatee(&mut arg0.voting_dao, distribution::voting_dao::delegatee(&arg0.voting_dao, arg1), arg2, true, arg4, arg5);
+        let delegatee = distribution::voting_dao::delegatee(&arg0.voting_dao, arg1);
+        distribution::voting_dao::checkpoint_delegatee(&mut arg0.voting_dao, delegatee, arg2, true, arg4, arg5);
         deposit_for_internal<T0>(arg0, arg1, arg2, 0, v3, arg3, arg4, arg5);
         if (v0 == EscrowType::MANAGED) {
             distribution::locked_managed_reward::notify_reward_amount<T0>(sui::table::borrow_mut<sui::object::ID, distribution::locked_managed_reward::LockedManagedReward>(&mut arg0.managed_to_locked, arg1), &arg0.locked_managed_reward_authorized_cap, sui::coin::from_balance<T0>(sui::balance::split<T0>(&mut arg0.balance, arg2), arg5), arg4, arg5);
@@ -1024,7 +1026,8 @@ module distribution::voting_escrow {
         if (v7.is_permanent) {
             arg0.permanent_lock_balance = arg0.permanent_lock_balance + v4.amount;
         };
-        distribution::voting_dao::checkpoint_delegatee(&mut arg0.voting_dao, distribution::voting_dao::delegatee(&arg0.voting_dao, v1), v4.amount, true, arg3, arg4);
+        let delegatee = distribution::voting_dao::delegatee(&arg0.voting_dao, v1);
+        distribution::voting_dao::checkpoint_delegatee(&mut arg0.voting_dao, delegatee, v4.amount, true, arg3, arg4);
         checkpoint_internal<T0>(arg0, std::option::some<sui::object::ID>(v1), v3, v7, arg3, arg4);
         sui::table::remove<sui::object::ID, LockedBalance>(&mut arg0.locked, v1);
         sui::table::add<sui::object::ID, LockedBalance>(&mut arg0.locked, v1, v7);
@@ -1258,7 +1261,8 @@ module distribution::voting_escrow {
             arg0.permanent_lock_balance
         };
         arg0.permanent_lock_balance = arg0.permanent_lock_balance - v9;
-        distribution::voting_dao::checkpoint_delegatee(&mut arg0.voting_dao, distribution::voting_dao::delegatee(&arg0.voting_dao, v0), v3, false, arg4, arg5);
+        let delegatee = distribution::voting_dao::delegatee(&arg0.voting_dao, v0);
+        distribution::voting_dao::checkpoint_delegatee(&mut arg0.voting_dao, delegatee, v3, false, arg4, arg5);
         let v10 = sui::table::remove<sui::object::ID, LockedBalance>(&mut arg0.locked, v0);
         checkpoint_internal<T0>(arg0, std::option::some<sui::object::ID>(v0), v10, v7, arg4, arg5);
         sui::table::add<sui::object::ID, LockedBalance>(&mut arg0.locked, v0, v7);

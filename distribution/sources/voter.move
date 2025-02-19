@@ -156,7 +156,8 @@ module distribution::voter {
             whitelist_token_internal<T0>(&mut v2, *std::vector::borrow<std::type_name::TypeName>(&arg1, v3), true, sui::tx_context::sender(arg2));
             v3 = v3 + 1;
         };
-        (v2, distribution::notify_reward_cap::create_internal(sui::object::id<Voter<T0>>(&v2), arg2))
+        let voter_id = sui::object::id<Voter<T0>>(&v2);
+        (v2, distribution::notify_reward_cap::create_internal(voter_id, arg2))
     }
     
     public fun deposit_managed<T0>(arg0: &mut Voter<T0>, arg1: &mut distribution::voting_escrow::VotingEscrow<T0>, arg2: &mut distribution::voting_escrow::Lock, arg3: &mut distribution::voting_escrow::Lock, arg4: &sui::clock::Clock, arg5: &mut sui::tx_context::TxContext) {
@@ -173,7 +174,8 @@ module distribution::voter {
         };
         sui::table::add<LockID, u64>(&mut arg0.last_voted, v0, v2);
         distribution::voting_escrow::deposit_managed<T0>(arg1, &arg0.voter_cap, arg2, v1, arg4, arg5);
-        poke_internal<T0>(arg0, arg1, arg3, distribution::voting_escrow::balance_of_nft_at<T0>(arg1, v0.id, v2), arg4, arg5);
+        let balance = distribution::voting_escrow::balance_of_nft_at<T0>(arg1, v0.id, v2);
+        poke_internal<T0>(arg0, arg1, arg3, balance, arg4, arg5);
     }
     
     public fun withdraw_managed<T0>(arg0: &mut Voter<T0>, arg1: &mut distribution::voting_escrow::VotingEscrow<T0>, arg2: &mut distribution::voting_escrow::Lock, arg3: &mut distribution::voting_escrow::Lock, arg4: &sui::clock::Clock, arg5: &mut sui::tx_context::TxContext) {
@@ -190,7 +192,9 @@ module distribution::voter {
         } else {
             poke_internal<T0>(arg0, arg1, arg3, v2, arg4, arg5);
         };
-        sui::transfer::public_transfer<sui::coin::Coin<T0>>(sui::coin::from_balance<T0>(distribution::voting_escrow::withdraw_managed<T0>(arg1, &arg0.voter_cap, v0.id, distribution::voting_escrow::owner_proof<T0>(arg1, arg2, arg5), arg4, arg5), arg5), sui::tx_context::sender(arg5));
+        let proof = distribution::voting_escrow::owner_proof<T0>(arg1, arg2, arg5);
+        let balance = distribution::voting_escrow::withdraw_managed<T0>(arg1, &arg0.voter_cap, v0.id, proof, arg4, arg5);
+        sui::transfer::public_transfer<sui::coin::Coin<T0>>(sui::coin::from_balance<T0>(balance, arg5), sui::tx_context::sender(arg5));
     }
     
     public fun add_epoch_governor<T0>(arg0: &mut Voter<T0>, arg1: &distribution::voter_cap::GovernorCap, arg2: address, arg3: &mut sui::tx_context::TxContext) {
@@ -295,11 +299,12 @@ module distribution::voter {
         let v1 = sui::table::borrow<GaugeID, GaugeRepresent>(&arg0.gauge_represents, v0);
         assert!(v1.pool_id == sui::object::id<clmm_pool::pool::Pool<T0, T1>>(arg2) && v1.gauger_id == v0.id, 9223375983929720831);
         let v2 = extract_claimable_for<T2>(arg0, v0.id);
+        let balance = sui::balance::value<T2>(&v2);
         let (v3, v4) = distribution::gauge::notify_reward<T0, T1, T2>(arg1, &arg0.voter_cap, arg2, v2, arg3, arg4);
         let v5 = sui::table::borrow_mut<GaugeID, distribution::fee_voting_reward::FeeVotingReward>(&mut arg0.gauge_to_fee, v0);
         distribution::fee_voting_reward::notify_reward_amount<T0>(v5, &arg0.gauge_to_fee_authorized_cap, sui::coin::from_balance<T0>(v3, arg4), arg3, arg4);
         distribution::fee_voting_reward::notify_reward_amount<T1>(v5, &arg0.gauge_to_fee_authorized_cap, sui::coin::from_balance<T1>(v4, arg4), arg3, arg4);
-        sui::balance::value<T2>(&v2)
+        balance
     }
     
     fun extract_claimable_for<T0>(arg0: &mut Voter<T0>, arg1: sui::object::ID) : sui::balance::Balance<T0> {
@@ -425,7 +430,8 @@ module distribution::voter {
     public fun poke<T0>(arg0: &mut Voter<T0>, arg1: &mut distribution::voting_escrow::VotingEscrow<T0>, arg2: &distribution::voting_escrow::Lock, arg3: &sui::clock::Clock, arg4: &mut sui::tx_context::TxContext) {
         let v0 = distribution::common::current_timestamp(arg3);
         assert!(v0 > distribution::common::epoch_vote_start(v0), 9223374433448427550);
-        poke_internal<T0>(arg0, arg1, arg2, distribution::voting_escrow::get_voting_power<T0>(arg1, arg2, arg3), arg3, arg4);
+        let voting_power = distribution::voting_escrow::get_voting_power<T0>(arg1, arg2, arg3);
+        poke_internal<T0>(arg0, arg1, arg2, voting_power, arg3, arg4);
     }
     
     fun poke_internal<T0>(arg0: &mut Voter<T0>, arg1: &mut distribution::voting_escrow::VotingEscrow<T0>, arg2: &distribution::voting_escrow::Lock, arg3: u64, arg4: &sui::clock::Clock, arg5: &mut sui::tx_context::TxContext) {
@@ -528,7 +534,8 @@ module distribution::voter {
             let v6 = *sui::table::borrow<PoolID, GaugeID>(&arg0.pool_to_gauger, v4);
             if (v5 != 0) {
                 update_for_internal<T0>(arg0, v6);
-                sui::table::add<GaugeID, u64>(&mut arg0.weights, v6, sui::table::remove<GaugeID, u64>(&mut arg0.weights, v6) - v5);
+                let weight = sui::table::remove<GaugeID, u64>(&mut arg0.weights, v6) - v5;
+                sui::table::add<GaugeID, u64>(&mut arg0.weights, v6, weight);
                 sui::table::remove<PoolID, u64>(sui::table::borrow_mut<LockID, sui::table::Table<PoolID, u64>>(&mut arg0.votes, v0), v4);
                 distribution::fee_voting_reward::withdraw(sui::table::borrow_mut<GaugeID, distribution::fee_voting_reward::FeeVotingReward>(&mut arg0.gauge_to_fee, v6), &arg0.gauge_to_fee_authorized_cap, v5, v0.id, arg3, arg4);
                 distribution::bribe_voting_reward::withdraw(sui::table::borrow_mut<GaugeID, distribution::bribe_voting_reward::BribeVotingReward>(&mut arg0.gauge_to_bribe, v6), &arg0.gauge_to_bribe_authorized_cap, v5, v0.id, arg3, arg4);
@@ -642,7 +649,9 @@ module distribution::voter {
     public fun update_for_range<T0>(arg0: &mut Voter<T0>, arg1: u64, arg2: u64) {
         let mut v0 = 0;
         while (arg1 + v0 < arg2) {
-            update_for_internal<T0>(arg0, *sui::table::borrow<PoolID, GaugeID>(&arg0.pool_to_gauger, *std::vector::borrow<PoolID>(&arg0.pools, arg1 + v0)));
+            let pool_id = *std::vector::borrow<PoolID>(&arg0.pools, arg1 + v0);
+            let gauge_id = *sui::table::borrow<PoolID, GaugeID>(&arg0.pool_to_gauger, pool_id);
+            update_for_internal<T0>(arg0, gauge_id);
             v0 = v0 + 1;
         };
     }

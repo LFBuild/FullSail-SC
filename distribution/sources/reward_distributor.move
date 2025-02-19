@@ -1,6 +1,5 @@
 module distribution::reward_distributor {
     public struct REWARD_DISTRIBUTOR has drop {
-        dummy_field: bool,
     }
     
     public struct EventStart has copy, drop, store {
@@ -29,7 +28,7 @@ module distribution::reward_distributor {
         minter_active_period: u64,
     }
     
-    public fun create<T0>(arg0: &sui::package::Publisher, arg1: &sui::clock::Clock, arg2: &mut sui::tx_context::TxContext) : (RewardDistributor<T0>, distribution::reward_distributor_cap::RewardDistributorCap) {
+    public fun create<T0>(_arg0: &sui::package::Publisher, arg1: &sui::clock::Clock, arg2: &mut sui::tx_context::TxContext) : (RewardDistributor<T0>, distribution::reward_distributor_cap::RewardDistributorCap) {
         let v0 = sui::object::new(arg2);
         let v1 = RewardDistributor<T0>{
             id                   : v0, 
@@ -41,7 +40,8 @@ module distribution::reward_distributor {
             balance              : sui::balance::zero<T0>(), 
             minter_active_period : 0,
         };
-        (v1, distribution::reward_distributor_cap::create(*sui::object::uid_as_inner(&v0), arg2))
+        let id = *sui::object::uid_as_inner(&v1.id);
+        (v1, distribution::reward_distributor_cap::create(id, arg2))
     }
     
     public fun checkpoint_token<T0>(arg0: &mut RewardDistributor<T0>, arg1: &distribution::reward_distributor_cap::RewardDistributorCap, arg2: sui::coin::Coin<T0>, arg3: &sui::clock::Clock, arg4: &mut sui::tx_context::TxContext) {
@@ -93,7 +93,8 @@ module distribution::reward_distributor {
         let v0 = sui::object::id<distribution::voting_escrow::Lock>(arg2);
         assert!(arg0.minter_active_period >= distribution::common::current_period(arg3), 9223372904438169601);
         assert!(distribution::voting_escrow::is_locked(distribution::voting_escrow::escrow_type<T0>(arg1, v0)) == false, 9223372908733267971);
-        let v1 = claim_internal<T0>(arg0, arg1, v0, distribution::common::to_period(arg0.last_token_time));
+        let period = distribution::common::to_period(arg0.last_token_time); 
+        let v1 = claim_internal<T0>(arg0, arg1, v0, period);
         if (v1 > 0) {
             let (v2, _) = distribution::voting_escrow::locked<T0>(arg1, v0);
             let v4 = v2;

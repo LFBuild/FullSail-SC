@@ -50,7 +50,8 @@ module distribution::voting_dao {
         v3.delegated_balance = v4;
         v3.delegatee = v2.delegatee;
         if (is_checkpoint_in_new_block(arg0, arg1, get_block_timestamp(arg4))) {
-            sui::table::add<sui::object::ID, u64>(&mut arg0.num_checkpoints, arg1, sui::table::remove<sui::object::ID, u64>(&mut arg0.num_checkpoints, arg1) + 1);
+            let checkpoint_value = sui::table::remove<sui::object::ID, u64>(&mut arg0.num_checkpoints, arg1) + 1;
+            sui::table::add<sui::object::ID, u64>(&mut arg0.num_checkpoints, arg1, checkpoint_value);
             sui::table::add<u64, Checkpoint>(sui::table::borrow_mut<sui::object::ID, sui::table::Table<u64, Checkpoint>>(&mut arg0.checkpoints, arg1), v0, v3);
         } else {
             let v6 = sui::table::borrow_mut<sui::object::ID, sui::table::Table<u64, Checkpoint>>(&mut arg0.checkpoints, arg1);
@@ -83,7 +84,8 @@ module distribution::voting_dao {
         v3.delegatee = arg3;
         v3.owner = arg4;
         if (is_checkpoint_in_new_block(arg0, arg1, get_block_timestamp(arg5))) {
-            sui::table::add<sui::object::ID, u64>(&mut arg0.num_checkpoints, arg1, sui::table::remove<sui::object::ID, u64>(&mut arg0.num_checkpoints, arg1) + 1);
+            let checkpoint_value = sui::table::remove<sui::object::ID, u64>(&mut arg0.num_checkpoints, arg1) + 1;
+            sui::table::add<sui::object::ID, u64>(&mut arg0.num_checkpoints, arg1, checkpoint_value);
             sui::table::add<u64, Checkpoint>(sui::table::borrow_mut<sui::object::ID, sui::table::Table<u64, Checkpoint>>(&mut arg0.checkpoints, arg1), v0, v3);
         } else {
             sui::table::remove<u64, Checkpoint>(sui::table::borrow_mut<sui::object::ID, sui::table::Table<u64, Checkpoint>>(&mut arg0.checkpoints, arg1), v0 - 1);

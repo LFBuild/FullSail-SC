@@ -169,6 +169,7 @@ module distribution::gauge {
         } else {
             std::vector::push_back<sui::object::ID>(sui::table::borrow_mut<address, vector<sui::object::ID>>(&mut arg1.stakes, v0), v2);
         };
+        let positionLiquidity = clmm_pool::position::liquidity(&arg3);
         sui::object_table::add<sui::object::ID, clmm_pool::position::Position>(&mut arg1.staked_positions, v2, arg3);
         if (!sui::table::contains<sui::object::ID, RewardProfile>(&arg1.rewards, v2)) {
             let v9 = RewardProfile{
@@ -184,7 +185,7 @@ module distribution::gauge {
         };
         clmm_pool::pool::mark_position_staked<T0, T1>(arg2, std::option::borrow<gauge_cap::gauge_cap::GaugeCap>(&arg1.gauge_cap), v2);
         sui::table::borrow_mut<sui::object::ID, PositionStakeInfo>(&mut arg1.staked_position_infos, v2).received = true;
-        clmm_pool::pool::stake_in_magma_distribution<T0, T1>(arg2, std::option::borrow<gauge_cap::gauge_cap::GaugeCap>(&arg1.gauge_cap), clmm_pool::position::liquidity(&arg3), v6, v7, arg4);
+        clmm_pool::pool::stake_in_magma_distribution<T0, T1>(arg2, std::option::borrow<gauge_cap::gauge_cap::GaugeCap>(&arg1.gauge_cap), positionLiquidity, v6, v7, arg4);
         let v11 = EventDepositGauge{
             gauger_id   : sui::object::id<Gauge<T0, T1, T2>>(arg1), 
             pool_id     : v1, 
@@ -287,12 +288,13 @@ module distribution::gauge {
         let v2 = update_reward_internal<T0, T1, T2>(arg0, arg1, arg2, v0, v1, arg3);
         if (sui::balance::value<T2>(&v2) > 0) {
             let v3 = sui::table::borrow<sui::object::ID, PositionStakeInfo>(&arg0.staked_position_infos, arg2).from;
+            let amount = sui::balance::value<T2>(&v2);
             sui::transfer::public_transfer<sui::coin::Coin<T2>>(sui::coin::from_balance<T2>(v2, arg4), v3);
             let v4 = EventClaimReward{
                 from        : sui::tx_context::sender(arg4), 
                 position_id : arg2, 
                 receiver    : v3, 
-                amount      : sui::balance::value<T2>(&v2),
+                amount,
             };
             sui::event::emit<EventClaimReward>(v4);
         } else {
@@ -396,6 +398,7 @@ module distribution::gauge {
     
     fun update_reward_internal<T0, T1, T2>(arg0: &mut Gauge<T0, T1, T2>, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: sui::object::ID, arg3: integer_mate::i32::I32, arg4: integer_mate::i32::I32, arg5: &sui::clock::Clock) : sui::balance::Balance<T2> {
         let v0 = sui::clock::timestamp_ms(arg5) / 1000;
+        let amount_earned = earned_internal<T0, T1, T2>(arg0, arg1, arg2, v0);
         let v1 = sui::table::borrow_mut<sui::object::ID, RewardProfile>(&mut arg0.rewards, arg2);
         if (v1.last_update_time >= v0) {
             v1.amount = 0;
@@ -403,7 +406,7 @@ module distribution::gauge {
         };
         clmm_pool::pool::update_magma_distribution_growth_global<T0, T1>(arg1, std::option::borrow<gauge_cap::gauge_cap::GaugeCap>(&arg0.gauge_cap), arg5);
         v1.last_update_time = v0;
-        v1.amount = v1.amount + earned_internal<T0, T1, T2>(arg0, arg1, arg2, v0);
+        v1.amount = v1.amount + amount_earned;
         v1.growth_inside = clmm_pool::pool::get_magma_distribution_growth_inside<T0, T1>(arg1, arg3, arg4, 0);
         v1.amount = 0;
         sui::balance::split<T2>(&mut arg0.reserves_balance, v1.amount)
