@@ -13,7 +13,7 @@ module integrate::pool_creator_v2 {
         (sui::coin::split<T0>(arg3, v4, arg6), sui::coin::split<T1>(arg4, v5, arg6))
     }
     
-    public entry fun create_pool_v2<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::factory::Pools, arg2: u32, arg3: u128, arg4: std::string::String, arg5: u32, arg6: u32, arg7: &mut sui::coin::Coin<T0>, arg8: &mut sui::coin::Coin<T1>, arg9: &sui::coin::CoinMetadata<T0>, arg10: &sui::coin::CoinMetadata<T1>, arg11: bool, arg12: &sui::clock::Clock, arg13: &mut sui::tx_context::TxContext) {
+    public entry fun create_pool_v2<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::factory::Pools, arg2: u32, arg3: u128, arg4: std::string::String, arg5: u32, arg6: u32, arg7: &mut sui::coin::Coin<T0>, arg8: &mut sui::coin::Coin<T1>, _arg9: &sui::coin::CoinMetadata<T0>, _arg10: &sui::coin::CoinMetadata<T1>, arg11: bool, arg12: &sui::clock::Clock, arg13: &mut sui::tx_context::TxContext) {
         let (v0, v1) = build_init_position_arg<T0, T1>(arg3, arg5, arg6, arg7, arg8, arg11, arg13);
         let v2 = v1;
         let v3 = v0;

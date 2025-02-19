@@ -1,5 +1,5 @@
 module integrate::fullsail_token {
-    public entry fun burn<T0>(arg0: &mut distribution::fullsail_token::MinterCap<T0>, arg1: sui::coin::Coin<T0>, arg2: &mut sui::tx_context::TxContext) {
+    public entry fun burn<T0>(arg0: &mut distribution::fullsail_token::MinterCap<T0>, arg1: sui::coin::Coin<T0>) {
         distribution::fullsail_token::burn<T0>(arg0, arg1);
     }
     

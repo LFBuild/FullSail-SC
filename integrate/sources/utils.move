@@ -1,6 +1,4 @@
 module integrate::utils {
-    use sui::coin;
-    use sui::pay;
 
     public fun merge_coins<T0>(mut arg0: vector<sui::coin::Coin<T0>>, arg1: &mut sui::tx_context::TxContext) : sui::coin::Coin<T0> {
         if (std::vector::is_empty<sui::coin::Coin<T0>>(&arg0)) {

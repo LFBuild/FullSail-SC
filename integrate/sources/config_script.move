@@ -31,7 +31,7 @@ module integrate::config_script {
         clmm_pool::config::update_protocol_fee_rate(arg0, arg1, arg2);
     }
     
-    public entry fun init_fee_tiers(arg0: &mut clmm_pool::config::GlobalConfig, arg1: &clmm_pool::config::AdminCap, arg2: &mut sui::tx_context::TxContext) {
+    public entry fun init_fee_tiers(arg0: &mut clmm_pool::config::GlobalConfig, _arg1: &clmm_pool::config::AdminCap, arg2: &mut sui::tx_context::TxContext) {
         clmm_pool::config::add_fee_tier(arg0, 2, 100, arg2);
         clmm_pool::config::add_fee_tier(arg0, 10, 500, arg2);
         clmm_pool::config::add_fee_tier(arg0, 60, 2500, arg2);

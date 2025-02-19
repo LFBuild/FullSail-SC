@@ -66,7 +66,7 @@ module integrate::fetcher_script {
         sui::event::emit<FetchPositionFeesEvent>(v2);
     }
     
-    public entry fun fetch_position_magma_distribution<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: sui::object::ID, arg3: &sui::clock::Clock) {
+    public entry fun fetch_position_magma_distribution<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: sui::object::ID, _arg3: &sui::clock::Clock) {
         let v0 = FetchPositionMagmaDistributionEvent{
             position_id  : arg2, 
             distribution : clmm_pool::pool::calculate_and_update_magma_distribution<T0, T1>(arg0, arg1, arg2),
