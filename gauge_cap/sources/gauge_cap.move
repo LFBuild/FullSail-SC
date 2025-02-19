@@ -1,6 +1,5 @@
 module gauge_cap::gauge_cap {
     public struct GAUGE_CAP has drop {
-        dummy_field: bool,
     }
     
     public struct CreateCap has store, key {
@@ -13,7 +12,7 @@ module gauge_cap::gauge_cap {
         pool_id: sui::object::ID,
     }
     
-    public fun create_gauge_cap(arg0: &CreateCap, arg1: sui::object::ID, arg2: sui::object::ID, arg3: &mut sui::tx_context::TxContext) : GaugeCap {
+    public fun create_gauge_cap(_arg0: &CreateCap, arg1: sui::object::ID, arg2: sui::object::ID, arg3: &mut sui::tx_context::TxContext) : GaugeCap {
         GaugeCap{
             id       : sui::object::new(arg3), 
             gauge_id : arg2, 
@@ -29,7 +28,7 @@ module gauge_cap::gauge_cap {
         arg0.pool_id
     }
     
-    public fun grant_create_cap(arg0: &sui::package::Publisher, arg1: address, arg2: &mut sui::tx_context::TxContext) {
+    public fun grant_create_cap(_arg0: &sui::package::Publisher, arg1: address, arg2: &mut sui::tx_context::TxContext) {
         let v0 = CreateCap{id: sui::object::new(arg2)};
         sui::transfer::public_transfer<CreateCap>(v0, arg1);
     }
