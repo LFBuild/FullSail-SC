@@ -58,10 +58,10 @@ module integrate::expect_swap {
             let (v9, v10, v11, v12) = compute_swap_step(v0, v8, v1, v3, clmm_pool::pool::fee_rate<T0, T1>(arg0), arg1, arg2);
             if (v9 != 0 || v12 != 0) {
                 let v13 = if (arg2) {
-                    let v14 = check_remainer_amount_sub(v3, v9 as u64);
-                    check_remainer_amount_sub(v14, v12 as u64)
+                    let v14 = check_remainer_amount_sub(v3, (v9 as u64));
+                    check_remainer_amount_sub(v14, (v12 as u64))
                 } else {
-                    check_remainer_amount_sub(v3, v10 as u64)
+                    check_remainer_amount_sub(v3, (v10 as u64))
                 };
                 v3 = v13;
                 update_swap_result(&mut v2, v9, v10, v12);
@@ -121,15 +121,15 @@ module integrate::expect_swap {
             let v4 = integer_mate::full_math_u64::mul_div_floor(arg3, clmm_pool::clmm_math::fee_rate_denominator() - arg4, clmm_pool::clmm_math::fee_rate_denominator());
             let v5 = clmm_pool::clmm_math::get_delta_up_from_input(arg0, arg1, arg2, arg5);
             let (v6, v7, v8) = if (v5 > (v4 as u256)) {
-                (v4 as u256, (arg3 - v4) as u256, clmm_pool::clmm_math::get_next_sqrt_price_from_input(arg0, arg2, v4, arg5))
+                (v4 as u256, ((arg3 - v4) as u256), clmm_pool::clmm_math::get_next_sqrt_price_from_input(arg0, arg2, v4, arg5))
             } else {
-                (v5, integer_mate::full_math_u64::mul_div_ceil(v5 as u64, arg4, clmm_pool::clmm_math::fee_rate_denominator() - arg4) as u256, arg1)
+                (v5, (integer_mate::full_math_u64::mul_div_ceil(v5 as u64, arg4, clmm_pool::clmm_math::fee_rate_denominator() - arg4) as u256), arg1)
             };
             (v6, clmm_pool::clmm_math::get_delta_down_from_output(arg0, v8, arg2, arg5), v7, v8)
         } else {
             let v9 = clmm_pool::clmm_math::get_delta_down_from_output(arg0, arg1, arg2, arg5);
             let (v10, v11) = if (v9 > (arg3 as u256)) {
-                (arg3 as u256, clmm_pool::clmm_math::get_next_sqrt_price_from_output(arg0, arg2, arg3, arg5))
+                ((arg3 as u256), clmm_pool::clmm_math::get_next_sqrt_price_from_output(arg0, arg2, arg3, arg5))
             } else {
                 (v9, arg1)
             };

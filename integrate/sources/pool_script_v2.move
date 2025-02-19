@@ -41,7 +41,7 @@ module integrate::pool_script_v2 {
     }
     
     public entry fun add_liquidity<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: &mut clmm_pool::position::Position, arg3: sui::coin::Coin<T0>, arg4: sui::coin::Coin<T1>, arg5: u64, arg6: u64, arg7: u128, arg8: &sui::clock::Clock, arg9: &mut sui::tx_context::TxContext) {
-        repay_add_liquidity<T0, T1>(arg0, arg1, clmm_pool::pool::add_liquidity<T0, T1>(arg0, arg1, arg2, arg7, arg8, arg9), arg3, arg4, arg5, arg6, arg9);
+        repay_add_liquidity<T0, T1>(arg0, arg1, clmm_pool::pool::add_liquidity<T0, T1>(arg0, arg1, arg2, arg7, arg8), arg3, arg4, arg5, arg6, arg9);
     }
     
     public entry fun close_position<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: clmm_pool::position::Position, arg3: u64, arg4: u64, arg5: &sui::clock::Clock, arg6: &mut sui::tx_context::TxContext) {
@@ -121,12 +121,12 @@ module integrate::pool_script_v2 {
         } else {
             arg6
         };
-        repay_add_liquidity<T0, T1>(arg0, arg1, clmm_pool::pool::add_liquidity_fix_coin<T0, T1>(arg0, arg1, arg2, v0, arg7, arg8, arg9), arg3, arg4, arg5, arg6, arg9);
+        repay_add_liquidity<T0, T1>(arg0, arg1, clmm_pool::pool::add_liquidity_fix_coin<T0, T1>(arg0, arg1, arg2, v0, arg7, arg8), arg3, arg4, arg5, arg6, arg9);
     }
     
     public entry fun open_position_with_liquidity<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: u32, arg3: u32, arg4: sui::coin::Coin<T0>, arg5: sui::coin::Coin<T1>, arg6: u64, arg7: u64, arg8: u128, arg9: &sui::clock::Clock, arg10: &mut sui::tx_context::TxContext) {
         let v0 = clmm_pool::pool::open_position<T0, T1>(arg0, arg1, arg2, arg3, arg10);
-        repay_add_liquidity<T0, T1>(arg0, arg1, clmm_pool::pool::add_liquidity<T0, T1>(arg0, arg1, &mut v0, arg8, arg9, arg10), arg4, arg5, arg6, arg7, arg10);
+        repay_add_liquidity<T0, T1>(arg0, arg1, clmm_pool::pool::add_liquidity<T0, T1>(arg0, arg1, &mut v0, arg8, arg9), arg4, arg5, arg6, arg7, arg10);
         sui::transfer::public_transfer<clmm_pool::position::Position>(v0, sui::tx_context::sender(arg10));
     }
     
@@ -137,7 +137,7 @@ module integrate::pool_script_v2 {
         } else {
             arg7
         };
-        repay_add_liquidity<T0, T1>(arg0, arg1, clmm_pool::pool::add_liquidity_fix_coin<T0, T1>(arg0, arg1, &mut v0, v1, arg8, arg9, arg10), arg4, arg5, arg6, arg7, arg10);
+        repay_add_liquidity<T0, T1>(arg0, arg1, clmm_pool::pool::add_liquidity_fix_coin<T0, T1>(arg0, arg1, &mut v0, v1, arg8, arg9), arg4, arg5, arg6, arg7, arg10);
         sui::transfer::public_transfer<clmm_pool::position::Position>(v0, sui::tx_context::sender(arg10));
     }
     
