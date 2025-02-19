@@ -1,6 +1,5 @@
 module distribution::voter {
     public struct VOTER has drop {
-        dummy_field: bool,
     }
     
     public struct PoolID has copy, drop, store {
@@ -117,7 +116,7 @@ module distribution::voter {
         who: address,
     }
     
-    public fun create<T0>(arg0: &sui::package::Publisher, arg1: vector<std::type_name::TypeName>, arg2: &mut sui::tx_context::TxContext) : (Voter<T0>, distribution::notify_reward_cap::NotifyRewardCap) {
+    public fun create<T0>(_arg0: &sui::package::Publisher, arg1: vector<std::type_name::TypeName>, arg2: &mut sui::tx_context::TxContext) : (Voter<T0>, distribution::notify_reward_cap::NotifyRewardCap) {
         let v0 = sui::object::new(arg2);
         let v1 = *sui::object::uid_as_inner(&v0);
         let mut v2 = Voter<T0>{
@@ -204,7 +203,7 @@ module distribution::voter {
         sui::event::emit<EventAddEpochGovernor>(v0);
     }
     
-    public fun add_governor<T0>(arg0: &mut Voter<T0>, arg1: &sui::package::Publisher, arg2: address, arg3: &mut sui::tx_context::TxContext) {
+    public fun add_governor<T0>(arg0: &mut Voter<T0>, _arg1: &sui::package::Publisher, arg2: address, arg3: &mut sui::tx_context::TxContext) {
         sui::transfer::public_transfer<distribution::voter_cap::GovernorCap>(distribution::voter_cap::create_governor_cap(sui::object::id<Voter<T0>>(arg0), arg2, arg3), arg2);
         sui::vec_set::insert<sui::object::ID>(&mut arg0.governors, sui::object::id_from_address(arg2));
         let v0 = EventAddGovernor{who: arg2};
@@ -378,7 +377,7 @@ module distribution::voter {
         }
     }
     
-    public fun kill_gauger<T0>(arg0: &mut Voter<T0>, arg1: &distribution::emergency_council::EmergencyCouncilCap, arg2: sui::object::ID, arg3: &sui::clock::Clock, arg4: &mut sui::tx_context::TxContext) : sui::balance::Balance<T0> {
+    public fun kill_gauger<T0>(arg0: &mut Voter<T0>, arg1: &distribution::emergency_council::EmergencyCouncilCap, arg2: sui::object::ID, _arg3: &sui::clock::Clock) : sui::balance::Balance<T0> {
         distribution::emergency_council::validate_emergency_council_voter_id(arg1, sui::object::id<Voter<T0>>(arg0));
         let v0 = into_gauge_id(arg2);
         assert!(sui::table::contains<GaugeID, bool>(&arg0.is_alive, v0), 9223374012540190728);
@@ -397,7 +396,7 @@ module distribution::voter {
         v3
     }
     
-    public fun notify_rewards<T0>(arg0: &mut Voter<T0>, arg1: &distribution::notify_reward_cap::NotifyRewardCap, arg2: sui::coin::Coin<T0>, arg3: &mut sui::tx_context::TxContext) {
+    public fun notify_rewards<T0>(arg0: &mut Voter<T0>, arg1: &distribution::notify_reward_cap::NotifyRewardCap, arg2: sui::coin::Coin<T0>) {
         distribution::notify_reward_cap::validate_notify_reward_voter_id(arg1, sui::object::id<Voter<T0>>(arg0));
         let v0 = sui::coin::into_balance<T0>(arg2);
         let v1 = sui::balance::value<T0>(&v0);
@@ -491,7 +490,7 @@ module distribution::voter {
         std::vector::push_back<PoolID>(&mut arg0.pools, v1);
         sui::table::add<GaugeID, bool>(&mut arg0.is_alive, v0, true);
         sui::table::add<PoolID, GaugeID>(&mut arg0.pool_to_gauger, v1, v0);
-        distribution::gauge::set_voter<T0, T1, T2>(arg2, sui::object::id<Voter<T2>>(arg0), arg4);
+        distribution::gauge::set_voter<T0, T1, T2>(arg2, sui::object::id<Voter<T2>>(arg0));
         whitelist_token<T2, T0>(arg0, arg1, true, arg4);
         whitelist_token<T2, T1>(arg0, arg1, true, arg4);
         if (!is_whitelisted_token<T2, T2>(arg0)) {
@@ -507,7 +506,7 @@ module distribution::voter {
         sui::event::emit<EventRemoveEpochGovernor>(v1);
     }
     
-    public fun remove_governor<T0>(arg0: &mut Voter<T0>, arg1: &sui::package::Publisher, arg2: address) {
+    public fun remove_governor<T0>(arg0: &mut Voter<T0>, _arg1: &sui::package::Publisher, arg2: address) {
         let v0 = sui::object::id_from_address(arg2);
         sui::vec_set::remove<sui::object::ID>(&mut arg0.governors, &v0);
         let v1 = EventRemoveGovernor{who: arg2};
@@ -634,8 +633,9 @@ module distribution::voter {
             };
             sui::table::add<GaugeID, u128>(&mut arg0.supply_index, arg1, arg0.index);
         };
-        return
-        abort 9223375717644828720
+        // TODO: looks like this function was disabled, check why
+        // return
+        // abort 9223375717644828720
     }
     
     public fun update_for_many<T0>(arg0: &mut Voter<T0>, arg1: vector<sui::object::ID>) {

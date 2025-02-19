@@ -1,6 +1,5 @@
 module distribution::voting_escrow {
     public struct VOTING_ESCROW has drop {
-        dummy_field: bool,
     }
 
     public struct DistributorCap has store, key {
@@ -186,7 +185,7 @@ module distribution::voting_escrow {
         assert!(sui::table::contains<sui::object::ID, address>(&arg0.owner_of, v0), 9223375893737373727);
         let v1 = *sui::table::borrow<sui::object::ID, address>(&arg0.owner_of, v0);
         assert!(is_split_allowed<T0>(arg0, v1) || is_split_allowed<T0>(arg0, sui::tx_context::sender(arg4)), 9223375902326652949);
-        let mut v2 = if (!sui::table::contains<sui::object::ID, EscrowType>(&arg0.escrow_type, v0)) {
+        let v2 = if (!sui::table::contains<sui::object::ID, EscrowType>(&arg0.escrow_type, v0)) {
             true
         } else {
             let v3 = EscrowType::NORMAL;
@@ -242,7 +241,7 @@ module distribution::voting_escrow {
         };
     }
 
-    public fun create<T0>(arg0: &sui::package::Publisher, arg1: sui::object::ID, arg2: &sui::clock::Clock, arg3: &mut sui::tx_context::TxContext) : VotingEscrow<T0> {
+    public fun create<T0>(_arg0: &sui::package::Publisher, arg1: sui::object::ID, arg2: &sui::clock::Clock, arg3: &mut sui::tx_context::TxContext) : VotingEscrow<T0> {
         let v0 = sui::object::new(arg3);
         let v1 = sui::object::uid_to_inner(&v0);
         let mut v2 = VotingEscrow<T0>{
@@ -311,7 +310,7 @@ module distribution::voting_escrow {
         sui::event::emit<EventSupply>(v6);
     }
 
-    public fun add_allowed_manager<T0>(arg0: &mut VotingEscrow<T0>, arg1: &sui::package::Publisher, arg2: address) {
+    public fun add_allowed_manager<T0>(arg0: &mut VotingEscrow<T0>, _arg1: &sui::package::Publisher, arg2: address) {
         sui::vec_set::insert<address>(&mut arg0.allowed_managers, arg2);
     }
 
@@ -370,7 +369,7 @@ module distribution::voting_escrow {
         let mut v5 = v4;
         let v6 = distribution::common::current_timestamp(arg4);
         if (std::option::is_some<sui::object::ID>(&arg1)) {
-            let mut v7 = if (arg3.is_permanent) {
+            let v7 = if (arg3.is_permanent) {
                 arg3.amount
             } else {
                 0
@@ -384,7 +383,7 @@ module distribution::voting_escrow {
                 v1.slope = integer_mate::i128::from(integer_mate::full_math_u128::mul_div_floor((arg3.amount as u128), 18446744073709551616, (distribution::common::max_lock_time() as u128)));
                 v1.bias = integer_mate::i128::div(integer_mate::i128::mul(v1.slope, integer_mate::i128::from(((arg3.end - v6) as u128))), integer_mate::i128::from(18446744073709551616));
             };
-            let mut v8 = if (sui::table::contains<u64, integer_mate::i128::I128>(&arg0.slope_changes, arg2.end)) {
+            let v8 = if (sui::table::contains<u64, integer_mate::i128::I128>(&arg0.slope_changes, arg2.end)) {
                 *sui::table::borrow<u64, integer_mate::i128::I128>(&arg0.slope_changes, arg2.end)
             } else {
                 integer_mate::i128::from(0)
@@ -394,7 +393,7 @@ module distribution::voting_escrow {
                 if (arg3.end == arg2.end) {
                     v3 = v8;
                 } else {
-                    let mut v9 = if (sui::table::contains<u64, integer_mate::i128::I128>(&arg0.slope_changes, arg3.end)) {
+                    let v9 = if (sui::table::contains<u64, integer_mate::i128::I128>(&arg0.slope_changes, arg3.end)) {
                         *sui::table::borrow<u64, integer_mate::i128::I128>(&arg0.slope_changes, arg3.end)
                     } else {
                         integer_mate::i128::from(0)
@@ -403,7 +402,7 @@ module distribution::voting_escrow {
                 };
             };
         };
-        let mut v10 = if (v4 > 0) {
+        let v10 = if (v4 > 0) {
             *sui::table::borrow<u64, GlobalPoint>(&arg0.point_history, v4)
         } else {
             GlobalPoint{bias: integer_mate::i128::from(0), slope: integer_mate::i128::from(0), ts: v6, permanent_lock_balance: 0}
@@ -420,7 +419,7 @@ module distribution::voting_escrow {
             if (v15 > v6) {
                 v13 = v6;
             } else {
-                let mut v17 = if (sui::table::contains<u64, integer_mate::i128::I128>(&arg0.slope_changes, v15)) {
+                let v17 = if (sui::table::contains<u64, integer_mate::i128::I128>(&arg0.slope_changes, v15)) {
                     *sui::table::borrow<u64, integer_mate::i128::I128>(&arg0.slope_changes, v15)
                 } else {
                     integer_mate::i128::from(0)
@@ -455,7 +454,7 @@ module distribution::voting_escrow {
             };
             v11.permanent_lock_balance = arg0.permanent_lock_balance;
         };
-        let mut v19 = if (v5 != 1) {
+        let v19 = if (v5 != 1) {
             if (sui::table::contains<u64, GlobalPoint>(&arg0.point_history, v5 - 1)) {
                 sui::table::borrow<u64, GlobalPoint>(&arg0.point_history, v5 - 1).ts == v6
             } else {
@@ -486,12 +485,12 @@ module distribution::voting_escrow {
             };
             let v21 = *std::option::borrow<sui::object::ID>(&arg1);
             v1.ts = v6;
-            let mut v22 = if (sui::table::contains<sui::object::ID, u64>(&arg0.user_point_epoch, v21)) {
+            let v22 = if (sui::table::contains<sui::object::ID, u64>(&arg0.user_point_epoch, v21)) {
                 *sui::table::borrow<sui::object::ID, u64>(&arg0.user_point_epoch, v21)
             } else {
                 0
             };
-            let mut v23 = if (v22 != 0) {
+            let v23 = if (v22 != 0) {
                 if (sui::table::contains<u64, UserPoint>(sui::table::borrow<sui::object::ID, sui::table::Table<u64, UserPoint>>(&arg0.user_point_history, v21), v22)) {
                     sui::table::borrow<u64, UserPoint>(sui::table::borrow<sui::object::ID, sui::table::Table<u64, UserPoint>>(&arg0.user_point_history, v21), v22).ts == v6
                 } else {
@@ -751,7 +750,7 @@ module distribution::voting_escrow {
         }
     }
 
-    public fun free_managed_reward_earned<T0>(arg0: &mut VotingEscrow<T0>, arg1: &mut Lock, arg2: &sui::clock::Clock, arg3: &mut sui::tx_context::TxContext) : u64 {
+    public fun free_managed_reward_earned<T0>(arg0: &mut VotingEscrow<T0>, arg1: &mut Lock, arg2: &sui::clock::Clock) : u64 {
         let v0 = sui::object::id<Lock>(arg1);
         distribution::free_managed_reward::earned<T0>(sui::table::borrow<sui::object::ID, distribution::free_managed_reward::FreeManagedReward>(&arg0.managed_to_free, *sui::table::borrow<sui::object::ID, sui::object::ID>(&arg0.id_to_managed, v0)), v0, arg2)
     }
@@ -868,7 +867,7 @@ module distribution::voting_escrow {
 
     public fun increase_unlock_time<T0>(arg0: &mut VotingEscrow<T0>, arg1: &mut Lock, arg2: u64, arg3: &sui::clock::Clock, arg4: &mut sui::tx_context::TxContext) {
         let v0 = sui::object::id<Lock>(arg1);
-        let mut v1 = if (!sui::table::contains<sui::object::ID, EscrowType>(&arg0.escrow_type, v0)) {
+        let v1 = if (!sui::table::contains<sui::object::ID, EscrowType>(&arg0.escrow_type, v0)) {
             true
         } else {
             let v2 = EscrowType::NORMAL;
@@ -911,7 +910,7 @@ module distribution::voting_escrow {
     }
 
     public fun is_split_allowed<T0>(arg0: &VotingEscrow<T0>, arg1: address) : bool {
-        let mut v0 = if (sui::table::contains<address, bool>(&arg0.can_split, arg1)) {
+        let v0 = if (sui::table::contains<address, bool>(&arg0.can_split, arg1)) {
             let v1 = true;
             sui::table::borrow<address, bool>(&arg0.can_split, arg1) == &v1
         } else {
@@ -938,7 +937,7 @@ module distribution::voting_escrow {
 
     public fun lock_permanent<T0>(arg0: &mut VotingEscrow<T0>, arg1: &mut Lock, arg2: &sui::clock::Clock, arg3: &mut sui::tx_context::TxContext) {
         let v0 = sui::object::id<Lock>(arg1);
-        let mut v1 = if (!sui::table::contains<sui::object::ID, EscrowType>(&arg0.escrow_type, v0)) {
+        let v1 = if (!sui::table::contains<sui::object::ID, EscrowType>(&arg0.escrow_type, v0)) {
             true
         } else {
             let v2 = EscrowType::NORMAL;
@@ -1011,13 +1010,13 @@ module distribution::voting_escrow {
         assert!(v3.end > distribution::common::current_timestamp(arg3) || v3.is_permanent == true, 9223376108484165639);
         let v4 = *sui::table::borrow<sui::object::ID, LockedBalance>(&arg0.locked, v0);
         assert!(v4.is_permanent == false, 9223376117075935267);
-        let mut v5 = if (v4.end >= v3.end) {
+        let v5 = if (v4.end >= v3.end) {
             v4.end
         } else {
             v3.end
         };
         burn_lock_internal<T0>(arg0, arg1, v4, arg3, arg4);
-        let mut v6 = if (v3.is_permanent) {
+        let v6 = if (v3.is_permanent) {
             0
         } else {
             v5
@@ -1061,7 +1060,7 @@ module distribution::voting_escrow {
         *sui::table::borrow<sui::object::ID, u64>(&arg0.ownership_change_at, arg1)
     }
 
-    public fun remove_allowed_manager<T0>(arg0: &mut VotingEscrow<T0>, arg1: &sui::package::Publisher, arg2: address) {
+    public fun remove_allowed_manager<T0>(arg0: &mut VotingEscrow<T0>, _arg1: &sui::package::Publisher, arg2: address) {
         sui::vec_set::remove<address>(&mut arg0.allowed_managers, &arg2);
     }
 
@@ -1072,7 +1071,7 @@ module distribution::voting_escrow {
         sui::table::add<sui::object::ID, LockedBalance>(&mut arg0.locked, arg1, arg2);
     }
 
-    public fun set_managed_state<T0>(arg0: &mut VotingEscrow<T0>, arg1: &distribution::emergency_council::EmergencyCouncilCap, arg2: sui::object::ID, arg3: bool, arg4: &mut sui::tx_context::TxContext) {
+    public fun set_managed_state<T0>(arg0: &mut VotingEscrow<T0>, _arg1: &distribution::emergency_council::EmergencyCouncilCap, arg2: sui::object::ID, arg3: bool) {
         assert!(escrow_type<T0>(arg0, arg2) == EscrowType::MANAGED, 9223378410588995627);
         assert!(sui::table::borrow<sui::object::ID, bool>(&arg0.deactivated, arg2) != &arg3, 9223378414884618293);
         sui::table::remove<sui::object::ID, bool>(&mut arg0.deactivated, arg2);
@@ -1150,7 +1149,7 @@ module distribution::voting_escrow {
             if (v7 > arg2) {
                 v5 = arg2;
             } else {
-                let mut v9 = if (sui::table::contains<u64, integer_mate::i128::I128>(&arg0.slope_changes, v7)) {
+                let v9 = if (sui::table::contains<u64, integer_mate::i128::I128>(&arg0.slope_changes, v7)) {
                     *sui::table::borrow<u64, integer_mate::i128::I128>(&arg0.slope_changes, v7)
                 } else {
                     integer_mate::i128::from(0)
@@ -1173,7 +1172,7 @@ module distribution::voting_escrow {
     public fun unlock_permanent<T0>(arg0: &mut VotingEscrow<T0>, arg1: &mut Lock, arg2: &sui::clock::Clock, arg3: &mut sui::tx_context::TxContext) {
         let v0 = sui::tx_context::sender(arg3);
         let v1 = sui::object::id<Lock>(arg1);
-        let mut v2 = if (!sui::table::contains<sui::object::ID, EscrowType>(&arg0.escrow_type, v1)) {
+        let v2 = if (!sui::table::contains<sui::object::ID, EscrowType>(&arg0.escrow_type, v1)) {
             true
         } else {
             let v3 = EscrowType::NORMAL;
@@ -1249,13 +1248,13 @@ module distribution::voting_escrow {
         checkpoint_internal<T0>(arg0, std::option::some<sui::object::ID>(arg2), v5, v6, arg4, arg5);
         sui::table::add<sui::object::ID, LockedBalance>(&mut arg0.locked, arg2, v6);
         let mut v7 = *sui::table::borrow<sui::object::ID, LockedBalance>(&arg0.locked, v0);
-        let mut v8 = if (v3 < v7.amount) {
+        let v8 = if (v3 < v7.amount) {
             v7.amount - v3
         } else {
             0
         };
         v7.amount = v8;
-        let mut v9 = if (v3 < arg0.permanent_lock_balance) {
+        let v9 = if (v3 < arg0.permanent_lock_balance) {
             v3
         } else {
             arg0.permanent_lock_balance

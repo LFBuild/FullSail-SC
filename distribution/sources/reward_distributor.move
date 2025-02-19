@@ -44,7 +44,7 @@ module distribution::reward_distributor {
         (v1, distribution::reward_distributor_cap::create(id, arg2))
     }
     
-    public fun checkpoint_token<T0>(arg0: &mut RewardDistributor<T0>, arg1: &distribution::reward_distributor_cap::RewardDistributorCap, arg2: sui::coin::Coin<T0>, arg3: &sui::clock::Clock, arg4: &mut sui::tx_context::TxContext) {
+    public fun checkpoint_token<T0>(arg0: &mut RewardDistributor<T0>, arg1: &distribution::reward_distributor_cap::RewardDistributorCap, arg2: sui::coin::Coin<T0>, arg3: &sui::clock::Clock) {
         distribution::reward_distributor_cap::validate(arg1, sui::object::id<RewardDistributor<T0>>(arg0));
         sui::balance::join<T0>(&mut arg0.balance, sui::coin::into_balance<T0>(arg2));
         checkpoint_token_internal<T0>(arg0, distribution::common::current_timestamp(arg3));

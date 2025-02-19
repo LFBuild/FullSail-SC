@@ -1,6 +1,5 @@
 module distribution::fullsail_token {
     public struct FULLSAIL_TOKEN has drop {
-        dummy_field: bool,
     }
     
     public struct MinterCap<phantom T0> has store, key {

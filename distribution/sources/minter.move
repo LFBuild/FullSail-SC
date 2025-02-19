@@ -4,7 +4,6 @@ module distribution::minter {
     }
     
     public struct MINTER has drop {
-        dummy_field: bool,
     }
     
     public struct EventUpdateEpoch has copy, drop, store {
@@ -19,12 +18,6 @@ module distribution::minter {
     
     public struct EventUnpauseEmission has copy, drop, store {
         dummy_field: bool,
-    }
-    
-    public struct EventNudge has copy, drop, store {
-        period: u64,
-        old_rate: u64,
-        new_rate: u64,
     }
     
     public struct EventGrantAdmin has copy, drop, store {
@@ -112,7 +105,7 @@ module distribution::minter {
         assert!(!sui::vec_set::contains<sui::object::ID>(&arg0.revoked_admins, &v0), 9223372809948889087);
     }
     
-    public fun create<T0>(arg0: &sui::package::Publisher, arg1: std::option::Option<distribution::fullsail_token::MinterCap<T0>>, arg2: &mut sui::tx_context::TxContext) : (Minter<T0>, AdminCap) {
+    public fun create<T0>(_arg0: &sui::package::Publisher, arg1: std::option::Option<distribution::fullsail_token::MinterCap<T0>>, arg2: &mut sui::tx_context::TxContext) : (Minter<T0>, AdminCap) {
         let v0 = Minter<T0>{
             id                     : sui::object::new(arg2), 
             revoked_admins         : sui::vec_set::empty<sui::object::ID>(), 
@@ -148,7 +141,7 @@ module distribution::minter {
         arg0.epoch_emissions
     }
     
-    public fun grant_admin(arg0: &sui::package::Publisher, arg1: address, arg2: &mut sui::tx_context::TxContext) {
+    public fun grant_admin(_arg0: &sui::package::Publisher, arg1: address, arg2: &mut sui::tx_context::TxContext) {
         let v0 = AdminCap{id: sui::object::new(arg2)};
         let v1 = EventGrantAdmin{
             who       : arg1, 
@@ -189,7 +182,7 @@ module distribution::minter {
         sui::event::emit<EventPauseEmission>(v0);
     }
     
-    public fun revoke_admin<T0>(arg0: &mut Minter<T0>, arg1: &sui::package::Publisher, arg2: sui::object::ID) {
+    public fun revoke_admin<T0>(arg0: &mut Minter<T0>, _arg1: &sui::package::Publisher, arg2: sui::object::ID) {
         sui::vec_set::insert<sui::object::ID>(&mut arg0.revoked_admins, arg2);
     }
     
@@ -240,11 +233,11 @@ module distribution::minter {
         if (arg0.team_emission_rate > 0 && arg0.team_wallet != @0x0) {
             sui::transfer::public_transfer<sui::coin::Coin<T0>>(distribution::fullsail_token::mint<T0>(std::option::borrow_mut<distribution::fullsail_token::MinterCap<T0>>(&mut arg0.minter_cap), integer_mate::full_math_u64::mul_div_floor(arg0.team_emission_rate, v2 + v0, 10000 - arg0.team_emission_rate), v3, arg5), arg0.team_wallet);
         };
-        distribution::reward_distributor::checkpoint_token<T0>(arg3, std::option::borrow<distribution::reward_distributor_cap::RewardDistributorCap>(&arg0.reward_distributor_cap), distribution::fullsail_token::mint<T0>(std::option::borrow_mut<distribution::fullsail_token::MinterCap<T0>>(&mut arg0.minter_cap), v2, v3, arg5), arg4, arg5);
+        distribution::reward_distributor::checkpoint_token<T0>(arg3, std::option::borrow<distribution::reward_distributor_cap::RewardDistributorCap>(&arg0.reward_distributor_cap), distribution::fullsail_token::mint<T0>(std::option::borrow_mut<distribution::fullsail_token::MinterCap<T0>>(&mut arg0.minter_cap), v2, v3, arg5), arg4);
         let id_address = sui::object::id_address<Minter<T0>>(arg0);
         let minter_cap = std::option::borrow_mut<distribution::fullsail_token::MinterCap<T0>>(&mut arg0.minter_cap);
         let notify_reward_cap = std::option::borrow<distribution::notify_reward_cap::NotifyRewardCap>(&arg0.notify_reward_cap);
-        distribution::voter::notify_rewards<T0>(arg1, notify_reward_cap, distribution::fullsail_token::mint<T0>(minter_cap, v0, id_address, arg5), arg5);
+        distribution::voter::notify_rewards<T0>(arg1, notify_reward_cap, distribution::fullsail_token::mint<T0>(minter_cap, v0, id_address, arg5));
         arg0.active_period = distribution::common::current_period(arg4);
         arg0.epoch_count = arg0.epoch_count + 1;
         arg0.epoch_emissions = v1;

@@ -1,6 +1,5 @@
 module distribution::gauge {
     public struct TRANSFORMER has drop {
-        dummy_field: bool,
     }
     
     public struct AdminCap has store, key {
@@ -86,7 +85,7 @@ module distribution::gauge {
         assert!(&v0 == std::option::borrow<sui::object::ID>(&arg0.voter), 9223373656058429456);
     }
     
-    public fun claim_fees<T0, T1, T2>(arg0: &mut Gauge<T0, T1, T2>, arg1: &distribution::notify_reward_cap::NotifyRewardCap, arg2: &mut clmm_pool::pool::Pool<T0, T1>) : (sui::balance::Balance<T0>, sui::balance::Balance<T1>) {
+    public fun claim_fees<T0, T1, T2>(arg0: &mut Gauge<T0, T1, T2>, _arg1: &distribution::notify_reward_cap::NotifyRewardCap, arg2: &mut clmm_pool::pool::Pool<T0, T1>) : (sui::balance::Balance<T0>, sui::balance::Balance<T1>) {
         claim_fees_internal<T0, T1, T2>(arg0, arg2)
     }
     
@@ -308,7 +307,7 @@ module distribution::gauge {
         assert!(v0 > 0, 9223373716188102674);
         sui::balance::join<T2>(&mut arg0.reserves_balance, arg3);
         let (v1, v2) = claim_fees_internal<T0, T1, T2>(arg0, arg2);
-        notify_reward_amount_internal<T0, T1, T2>(arg0, arg2, v0, arg4, arg5);
+        notify_reward_amount_internal<T0, T1, T2>(arg0, arg2, v0, arg4);
         let v3 = EventNotifyReward{
             sender : sui::object::id_from_address(sui::tx_context::sender(arg5)), 
             amount : v0,
@@ -317,7 +316,7 @@ module distribution::gauge {
         (v1, v2)
     }
     
-    fun notify_reward_amount_internal<T0, T1, T2>(arg0: &mut Gauge<T0, T1, T2>, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: u64, arg3: &sui::clock::Clock, arg4: &mut sui::tx_context::TxContext) {
+    fun notify_reward_amount_internal<T0, T1, T2>(arg0: &mut Gauge<T0, T1, T2>, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: u64, arg3: &sui::clock::Clock) {
         let v0 = sui::clock::timestamp_ms(arg3) / 1000;
         let v1 = clmm_pool::config::epoch_next(v0) - v0;
         clmm_pool::pool::update_magma_distribution_growth_global<T0, T1>(arg1, std::option::borrow<gauge_cap::gauge_cap::GaugeCap>(&arg0.gauge_cap), arg3);
@@ -347,7 +346,7 @@ module distribution::gauge {
         let v0 = sui::balance::value<T2>(&arg3);
         assert!(v0 > 0, 9223373819267317778);
         sui::balance::join<T2>(&mut arg0.reserves_balance, arg3);
-        notify_reward_amount_internal<T0, T1, T2>(arg0, arg2, v0, arg4, arg5);
+        notify_reward_amount_internal<T0, T1, T2>(arg0, arg2, v0, arg4);
         let v1 = EventNotifyReward{
             sender : sui::object::id_from_address(sui::tx_context::sender(arg5)), 
             amount : v0,
@@ -376,7 +375,7 @@ module distribution::gauge {
         *sui::table::borrow<u64, u128>(&arg0.reward_rate_by_epoch, arg1)
     }
     
-    public(package) fun set_voter<T0, T1, T2>(arg0: &mut Gauge<T0, T1, T2>, arg1: sui::object::ID, arg2: &mut sui::tx_context::TxContext) {
+    public(package) fun set_voter<T0, T1, T2>(arg0: &mut Gauge<T0, T1, T2>, arg1: sui::object::ID) {
         std::option::fill<sui::object::ID>(&mut arg0.voter, arg1);
         let v0 = EventGaugeSetVoter{
             id       : sui::object::id<Gauge<T0, T1, T2>>(arg0), 
