@@ -1,35 +1,35 @@
 module fullsail_config::config {
-    struct AdminCap has store, key {
+    public struct AdminCap has store, key {
         id: sui::object::UID,
     }
     
-    struct GlobalConfig has store, key {
+    public struct GlobalConfig has store, key {
         id: sui::object::UID,
         acl: fullsail_config::acl::ACL,
         package_version: u64,
     }
     
-    struct InitConfigEvent has copy, drop {
+    public struct InitConfigEvent has copy, drop {
         admin_cap_id: sui::object::ID,
         global_config_id: sui::object::ID,
     }
     
-    struct SetRolesEvent has copy, drop {
+    public struct SetRolesEvent has copy, drop {
         member: address,
         roles: u128,
     }
     
-    struct AddRoleEvent has copy, drop {
+    public struct AddRoleEvent has copy, drop {
         member: address,
         role: u8,
     }
     
-    struct RemoveRoleEvent has copy, drop {
+    public struct RemoveRoleEvent has copy, drop {
         member: address,
         role: u8,
     }
     
-    struct RemoveMemberEvent has copy, drop {
+    public struct RemoveMemberEvent has copy, drop {
         member: address,
     }
     
@@ -93,7 +93,7 @@ module fullsail_config::config {
             package_version : 1,
         };
         let v1 = AdminCap{id: sui::object::new(arg0)};
-        let v2 = v0;
+        let mut v2 = v0;
         let v3 = sui::tx_context::sender(arg0);
         set_roles(&v1, &mut v2, v3, 0 | 1 << 0 | 1 << 1 | 1 << 2);
         sui::transfer::transfer<AdminCap>(v1, v3);

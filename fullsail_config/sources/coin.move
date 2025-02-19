@@ -1,10 +1,10 @@
 module fullsail_config::coin {
-    struct CoinList has store, key {
+    public struct CoinList has store, key {
         id: sui::object::UID,
         coins: sui::table::Table<std::type_name::TypeName, Coin>,
     }
     
-    struct Coin has copy, drop, store {
+    public struct Coin has copy, drop, store {
         name: std::string::String,
         symbol: std::string::String,
         coingecko_id: std::string::String,
@@ -16,60 +16,60 @@ module fullsail_config::coin {
         extension_fields: sui::vec_map::VecMap<std::string::String, std::string::String>,
     }
     
-    struct InitCoinListEvent has copy, drop, store {
+    public struct InitCoinListEvent has copy, drop, store {
         coin_list_id: sui::object::ID,
     }
     
-    struct AddCoinEvent has copy, drop, store {
+    public struct AddCoinEvent has copy, drop, store {
         coin_type: std::string::String,
     }
     
-    struct UpdateCoinEvent has copy, drop, store {
+    public struct UpdateCoinEvent has copy, drop, store {
         coin_type: std::string::String,
     }
     
-    struct RemoveCoinEvent has copy, drop, store {
+    public struct RemoveCoinEvent has copy, drop, store {
         coin_type: std::string::String,
     }
     
-    struct UpdateCoinNameEvent has copy, drop, store {
+    public struct UpdateCoinNameEvent has copy, drop, store {
         coin_type: std::string::String,
         old_coin_name: std::string::String,
         new_coin_name: std::string::String,
     }
     
-    struct UpdateCoinSymbolEvent has copy, drop, store {
+    public struct UpdateCoinSymbolEvent has copy, drop, store {
         coin_type: std::string::String,
         old_coin_symbol: std::string::String,
         new_coin_symbol: std::string::String,
     }
     
-    struct UpdateCoingeckoIDEvent has copy, drop, store {
+    public struct UpdateCoingeckoIDEvent has copy, drop, store {
         coin_type: std::string::String,
         old_coingecko_id: std::string::String,
         new_coingecko_id: std::string::String,
     }
     
-    struct UpdatePythIDEvent has copy, drop, store {
+    public struct UpdatePythIDEvent has copy, drop, store {
         coin_type: std::string::String,
         old_pyth_id: std::string::String,
         new_pyth_id: std::string::String,
     }
     
-    struct AddExtensionToCoinEvent has copy, drop, store {
+    public struct AddExtensionToCoinEvent has copy, drop, store {
         coin_type: std::string::String,
         key: std::string::String,
         value: std::string::String,
     }
     
-    struct UpdateExtensionFromCoinEvent has copy, drop, store {
+    public struct UpdateExtensionFromCoinEvent has copy, drop, store {
         coin_type: std::string::String,
         key: std::string::String,
         old_value: std::string::String,
         new_value: std::string::String,
     }
     
-    struct RemoveExtensionFromCoinEvent has copy, drop, store {
+    public struct RemoveExtensionFromCoinEvent has copy, drop, store {
         coin_type: std::string::String,
         key: std::string::String,
     }

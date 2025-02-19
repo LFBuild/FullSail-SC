@@ -1,10 +1,10 @@
 module fullsail_config::clmm_pool {
-    struct ClmmPools has store, key {
+    public struct ClmmPools has store, key {
         id: sui::object::UID,
         pools: sui::table::Table<address, Pool>,
     }
     
-    struct Pool has drop, store {
+    public struct Pool has drop, store {
         pool_address: address,
         pool_type: std::string::String,
         project_url: std::string::String,
@@ -16,55 +16,55 @@ module fullsail_config::clmm_pool {
         extension_fields: sui::vec_map::VecMap<std::string::String, std::string::String>,
     }
     
-    struct InitClmmPoolsEvent has copy, drop, store {
+    public struct InitClmmPoolsEvent has copy, drop, store {
         pools_id: sui::object::ID,
     }
     
-    struct AddPoolEvent has copy, drop, store {
+    public struct AddPoolEvent has copy, drop, store {
         pool_address: address,
     }
     
-    struct UpdatePoolEvent has copy, drop, store {
+    public struct UpdatePoolEvent has copy, drop, store {
         pool_address: address,
     }
     
-    struct RemovePoolEvent has copy, drop, store {
+    public struct RemovePoolEvent has copy, drop, store {
         pool_address: address,
     }
     
-    struct ClosePoolEvent has copy, drop, store {
+    public struct ClosePoolEvent has copy, drop, store {
         pool_address: address,
     }
     
-    struct OpenPoolEvent has copy, drop, store {
+    public struct OpenPoolEvent has copy, drop, store {
         pool_address: address,
     }
     
-    struct UpdatePoolTypeEvent has copy, drop, store {
+    public struct UpdatePoolTypeEvent has copy, drop, store {
         pool_address: address,
         old_pool_type: std::string::String,
         new_pool_type: std::string::String,
     }
     
-    struct AddExtensionToPoolEvent has copy, drop, store {
+    public struct AddExtensionToPoolEvent has copy, drop, store {
         pool_address: address,
         key: std::string::String,
         value: std::string::String,
     }
     
-    struct UpdateExtensionFromPoolEvent has copy, drop, store {
+    public struct UpdateExtensionFromPoolEvent has copy, drop, store {
         pool_address: address,
         key: std::string::String,
         old_value: std::string::String,
         new_value: std::string::String,
     }
     
-    struct RemoveExtensionFromPoolEvent has copy, drop, store {
+    public struct RemoveExtensionFromPoolEvent has copy, drop, store {
         pool_address: address,
         key: std::string::String,
     }
     
-    struct UpdatePoolRewarderDisplayEvent has copy, drop, store {
+    public struct UpdatePoolRewarderDisplayEvent has copy, drop, store {
         pool_address: address,
         rewarder_index: u64,
         is_show_rewarder: bool,

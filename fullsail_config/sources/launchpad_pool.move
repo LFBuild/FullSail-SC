@@ -1,15 +1,15 @@
 module fullsail_config::launchpad_pool {
-    struct LaunchpadPools has store, key {
+    public struct LaunchpadPools has store, key {
         id: sui::object::UID,
         pools: sui::table::Table<address, Pool>,
     }
     
-    struct MediaInfo has drop, store {
+    public struct MediaInfo has drop, store {
         name: std::string::String,
         link: std::string::String,
     }
     
-    struct Pool has drop, store {
+    public struct Pool has drop, store {
         pool_address: address,
         is_closed: bool,
         show_settle: bool,
@@ -28,63 +28,63 @@ module fullsail_config::launchpad_pool {
         extension_fields: sui::vec_map::VecMap<std::string::String, std::string::String>,
     }
     
-    struct InitLaunchpadPoolsEvent has copy, drop, store {
+    public struct InitLaunchpadPoolsEvent has copy, drop, store {
         launchpad_pools_id: sui::object::ID,
     }
     
-    struct AddPoolEvent has copy, drop, store {
+    public struct AddPoolEvent has copy, drop, store {
         pool_address: address,
     }
     
-    struct UpdatePoolEvent has copy, drop, store {
+    public struct UpdatePoolEvent has copy, drop, store {
         pool_address: address,
     }
     
-    struct RemovePoolEvent has copy, drop, store {
+    public struct RemovePoolEvent has copy, drop, store {
         pool_address: address,
     }
     
-    struct AddMediaToPoolEvent has copy, drop, store {
+    public struct AddMediaToPoolEvent has copy, drop, store {
         pool_address: address,
         name: std::string::String,
         link: std::string::String,
     }
     
-    struct RemoveMediaFromPoolEvent has copy, drop, store {
+    public struct RemoveMediaFromPoolEvent has copy, drop, store {
         pool_address: address,
         name: std::string::String,
     }
     
-    struct ClosePoolEvent has copy, drop, store {
+    public struct ClosePoolEvent has copy, drop, store {
         pool_address: address,
     }
     
-    struct OpenPoolEvent has copy, drop, store {
+    public struct OpenPoolEvent has copy, drop, store {
         pool_address: address,
     }
     
-    struct OpenSettleEvent has copy, drop, store {
+    public struct OpenSettleEvent has copy, drop, store {
         pool_address: address,
     }
     
-    struct CloseSettleEvent has copy, drop, store {
+    public struct CloseSettleEvent has copy, drop, store {
         pool_address: address,
     }
     
-    struct AddExtensionToPoolEvent has copy, drop, store {
+    public struct AddExtensionToPoolEvent has copy, drop, store {
         pool_address: address,
         key: std::string::String,
         value: std::string::String,
     }
     
-    struct UpdateExtensionFromPoolEvent has copy, drop, store {
+    public struct UpdateExtensionFromPoolEvent has copy, drop, store {
         pool_address: address,
         key: std::string::String,
         old_value: std::string::String,
         new_value: std::string::String,
     }
     
-    struct RemoveExtensionFromPoolEvent has copy, drop, store {
+    public struct RemoveExtensionFromPoolEvent has copy, drop, store {
         pool_address: address,
         key: std::string::String,
     }

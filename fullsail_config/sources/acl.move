@@ -1,5 +1,5 @@
 module fullsail_config::acl {
-    struct ACL has store {
+    public struct ACL has store {
         permissions: sui::vec_map::VecMap<address, u128>,
     }
     
