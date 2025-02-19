@@ -162,7 +162,8 @@ module integrate::router {
         if (arg5) {
             let (v2, v3) = swap<T0, T1>(arg0, arg1, arg3, sui::coin::zero<T1>(arg11), true, true, arg6, arg8, false, arg10, arg11);
             let v4 = v3;
-            let (v5, v6) = swap<T1, T2>(arg0, arg2, v4, arg4, true, true, sui::coin::value<T1>(&v4), arg9, false, arg10, arg11);
+            let amount = sui::coin::value<T1>(&v4);
+            let (v5, v6) = swap<T1, T2>(arg0, arg2, v4, arg4, true, true, amount, arg9, false, arg10, arg11);
             let v7 = v5;
             assert!(sui::coin::value<T1>(&v7) == 0, 5);
             sui::coin::destroy_zero<T1>(v7);
@@ -181,7 +182,8 @@ module integrate::router {
         if (arg5) {
             let (v2, v3) = swap<T0, T1>(arg0, arg1, arg3, sui::coin::zero<T1>(arg11), true, arg5, arg6, arg8, false, arg10, arg11);
             let v4 = v3;
-            let (v5, v6) = swap<T2, T1>(arg0, arg2, arg4, v4, false, true, sui::coin::value<T1>(&v4), arg9, false, arg10, arg11);
+            let amount = sui::coin::value<T1>(&v4);
+            let (v5, v6) = swap<T2, T1>(arg0, arg2, arg4, v4, false, true, amount, arg9, false, arg10, arg11);
             let v7 = v6;
             assert!(sui::coin::value<T1>(&v7) == 0, 5);
             sui::coin::destroy_zero<T1>(v7);
@@ -200,7 +202,8 @@ module integrate::router {
         if (arg5) {
             let (v2, v3) = swap<T1, T0>(arg0, arg1, sui::coin::zero<T1>(arg11), arg3, false, arg5, arg6, arg8, false, arg10, arg11);
             let v4 = v2;
-            let (v5, v6) = swap<T1, T2>(arg0, arg2, v4, arg4, true, true, sui::coin::value<T1>(&v4), arg9, false, arg10, arg11);
+            let amount = sui::coin::value<T1>(&v4);
+            let (v5, v6) = swap<T1, T2>(arg0, arg2, v4, arg4, true, true, amount, arg9, false, arg10, arg11);
             let v7 = v5;
             assert!(sui::coin::value<T1>(&v7) == 0, 5);
             sui::coin::destroy_zero<T1>(v7);
@@ -219,7 +222,8 @@ module integrate::router {
         if (arg5) {
             let (v2, v3) = swap<T1, T0>(arg0, arg1, sui::coin::zero<T1>(arg11), arg3, false, true, arg6, arg8, false, arg10, arg11);
             let v4 = v2;
-            let (v5, v6) = swap<T2, T1>(arg0, arg2, arg4, v4, false, arg5, sui::coin::value<T1>(&v4), arg9, false, arg10, arg11);
+            let amount = sui::coin::value<T1>(&v4);
+            let (v5, v6) = swap<T2, T1>(arg0, arg2, arg4, v4, false, arg5, amount, arg9, false, arg10, arg11);
             let v7 = v6;
             assert!(sui::coin::value<T1>(&v7) == 0, 5);
             sui::coin::destroy_zero<T1>(v7);

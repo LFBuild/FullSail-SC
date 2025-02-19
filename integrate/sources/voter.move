@@ -183,7 +183,8 @@ module integrate::voter {
     }
     
     public entry fun notify_bribe_reward<T0, T1>(arg0: &mut distribution::voter::Voter<T0>, arg1: sui::object::ID, arg2: sui::coin::Coin<T1>, arg3: &sui::clock::Clock, arg4: &mut sui::tx_context::TxContext) {
-        distribution::bribe_voting_reward::notify_reward_amount<T1>(distribution::voter::borrow_bribe_voting_reward_mut<T0>(arg0, distribution::voter::pool_to_gauge<T0>(arg0, arg1)), std::option::none<distribution::whitelisted_tokens::WhitelistedToken>(), arg2, arg3, arg4);
+        let gauge = distribution::voter::pool_to_gauge<T0>(arg0, arg1);
+        distribution::bribe_voting_reward::notify_reward_amount<T1>(distribution::voter::borrow_bribe_voting_reward_mut<T0>(arg0, gauge), std::option::none<distribution::whitelisted_tokens::WhitelistedToken>(), arg2, arg3, arg4);
     }
     
     public entry fun pools_tally<T0>(arg0: &distribution::voter::Voter<T0>, arg1: vector<sui::object::ID>) {

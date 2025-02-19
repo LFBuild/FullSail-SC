@@ -23,7 +23,7 @@ gauge_cap = { local = "../gauge_cap" }
 # Override = { local = "../conflicting/version", override = true }
 
 [addresses]
-distribution = "0x0"
+distribution = "0x0105"
 
 # Named addresses will be accessible in Move as `@name`. They're also exported:
 # for example, `std = "0x1"` is exported by the Standard Library.

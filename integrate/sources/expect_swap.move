@@ -121,9 +121,9 @@ module integrate::expect_swap {
             let v4 = integer_mate::full_math_u64::mul_div_floor(arg3, clmm_pool::clmm_math::fee_rate_denominator() - arg4, clmm_pool::clmm_math::fee_rate_denominator());
             let v5 = clmm_pool::clmm_math::get_delta_up_from_input(arg0, arg1, arg2, arg5);
             let (v6, v7, v8) = if (v5 > (v4 as u256)) {
-                (v4 as u256, ((arg3 - v4) as u256), clmm_pool::clmm_math::get_next_sqrt_price_from_input(arg0, arg2, v4, arg5))
+                ((v4 as u256), ((arg3 - v4) as u256), clmm_pool::clmm_math::get_next_sqrt_price_from_input(arg0, arg2, v4, arg5))
             } else {
-                (v5, (integer_mate::full_math_u64::mul_div_ceil(v5 as u64, arg4, clmm_pool::clmm_math::fee_rate_denominator() - arg4) as u256), arg1)
+                (v5, (integer_mate::full_math_u64::mul_div_ceil((v5 as u64), arg4, clmm_pool::clmm_math::fee_rate_denominator() - arg4) as u256), arg1)
             };
             (v6, clmm_pool::clmm_math::get_delta_down_from_output(arg0, v8, arg2, arg5), v7, v8)
         } else {
@@ -134,7 +134,7 @@ module integrate::expect_swap {
                 (v9, arg1)
             };
             let v12 = clmm_pool::clmm_math::get_delta_up_from_input(arg0, v11, arg2, arg5);
-            (v12, v10, integer_mate::full_math_u128::mul_div_ceil(v12 as u128, arg4 as u128, (clmm_pool::clmm_math::fee_rate_denominator() - arg4) as u128) as u256, v11)
+            (v12, v10, (integer_mate::full_math_u128::mul_div_ceil((v12 as u128), (arg4 as u128), ((clmm_pool::clmm_math::fee_rate_denominator() - arg4) as u128)) as u256), v11)
         };
         (v0, v1, v3, v2)
     }

@@ -17,7 +17,9 @@ module integrate::pool_creator_v2 {
         let (v0, v1) = build_init_position_arg<T0, T1>(arg3, arg5, arg6, arg7, arg8, arg11, arg13);
         let v2 = v1;
         let v3 = v0;
-        let (v4, v5, v6) = clmm_pool::factory::create_pool_with_liquidity<T0, T1>(arg1, arg0, arg2, arg3, arg4, arg5, arg6, v3, v2, sui::coin::value<T0>(&v3), sui::coin::value<T1>(&v2), arg11, arg12, arg13);
+        let liquidity_coin_1 = sui::coin::value<T0>(&v3);
+        let liquidity_coin_2 = sui::coin::value<T1>(&v2);
+        let (v4, v5, v6) = clmm_pool::factory::create_pool_with_liquidity<T0, T1>(arg1, arg0, arg2, arg3, arg4, arg5, arg6, v3, v2, liquidity_coin_1, liquidity_coin_2, arg11, arg12, arg13);
         sui::coin::destroy_zero<T0>(v5);
         sui::coin::destroy_zero<T1>(v6);
         sui::transfer::public_transfer<clmm_pool::position::Position>(v4, sui::tx_context::sender(arg13));

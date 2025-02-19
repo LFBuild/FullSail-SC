@@ -3,7 +3,8 @@ module integrate::router_with_partner {
         if (arg6) {
             let (v2, v3) = swap_with_partner<T0, T1>(arg0, arg1, arg3, arg4, sui::coin::zero<T1>(arg12), true, true, arg7, arg9, false, arg11, arg12);
             let v4 = v3;
-            let (v5, v6) = swap_with_partner<T1, T2>(arg0, arg2, arg3, v4, arg5, true, true, sui::coin::value<T1>(&v4), arg10, false, arg11, arg12);
+            let amount = sui::coin::value<T1>(&v4);
+            let (v5, v6) = swap_with_partner<T1, T2>(arg0, arg2, arg3, v4, arg5, true, true, amount, arg10, false, arg11, arg12);
             let v7 = v5;
             assert!(sui::coin::value<T1>(&v7) == 0, 5);
             sui::coin::destroy_zero<T1>(v7);
@@ -22,7 +23,8 @@ module integrate::router_with_partner {
         if (arg6) {
             let (v2, v3) = swap_with_partner<T0, T1>(arg0, arg1, arg3, arg4, sui::coin::zero<T1>(arg12), true, arg6, arg7, arg9, false, arg11, arg12);
             let v4 = v3;
-            let (v5, v6) = swap_with_partner<T2, T1>(arg0, arg2, arg3, arg5, v4, false, true, sui::coin::value<T1>(&v4), arg10, false, arg11, arg12);
+            let amount = sui::coin::value<T1>(&v4);
+            let (v5, v6) = swap_with_partner<T2, T1>(arg0, arg2, arg3, arg5, v4, false, true, amount, arg10, false, arg11, arg12);
             let v7 = v6;
             assert!(sui::coin::value<T1>(&v7) == 0, 5);
             sui::coin::destroy_zero<T1>(v7);
@@ -41,7 +43,8 @@ module integrate::router_with_partner {
         if (arg6) {
             let (v2, v3) = swap_with_partner<T1, T0>(arg0, arg1, arg3, sui::coin::zero<T1>(arg12), arg4, false, arg6, arg7, arg9, false, arg11, arg12);
             let v4 = v2;
-            let (v5, v6) = swap_with_partner<T1, T2>(arg0, arg2, arg3, v4, arg5, true, true, sui::coin::value<T1>(&v4), arg10, false, arg11, arg12);
+            let amount = sui::coin::value<T1>(&v4);
+            let (v5, v6) = swap_with_partner<T1, T2>(arg0, arg2, arg3, v4, arg5, true, true, amount, arg10, false, arg11, arg12);
             let v7 = v5;
             assert!(sui::coin::value<T1>(&v7) == 0, 5);
             sui::coin::destroy_zero<T1>(v7);
@@ -60,7 +63,8 @@ module integrate::router_with_partner {
         if (arg6) {
             let (v2, v3) = swap_with_partner<T1, T0>(arg0, arg1, arg3, sui::coin::zero<T1>(arg12), arg4, false, true, arg7, arg9, false, arg11, arg12);
             let v4 = v2;
-            let (v5, v6) = swap_with_partner<T2, T1>(arg0, arg2, arg3, arg5, v4, false, arg6, sui::coin::value<T1>(&v4), arg10, false, arg11, arg12);
+            let amount = sui::coin::value<T1>(&v4);
+            let (v5, v6) = swap_with_partner<T2, T1>(arg0, arg2, arg3, arg5, v4, false, arg6, amount, arg10, false, arg11, arg12);
             let v7 = v6;
             assert!(sui::coin::value<T1>(&v7) == 0, 5);
             sui::coin::destroy_zero<T1>(v7);
