@@ -1,14 +1,15 @@
 [package]
 name = "integrate"
 edition = "2024"
+published-at = "0xde76b5100c777b0ef6154eb7485f2270ec390b2f7cd3786469e5772a9eb90b5a"
 # license = ""           # e.g., "MIT", "GPL", "Apache 2.0"
 # authors = ["..."]      # e.g., ["Joe Smith (joesmith@noemail.com)", "John Snow (johnsnow@noemail.com)"]
 
 [dependencies]
 Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet", override = true }
+move_stl = { local = "../move_stl" }
 clmm_pool = { local = "../clmm_pool" }
 distribution = { local = "../distribution" }
-move_stl = { local = "../move_stl" }
 integer_mate = { local = "../integer_mate" }
 gauge_cap = { local = "../gauge_cap" }
 
