@@ -1,5 +1,5 @@
 module integrate::voting_escrow {
-    struct Summary has copy, drop, store {
+    public struct Summary has copy, drop, store {
         total_locked: u64,
         total_voting_power: u64,
         total_voted_power: u64,
@@ -9,7 +9,7 @@ module integrate::voting_escrow {
         team_emission_rate: u64,
     }
     
-    struct LockSummary has copy, drop, store {
+    public struct LockSummary has copy, drop, store {
         voting_power: u64,
         reward_distributor_claimable: u64,
         fee_incentive_total: u64,
@@ -48,7 +48,7 @@ module integrate::voting_escrow {
     }
     
     public entry fun create_lock_single_coin<T0>(arg0: &mut distribution::voting_escrow::VotingEscrow<T0>, arg1: sui::coin::Coin<T0>, arg2: u64, arg3: bool, arg4: &sui::clock::Clock, arg5: &mut sui::tx_context::TxContext) {
-        let v0 = std::vector::empty<sui::coin::Coin<T0>>();
+        let mut v0 = std::vector::empty<sui::coin::Coin<T0>>();
         std::vector::push_back<sui::coin::Coin<T0>>(&mut v0, arg1);
         create_lock<T0>(arg0, v0, arg2, arg3, arg4, arg5);
     }
@@ -62,9 +62,9 @@ module integrate::voting_escrow {
     }
     
     fun lock_summary_internal<T0>(arg0: &distribution::voter::Voter<T0>, arg1: &distribution::voting_escrow::VotingEscrow<T0>, arg2: &distribution::reward_distributor::RewardDistributor<T0>, arg3: sui::object::ID, arg4: &sui::clock::Clock) : LockSummary {
-        let v0 = 0;
+        let mut v0 = 0;
         let v1 = distribution::voter::voted_pools<T0>(arg0, arg3);
-        let v2 = 0;
+        let mut v2 = 0;
         while (v2 < std::vector::length<sui::object::ID>(&v1)) {
             let v3 = distribution::voter::pool_to_gauge<T0>(arg0, *std::vector::borrow<sui::object::ID>(&v1, v2));
             let v4 = v0 + distribution::fee_voting_reward::earned<T0>(distribution::voter::borrow_fee_voting_reward<T0>(arg0, v3), arg3, arg4);

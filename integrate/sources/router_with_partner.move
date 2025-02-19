@@ -1,5 +1,5 @@
 module integrate::router_with_partner {
-    public fun swap_ab_bc_with_partner<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: &mut clmm_pool::pool::Pool<T1, T2>, arg3: &mut clmm_pool::partner::Partner, arg4: sui::coin::Coin<T0>, arg5: sui::coin::Coin<T2>, arg6: bool, arg7: u64, arg8: u64, arg9: u128, arg10: u128, arg11: &sui::clock::Clock, arg12: &mut sui::tx_context::TxContext) : (sui::coin::Coin<T0>, sui::coin::Coin<T2>) {
+    public fun swap_ab_bc_with_partner<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: &mut clmm_pool::pool::Pool<T1, T2>, arg3: &mut clmm_pool::partner::Partner, arg4: sui::coin::Coin<T0>, mut arg5: sui::coin::Coin<T2>, arg6: bool, arg7: u64, arg8: u64, arg9: u128, arg10: u128, arg11: &sui::clock::Clock, arg12: &mut sui::tx_context::TxContext) : (sui::coin::Coin<T0>, sui::coin::Coin<T2>) {
         if (arg6) {
             let (v2, v3) = swap_with_partner<T0, T1>(arg0, arg1, arg3, arg4, sui::coin::zero<T1>(arg12), true, true, arg7, arg9, false, arg11, arg12);
             let v4 = v3;
@@ -19,7 +19,7 @@ module integrate::router_with_partner {
         }
     }
     
-    public fun swap_ab_cb_with_partner<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: &mut clmm_pool::pool::Pool<T2, T1>, arg3: &mut clmm_pool::partner::Partner, arg4: sui::coin::Coin<T0>, arg5: sui::coin::Coin<T2>, arg6: bool, arg7: u64, arg8: u64, arg9: u128, arg10: u128, arg11: &sui::clock::Clock, arg12: &mut sui::tx_context::TxContext) : (sui::coin::Coin<T0>, sui::coin::Coin<T2>) {
+    public fun swap_ab_cb_with_partner<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: &mut clmm_pool::pool::Pool<T2, T1>, arg3: &mut clmm_pool::partner::Partner, arg4: sui::coin::Coin<T0>, mut arg5: sui::coin::Coin<T2>, arg6: bool, arg7: u64, arg8: u64, arg9: u128, arg10: u128, arg11: &sui::clock::Clock, arg12: &mut sui::tx_context::TxContext) : (sui::coin::Coin<T0>, sui::coin::Coin<T2>) {
         if (arg6) {
             let (v2, v3) = swap_with_partner<T0, T1>(arg0, arg1, arg3, arg4, sui::coin::zero<T1>(arg12), true, arg6, arg7, arg9, false, arg11, arg12);
             let v4 = v3;
@@ -39,7 +39,7 @@ module integrate::router_with_partner {
         }
     }
     
-    public fun swap_ba_bc_with_partner<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T1, T0>, arg2: &mut clmm_pool::pool::Pool<T1, T2>, arg3: &mut clmm_pool::partner::Partner, arg4: sui::coin::Coin<T0>, arg5: sui::coin::Coin<T2>, arg6: bool, arg7: u64, arg8: u64, arg9: u128, arg10: u128, arg11: &sui::clock::Clock, arg12: &mut sui::tx_context::TxContext) : (sui::coin::Coin<T0>, sui::coin::Coin<T2>) {
+    public fun swap_ba_bc_with_partner<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T1, T0>, arg2: &mut clmm_pool::pool::Pool<T1, T2>, arg3: &mut clmm_pool::partner::Partner, arg4: sui::coin::Coin<T0>, mut arg5: sui::coin::Coin<T2>, arg6: bool, arg7: u64, arg8: u64, arg9: u128, arg10: u128, arg11: &sui::clock::Clock, arg12: &mut sui::tx_context::TxContext) : (sui::coin::Coin<T0>, sui::coin::Coin<T2>) {
         if (arg6) {
             let (v2, v3) = swap_with_partner<T1, T0>(arg0, arg1, arg3, sui::coin::zero<T1>(arg12), arg4, false, arg6, arg7, arg9, false, arg11, arg12);
             let v4 = v2;
@@ -59,7 +59,7 @@ module integrate::router_with_partner {
         }
     }
     
-    public fun swap_ba_cb_with_partner<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T1, T0>, arg2: &mut clmm_pool::pool::Pool<T2, T1>, arg3: &mut clmm_pool::partner::Partner, arg4: sui::coin::Coin<T0>, arg5: sui::coin::Coin<T2>, arg6: bool, arg7: u64, arg8: u64, arg9: u128, arg10: u128, arg11: &sui::clock::Clock, arg12: &mut sui::tx_context::TxContext) : (sui::coin::Coin<T0>, sui::coin::Coin<T2>) {
+    public fun swap_ba_cb_with_partner<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T1, T0>, arg2: &mut clmm_pool::pool::Pool<T2, T1>, arg3: &mut clmm_pool::partner::Partner, arg4: sui::coin::Coin<T0>, mut arg5: sui::coin::Coin<T2>, arg6: bool, arg7: u64, arg8: u64, arg9: u128, arg10: u128, arg11: &sui::clock::Clock, arg12: &mut sui::tx_context::TxContext) : (sui::coin::Coin<T0>, sui::coin::Coin<T2>) {
         if (arg6) {
             let (v2, v3) = swap_with_partner<T1, T0>(arg0, arg1, arg3, sui::coin::zero<T1>(arg12), arg4, false, true, arg7, arg9, false, arg11, arg12);
             let v4 = v2;
@@ -79,7 +79,7 @@ module integrate::router_with_partner {
         }
     }
     
-    public fun swap_with_partner<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: &mut clmm_pool::partner::Partner, arg3: sui::coin::Coin<T0>, arg4: sui::coin::Coin<T1>, arg5: bool, arg6: bool, arg7: u64, arg8: u128, arg9: bool, arg10: &sui::clock::Clock, arg11: &mut sui::tx_context::TxContext) : (sui::coin::Coin<T0>, sui::coin::Coin<T1>) {
+    public fun swap_with_partner<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: &mut clmm_pool::partner::Partner, mut arg3: sui::coin::Coin<T0>, mut arg4: sui::coin::Coin<T1>, arg5: bool, arg6: bool, mut arg7: u64, arg8: u128, arg9: bool, arg10: &sui::clock::Clock, arg11: &mut sui::tx_context::TxContext) : (sui::coin::Coin<T0>, sui::coin::Coin<T1>) {
         if (arg6 && arg9) {
             let v0 = if (arg5) {
                 sui::coin::value<T0>(&arg3)

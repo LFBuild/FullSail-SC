@@ -1,7 +1,7 @@
 module integrate::pool_script {
     fun swap<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: vector<sui::coin::Coin<T0>>, arg3: vector<sui::coin::Coin<T1>>, arg4: bool, arg5: bool, arg6: u64, arg7: u64, arg8: u128, arg9: &sui::clock::Clock, arg10: &mut sui::tx_context::TxContext) {
-        let v0 = integrate::utils::merge_coins<T1>(arg3, arg10);
-        let v1 = integrate::utils::merge_coins<T0>(arg2, arg10);
+        let mut v0 = integrate::utils::merge_coins<T1>(arg3, arg10);
+        let mut v1 = integrate::utils::merge_coins<T0>(arg2, arg10);
         let (v2, v3, v4) = clmm_pool::pool::flash_swap<T0, T1>(arg0, arg1, arg4, arg5, arg6, arg8, arg9);
         let v5 = v4;
         let v6 = v3;
@@ -35,7 +35,7 @@ module integrate::pool_script {
         clmm_pool::factory::create_pool<T0, T1>(arg1, arg0, arg2, arg3, arg4, arg5, arg6);
     }
     
-    public entry fun close_position<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: clmm_pool::position::Position, arg3: u64, arg4: u64, arg5: &sui::clock::Clock, arg6: &mut sui::tx_context::TxContext) {
+    public entry fun close_position<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, mut arg2: clmm_pool::position::Position, arg3: u64, arg4: u64, arg5: &sui::clock::Clock, arg6: &mut sui::tx_context::TxContext) {
         let v0 = clmm_pool::position::liquidity(&arg2);
         if (v0 > 0) {
             remove_liquidity<T0, T1>(arg0, arg1, &mut arg2, v0, arg3, arg4, arg5, arg6);
@@ -69,8 +69,8 @@ module integrate::pool_script {
     
     public entry fun remove_liquidity<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: &mut clmm_pool::position::Position, arg3: u128, arg4: u64, arg5: u64, arg6: &sui::clock::Clock, arg7: &mut sui::tx_context::TxContext) {
         let (v0, v1) = clmm_pool::pool::remove_liquidity<T0, T1>(arg0, arg1, arg2, arg3, arg6);
-        let v2 = v1;
-        let v3 = v0;
+        let mut v2 = v1;
+        let mut v3 = v0;
         assert!(sui::balance::value<T0>(&v3) >= arg4, 1);
         assert!(sui::balance::value<T1>(&v2) >= arg5, 1);
         let (v4, v5) = clmm_pool::pool::collect_fee<T0, T1>(arg0, arg1, arg2, false);
@@ -81,8 +81,8 @@ module integrate::pool_script {
     }
     
     fun repay_add_liquidity<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: clmm_pool::pool::AddLiquidityReceipt<T0, T1>, arg3: vector<sui::coin::Coin<T0>>, arg4: vector<sui::coin::Coin<T1>>, arg5: u64, arg6: u64, arg7: &mut sui::tx_context::TxContext) {
-        let v0 = integrate::utils::merge_coins<T0>(arg3, arg7);
-        let v1 = integrate::utils::merge_coins<T1>(arg4, arg7);
+        let mut v0 = integrate::utils::merge_coins<T0>(arg3, arg7);
+        let mut v1 = integrate::utils::merge_coins<T1>(arg4, arg7);
         let (v2, v3) = clmm_pool::pool::add_liquidity_pay_amount<T0, T1>(&arg2);
         assert!(v2 <= arg5, 0);
         assert!(v3 <= arg6, 0);
@@ -160,21 +160,21 @@ module integrate::pool_script {
     }
     
     public entry fun open_position_with_liquidity_only_a<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: u32, arg3: u32, arg4: vector<sui::coin::Coin<T0>>, arg5: u64, arg6: &sui::clock::Clock, arg7: &mut sui::tx_context::TxContext) {
-        let v0 = clmm_pool::pool::open_position<T0, T1>(arg0, arg1, arg2, arg3, arg7);
+        let mut v0 = clmm_pool::pool::open_position<T0, T1>(arg0, arg1, arg2, arg3, arg7);
         let receipt = clmm_pool::pool::add_liquidity_fix_coin<T0, T1>(arg0, arg1, &mut v0, arg5, true, arg6);
         repay_add_liquidity<T0, T1>(arg0, arg1, receipt, arg4, std::vector::empty<sui::coin::Coin<T1>>(), arg5, 0, arg7);
         sui::transfer::public_transfer<clmm_pool::position::Position>(v0, sui::tx_context::sender(arg7));
     }
     
     public entry fun open_position_with_liquidity_only_b<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: u32, arg3: u32, arg4: vector<sui::coin::Coin<T1>>, arg5: u64, arg6: &sui::clock::Clock, arg7: &mut sui::tx_context::TxContext) {
-        let v0 = clmm_pool::pool::open_position<T0, T1>(arg0, arg1, arg2, arg3, arg7);
+        let mut v0 = clmm_pool::pool::open_position<T0, T1>(arg0, arg1, arg2, arg3, arg7);
         let receipt = clmm_pool::pool::add_liquidity_fix_coin<T0, T1>(arg0, arg1, &mut v0, arg5, false, arg6);
         repay_add_liquidity<T0, T1>(arg0, arg1, receipt, std::vector::empty<sui::coin::Coin<T0>>(), arg4, 0, arg5, arg7);
         sui::transfer::public_transfer<clmm_pool::position::Position>(v0, sui::tx_context::sender(arg7));
     }
     
     public entry fun open_position_with_liquidity_with_all<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: u32, arg3: u32, arg4: vector<sui::coin::Coin<T0>>, arg5: vector<sui::coin::Coin<T1>>, arg6: u64, arg7: u64, arg8: bool, arg9: &sui::clock::Clock, arg10: &mut sui::tx_context::TxContext) {
-        let v0 = clmm_pool::pool::open_position<T0, T1>(arg0, arg1, arg2, arg3, arg10);
+        let mut v0 = clmm_pool::pool::open_position<T0, T1>(arg0, arg1, arg2, arg3, arg10);
         let v1 = if (arg8) {
             arg6
         } else {
@@ -206,8 +206,8 @@ module integrate::pool_script {
     }
     
     fun swap_with_partner<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: &mut clmm_pool::partner::Partner, arg3: vector<sui::coin::Coin<T0>>, arg4: vector<sui::coin::Coin<T1>>, arg5: bool, arg6: bool, arg7: u64, arg8: u64, arg9: u128, arg10: &sui::clock::Clock, arg11: &mut sui::tx_context::TxContext) {
-        let v0 = integrate::utils::merge_coins<T0>(arg3, arg11);
-        let v1 = integrate::utils::merge_coins<T1>(arg4, arg11);
+        let mut v0 = integrate::utils::merge_coins<T0>(arg3, arg11);
+        let mut v1 = integrate::utils::merge_coins<T1>(arg4, arg11);
         let (v2, v3, v4) = clmm_pool::pool::flash_swap_with_partner<T0, T1>(arg0, arg1, arg2, arg5, arg6, arg7, arg9, arg10);
         let v5 = v4;
         let v6 = v3;

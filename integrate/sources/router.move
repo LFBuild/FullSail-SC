@@ -1,5 +1,5 @@
 module integrate::router {
-    struct CalculatedRouterSwapResult has copy, drop, store {
+    public struct CalculatedRouterSwapResult has copy, drop, store {
         amount_in: u64,
         amount_medium: u64,
         amount_out: u64,
@@ -10,11 +10,11 @@ module integrate::router {
         target_sqrt_price_cd: u128,
     }
     
-    struct CalculatedRouterSwapResultEvent has copy, drop, store {
+    public struct CalculatedRouterSwapResultEvent has copy, drop, store {
         data: CalculatedRouterSwapResult,
     }
     
-    public fun swap<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: sui::coin::Coin<T0>, arg3: sui::coin::Coin<T1>, arg4: bool, arg5: bool, arg6: u64, arg7: u128, arg8: bool, arg9: &sui::clock::Clock, arg10: &mut sui::tx_context::TxContext) : (sui::coin::Coin<T0>, sui::coin::Coin<T1>) {
+    public fun swap<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, mut arg2: sui::coin::Coin<T0>, mut arg3: sui::coin::Coin<T1>, arg4: bool, arg5: bool, mut arg6: u64, arg7: u128, arg8: bool, arg9: &sui::clock::Clock, arg10: &mut sui::tx_context::TxContext) : (sui::coin::Coin<T0>, sui::coin::Coin<T1>) {
         if (arg5 && arg8) {
             let v0 = if (arg4) {
                 sui::coin::value<T0>(&arg2)
@@ -158,7 +158,7 @@ module integrate::router {
         assert!(sui::coin::value<T0>(arg0) >= arg1, 4);
     }
     
-    public fun swap_ab_bc<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: &mut clmm_pool::pool::Pool<T1, T2>, arg3: sui::coin::Coin<T0>, arg4: sui::coin::Coin<T2>, arg5: bool, arg6: u64, arg7: u64, arg8: u128, arg9: u128, arg10: &sui::clock::Clock, arg11: &mut sui::tx_context::TxContext) : (sui::coin::Coin<T0>, sui::coin::Coin<T2>) {
+    public fun swap_ab_bc<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: &mut clmm_pool::pool::Pool<T1, T2>, arg3: sui::coin::Coin<T0>, mut arg4: sui::coin::Coin<T2>, arg5: bool, arg6: u64, arg7: u64, arg8: u128, arg9: u128, arg10: &sui::clock::Clock, arg11: &mut sui::tx_context::TxContext) : (sui::coin::Coin<T0>, sui::coin::Coin<T2>) {
         if (arg5) {
             let (v2, v3) = swap<T0, T1>(arg0, arg1, arg3, sui::coin::zero<T1>(arg11), true, true, arg6, arg8, false, arg10, arg11);
             let v4 = v3;
@@ -178,7 +178,7 @@ module integrate::router {
         }
     }
     
-    public fun swap_ab_cb<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: &mut clmm_pool::pool::Pool<T2, T1>, arg3: sui::coin::Coin<T0>, arg4: sui::coin::Coin<T2>, arg5: bool, arg6: u64, arg7: u64, arg8: u128, arg9: u128, arg10: &sui::clock::Clock, arg11: &mut sui::tx_context::TxContext) : (sui::coin::Coin<T0>, sui::coin::Coin<T2>) {
+    public fun swap_ab_cb<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: &mut clmm_pool::pool::Pool<T2, T1>, arg3: sui::coin::Coin<T0>, mut arg4: sui::coin::Coin<T2>, arg5: bool, arg6: u64, arg7: u64, arg8: u128, arg9: u128, arg10: &sui::clock::Clock, arg11: &mut sui::tx_context::TxContext) : (sui::coin::Coin<T0>, sui::coin::Coin<T2>) {
         if (arg5) {
             let (v2, v3) = swap<T0, T1>(arg0, arg1, arg3, sui::coin::zero<T1>(arg11), true, arg5, arg6, arg8, false, arg10, arg11);
             let v4 = v3;
@@ -198,7 +198,7 @@ module integrate::router {
         }
     }
     
-    public fun swap_ba_bc<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T1, T0>, arg2: &mut clmm_pool::pool::Pool<T1, T2>, arg3: sui::coin::Coin<T0>, arg4: sui::coin::Coin<T2>, arg5: bool, arg6: u64, arg7: u64, arg8: u128, arg9: u128, arg10: &sui::clock::Clock, arg11: &mut sui::tx_context::TxContext) : (sui::coin::Coin<T0>, sui::coin::Coin<T2>) {
+    public fun swap_ba_bc<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T1, T0>, arg2: &mut clmm_pool::pool::Pool<T1, T2>, arg3: sui::coin::Coin<T0>, mut arg4: sui::coin::Coin<T2>, arg5: bool, arg6: u64, arg7: u64, arg8: u128, arg9: u128, arg10: &sui::clock::Clock, arg11: &mut sui::tx_context::TxContext) : (sui::coin::Coin<T0>, sui::coin::Coin<T2>) {
         if (arg5) {
             let (v2, v3) = swap<T1, T0>(arg0, arg1, sui::coin::zero<T1>(arg11), arg3, false, arg5, arg6, arg8, false, arg10, arg11);
             let v4 = v2;
@@ -218,7 +218,7 @@ module integrate::router {
         }
     }
     
-    public fun swap_ba_cb<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T1, T0>, arg2: &mut clmm_pool::pool::Pool<T2, T1>, arg3: sui::coin::Coin<T0>, arg4: sui::coin::Coin<T2>, arg5: bool, arg6: u64, arg7: u64, arg8: u128, arg9: u128, arg10: &sui::clock::Clock, arg11: &mut sui::tx_context::TxContext) : (sui::coin::Coin<T0>, sui::coin::Coin<T2>) {
+    public fun swap_ba_cb<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T1, T0>, arg2: &mut clmm_pool::pool::Pool<T2, T1>, arg3: sui::coin::Coin<T0>, mut arg4: sui::coin::Coin<T2>, arg5: bool, arg6: u64, arg7: u64, arg8: u128, arg9: u128, arg10: &sui::clock::Clock, arg11: &mut sui::tx_context::TxContext) : (sui::coin::Coin<T0>, sui::coin::Coin<T2>) {
         if (arg5) {
             let (v2, v3) = swap<T1, T0>(arg0, arg1, sui::coin::zero<T1>(arg11), arg3, false, true, arg6, arg8, false, arg10, arg11);
             let v4 = v2;

@@ -1,37 +1,37 @@
 module integrate::fetcher_script {
-    struct FetchTicksResultEvent has copy, drop, store {
+    public struct FetchTicksResultEvent has copy, drop, store {
         ticks: vector<clmm_pool::tick::Tick>,
     }
     
-    struct CalculatedSwapResultEvent has copy, drop, store {
+    public struct CalculatedSwapResultEvent has copy, drop, store {
         data: clmm_pool::pool::CalculatedSwapResult,
     }
     
-    struct FetchPositionsEvent has copy, drop, store {
+    public struct FetchPositionsEvent has copy, drop, store {
         positions: vector<clmm_pool::position::PositionInfo>,
     }
     
-    struct FetchPoolsEvent has copy, drop, store {
+    public struct FetchPoolsEvent has copy, drop, store {
         pools: vector<clmm_pool::factory::PoolSimpleInfo>,
     }
     
-    struct FetchPositionRewardsEvent has copy, drop, store {
+    public struct FetchPositionRewardsEvent has copy, drop, store {
         data: vector<u64>,
         position_id: sui::object::ID,
     }
     
-    struct FetchPositionFeesEvent has copy, drop, store {
+    public struct FetchPositionFeesEvent has copy, drop, store {
         position_id: sui::object::ID,
         fee_owned_a: u64,
         fee_owned_b: u64,
     }
     
-    struct FetchPositionPointsEvent has copy, drop, store {
+    public struct FetchPositionPointsEvent has copy, drop, store {
         position_id: sui::object::ID,
         points_owned: u128,
     }
     
-    struct FetchPositionMagmaDistributionEvent has copy, drop, store {
+    public struct FetchPositionMagmaDistributionEvent has copy, drop, store {
         position_id: sui::object::ID,
         distribution: u64,
     }

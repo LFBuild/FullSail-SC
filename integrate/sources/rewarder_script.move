@@ -1,6 +1,6 @@
 module integrate::rewarder_script {
     public entry fun deposit_reward<T0>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::rewarder::RewarderGlobalVault, arg2: vector<sui::coin::Coin<T0>>, arg3: u64, arg4: &mut sui::tx_context::TxContext) {
-        let v0 = integrate::utils::merge_coins<T0>(arg2, arg4);
+        let mut v0 = integrate::utils::merge_coins<T0>(arg2, arg4);
         assert!(sui::coin::value<T0>(&v0) >= arg3, 1);
         clmm_pool::rewarder::deposit_reward<T0>(arg0, arg1, sui::coin::into_balance<T0>(sui::coin::split<T0>(&mut v0, arg3, arg4)));
         integrate::utils::send_coin<T0>(v0, sui::tx_context::sender(arg4));

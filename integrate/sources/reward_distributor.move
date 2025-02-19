@@ -1,10 +1,10 @@
 module integrate::reward_distributor {
-    struct Claimable has copy, drop, store {
+    public struct Claimable has copy, drop, store {
         lock_id: sui::object::ID,
         amount: u64,
     }
     
-    struct ClaimAndLock has copy, drop, store {
+    public struct ClaimAndLock has copy, drop, store {
         lock_id: sui::object::ID,
         amount: u64,
     }

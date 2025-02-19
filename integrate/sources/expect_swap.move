@@ -1,5 +1,5 @@
 module integrate::expect_swap {
-    struct ExpectSwapResult has copy, drop, store {
+    public struct ExpectSwapResult has copy, drop, store {
         amount_in: u256,
         amount_out: u256,
         fee_amount: u256,
@@ -9,7 +9,7 @@ module integrate::expect_swap {
         step_results: vector<SwapStepResult>,
     }
     
-    struct SwapStepResult has copy, drop, store {
+    public struct SwapStepResult has copy, drop, store {
         current_sqrt_price: u128,
         target_sqrt_price: u128,
         current_liquidity: u128,
@@ -19,7 +19,7 @@ module integrate::expect_swap {
         remainder_amount: u64,
     }
     
-    struct SwapResult has copy, drop {
+    public struct SwapResult has copy, drop {
         amount_in: u256,
         amount_out: u256,
         fee_amount: u256,
@@ -27,18 +27,18 @@ module integrate::expect_swap {
         steps: u64,
     }
     
-    struct ExpectSwapResultEvent has copy, drop, store {
+    public struct ExpectSwapResultEvent has copy, drop, store {
         data: ExpectSwapResult,
         current_sqrt_price: u128,
     }
     
     public fun expect_swap<T0, T1>(arg0: &clmm_pool::pool::Pool<T0, T1>, arg1: bool, arg2: bool, arg3: u64) : ExpectSwapResult {
-        let v0 = clmm_pool::pool::current_sqrt_price<T0, T1>(arg0);
-        let v1 = clmm_pool::pool::liquidity<T0, T1>(arg0);
-        let v2 = default_swap_result();
-        let v3 = arg3;
-        let v4 = clmm_pool::tick::first_score_for_swap(clmm_pool::pool::tick_manager<T0, T1>(arg0), clmm_pool::pool::current_tick_index<T0, T1>(arg0), arg1);
-        let v5 = ExpectSwapResult{
+        let mut v0 = clmm_pool::pool::current_sqrt_price<T0, T1>(arg0);
+        let mut v1 = clmm_pool::pool::liquidity<T0, T1>(arg0);
+        let mut v2 = default_swap_result();
+        let mut v3 = arg3;
+        let mut v4 = clmm_pool::tick::first_score_for_swap(clmm_pool::pool::tick_manager<T0, T1>(arg0), clmm_pool::pool::current_tick_index<T0, T1>(arg0), arg1);
+        let mut v5 = ExpectSwapResult{
             amount_in        : 0, 
             amount_out       : 0, 
             fee_amount       : 0, 
