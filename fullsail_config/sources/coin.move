@@ -116,8 +116,9 @@ module fullsail_config::coin {
             id    : sui::object::new(arg0), 
             coins : sui::table::new<std::type_name::TypeName, Coin>(arg0),
         };
+        let id = sui::object::id<CoinList>(&v0);
         sui::transfer::share_object<CoinList>(v0);
-        let v1 = InitCoinListEvent{coin_list_id: sui::object::id<CoinList>(&v0)};
+        let v1 = InitCoinListEvent{coin_list_id: id};
         sui::event::emit<InitCoinListEvent>(v1);
     }
     

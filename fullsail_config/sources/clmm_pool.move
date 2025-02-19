@@ -119,8 +119,9 @@ module fullsail_config::clmm_pool {
             id    : sui::object::new(arg0), 
             pools : sui::table::new<address, Pool>(arg0),
         };
+        let pools_id = sui::object::id<ClmmPools>(&v0);
         sui::transfer::share_object<ClmmPools>(v0);
-        let v1 = InitClmmPoolsEvent{pools_id: sui::object::id<ClmmPools>(&v0)};
+        let v1 = InitClmmPoolsEvent{pools_id};
         sui::event::emit<InitClmmPoolsEvent>(v1);
     }
     

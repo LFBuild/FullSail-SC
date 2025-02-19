@@ -173,8 +173,9 @@ module fullsail_config::launchpad_pool {
             id    : sui::object::new(arg0), 
             pools : sui::table::new<address, Pool>(arg0),
         };
+        let launchpad_pools_id = sui::object::id<LaunchpadPools>(&v0);
         sui::transfer::share_object<LaunchpadPools>(v0);
-        let v1 = InitLaunchpadPoolsEvent{launchpad_pools_id: sui::object::id<LaunchpadPools>(&v0)};
+        let v1 = InitLaunchpadPoolsEvent{launchpad_pools_id};
         sui::event::emit<InitLaunchpadPoolsEvent>(v1);
     }
     
