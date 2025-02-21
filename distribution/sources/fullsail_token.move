@@ -21,7 +21,7 @@ module distribution::fullsail_token {
     }
     
     fun init(arg0: FULLSAIL_TOKEN, arg1: &mut sui::tx_context::TxContext) {
-        let (v0, v1) = sui::coin::create_currency<FULLSAIL_TOKEN>(arg0, 6, b"MGM", b"Magma", b"Magma Protocol Governance Token", std::option::none<sui::url::Url>(), arg1);
+        let (v0, v1) = sui::coin::create_currency<FULLSAIL_TOKEN>(arg0, 6, b"FSAIL", b"FullSail", b"FullSail Governance Token with ve(4,4) capabilities", std::option::none<sui::url::Url>(), arg1);
         let v2 = MinterCap<FULLSAIL_TOKEN>{
             id  : sui::object::new(arg1), 
             cap : v0,

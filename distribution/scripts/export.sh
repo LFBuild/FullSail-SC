@@ -1,4 +1,5 @@
 #mainnet
+#these adresses should be updated after calling each of the scripts
 export ADDR=$(sui client active-address)
 
 export PACKAGE=0xf28f27c82e2c28e66ad54d8a3f483642ce8245077531dd87b7b233d08f79d17d
