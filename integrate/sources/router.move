@@ -9,7 +9,7 @@ module integrate::router {
         target_sqrt_price_ab: u128,
         target_sqrt_price_cd: u128,
     }
-    
+
     public struct CalculatedRouterSwapResultEvent has copy, drop, store {
         data: CalculatedRouterSwapResult,
     }
@@ -49,54 +49,63 @@ module integrate::router {
         clmm_pool::pool::repay_flash_swap<T0, T1>(arg0, arg1, v9, v10, v4);
         (arg2, arg3)
     }
-    
-    public fun calculate_router_swap_result<T0, T1, T2, T3>(arg0: &mut clmm_pool::pool::Pool<T0, T1>, arg1: &mut clmm_pool::pool::Pool<T2, T3>, arg2: bool, arg3: bool, arg4: bool, arg5: u64) {
+
+    public fun calculate_router_swap_result<T0, T1, T2, T3>(
+        arg0: &mut clmm_pool::pool::Pool<T0, T1>,
+        arg1: &mut clmm_pool::pool::Pool<T2, T3>,
+        arg2: bool,
+        arg3: bool,
+        arg4: bool,
+        arg5: u64
+    ) {
         if (arg4) {
             let v0 = integrate::expect_swap::expect_swap<T0, T1>(arg0, arg2, arg4, arg5);
             let v1 = integrate::expect_swap::expect_swap_result_amount_out(&v0);
             if (integrate::expect_swap::expect_swap_result_is_exceed(&v0) || v1 > 18446744073709551615) {
-                let v2 = CalculatedRouterSwapResult{
-                    amount_in             : 0, 
-                    amount_medium         : 0, 
-                    amount_out            : 0, 
-                    is_exceed             : true, 
-                    current_sqrt_price_ab : 0, 
-                    current_sqrt_price_cd : 0, 
-                    target_sqrt_price_ab  : 0, 
-                    target_sqrt_price_cd  : 0,
+                let v2 = CalculatedRouterSwapResult {
+                    amount_in: 0,
+                    amount_medium: 0,
+                    amount_out: 0,
+                    is_exceed: true,
+                    current_sqrt_price_ab: 0,
+                    current_sqrt_price_cd: 0,
+                    target_sqrt_price_ab: 0,
+                    target_sqrt_price_cd: 0,
                 };
-                let v3 = CalculatedRouterSwapResultEvent{data: v2};
+                let v3 = CalculatedRouterSwapResultEvent { data: v2 };
                 sui::event::emit<CalculatedRouterSwapResultEvent>(v3);
             } else {
                 let v4 = (v1 as u64);
                 let v5 = integrate::expect_swap::expect_swap<T2, T3>(arg1, arg3, arg4, v4);
                 let v6 = integrate::expect_swap::expect_swap_result_amount_out(&v5);
                 if (v6 > 18446744073709551615) {
-                    let v7 = CalculatedRouterSwapResult{
-                        amount_in             : 0, 
-                        amount_medium         : 0, 
-                        amount_out            : 0, 
-                        is_exceed             : true, 
-                        current_sqrt_price_ab : 0, 
-                        current_sqrt_price_cd : 0, 
-                        target_sqrt_price_ab  : 0, 
-                        target_sqrt_price_cd  : 0,
+                    let v7 = CalculatedRouterSwapResult {
+                        amount_in: 0,
+                        amount_medium: 0,
+                        amount_out: 0,
+                        is_exceed: true,
+                        current_sqrt_price_ab: 0,
+                        current_sqrt_price_cd: 0,
+                        target_sqrt_price_ab: 0,
+                        target_sqrt_price_cd: 0,
                     };
-                    let v8 = CalculatedRouterSwapResultEvent{data: v7};
+                    let v8 = CalculatedRouterSwapResultEvent { data: v7 };
                     sui::event::emit<CalculatedRouterSwapResultEvent>(v8);
                 } else {
-                    let v9 = integrate::expect_swap::expect_swap_result_is_exceed(&v0) || integrate::expect_swap::expect_swap_result_is_exceed(&v5);
-                    let v10 = CalculatedRouterSwapResult{
-                        amount_in             : arg5, 
-                        amount_medium         : v4, 
-                        amount_out            : (v6 as u64), 
-                        is_exceed             : v9, 
-                        current_sqrt_price_ab : clmm_pool::pool::current_sqrt_price<T0, T1>(arg0), 
-                        current_sqrt_price_cd : clmm_pool::pool::current_sqrt_price<T2, T3>(arg1), 
-                        target_sqrt_price_ab  : integrate::expect_swap::expect_swap_result_after_sqrt_price(&v0), 
-                        target_sqrt_price_cd  : integrate::expect_swap::expect_swap_result_after_sqrt_price(&v5),
+                    let v9 = integrate::expect_swap::expect_swap_result_is_exceed(
+                        &v0
+                    ) || integrate::expect_swap::expect_swap_result_is_exceed(&v5);
+                    let v10 = CalculatedRouterSwapResult {
+                        amount_in: arg5,
+                        amount_medium: v4,
+                        amount_out: (v6 as u64),
+                        is_exceed: v9,
+                        current_sqrt_price_ab: clmm_pool::pool::current_sqrt_price<T0, T1>(arg0),
+                        current_sqrt_price_cd: clmm_pool::pool::current_sqrt_price<T2, T3>(arg1),
+                        target_sqrt_price_ab: integrate::expect_swap::expect_swap_result_after_sqrt_price(&v0),
+                        target_sqrt_price_cd: integrate::expect_swap::expect_swap_result_after_sqrt_price(&v5),
                     };
-                    let v11 = CalculatedRouterSwapResultEvent{data: v10};
+                    let v11 = CalculatedRouterSwapResultEvent { data: v10 };
                     sui::event::emit<CalculatedRouterSwapResultEvent>(v11);
                 };
             };
@@ -105,17 +114,17 @@ module integrate::router {
             let v13 = integrate::expect_swap::expect_swap_result_is_exceed(&v12);
             let v14 = integrate::expect_swap::expect_swap_result_amount_in(&v12);
             if (v13 || v14 > 18446744073709551615) {
-                let v15 = CalculatedRouterSwapResult{
-                    amount_in             : 0, 
-                    amount_medium         : 0, 
-                    amount_out            : 0, 
-                    is_exceed             : true, 
-                    current_sqrt_price_ab : 0, 
-                    current_sqrt_price_cd : 0, 
-                    target_sqrt_price_ab  : 0, 
-                    target_sqrt_price_cd  : 0,
+                let v15 = CalculatedRouterSwapResult {
+                    amount_in: 0,
+                    amount_medium: 0,
+                    amount_out: 0,
+                    is_exceed: true,
+                    current_sqrt_price_ab: 0,
+                    current_sqrt_price_cd: 0,
+                    target_sqrt_price_ab: 0,
+                    target_sqrt_price_cd: 0,
                 };
-                let v16 = CalculatedRouterSwapResultEvent{data: v15};
+                let v16 = CalculatedRouterSwapResultEvent { data: v15 };
                 sui::event::emit<CalculatedRouterSwapResultEvent>(v16);
             } else {
                 let v17 = (v14 as u64);
@@ -123,37 +132,37 @@ module integrate::router {
                 let v19 = integrate::expect_swap::expect_swap<T0, T1>(arg0, arg2, arg4, (v17 + v18));
                 let v20 = integrate::expect_swap::expect_swap_result_amount_in(&v19);
                 if (v20 > 18446744073709551615) {
-                    let v21 = CalculatedRouterSwapResult{
-                        amount_in             : 0, 
-                        amount_medium         : 0, 
-                        amount_out            : 0, 
-                        is_exceed             : true, 
-                        current_sqrt_price_ab : 0, 
-                        current_sqrt_price_cd : 0, 
-                        target_sqrt_price_ab  : 0, 
-                        target_sqrt_price_cd  : 0,
+                    let v21 = CalculatedRouterSwapResult {
+                        amount_in: 0,
+                        amount_medium: 0,
+                        amount_out: 0,
+                        is_exceed: true,
+                        current_sqrt_price_ab: 0,
+                        current_sqrt_price_cd: 0,
+                        target_sqrt_price_ab: 0,
+                        target_sqrt_price_cd: 0,
                     };
-                    let v22 = CalculatedRouterSwapResultEvent{data: v21};
+                    let v22 = CalculatedRouterSwapResultEvent { data: v21 };
                     sui::event::emit<CalculatedRouterSwapResultEvent>(v22);
                 } else {
                     let v23 = integrate::expect_swap::expect_swap_result_is_exceed(&v19) || v13;
-                    let v24 = CalculatedRouterSwapResult{
-                        amount_in             : (v20 as u64) + (integrate::expect_swap::expect_swap_result_fee_amount(&v19) as u64), 
-                        amount_medium         : v17 + v18, 
-                        amount_out            : arg5, 
-                        is_exceed             : v23, 
-                        current_sqrt_price_ab : clmm_pool::pool::current_sqrt_price<T0, T1>(arg0), 
-                        current_sqrt_price_cd : clmm_pool::pool::current_sqrt_price<T2, T3>(arg1), 
-                        target_sqrt_price_ab  : integrate::expect_swap::expect_swap_result_after_sqrt_price(&v19), 
-                        target_sqrt_price_cd  : integrate::expect_swap::expect_swap_result_after_sqrt_price(&v12),
+                    let v24 = CalculatedRouterSwapResult {
+                        amount_in: (v20 as u64) + (integrate::expect_swap::expect_swap_result_fee_amount(&v19) as u64),
+                        amount_medium: v17 + v18,
+                        amount_out: arg5,
+                        is_exceed: v23,
+                        current_sqrt_price_ab: clmm_pool::pool::current_sqrt_price<T0, T1>(arg0),
+                        current_sqrt_price_cd: clmm_pool::pool::current_sqrt_price<T2, T3>(arg1),
+                        target_sqrt_price_ab: integrate::expect_swap::expect_swap_result_after_sqrt_price(&v19),
+                        target_sqrt_price_cd: integrate::expect_swap::expect_swap_result_after_sqrt_price(&v12),
                     };
-                    let v25 = CalculatedRouterSwapResultEvent{data: v24};
+                    let v25 = CalculatedRouterSwapResultEvent { data: v24 };
                     sui::event::emit<CalculatedRouterSwapResultEvent>(v25);
                 };
             };
         };
     }
-    
+
     public fun check_coin_threshold<T0>(arg0: &sui::coin::Coin<T0>, arg1: u64) {
         assert!(sui::coin::value<T0>(arg0) >= arg1, 4);
     }
@@ -237,7 +246,7 @@ module integrate::router {
             (v13, arg4)
         }
     }
-    
+
     // decompiled from Move bytecode v6
 }
 
