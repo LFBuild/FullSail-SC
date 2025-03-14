@@ -1166,8 +1166,18 @@ module clmm_pool::pool {
         &arg0.rewarder_manager
     }
     
-    public fun set_display<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &sui::package::Publisher, arg2: std::string::String, arg3: std::string::String, arg4: std::string::String, arg5: std::string::String, arg6: std::string::String, arg7: std::string::String, arg8: &mut sui::tx_context::TxContext) {
-        clmm_pool::config::checked_package_version(arg0);
+    public fun set_display<T0, T1>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        publisher: &sui::package::Publisher,
+        name: std::string::String,
+        description: std::string::String,
+        image_url: std::string::String,
+        link: std::string::String,
+        project_url: std::string::String,
+        creator: std::string::String,
+        ctx: &mut sui::tx_context::TxContext
+    ) {
+        clmm_pool::config::checked_package_version(global_config);
         let mut v0 = std::vector::empty<std::string::String>();
         std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"name"));
         std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"coin_a"));
@@ -1178,17 +1188,17 @@ module clmm_pool::pool {
         std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"project_url"));
         std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"creator"));
         let mut v1 = std::vector::empty<std::string::String>();
-        std::vector::push_back<std::string::String>(&mut v1, arg2);
+        std::vector::push_back<std::string::String>(&mut v1, name);
         std::vector::push_back<std::string::String>(&mut v1, std::string::from_ascii(std::type_name::into_string(std::type_name::get<T0>())));
         std::vector::push_back<std::string::String>(&mut v1, std::string::from_ascii(std::type_name::into_string(std::type_name::get<T1>())));
-        std::vector::push_back<std::string::String>(&mut v1, arg5);
-        std::vector::push_back<std::string::String>(&mut v1, arg4);
-        std::vector::push_back<std::string::String>(&mut v1, arg3);
-        std::vector::push_back<std::string::String>(&mut v1, arg6);
-        std::vector::push_back<std::string::String>(&mut v1, arg7);
-        let mut v2 = sui::display::new_with_fields<Pool<T0, T1>>(arg1, v0, v1, arg8);
+        std::vector::push_back<std::string::String>(&mut v1, link);
+        std::vector::push_back<std::string::String>(&mut v1, image_url);
+        std::vector::push_back<std::string::String>(&mut v1, description);
+        std::vector::push_back<std::string::String>(&mut v1, project_url);
+        std::vector::push_back<std::string::String>(&mut v1, creator);
+        let mut v2 = sui::display::new_with_fields<Pool<T0, T1>>(publisher, v0, v1, ctx);
         sui::display::update_version<Pool<T0, T1>>(&mut v2);
-        sui::transfer::public_transfer<sui::display::Display<Pool<T0, T1>>>(v2, sui::tx_context::sender(arg8));
+        sui::transfer::public_transfer<sui::display::Display<Pool<T0, T1>>>(v2, sui::tx_context::sender(ctx));
     }
     
     fun split_fees(arg0: u64, arg1: u128, arg2: u128, arg3: u64) : (u64, u64) {
