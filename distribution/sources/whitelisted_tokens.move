@@ -10,25 +10,25 @@ module distribution::whitelisted_tokens {
         token: std::type_name::TypeName,
     }
 
-    public(package) fun create<T0>(arg0: sui::object::ID) : WhitelistedToken {
-        WhitelistedToken{
-            voter : arg0,
-            token : std::type_name::get<T0>(),
+    public(package) fun create<T0>(arg0: sui::object::ID): WhitelistedToken {
+        WhitelistedToken {
+            voter: arg0,
+            token: std::type_name::get<T0>(),
         }
     }
 
-    public(package) fun create_pair<T0, T1>(arg0: sui::object::ID) : WhitelistedTokenPair {
-        WhitelistedTokenPair{
-            voter  : arg0,
-            token0 : std::type_name::get<T0>(),
-            token1 : std::type_name::get<T1>(),
+    public(package) fun create_pair<T0, T1>(arg0: sui::object::ID): WhitelistedTokenPair {
+        WhitelistedTokenPair {
+            voter: arg0,
+            token0: std::type_name::get<T0>(),
+            token1: std::type_name::get<T1>(),
         }
     }
 
     public fun validate<T0>(arg0: WhitelistedToken, arg1: sui::object::ID) {
         let WhitelistedToken {
-            voter : v0,
-            token : v1,
+            voter: v0,
+            token: v1,
         } = arg0;
         assert!(v0 == arg1, 9223372260193075199);
         if (v1 != std::type_name::get<T0>()) {
@@ -38,9 +38,9 @@ module distribution::whitelisted_tokens {
 
     public fun validate_pair<T0, T1>(arg0: WhitelistedTokenPair, arg1: sui::object::ID) {
         let WhitelistedTokenPair {
-            voter  : v0,
-            token0 : v1,
-            token1 : v2,
+            voter: v0,
+            token0: v1,
+            token1: v2,
         } = arg0;
         assert!(v0 == arg1, 9223372204358500351);
         let v3 = std::type_name::get<T0>();

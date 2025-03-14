@@ -1,22 +1,21 @@
 module distribution::reward_distributor {
-    public struct REWARD_DISTRIBUTOR has drop {
-    }
-    
+    public struct REWARD_DISTRIBUTOR has drop {}
+
     public struct EventStart has copy, drop, store {
         dummy_field: bool,
     }
-    
+
     public struct EventCheckpointToken has copy, drop, store {
         to_distribute: u64,
     }
-    
+
     public struct EventClaimed has copy, drop, store {
         id: sui::object::ID,
         epoch_start: u64,
         epoch_end: u64,
         amount: u64,
     }
-    
+
     public struct RewardDistributor<phantom T0> has store, key {
         id: sui::object::UID,
         start_time: u64,
@@ -27,29 +26,38 @@ module distribution::reward_distributor {
         balance: sui::balance::Balance<T0>,
         minter_active_period: u64,
     }
-    
-    public fun create<T0>(_arg0: &sui::package::Publisher, arg1: &sui::clock::Clock, arg2: &mut sui::tx_context::TxContext) : (RewardDistributor<T0>, distribution::reward_distributor_cap::RewardDistributorCap) {
+
+    public fun create<T0>(
+        _arg0: &sui::package::Publisher,
+        arg1: &sui::clock::Clock,
+        arg2: &mut sui::tx_context::TxContext
+    ): (RewardDistributor<T0>, distribution::reward_distributor_cap::RewardDistributorCap) {
         let v0 = sui::object::new(arg2);
-        let v1 = RewardDistributor<T0>{
-            id                   : v0, 
-            start_time           : distribution::common::current_timestamp(arg1), 
-            time_cursor_of       : sui::table::new<sui::object::ID, u64>(arg2), 
-            last_token_time      : distribution::common::current_timestamp(arg1), 
-            tokens_per_period    : sui::table::new<u64, u64>(arg2), 
-            token_last_balance   : 0, 
-            balance              : sui::balance::zero<T0>(), 
-            minter_active_period : 0,
+        let v1 = RewardDistributor<T0> {
+            id: v0,
+            start_time: distribution::common::current_timestamp(arg1),
+            time_cursor_of: sui::table::new<sui::object::ID, u64>(arg2),
+            last_token_time: distribution::common::current_timestamp(arg1),
+            tokens_per_period: sui::table::new<u64, u64>(arg2),
+            token_last_balance: 0,
+            balance: sui::balance::zero<T0>(),
+            minter_active_period: 0,
         };
         let id = *sui::object::uid_as_inner(&v1.id);
         (v1, distribution::reward_distributor_cap::create(id, arg2))
     }
-    
-    public fun checkpoint_token<T0>(arg0: &mut RewardDistributor<T0>, arg1: &distribution::reward_distributor_cap::RewardDistributorCap, arg2: sui::coin::Coin<T0>, arg3: &sui::clock::Clock) {
+
+    public fun checkpoint_token<T0>(
+        arg0: &mut RewardDistributor<T0>,
+        arg1: &distribution::reward_distributor_cap::RewardDistributorCap,
+        arg2: sui::coin::Coin<T0>,
+        arg3: &sui::clock::Clock
+    ) {
         distribution::reward_distributor_cap::validate(arg1, sui::object::id<RewardDistributor<T0>>(arg0));
         sui::balance::join<T0>(&mut arg0.balance, sui::coin::into_balance<T0>(arg2));
         checkpoint_token_internal<T0>(arg0, distribution::common::current_timestamp(arg3));
     }
-    
+
     fun checkpoint_token_internal<T0>(arg0: &mut RewardDistributor<T0>, arg1: u64) {
         let v0 = sui::balance::value<T0>(&arg0.balance);
         let v1 = v0 - arg0.token_last_balance;
@@ -85,30 +93,56 @@ module distribution::reward_distributor {
             v5 = v8;
             v6 = v6 + 1;
         };
-        let v10 = EventCheckpointToken{to_distribute: v1};
+        let v10 = EventCheckpointToken { to_distribute: v1 };
         sui::event::emit<EventCheckpointToken>(v10);
     }
-    
-    public fun claim<T0>(arg0: &mut RewardDistributor<T0>, arg1: &mut distribution::voting_escrow::VotingEscrow<T0>, arg2: &mut distribution::voting_escrow::Lock, arg3: &sui::clock::Clock, arg4: &mut sui::tx_context::TxContext) : u64 {
+
+    public fun claim<T0>(
+        arg0: &mut RewardDistributor<T0>,
+        arg1: &mut distribution::voting_escrow::VotingEscrow<T0>,
+        arg2: &mut distribution::voting_escrow::Lock,
+        arg3: &sui::clock::Clock,
+        arg4: &mut sui::tx_context::TxContext
+    ): u64 {
         let v0 = sui::object::id<distribution::voting_escrow::Lock>(arg2);
         assert!(arg0.minter_active_period >= distribution::common::current_period(arg3), 9223372904438169601);
-        assert!(distribution::voting_escrow::is_locked(distribution::voting_escrow::escrow_type<T0>(arg1, v0)) == false, 9223372908733267971);
-        let period = distribution::common::to_period(arg0.last_token_time); 
+        assert!(
+            distribution::voting_escrow::is_locked(distribution::voting_escrow::escrow_type<T0>(arg1, v0)) == false,
+            9223372908733267971
+        );
+        let period = distribution::common::to_period(arg0.last_token_time);
         let v1 = claim_internal<T0>(arg0, arg1, v0, period);
         if (v1 > 0) {
             let (v2, _) = distribution::voting_escrow::locked<T0>(arg1, v0);
             let v4 = v2;
-            if (distribution::common::current_timestamp(arg3) >= distribution::voting_escrow::end(&v4) && !distribution::voting_escrow::is_permanent(&v4)) {
-                sui::transfer::public_transfer<sui::coin::Coin<T0>>(sui::coin::from_balance<T0>(sui::balance::split<T0>(&mut arg0.balance, v1), arg4), distribution::voting_escrow::owner_of<T0>(arg1, v0));
+            if (distribution::common::current_timestamp(arg3) >= distribution::voting_escrow::end(
+                &v4
+            ) && !distribution::voting_escrow::is_permanent(&v4)) {
+                sui::transfer::public_transfer<sui::coin::Coin<T0>>(
+                    sui::coin::from_balance<T0>(sui::balance::split<T0>(&mut arg0.balance, v1), arg4),
+                    distribution::voting_escrow::owner_of<T0>(arg1, v0)
+                );
             } else {
-                distribution::voting_escrow::deposit_for<T0>(arg1, std::option::none<distribution::voting_escrow::DistributorCap>(), arg2, sui::coin::from_balance<T0>(sui::balance::split<T0>(&mut arg0.balance, v1), arg4), arg3, arg4);
+                distribution::voting_escrow::deposit_for<T0>(
+                    arg1,
+                    std::option::none<distribution::voting_escrow::DistributorCap>(),
+                    arg2,
+                    sui::coin::from_balance<T0>(sui::balance::split<T0>(&mut arg0.balance, v1), arg4),
+                    arg3,
+                    arg4
+                );
             };
             arg0.token_last_balance = arg0.token_last_balance - v1;
         };
         v1
     }
-    
-    fun claim_internal<T0>(arg0: &mut RewardDistributor<T0>, arg1: &distribution::voting_escrow::VotingEscrow<T0>, arg2: sui::object::ID, arg3: u64) : u64 {
+
+    fun claim_internal<T0>(
+        arg0: &mut RewardDistributor<T0>,
+        arg1: &distribution::voting_escrow::VotingEscrow<T0>,
+        arg2: sui::object::ID,
+        arg3: u64
+    ): u64 {
         let (v0, v1, v2) = claimable_internal<T0>(arg0, arg1, arg2, arg3);
         if (sui::table::contains<sui::object::ID, u64>(&arg0.time_cursor_of, arg2)) {
             sui::table::remove<sui::object::ID, u64>(&mut arg0.time_cursor_of, arg2);
@@ -117,22 +151,36 @@ module distribution::reward_distributor {
         if (v0 == 0) {
             return 0
         };
-        let v3 = EventClaimed{
-            id          : arg2, 
-            epoch_start : v1, 
-            epoch_end   : v2, 
-            amount      : v0,
+        let v3 = EventClaimed {
+            id: arg2,
+            epoch_start: v1,
+            epoch_end: v2,
+            amount: v0,
         };
         sui::event::emit<EventClaimed>(v3);
         v0
     }
-    
-    public fun claimable<T0>(arg0: &RewardDistributor<T0>, arg1: &distribution::voting_escrow::VotingEscrow<T0>, arg2: sui::object::ID) : u64 {
-        let (v0, _, _) = claimable_internal<T0>(arg0, arg1, arg2, distribution::common::to_period(arg0.last_token_time));
+
+    public fun claimable<T0>(
+        arg0: &RewardDistributor<T0>,
+        arg1: &distribution::voting_escrow::VotingEscrow<T0>,
+        arg2: sui::object::ID
+    ): u64 {
+        let (v0, _, _) = claimable_internal<T0>(
+            arg0,
+            arg1,
+            arg2,
+            distribution::common::to_period(arg0.last_token_time)
+        );
         v0
     }
-    
-    fun claimable_internal<T0>(arg0: &RewardDistributor<T0>, arg1: &distribution::voting_escrow::VotingEscrow<T0>, arg2: sui::object::ID, arg3: u64) : (u64, u64, u64) {
+
+    fun claimable_internal<T0>(
+        arg0: &RewardDistributor<T0>,
+        arg1: &distribution::voting_escrow::VotingEscrow<T0>,
+        arg2: sui::object::ID,
+        arg3: u64
+    ): (u64, u64, u64) {
         let v0 = if (sui::table::contains<sui::object::ID, u64>(&arg0.time_cursor_of, arg2)) {
             *sui::table::borrow<sui::object::ID, u64>(&arg0.time_cursor_of, arg2)
         } else {
@@ -161,7 +209,11 @@ module distribution::reward_distributor {
             if (v1 >= arg3) {
                 break
             };
-            let v7 = distribution::voting_escrow::balance_of_nft_at<T0>(arg1, arg2, v1 + distribution::common::week() - 1);
+            let v7 = distribution::voting_escrow::balance_of_nft_at<T0>(
+                arg1,
+                arg2,
+                v1 + distribution::common::week() - 1
+            );
             let v8 = distribution::voting_escrow::total_supply_at<T0>(arg1, v1 + distribution::common::week() - 1);
             let v9 = if (v8 == 0) {
                 1
@@ -180,26 +232,35 @@ module distribution::reward_distributor {
         };
         (v3, v1, v2)
     }
-    
+
     fun init(arg0: REWARD_DISTRIBUTOR, arg1: &mut sui::tx_context::TxContext) {
         sui::package::claim_and_keep<REWARD_DISTRIBUTOR>(arg0, arg1);
     }
-    
-    public fun start<T0>(arg0: &mut RewardDistributor<T0>, arg1: &distribution::reward_distributor_cap::RewardDistributorCap, arg2: u64, arg3: &sui::clock::Clock) {
+
+    public fun start<T0>(
+        arg0: &mut RewardDistributor<T0>,
+        arg1: &distribution::reward_distributor_cap::RewardDistributorCap,
+        arg2: u64,
+        arg3: &sui::clock::Clock
+    ) {
         distribution::reward_distributor_cap::validate(arg1, sui::object::id<RewardDistributor<T0>>(arg0));
         let v0 = distribution::common::current_timestamp(arg3);
         arg0.start_time = v0;
         arg0.last_token_time = v0;
         arg0.minter_active_period = arg2;
-        let v1 = EventStart{dummy_field: false};
+        let v1 = EventStart { dummy_field: false };
         sui::event::emit<EventStart>(v1);
     }
-    
-    public(package) fun update_active_period<T0>(arg0: &mut RewardDistributor<T0>, arg1: &distribution::reward_distributor_cap::RewardDistributorCap, arg2: u64) {
+
+    public(package) fun update_active_period<T0>(
+        arg0: &mut RewardDistributor<T0>,
+        arg1: &distribution::reward_distributor_cap::RewardDistributorCap,
+        arg2: u64
+    ) {
         distribution::reward_distributor_cap::validate(arg1, sui::object::id<RewardDistributor<T0>>(arg0));
         arg0.minter_active_period = arg2;
     }
-    
+
     // decompiled from Move bytecode v6
 }
 
