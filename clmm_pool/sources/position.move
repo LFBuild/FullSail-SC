@@ -377,8 +377,16 @@ module clmm_pool::position {
         arg0.description = arg1;
     }
     
-    public fun set_display(arg0: &clmm_pool::config::GlobalConfig, arg1: &sui::package::Publisher, arg2: std::string::String, arg3: std::string::String, arg4: std::string::String, arg5: std::string::String, arg6: &mut sui::tx_context::TxContext) {
-        clmm_pool::config::checked_package_version(arg0);
+    public fun set_display(
+        global_config: &clmm_pool::config::GlobalConfig,
+        publisher: &sui::package::Publisher,
+        description: std::string::String,
+        link: std::string::String,
+        project_url: std::string::String,
+        creator: std::string::String,
+        ctx: &mut sui::tx_context::TxContext
+    ) {
+        clmm_pool::config::checked_package_version(global_config);
         let mut v0 = std::vector::empty<std::string::String>();
         std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"name"));
         std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"coin_a"));
@@ -392,14 +400,14 @@ module clmm_pool::position {
         std::vector::push_back<std::string::String>(&mut v1, std::string::utf8(b"{name}"));
         std::vector::push_back<std::string::String>(&mut v1, std::string::utf8(b"{coin_type_a}"));
         std::vector::push_back<std::string::String>(&mut v1, std::string::utf8(b"{coin_type_b}"));
-        std::vector::push_back<std::string::String>(&mut v1, arg3);
+        std::vector::push_back<std::string::String>(&mut v1, link);
         std::vector::push_back<std::string::String>(&mut v1, std::string::utf8(b"{url}"));
-        std::vector::push_back<std::string::String>(&mut v1, arg2);
-        std::vector::push_back<std::string::String>(&mut v1, arg4);
-        std::vector::push_back<std::string::String>(&mut v1, arg5);
-        let mut v2 = sui::display::new_with_fields<Position>(arg1, v0, v1, arg6);
+        std::vector::push_back<std::string::String>(&mut v1, description);
+        std::vector::push_back<std::string::String>(&mut v1, project_url);
+        std::vector::push_back<std::string::String>(&mut v1, creator);
+        let mut v2 = sui::display::new_with_fields<Position>(publisher, v0, v1, ctx);
         sui::display::update_version<Position>(&mut v2);
-        sui::transfer::public_transfer<sui::display::Display<Position>>(v2, sui::tx_context::sender(arg6));
+        sui::transfer::public_transfer<sui::display::Display<Position>>(v2, sui::tx_context::sender(ctx));
     }
     
     public fun tick_range(arg0: &Position) : (integer_mate::i32::I32, integer_mate::i32::I32) {
