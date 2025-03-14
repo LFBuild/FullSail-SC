@@ -176,16 +176,89 @@ module integrate::pool_script_v2 {
         );
     }
     
-    public entry fun swap_a2b_with_partner<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: &mut clmm_pool::partner::Partner, arg3: sui::coin::Coin<T0>, arg4: sui::coin::Coin<T1>, arg5: bool, arg6: u64, arg7: u64, arg8: u128, arg9: &sui::clock::Clock, arg10: &mut sui::tx_context::TxContext) {
-        swap_with_partner<T0, T1>(arg0, arg1, arg2, arg3, arg4, true, arg5, arg6, arg7, arg8, arg9, arg10);
+    public entry fun swap_a2b_with_partner<T0, T1>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &mut clmm_pool::pool::Pool<T0, T1>,
+        swap_partner: &mut clmm_pool::partner::Partner,
+        coin_a: sui::coin::Coin<T0>,
+        coin_b: sui::coin::Coin<T1>,
+        by_amount_in: bool,
+        amount: u64,
+        amount_limit: u64,
+        sqrt_price_limit: u128,
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext
+    ) {
+        swap_with_partner<T0, T1>(
+            global_config,
+            pool,
+            swap_partner,
+            coin_a,
+            coin_b,
+            true,
+            by_amount_in,
+            amount,
+            amount_limit,
+            sqrt_price_limit,
+            clock,
+            ctx
+        );
     }
     
-    public entry fun swap_b2a<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: sui::coin::Coin<T0>, arg3: sui::coin::Coin<T1>, arg4: bool, arg5: u64, arg6: u64, arg7: u128, arg8: &sui::clock::Clock, arg9: &mut sui::tx_context::TxContext) {
-        swap<T0, T1>(arg0, arg1, arg2, arg3, false, arg4, arg5, arg6, arg7, arg8, arg9);
+    public entry fun swap_b2a<T0, T1>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &mut clmm_pool::pool::Pool<T0, T1>,
+        coin_a: sui::coin::Coin<T0>,
+        coin_b: sui::coin::Coin<T1>,
+        by_amount_in: bool,
+        amount: u64,
+        amount_limit: u64,
+        sqrt_price_limit: u128,
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext
+    ) {
+        swap<T0, T1>(
+            global_config,
+            pool,
+            coin_a,
+            coin_b,
+            false,
+            by_amount_in,
+            amount,
+            amount_limit,
+            sqrt_price_limit,
+            clock,
+            ctx
+        );
     }
     
-    public entry fun swap_b2a_with_partner<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: &mut clmm_pool::partner::Partner, arg3: sui::coin::Coin<T0>, arg4: sui::coin::Coin<T1>, arg5: bool, arg6: u64, arg7: u64, arg8: u128, arg9: &sui::clock::Clock, arg10: &mut sui::tx_context::TxContext) {
-        swap_with_partner<T0, T1>(arg0, arg1, arg2, arg3, arg4, false, arg5, arg6, arg7, arg8, arg9, arg10);
+    public entry fun swap_b2a_with_partner<T0, T1>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &mut clmm_pool::pool::Pool<T0, T1>,
+        swap_partner: &mut clmm_pool::partner::Partner,
+        coin_a: sui::coin::Coin<T0>,
+        coin_b: sui::coin::Coin<T1>,
+        by_amount_in: bool,
+        amount: u64,
+        amount_limit: u64,
+        sqrt_price_limit: u128,
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext
+    ) {
+        swap_with_partner<T0, T1>(
+            global_config,
+            pool,
+            swap_partner,
+            coin_a,
+            coin_b,
+            false,
+            by_amount_in,
+            amount,
+            amount_limit,
+            sqrt_price_limit,
+            clock,
+            ctx
+        );
     }
     
     fun swap_with_partner<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: &mut clmm_pool::partner::Partner, mut arg3: sui::coin::Coin<T0>, mut arg4: sui::coin::Coin<T1>, arg5: bool, arg6: bool, arg7: u64, arg8: u64, arg9: u128, arg10: &sui::clock::Clock, arg11: &mut sui::tx_context::TxContext) {
