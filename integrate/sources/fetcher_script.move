@@ -41,9 +41,23 @@ module integrate::fetcher_script {
         sui::event::emit<FetchPoolsEvent>(v0);
     }
     
-    public entry fun calculate_swap_result<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &clmm_pool::pool::Pool<T0, T1>, arg2: bool, arg3: bool, arg4: u64) {
-        let v0 = CalculatedSwapResultEvent{data: clmm_pool::pool::calculate_swap_result<T0, T1>(arg0, arg1, arg2, arg3, arg4)};
-        sui::event::emit<CalculatedSwapResultEvent>(v0);
+    public entry fun calculate_swap_result<CoinTypeA, CoinTypeB>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        a2b: bool,
+        by_amount_in: bool,
+        amount: u64
+    ) {
+        let calculate_result_event = CalculatedSwapResultEvent{
+            data: clmm_pool::pool::calculate_swap_result<CoinTypeA, CoinTypeB>(
+                global_config,
+                pool,
+                a2b,
+                by_amount_in,
+                amount
+            )
+        };
+        sui::event::emit<CalculatedSwapResultEvent>(calculate_result_event);
     }
     
     public entry fun fetch_positions<T0, T1>(arg0: &clmm_pool::pool::Pool<T0, T1>, arg1: vector<sui::object::ID>, arg2: u64) {
