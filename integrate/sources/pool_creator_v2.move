@@ -11,8 +11,8 @@ module integrate::pool_creator_v2 {
         fix_amount_a: bool,
         ctx: &mut sui::tx_context::TxContext
     ): (sui::coin::Coin<CoinTypeA>, sui::coin::Coin<CoinTypeB>) {
-        let value_a = sui::coin::value<CoinTypeA>(coin_a);
-        let value_b = sui::coin::value<CoinTypeB>(coin_b);
+        let value_a = coin_a.value::<CoinTypeA>();
+        let value_b = coin_b.value::<CoinTypeB>();
         let fixed_amount = if (fix_amount_a) {
             value_a
         } else {
@@ -28,7 +28,7 @@ module integrate::pool_creator_v2 {
         );
         assert!(amount_a <= value_a, EInvalidAmount);
         assert!(amount_b <= value_b, EInvalidAmount);
-        (sui::coin::split<CoinTypeA>(coin_a, amount_a, ctx), sui::coin::split<CoinTypeB>(coin_b, amount_b, ctx))
+        (coin_a.split::<CoinTypeA>(amount_a, ctx), coin_b.split::<CoinTypeB>(amount_b, ctx))
     }
 
     public entry fun create_pool_v2<CoinTypeA, CoinTypeB>(
@@ -36,7 +36,7 @@ module integrate::pool_creator_v2 {
         pools: &mut clmm_pool::factory::Pools,
         tick_spacing: u32,
         initialize_sqrt_price: u128,
-        uri: std::string::String,
+        url: std::string::String,
         tick_lower: u32,
         tick_upper: u32,
         coin_a: &mut sui::coin::Coin<CoinTypeA>,
@@ -56,14 +56,14 @@ module integrate::pool_creator_v2 {
             fix_amount_a,
             ctx
         );
-        let liquidity_amount_a = sui::coin::value<CoinTypeA>(&coin_a_for_pool);
-        let liquidity_amount_b = sui::coin::value<CoinTypeB>(&coin_b_for_pool);
+        let liquidity_amount_a = coin_a_for_pool.value::<CoinTypeA>();
+        let liquidity_amount_b = coin_b_for_pool.value::<CoinTypeB>();
         let (position, remaining_coin_a, remaining_coin_b) = clmm_pool::factory::create_pool_with_liquidity<CoinTypeA, CoinTypeB>(
             pools,
             global_config,
             tick_spacing,
             initialize_sqrt_price,
-            uri,
+            url,
             tick_lower,
             tick_upper,
             coin_a_for_pool,
