@@ -217,7 +217,7 @@ module integrate::pool_script_v2 {
         clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext
     ) {
-        reward_coin.join::<RewardCoinType>(sui::coin::from_balance<RewardCoinType>(
+        reward_coin.join<RewardCoinType>(sui::coin::from_balance<RewardCoinType>(
             clmm_pool::pool::collect_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
                 global_config,
                 pool,
@@ -277,11 +277,11 @@ module integrate::pool_script_v2 {
         );
         let mut mut_removed_b = removed_b;
         let mut mut_removed_a = removed_a;
-        assert!(mut_removed_a.value::<CoinTypeA>() >= min_amount_a, 1);
-        assert!(mut_removed_b.value::<CoinTypeB>() >= min_amount_b, 1);
+        assert!(mut_removed_a.value<CoinTypeA>() >= min_amount_a, 1);
+        assert!(mut_removed_b.value<CoinTypeB>() >= min_amount_b, 1);
         let (collected_fee_a, collected_fee_b) = clmm_pool::pool::collect_fee<CoinTypeA, CoinTypeB>(global_config, pool, position, false);
-        mut_removed_a.join::<CoinTypeA>(collected_fee_a);
-        mut_removed_b.join::<CoinTypeB>(collected_fee_b);
+        mut_removed_a.join<CoinTypeA>(collected_fee_a);
+        mut_removed_b.join<CoinTypeB>(collected_fee_b);
         integrate::utils::send_coin<CoinTypeA>(
             sui::coin::from_balance<CoinTypeA>(mut_removed_a, ctx),
             sui::tx_context::sender(ctx)
@@ -309,10 +309,10 @@ module integrate::pool_script_v2 {
             global_config,
             pool,
             sui::coin::into_balance<CoinTypeA>(
-                coin_a.split::<CoinTypeA>(pay_amount_a, ctx)
+                coin_a.split<CoinTypeA>(pay_amount_a, ctx)
             ),
             sui::coin::into_balance<CoinTypeB>(
-                coin_b.split::<CoinTypeB>(pay_amount_b, ctx)
+                coin_b.split<CoinTypeB>(pay_amount_b, ctx)
             ),
             receipt
         );

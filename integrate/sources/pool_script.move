@@ -26,9 +26,9 @@ module integrate::pool_script {
         );
         let pay_amount = clmm_pool::pool::swap_pay_amount<T0, T1>(&receipt);
         let coin_out_value = if (a2b) {
-            coin_b_out.value::<T1>()
+            coin_b_out.value<T1>()
         } else {
-            coin_a_out.value::<T0>()
+            coin_a_out.value<T0>()
         };
         if (by_amount_in) {
             assert!(pay_amount == amount, 2);
@@ -38,12 +38,12 @@ module integrate::pool_script {
             assert!(pay_amount <= amount_limit, 0);
         };
         let (repay_amount_a, repay_amount_b) = if (a2b) {
-            (sui::coin::into_balance<T0>(coin_b.split::<T0>(pay_amount, ctx)), sui::balance::zero<T1>())
+            (sui::coin::into_balance<T0>(coin_b.split<T0>(pay_amount, ctx)), sui::balance::zero<T1>())
         } else {
-            (sui::balance::zero<T0>(), sui::coin::into_balance<T1>(coin_a.split::<T1>(pay_amount, ctx)))
+            (sui::balance::zero<T0>(), sui::coin::into_balance<T1>(coin_a.split<T1>(pay_amount, ctx)))
         };
-        coin_a.join::<T1>(sui::coin::from_balance<T1>(coin_b_out, ctx));
-        coin_b.join::<T0>(sui::coin::from_balance<T0>(coin_a_out, ctx));
+        coin_a.join<T1>(sui::coin::from_balance<T1>(coin_b_out, ctx));
+        coin_b.join<T0>(sui::coin::from_balance<T0>(coin_a_out, ctx));
         clmm_pool::pool::repay_flash_swap<T0, T1>(global_config, pool, repay_amount_a, repay_amount_b, receipt);
         integrate::utils::send_coin<T0>(coin_b, sui::tx_context::sender(ctx));
         integrate::utils::send_coin<T1>(coin_a, sui::tx_context::sender(ctx));
@@ -202,11 +202,11 @@ module integrate::pool_script {
         );
         let mut mut_removed_b = removed_b;
         let mut mut_removed_a = removed_a;
-        assert!(mut_removed_a.value::<CoinTypeA>() >= min_amount_a, 1);
-        assert!(mut_removed_b.value::<CoinTypeB>() >= min_amount_b, 1);
+        assert!(mut_removed_a.value<CoinTypeA>() >= min_amount_a, 1);
+        assert!(mut_removed_b.value<CoinTypeB>() >= min_amount_b, 1);
         let (collected_fee_a, collected_fee_b) = clmm_pool::pool::collect_fee<CoinTypeA, CoinTypeB>(global_config, pool, position, false);
-        mut_removed_a.join::<CoinTypeA>(collected_fee_a);
-        mut_removed_b.join::<CoinTypeB>(collected_fee_b);
+        mut_removed_a.join<CoinTypeA>(collected_fee_a);
+        mut_removed_b.join<CoinTypeB>(collected_fee_b);
         integrate::utils::send_coin<CoinTypeA>(
             sui::coin::from_balance<CoinTypeA>(mut_removed_a, ctx),
             sui::tx_context::sender(ctx)
@@ -235,8 +235,8 @@ module integrate::pool_script {
         clmm_pool::pool::repay_add_liquidity<T0, T1>(
             global_config,
             pool,
-            sui::coin::into_balance<T0>(coin_a.split::<T0>(pay_amount_a, ctx)),
-            sui::coin::into_balance<T1>(coin_b.split::<T1>(pay_amount_b, ctx)),
+            sui::coin::into_balance<T0>(coin_a.split<T0>(pay_amount_a, ctx)),
+            sui::coin::into_balance<T1>(coin_b.split<T1>(pay_amount_b, ctx)),
             receipt
         );
         integrate::utils::send_coin<T0>(coin_a, sui::tx_context::sender(ctx));
@@ -830,9 +830,9 @@ module integrate::pool_script {
         );
         let pay_amount = clmm_pool::pool::swap_pay_amount<T0, T1>(&swap_receipt);
         let coin_out_value = if (a2b) {
-            coin_b_out.value::<T1>()
+            coin_b_out.value<T1>()
         } else {
-            coin_a_out.value::<T0>()
+            coin_a_out.value<T0>()
         };
         if (by_amount_in) {
             assert!(pay_amount == amount, 2);
@@ -842,12 +842,12 @@ module integrate::pool_script {
             assert!(pay_amount <= amount_limit, 0);
         };
         let (repay_amount_a, repay_amount_b) = if (a2b) {
-            (sui::coin::into_balance<T0>(coin_a.split::<T0>(pay_amount, ctx)), sui::balance::zero<T1>())
+            (sui::coin::into_balance<T0>(coin_a.split<T0>(pay_amount, ctx)), sui::balance::zero<T1>())
         } else {
-            (sui::balance::zero<T0>(), sui::coin::into_balance<T1>(coin_b.split::<T1>(pay_amount, ctx)))
+            (sui::balance::zero<T0>(), sui::coin::into_balance<T1>(coin_b.split<T1>(pay_amount, ctx)))
         };
-        coin_a.join::<T0>(sui::coin::from_balance<T0>(coin_a_out, ctx));
-        coin_b.join::<T1>(sui::coin::from_balance<T1>(coin_b_out, ctx));
+        coin_a.join<T0>(sui::coin::from_balance<T0>(coin_a_out, ctx));
+        coin_b.join<T1>(sui::coin::from_balance<T1>(coin_b_out, ctx));
         clmm_pool::pool::repay_flash_swap_with_partner<T0, T1>(
             global_config,
             pool,

@@ -100,7 +100,7 @@ module clmm_pool::partner {
         assert!(start_time >= sui::clock::timestamp_ms(clock) / 1000, 7);
         assert!(ref_fee_rate < 10000, 2);
         assert!(!std::string::is_empty(&name), 5);
-        assert!(!partners.partners.contains::<std::string::String, sui::object::ID>(&name), 5);
+        assert!(!partners.partners.contains<std::string::String, sui::object::ID>(&name), 5);
         clmm_pool::config::checked_package_version(global_config);
         clmm_pool::config::check_partner_manager_role(global_config, sui::tx_context::sender(ctx));
         let v0 = Partner {
@@ -117,7 +117,7 @@ module clmm_pool::partner {
             name,
             partner_id: v1,
         };
-        partners.partners.insert::<std::string::String, sui::object::ID>(name, v1);
+        partners.partners.insert<std::string::String, sui::object::ID>(name, v1);
         sui::transfer::share_object<Partner>(v0);
         let partner_cap_id = sui::object::id<PartnerCap>(&v2);
         sui::transfer::transfer<PartnerCap>(v2, recipient);
