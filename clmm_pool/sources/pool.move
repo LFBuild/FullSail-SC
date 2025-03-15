@@ -303,10 +303,10 @@ module clmm_pool::pool {
 
     public fun fetch_positions<T0, T1>(
         arg0: &Pool<T0, T1>,
-        arg1: vector<sui::object::ID>,
-        arg2: u64
+        position_ids: vector<sui::object::ID>,
+        limit: u64
     ): vector<clmm_pool::position::PositionInfo> {
-        clmm_pool::position::fetch_positions(&arg0.position_manager, arg1, arg2)
+        clmm_pool::position::fetch_positions(&arg0.position_manager, position_ids, limit)
     }
 
     public fun is_position_exist<T0, T1>(arg0: &Pool<T0, T1>, arg1: sui::object::ID): bool {
