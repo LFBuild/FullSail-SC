@@ -1,17 +1,20 @@
 module integrate::fullsail_token {
-    public entry fun burn<T0>(arg0: &mut distribution::fullsail_token::MinterCap<T0>, arg1: sui::coin::Coin<T0>) {
-        distribution::fullsail_token::burn<T0>(arg0, arg1);
+    public entry fun burn<CoinType>(
+        minter_cap: &mut distribution::fullsail_token::MinterCap<CoinType>,
+        coin_to_burn: sui::coin::Coin<CoinType>
+    ) {
+        distribution::fullsail_token::burn<CoinType>(minter_cap, coin_to_burn);
     }
 
-    public entry fun mint<T0>(
-        arg0: &mut distribution::fullsail_token::MinterCap<T0>,
-        arg1: u64,
-        arg2: address,
-        arg3: &mut sui::tx_context::TxContext
+    public entry fun mint<CoinType>(
+        minter_cap: &mut distribution::fullsail_token::MinterCap<CoinType>,
+        amount: u64,
+        address: address,
+        ctx: &mut sui::tx_context::TxContext
     ) {
-        sui::transfer::public_transfer<sui::coin::Coin<T0>>(
-            distribution::fullsail_token::mint<T0>(arg0, arg1, arg2, arg3),
-            arg2
+        sui::transfer::public_transfer<sui::coin::Coin<CoinType>>(
+            distribution::fullsail_token::mint<CoinType>(minter_cap, amount, address, ctx),
+            address
         );
     }
 
