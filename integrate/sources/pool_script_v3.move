@@ -7,27 +7,27 @@ module integrate::pool_script_v3 {
         coin_b_input: &mut sui::coin::Coin<CoinTypeB>,
         ctx: &mut sui::tx_context::TxContext
     ) {
-        let (v0, v1) = clmm_pool::pool::collect_fee<CoinTypeA, CoinTypeB>(
+        let (collected_fee_a, collected_fee_b) = clmm_pool::pool::collect_fee<CoinTypeA, CoinTypeB>(
             global_config,
             pool,
             position,
             true
         );
-        coin_a_input.join<CoinTypeA>(sui::coin::from_balance<CoinTypeA>(v0, ctx));
-        coin_b_input.join<CoinTypeB>(sui::coin::from_balance<CoinTypeB>(v1, ctx));
+        coin_a_input.join<CoinTypeA>(sui::coin::from_balance<CoinTypeA>(collected_fee_a, ctx));
+        coin_b_input.join<CoinTypeB>(sui::coin::from_balance<CoinTypeB>(collected_fee_b, ctx));
     }
 
-    public entry fun collect_reward<CoinTypeA, CoinTypeB, T2>(
+    public entry fun collect_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         position: &mut clmm_pool::position::Position,
         rewarder_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
-        coin_a_input: &mut sui::coin::Coin<T2>,
+        coin_a_input: &mut sui::coin::Coin<RewardCoinType>,
         clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext
     ) {
-        coin_a_input.join<T2>(sui::coin::from_balance<T2>(
-            clmm_pool::pool::collect_reward<CoinTypeA, CoinTypeB, T2>(
+        coin_a_input.join<RewardCoinType>(sui::coin::from_balance<RewardCoinType>(
+            clmm_pool::pool::collect_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
                 global_config,
                 pool,
                 position,
@@ -39,7 +39,7 @@ module integrate::pool_script_v3 {
         ));
     }
 
-    public entry fun update_rewarder_emission<CoinTypeA, CoinTypeB, T2>(
+    public entry fun update_rewarder_emission<CoinTypeA, CoinTypeB, RewardCoinType>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         rewarder_vault: &clmm_pool::rewarder::RewarderGlobalVault,
