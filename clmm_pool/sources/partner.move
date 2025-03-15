@@ -86,49 +86,49 @@ module clmm_pool::partner {
     }
 
     public fun create_partner(
-        arg0: &clmm_pool::config::GlobalConfig,
-        arg1: &mut Partners,
-        arg2: std::string::String,
-        arg3: u64,
-        arg4: u64,
-        arg5: u64,
-        arg6: address,
-        arg7: &sui::clock::Clock,
-        arg8: &mut sui::tx_context::TxContext
+        global_config: &clmm_pool::config::GlobalConfig,
+        partners: &mut Partners,
+        name: std::string::String,
+        ref_fee_rate: u64,
+        start_time: u64,
+        end_time: u64,
+        recipient: address,
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext
     ) {
-        assert!(arg5 > arg4, 6);
-        assert!(arg4 >= sui::clock::timestamp_ms(arg7) / 1000, 7);
-        assert!(arg3 < 10000, 2);
-        assert!(!std::string::is_empty(&arg2), 5);
-        assert!(!sui::vec_map::contains<std::string::String, sui::object::ID>(&arg1.partners, &arg2), 5);
-        clmm_pool::config::checked_package_version(arg0);
-        clmm_pool::config::check_partner_manager_role(arg0, sui::tx_context::sender(arg8));
+        assert!(end_time > start_time, 6);
+        assert!(start_time >= sui::clock::timestamp_ms(clock) / 1000, 7);
+        assert!(ref_fee_rate < 10000, 2);
+        assert!(!std::string::is_empty(&name), 5);
+        assert!(!partners.partners.contains::<std::string::String, sui::object::ID>(&name), 5);
+        clmm_pool::config::checked_package_version(global_config);
+        clmm_pool::config::check_partner_manager_role(global_config, sui::tx_context::sender(ctx));
         let v0 = Partner {
-            id: sui::object::new(arg8),
-            name: arg2,
-            ref_fee_rate: arg3,
-            start_time: arg4,
-            end_time: arg5,
-            balances: sui::bag::new(arg8),
+            id: sui::object::new(ctx),
+            name,
+            ref_fee_rate,
+            start_time,
+            end_time,
+            balances: sui::bag::new(ctx),
         };
         let v1 = sui::object::id<Partner>(&v0);
         let v2 = PartnerCap {
-            id: sui::object::new(arg8),
-            name: arg2,
+            id: sui::object::new(ctx),
+            name,
             partner_id: v1,
         };
-        sui::vec_map::insert<std::string::String, sui::object::ID>(&mut arg1.partners, arg2, v1);
+        partners.partners.insert::<std::string::String, sui::object::ID>(name, v1);
         sui::transfer::share_object<Partner>(v0);
         let partner_cap_id = sui::object::id<PartnerCap>(&v2);
-        sui::transfer::transfer<PartnerCap>(v2, arg6);
+        sui::transfer::transfer<PartnerCap>(v2, recipient);
         let v3 = CreatePartnerEvent {
-            recipient: arg6,
+            recipient,
             partner_id: v1,
             partner_cap_id,
-            ref_fee_rate: arg3,
-            name: arg2,
-            start_time: arg4,
-            end_time: arg5,
+            ref_fee_rate,
+            name,
+            start_time,
+            end_time,
         };
         sui::event::emit<CreatePartnerEvent>(v3);
     }
@@ -187,41 +187,41 @@ module clmm_pool::partner {
     }
 
     public fun update_ref_fee_rate(
-        arg0: &clmm_pool::config::GlobalConfig,
-        arg1: &mut Partner,
-        arg2: u64,
-        arg3: &mut sui::tx_context::TxContext
+        global_config: &clmm_pool::config::GlobalConfig,
+        partner: &mut Partner,
+        new_fee_rate: u64,
+        ctx: &mut sui::tx_context::TxContext
     ) {
-        assert!(arg2 < 10000, 2);
-        clmm_pool::config::checked_package_version(arg0);
-        clmm_pool::config::check_partner_manager_role(arg0, sui::tx_context::sender(arg3));
-        arg1.ref_fee_rate = arg2;
+        assert!(new_fee_rate < 10000, 2);
+        clmm_pool::config::checked_package_version(global_config);
+        clmm_pool::config::check_partner_manager_role(global_config, sui::tx_context::sender(ctx));
+        partner.ref_fee_rate = new_fee_rate;
         let v0 = UpdateRefFeeRateEvent {
-            partner_id: sui::object::id<Partner>(arg1),
-            old_fee_rate: arg1.ref_fee_rate,
-            new_fee_rate: arg2,
+            partner_id: sui::object::id<Partner>(partner),
+            old_fee_rate: partner.ref_fee_rate,
+            new_fee_rate,
         };
         sui::event::emit<UpdateRefFeeRateEvent>(v0);
     }
 
     public fun update_time_range(
-        arg0: &clmm_pool::config::GlobalConfig,
-        arg1: &mut Partner,
-        arg2: u64,
-        arg3: u64,
-        arg4: &sui::clock::Clock,
-        arg5: &mut sui::tx_context::TxContext
+        global_config: &clmm_pool::config::GlobalConfig,
+        partner: &mut Partner,
+        start_time: u64,
+        end_time: u64,
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext
     ) {
-        assert!(arg3 > arg2, 6);
-        assert!(arg3 > sui::clock::timestamp_ms(arg4) / 1000, 6);
-        clmm_pool::config::checked_package_version(arg0);
-        clmm_pool::config::check_partner_manager_role(arg0, sui::tx_context::sender(arg5));
-        arg1.start_time = arg2;
-        arg1.end_time = arg3;
+        assert!(end_time > start_time, 6);
+        assert!(end_time > sui::clock::timestamp_ms(clock) / 1000, 6);
+        clmm_pool::config::checked_package_version(global_config);
+        clmm_pool::config::check_partner_manager_role(global_config, sui::tx_context::sender(ctx));
+        partner.start_time = start_time;
+        partner.end_time = end_time;
         let v0 = UpdateTimeRangeEvent {
-            partner_id: sui::object::id<Partner>(arg1),
-            start_time: arg2,
-            end_time: arg3,
+            partner_id: sui::object::id<Partner>(partner),
+            start_time,
+            end_time,
         };
         sui::event::emit<UpdateTimeRangeEvent>(v0);
     }
