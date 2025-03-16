@@ -1,4 +1,7 @@
 module distribution::minter {
+
+    const EMinterCapAlreadySet: u64 = 9223372831423725567;
+
     public struct AdminCap has store, key {
         id: sui::object::UID,
     }
@@ -218,17 +221,17 @@ module distribution::minter {
         sui::vec_set::insert<sui::object::ID>(&mut arg0.revoked_admins, arg2);
     }
 
-    public fun set_minter_cap<T0>(
-        arg0: &mut Minter<T0>,
-        arg1: &AdminCap,
-        arg2: distribution::fullsail_token::MinterCap<T0>
+    public fun set_minter_cap<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        admin_cap: &AdminCap,
+        minter_cap: distribution::fullsail_token::MinterCap<SailCoinType>
     ) {
-        check_admin<T0>(arg0, arg1);
+        check_admin<SailCoinType>(minter, admin_cap);
         assert!(
-            std::option::is_none<distribution::fullsail_token::MinterCap<T0>>(&arg0.minter_cap),
-            9223372831423725567
+            std::option::is_none<distribution::fullsail_token::MinterCap<SailCoinType>>(&minter.minter_cap),
+            EMinterCapAlreadySet
         );
-        std::option::fill<distribution::fullsail_token::MinterCap<T0>>(&mut arg0.minter_cap, arg2);
+        std::option::fill<distribution::fullsail_token::MinterCap<SailCoinType>>(&mut minter.minter_cap, minter_cap);
     }
 
     public fun set_notify_reward_cap<T0>(

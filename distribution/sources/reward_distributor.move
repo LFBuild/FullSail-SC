@@ -161,76 +161,84 @@ module distribution::reward_distributor {
         v0
     }
 
-    public fun claimable<T0>(
-        arg0: &RewardDistributor<T0>,
-        arg1: &distribution::voting_escrow::VotingEscrow<T0>,
-        arg2: sui::object::ID
+    public fun claimable<SailCoinType>(
+        reward_distributor: &RewardDistributor<SailCoinType>,
+        voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        lock_id: sui::object::ID
     ): u64 {
-        let (v0, _, _) = claimable_internal<T0>(
-            arg0,
-            arg1,
-            arg2,
-            distribution::common::to_period(arg0.last_token_time)
+        let (v0, _, _) = claimable_internal<SailCoinType>(
+            reward_distributor,
+            voting_escrow,
+            lock_id,
+            distribution::common::to_period(reward_distributor.last_token_time)
         );
         v0
     }
 
-    fun claimable_internal<T0>(
-        arg0: &RewardDistributor<T0>,
-        arg1: &distribution::voting_escrow::VotingEscrow<T0>,
-        arg2: sui::object::ID,
-        arg3: u64
+    fun claimable_internal<SailCoinType>(
+        reward_distributor: &RewardDistributor<SailCoinType>,
+        voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        lock_id: sui::object::ID,
+        period: u64
     ): (u64, u64, u64) {
-        let v0 = if (sui::table::contains<sui::object::ID, u64>(&arg0.time_cursor_of, arg2)) {
-            *sui::table::borrow<sui::object::ID, u64>(&arg0.time_cursor_of, arg2)
+        let last_checkpoint_time = if (sui::table::contains<sui::object::ID, u64>(&reward_distributor.time_cursor_of, lock_id)) {
+            *sui::table::borrow<sui::object::ID, u64>(&reward_distributor.time_cursor_of, lock_id)
         } else {
             0
         };
-        let mut v1 = v0;
-        let mut v2 = v0;
-        let mut v3 = 0;
-        if (distribution::voting_escrow::user_point_epoch<T0>(arg1, arg2) == 0) {
-            return (0, v0, v0)
+        let mut epoch_end = last_checkpoint_time;
+        let mut epoch_start = last_checkpoint_time;
+        let mut total_reward = 0;
+        if (distribution::voting_escrow::user_point_epoch<SailCoinType>(voting_escrow, lock_id) == 0) {
+            return (0, last_checkpoint_time, last_checkpoint_time)
         };
-        if (v0 == 0) {
-            let v4 = distribution::voting_escrow::user_point_history<T0>(arg1, arg2, 1);
-            let v5 = distribution::common::to_period(distribution::voting_escrow::user_point_ts(&v4));
-            v1 = v5;
-            v2 = v5;
+        if (last_checkpoint_time == 0) {
+            let user_point = distribution::voting_escrow::user_point_history<SailCoinType>(voting_escrow, lock_id, 1);
+            let initial_period = distribution::common::to_period(distribution::voting_escrow::user_point_ts(&user_point));
+            epoch_end = initial_period;
+            epoch_start = initial_period;
         };
-        if (v1 >= arg3) {
-            return (0, v2, v1)
+        if (epoch_end >= period) {
+            return (0, epoch_start, epoch_end)
         };
-        if (v1 < arg0.start_time) {
-            v1 = arg0.start_time;
+        if (epoch_end < reward_distributor.start_time) {
+            epoch_end = reward_distributor.start_time;
         };
-        let mut v6 = 0;
-        while (v6 < 50) {
-            if (v1 >= arg3) {
+        let mut i = 0;
+        while (i < 50) {
+            if (epoch_end >= period) {
                 break
             };
-            let v7 = distribution::voting_escrow::balance_of_nft_at<T0>(
-                arg1,
-                arg2,
-                v1 + distribution::common::week() - 1
+            let user_balance = distribution::voting_escrow::balance_of_nft_at<SailCoinType>(
+                voting_escrow,
+                lock_id,
+                epoch_end + distribution::common::week() - 1
             );
-            let v8 = distribution::voting_escrow::total_supply_at<T0>(arg1, v1 + distribution::common::week() - 1);
-            let v9 = if (v8 == 0) {
+            let total_supply = distribution::voting_escrow::total_supply_at<SailCoinType>(
+                voting_escrow, epoch_end + distribution::common::week() - 1);
+            let non_zero_total_supply = if (total_supply == 0) {
                 1
             } else {
-                v8
+                total_supply
             };
-            let v10 = if (sui::table::contains<u64, u64>(&arg0.tokens_per_period, v1)) {
-                let v11 = sui::table::borrow<u64, u64>(&arg0.tokens_per_period, v1);
-                *v11
+            let period_reward_tokens = if (sui::table::contains<u64, u64>(&reward_distributor.tokens_per_period,
+                epoch_end
+            )) {
+                let period_reward_tokens_ref = sui::table::borrow<u64, u64>(&reward_distributor.tokens_per_period,
+                    epoch_end
+                );
+                *period_reward_tokens_ref
             } else {
                 0
             };
-            v3 = v3 + v7 * v10 / v9;
-            v1 = v1 + distribution::common::week();
-            v6 = v6 + 1;
+            total_reward = total_reward + user_balance * period_reward_tokens / non_zero_total_supply;
+            epoch_end = epoch_end + distribution::common::week();
+            i = i + 1;
         };
-        (v3, v1, v2)
+        // TODO: in original smart contracts version it was (total_reward, epoch_end, epoch_start)
+        // but it seemed to be an error, so i changed it.
+        // We should revisit it when we have gathered more context
+        (total_reward, epoch_start, epoch_end)
     }
 
     fun init(arg0: REWARD_DISTRIBUTOR, arg1: &mut sui::tx_context::TxContext) {
