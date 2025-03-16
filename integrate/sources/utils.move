@@ -25,14 +25,14 @@ module integrate::utils {
         };
     }
 
-    public fun transfer_coin_to_sender<T0>(
-        coin: sui::coin::Coin<T0>,
+    public fun transfer_coin_to_sender<CoinType>(
+        coin: sui::coin::Coin<CoinType>,
         ctx: &mut sui::tx_context::TxContext
     ) {
-        if (coin.value<T0>() > 0) {
-            sui::transfer::public_transfer<sui::coin::Coin<T0>>(coin, sui::tx_context::sender(ctx));
+        if (coin.value<CoinType>() > 0) {
+            sui::transfer::public_transfer<sui::coin::Coin<CoinType>>(coin, sui::tx_context::sender(ctx));
         } else {
-            sui::coin::destroy_zero<T0>(coin);
+            sui::coin::destroy_zero<CoinType>(coin);
         };
     }
 }
