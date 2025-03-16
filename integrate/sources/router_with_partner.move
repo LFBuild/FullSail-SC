@@ -387,10 +387,12 @@ module integrate::router_with_partner {
         } else {
             assert!(coin_out_value == amount, 1);
         };
-        let (coin_a_out, coin_b_out) = if (a2b) {
+        let (repay_amount_a, repay_amount_b) = if (a2b) {
             assert!(coin_a.value<CoinTypeA>() >= pay_mount, 4);
-            (sui::coin::into_balance<CoinTypeA>(coin_a.split<CoinTypeA>(pay_mount, ctx)), sui::balance::zero<CoinTypeB>(
-            ))
+            (
+                sui::coin::into_balance<CoinTypeA>(coin_a.split<CoinTypeA>(pay_mount, ctx)),
+                sui::balance::zero<CoinTypeB>()
+            )
         } else {
             (
                 sui::balance::zero<CoinTypeA>(),
@@ -405,8 +407,8 @@ module integrate::router_with_partner {
             global_config,
             pool,
             partner,
-            coin_a_out,
-            coin_b_out,
+            repay_amount_a,
+            repay_amount_b,
             receipt
         );
         (coin_a, coin_b)

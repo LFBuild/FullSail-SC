@@ -63,7 +63,13 @@ module integrate::router {
         };
         coin_a.join<CoinTypeA>(sui::coin::from_balance<CoinTypeA>(coin_a_out, ctx));
         coin_b.join<CoinTypeB>(sui::coin::from_balance<CoinTypeB>(coin_b_out, ctx));
-        clmm_pool::pool::repay_flash_swap<CoinTypeA, CoinTypeB>(global_config, pool, repay_amount_a, repay_amount_b, receipt);
+        clmm_pool::pool::repay_flash_swap<CoinTypeA, CoinTypeB>(
+            global_config,
+            pool,
+            repay_amount_a,
+            repay_amount_b,
+            receipt
+        );
         (coin_a, coin_b)
     }
 
