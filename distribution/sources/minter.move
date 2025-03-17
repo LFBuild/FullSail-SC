@@ -221,6 +221,9 @@ module distribution::minter {
         sui::vec_set::insert<sui::object::ID>(&mut arg0.revoked_admins, arg2);
     }
 
+    /**
+    * Puts FullSail token mintercap into minter object.
+    */
     public fun set_minter_cap<SailCoinType>(
         minter: &mut Minter<SailCoinType>,
         admin_cap: &AdminCap,
