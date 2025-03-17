@@ -9,235 +9,512 @@ module integrate::router {
         target_sqrt_price_ab: u128,
         target_sqrt_price_cd: u128,
     }
-    
+
     public struct CalculatedRouterSwapResultEvent has copy, drop, store {
         data: CalculatedRouterSwapResult,
     }
-    
-    public fun swap<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, mut arg2: sui::coin::Coin<T0>, mut arg3: sui::coin::Coin<T1>, arg4: bool, arg5: bool, mut arg6: u64, arg7: u128, arg8: bool, arg9: &sui::clock::Clock, arg10: &mut sui::tx_context::TxContext) : (sui::coin::Coin<T0>, sui::coin::Coin<T1>) {
-        if (arg5 && arg8) {
-            let v0 = if (arg4) {
-                sui::coin::value<T0>(&arg2)
+
+    public fun swap<CoinTypeA, CoinTypeB>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        mut coin_a: sui::coin::Coin<CoinTypeA>,
+        mut coin_b: sui::coin::Coin<CoinTypeB>,
+        a2b: bool,
+        by_amount_in: bool,
+        mut amount: u64,
+        sqrt_price_limit: u128,
+        use_full_input: bool,
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext
+    ): (sui::coin::Coin<CoinTypeA>, sui::coin::Coin<CoinTypeB>) {
+        if (by_amount_in && use_full_input) {
+            let amount_to_use = if (a2b) {
+                coin_a.value<CoinTypeA>()
             } else {
-                sui::coin::value<T1>(&arg3)
+                coin_b.value<CoinTypeB>()
             };
-            arg6 = v0;
+            amount = amount_to_use;
         };
-        let (v1, v2, v3) = clmm_pool::pool::flash_swap<T0, T1>(arg0, arg1, arg4, arg5, arg6, arg7, arg9);
-        let v4 = v3;
-        let v5 = v2;
-        let v6 = v1;
-        let v7 = clmm_pool::pool::swap_pay_amount<T0, T1>(&v4);
-        let v8 = if (arg4) {
-            sui::balance::value<T1>(&v5)
+        let (coin_a_out, coin_b_out, receipt) = clmm_pool::pool::flash_swap<CoinTypeA, CoinTypeB>(
+            global_config,
+            pool,
+            a2b,
+            by_amount_in,
+            amount,
+            sqrt_price_limit,
+            clock
+        );
+        let pay_amount = clmm_pool::pool::swap_pay_amount<CoinTypeA, CoinTypeB>(&receipt);
+        let coin_out_value = if (a2b) {
+            coin_b_out.value<CoinTypeB>()
         } else {
-            sui::balance::value<T0>(&v6)
+            coin_a_out.value<CoinTypeA>()
         };
-        if (arg5) {
-            assert!(v7 == arg6, 1);
+        if (by_amount_in) {
+            assert!(pay_amount == amount, 1);
         } else {
-            assert!(v8 == arg6, 1);
+            assert!(coin_out_value == amount, 1);
         };
-        let (v9, v10) = if (arg4) {
-            assert!(sui::coin::value<T0>(&arg2) >= v7, 4);
-            (sui::coin::into_balance<T0>(sui::coin::split<T0>(&mut arg2, v7, arg10)), sui::balance::zero<T1>())
+        let (repay_amount_a, repay_amount_b) = if (a2b) {
+            assert!(coin_a.value<CoinTypeA>() >= pay_amount, 4);
+            (sui::coin::into_balance<CoinTypeA>(coin_a.split<CoinTypeA>(pay_amount, ctx)), sui::balance::zero<CoinTypeB>())
         } else {
-            (sui::balance::zero<T0>(), sui::coin::into_balance<T1>(sui::coin::split<T1>(&mut arg3, v7, arg10)))
+            (sui::balance::zero<CoinTypeA>(), sui::coin::into_balance<CoinTypeB>(coin_b.split<CoinTypeB>(pay_amount, ctx)))
         };
-        sui::coin::join<T0>(&mut arg2, sui::coin::from_balance<T0>(v6, arg10));
-        sui::coin::join<T1>(&mut arg3, sui::coin::from_balance<T1>(v5, arg10));
-        clmm_pool::pool::repay_flash_swap<T0, T1>(arg0, arg1, v9, v10, v4);
-        (arg2, arg3)
+        coin_a.join<CoinTypeA>(sui::coin::from_balance<CoinTypeA>(coin_a_out, ctx));
+        coin_b.join<CoinTypeB>(sui::coin::from_balance<CoinTypeB>(coin_b_out, ctx));
+        clmm_pool::pool::repay_flash_swap<CoinTypeA, CoinTypeB>(
+            global_config,
+            pool,
+            repay_amount_a,
+            repay_amount_b,
+            receipt
+        );
+        (coin_a, coin_b)
     }
-    
-    public fun calculate_router_swap_result<T0, T1, T2, T3>(arg0: &mut clmm_pool::pool::Pool<T0, T1>, arg1: &mut clmm_pool::pool::Pool<T2, T3>, arg2: bool, arg3: bool, arg4: bool, arg5: u64) {
-        if (arg4) {
-            let v0 = integrate::expect_swap::expect_swap<T0, T1>(arg0, arg2, arg4, arg5);
-            let v1 = integrate::expect_swap::expect_swap_result_amount_out(&v0);
-            if (integrate::expect_swap::expect_swap_result_is_exceed(&v0) || v1 > 18446744073709551615) {
-                let v2 = CalculatedRouterSwapResult{
-                    amount_in             : 0, 
-                    amount_medium         : 0, 
-                    amount_out            : 0, 
-                    is_exceed             : true, 
-                    current_sqrt_price_ab : 0, 
-                    current_sqrt_price_cd : 0, 
-                    target_sqrt_price_ab  : 0, 
-                    target_sqrt_price_cd  : 0,
+
+    public fun calculate_router_swap_result<CoinTypeA, CoinTypeB, CoinTypeC, CoinTypeD>(
+        pool_ab: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        pool_cd: &mut clmm_pool::pool::Pool<CoinTypeC, CoinTypeD>,
+        a_to_b: bool,
+        c_to_d: bool,
+        by_amount_in: bool,
+        amount: u64
+    ) {
+        if (by_amount_in) {
+            let first_pool_result = integrate::expect_swap::expect_swap<CoinTypeA, CoinTypeB>(pool_ab, a_to_b, by_amount_in, amount);
+            let firt_pool_output = integrate::expect_swap::expect_swap_result_amount_out(&first_pool_result);
+            if (integrate::expect_swap::expect_swap_result_is_exceed(&first_pool_result) || firt_pool_output > 18446744073709551615) {
+                let failed_result = CalculatedRouterSwapResult {
+                    amount_in: 0,
+                    amount_medium: 0,
+                    amount_out: 0,
+                    is_exceed: true,
+                    current_sqrt_price_ab: 0,
+                    current_sqrt_price_cd: 0,
+                    target_sqrt_price_ab: 0,
+                    target_sqrt_price_cd: 0,
                 };
-                let v3 = CalculatedRouterSwapResultEvent{data: v2};
-                sui::event::emit<CalculatedRouterSwapResultEvent>(v3);
+                let failed_event = CalculatedRouterSwapResultEvent { data: failed_result };
+                sui::event::emit<CalculatedRouterSwapResultEvent>(failed_event);
             } else {
-                let v4 = (v1 as u64);
-                let v5 = integrate::expect_swap::expect_swap<T2, T3>(arg1, arg3, arg4, v4);
-                let v6 = integrate::expect_swap::expect_swap_result_amount_out(&v5);
-                if (v6 > 18446744073709551615) {
-                    let v7 = CalculatedRouterSwapResult{
-                        amount_in             : 0, 
-                        amount_medium         : 0, 
-                        amount_out            : 0, 
-                        is_exceed             : true, 
-                        current_sqrt_price_ab : 0, 
-                        current_sqrt_price_cd : 0, 
-                        target_sqrt_price_ab  : 0, 
-                        target_sqrt_price_cd  : 0,
+                let medium_amount = (firt_pool_output as u64);
+                let second_pool_result = integrate::expect_swap::expect_swap<CoinTypeC, CoinTypeD>(
+                    pool_cd, c_to_d, by_amount_in, medium_amount);
+                let second_pool_output = integrate::expect_swap::expect_swap_result_amount_out(&second_pool_result);
+                if (second_pool_output > 18446744073709551615) {
+                    let second_fail_result = CalculatedRouterSwapResult {
+                        amount_in: 0,
+                        amount_medium: 0,
+                        amount_out: 0,
+                        is_exceed: true,
+                        current_sqrt_price_ab: 0,
+                        current_sqrt_price_cd: 0,
+                        target_sqrt_price_ab: 0,
+                        target_sqrt_price_cd: 0,
                     };
-                    let v8 = CalculatedRouterSwapResultEvent{data: v7};
-                    sui::event::emit<CalculatedRouterSwapResultEvent>(v8);
+                    let second_fail_event = CalculatedRouterSwapResultEvent { data: second_fail_result };
+                    sui::event::emit<CalculatedRouterSwapResultEvent>(second_fail_event);
                 } else {
-                    let v9 = integrate::expect_swap::expect_swap_result_is_exceed(&v0) || integrate::expect_swap::expect_swap_result_is_exceed(&v5);
-                    let v10 = CalculatedRouterSwapResult{
-                        amount_in             : arg5, 
-                        amount_medium         : v4, 
-                        amount_out            : (v6 as u64), 
-                        is_exceed             : v9, 
-                        current_sqrt_price_ab : clmm_pool::pool::current_sqrt_price<T0, T1>(arg0), 
-                        current_sqrt_price_cd : clmm_pool::pool::current_sqrt_price<T2, T3>(arg1), 
-                        target_sqrt_price_ab  : integrate::expect_swap::expect_swap_result_after_sqrt_price(&v0), 
-                        target_sqrt_price_cd  : integrate::expect_swap::expect_swap_result_after_sqrt_price(&v5),
+                    let is_any_exceed = integrate::expect_swap::expect_swap_result_is_exceed(
+                        &first_pool_result
+                    ) || integrate::expect_swap::expect_swap_result_is_exceed(&second_pool_result);
+                    let success_result = CalculatedRouterSwapResult {
+                        amount_in: amount,
+                        amount_medium: medium_amount,
+                        amount_out: (second_pool_output as u64),
+                        is_exceed: is_any_exceed,
+                        current_sqrt_price_ab: clmm_pool::pool::current_sqrt_price<CoinTypeA, CoinTypeB>(pool_ab),
+                        current_sqrt_price_cd: clmm_pool::pool::current_sqrt_price<CoinTypeC, CoinTypeD>(pool_cd),
+                        target_sqrt_price_ab: integrate::expect_swap::expect_swap_result_after_sqrt_price(&first_pool_result
+                        ),
+                        target_sqrt_price_cd: integrate::expect_swap::expect_swap_result_after_sqrt_price(&second_pool_result
+                        ),
                     };
-                    let v11 = CalculatedRouterSwapResultEvent{data: v10};
-                    sui::event::emit<CalculatedRouterSwapResultEvent>(v11);
+                    let success_event = CalculatedRouterSwapResultEvent { data: success_result };
+                    sui::event::emit<CalculatedRouterSwapResultEvent>(success_event);
                 };
             };
         } else {
-            let v12 = integrate::expect_swap::expect_swap<T2, T3>(arg1, arg3, arg4, arg5);
-            let v13 = integrate::expect_swap::expect_swap_result_is_exceed(&v12);
-            let v14 = integrate::expect_swap::expect_swap_result_amount_in(&v12);
-            if (v13 || v14 > 18446744073709551615) {
-                let v15 = CalculatedRouterSwapResult{
-                    amount_in             : 0, 
-                    amount_medium         : 0, 
-                    amount_out            : 0, 
-                    is_exceed             : true, 
-                    current_sqrt_price_ab : 0, 
-                    current_sqrt_price_cd : 0, 
-                    target_sqrt_price_ab  : 0, 
-                    target_sqrt_price_cd  : 0,
+            let reverse_second_result = integrate::expect_swap::expect_swap<CoinTypeC, CoinTypeD>(
+                pool_cd, c_to_d, by_amount_in, amount);
+            let reverse_second_exceeds = integrate::expect_swap::expect_swap_result_is_exceed(&reverse_second_result);
+            let reverse_second_input = integrate::expect_swap::expect_swap_result_amount_in(&reverse_second_result);
+            if (reverse_second_exceeds || reverse_second_input > 18446744073709551615) {
+                let reverse_fail_result = CalculatedRouterSwapResult {
+                    amount_in: 0,
+                    amount_medium: 0,
+                    amount_out: 0,
+                    is_exceed: true,
+                    current_sqrt_price_ab: 0,
+                    current_sqrt_price_cd: 0,
+                    target_sqrt_price_ab: 0,
+                    target_sqrt_price_cd: 0,
                 };
-                let v16 = CalculatedRouterSwapResultEvent{data: v15};
-                sui::event::emit<CalculatedRouterSwapResultEvent>(v16);
+                let reverse_fail_event = CalculatedRouterSwapResultEvent { data: reverse_fail_result };
+                sui::event::emit<CalculatedRouterSwapResultEvent>(reverse_fail_event);
             } else {
-                let v17 = (v14 as u64);
-                let v18 = (integrate::expect_swap::expect_swap_result_fee_amount(&v12) as u64);
-                let v19 = integrate::expect_swap::expect_swap<T0, T1>(arg0, arg2, arg4, (v17 + v18));
-                let v20 = integrate::expect_swap::expect_swap_result_amount_in(&v19);
-                if (v20 > 18446744073709551615) {
-                    let v21 = CalculatedRouterSwapResult{
-                        amount_in             : 0, 
-                        amount_medium         : 0, 
-                        amount_out            : 0, 
-                        is_exceed             : true, 
-                        current_sqrt_price_ab : 0, 
-                        current_sqrt_price_cd : 0, 
-                        target_sqrt_price_ab  : 0, 
-                        target_sqrt_price_cd  : 0,
+                let medium_amount = (reverse_second_input as u64);
+                let medium_fee_amount = (integrate::expect_swap::expect_swap_result_fee_amount(&reverse_second_result) as u64);
+                let reverse_first_result = integrate::expect_swap::expect_swap<CoinTypeA, CoinTypeB>(pool_ab, a_to_b, by_amount_in, (medium_amount + medium_fee_amount));
+                let reverse_first_input = integrate::expect_swap::expect_swap_result_amount_in(&reverse_first_result);
+                if (reverse_first_input > 18446744073709551615) {
+                    let reverse_first_fail_result = CalculatedRouterSwapResult {
+                        amount_in: 0,
+                        amount_medium: 0,
+                        amount_out: 0,
+                        is_exceed: true,
+                        current_sqrt_price_ab: 0,
+                        current_sqrt_price_cd: 0,
+                        target_sqrt_price_ab: 0,
+                        target_sqrt_price_cd: 0,
                     };
-                    let v22 = CalculatedRouterSwapResultEvent{data: v21};
-                    sui::event::emit<CalculatedRouterSwapResultEvent>(v22);
+                    let reverse_first_fail_event = CalculatedRouterSwapResultEvent { data: reverse_first_fail_result };
+                    sui::event::emit<CalculatedRouterSwapResultEvent>(reverse_first_fail_event);
                 } else {
-                    let v23 = integrate::expect_swap::expect_swap_result_is_exceed(&v19) || v13;
-                    let v24 = CalculatedRouterSwapResult{
-                        amount_in             : (v20 as u64) + (integrate::expect_swap::expect_swap_result_fee_amount(&v19) as u64), 
-                        amount_medium         : v17 + v18, 
-                        amount_out            : arg5, 
-                        is_exceed             : v23, 
-                        current_sqrt_price_ab : clmm_pool::pool::current_sqrt_price<T0, T1>(arg0), 
-                        current_sqrt_price_cd : clmm_pool::pool::current_sqrt_price<T2, T3>(arg1), 
-                        target_sqrt_price_ab  : integrate::expect_swap::expect_swap_result_after_sqrt_price(&v19), 
-                        target_sqrt_price_cd  : integrate::expect_swap::expect_swap_result_after_sqrt_price(&v12),
+                    let is_any_reverse_exceed = integrate::expect_swap::expect_swap_result_is_exceed(&reverse_first_result) || reverse_second_exceeds;
+                    let reverse_success_result = CalculatedRouterSwapResult {
+                        amount_in: (reverse_first_input as u64) + (integrate::expect_swap::expect_swap_result_fee_amount(&reverse_first_result
+                        ) as u64),
+                        amount_medium: medium_amount + medium_fee_amount,
+                        amount_out: amount,
+                        is_exceed: is_any_reverse_exceed,
+                        current_sqrt_price_ab: clmm_pool::pool::current_sqrt_price<CoinTypeA, CoinTypeB>(pool_ab),
+                        current_sqrt_price_cd: clmm_pool::pool::current_sqrt_price<CoinTypeC, CoinTypeD>(pool_cd),
+                        target_sqrt_price_ab: integrate::expect_swap::expect_swap_result_after_sqrt_price(&reverse_first_result
+                        ),
+                        target_sqrt_price_cd: integrate::expect_swap::expect_swap_result_after_sqrt_price(&reverse_second_result
+                        ),
                     };
-                    let v25 = CalculatedRouterSwapResultEvent{data: v24};
-                    sui::event::emit<CalculatedRouterSwapResultEvent>(v25);
+                    let reverse_success_event = CalculatedRouterSwapResultEvent { data: reverse_success_result };
+                    sui::event::emit<CalculatedRouterSwapResultEvent>(reverse_success_event);
                 };
             };
         };
     }
-    
-    public fun check_coin_threshold<T0>(arg0: &sui::coin::Coin<T0>, arg1: u64) {
-        assert!(sui::coin::value<T0>(arg0) >= arg1, 4);
+
+    public fun check_coin_threshold<CoinTypeA>(coin: &sui::coin::Coin<CoinTypeA>, threshold: u64) {
+        assert!(coin.value<CoinTypeA>() >= threshold, 4);
     }
-    
-    public fun swap_ab_bc<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: &mut clmm_pool::pool::Pool<T1, T2>, arg3: sui::coin::Coin<T0>, mut arg4: sui::coin::Coin<T2>, arg5: bool, arg6: u64, arg7: u64, arg8: u128, arg9: u128, arg10: &sui::clock::Clock, arg11: &mut sui::tx_context::TxContext) : (sui::coin::Coin<T0>, sui::coin::Coin<T2>) {
-        if (arg5) {
-            let (v2, v3) = swap<T0, T1>(arg0, arg1, arg3, sui::coin::zero<T1>(arg11), true, true, arg6, arg8, false, arg10, arg11);
-            let v4 = v3;
-            let amount = sui::coin::value<T1>(&v4);
-            let (v5, v6) = swap<T1, T2>(arg0, arg2, v4, arg4, true, true, amount, arg9, false, arg10, arg11);
-            let v7 = v5;
-            assert!(sui::coin::value<T1>(&v7) == 0, 5);
-            sui::coin::destroy_zero<T1>(v7);
-            (v2, v6)
+
+    public fun swap_ab_bc<CoinTypeA, CoinTypeB, CoinTypeC>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool_ab: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        pool_bc: &mut clmm_pool::pool::Pool<CoinTypeB, CoinTypeC>,
+        coin_from: sui::coin::Coin<CoinTypeA>,
+        mut coin_to: sui::coin::Coin<CoinTypeC>,
+        by_amount_in: bool,
+        amount_ab: u64,
+        amount_bc: u64,
+        sqrt_price_limit_ab: u128,
+        sqrt_price_limit_bc: u128,
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext
+    ): (sui::coin::Coin<CoinTypeA>, sui::coin::Coin<CoinTypeC>) {
+        if (by_amount_in) {
+            let (coin_a_out, coin_b_out) = swap<CoinTypeA, CoinTypeB>(
+                global_config,
+                pool_ab,
+                coin_from,
+                sui::coin::zero<CoinTypeB>(ctx),
+                true,
+                true,
+                amount_ab,
+                sqrt_price_limit_ab,
+                false,
+                clock,
+                ctx
+            );
+            let coin_b_amount = sui::coin::value<CoinTypeB>(&coin_b_out);
+            let (unused_coin_b, coin_c_out) = swap<CoinTypeB, CoinTypeC>(
+                global_config,
+                pool_bc,
+                coin_b_out,
+                coin_to,
+                true,
+                true,
+                coin_b_amount,
+                sqrt_price_limit_bc,
+                false,
+                clock,
+                ctx
+            );
+            assert!(unused_coin_b.value<CoinTypeB>() == 0, 5);
+            sui::coin::destroy_zero<CoinTypeB>(unused_coin_b);
+            (coin_a_out, coin_c_out)
         } else {
-            let (v8, v9, v10) = clmm_pool::pool::flash_swap<T1, T2>(arg0, arg2, true, false, arg7, arg9, arg10);
-            let v11 = v10;
-            let (v12, v13) = swap<T0, T1>(arg0, arg1, arg3, sui::coin::from_balance<T1>(v8, arg11), true, false, clmm_pool::pool::swap_pay_amount<T1, T2>(&v11), arg8, false, arg10, arg11);
-            clmm_pool::pool::repay_flash_swap<T1, T2>(arg0, arg2, sui::coin::into_balance<T1>(v13), sui::balance::zero<T2>(), v11);
-            sui::coin::join<T2>(&mut arg4, sui::coin::from_balance<T2>(v9, arg11));
-            (v12, arg4)
+            let (b_balance, c_balance, receipt) = clmm_pool::pool::flash_swap<CoinTypeB, CoinTypeC>(
+                global_config,
+                pool_bc,
+                true,
+                false,
+                amount_bc,
+                sqrt_price_limit_bc,
+                clock
+            );
+            let (final_coin_a, coin_b_for_repay) = swap<CoinTypeA, CoinTypeB>(
+                global_config,
+                pool_ab,
+                coin_from,
+                sui::coin::from_balance<CoinTypeB>(b_balance, ctx),
+                true,
+                false,
+                clmm_pool::pool::swap_pay_amount<CoinTypeB, CoinTypeC>(&receipt),
+                sqrt_price_limit_ab,
+                false,
+                clock,
+                ctx
+            );
+            clmm_pool::pool::repay_flash_swap<CoinTypeB, CoinTypeC>(
+                global_config,
+                pool_bc,
+                sui::coin::into_balance<CoinTypeB>(coin_b_for_repay),
+                sui::balance::zero<CoinTypeC>(),
+                receipt
+            );
+            coin_to.join<CoinTypeC>(sui::coin::from_balance<CoinTypeC>(c_balance, ctx));
+            (final_coin_a, coin_to)
         }
     }
-    
-    public fun swap_ab_cb<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: &mut clmm_pool::pool::Pool<T2, T1>, arg3: sui::coin::Coin<T0>, mut arg4: sui::coin::Coin<T2>, arg5: bool, arg6: u64, arg7: u64, arg8: u128, arg9: u128, arg10: &sui::clock::Clock, arg11: &mut sui::tx_context::TxContext) : (sui::coin::Coin<T0>, sui::coin::Coin<T2>) {
-        if (arg5) {
-            let (v2, v3) = swap<T0, T1>(arg0, arg1, arg3, sui::coin::zero<T1>(arg11), true, arg5, arg6, arg8, false, arg10, arg11);
-            let v4 = v3;
-            let amount = sui::coin::value<T1>(&v4);
-            let (v5, v6) = swap<T2, T1>(arg0, arg2, arg4, v4, false, true, amount, arg9, false, arg10, arg11);
-            let v7 = v6;
-            assert!(sui::coin::value<T1>(&v7) == 0, 5);
-            sui::coin::destroy_zero<T1>(v7);
-            (v2, v5)
+
+    public fun swap_ab_cb<CoinTypeA, CoinTypeB, CoinTypeC>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool_ab: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        pool_cb: &mut clmm_pool::pool::Pool<CoinTypeC, CoinTypeB>,
+        coin_from: sui::coin::Coin<CoinTypeA>,
+        mut coin_to: sui::coin::Coin<CoinTypeC>,
+        by_amount_in: bool,
+        amount_ab: u64,
+        amount_cb: u64,
+        sqrt_price_limit_ab: u128,
+        sqrt_price_limit_cb: u128,
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext
+    ): (sui::coin::Coin<CoinTypeA>, sui::coin::Coin<CoinTypeC>) {
+        if (by_amount_in) {
+            let (coin_a_remaining, coin_b_out) = swap<CoinTypeA, CoinTypeB>(
+                global_config,
+                pool_ab,
+                coin_from,
+                sui::coin::zero<CoinTypeB>(ctx),
+                true,
+                by_amount_in,
+                amount_ab,
+                sqrt_price_limit_ab,
+                false,
+                clock,
+                ctx
+            );
+            let coin_b_amount = coin_b_out.value<CoinTypeB>();
+            let (coin_c_out, unused_coin_b) = swap<CoinTypeC, CoinTypeB>(
+                global_config,
+                pool_cb,
+                coin_to,
+                coin_b_out,
+                false,
+                true,
+                coin_b_amount,
+                sqrt_price_limit_cb,
+                false,
+                clock,
+                ctx
+            );
+            assert!(unused_coin_b.value<CoinTypeB>() == 0, 5);
+            sui::coin::destroy_zero<CoinTypeB>(unused_coin_b);
+            (coin_a_remaining, coin_c_out)
         } else {
-            let (v8, v9, v10) = clmm_pool::pool::flash_swap<T2, T1>(arg0, arg2, false, false, arg7, arg9, arg10);
-            let v11 = v10;
-            let (v12, v13) = swap<T0, T1>(arg0, arg1, arg3, sui::coin::from_balance<T1>(v9, arg11), true, false, clmm_pool::pool::swap_pay_amount<T2, T1>(&v11), arg8, false, arg10, arg11);
-            clmm_pool::pool::repay_flash_swap<T2, T1>(arg0, arg2, sui::balance::zero<T2>(), sui::coin::into_balance<T1>(v13), v11);
-            sui::coin::join<T2>(&mut arg4, sui::coin::from_balance<T2>(v8, arg11));
-            (v12, arg4)
+            let (c_balance, b_balance, receipt) = clmm_pool::pool::flash_swap<CoinTypeC, CoinTypeB>(
+                global_config,
+                pool_cb,
+                false,
+                false,
+                amount_cb,
+                sqrt_price_limit_cb,
+                clock
+            );
+            let (final_coin_a, coin_b_for_repay) = swap<CoinTypeA, CoinTypeB>(
+                global_config,
+                pool_ab,
+                coin_from,
+                sui::coin::from_balance<CoinTypeB>(b_balance, ctx),
+                true,
+                false,
+                clmm_pool::pool::swap_pay_amount<CoinTypeC, CoinTypeB>(&receipt),
+                sqrt_price_limit_ab,
+                false,
+                clock,
+                ctx
+            );
+            clmm_pool::pool::repay_flash_swap<CoinTypeC, CoinTypeB>(
+                global_config,
+                pool_cb,
+                sui::balance::zero<CoinTypeC>(),
+                sui::coin::into_balance<CoinTypeB>(coin_b_for_repay),
+                receipt
+            );
+            coin_to.join<CoinTypeC>(sui::coin::from_balance<CoinTypeC>(c_balance, ctx));
+            (final_coin_a, coin_to)
         }
     }
-    
-    public fun swap_ba_bc<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T1, T0>, arg2: &mut clmm_pool::pool::Pool<T1, T2>, arg3: sui::coin::Coin<T0>, mut arg4: sui::coin::Coin<T2>, arg5: bool, arg6: u64, arg7: u64, arg8: u128, arg9: u128, arg10: &sui::clock::Clock, arg11: &mut sui::tx_context::TxContext) : (sui::coin::Coin<T0>, sui::coin::Coin<T2>) {
-        if (arg5) {
-            let (v2, v3) = swap<T1, T0>(arg0, arg1, sui::coin::zero<T1>(arg11), arg3, false, arg5, arg6, arg8, false, arg10, arg11);
-            let v4 = v2;
-            let amount = sui::coin::value<T1>(&v4);
-            let (v5, v6) = swap<T1, T2>(arg0, arg2, v4, arg4, true, true, amount, arg9, false, arg10, arg11);
-            let v7 = v5;
-            assert!(sui::coin::value<T1>(&v7) == 0, 5);
-            sui::coin::destroy_zero<T1>(v7);
-            (v3, v6)
+
+    public fun swap_ba_bc<CoinTypeA, CoinTypeB, CoinTypeC>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool_ba: &mut clmm_pool::pool::Pool<CoinTypeB, CoinTypeA>,
+        pool_bc: &mut clmm_pool::pool::Pool<CoinTypeB, CoinTypeC>,
+        coin_from: sui::coin::Coin<CoinTypeA>,
+        mut coin_to: sui::coin::Coin<CoinTypeC>,
+        by_amount_in: bool,
+        amount_ba: u64,
+        amount_bc: u64,
+        sqrt_price_ba: u128,
+        sqrt_price_bc: u128,
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext
+    ): (sui::coin::Coin<CoinTypeA>, sui::coin::Coin<CoinTypeC>) {
+        if (by_amount_in) {
+            let (coin_b_out, coin_a_out) = swap<CoinTypeB, CoinTypeA>(
+                global_config,
+                pool_ba,
+                sui::coin::zero<CoinTypeB>(ctx),
+                coin_from,
+                false,
+                by_amount_in,
+                amount_ba,
+                sqrt_price_ba,
+                false,
+                clock,
+                ctx
+            );
+            let amount = coin_b_out.value<CoinTypeB>();
+            let (unused_coin_b, coin_c_out) = swap<CoinTypeB, CoinTypeC>(
+                global_config,
+                pool_bc,
+                coin_b_out,
+                coin_to,
+                true,
+                true,
+                amount,
+                sqrt_price_bc,
+                false,
+                clock,
+                ctx
+            );
+            assert!(unused_coin_b.value<CoinTypeB>() == 0, 5);
+            sui::coin::destroy_zero<CoinTypeB>(unused_coin_b);
+            (coin_a_out, coin_c_out)
         } else {
-            let (v8, v9, v10) = clmm_pool::pool::flash_swap<T1, T2>(arg0, arg2, true, false, arg7, arg9, arg10);
-            let v11 = v10;
-            let (v12, v13) = swap<T1, T0>(arg0, arg1, sui::coin::from_balance<T1>(v8, arg11), arg3, false, false, clmm_pool::pool::swap_pay_amount<T1, T2>(&v11), arg8, false, arg10, arg11);
-            clmm_pool::pool::repay_flash_swap<T1, T2>(arg0, arg2, sui::coin::into_balance<T1>(v12), sui::balance::zero<T2>(), v11);
-            sui::coin::join<T2>(&mut arg4, sui::coin::from_balance<T2>(v9, arg11));
-            (v13, arg4)
+            let (b_balance, c_balance, receipt) = clmm_pool::pool::flash_swap<CoinTypeB, CoinTypeC>(
+                global_config,
+                pool_bc,
+                true,
+                false,
+                amount_bc,
+                sqrt_price_bc,
+                clock
+            );
+            let (coin_b_for_repay, final_coin_a) = swap<CoinTypeB, CoinTypeA>(
+                global_config,
+                pool_ba,
+                sui::coin::from_balance<CoinTypeB>(b_balance, ctx),
+                coin_from,
+                false,
+                false,
+                clmm_pool::pool::swap_pay_amount<CoinTypeB, CoinTypeC>(&receipt),
+                sqrt_price_ba,
+                false,
+                clock,
+                ctx
+            );
+            clmm_pool::pool::repay_flash_swap<CoinTypeB, CoinTypeC>(
+                global_config,
+                pool_bc,
+                sui::coin::into_balance<CoinTypeB>(coin_b_for_repay),
+                sui::balance::zero<CoinTypeC>(),
+                receipt
+            );
+            coin_to.join<CoinTypeC>(sui::coin::from_balance<CoinTypeC>(c_balance, ctx));
+            (final_coin_a, coin_to)
         }
     }
-    
-    public fun swap_ba_cb<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T1, T0>, arg2: &mut clmm_pool::pool::Pool<T2, T1>, arg3: sui::coin::Coin<T0>, mut arg4: sui::coin::Coin<T2>, arg5: bool, arg6: u64, arg7: u64, arg8: u128, arg9: u128, arg10: &sui::clock::Clock, arg11: &mut sui::tx_context::TxContext) : (sui::coin::Coin<T0>, sui::coin::Coin<T2>) {
-        if (arg5) {
-            let (v2, v3) = swap<T1, T0>(arg0, arg1, sui::coin::zero<T1>(arg11), arg3, false, true, arg6, arg8, false, arg10, arg11);
-            let v4 = v2;
-            let amount = sui::coin::value<T1>(&v4);
-            let (v5, v6) = swap<T2, T1>(arg0, arg2, arg4, v4, false, arg5, amount, arg9, false, arg10, arg11);
-            let v7 = v6;
-            assert!(sui::coin::value<T1>(&v7) == 0, 5);
-            sui::coin::destroy_zero<T1>(v7);
-            (v3, v5)
+
+    public fun swap_ba_cb<CoinTypeA, CoinTypeB, CoinTypeC>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool_ba: &mut clmm_pool::pool::Pool<CoinTypeB, CoinTypeA>,
+        pool_cb: &mut clmm_pool::pool::Pool<CoinTypeC, CoinTypeB>,
+        coin_from: sui::coin::Coin<CoinTypeA>,
+        mut coin_to: sui::coin::Coin<CoinTypeC>,
+        by_amount_in: bool,
+        amount_ba: u64,
+        amount_cb: u64,
+        sqrt_price_limit_ba: u128,
+        sqrt_price_limit_cb: u128,
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext
+    ): (sui::coin::Coin<CoinTypeA>, sui::coin::Coin<CoinTypeC>) {
+        if (by_amount_in) {
+            let (coin_b_out, coin_a_out) = swap<CoinTypeB, CoinTypeA>(
+                global_config,
+                pool_ba,
+                sui::coin::zero<CoinTypeB>(ctx),
+                coin_from,
+                false,
+                true,
+                amount_ba,
+                sqrt_price_limit_ba,
+                false,
+                clock,
+                ctx
+            );
+            let coin_b_amount = coin_b_out.value<CoinTypeB>();
+            let (coin_c_out, unused_coin_b) = swap<CoinTypeC, CoinTypeB>(
+                global_config,
+                pool_cb,
+                coin_to,
+                coin_b_out,
+                false,
+                by_amount_in,
+                coin_b_amount,
+                sqrt_price_limit_cb,
+                false,
+                clock,
+                ctx
+            );
+            assert!(unused_coin_b.value<CoinTypeB>() == 0, 5);
+            sui::coin::destroy_zero<CoinTypeB>(unused_coin_b);
+            (coin_a_out, coin_c_out)
         } else {
-            let (v8, v9, v10) = clmm_pool::pool::flash_swap<T2, T1>(arg0, arg2, false, false, arg7, arg9, arg10);
-            let v11 = v10;
-            let (v12, v13) = swap<T1, T0>(arg0, arg1, sui::coin::from_balance<T1>(v9, arg11), arg3, false, false, clmm_pool::pool::swap_pay_amount<T2, T1>(&v11), arg8, false, arg10, arg11);
-            clmm_pool::pool::repay_flash_swap<T2, T1>(arg0, arg2, sui::balance::zero<T2>(), sui::coin::into_balance<T1>(v12), v11);
-            sui::coin::join<T2>(&mut arg4, sui::coin::from_balance<T2>(v8, arg11));
-            (v13, arg4)
+            let (c_balance, b_balance, receipt) = clmm_pool::pool::flash_swap<CoinTypeC, CoinTypeB>(
+                global_config,
+                pool_cb,
+                false,
+                false,
+                amount_cb,
+                sqrt_price_limit_cb,
+                clock
+            );
+            let (coin_b_for_repay, final_coin_a) = swap<CoinTypeB, CoinTypeA>(
+                global_config,
+                pool_ba,
+                sui::coin::from_balance<CoinTypeB>(b_balance, ctx),
+                coin_from,
+                false,
+                false,
+                clmm_pool::pool::swap_pay_amount<CoinTypeC, CoinTypeB>(&receipt),
+                sqrt_price_limit_ba,
+                false,
+                clock,
+                ctx
+            );
+            clmm_pool::pool::repay_flash_swap<CoinTypeC, CoinTypeB>(
+                global_config,
+                pool_cb,
+                sui::balance::zero<CoinTypeC>(),
+                sui::coin::into_balance<CoinTypeB>(coin_b_for_repay),
+                receipt
+            );
+            coin_to.join<CoinTypeC>(sui::coin::from_balance<CoinTypeC>(c_balance, ctx));
+            (final_coin_a, coin_to)
         }
     }
-    
-    // decompiled from Move bytecode v6
 }
 

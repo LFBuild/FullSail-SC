@@ -1,32 +1,39 @@
 module integrate::utils {
 
-    public fun merge_coins<T0>(mut arg0: vector<sui::coin::Coin<T0>>, arg1: &mut sui::tx_context::TxContext) : sui::coin::Coin<T0> {
-        if (std::vector::is_empty<sui::coin::Coin<T0>>(&arg0)) {
-            std::vector::destroy_empty<sui::coin::Coin<T0>>(arg0);
-            sui::coin::zero<T0>(arg1)
+    public fun merge_coins<CoinType>(
+        mut coins: vector<sui::coin::Coin<CoinType>>,
+        ctx: &mut sui::tx_context::TxContext
+    ): sui::coin::Coin<CoinType> {
+        if (std::vector::is_empty<sui::coin::Coin<CoinType>>(&coins)) {
+            std::vector::destroy_empty<sui::coin::Coin<CoinType>>(coins);
+            sui::coin::zero<CoinType>(ctx)
         } else {
-            let mut v1 = std::vector::pop_back<sui::coin::Coin<T0>>(&mut arg0);
-            sui::pay::join_vec<T0>(&mut v1, arg0);
-            v1
+            let mut last_coin = std::vector::pop_back<sui::coin::Coin<CoinType>>(&mut coins);
+            sui::pay::join_vec<CoinType>(&mut last_coin, coins);
+            last_coin
         }
     }
-    
-    public fun send_coin<T0>(arg0: sui::coin::Coin<T0>, arg1: address) {
-        if (sui::coin::value<T0>(&arg0) > 0) {
-            sui::transfer::public_transfer<sui::coin::Coin<T0>>(arg0, arg1);
+
+    public fun send_coin<CoinType>(
+        coin: sui::coin::Coin<CoinType>,
+        recipient: address
+    ) {
+        if (coin.value<CoinType>() > 0) {
+            sui::transfer::public_transfer<sui::coin::Coin<CoinType>>(coin, recipient);
         } else {
-            sui::coin::destroy_zero<T0>(arg0);
+            sui::coin::destroy_zero<CoinType>(coin);
         };
     }
-    
-    public fun transfer_coin_to_sender<T0>(arg0: sui::coin::Coin<T0>, arg1: &mut sui::tx_context::TxContext) {
-        if (sui::coin::value<T0>(&arg0) > 0) {
-            sui::transfer::public_transfer<sui::coin::Coin<T0>>(arg0, sui::tx_context::sender(arg1));
+
+    public fun transfer_coin_to_sender<CoinType>(
+        coin: sui::coin::Coin<CoinType>,
+        ctx: &mut sui::tx_context::TxContext
+    ) {
+        if (coin.value<CoinType>() > 0) {
+            sui::transfer::public_transfer<sui::coin::Coin<CoinType>>(coin, sui::tx_context::sender(ctx));
         } else {
-            sui::coin::destroy_zero<T0>(arg0);
+            sui::coin::destroy_zero<CoinType>(coin);
         };
     }
-    
-    // decompiled from Move bytecode v6
 }
 

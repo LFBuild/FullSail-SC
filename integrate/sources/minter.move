@@ -1,8 +1,12 @@
 module integrate::minter {
-    public entry fun set_minter_cap<T0>(arg0: &distribution::minter::AdminCap, arg1: &mut distribution::minter::Minter<T0>, arg2: distribution::fullsail_token::MinterCap<T0>) {
-        distribution::minter::set_minter_cap<T0>(arg1, arg0, arg2);
+    public entry fun set_minter_cap<CoinType>(
+        admin_cap: &distribution::minter::AdminCap,
+        minter: &mut distribution::minter::Minter<CoinType>,
+        minter_cap: distribution::fullsail_token::MinterCap<CoinType>
+    ) {
+        distribution::minter::set_minter_cap<CoinType>(minter, admin_cap, minter_cap);
     }
-    
+
     // decompiled from Move bytecode v6
 }
 

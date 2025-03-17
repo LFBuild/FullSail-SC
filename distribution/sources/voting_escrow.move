@@ -1,6 +1,5 @@
 module distribution::voting_escrow {
-    public struct VOTING_ESCROW has drop {
-    }
+    public struct VOTING_ESCROW has drop {}
 
     public struct DistributorCap has store, key {
         id: sui::object::UID,
@@ -165,26 +164,33 @@ module distribution::voting_escrow {
         ts: u64,
         permanent: u64,
     }
-
     public enum DepositType has copy, drop, store {
-        DEPOSIT_FOR_TYPE,
-        CREATE_LOCK_TYPE,
-        INCREASE_LOCK_AMOUNT,
-        INCREASE_UNLOCK_TIME,
+            DEPOSIT_FOR_TYPE,
+            CREATE_LOCK_TYPE,
+            INCREASE_LOCK_AMOUNT,
+            INCREASE_UNLOCK_TIME,
     }
-
     public enum EscrowType has copy, drop, store {
-        NORMAL,
-        LOCKED,
-        MANAGED,
+            NORMAL,
+            LOCKED,
+            MANAGED,
     }
 
-    public fun split<T0>(arg0: &mut VotingEscrow<T0>, arg1: Lock, arg2: u64, arg3: &sui::clock::Clock, arg4: &mut sui::tx_context::TxContext) {
+    public fun split<T0>(
+        arg0: &mut VotingEscrow<T0>,
+        arg1: Lock,
+        arg2: u64,
+        arg3: &sui::clock::Clock,
+        arg4: &mut sui::tx_context::TxContext
+    ) {
         validate_lock<T0>(arg0, &arg1);
         let v0 = sui::object::id<Lock>(&arg1);
         assert!(sui::table::contains<sui::object::ID, address>(&arg0.owner_of, v0), 9223375893737373727);
         let v1 = *sui::table::borrow<sui::object::ID, address>(&arg0.owner_of, v0);
-        assert!(is_split_allowed<T0>(arg0, v1) || is_split_allowed<T0>(arg0, sui::tx_context::sender(arg4)), 9223375902326652949);
+        assert!(
+            is_split_allowed<T0>(arg0, v1) || is_split_allowed<T0>(arg0, sui::tx_context::sender(arg4)),
+            9223375902326652949
+        );
         let v2 = if (!sui::table::contains<sui::object::ID, EscrowType>(&arg0.escrow_type, v0)) {
             true
         } else {
@@ -202,21 +208,45 @@ module distribution::voting_escrow {
         let v7 = arg1.start;
         let v8 = arg1.end;
         burn_lock_internal<T0>(arg0, arg1, v5, arg3, arg4);
-        let v9 = create_split_internal<T0>(arg0, v1, v6, v7, v8, locked_balance(v5.amount - arg2, v5.end, v5.is_permanent), arg3, arg4);
-        let v10 = create_split_internal<T0>(arg0, v1, v6, v7, v8, locked_balance(arg2, v5.end, v5.is_permanent), arg3, arg4);
-        let v11 = EventSplit{
-            original_id : v0,
-            new_id1     : sui::object::id<Lock>(&v9),
-            new_id2     : sui::object::id<Lock>(&v10),
-            amount1     : v9.amount,
-            amount2     : v10.amount,
+        let v9 = create_split_internal<T0>(
+            arg0,
+            v1,
+            v6,
+            v7,
+            v8,
+            locked_balance(v5.amount - arg2, v5.end, v5.is_permanent),
+            arg3,
+            arg4
+        );
+        let v10 = create_split_internal<T0>(
+            arg0,
+            v1,
+            v6,
+            v7,
+            v8,
+            locked_balance(arg2, v5.end, v5.is_permanent),
+            arg3,
+            arg4
+        );
+        let v11 = EventSplit {
+            original_id: v0,
+            new_id1: sui::object::id<Lock>(&v9),
+            new_id2: sui::object::id<Lock>(&v10),
+            amount1: v9.amount,
+            amount2: v10.amount,
         };
         sui::event::emit<EventSplit>(v11);
         transfer<T0>(v9, arg0, v1, arg3, arg4);
         transfer<T0>(v10, arg0, v1, arg3, arg4);
     }
 
-    public fun transfer<T0>(arg0: Lock, arg1: &mut VotingEscrow<T0>, arg2: address, arg3: &sui::clock::Clock, arg4: &mut sui::tx_context::TxContext) {
+    public fun transfer<T0>(
+        arg0: Lock,
+        arg1: &mut VotingEscrow<T0>,
+        arg2: address,
+        arg3: &sui::clock::Clock,
+        arg4: &mut sui::tx_context::TxContext
+    ) {
         assert!(arg0.escrow == sui::object::id<VotingEscrow<T0>>(arg1), 9223376864398016511);
         let v0 = sui::object::id<Lock>(&arg0);
         if (arg2 == owner_of<T0>(arg1, v0) && arg2 == sui::tx_context::sender(arg4)) {
@@ -225,87 +255,118 @@ module distribution::voting_escrow {
             assert!(escrow_type<T0>(arg1, v0) != EscrowType::LOCKED, 9223376885873770511);
             let v1 = sui::table::remove<sui::object::ID, address>(&mut arg1.owner_of, v0);
             assert!(v1 == sui::tx_context::sender(arg4), 9223376898757754879);
-            distribution::voting_dao::checkpoint_delegator(&mut arg1.voting_dao, v0, 0, sui::object::id_from_address(@0x0), arg2, arg3, arg4);
+            distribution::voting_dao::checkpoint_delegator(
+                &mut arg1.voting_dao,
+                v0,
+                0,
+                sui::object::id_from_address(@0x0),
+                arg2,
+                arg3,
+                arg4
+            );
             sui::table::add<sui::object::ID, address>(&mut arg1.owner_of, v0, arg2);
             if (sui::table::contains<sui::object::ID, u64>(&arg1.ownership_change_at, v0)) {
                 sui::table::remove<sui::object::ID, u64>(&mut arg1.ownership_change_at, v0);
             };
             sui::table::add<sui::object::ID, u64>(&mut arg1.ownership_change_at, v0, sui::clock::timestamp_ms(arg3));
             sui::transfer::transfer<Lock>(arg0, arg2);
-            let v2 = EventTransfer{
-                from : v1,
-                to   : arg2,
-                lock : v0,
+            let v2 = EventTransfer {
+                from: v1,
+                to: arg2,
+                lock: v0,
             };
             sui::event::emit<EventTransfer>(v2);
         };
     }
 
-    public fun create<T0>(_arg0: &sui::package::Publisher, arg1: sui::object::ID, arg2: &sui::clock::Clock, arg3: &mut sui::tx_context::TxContext) : VotingEscrow<T0> {
+    public fun create<T0>(
+        _arg0: &sui::package::Publisher,
+        arg1: sui::object::ID,
+        arg2: &sui::clock::Clock,
+        arg3: &mut sui::tx_context::TxContext
+    ): VotingEscrow<T0> {
         let v0 = sui::object::new(arg3);
         let v1 = sui::object::uid_to_inner(&v0);
-        let mut v2 = VotingEscrow<T0>{
-            id                                   : v0,
-            voter                                : arg1,
-            balance                              : sui::balance::zero<T0>(),
-            total_locked                         : 0,
-            point_history                        : sui::table::new<u64, GlobalPoint>(arg3),
-            epoch                                : 0,
-            min_lock_time                        : distribution::common::min_lock_time(),
-            max_lock_time                        : distribution::common::max_lock_time(),
-            lock_durations                       : sui::vec_set::empty<u64>(),
-            deactivated                          : sui::table::new<sui::object::ID, bool>(arg3),
-            ownership_change_at                  : sui::table::new<sui::object::ID, u64>(arg3),
-            user_point_epoch                     : sui::table::new<sui::object::ID, u64>(arg3),
-            user_point_history                   : sui::table::new<sui::object::ID, sui::table::Table<u64, UserPoint>>(arg3),
-            voted                                : sui::table::new<sui::object::ID, bool>(arg3),
-            locked                               : sui::table::new<sui::object::ID, LockedBalance>(arg3),
-            owner_of                             : sui::table::new<sui::object::ID, address>(arg3),
-            slope_changes                        : sui::table::new<u64, integer_mate::i128::I128>(arg3),
-            permanent_lock_balance               : 0,
-            escrow_type                          : sui::table::new<sui::object::ID, EscrowType>(arg3),
-            voting_dao                           : distribution::voting_dao::create(arg3),
-            can_split                            : sui::table::new<address, bool>(arg3),
-            allowed_managers                     : sui::vec_set::empty<address>(),
-            managed_weights                      : sui::table::new<sui::object::ID, sui::table::Table<sui::object::ID, u64>>(arg3),
-            managed_to_locked                    : sui::table::new<sui::object::ID, distribution::locked_managed_reward::LockedManagedReward>(arg3),
-            managed_to_free                      : sui::table::new<sui::object::ID, distribution::free_managed_reward::FreeManagedReward>(arg3),
-            id_to_managed                        : sui::table::new<sui::object::ID, sui::object::ID>(arg3),
-            locked_managed_reward_authorized_cap : distribution::reward_authorized_cap::create(v1, arg3),
-            free_managed_reward_authorized_cap   : distribution::reward_authorized_cap::create(v1, arg3),
+        let mut v2 = VotingEscrow<T0> {
+            id: v0,
+            voter: arg1,
+            balance: sui::balance::zero<T0>(),
+            total_locked: 0,
+            point_history: sui::table::new<u64, GlobalPoint>(arg3),
+            epoch: 0,
+            min_lock_time: distribution::common::min_lock_time(),
+            max_lock_time: distribution::common::max_lock_time(),
+            lock_durations: sui::vec_set::empty<u64>(),
+            deactivated: sui::table::new<sui::object::ID, bool>(arg3),
+            ownership_change_at: sui::table::new<sui::object::ID, u64>(arg3),
+            user_point_epoch: sui::table::new<sui::object::ID, u64>(arg3),
+            user_point_history: sui::table::new<sui::object::ID, sui::table::Table<u64, UserPoint>>(arg3),
+            voted: sui::table::new<sui::object::ID, bool>(arg3),
+            locked: sui::table::new<sui::object::ID, LockedBalance>(arg3),
+            owner_of: sui::table::new<sui::object::ID, address>(arg3),
+            slope_changes: sui::table::new<u64, integer_mate::i128::I128>(arg3),
+            permanent_lock_balance: 0,
+            escrow_type: sui::table::new<sui::object::ID, EscrowType>(arg3),
+            voting_dao: distribution::voting_dao::create(arg3),
+            can_split: sui::table::new<address, bool>(arg3),
+            allowed_managers: sui::vec_set::empty<address>(),
+            managed_weights: sui::table::new<sui::object::ID, sui::table::Table<sui::object::ID, u64>>(arg3),
+            managed_to_locked: sui::table::new<sui::object::ID, distribution::locked_managed_reward::LockedManagedReward>(
+                arg3
+            ),
+            managed_to_free: sui::table::new<sui::object::ID, distribution::free_managed_reward::FreeManagedReward>(
+                arg3
+            ),
+            id_to_managed: sui::table::new<sui::object::ID, sui::object::ID>(arg3),
+            locked_managed_reward_authorized_cap: distribution::reward_authorized_cap::create(v1, arg3),
+            free_managed_reward_authorized_cap: distribution::reward_authorized_cap::create(v1, arg3),
         };
-        let v3 = GlobalPoint{
-            bias                   : integer_mate::i128::from(0),
-            slope                  : integer_mate::i128::from(0),
-            ts                     : distribution::common::current_timestamp(arg2),
-            permanent_lock_balance : 0,
+        let v3 = GlobalPoint {
+            bias: integer_mate::i128::from(0),
+            slope: integer_mate::i128::from(0),
+            ts: distribution::common::current_timestamp(arg2),
+            permanent_lock_balance: 0,
         };
         sui::table::add<u64, GlobalPoint>(&mut v2.point_history, 0, v3);
         v2
     }
 
-    public fun withdraw<T0>(arg0: &mut VotingEscrow<T0>, arg1: Lock, arg2: &sui::clock::Clock, arg3: &mut sui::tx_context::TxContext) {
+    public fun withdraw<T0>(
+        arg0: &mut VotingEscrow<T0>,
+        arg1: Lock,
+        arg2: &sui::clock::Clock,
+        arg3: &mut sui::tx_context::TxContext
+    ) {
         let v0 = sui::tx_context::sender(arg3);
         let v1 = sui::object::id<Lock>(&arg1);
         let v2 = lock_has_voted<T0>(arg0, v1);
         assert!(!v2, 9223376404838219803);
-        assert!(!sui::table::contains<sui::object::ID, EscrowType>(&arg0.escrow_type, v1) || *sui::table::borrow<sui::object::ID, EscrowType>(&arg0.escrow_type, v1) == EscrowType::NORMAL, 9223376409133056025);
+        assert!(
+            !sui::table::contains<sui::object::ID, EscrowType>(
+                &arg0.escrow_type,
+                v1
+            ) || *sui::table::borrow<sui::object::ID, EscrowType>(&arg0.escrow_type, v1) == EscrowType::NORMAL,
+            9223376409133056025
+        );
         let v3 = *sui::table::borrow<sui::object::ID, LockedBalance>(&arg0.locked, v1);
         assert!(!v3.is_permanent, 9223376422018613283);
         assert!(distribution::common::current_timestamp(arg2) >= v3.end, 9223376430606843913);
         let v4 = arg0.total_locked;
         arg0.total_locked = arg0.total_locked - v3.amount;
         burn_lock_internal<T0>(arg0, arg1, v3, arg2, arg3);
-        sui::transfer::public_transfer<sui::coin::Coin<T0>>(sui::coin::from_balance<T0>(sui::balance::split<T0>(&mut arg0.balance, v3.amount), arg3), v0);
-        let v5 = EventWithdraw{
-            sender  : v0,
-            lock_id : v1,
-            amount  : v3.amount,
+        sui::transfer::public_transfer<sui::coin::Coin<T0>>(
+            sui::coin::from_balance<T0>(sui::balance::split<T0>(&mut arg0.balance, v3.amount), arg3),
+            v0
+        );
+        let v5 = EventWithdraw {
+            sender: v0,
+            lock_id: v1,
+            amount: v3.amount,
         };
         sui::event::emit<EventWithdraw>(v5);
-        let v6 = EventSupply{
-            before : v4,
-            after  : v4 - v3.amount,
+        let v6 = EventSupply {
+            before: v4,
+            after: v4 - v3.amount,
         };
         sui::event::emit<EventSupply>(v6);
     }
@@ -314,24 +375,39 @@ module distribution::voting_escrow {
         sui::vec_set::insert<address>(&mut arg0.allowed_managers, arg2);
     }
 
-    public fun amount(arg0: &LockedBalance) : u64 {
+    public fun amount(arg0: &LockedBalance): u64 {
         arg0.amount
     }
 
-    public fun balance_of_nft_at<T0>(arg0: &VotingEscrow<T0>, arg1: sui::object::ID, arg2: u64) : u64 {
+    public fun balance_of_nft_at<T0>(arg0: &VotingEscrow<T0>, arg1: sui::object::ID, arg2: u64): u64 {
         balance_of_nft_at_internal<T0>(arg0, arg1, arg2)
     }
 
-    fun balance_of_nft_at_internal<T0>(arg0: &VotingEscrow<T0>, arg1: sui::object::ID, arg2: u64) : u64 {
+    fun balance_of_nft_at_internal<T0>(arg0: &VotingEscrow<T0>, arg1: sui::object::ID, arg2: u64): u64 {
         let v0 = get_past_power_point_index<T0>(arg0, arg1, arg2);
         if (v0 == 0) {
             return 0
         };
-        let mut v1 = *sui::table::borrow<u64, UserPoint>(sui::table::borrow<sui::object::ID, sui::table::Table<u64, UserPoint>>(&arg0.user_point_history, arg1), v0);
+        let mut v1 = *sui::table::borrow<u64, UserPoint>(
+            sui::table::borrow<sui::object::ID, sui::table::Table<u64, UserPoint>>(&arg0.user_point_history, arg1),
+            v0
+        );
         if (v1.permanent > 0) {
             v1.permanent
         } else {
-            v1.bias = integer_mate::i128::sub(v1.bias, integer_mate::i128::div(integer_mate::i128::mul(v1.slope, integer_mate::i128::sub(integer_mate::i128::from((arg2 as u128)), integer_mate::i128::from((v1.ts as u128)))), integer_mate::i128::from(18446744073709551616)));
+            v1.bias = integer_mate::i128::sub(
+                v1.bias,
+                integer_mate::i128::div(
+                    integer_mate::i128::mul(
+                        v1.slope,
+                        integer_mate::i128::sub(
+                            integer_mate::i128::from((arg2 as u128)),
+                            integer_mate::i128::from((v1.ts as u128))
+                        )
+                    ),
+                    integer_mate::i128::from(18446744073709551616)
+                )
+            );
             if (integer_mate::i128::is_neg(v1.bias)) {
                 v1.bias = integer_mate::i128::from(0);
             };
@@ -339,28 +415,67 @@ module distribution::voting_escrow {
         }
     }
 
-    fun burn_lock_internal<T0>(arg0: &mut VotingEscrow<T0>, arg1: Lock, arg2: LockedBalance, arg3: &sui::clock::Clock, arg4: &mut sui::tx_context::TxContext) {
+    fun burn_lock_internal<T0>(
+        arg0: &mut VotingEscrow<T0>,
+        arg1: Lock,
+        arg2: LockedBalance,
+        arg3: &sui::clock::Clock,
+        arg4: &mut sui::tx_context::TxContext
+    ) {
         let v0 = sui::object::id<Lock>(&arg1);
-        distribution::voting_dao::checkpoint_delegator(&mut arg0.voting_dao, v0, arg2.amount, sui::object::id_from_address(@0x0), @0x0, arg3, arg4);
+        distribution::voting_dao::checkpoint_delegator(
+            &mut arg0.voting_dao,
+            v0,
+            arg2.amount,
+            sui::object::id_from_address(@0x0),
+            @0x0,
+            arg3,
+            arg4
+        );
         sui::table::remove<sui::object::ID, address>(&mut arg0.owner_of, v0);
         sui::table::remove<sui::object::ID, LockedBalance>(&mut arg0.locked, v0);
-        checkpoint_internal<T0>(arg0, std::option::some<sui::object::ID>(v0), arg2, locked_balance(0, 0, false), arg3, arg4);
+        checkpoint_internal<T0>(
+            arg0,
+            std::option::some<sui::object::ID>(v0),
+            arg2,
+            locked_balance(0, 0, false),
+            arg3,
+            arg4
+        );
         let Lock {
-            id        : v1,
-            escrow    : _,
-            amount    : _,
-            start     : _,
-            end       : _,
-            permanent : _,
+            id: v1,
+            escrow: _,
+            amount: _,
+            start: _,
+            end: _,
+            permanent: _,
         } = arg1;
         sui::object::delete(v1);
     }
 
-    public fun checkpoint<T0>(arg0: &mut VotingEscrow<T0>, arg1: &sui::clock::Clock, arg2: &mut sui::tx_context::TxContext) {
-        checkpoint_internal<T0>(arg0, std::option::none<sui::object::ID>(), locked_balance(0, 0, false), locked_balance(0, 0, false), arg1, arg2);
+    public fun checkpoint<T0>(
+        arg0: &mut VotingEscrow<T0>,
+        arg1: &sui::clock::Clock,
+        arg2: &mut sui::tx_context::TxContext
+    ) {
+        checkpoint_internal<T0>(
+            arg0,
+            std::option::none<sui::object::ID>(),
+            locked_balance(0, 0, false),
+            locked_balance(0, 0, false),
+            arg1,
+            arg2
+        );
     }
 
-    fun checkpoint_internal<T0>(arg0: &mut VotingEscrow<T0>, arg1: std::option::Option<sui::object::ID>, arg2: LockedBalance, arg3: LockedBalance, arg4: &sui::clock::Clock, arg5: &mut sui::tx_context::TxContext) {
+    fun checkpoint_internal<T0>(
+        arg0: &mut VotingEscrow<T0>,
+        arg1: std::option::Option<sui::object::ID>,
+        arg2: LockedBalance,
+        arg3: LockedBalance,
+        arg4: &sui::clock::Clock,
+        arg5: &mut sui::tx_context::TxContext
+    ) {
         let mut v0 = create_user_point();
         let mut v1 = create_user_point();
         let mut v2 = integer_mate::i128::from(0);
@@ -376,12 +491,30 @@ module distribution::voting_escrow {
             };
             v1.permanent = v7;
             if (arg2.end > v6 && arg2.amount > 0) {
-                v0.slope = integer_mate::i128::from(integer_mate::full_math_u128::mul_div_floor((arg2.amount as u128), 18446744073709551616, (distribution::common::max_lock_time() as u128)));
-                v0.bias = integer_mate::i128::div(integer_mate::i128::mul(v0.slope, integer_mate::i128::from(((arg2.end - v6) as u128))), integer_mate::i128::from(18446744073709551616));
+                v0.slope = integer_mate::i128::from(
+                    integer_mate::full_math_u128::mul_div_floor(
+                        (arg2.amount as u128),
+                        18446744073709551616,
+                        (distribution::common::max_lock_time() as u128)
+                    )
+                );
+                v0.bias = integer_mate::i128::div(
+                    integer_mate::i128::mul(v0.slope, integer_mate::i128::from(((arg2.end - v6) as u128))),
+                    integer_mate::i128::from(18446744073709551616)
+                );
             };
             if (arg3.end > v6 && arg3.amount > 0) {
-                v1.slope = integer_mate::i128::from(integer_mate::full_math_u128::mul_div_floor((arg3.amount as u128), 18446744073709551616, (distribution::common::max_lock_time() as u128)));
-                v1.bias = integer_mate::i128::div(integer_mate::i128::mul(v1.slope, integer_mate::i128::from(((arg3.end - v6) as u128))), integer_mate::i128::from(18446744073709551616));
+                v1.slope = integer_mate::i128::from(
+                    integer_mate::full_math_u128::mul_div_floor(
+                        (arg3.amount as u128),
+                        18446744073709551616,
+                        (distribution::common::max_lock_time() as u128)
+                    )
+                );
+                v1.bias = integer_mate::i128::div(
+                    integer_mate::i128::mul(v1.slope, integer_mate::i128::from(((arg3.end - v6) as u128))),
+                    integer_mate::i128::from(18446744073709551616)
+                );
             };
             let v8 = if (sui::table::contains<u64, integer_mate::i128::I128>(&arg0.slope_changes, arg2.end)) {
                 *sui::table::borrow<u64, integer_mate::i128::I128>(&arg0.slope_changes, arg2.end)
@@ -405,11 +538,15 @@ module distribution::voting_escrow {
         let v10 = if (v4 > 0) {
             *sui::table::borrow<u64, GlobalPoint>(&arg0.point_history, v4)
         } else {
-            GlobalPoint{bias: integer_mate::i128::from(0), slope: integer_mate::i128::from(0), ts: v6, permanent_lock_balance: 0}
+            GlobalPoint {
+                bias: integer_mate::i128::from(0), slope: integer_mate::i128::from(
+                    0
+                ), ts: v6, permanent_lock_balance: 0
+            }
         };
         let mut v11 = v10;
         let v12 = v11.ts;
-        GlobalPoint{bias: v11.bias, slope: v11.slope, ts: v11.ts, permanent_lock_balance: v11.permanent_lock_balance};
+        GlobalPoint { bias: v11.bias, slope: v11.slope, ts: v11.ts, permanent_lock_balance: v11.permanent_lock_balance };
         let mut v13 = distribution::common::to_period(v12);
         let mut v14 = 0;
         while (v14 < 255) {
@@ -426,7 +563,13 @@ module distribution::voting_escrow {
                 };
                 v16 = v17;
             };
-            v11.bias = integer_mate::i128::sub(v11.bias, integer_mate::i128::div(integer_mate::i128::mul(v11.slope, integer_mate::i128::from(((v13 - v12) as u128))), integer_mate::i128::from(18446744073709551616)));
+            v11.bias = integer_mate::i128::sub(
+                v11.bias,
+                integer_mate::i128::div(
+                    integer_mate::i128::mul(v11.slope, integer_mate::i128::from(((v13 - v12) as u128))),
+                    integer_mate::i128::from(18446744073709551616)
+                )
+            );
             v11.slope = integer_mate::i128::add(v11.slope, v16);
             if (integer_mate::i128::is_neg(v11.bias)) {
                 v11.bias = integer_mate::i128::from(0);
@@ -491,8 +634,20 @@ module distribution::voting_escrow {
                 0
             };
             let v23 = if (v22 != 0) {
-                if (sui::table::contains<u64, UserPoint>(sui::table::borrow<sui::object::ID, sui::table::Table<u64, UserPoint>>(&arg0.user_point_history, v21), v22)) {
-                    sui::table::borrow<u64, UserPoint>(sui::table::borrow<sui::object::ID, sui::table::Table<u64, UserPoint>>(&arg0.user_point_history, v21), v22).ts == v6
+                if (sui::table::contains<u64, UserPoint>(
+                    sui::table::borrow<sui::object::ID, sui::table::Table<u64, UserPoint>>(
+                        &arg0.user_point_history,
+                        v21
+                    ),
+                    v22
+                )) {
+                    sui::table::borrow<u64, UserPoint>(
+                        sui::table::borrow<sui::object::ID, sui::table::Table<u64, UserPoint>>(
+                            &arg0.user_point_history,
+                            v21
+                        ),
+                        v22
+                    ).ts == v6
                 } else {
                     false
                 }
@@ -508,13 +663,29 @@ module distribution::voting_escrow {
         };
     }
 
-    public fun create_lock<T0>(arg0: &mut VotingEscrow<T0>, arg1: sui::coin::Coin<T0>, arg2: u64, arg3: bool, arg4: &sui::clock::Clock, arg5: &mut sui::tx_context::TxContext) {
+    public fun create_lock<T0>(
+        arg0: &mut VotingEscrow<T0>,
+        arg1: sui::coin::Coin<T0>,
+        arg2: u64,
+        arg3: bool,
+        arg4: &sui::clock::Clock,
+        arg5: &mut sui::tx_context::TxContext
+    ) {
         validate_lock_duration<T0>(arg0, arg2);
         let v0 = sui::coin::value<T0>(&arg1);
         assert!(v0 > 0, 9223374381907181573);
         let v1 = distribution::common::current_timestamp(arg4);
         let v2 = sui::tx_context::sender(arg5);
-        let (v3, v4) = create_lock_internal<T0>(arg0, v2, v0, v1, distribution::common::to_period(v1 + arg2 * distribution::common::day()), arg3, arg4, arg5);
+        let (v3, v4) = create_lock_internal<T0>(
+            arg0,
+            v2,
+            v0,
+            v1,
+            distribution::common::to_period(v1 + arg2 * distribution::common::day()),
+            arg3,
+            arg4,
+            arg5
+        );
         let mut v5 = v3;
         let CreateLockReceipt { amount: v6 } = v4;
         assert!(v6 == v0, 9223374416266657791);
@@ -526,12 +697,29 @@ module distribution::voting_escrow {
         sui::transfer::transfer<Lock>(v5, v2);
     }
 
-    public fun create_lock_for<T0>(arg0: &mut VotingEscrow<T0>, arg1: address, arg2: sui::coin::Coin<T0>, arg3: u64, arg4: bool, arg5: &sui::clock::Clock, arg6: &mut sui::tx_context::TxContext) {
+    public fun create_lock_for<T0>(
+        arg0: &mut VotingEscrow<T0>,
+        arg1: address,
+        arg2: sui::coin::Coin<T0>,
+        arg3: u64,
+        arg4: bool,
+        arg5: &sui::clock::Clock,
+        arg6: &mut sui::tx_context::TxContext
+    ) {
         validate_lock_duration<T0>(arg0, arg3);
         let v0 = sui::coin::value<T0>(&arg2);
         assert!(v0 > 0, 9223374257353129989);
         let v1 = distribution::common::current_timestamp(arg5);
-        let (v2, v3) = create_lock_internal<T0>(arg0, arg1, v0, v1, distribution::common::to_period(v1 + arg3 * distribution::common::day()), arg4, arg5, arg6);
+        let (v2, v3) = create_lock_internal<T0>(
+            arg0,
+            arg1,
+            v0,
+            v1,
+            distribution::common::to_period(v1 + arg3 * distribution::common::day()),
+            arg4,
+            arg5,
+            arg6
+        );
         let mut v4 = v2;
         let CreateLockReceipt { amount: v5 } = v3;
         assert!(v5 == v0, 9223374287417638911);
@@ -543,116 +731,240 @@ module distribution::voting_escrow {
         sui::transfer::transfer<Lock>(v4, arg1);
     }
 
-    fun create_lock_internal<T0>(arg0: &mut VotingEscrow<T0>, arg1: address, arg2: u64, arg3: u64, arg4: u64, arg5: bool, arg6: &sui::clock::Clock, arg7: &mut sui::tx_context::TxContext) : (Lock, CreateLockReceipt) {
-        let v0 = Lock{
-            id        : sui::object::new(arg7),
-            escrow    : sui::object::id<VotingEscrow<T0>>(arg0),
-            amount    : arg2,
-            start     : arg3,
-            end       : arg4,
-            permanent : arg5,
+    fun create_lock_internal<T0>(
+        arg0: &mut VotingEscrow<T0>,
+        arg1: address,
+        arg2: u64,
+        arg3: u64,
+        arg4: u64,
+        arg5: bool,
+        arg6: &sui::clock::Clock,
+        arg7: &mut sui::tx_context::TxContext
+    ): (Lock, CreateLockReceipt) {
+        let v0 = Lock {
+            id: sui::object::new(arg7),
+            escrow: sui::object::id<VotingEscrow<T0>>(arg0),
+            amount: arg2,
+            start: arg3,
+            end: arg4,
+            permanent: arg5,
         };
         let v1 = sui::object::id<Lock>(&v0);
         assert!(!sui::table::contains<sui::object::ID, address>(&arg0.owner_of, v1), 9223374171453521919);
         assert!(!sui::table::contains<sui::object::ID, LockedBalance>(&arg0.locked, v1), 9223374175748489215);
         sui::table::add<sui::object::ID, address>(&mut arg0.owner_of, v1, arg1);
         sui::table::add<sui::object::ID, u64>(&mut arg0.ownership_change_at, v1, sui::clock::timestamp_ms(arg6));
-        distribution::voting_dao::checkpoint_delegator(&mut arg0.voting_dao, v1, arg2, sui::object::id_from_address(@0x0), arg1, arg6, arg7);
-        deposit_for_internal<T0>(arg0, v1, arg2, arg4, locked_balance(0, 0, arg5), DepositType::CREATE_LOCK_TYPE, arg6, arg7);
-        let v2 = EventCreateLock{
-            lock_id : v1,
-            owner   : arg1,
+        distribution::voting_dao::checkpoint_delegator(
+            &mut arg0.voting_dao,
+            v1,
+            arg2,
+            sui::object::id_from_address(@0x0),
+            arg1,
+            arg6,
+            arg7
+        );
+        deposit_for_internal<T0>(
+            arg0,
+            v1,
+            arg2,
+            arg4,
+            locked_balance(0, 0, arg5),
+            DepositType::CREATE_LOCK_TYPE,
+            arg6,
+            arg7
+        );
+        let v2 = EventCreateLock {
+            lock_id: v1,
+            owner: arg1,
         };
         sui::event::emit<EventCreateLock>(v2);
-        let v3 = CreateLockReceipt{amount: arg2};
+        let v3 = CreateLockReceipt { amount: arg2 };
         (v0, v3)
     }
 
-    public fun create_managed_lock_for<T0>(arg0: &mut VotingEscrow<T0>, arg1: address, arg2: &sui::clock::Clock, arg3: &mut sui::tx_context::TxContext) : sui::object::ID {
+    public fun create_managed_lock_for<T0>(
+        arg0: &mut VotingEscrow<T0>,
+        arg1: address,
+        arg2: &sui::clock::Clock,
+        arg3: &mut sui::tx_context::TxContext
+    ): sui::object::ID {
         let v0 = sui::tx_context::sender(arg3);
         assert!(sui::vec_set::contains<address>(&arg0.allowed_managers, &v0), 9223377598838734869);
-        let (v1, v2) = create_lock_internal<T0>(arg0, arg1, 0, distribution::common::current_timestamp(arg2), 0, true, arg2, arg3);
+        let (v1, v2) = create_lock_internal<T0>(
+            arg0,
+            arg1,
+            0,
+            distribution::common::current_timestamp(arg2),
+            0,
+            true,
+            arg2,
+            arg3
+        );
         let v3 = v1;
         let CreateLockReceipt { amount: _ } = v2;
         let v4 = sui::object::id<Lock>(&v3);
         sui::transfer::transfer<Lock>(v3, arg1);
         sui::table::add<sui::object::ID, EscrowType>(&mut arg0.escrow_type, v4, EscrowType::MANAGED);
         let v5 = std::type_name::get<T0>();
-        let v6 = distribution::locked_managed_reward::create(arg0.voter, sui::object::id<VotingEscrow<T0>>(arg0), v5, arg3);
-        let v7 = distribution::free_managed_reward::create(arg0.voter, sui::object::id<VotingEscrow<T0>>(arg0), v5, arg3);
-        let v8 = EventCreateManaged{
-            owner                 : arg1,
-            lock_id               : v4,
-            sender                : v0,
-            locked_managed_reward : sui::object::id<distribution::locked_managed_reward::LockedManagedReward>(&v6),
-            free_managed_reward   : sui::object::id<distribution::free_managed_reward::FreeManagedReward>(&v7),
+        let v6 = distribution::locked_managed_reward::create(
+            arg0.voter,
+            sui::object::id<VotingEscrow<T0>>(arg0),
+            v5,
+            arg3
+        );
+        let v7 = distribution::free_managed_reward::create(
+            arg0.voter,
+            sui::object::id<VotingEscrow<T0>>(arg0),
+            v5,
+            arg3
+        );
+        let v8 = EventCreateManaged {
+            owner: arg1,
+            lock_id: v4,
+            sender: v0,
+            locked_managed_reward: sui::object::id<distribution::locked_managed_reward::LockedManagedReward>(&v6),
+            free_managed_reward: sui::object::id<distribution::free_managed_reward::FreeManagedReward>(&v7),
         };
         sui::event::emit<EventCreateManaged>(v8);
-        sui::table::add<sui::object::ID, distribution::locked_managed_reward::LockedManagedReward>(&mut arg0.managed_to_locked, v4, v6);
-        sui::table::add<sui::object::ID, distribution::free_managed_reward::FreeManagedReward>(&mut arg0.managed_to_free, v4, v7);
+        sui::table::add<sui::object::ID, distribution::locked_managed_reward::LockedManagedReward>(
+            &mut arg0.managed_to_locked,
+            v4,
+            v6
+        );
+        sui::table::add<sui::object::ID, distribution::free_managed_reward::FreeManagedReward>(
+            &mut arg0.managed_to_free,
+            v4,
+            v7
+        );
         v4
     }
 
-    fun create_split_internal<T0>(arg0: &mut VotingEscrow<T0>, arg1: address, arg2: sui::object::ID, arg3: u64, arg4: u64, arg5: LockedBalance, arg6: &sui::clock::Clock, arg7: &mut sui::tx_context::TxContext) : Lock {
-        let v0 = Lock{
-            id        : sui::object::new(arg7),
-            escrow    : arg2,
-            amount    : arg5.amount,
-            start     : arg3,
-            end       : arg4,
-            permanent : arg5.is_permanent,
+    fun create_split_internal<T0>(
+        arg0: &mut VotingEscrow<T0>,
+        arg1: address,
+        arg2: sui::object::ID,
+        arg3: u64,
+        arg4: u64,
+        arg5: LockedBalance,
+        arg6: &sui::clock::Clock,
+        arg7: &mut sui::tx_context::TxContext
+    ): Lock {
+        let v0 = Lock {
+            id: sui::object::new(arg7),
+            escrow: arg2,
+            amount: arg5.amount,
+            start: arg3,
+            end: arg4,
+            permanent: arg5.is_permanent,
         };
         let v1 = sui::object::id<Lock>(&v0);
         sui::table::add<sui::object::ID, LockedBalance>(&mut arg0.locked, v1, arg5);
         sui::table::add<sui::object::ID, address>(&mut arg0.owner_of, v1, arg1);
         sui::table::add<sui::object::ID, u64>(&mut arg0.ownership_change_at, v1, sui::clock::timestamp_ms(arg6));
-        distribution::voting_dao::checkpoint_delegator(&mut arg0.voting_dao, v1, arg5.amount, sui::object::id_from_address(@0x0), arg1, arg6, arg7);
-        checkpoint_internal<T0>(arg0, std::option::some<sui::object::ID>(sui::object::id<Lock>(&v0)), locked_balance(0, 0, false), arg5, arg6, arg7);
+        distribution::voting_dao::checkpoint_delegator(
+            &mut arg0.voting_dao,
+            v1,
+            arg5.amount,
+            sui::object::id_from_address(@0x0),
+            arg1,
+            arg6,
+            arg7
+        );
+        checkpoint_internal<T0>(
+            arg0,
+            std::option::some<sui::object::ID>(sui::object::id<Lock>(&v0)),
+            locked_balance(0, 0, false),
+            arg5,
+            arg6,
+            arg7
+        );
         v0
     }
 
-    fun create_user_point() : UserPoint {
-        UserPoint{
-            bias      : integer_mate::i128::from(0),
-            slope     : integer_mate::i128::from(0),
-            ts        : 0,
-            permanent : 0,
+    fun create_user_point(): UserPoint {
+        UserPoint {
+            bias: integer_mate::i128::from(0),
+            slope: integer_mate::i128::from(0),
+            ts: 0,
+            permanent: 0,
         }
     }
 
-    public fun deactivated<T0>(arg0: &VotingEscrow<T0>, arg1: sui::object::ID) : bool {
-        sui::table::contains<sui::object::ID, bool>(&arg0.deactivated, arg1) && *sui::table::borrow<sui::object::ID, bool>(&arg0.deactivated, arg1)
+    public fun deactivated<T0>(arg0: &VotingEscrow<T0>, arg1: sui::object::ID): bool {
+        sui::table::contains<sui::object::ID, bool>(
+            &arg0.deactivated,
+            arg1
+        ) && *sui::table::borrow<sui::object::ID, bool>(&arg0.deactivated, arg1)
     }
 
-    public fun delegate<T0>(arg0: &mut VotingEscrow<T0>, arg1: &Lock, arg2: sui::object::ID, arg3: &sui::clock::Clock, arg4: &mut sui::tx_context::TxContext) {
+    public fun delegate<T0>(
+        arg0: &mut VotingEscrow<T0>,
+        arg1: &Lock,
+        arg2: sui::object::ID,
+        arg3: &sui::clock::Clock,
+        arg4: &mut sui::tx_context::TxContext
+    ) {
         validate_lock<T0>(arg0, arg1);
         delegate_internal<T0>(arg0, arg1, arg2, arg3, arg4);
     }
 
-    fun delegate_internal<T0>(arg0: &mut VotingEscrow<T0>, arg1: &Lock, mut arg2: sui::object::ID, arg3: &sui::clock::Clock, arg4: &mut sui::tx_context::TxContext) {
+    fun delegate_internal<T0>(
+        arg0: &mut VotingEscrow<T0>,
+        arg1: &Lock,
+        mut arg2: sui::object::ID,
+        arg3: &sui::clock::Clock,
+        arg4: &mut sui::tx_context::TxContext
+    ) {
         let v0 = sui::object::id<Lock>(arg1);
         let (v1, _) = locked<T0>(arg0, v0);
         let v3 = v1;
         assert!(v3.is_permanent, 9223375657513386003);
-        assert!(arg2 == sui::object::id_from_address(@0x0) || sui::table::contains<sui::object::ID, address>(&arg0.owner_of, arg2), 9223375661808615447);
+        assert!(
+            arg2 == sui::object::id_from_address(@0x0) || sui::table::contains<sui::object::ID, address>(
+                &arg0.owner_of,
+                arg2
+            ),
+            9223375661808615447
+        );
         if (sui::object::id<Lock>(arg1) == arg2) {
             arg2 = sui::object::id_from_address(@0x0);
         };
-        assert!(sui::clock::timestamp_ms(arg3) - *sui::table::borrow<sui::object::ID, u64>(&arg0.ownership_change_at, v0) >= distribution::common::get_time_to_finality(), 9223375683284107297);
+        assert!(
+            sui::clock::timestamp_ms(arg3) - *sui::table::borrow<sui::object::ID, u64>(
+                &arg0.ownership_change_at,
+                v0
+            ) >= distribution::common::get_time_to_finality(),
+            9223375683284107297
+        );
         let v4 = distribution::voting_dao::delegatee(&arg0.voting_dao, v0);
         if (v4 == arg2) {
             return
         };
-        distribution::voting_dao::checkpoint_delegator(&mut arg0.voting_dao, v0, v3.amount, arg2, *sui::table::borrow<sui::object::ID, address>(&arg0.owner_of, v0), arg3, arg4);
+        distribution::voting_dao::checkpoint_delegator(
+            &mut arg0.voting_dao,
+            v0,
+            v3.amount,
+            arg2,
+            *sui::table::borrow<sui::object::ID, address>(&arg0.owner_of, v0),
+            arg3,
+            arg4
+        );
         distribution::voting_dao::checkpoint_delegatee(&mut arg0.voting_dao, arg2, v3.amount, true, arg3, arg4);
-        let v5 = EventDelegateChanged{
-            old : v4,
-            new : arg2,
+        let v5 = EventDelegateChanged {
+            old: v4,
+            new: arg2,
         };
         sui::event::emit<EventDelegateChanged>(v5);
     }
 
-    public fun deposit_for<T0>(arg0: &mut VotingEscrow<T0>, mut arg1: std::option::Option<DistributorCap>, arg2: &mut Lock, arg3: sui::coin::Coin<T0>, arg4: &sui::clock::Clock, arg5: &mut sui::tx_context::TxContext) {
+    public fun deposit_for<T0>(
+        arg0: &mut VotingEscrow<T0>,
+        mut arg1: std::option::Option<DistributorCap>,
+        arg2: &mut Lock,
+        arg3: sui::coin::Coin<T0>,
+        arg4: &sui::clock::Clock,
+        arg5: &mut sui::tx_context::TxContext
+    ) {
         let v0 = sui::object::id<Lock>(arg2);
         if (escrow_type<T0>(arg0, v0) == EscrowType::MANAGED) {
             if (std::option::is_none<DistributorCap>(&arg1)) {
@@ -672,7 +984,16 @@ module distribution::voting_escrow {
         arg2.amount = arg2.amount + v2;
     }
 
-    fun deposit_for_internal<T0>(arg0: &mut VotingEscrow<T0>, arg1: sui::object::ID, arg2: u64, arg3: u64, arg4: LockedBalance, arg5: DepositType, arg6: &sui::clock::Clock, arg7: &mut sui::tx_context::TxContext) {
+    fun deposit_for_internal<T0>(
+        arg0: &mut VotingEscrow<T0>,
+        arg1: sui::object::ID,
+        arg2: u64,
+        arg3: u64,
+        arg4: LockedBalance,
+        arg5: DepositType,
+        arg6: &sui::clock::Clock,
+        arg7: &mut sui::tx_context::TxContext
+    ) {
         let v0 = arg0.total_locked;
         arg0.total_locked = arg0.total_locked + arg2;
         let mut v1 = locked_balance(arg4.amount, arg4.end, arg4.is_permanent);
@@ -682,33 +1003,50 @@ module distribution::voting_escrow {
         };
         set_locked<T0>(arg0, arg1, v1);
         checkpoint_internal<T0>(arg0, std::option::some<sui::object::ID>(arg1), arg4, v1, arg6, arg7);
-        let v2 = EventDeposit{
-            lock_id      : arg1,
-            deposit_type : arg5,
-            amount       : arg2,
-            unlock_time  : v1.end,
+        let v2 = EventDeposit {
+            lock_id: arg1,
+            deposit_type: arg5,
+            amount: arg2,
+            unlock_time: v1.end,
         };
         sui::event::emit<EventDeposit>(v2);
-        let v3 = EventSupply{
-            before : v0,
-            after  : arg0.total_locked,
+        let v3 = EventSupply {
+            before: v0,
+            after: arg0.total_locked,
         };
         sui::event::emit<EventSupply>(v3);
     }
 
-    public fun deposit_managed<T0>(arg0: &mut VotingEscrow<T0>, arg1: &distribution::voter_cap::VoterCap, arg2: &mut Lock, arg3: sui::object::ID, arg4: &sui::clock::Clock, arg5: &mut sui::tx_context::TxContext) {
+    public fun deposit_managed<T0>(
+        arg0: &mut VotingEscrow<T0>,
+        arg1: &distribution::voter_cap::VoterCap,
+        arg2: &mut Lock,
+        arg3: sui::object::ID,
+        arg4: &sui::clock::Clock,
+        arg5: &mut sui::tx_context::TxContext
+    ) {
         assert!(distribution::voter_cap::get_voter_id(arg1) == arg0.voter, 9223377701916639231);
         let v0 = sui::object::id<Lock>(arg2);
         assert!(escrow_type<T0>(arg0, arg3) == EscrowType::MANAGED, 9223377706214359083);
         assert!(escrow_type<T0>(arg0, v0) == EscrowType::NORMAL, 9223377710508146713);
-        assert!(balance_of_nft_at_internal<T0>(arg0, v0, distribution::common::current_timestamp(arg4)) > 0, 9223377719096770565);
+        assert!(
+            balance_of_nft_at_internal<T0>(arg0, v0, distribution::common::current_timestamp(arg4)) > 0,
+            9223377719096770565
+        );
         let v1 = *sui::table::borrow<sui::object::ID, LockedBalance>(&arg0.locked, v0);
         let v2 = v1.amount;
         if (v1.is_permanent) {
             arg0.permanent_lock_balance = arg0.permanent_lock_balance - v1.amount;
             delegate_internal<T0>(arg0, arg2, sui::object::id_from_address(@0x0), arg4, arg5);
         };
-        checkpoint_internal<T0>(arg0, std::option::some<sui::object::ID>(v0), v1, locked_balance(0, 0, false), arg4, arg5);
+        checkpoint_internal<T0>(
+            arg0,
+            std::option::some<sui::object::ID>(v0),
+            v1,
+            locked_balance(0, 0, false),
+            arg4,
+            arg5
+        );
         sui::table::remove<sui::object::ID, LockedBalance>(&mut arg0.locked, v0);
         sui::table::add<sui::object::ID, LockedBalance>(&mut arg0.locked, v0, locked_balance(0, 0, false));
         arg0.permanent_lock_balance = arg0.permanent_lock_balance + v2;
@@ -719,30 +1057,64 @@ module distribution::voting_escrow {
         let v4 = sui::table::remove<sui::object::ID, LockedBalance>(&mut arg0.locked, arg3);
         checkpoint_internal<T0>(arg0, std::option::some<sui::object::ID>(arg3), v4, v3, arg4, arg5);
         sui::table::add<sui::object::ID, LockedBalance>(&mut arg0.locked, arg3, v3);
-        if (!sui::table::contains<sui::object::ID, sui::table::Table<sui::object::ID, u64>>(&arg0.managed_weights, v0)) {
-            sui::table::add<sui::object::ID, sui::table::Table<sui::object::ID, u64>>(&mut arg0.managed_weights, v0, sui::table::new<sui::object::ID, u64>(arg5));
+        if (!sui::table::contains<sui::object::ID, sui::table::Table<sui::object::ID, u64>>(
+            &arg0.managed_weights,
+            v0
+        )) {
+            sui::table::add<sui::object::ID, sui::table::Table<sui::object::ID, u64>>(
+                &mut arg0.managed_weights,
+                v0,
+                sui::table::new<sui::object::ID, u64>(arg5)
+            );
         };
-        sui::table::add<sui::object::ID, u64>(sui::table::borrow_mut<sui::object::ID, sui::table::Table<sui::object::ID, u64>>(&mut arg0.managed_weights, v0), arg3, v2);
+        sui::table::add<sui::object::ID, u64>(
+            sui::table::borrow_mut<sui::object::ID, sui::table::Table<sui::object::ID, u64>>(
+                &mut arg0.managed_weights,
+                v0
+            ),
+            arg3,
+            v2
+        );
         sui::table::add<sui::object::ID, sui::object::ID>(&mut arg0.id_to_managed, v0, arg3);
         sui::table::add<sui::object::ID, EscrowType>(&mut arg0.escrow_type, v0, EscrowType::LOCKED);
-        distribution::locked_managed_reward::deposit(sui::table::borrow_mut<sui::object::ID, distribution::locked_managed_reward::LockedManagedReward>(&mut arg0.managed_to_locked, arg3), &arg0.locked_managed_reward_authorized_cap, v2, v0, arg4, arg5);
-        distribution::free_managed_reward::deposit(sui::table::borrow_mut<sui::object::ID, distribution::free_managed_reward::FreeManagedReward>(&mut arg0.managed_to_free, arg3), &arg0.free_managed_reward_authorized_cap, v2, v0, arg4, arg5);
-        let v5 = EventDepositManaged{
-            owner           : *sui::table::borrow<sui::object::ID, address>(&arg0.owner_of, v0),
-            lock_id         : v0,
-            managed_lock_id : arg3,
-            amount          : v2,
+        distribution::locked_managed_reward::deposit(
+            sui::table::borrow_mut<sui::object::ID, distribution::locked_managed_reward::LockedManagedReward>(
+                &mut arg0.managed_to_locked,
+                arg3
+            ),
+            &arg0.locked_managed_reward_authorized_cap,
+            v2,
+            v0,
+            arg4,
+            arg5
+        );
+        distribution::free_managed_reward::deposit(
+            sui::table::borrow_mut<sui::object::ID, distribution::free_managed_reward::FreeManagedReward>(
+                &mut arg0.managed_to_free,
+                arg3
+            ),
+            &arg0.free_managed_reward_authorized_cap,
+            v2,
+            v0,
+            arg4,
+            arg5
+        );
+        let v5 = EventDepositManaged {
+            owner: *sui::table::borrow<sui::object::ID, address>(&arg0.owner_of, v0),
+            lock_id: v0,
+            managed_lock_id: arg3,
+            amount: v2,
         };
         sui::event::emit<EventDepositManaged>(v5);
-        let v6 = EventMetadataUpdate{lock_id: v0};
+        let v6 = EventMetadataUpdate { lock_id: v0 };
         sui::event::emit<EventMetadataUpdate>(v6);
     }
 
-    public fun end(arg0: &LockedBalance) : u64 {
+    public fun end(arg0: &LockedBalance): u64 {
         arg0.end
     }
 
-    public fun escrow_type<T0>(arg0: &VotingEscrow<T0>, arg1: sui::object::ID) : EscrowType {
+    public fun escrow_type<T0>(arg0: &VotingEscrow<T0>, arg1: sui::object::ID): EscrowType {
         if (sui::table::contains<sui::object::ID, EscrowType>(&arg0.escrow_type, arg1)) {
             *sui::table::borrow<sui::object::ID, EscrowType>(&arg0.escrow_type, arg1)
         } else {
@@ -750,32 +1122,86 @@ module distribution::voting_escrow {
         }
     }
 
-    public fun free_managed_reward_earned<T0>(arg0: &mut VotingEscrow<T0>, arg1: &mut Lock, arg2: &sui::clock::Clock) : u64 {
+    public fun free_managed_reward_earned<T0>(
+        arg0: &mut VotingEscrow<T0>,
+        arg1: &mut Lock,
+        arg2: &sui::clock::Clock
+    ): u64 {
         let v0 = sui::object::id<Lock>(arg1);
-        distribution::free_managed_reward::earned<T0>(sui::table::borrow<sui::object::ID, distribution::free_managed_reward::FreeManagedReward>(&arg0.managed_to_free, *sui::table::borrow<sui::object::ID, sui::object::ID>(&arg0.id_to_managed, v0)), v0, arg2)
+        distribution::free_managed_reward::earned<T0>(
+            sui::table::borrow<sui::object::ID, distribution::free_managed_reward::FreeManagedReward>(
+                &arg0.managed_to_free,
+                *sui::table::borrow<sui::object::ID, sui::object::ID>(&arg0.id_to_managed, v0)
+            ),
+            v0,
+            arg2
+        )
     }
 
-    public fun free_managed_reward_get_reward<T0>(arg0: &mut VotingEscrow<T0>, arg1: &mut Lock, arg2: &sui::clock::Clock, arg3: &mut sui::tx_context::TxContext) {
+    public fun free_managed_reward_get_reward<T0>(
+        arg0: &mut VotingEscrow<T0>,
+        arg1: &mut Lock,
+        arg2: &sui::clock::Clock,
+        arg3: &mut sui::tx_context::TxContext
+    ) {
         let v0 = owner_proof<T0>(arg0, arg1, arg3);
-        distribution::free_managed_reward::get_reward<T0>(sui::table::borrow_mut<sui::object::ID, distribution::free_managed_reward::FreeManagedReward>(&mut arg0.managed_to_free, *sui::table::borrow<sui::object::ID, sui::object::ID>(&arg0.id_to_managed, sui::object::id<Lock>(arg1))), v0, arg2, arg3);
+        distribution::free_managed_reward::get_reward<T0>(
+            sui::table::borrow_mut<sui::object::ID, distribution::free_managed_reward::FreeManagedReward>(
+                &mut arg0.managed_to_free,
+                *sui::table::borrow<sui::object::ID, sui::object::ID>(&arg0.id_to_managed, sui::object::id<Lock>(arg1))
+            ),
+            v0,
+            arg2,
+            arg3
+        );
     }
 
-    public fun free_managed_reward_notify_reward<T0>(arg0: &mut VotingEscrow<T0>, arg1: std::option::Option<distribution::whitelisted_tokens::WhitelistedToken>, arg2: sui::coin::Coin<T0>, arg3: sui::object::ID, arg4: &sui::clock::Clock, arg5: &mut sui::tx_context::TxContext) {
-        distribution::free_managed_reward::notify_reward_amount<T0>(sui::table::borrow_mut<sui::object::ID, distribution::free_managed_reward::FreeManagedReward>(&mut arg0.managed_to_free, *sui::table::borrow<sui::object::ID, sui::object::ID>(&arg0.id_to_managed, arg3)), arg1, arg2, arg4, arg5);
+    public fun free_managed_reward_notify_reward<T0>(
+        arg0: &mut VotingEscrow<T0>,
+        arg1: std::option::Option<distribution::whitelisted_tokens::WhitelistedToken>,
+        arg2: sui::coin::Coin<T0>,
+        arg3: sui::object::ID,
+        arg4: &sui::clock::Clock,
+        arg5: &mut sui::tx_context::TxContext
+    ) {
+        distribution::free_managed_reward::notify_reward_amount<T0>(
+            sui::table::borrow_mut<sui::object::ID, distribution::free_managed_reward::FreeManagedReward>(
+                &mut arg0.managed_to_free,
+                *sui::table::borrow<sui::object::ID, sui::object::ID>(&arg0.id_to_managed, arg3)
+            ),
+            arg1,
+            arg2,
+            arg4,
+            arg5
+        );
     }
 
-    public fun free_managed_reward_token_list<T0>(arg0: &mut VotingEscrow<T0>, arg1: sui::object::ID) : vector<std::type_name::TypeName> {
-        distribution::free_managed_reward::rewards_list(sui::table::borrow<sui::object::ID, distribution::free_managed_reward::FreeManagedReward>(&arg0.managed_to_free, *sui::table::borrow<sui::object::ID, sui::object::ID>(&arg0.id_to_managed, arg1)))
+    public fun free_managed_reward_token_list<T0>(
+        arg0: &mut VotingEscrow<T0>,
+        arg1: sui::object::ID
+    ): vector<std::type_name::TypeName> {
+        distribution::free_managed_reward::rewards_list(
+            sui::table::borrow<sui::object::ID, distribution::free_managed_reward::FreeManagedReward>(
+                &arg0.managed_to_free,
+                *sui::table::borrow<sui::object::ID, sui::object::ID>(&arg0.id_to_managed, arg1)
+            )
+        )
     }
 
-    fun get_past_global_point_index<T0>(arg0: &VotingEscrow<T0>, mut arg1: u64, arg2: u64) : u64 {
+    fun get_past_global_point_index<T0>(arg0: &VotingEscrow<T0>, mut arg1: u64, arg2: u64): u64 {
         if (arg1 == 0) {
             return 0
         };
-        if (!sui::table::contains<u64, GlobalPoint>(&arg0.point_history, arg1) || sui::table::borrow<u64, GlobalPoint>(&arg0.point_history, arg1).ts <= arg2) {
+        if (!sui::table::contains<u64, GlobalPoint>(&arg0.point_history, arg1) || sui::table::borrow<u64, GlobalPoint>(
+            &arg0.point_history,
+            arg1
+        ).ts <= arg2) {
             return arg1
         };
-        if (sui::table::contains<u64, GlobalPoint>(&arg0.point_history, 1) && sui::table::borrow<u64, GlobalPoint>(&arg0.point_history, 1).ts > arg2) {
+        if (sui::table::contains<u64, GlobalPoint>(&arg0.point_history, 1) && sui::table::borrow<u64, GlobalPoint>(
+            &arg0.point_history,
+            1
+        ).ts > arg2) {
             return 0
         };
         let mut v0 = 0;
@@ -795,7 +1221,7 @@ module distribution::voting_escrow {
         v0
     }
 
-    fun get_past_power_point_index<T0>(arg0: &VotingEscrow<T0>, arg1: sui::object::ID, arg2: u64) : u64 {
+    fun get_past_power_point_index<T0>(arg0: &VotingEscrow<T0>, arg1: sui::object::ID, arg2: u64): u64 {
         if (!sui::table::contains<sui::object::ID, u64>(&arg0.user_point_epoch, arg1)) {
             return 0
         };
@@ -803,17 +1229,38 @@ module distribution::voting_escrow {
         if (v0 == 0) {
             return 0
         };
-        if (sui::table::borrow<u64, UserPoint>(sui::table::borrow<sui::object::ID, sui::table::Table<u64, UserPoint>>(&arg0.user_point_history, arg1), v0).ts <= arg2) {
+        if (sui::table::borrow<u64, UserPoint>(
+            sui::table::borrow<sui::object::ID, sui::table::Table<u64, UserPoint>>(&arg0.user_point_history, arg1),
+            v0
+        ).ts <= arg2) {
             return v0
         };
-        if (sui::table::contains<u64, UserPoint>(sui::table::borrow<sui::object::ID, sui::table::Table<u64, UserPoint>>(&arg0.user_point_history, arg1), 1) && sui::table::borrow<u64, UserPoint>(sui::table::borrow<sui::object::ID, sui::table::Table<u64, UserPoint>>(&arg0.user_point_history, arg1), 1).ts > arg2) {
+        if (sui::table::contains<u64, UserPoint>(
+            sui::table::borrow<sui::object::ID, sui::table::Table<u64, UserPoint>>(&arg0.user_point_history, arg1),
+            1
+        ) && sui::table::borrow<u64, UserPoint>(
+            sui::table::borrow<sui::object::ID, sui::table::Table<u64, UserPoint>>(&arg0.user_point_history, arg1),
+            1
+        ).ts > arg2) {
             return 0
         };
         let mut v1 = 0;
         while (v0 > v1) {
             let v2 = v0 - (v0 - v1) / 2;
-            assert!(sui::table::contains<u64, UserPoint>(sui::table::borrow<sui::object::ID, sui::table::Table<u64, UserPoint>>(&arg0.user_point_history, arg1), v2), 9223377117801086975);
-            let v3 = sui::table::borrow<u64, UserPoint>(sui::table::borrow<sui::object::ID, sui::table::Table<u64, UserPoint>>(&arg0.user_point_history, arg1), v2);
+            assert!(
+                sui::table::contains<u64, UserPoint>(
+                    sui::table::borrow<sui::object::ID, sui::table::Table<u64, UserPoint>>(
+                        &arg0.user_point_history,
+                        arg1
+                    ),
+                    v2
+                ),
+                9223377117801086975
+            );
+            let v3 = sui::table::borrow<u64, UserPoint>(
+                sui::table::borrow<sui::object::ID, sui::table::Table<u64, UserPoint>>(&arg0.user_point_history, arg1),
+                v2
+            );
             if (v3.ts == arg2) {
                 return v2
             };
@@ -826,24 +1273,50 @@ module distribution::voting_escrow {
         v1
     }
 
-    public fun get_voting_power<T0>(arg0: &VotingEscrow<T0>, arg1: &Lock, arg2: &sui::clock::Clock) : u64 {
+    public fun get_voting_power<T0>(arg0: &VotingEscrow<T0>, arg1: &Lock, arg2: &sui::clock::Clock): u64 {
         let v0 = sui::object::id<Lock>(arg1);
-        assert!(sui::clock::timestamp_ms(arg2) - *sui::table::borrow<sui::object::ID, u64>(&arg0.ownership_change_at, v0) >= distribution::common::get_time_to_finality(), 9223376997544099873);
+        assert!(
+            sui::clock::timestamp_ms(arg2) - *sui::table::borrow<sui::object::ID, u64>(
+                &arg0.ownership_change_at,
+                v0
+            ) >= distribution::common::get_time_to_finality(),
+            9223376997544099873
+        );
         balance_of_nft_at_internal<T0>(arg0, v0, distribution::common::current_timestamp(arg2))
     }
 
-    public fun id_to_managed<T0>(arg0: &VotingEscrow<T0>, arg1: sui::object::ID) : sui::object::ID {
+    public fun id_to_managed<T0>(arg0: &VotingEscrow<T0>, arg1: sui::object::ID): sui::object::ID {
         *sui::table::borrow<sui::object::ID, sui::object::ID>(&arg0.id_to_managed, arg1)
     }
 
-    public fun increase_amount<T0>(arg0: &mut VotingEscrow<T0>, arg1: &mut Lock, arg2: sui::coin::Coin<T0>, arg3: &sui::clock::Clock, arg4: &mut sui::tx_context::TxContext) {
+    public fun increase_amount<T0>(
+        arg0: &mut VotingEscrow<T0>,
+        arg1: &mut Lock,
+        arg2: sui::coin::Coin<T0>,
+        arg3: &sui::clock::Clock,
+        arg4: &mut sui::tx_context::TxContext
+    ) {
         let v0 = sui::coin::value<T0>(&arg2);
         sui::balance::join<T0>(&mut arg0.balance, sui::coin::into_balance<T0>(arg2));
-        increase_amount_for_internal<T0>(arg0, sui::object::id<Lock>(arg1), v0, DepositType::INCREASE_LOCK_AMOUNT, arg3, arg4);
+        increase_amount_for_internal<T0>(
+            arg0,
+            sui::object::id<Lock>(arg1),
+            v0,
+            DepositType::INCREASE_LOCK_AMOUNT,
+            arg3,
+            arg4
+        );
         arg1.amount = arg1.amount + v0;
     }
 
-    fun increase_amount_for_internal<T0>(arg0: &mut VotingEscrow<T0>, arg1: sui::object::ID, arg2: u64, arg3: DepositType, arg4: &sui::clock::Clock, arg5: &mut sui::tx_context::TxContext) {
+    fun increase_amount_for_internal<T0>(
+        arg0: &mut VotingEscrow<T0>,
+        arg1: sui::object::ID,
+        arg2: u64,
+        arg3: DepositType,
+        arg4: &sui::clock::Clock,
+        arg5: &mut sui::tx_context::TxContext
+    ) {
         assert!(arg2 > 0, 9223374463511560197);
         let v0 = escrow_type<T0>(arg0, arg1);
         assert!(v0 != EscrowType::LOCKED, 9223374472102150159);
@@ -859,13 +1332,28 @@ module distribution::voting_escrow {
         distribution::voting_dao::checkpoint_delegatee(&mut arg0.voting_dao, delegatee, arg2, true, arg4, arg5);
         deposit_for_internal<T0>(arg0, arg1, arg2, 0, v3, arg3, arg4, arg5);
         if (v0 == EscrowType::MANAGED) {
-            distribution::locked_managed_reward::notify_reward_amount<T0>(sui::table::borrow_mut<sui::object::ID, distribution::locked_managed_reward::LockedManagedReward>(&mut arg0.managed_to_locked, arg1), &arg0.locked_managed_reward_authorized_cap, sui::coin::from_balance<T0>(sui::balance::split<T0>(&mut arg0.balance, arg2), arg5), arg4, arg5);
+            distribution::locked_managed_reward::notify_reward_amount<T0>(
+                sui::table::borrow_mut<sui::object::ID, distribution::locked_managed_reward::LockedManagedReward>(
+                    &mut arg0.managed_to_locked,
+                    arg1
+                ),
+                &arg0.locked_managed_reward_authorized_cap,
+                sui::coin::from_balance<T0>(sui::balance::split<T0>(&mut arg0.balance, arg2), arg5),
+                arg4,
+                arg5
+            );
         };
-        let v4 = EventMetadataUpdate{lock_id: arg1};
+        let v4 = EventMetadataUpdate { lock_id: arg1 };
         sui::event::emit<EventMetadataUpdate>(v4);
     }
 
-    public fun increase_unlock_time<T0>(arg0: &mut VotingEscrow<T0>, arg1: &mut Lock, arg2: u64, arg3: &sui::clock::Clock, arg4: &mut sui::tx_context::TxContext) {
+    public fun increase_unlock_time<T0>(
+        arg0: &mut VotingEscrow<T0>,
+        arg1: &mut Lock,
+        arg2: u64,
+        arg3: &sui::clock::Clock,
+        arg4: &mut sui::tx_context::TxContext
+    ) {
         let v0 = sui::object::id<Lock>(arg1);
         let v1 = if (!sui::table::contains<sui::object::ID, EscrowType>(&arg0.escrow_type, v0)) {
             true
@@ -883,7 +1371,7 @@ module distribution::voting_escrow {
         assert!(v5 > v3.end, 9223376340414365733);
         assert!(v5 < v4 + (distribution::common::max_lock_time() as u64), 9223376344709464103);
         deposit_for_internal<T0>(arg0, v0, 0, v5, v3, DepositType::INCREASE_UNLOCK_TIME, arg3, arg4);
-        let v6 = EventMetadataUpdate{lock_id: v0};
+        let v6 = EventMetadataUpdate { lock_id: v0 };
         sui::event::emit<EventMetadataUpdate>(v6);
         arg1.start = v4;
         arg1.end = v5;
@@ -893,23 +1381,23 @@ module distribution::voting_escrow {
         sui::package::claim_and_keep<VOTING_ESCROW>(arg0, arg1);
     }
 
-    public fun is_locked(arg0: EscrowType) : bool {
+    public fun is_locked(arg0: EscrowType): bool {
         arg0 == EscrowType::LOCKED
     }
 
-    public fun is_managed(arg0: EscrowType) : bool {
+    public fun is_managed(arg0: EscrowType): bool {
         arg0 == EscrowType::MANAGED
     }
 
-    public fun is_normal(arg0: EscrowType) : bool {
+    public fun is_normal(arg0: EscrowType): bool {
         arg0 == EscrowType::NORMAL
     }
 
-    public fun is_permanent(arg0: &LockedBalance) : bool {
+    public fun is_permanent(arg0: &LockedBalance): bool {
         arg0.is_permanent
     }
 
-    public fun is_split_allowed<T0>(arg0: &VotingEscrow<T0>, arg1: address) : bool {
+    public fun is_split_allowed<T0>(arg0: &VotingEscrow<T0>, arg1: address): bool {
         let v0 = if (sui::table::contains<address, bool>(&arg0.can_split, arg1)) {
             let v1 = true;
             sui::table::borrow<address, bool>(&arg0.can_split, arg1) == &v1
@@ -926,7 +1414,7 @@ module distribution::voting_escrow {
         }
     }
 
-    public fun lock_has_voted<T0>(arg0: &mut VotingEscrow<T0>, arg1: sui::object::ID) : bool {
+    public fun lock_has_voted<T0>(arg0: &mut VotingEscrow<T0>, arg1: sui::object::ID): bool {
         if (sui::table::contains<sui::object::ID, bool>(&arg0.voted, arg1)) {
             let v1 = true;
             sui::table::borrow<sui::object::ID, bool>(&arg0.voted, arg1) == &v1
@@ -935,7 +1423,12 @@ module distribution::voting_escrow {
         }
     }
 
-    public fun lock_permanent<T0>(arg0: &mut VotingEscrow<T0>, arg1: &mut Lock, arg2: &sui::clock::Clock, arg3: &mut sui::tx_context::TxContext) {
+    public fun lock_permanent<T0>(
+        arg0: &mut VotingEscrow<T0>,
+        arg1: &mut Lock,
+        arg2: &sui::clock::Clock,
+        arg3: &mut sui::tx_context::TxContext
+    ) {
         let v0 = sui::object::id<Lock>(arg1);
         let v1 = if (!sui::table::contains<sui::object::ID, EscrowType>(&arg0.escrow_type, v0)) {
             true
@@ -951,7 +1444,12 @@ module distribution::voting_escrow {
         lock_permanent_internal<T0>(arg0, arg1, arg2, arg3);
     }
 
-    fun lock_permanent_internal<T0>(arg0: &mut VotingEscrow<T0>, arg1: &mut Lock, arg2: &sui::clock::Clock, arg3: &mut sui::tx_context::TxContext) {
+    fun lock_permanent_internal<T0>(
+        arg0: &mut VotingEscrow<T0>,
+        arg1: &mut Lock,
+        arg2: &sui::clock::Clock,
+        arg3: &mut sui::tx_context::TxContext
+    ) {
         let v0 = sui::object::id<Lock>(arg1);
         let mut v1 = *sui::table::borrow<sui::object::ID, LockedBalance>(&arg0.locked, v0);
         arg0.permanent_lock_balance = arg0.permanent_lock_balance + v1.amount;
@@ -961,44 +1459,55 @@ module distribution::voting_escrow {
         checkpoint_internal<T0>(arg0, std::option::some<sui::object::ID>(v0), v2, v1, arg2, arg3);
         sui::table::remove<sui::object::ID, LockedBalance>(&mut arg0.locked, v0);
         sui::table::add<sui::object::ID, LockedBalance>(&mut arg0.locked, v0, v1);
-        let v3 = EventLockPermanent{
-            sender  : sui::tx_context::sender(arg3),
-            lock_id : v0,
-            amount  : v1.amount,
+        let v3 = EventLockPermanent {
+            sender: sui::tx_context::sender(arg3),
+            lock_id: v0,
+            amount: v1.amount,
         };
         sui::event::emit<EventLockPermanent>(v3);
-        let v4 = EventMetadataUpdate{lock_id: v0};
+        let v4 = EventMetadataUpdate { lock_id: v0 };
         sui::event::emit<EventMetadataUpdate>(v4);
         arg1.end = 0;
         arg1.permanent = true;
     }
 
-    public fun locked<T0>(arg0: &VotingEscrow<T0>, arg1: sui::object::ID) : (LockedBalance, bool) {
+    public fun locked<T0>(arg0: &VotingEscrow<T0>, arg1: sui::object::ID): (LockedBalance, bool) {
         if (sui::table::contains<sui::object::ID, LockedBalance>(&arg0.locked, arg1)) {
             (*sui::table::borrow<sui::object::ID, LockedBalance>(&arg0.locked, arg1), true)
         } else {
-            let v2 = LockedBalance{
-                amount       : 0,
-                end          : 0,
-                is_permanent : false,
+            let v2 = LockedBalance {
+                amount: 0,
+                end: 0,
+                is_permanent: false,
             };
             (v2, false)
         }
     }
 
-    fun locked_balance(arg0: u64, arg1: u64, arg2: bool) : LockedBalance {
-        LockedBalance{
-            amount       : arg0,
-            end          : arg1,
-            is_permanent : arg2,
+    fun locked_balance(arg0: u64, arg1: u64, arg2: bool): LockedBalance {
+        LockedBalance {
+            amount: arg0,
+            end: arg1,
+            is_permanent: arg2,
         }
     }
 
-    public fun managed_to_free<T0>(arg0: &VotingEscrow<T0>, arg1: sui::object::ID) : sui::object::ID {
-        sui::object::id<distribution::free_managed_reward::FreeManagedReward>(sui::table::borrow<sui::object::ID, distribution::free_managed_reward::FreeManagedReward>(&arg0.managed_to_free, arg1))
+    public fun managed_to_free<T0>(arg0: &VotingEscrow<T0>, arg1: sui::object::ID): sui::object::ID {
+        sui::object::id<distribution::free_managed_reward::FreeManagedReward>(
+            sui::table::borrow<sui::object::ID, distribution::free_managed_reward::FreeManagedReward>(
+                &arg0.managed_to_free,
+                arg1
+            )
+        )
     }
 
-    public fun merge<T0>(arg0: &mut VotingEscrow<T0>, arg1: Lock, arg2: &mut Lock, arg3: &sui::clock::Clock, arg4: &mut sui::tx_context::TxContext) {
+    public fun merge<T0>(
+        arg0: &mut VotingEscrow<T0>,
+        arg1: Lock,
+        arg2: &mut Lock,
+        arg3: &sui::clock::Clock,
+        arg4: &mut sui::tx_context::TxContext
+    ) {
         let v0 = sui::object::id<Lock>(&arg1);
         let v1 = sui::object::id<Lock>(arg2);
         let v2 = lock_has_voted<T0>(arg0, v0);
@@ -1031,32 +1540,43 @@ module distribution::voting_escrow {
         sui::table::remove<sui::object::ID, LockedBalance>(&mut arg0.locked, v1);
         sui::table::add<sui::object::ID, LockedBalance>(&mut arg0.locked, v1, v7);
         arg2.amount = v7.amount;
-        let v8 = EventMerge{
-            sender      : sui::tx_context::sender(arg4),
-            from        : v0,
-            to          : v1,
-            from_amount : v4.amount,
-            to_amount   : v3.amount,
-            new_amount  : v7.amount,
-            new_end     : v7.end,
+        let v8 = EventMerge {
+            sender: sui::tx_context::sender(arg4),
+            from: v0,
+            to: v1,
+            from_amount: v4.amount,
+            to_amount: v3.amount,
+            new_amount: v7.amount,
+            new_end: v7.end,
         };
         sui::event::emit<EventMerge>(v8);
-        let v9 = EventMetadataUpdate{lock_id: v1};
+        let v9 = EventMetadataUpdate { lock_id: v1 };
         sui::event::emit<EventMetadataUpdate>(v9);
     }
 
-    public fun owner_of<T0>(arg0: &VotingEscrow<T0>, arg1: sui::object::ID) : address {
+    public fun owner_of<T0>(arg0: &VotingEscrow<T0>, arg1: sui::object::ID): address {
         *sui::table::borrow<sui::object::ID, address>(&arg0.owner_of, arg1)
     }
 
-    public fun owner_proof<T0>(arg0: &VotingEscrow<T0>, arg1: &Lock, arg2: &mut sui::tx_context::TxContext) : distribution::lock_owner::OwnerProof {
+    public fun owner_proof<T0>(
+        arg0: &VotingEscrow<T0>,
+        arg1: &Lock,
+        arg2: &mut sui::tx_context::TxContext
+    ): distribution::lock_owner::OwnerProof {
         validate_lock<T0>(arg0, arg1);
         let v0 = sui::tx_context::sender(arg2);
-        assert!(sui::table::borrow<sui::object::ID, address>(&arg0.owner_of, sui::object::id<Lock>(arg1)) == &v0, 9223373209380847615);
-        distribution::lock_owner::issue(sui::object::id<VotingEscrow<T0>>(arg0), sui::object::id<Lock>(arg1), sui::tx_context::sender(arg2))
+        assert!(
+            sui::table::borrow<sui::object::ID, address>(&arg0.owner_of, sui::object::id<Lock>(arg1)) == &v0,
+            9223373209380847615
+        );
+        distribution::lock_owner::issue(
+            sui::object::id<VotingEscrow<T0>>(arg0),
+            sui::object::id<Lock>(arg1),
+            sui::tx_context::sender(arg2)
+        )
     }
 
-    public fun ownership_change_at<T0>(arg0: &VotingEscrow<T0>, arg1: sui::object::ID) : u64 {
+    public fun ownership_change_at<T0>(arg0: &VotingEscrow<T0>, arg1: sui::object::ID): u64 {
         *sui::table::borrow<sui::object::ID, u64>(&arg0.ownership_change_at, arg1)
     }
 
@@ -1071,7 +1591,12 @@ module distribution::voting_escrow {
         sui::table::add<sui::object::ID, LockedBalance>(&mut arg0.locked, arg1, arg2);
     }
 
-    public fun set_managed_state<T0>(arg0: &mut VotingEscrow<T0>, _arg1: &distribution::emergency_council::EmergencyCouncilCap, arg2: sui::object::ID, arg3: bool) {
+    public fun set_managed_state<T0>(
+        arg0: &mut VotingEscrow<T0>,
+        _arg1: &distribution::emergency_council::EmergencyCouncilCap,
+        arg2: sui::object::ID,
+        arg3: bool
+    ) {
         assert!(escrow_type<T0>(arg0, arg2) == EscrowType::MANAGED, 9223378410588995627);
         assert!(sui::table::borrow<sui::object::ID, bool>(&arg0.deactivated, arg2) != &arg3, 9223378414884618293);
         sui::table::remove<sui::object::ID, bool>(&mut arg0.deactivated, arg2);
@@ -1099,39 +1624,57 @@ module distribution::voting_escrow {
         sui::table::add<sui::object::ID, u64>(&mut arg0.user_point_epoch, arg1, arg2);
     }
 
-    fun set_user_point_history<T0>(arg0: &mut VotingEscrow<T0>, arg1: sui::object::ID, arg2: u64, arg3: UserPoint, arg4: &mut sui::tx_context::TxContext) {
+    fun set_user_point_history<T0>(
+        arg0: &mut VotingEscrow<T0>,
+        arg1: sui::object::ID,
+        arg2: u64,
+        arg3: UserPoint,
+        arg4: &mut sui::tx_context::TxContext
+    ) {
         if (!sui::table::contains<sui::object::ID, sui::table::Table<u64, UserPoint>>(&arg0.user_point_history, arg1)) {
-            sui::table::add<sui::object::ID, sui::table::Table<u64, UserPoint>>(&mut arg0.user_point_history, arg1, sui::table::new<u64, UserPoint>(arg4));
+            sui::table::add<sui::object::ID, sui::table::Table<u64, UserPoint>>(
+                &mut arg0.user_point_history,
+                arg1,
+                sui::table::new<u64, UserPoint>(arg4)
+            );
         };
-        let v0 = sui::table::borrow_mut<sui::object::ID, sui::table::Table<u64, UserPoint>>(&mut arg0.user_point_history, arg1);
+        let v0 = sui::table::borrow_mut<sui::object::ID, sui::table::Table<u64, UserPoint>>(
+            &mut arg0.user_point_history,
+            arg1
+        );
         if (sui::table::contains<u64, UserPoint>(v0, arg2)) {
             sui::table::remove<u64, UserPoint>(v0, arg2);
         };
         sui::table::add<u64, UserPoint>(v0, arg2, arg3);
     }
 
-    public fun toggle_split<T0>(arg0: &mut VotingEscrow<T0>, arg1: &distribution::team_cap::TeamCap, arg2: address, arg3: bool) {
+    public fun toggle_split<T0>(
+        arg0: &mut VotingEscrow<T0>,
+        arg1: &distribution::team_cap::TeamCap,
+        arg2: address,
+        arg3: bool
+    ) {
         distribution::team_cap::validate(arg1, sui::object::id<VotingEscrow<T0>>(arg0));
         if (sui::table::contains<address, bool>(&arg0.can_split, arg2)) {
             sui::table::remove<address, bool>(&mut arg0.can_split, arg2);
         };
         sui::table::add<address, bool>(&mut arg0.can_split, arg2, arg3);
-        let v0 = EventToggleSplit{
-            who     : arg2,
-            allowed : arg3,
+        let v0 = EventToggleSplit {
+            who: arg2,
+            allowed: arg3,
         };
         sui::event::emit<EventToggleSplit>(v0);
     }
 
-    public fun total_locked<T0>(arg0: &VotingEscrow<T0>) : u64 {
+    public fun total_locked<T0>(arg0: &VotingEscrow<T0>): u64 {
         arg0.total_locked
     }
 
-    public fun total_supply_at<T0>(arg0: &VotingEscrow<T0>, arg1: u64) : u64 {
+    public fun total_supply_at<T0>(arg0: &VotingEscrow<T0>, arg1: u64): u64 {
         total_supply_at_internal<T0>(arg0, arg0.epoch, arg1)
     }
 
-    fun total_supply_at_internal<T0>(arg0: &VotingEscrow<T0>, arg1: u64, arg2: u64) : u64 {
+    fun total_supply_at_internal<T0>(arg0: &VotingEscrow<T0>, arg1: u64, arg2: u64): u64 {
         let v0 = get_past_global_point_index<T0>(arg0, arg1, arg2);
         if (v0 == 0) {
             return 0
@@ -1156,7 +1699,13 @@ module distribution::voting_escrow {
                 };
                 v8 = v9;
             };
-            v2 = integer_mate::i128::sub(v2, integer_mate::i128::div(integer_mate::i128::mul(v3, integer_mate::i128::from(((v5 - v4) as u128))), integer_mate::i128::from(18446744073709551616)));
+            v2 = integer_mate::i128::sub(
+                v2,
+                integer_mate::i128::div(
+                    integer_mate::i128::mul(v3, integer_mate::i128::from(((v5 - v4) as u128))),
+                    integer_mate::i128::from(18446744073709551616)
+                )
+            );
             if (v5 == arg2) {
                 break
             };
@@ -1169,7 +1718,12 @@ module distribution::voting_escrow {
         (integer_mate::i128::as_u128(v2) as u64) + v1.permanent_lock_balance
     }
 
-    public fun unlock_permanent<T0>(arg0: &mut VotingEscrow<T0>, arg1: &mut Lock, arg2: &sui::clock::Clock, arg3: &mut sui::tx_context::TxContext) {
+    public fun unlock_permanent<T0>(
+        arg0: &mut VotingEscrow<T0>,
+        arg1: &mut Lock,
+        arg2: &sui::clock::Clock,
+        arg3: &mut sui::tx_context::TxContext
+    ) {
         let v0 = sui::tx_context::sender(arg3);
         let v1 = sui::object::id<Lock>(arg1);
         let v2 = if (!sui::table::contains<sui::object::ID, EscrowType>(&arg0.escrow_type, v1)) {
@@ -1195,25 +1749,28 @@ module distribution::voting_escrow {
         arg1.permanent = false;
         arg1.end = v5.end;
         arg1.start = v6;
-        let v8 = EventUnlockPermanent{
-            sender  : v0,
-            lock_id : v1,
-            amount  : v5.amount,
+        let v8 = EventUnlockPermanent {
+            sender: v0,
+            lock_id: v1,
+            amount: v5.amount,
         };
         sui::event::emit<EventUnlockPermanent>(v8);
-        let v9 = EventMetadataUpdate{lock_id: v1};
+        let v9 = EventMetadataUpdate { lock_id: v1 };
         sui::event::emit<EventMetadataUpdate>(v9);
     }
 
-    public fun user_point_epoch<T0>(arg0: &VotingEscrow<T0>, arg1: sui::object::ID) : u64 {
+    public fun user_point_epoch<T0>(arg0: &VotingEscrow<T0>, arg1: sui::object::ID): u64 {
         *sui::table::borrow<sui::object::ID, u64>(&arg0.user_point_epoch, arg1)
     }
 
-    public fun user_point_history<T0>(arg0: &VotingEscrow<T0>, arg1: sui::object::ID, arg2: u64) : UserPoint {
-        *sui::table::borrow<u64, UserPoint>(sui::table::borrow<sui::object::ID, sui::table::Table<u64, UserPoint>>(&arg0.user_point_history, arg1), arg2)
+    public fun user_point_history<T0>(arg0: &VotingEscrow<T0>, arg1: sui::object::ID, arg2: u64): UserPoint {
+        *sui::table::borrow<u64, UserPoint>(
+            sui::table::borrow<sui::object::ID, sui::table::Table<u64, UserPoint>>(&arg0.user_point_history, arg1),
+            arg2
+        )
     }
 
-    public fun user_point_ts(arg0: &UserPoint) : u64 {
+    public fun user_point_ts(arg0: &UserPoint): u64 {
         arg0.ts
     }
 
@@ -1222,10 +1779,19 @@ module distribution::voting_escrow {
     }
 
     fun validate_lock_duration<T0>(arg0: &VotingEscrow<T0>, arg1: u64) {
-        assert!(arg1 * distribution::common::day() >= arg0.min_lock_time && arg1 * distribution::common::day() <= arg0.max_lock_time, 9223374111324635147);
+        assert!(
+            arg1 * distribution::common::day() >= arg0.min_lock_time && arg1 * distribution::common::day(
+            ) <= arg0.max_lock_time,
+            9223374111324635147
+        );
     }
 
-    public fun voting<T0>(arg0: &mut VotingEscrow<T0>, arg1: &distribution::voter_cap::VoterCap, arg2: sui::object::ID, arg3: bool) {
+    public fun voting<T0>(
+        arg0: &mut VotingEscrow<T0>,
+        arg1: &distribution::voter_cap::VoterCap,
+        arg2: sui::object::ID,
+        arg3: bool
+    ) {
         assert!(arg0.voter == distribution::voter_cap::get_voter_id(arg1), 9223374076964241407);
         if (sui::table::contains<sui::object::ID, bool>(&arg0.voted, arg2)) {
             sui::table::remove<sui::object::ID, bool>(&mut arg0.voted, arg2);
@@ -1233,18 +1799,51 @@ module distribution::voting_escrow {
         sui::table::add<sui::object::ID, bool>(&mut arg0.voted, arg2, arg3);
     }
 
-    public fun withdraw_managed<T0>(arg0: &mut VotingEscrow<T0>, arg1: &distribution::voter_cap::VoterCap, arg2: sui::object::ID, arg3: distribution::lock_owner::OwnerProof, arg4: &sui::clock::Clock, arg5: &mut sui::tx_context::TxContext) : sui::balance::Balance<T0> {
+    public fun withdraw_managed<T0>(
+        arg0: &mut VotingEscrow<T0>,
+        arg1: &distribution::voter_cap::VoterCap,
+        arg2: sui::object::ID,
+        arg3: distribution::lock_owner::OwnerProof,
+        arg4: &sui::clock::Clock,
+        arg5: &mut sui::tx_context::TxContext
+    ): sui::balance::Balance<T0> {
         assert!(distribution::voter_cap::get_voter_id(arg1) == arg0.voter, 9223377925257822253);
         assert!(sui::table::contains<sui::object::ID, sui::object::ID>(&arg0.id_to_managed, arg2), 9223377929552920623);
         assert!(escrow_type<T0>(arg0, arg2) == EscrowType::LOCKED, 9223377933848018993);
         let v0 = *sui::table::borrow<sui::object::ID, sui::object::ID>(&arg0.id_to_managed, arg2);
-        let v1 = sui::table::borrow_mut<sui::object::ID, distribution::locked_managed_reward::LockedManagedReward>(&mut arg0.managed_to_locked, v0);
-        let v2 = *sui::table::borrow<sui::object::ID, u64>(sui::table::borrow<sui::object::ID, sui::table::Table<sui::object::ID, u64>>(&arg0.managed_weights, arg2), v0);
+        let v1 = sui::table::borrow_mut<sui::object::ID, distribution::locked_managed_reward::LockedManagedReward>(
+            &mut arg0.managed_to_locked,
+            v0
+        );
+        let v2 = *sui::table::borrow<sui::object::ID, u64>(
+            sui::table::borrow<sui::object::ID, sui::table::Table<sui::object::ID, u64>>(&arg0.managed_weights, arg2),
+            v0
+        );
         let v3 = v2 + distribution::locked_managed_reward::earned<T0>(v1, arg2, arg4);
-        let v4 = distribution::locked_managed_reward::get_reward<T0>(v1, &arg0.locked_managed_reward_authorized_cap, arg2, arg4, arg5);
-        distribution::free_managed_reward::get_reward<T0>(sui::table::borrow_mut<sui::object::ID, distribution::free_managed_reward::FreeManagedReward>(&mut arg0.managed_to_free, v0), arg3, arg4, arg5);
+        let v4 = distribution::locked_managed_reward::get_reward<T0>(
+            v1,
+            &arg0.locked_managed_reward_authorized_cap,
+            arg2,
+            arg4,
+            arg5
+        );
+        distribution::free_managed_reward::get_reward<T0>(
+            sui::table::borrow_mut<sui::object::ID, distribution::free_managed_reward::FreeManagedReward>(
+                &mut arg0.managed_to_free,
+                v0
+            ),
+            arg3,
+            arg4,
+            arg5
+        );
         let v5 = sui::table::remove<sui::object::ID, LockedBalance>(&mut arg0.locked, arg2);
-        let v6 = locked_balance(v3, distribution::common::to_period(distribution::common::current_timestamp(arg4) + distribution::common::max_lock_time()), false);
+        let v6 = locked_balance(
+            v3,
+            distribution::common::to_period(
+                distribution::common::current_timestamp(arg4) + distribution::common::max_lock_time()
+            ),
+            false
+        );
         checkpoint_internal<T0>(arg0, std::option::some<sui::object::ID>(arg2), v5, v6, arg4, arg5);
         sui::table::add<sui::object::ID, LockedBalance>(&mut arg0.locked, arg2, v6);
         let mut v7 = *sui::table::borrow<sui::object::ID, LockedBalance>(&arg0.locked, v0);
@@ -1265,19 +1864,45 @@ module distribution::voting_escrow {
         let v10 = sui::table::remove<sui::object::ID, LockedBalance>(&mut arg0.locked, v0);
         checkpoint_internal<T0>(arg0, std::option::some<sui::object::ID>(v0), v10, v7, arg4, arg5);
         sui::table::add<sui::object::ID, LockedBalance>(&mut arg0.locked, v0, v7);
-        distribution::locked_managed_reward::withdraw(sui::table::borrow_mut<sui::object::ID, distribution::locked_managed_reward::LockedManagedReward>(&mut arg0.managed_to_locked, v0), &arg0.locked_managed_reward_authorized_cap, v2, arg2, arg4, arg5);
-        distribution::free_managed_reward::withdraw(sui::table::borrow_mut<sui::object::ID, distribution::free_managed_reward::FreeManagedReward>(&mut arg0.managed_to_free, v0), &arg0.free_managed_reward_authorized_cap, v2, arg2, arg4, arg5);
+        distribution::locked_managed_reward::withdraw(
+            sui::table::borrow_mut<sui::object::ID, distribution::locked_managed_reward::LockedManagedReward>(
+                &mut arg0.managed_to_locked,
+                v0
+            ),
+            &arg0.locked_managed_reward_authorized_cap,
+            v2,
+            arg2,
+            arg4,
+            arg5
+        );
+        distribution::free_managed_reward::withdraw(
+            sui::table::borrow_mut<sui::object::ID, distribution::free_managed_reward::FreeManagedReward>(
+                &mut arg0.managed_to_free,
+                v0
+            ),
+            &arg0.free_managed_reward_authorized_cap,
+            v2,
+            arg2,
+            arg4,
+            arg5
+        );
         sui::table::remove<sui::object::ID, sui::object::ID>(&mut arg0.id_to_managed, arg2);
-        sui::table::remove<sui::object::ID, u64>(sui::table::borrow_mut<sui::object::ID, sui::table::Table<sui::object::ID, u64>>(&mut arg0.managed_weights, arg2), v0);
+        sui::table::remove<sui::object::ID, u64>(
+            sui::table::borrow_mut<sui::object::ID, sui::table::Table<sui::object::ID, u64>>(
+                &mut arg0.managed_weights,
+                arg2
+            ),
+            v0
+        );
         sui::table::remove<sui::object::ID, EscrowType>(&mut arg0.escrow_type, arg2);
-        let v11 = EventWithdrawManaged{
-            owner           : *sui::table::borrow<sui::object::ID, address>(&arg0.owner_of, arg2),
-            lock_id         : arg2,
-            managed_lock_id : v0,
-            amount          : v3,
+        let v11 = EventWithdrawManaged {
+            owner: *sui::table::borrow<sui::object::ID, address>(&arg0.owner_of, arg2),
+            lock_id: arg2,
+            managed_lock_id: v0,
+            amount: v3,
         };
         sui::event::emit<EventWithdrawManaged>(v11);
-        let v12 = EventMetadataUpdate{lock_id: arg2};
+        let v12 = EventMetadataUpdate { lock_id: arg2 };
         sui::event::emit<EventMetadataUpdate>(v12);
         v4
     }
