@@ -61,6 +61,4 @@ module integrate::reward_distributor {
         };
         sui::event::emit<ClaimAndLock>(claim_and_lock_event);
     }
-
-    // decompiled from Move bytecode v6
 }
