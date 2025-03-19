@@ -51,83 +51,80 @@ module distribution::reward {
         balances: sui::bag::Bag,
     }
 
-    public fun balance<T0>(arg0: &Reward): u64 {
-        sui::balance::value<T0>(
-            sui::bag::borrow<std::type_name::TypeName, sui::balance::Balance<T0>>(
-                &arg0.balances,
-                std::type_name::get<T0>()
-            )
-        )
+    public fun balance<CoinType>(reward: &Reward): u64 {
+        sui::bag::borrow<std::type_name::TypeName, sui::balance::Balance<CoinType>>(
+            &reward.balances,
+            std::type_name::get<CoinType>()
+        ).value<CoinType>()
     }
 
-    public(package) fun add_reward_token(arg0: &mut Reward, arg1: std::type_name::TypeName) {
-        sui::vec_set::insert<std::type_name::TypeName>(&mut arg0.rewards, arg1);
+    public(package) fun add_reward_token(reward: &mut Reward, coinTypeName: std::type_name::TypeName) {
+        reward.rewards.insert<std::type_name::TypeName>(coinTypeName);
     }
 
-    public fun authorized(arg0: &Reward): sui::object::ID {
-        arg0.authorized
+    public fun authorized(reward: &Reward): sui::object::ID {
+        reward.authorized
     }
 
     public(package) fun create(
-        arg0: sui::object::ID,
-        arg1: sui::object::ID,
-        arg2: sui::object::ID,
-        arg3: vector<std::type_name::TypeName>,
-        arg4: &mut sui::tx_context::TxContext
+        voter: sui::object::ID,
+        ve: sui::object::ID,
+        authorized: sui::object::ID,
+        reward_coin_types: vector<std::type_name::TypeName>,
+        ctx: &mut sui::tx_context::TxContext
     ): Reward {
-        let mut v0 = Reward {
-            id: sui::object::new(arg4),
-            voter: arg0,
-            ve: arg1,
-            authorized: arg2,
+        let mut reward = Reward {
+            id: sui::object::new(ctx),
+            voter,
+            ve,
+            authorized,
             total_supply: 0,
-            balance_of: sui::table::new<sui::object::ID, u64>(arg4),
-            token_rewards_per_epoch: sui::table::new<std::type_name::TypeName, sui::table::Table<u64, u64>>(arg4),
-            last_earn: sui::table::new<std::type_name::TypeName, sui::table::Table<sui::object::ID, u64>>(arg4),
+            balance_of: sui::table::new<sui::object::ID, u64>(ctx),
+            token_rewards_per_epoch: sui::table::new<std::type_name::TypeName, sui::table::Table<u64, u64>>(ctx),
+            last_earn: sui::table::new<std::type_name::TypeName, sui::table::Table<sui::object::ID, u64>>(ctx),
             rewards: sui::vec_set::empty<std::type_name::TypeName>(),
-            checkpoints: sui::table::new<sui::object::ID, sui::table::Table<u64, Checkpoint>>(arg4),
-            num_checkpoints: sui::table::new<sui::object::ID, u64>(arg4),
-            supply_checkpoints: sui::table::new<u64, SupplyCheckpoint>(arg4),
+            checkpoints: sui::table::new<sui::object::ID, sui::table::Table<u64, Checkpoint>>(ctx),
+            num_checkpoints: sui::table::new<sui::object::ID, u64>(ctx),
+            supply_checkpoints: sui::table::new<u64, SupplyCheckpoint>(ctx),
             supply_num_checkpoints: 0,
-            balances: sui::bag::new(arg4),
+            balances: sui::bag::new(ctx),
         };
-        let mut v1 = 0;
-        while (v1 < std::vector::length<std::type_name::TypeName>(&arg3)) {
-            sui::vec_set::insert<std::type_name::TypeName>(
-                &mut v0.rewards,
-                *std::vector::borrow<std::type_name::TypeName>(&arg3, v1)
+        let mut i = 0;
+        while (i < std::vector::length<std::type_name::TypeName>(&reward_coin_types)) {
+            reward.rewards.insert<std::type_name::TypeName>(
+                *std::vector::borrow<std::type_name::TypeName>(&reward_coin_types, i)
             );
-            v1 = v1 + 1;
+            i = i + 1;
         };
-        v0
+        reward
     }
 
     public(package) fun deposit(
-        arg0: &mut Reward,
-        arg1: &distribution::reward_authorized_cap::RewardAuthorizedCap,
-        arg2: u64,
-        arg3: sui::object::ID,
-        arg4: &sui::clock::Clock,
-        arg5: &mut sui::tx_context::TxContext
+        reward: &mut Reward,
+        reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
+        amount: u64,
+        lock_id: sui::object::ID,
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext
     ) {
-        distribution::reward_authorized_cap::validate(arg1, arg0.authorized);
-        arg0.total_supply = arg0.total_supply + arg2;
-        let v0 = if (sui::table::contains<sui::object::ID, u64>(&arg0.balance_of, arg3)) {
-            sui::table::remove<sui::object::ID, u64>(&mut arg0.balance_of, arg3)
+        distribution::reward_authorized_cap::validate(reward_authorized_cap, reward.authorized);
+        reward.total_supply = reward.total_supply + amount;
+        let lock_balance = if (sui::table::contains<sui::object::ID, u64>(&reward.balance_of, lock_id)) {
+            sui::table::remove<sui::object::ID, u64>(&mut reward.balance_of, lock_id)
         } else {
             0
         };
-        let v1 = v0 + arg2;
-        sui::table::add<sui::object::ID, u64>(&mut arg0.balance_of, arg3, v1);
-        let v2 = distribution::common::current_timestamp(arg4);
-        write_checkpoint_internal(arg0, arg3, v1, v2, arg5);
-        write_supply_checkpoint_internal(arg0, v2);
-        let v3 = EventDeposit {
-            sender: sui::tx_context::sender(arg5),
-            lock_id: arg3,
-            amount: arg2,
+        let updated_lock_votes_balance = lock_balance + amount;
+        sui::table::add<sui::object::ID, u64>(&mut reward.balance_of, lock_id, updated_lock_votes_balance);
+        let current_time = distribution::common::current_timestamp(clock);
+        write_checkpoint_internal(reward, lock_id, updated_lock_votes_balance, current_time, ctx);
+        write_supply_checkpoint_internal(reward, current_time);
+        let deposit_event = EventDeposit {
+            sender: sui::tx_context::sender(ctx),
+            lock_id,
+            amount,
         };
-        sui::event::emit<EventDeposit>(v3);
+        sui::event::emit<EventDeposit>(deposit_event);
     }
 
     public(package) fun earned<T0>(arg0: &Reward, arg1: sui::object::ID, arg2: &sui::clock::Clock): u64 {
@@ -369,132 +366,152 @@ module distribution::reward {
         sui::event::emit<EventNotifyReward>(v5);
     }
 
-    public fun rewards_contains(arg0: &Reward, arg1: std::type_name::TypeName): bool {
-        sui::vec_set::contains<std::type_name::TypeName>(&arg0.rewards, &arg1)
+    public fun rewards_contains(reward: &Reward, arg1: std::type_name::TypeName): bool {
+        reward.rewards.contains<std::type_name::TypeName>(&arg1)
     }
 
-    public fun rewards_list(arg0: &Reward): vector<std::type_name::TypeName> {
-        sui::vec_set::into_keys<std::type_name::TypeName>(arg0.rewards)
+    public fun rewards_list(reward: &Reward): vector<std::type_name::TypeName> {
+        reward.rewards.into_keys<std::type_name::TypeName>()
     }
 
     public(package) fun rewards_list_length(arg0: &Reward): u64 {
-        sui::vec_set::size<std::type_name::TypeName>(&arg0.rewards)
+        arg0.rewards.size<std::type_name::TypeName>()
     }
 
-    public fun ve(arg0: &Reward): sui::object::ID {
-        arg0.ve
+    public fun ve(reward: &Reward): sui::object::ID {
+        reward.ve
     }
 
-    public fun voter(arg0: &Reward): sui::object::ID {
-        arg0.voter
+    public fun voter(reward: &Reward): sui::object::ID {
+        reward.voter
     }
 
     public(package) fun withdraw(
-        arg0: &mut Reward,
-        arg1: &distribution::reward_authorized_cap::RewardAuthorizedCap,
-        arg2: u64,
-        arg3: sui::object::ID,
-        arg4: &sui::clock::Clock,
-        arg5: &mut sui::tx_context::TxContext
+        reward: &mut Reward,
+        reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
+        amount: u64,
+        lock_id: sui::object::ID,
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext
     ) {
-        distribution::reward_authorized_cap::validate(arg1, arg0.authorized);
-        arg0.total_supply = arg0.total_supply - arg2;
-        let v0 = sui::table::remove<sui::object::ID, u64>(&mut arg0.balance_of, arg3);
-        sui::table::add<sui::object::ID, u64>(&mut arg0.balance_of, arg3, v0 - arg2);
-        let v1 = distribution::common::current_timestamp(arg4);
-        write_checkpoint_internal(arg0, arg3, v0 - arg2, v1, arg5);
-        write_supply_checkpoint_internal(arg0, v1);
+        distribution::reward_authorized_cap::validate(reward_authorized_cap, reward.authorized);
+        reward.total_supply = reward.total_supply - amount;
+        let lock_balance = sui::table::remove<sui::object::ID, u64>(&mut reward.balance_of, lock_id);
+        sui::table::add<sui::object::ID, u64>(&mut reward.balance_of, lock_id, lock_balance - amount);
+        let current_time = distribution::common::current_timestamp(clock);
+        write_checkpoint_internal(reward, lock_id, lock_balance - amount, current_time, ctx);
+        write_supply_checkpoint_internal(reward, current_time);
         let v2 = EventWithdraw {
-            sender: sui::tx_context::sender(arg5),
-            lock_id: arg3,
-            amount: arg2,
+            sender: sui::tx_context::sender(ctx),
+            lock_id,
+            amount,
         };
         sui::event::emit<EventWithdraw>(v2);
     }
 
     fun write_checkpoint_internal(
-        arg0: &mut Reward,
-        arg1: sui::object::ID,
-        arg2: u64,
-        arg3: u64,
-        arg4: &mut sui::tx_context::TxContext
+        reward: &mut Reward,
+        lock_id: sui::object::ID,
+        balance: u64,
+        time: u64,
+        ctx: &mut sui::tx_context::TxContext
     ) {
-        let v0 = if (sui::table::contains<sui::object::ID, u64>(&arg0.num_checkpoints, arg1)) {
-            *sui::table::borrow<sui::object::ID, u64>(&arg0.num_checkpoints, arg1)
+        let num_of_checkpoints = if (sui::table::contains<sui::object::ID, u64>(
+            &reward.num_checkpoints,
+            lock_id
+        )) {
+            *sui::table::borrow<sui::object::ID, u64>(&reward.num_checkpoints, lock_id)
         } else {
             0
         };
-        if (v0 > 0 && distribution::common::epoch_start(
+        // latest checkpoint timestam is equal to current epoch start
+        if (num_of_checkpoints > 0 && distribution::common::epoch_start(
             sui::table::borrow<u64, Checkpoint>(
-                sui::table::borrow<sui::object::ID, sui::table::Table<u64, Checkpoint>>(&arg0.checkpoints, arg1),
-                v0 - 1
+                sui::table::borrow<sui::object::ID, sui::table::Table<u64, Checkpoint>>(
+                    &reward.checkpoints,
+                    lock_id
+                ),
+                num_of_checkpoints - 1
             ).timestamp
-        ) == distribution::common::epoch_start(arg3)) {
-            let v1 = sui::table::borrow_mut<sui::object::ID, sui::table::Table<u64, Checkpoint>>(
-                &mut arg0.checkpoints,
-                arg1
+        ) == distribution::common::epoch_start(time)) {
+            let checkpoint = sui::table::borrow_mut<sui::object::ID, sui::table::Table<u64, Checkpoint>>(
+                &mut reward.checkpoints,
+                lock_id
             );
-            if (sui::table::contains<u64, Checkpoint>(v1, v0 - 1)) {
-                sui::table::remove<u64, Checkpoint>(v1, v0 - 1);
+            if (sui::table::contains<u64, Checkpoint>(checkpoint, num_of_checkpoints - 1)) {
+                sui::table::remove<u64, Checkpoint>(checkpoint, num_of_checkpoints - 1);
             };
-            let v2 = Checkpoint {
-                timestamp: arg3,
-                balance_of: arg2,
+            let updated_checkpoint = Checkpoint {
+                timestamp: time,
+                balance_of: balance,
             };
-            sui::table::add<u64, Checkpoint>(v1, v0 - 1, v2);
+            sui::table::add<u64, Checkpoint>(checkpoint, num_of_checkpoints - 1, updated_checkpoint);
         } else {
-            if (!sui::table::contains<sui::object::ID, sui::table::Table<u64, Checkpoint>>(&arg0.checkpoints, arg1)) {
+            if (!sui::table::contains<sui::object::ID, sui::table::Table<u64, Checkpoint>>(
+                &reward.checkpoints,
+                lock_id
+            )) {
                 sui::table::add<sui::object::ID, sui::table::Table<u64, Checkpoint>>(
-                    &mut arg0.checkpoints,
-                    arg1,
-                    sui::table::new<u64, Checkpoint>(arg4)
+                    &mut reward.checkpoints,
+                    lock_id,
+                    sui::table::new<u64, Checkpoint>(ctx)
                 );
             };
-            let v3 = sui::table::borrow_mut<sui::object::ID, sui::table::Table<u64, Checkpoint>>(
-                &mut arg0.checkpoints,
-                arg1
+            let lock_checkpoints = sui::table::borrow_mut<sui::object::ID, sui::table::Table<u64, Checkpoint>>(
+                &mut reward.checkpoints,
+                lock_id
             );
-            if (sui::table::contains<u64, Checkpoint>(v3, v0)) {
-                sui::table::remove<u64, Checkpoint>(v3, v0);
+            if (sui::table::contains<u64, Checkpoint>(lock_checkpoints, num_of_checkpoints)) {
+                sui::table::remove<u64, Checkpoint>(lock_checkpoints, num_of_checkpoints);
             };
-            let v4 = Checkpoint {
-                timestamp: arg3,
-                balance_of: arg2,
+            let updated_checkpoint = Checkpoint {
+                timestamp: time,
+                balance_of: balance,
             };
-            sui::table::add<u64, Checkpoint>(v3, v0, v4);
-            if (sui::table::contains<sui::object::ID, u64>(&arg0.num_checkpoints, arg1)) {
-                sui::table::remove<sui::object::ID, u64>(&mut arg0.num_checkpoints, arg1);
+            sui::table::add<u64, Checkpoint>(lock_checkpoints, num_of_checkpoints, updated_checkpoint);
+            if (sui::table::contains<sui::object::ID, u64>(&reward.num_checkpoints, lock_id)) {
+                sui::table::remove<sui::object::ID, u64>(&mut reward.num_checkpoints, lock_id);
             };
-            sui::table::add<sui::object::ID, u64>(&mut arg0.num_checkpoints, arg1, v0 + 1);
+            sui::table::add<sui::object::ID, u64>(&mut reward.num_checkpoints, lock_id, num_of_checkpoints + 1);
         };
     }
 
-    fun write_supply_checkpoint_internal(arg0: &mut Reward, arg1: u64) {
-        let v0 = arg0.supply_num_checkpoints;
-        if (v0 > 0 && distribution::common::epoch_start(
-            sui::table::borrow<u64, SupplyCheckpoint>(&arg0.supply_checkpoints, v0 - 1).timestamp
-        ) == distribution::common::epoch_start(arg1)) {
-            if (sui::table::contains<u64, SupplyCheckpoint>(&arg0.supply_checkpoints, v0 - 1)) {
-                sui::table::remove<u64, SupplyCheckpoint>(&mut arg0.supply_checkpoints, v0 - 1);
+    fun write_supply_checkpoint_internal(reward: &mut Reward, current_time: u64) {
+        let num_of_checkpoints = reward.supply_num_checkpoints;
+        // latest checkpoint timestam is equal to current epoch start
+        if (num_of_checkpoints > 0 && distribution::common::epoch_start(
+            sui::table::borrow<u64, SupplyCheckpoint>(
+                &reward.supply_checkpoints,
+                num_of_checkpoints - 1
+            ).timestamp
+        ) == distribution::common::epoch_start(current_time)) {
+            if (sui::table::contains<u64, SupplyCheckpoint>(&reward.supply_checkpoints, num_of_checkpoints - 1)) {
+                sui::table::remove<u64, SupplyCheckpoint>(&mut reward.supply_checkpoints, num_of_checkpoints - 1);
             };
-            let v1 = SupplyCheckpoint {
-                timestamp: arg1,
-                supply: arg0.total_supply,
+            let updated_checkpoint = SupplyCheckpoint {
+                timestamp: current_time,
+                supply: reward.total_supply,
             };
-            sui::table::add<u64, SupplyCheckpoint>(&mut arg0.supply_checkpoints, v0 - 1, v1);
+            sui::table::add<u64, SupplyCheckpoint>(
+                &mut reward.supply_checkpoints,
+                num_of_checkpoints - 1,
+                updated_checkpoint
+            );
         } else {
-            if (sui::table::contains<u64, SupplyCheckpoint>(&arg0.supply_checkpoints, v0)) {
-                sui::table::remove<u64, SupplyCheckpoint>(&mut arg0.supply_checkpoints, v0);
+            if (sui::table::contains<u64, SupplyCheckpoint>(&reward.supply_checkpoints, num_of_checkpoints)) {
+                sui::table::remove<u64, SupplyCheckpoint>(&mut reward.supply_checkpoints, num_of_checkpoints);
             };
-            let v2 = SupplyCheckpoint {
-                timestamp: arg1,
-                supply: arg0.total_supply,
+            let updated_checkpoint = SupplyCheckpoint {
+                timestamp: current_time,
+                supply: reward.total_supply,
             };
-            sui::table::add<u64, SupplyCheckpoint>(&mut arg0.supply_checkpoints, v0, v2);
-            arg0.supply_num_checkpoints = v0 + 1;
+            sui::table::add<u64, SupplyCheckpoint>(
+                &mut reward.supply_checkpoints,
+                num_of_checkpoints,
+                updated_checkpoint
+            );
+            reward.supply_num_checkpoints = num_of_checkpoints + 1;
         };
     }
-
-    // decompiled from Move bytecode v6
 }
 

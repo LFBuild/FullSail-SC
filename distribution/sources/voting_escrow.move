@@ -279,56 +279,56 @@ module distribution::voting_escrow {
         };
     }
 
-    public fun create<T0>(
-        _arg0: &sui::package::Publisher,
-        arg1: sui::object::ID,
-        arg2: &sui::clock::Clock,
-        arg3: &mut sui::tx_context::TxContext
-    ): VotingEscrow<T0> {
-        let v0 = sui::object::new(arg3);
-        let v1 = sui::object::uid_to_inner(&v0);
-        let mut v2 = VotingEscrow<T0> {
-            id: v0,
-            voter: arg1,
-            balance: sui::balance::zero<T0>(),
+    public fun create<SailCoinType>(
+        _publisher: &sui::package::Publisher,
+        voter_id: sui::object::ID,
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext
+    ): VotingEscrow<SailCoinType> {
+        let uid = sui::object::new(ctx);
+        let inner_id = sui::object::uid_to_inner(&uid);
+        let mut voting_escrow = VotingEscrow<SailCoinType> {
+            id: uid,
+            voter: voter_id,
+            balance: sui::balance::zero<SailCoinType>(),
             total_locked: 0,
-            point_history: sui::table::new<u64, GlobalPoint>(arg3),
+            point_history: sui::table::new<u64, GlobalPoint>(ctx),
             epoch: 0,
             min_lock_time: distribution::common::min_lock_time(),
             max_lock_time: distribution::common::max_lock_time(),
             lock_durations: sui::vec_set::empty<u64>(),
-            deactivated: sui::table::new<sui::object::ID, bool>(arg3),
-            ownership_change_at: sui::table::new<sui::object::ID, u64>(arg3),
-            user_point_epoch: sui::table::new<sui::object::ID, u64>(arg3),
-            user_point_history: sui::table::new<sui::object::ID, sui::table::Table<u64, UserPoint>>(arg3),
-            voted: sui::table::new<sui::object::ID, bool>(arg3),
-            locked: sui::table::new<sui::object::ID, LockedBalance>(arg3),
-            owner_of: sui::table::new<sui::object::ID, address>(arg3),
-            slope_changes: sui::table::new<u64, integer_mate::i128::I128>(arg3),
+            deactivated: sui::table::new<sui::object::ID, bool>(ctx),
+            ownership_change_at: sui::table::new<sui::object::ID, u64>(ctx),
+            user_point_epoch: sui::table::new<sui::object::ID, u64>(ctx),
+            user_point_history: sui::table::new<sui::object::ID, sui::table::Table<u64, UserPoint>>(ctx),
+            voted: sui::table::new<sui::object::ID, bool>(ctx),
+            locked: sui::table::new<sui::object::ID, LockedBalance>(ctx),
+            owner_of: sui::table::new<sui::object::ID, address>(ctx),
+            slope_changes: sui::table::new<u64, integer_mate::i128::I128>(ctx),
             permanent_lock_balance: 0,
-            escrow_type: sui::table::new<sui::object::ID, EscrowType>(arg3),
-            voting_dao: distribution::voting_dao::create(arg3),
-            can_split: sui::table::new<address, bool>(arg3),
+            escrow_type: sui::table::new<sui::object::ID, EscrowType>(ctx),
+            voting_dao: distribution::voting_dao::create(ctx),
+            can_split: sui::table::new<address, bool>(ctx),
             allowed_managers: sui::vec_set::empty<address>(),
-            managed_weights: sui::table::new<sui::object::ID, sui::table::Table<sui::object::ID, u64>>(arg3),
+            managed_weights: sui::table::new<sui::object::ID, sui::table::Table<sui::object::ID, u64>>(ctx),
             managed_to_locked: sui::table::new<sui::object::ID, distribution::locked_managed_reward::LockedManagedReward>(
-                arg3
+                ctx
             ),
             managed_to_free: sui::table::new<sui::object::ID, distribution::free_managed_reward::FreeManagedReward>(
-                arg3
+                ctx
             ),
-            id_to_managed: sui::table::new<sui::object::ID, sui::object::ID>(arg3),
-            locked_managed_reward_authorized_cap: distribution::reward_authorized_cap::create(v1, arg3),
-            free_managed_reward_authorized_cap: distribution::reward_authorized_cap::create(v1, arg3),
+            id_to_managed: sui::table::new<sui::object::ID, sui::object::ID>(ctx),
+            locked_managed_reward_authorized_cap: distribution::reward_authorized_cap::create(inner_id, ctx),
+            free_managed_reward_authorized_cap: distribution::reward_authorized_cap::create(inner_id, ctx),
         };
-        let v3 = GlobalPoint {
+        let global_point = GlobalPoint {
             bias: integer_mate::i128::from(0),
             slope: integer_mate::i128::from(0),
-            ts: distribution::common::current_timestamp(arg2),
+            ts: distribution::common::current_timestamp(clock),
             permanent_lock_balance: 0,
         };
-        sui::table::add<u64, GlobalPoint>(&mut v2.point_history, 0, v3);
-        v2
+        sui::table::add<u64, GlobalPoint>(&mut voting_escrow.point_history, 0, global_point);
+        voting_escrow
     }
 
     public fun withdraw<T0>(

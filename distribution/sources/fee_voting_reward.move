@@ -24,14 +24,21 @@ module distribution::fee_voting_reward {
     }
 
     public fun deposit(
-        arg0: &mut FeeVotingReward,
-        arg1: &distribution::reward_authorized_cap::RewardAuthorizedCap,
-        arg2: u64,
-        arg3: sui::object::ID,
-        arg4: &sui::clock::Clock,
-        arg5: &mut sui::tx_context::TxContext
+        fee_voting_reward: &mut FeeVotingReward,
+        reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
+        votes: u64,
+        lock_id: sui::object::ID,
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext
     ) {
-        distribution::reward::deposit(&mut arg0.reward, arg1, arg2, arg3, arg4, arg5);
+        distribution::reward::deposit(
+            &mut fee_voting_reward.reward,
+            reward_authorized_cap,
+            votes,
+            lock_id,
+            clock,
+            ctx
+        );
     }
 
     public fun earned<T0>(arg0: &FeeVotingReward, arg1: sui::object::ID, arg2: &sui::clock::Clock): u64 {

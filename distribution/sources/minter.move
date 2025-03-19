@@ -15,11 +15,9 @@ module distribution::minter {
     }
 
     public struct EventPauseEmission has copy, drop, store {
-        dummy_field: bool,
     }
 
     public struct EventUnpauseEmission has copy, drop, store {
-        dummy_field: bool,
     }
 
     public struct EventGrantAdmin has copy, drop, store {
@@ -136,13 +134,13 @@ module distribution::minter {
         assert!(!sui::vec_set::contains<sui::object::ID>(&arg0.revoked_admins, &v0), 9223372809948889087);
     }
 
-    public fun create<T0>(
-        _arg0: &sui::package::Publisher,
-        arg1: std::option::Option<distribution::fullsail_token::MinterCap<T0>>,
-        arg2: &mut sui::tx_context::TxContext
-    ): (Minter<T0>, AdminCap) {
-        let v0 = Minter<T0> {
-            id: sui::object::new(arg2),
+    public fun create<SailCoinType>(
+        _publisher: &sui::package::Publisher,
+        minter_cap: std::option::Option<distribution::fullsail_token::MinterCap<SailCoinType>>,
+        ctx: &mut sui::tx_context::TxContext
+    ): (Minter<SailCoinType>, AdminCap) {
+        let minter = Minter<SailCoinType> {
+            id: sui::object::new(ctx),
             revoked_admins: sui::vec_set::empty<sui::object::ID>(),
             paused: false,
             activated_at: 0,
@@ -151,7 +149,7 @@ module distribution::minter {
             total_emissions: 0,
             last_epoch_update_time: 0,
             epoch_emissions: 0,
-            minter_cap: arg1,
+            minter_cap,
             base_supply: 10000000000000,
             epoch_grow_rate: 10300,
             epoch_decay_rate: 9900,
@@ -164,8 +162,8 @@ module distribution::minter {
             notify_reward_cap: std::option::none<distribution::notify_reward_cap::NotifyRewardCap>(),
             nudges: sui::vec_set::empty<u64>(),
         };
-        let v1 = AdminCap { id: sui::object::new(arg2) };
-        (v0, v1)
+        let admin_cap = AdminCap { id: sui::object::new(ctx) };
+        (minter, admin_cap)
     }
 
     public fun epoch<T0>(arg0: &Minter<T0>): u64 {
@@ -210,13 +208,6 @@ module distribution::minter {
         10000
     }
 
-    public fun pause<T0>(arg0: &mut Minter<T0>, arg1: &AdminCap) {
-        check_admin<T0>(arg0, arg1);
-        arg0.paused = true;
-        let v0 = EventPauseEmission { dummy_field: false };
-        sui::event::emit<EventPauseEmission>(v0);
-    }
-
     public fun revoke_admin<T0>(arg0: &mut Minter<T0>, _arg1: &sui::package::Publisher, arg2: sui::object::ID) {
         sui::vec_set::insert<sui::object::ID>(&mut arg0.revoked_admins, arg2);
     }
@@ -237,24 +228,27 @@ module distribution::minter {
         std::option::fill<distribution::fullsail_token::MinterCap<SailCoinType>>(&mut minter.minter_cap, minter_cap);
     }
 
-    public fun set_notify_reward_cap<T0>(
-        arg0: &mut Minter<T0>,
-        arg1: &AdminCap,
-        arg2: distribution::notify_reward_cap::NotifyRewardCap
+    public fun set_notify_reward_cap<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        admin_cap: &AdminCap,
+        notify_reward_cap: distribution::notify_reward_cap::NotifyRewardCap
     ) {
-        check_admin<T0>(arg0, arg1);
-        std::option::fill<distribution::notify_reward_cap::NotifyRewardCap>(&mut arg0.notify_reward_cap, arg2);
+        check_admin<SailCoinType>(minter, admin_cap);
+        std::option::fill<distribution::notify_reward_cap::NotifyRewardCap>(
+            &mut minter.notify_reward_cap,
+            notify_reward_cap
+        );
     }
 
-    public fun set_reward_distributor_cap<T0>(
-        arg0: &mut Minter<T0>,
-        arg1: &AdminCap,
-        arg2: distribution::reward_distributor_cap::RewardDistributorCap
+    public fun set_reward_distributor_cap<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        admin_cap: &AdminCap,
+        reward_distributor_cap: distribution::reward_distributor_cap::RewardDistributorCap
     ) {
-        check_admin<T0>(arg0, arg1);
+        check_admin<SailCoinType>(minter, admin_cap);
         std::option::fill<distribution::reward_distributor_cap::RewardDistributorCap>(
-            &mut arg0.reward_distributor_cap,
-            arg2
+            &mut minter.reward_distributor_cap,
+            reward_distributor_cap
         );
     }
 
@@ -264,20 +258,31 @@ module distribution::minter {
         arg0.team_emission_rate = arg2;
     }
 
-    public fun set_team_wallet<T0>(arg0: &mut Minter<T0>, arg1: &AdminCap, arg2: address) {
-        check_admin<T0>(arg0, arg1);
-        arg0.team_wallet = arg2;
+    public fun set_team_wallet<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        admin_cap: &AdminCap,
+        team_wallet: address
+    ) {
+        check_admin<SailCoinType>(minter, admin_cap);
+        minter.team_wallet = team_wallet;
     }
 
-    public fun team_emission_rate<T0>(arg0: &Minter<T0>): u64 {
-        arg0.team_emission_rate
+    public fun team_emission_rate<SailCoinType>(minter: &Minter<SailCoinType>): u64 {
+        minter.team_emission_rate
     }
 
-    public fun unpause<T0>(arg0: &mut Minter<T0>, arg1: &AdminCap) {
-        check_admin<T0>(arg0, arg1);
-        arg0.paused = false;
-        let v0 = EventUnpauseEmission { dummy_field: false };
-        sui::event::emit<EventUnpauseEmission>(v0);
+    public fun pause<SailCoinType>(minter: &mut Minter<SailCoinType>, admin_cap: &AdminCap) {
+        check_admin<SailCoinType>(minter, admin_cap);
+        minter.paused = true;
+        let pause_event = EventPauseEmission { };
+        sui::event::emit<EventPauseEmission>(pause_event);
+    }
+
+    public fun unpause<SailCoinType>(minter: &mut Minter<SailCoinType>, admin_cap: &AdminCap) {
+        check_admin<SailCoinType>(minter, admin_cap);
+        minter.paused = false;
+        let unpaused_event = EventUnpauseEmission { };
+        sui::event::emit<EventUnpauseEmission>(unpaused_event);
     }
 
     public fun update_period<T0>(

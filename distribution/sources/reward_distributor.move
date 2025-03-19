@@ -36,9 +36,9 @@ module distribution::reward_distributor {
         clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext
     ): (RewardDistributor<SailCoinType>, distribution::reward_distributor_cap::RewardDistributorCap) {
-        let id = sui::object::new(ctx);
+        let uid = sui::object::new(ctx);
         let reward_distributor = RewardDistributor<SailCoinType> {
-            id,
+            id: uid,
             start_time: distribution::common::current_timestamp(clock),
             time_cursor_of: sui::table::new<sui::object::ID, u64>(ctx),
             last_token_time: distribution::common::current_timestamp(clock),
