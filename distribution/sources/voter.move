@@ -13,6 +13,10 @@ module distribution::voter {
     const EVoteInternalGaugeDoesNotExist: u64 = 9223374798519205896;
     const EVoteInternalGaugeNotAlive: u64 = 9223374807109926932;
 
+    const EDistributeGaugeInvalidGaugeRepresent: u64 = 9223375983929720831;
+
+    const EExtractClaimableForLessThanMin: u64 = 9223375923800178687;
+
     public struct VOTER has drop {}
 
     public struct PoolID has copy, drop, store {
@@ -54,7 +58,7 @@ module distribution::voter {
         balances: sui::bag::Bag,
         index: u128,
         supply_index: sui::table::Table<GaugeID, u128>,
-        claimable: sui::table::Table<GaugeID, u64>,
+        claimable: sui::table::Table<GaugeID, u64>, // claimable amount per gauge
         is_whitelisted_token: sui::table::Table<std::type_name::TypeName, bool>,
         is_whitelisted_nft: sui::table::Table<LockID, bool>,
         max_voting_num: u64,
@@ -416,10 +420,10 @@ module distribution::voter {
         };
     }
 
-    public fun claimable<T0>(arg0: &Voter<T0>, arg1: sui::object::ID): u64 {
-        let v0 = into_gauge_id(arg1);
-        if (sui::table::contains<GaugeID, u64>(&arg0.claimable, v0)) {
-            *sui::table::borrow<GaugeID, u64>(&arg0.claimable, v0)
+    public fun claimable<SailCoinType>(voter: &Voter<SailCoinType>, gauge_id: sui::object::ID): u64 {
+        let gauge_id_obj = into_gauge_id(gauge_id);
+        if (sui::table::contains<GaugeID, u64>(&voter.claimable, gauge_id_obj)) {
+            *sui::table::borrow<GaugeID, u64>(&voter.claimable, gauge_id_obj)
         } else {
             0
         }
@@ -458,62 +462,66 @@ module distribution::voter {
         gauge
     }
 
-    public fun distribute_gauge<T0, T1, T2>(
-        arg0: &mut Voter<T2>,
-        arg1: &mut distribution::gauge::Gauge<T0, T1, T2>,
-        arg2: &mut clmm_pool::pool::Pool<T0, T1>,
-        arg3: &sui::clock::Clock,
-        arg4: &mut sui::tx_context::TxContext
+    public fun distribute_gauge<CoinTypeA, CoinTypeB, SailCoinType>(
+        voter: &mut Voter<SailCoinType>,
+        gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB, SailCoinType>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext
     ): u64 {
-        let v0 = into_gauge_id(sui::object::id<distribution::gauge::Gauge<T0, T1, T2>>(arg1));
-        let v1 = sui::table::borrow<GaugeID, GaugeRepresent>(&arg0.gauge_represents, v0);
+        let gauge_id = into_gauge_id(sui::object::id<distribution::gauge::Gauge<CoinTypeA, CoinTypeB, SailCoinType>>(gauge));
+        let gauge_represent = sui::table::borrow<GaugeID, GaugeRepresent>(&voter.gauge_represents, gauge_id);
         assert!(
-            v1.pool_id == sui::object::id<clmm_pool::pool::Pool<T0, T1>>(arg2) && v1.gauger_id == v0.id,
-            9223375983929720831
+            gauge_represent.pool_id == sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool) && gauge_represent.gauger_id == gauge_id.id,
+            EDistributeGaugeInvalidGaugeRepresent
         );
-        let v2 = extract_claimable_for<T2>(arg0, v0.id);
-        let balance = sui::balance::value<T2>(&v2);
-        let (v3, v4) = distribution::gauge::notify_reward<T0, T1, T2>(arg1, &arg0.voter_cap, arg2, v2, arg3, arg4);
-        let v5 = sui::table::borrow_mut<GaugeID, distribution::fee_voting_reward::FeeVotingReward>(
-            &mut arg0.gauge_to_fee,
-            v0
+        let claimable_balance = extract_claimable_for<SailCoinType>(voter, gauge_id.id);
+        let balance_value = claimable_balance.value<SailCoinType>();
+        let (fee_reward_a, fee_reward_b) = distribution::gauge::notify_reward<CoinTypeA, CoinTypeB, SailCoinType>(
+            gauge,
+            &voter.voter_cap,
+            pool,
+            claimable_balance,
+            clock,
+            ctx
         );
-        distribution::fee_voting_reward::notify_reward_amount<T0>(
-            v5,
-            &arg0.gauge_to_fee_authorized_cap,
-            sui::coin::from_balance<T0>(v3, arg4),
-            arg3,
-            arg4
+        let fee_voting_reward = sui::table::borrow_mut<GaugeID, distribution::fee_voting_reward::FeeVotingReward>(
+            &mut voter.gauge_to_fee,
+            gauge_id
         );
-        distribution::fee_voting_reward::notify_reward_amount<T1>(
-            v5,
-            &arg0.gauge_to_fee_authorized_cap,
-            sui::coin::from_balance<T1>(v4, arg4),
-            arg3,
-            arg4
+        distribution::fee_voting_reward::notify_reward_amount<CoinTypeA>(
+            fee_voting_reward,
+            &voter.gauge_to_fee_authorized_cap,
+            sui::coin::from_balance<CoinTypeA>(fee_reward_a, ctx),
+            clock,
+            ctx
         );
-        balance
+        distribution::fee_voting_reward::notify_reward_amount<CoinTypeB>(
+            fee_voting_reward,
+            &voter.gauge_to_fee_authorized_cap,
+            sui::coin::from_balance<CoinTypeB>(fee_reward_b, ctx),
+            clock,
+            ctx
+        );
+        balance_value
     }
 
-    fun extract_claimable_for<T0>(arg0: &mut Voter<T0>, arg1: sui::object::ID): sui::balance::Balance<T0> {
-        let v0 = into_gauge_id(arg1);
-        update_for_internal<T0>(arg0, v0);
-        let v1 = *sui::table::borrow<GaugeID, u64>(&arg0.claimable, v0);
-        assert!(v1 > 604800, 9223375923800178687);
-        sui::table::remove<GaugeID, u64>(&mut arg0.claimable, v0);
-        sui::table::add<GaugeID, u64>(&mut arg0.claimable, v0, 0);
+    fun extract_claimable_for<SailCoinType>(voter: &mut Voter<SailCoinType>, gauge_id: sui::object::ID): sui::balance::Balance<SailCoinType> {
+        let gauge_id = into_gauge_id(gauge_id);
+        update_for_internal<SailCoinType>(voter, gauge_id);
+        let amount = *sui::table::borrow<GaugeID, u64>(&voter.claimable, gauge_id);
+        assert!(amount > 604800, EExtractClaimableForLessThanMin);
+        sui::table::remove<GaugeID, u64>(&mut voter.claimable, gauge_id);
+        sui::table::add<GaugeID, u64>(&mut voter.claimable, gauge_id, 0);
         let v2 = EventExtractClaimable {
-            gauger: v0.id,
-            amount: v1,
+            gauger: gauge_id.id,
+            amount,
         };
         sui::event::emit<EventExtractClaimable>(v2);
-        sui::balance::split<T0>(
-            sui::bag::borrow_mut<std::type_name::TypeName, sui::balance::Balance<T0>>(
-                &mut arg0.balances,
-                std::type_name::get<T0>()
-            ),
-            v1
-        )
+        sui::bag::borrow_mut<std::type_name::TypeName, sui::balance::Balance<SailCoinType>>(
+            &mut voter.balances,
+            std::type_name::get<SailCoinType>()
+        ).split<SailCoinType>(amount)
     }
 
     public fun fee_voting_reward_balance<T0, T1>(arg0: &Voter<T0>, arg1: sui::object::ID): u64 {
