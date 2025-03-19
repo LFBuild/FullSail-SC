@@ -1,4 +1,7 @@
 module integrate::voter {
+
+    const EDistributeInccorectGaugePool: u64 = 9223373041877123071;
+
     public struct EventDistributeReward has copy, drop, store {
         sender: address,
         gauge: sui::object::ID,
@@ -352,7 +355,7 @@ module integrate::voter {
         };
         assert!(
             distribution::gauge::pool_id<CoinTypeA, CoinTypeB, SailCoinType>(gauge) == sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool),
-            9223373041877123071
+            EDistributeInccorectGaugePool
         );
         let event_distribute_reward = EventDistributeReward {
             sender: sui::tx_context::sender(ctx),
@@ -362,9 +365,12 @@ module integrate::voter {
         sui::event::emit<EventDistributeReward>(event_distribute_reward);
     }
 
-    public entry fun get_voting_bribe_reward_tokens<SailCoinType>(arg0: &distribution::voter::Voter<SailCoinType>, arg1: sui::object::ID) {
+    public entry fun get_voting_bribe_reward_tokens<SailCoinType>(
+        voter: &distribution::voter::Voter<SailCoinType>,
+        lock_id: sui::object::ID
+    ) {
         let mut bribe_tokens_by_pool = sui::vec_map::empty<sui::object::ID, vector<std::type_name::TypeName>>();
-        let voted_pools_ids = distribution::voter::voted_pools<SailCoinType>(arg0, arg1);
+        let voted_pools_ids = distribution::voter::voted_pools<SailCoinType>(voter, lock_id);
         let mut i = 0;
         while (i < std::vector::length<sui::object::ID>(&voted_pools_ids)) {
             let pool_id = voted_pools_ids[i];
@@ -373,8 +379,8 @@ module integrate::voter {
                 distribution::reward::rewards_list(
                     distribution::bribe_voting_reward::borrow_reward(
                         distribution::voter::borrow_bribe_voting_reward<SailCoinType>(
-                            arg0,
-                            distribution::voter::pool_to_gauge<SailCoinType>(arg0, pool_id)
+                            voter,
+                            distribution::voter::pool_to_gauge<SailCoinType>(voter, pool_id)
                         )
                     )
                 )
