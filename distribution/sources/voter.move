@@ -356,30 +356,33 @@ module distribution::voter {
         };
     }
 
-    public fun claim_voting_bribe<T0, T1>(
-        arg0: &mut Voter<T0>,
-        arg1: &mut distribution::voting_escrow::VotingEscrow<T0>,
-        arg2: &distribution::voting_escrow::Lock,
-        arg3: &sui::clock::Clock,
-        arg4: &mut sui::tx_context::TxContext
+    public fun claim_voting_bribe<SailCoinType, BribeCoinType>(
+        voter: &mut Voter<SailCoinType>,
+        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        lock: &distribution::voting_escrow::Lock,
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext
     ) {
-        let v0 = sui::table::borrow<LockID, vector<PoolID>>(
-            &arg0.pool_vote,
-            into_lock_id(sui::object::id<distribution::voting_escrow::Lock>(arg2))
+        let voted_pools = sui::table::borrow<LockID, vector<PoolID>>(
+            &voter.pool_vote,
+            into_lock_id(sui::object::id<distribution::voting_escrow::Lock>(lock))
         );
-        let mut v1 = 0;
-        while (v1 < std::vector::length<PoolID>(v0)) {
-            distribution::bribe_voting_reward::get_reward<T0, T1>(
+        let mut i = 0;
+        while (i < std::vector::length<PoolID>(voted_pools)) {
+            distribution::bribe_voting_reward::get_reward<SailCoinType, BribeCoinType>(
                 sui::table::borrow_mut<GaugeID, distribution::bribe_voting_reward::BribeVotingReward>(
-                    &mut arg0.gauge_to_bribe,
-                    *sui::table::borrow<PoolID, GaugeID>(&arg0.pool_to_gauger, *std::vector::borrow<PoolID>(v0, v1))
+                    &mut voter.gauge_to_bribe,
+                    *sui::table::borrow<PoolID, GaugeID>(
+                        &voter.pool_to_gauger,
+                        voted_pools[i]
+                    )
                 ),
-                arg1,
-                arg2,
-                arg3,
-                arg4
+                voting_escrow,
+                lock,
+                clock,
+                ctx
             );
-            v1 = v1 + 1;
+            i = i + 1;
         };
     }
 

@@ -137,15 +137,15 @@ module distribution::reward {
         if (zero_checkpoints) {
             return 0
         };
-        let coinTypeName = std::type_name::get<CoinType>();
+        let coin_type_name = std::type_name::get<CoinType>();
         let mut earned_amount = 0;
         let last_earn_epoch_time = if (sui::table::contains<std::type_name::TypeName, sui::table::Table<sui::object::ID, u64>>(
             &reward.last_earn,
-            coinTypeName
+            coin_type_name
         ) && sui::table::contains<sui::object::ID, u64>(
             sui::table::borrow<std::type_name::TypeName, sui::table::Table<sui::object::ID, u64>>(
                 &reward.last_earn,
-                coinTypeName
+                coin_type_name
             ),
             lock_id
         )) {
@@ -153,7 +153,7 @@ module distribution::reward {
                 *sui::table::borrow<sui::object::ID, u64>(
                     sui::table::borrow<std::type_name::TypeName, sui::table::Table<sui::object::ID, u64>>(
                         &reward.last_earn,
-                        coinTypeName
+                        coin_type_name
                     ),
                     lock_id
                 )
@@ -198,13 +198,13 @@ module distribution::reward {
                 };
                 if (!sui::table::contains<std::type_name::TypeName, sui::table::Table<u64, u64>>(
                     &reward.token_rewards_per_epoch,
-                    coinTypeName
+                    coin_type_name
                 )) {
                     break
                 };
                 let rewards_per_epoch = sui::table::borrow<std::type_name::TypeName, sui::table::Table<u64, u64>>(
                     &reward.token_rewards_per_epoch,
-                    coinTypeName
+                    coin_type_name
                 );
                 let reward_in_epoch = if (sui::table::contains<u64, u64>(rewards_per_epoch, next_epoch_time)) {
                     let v17 = sui::table::borrow<u64, u64>(rewards_per_epoch, next_epoch_time);
@@ -299,20 +299,20 @@ module distribution::reward {
         ctx: &mut sui::tx_context::TxContext
     ): std::option::Option<sui::balance::Balance<CoinType>> {
         let reward_amount = earned<CoinType>(reward, lock_id, clock);
-        let coinTypeName = std::type_name::get<CoinType>();
+        let coin_type_name = std::type_name::get<CoinType>();
         if (!sui::table::contains<std::type_name::TypeName, sui::table::Table<sui::object::ID, u64>>(
             &reward.last_earn,
-            coinTypeName
+            coin_type_name
         )) {
             sui::table::add<std::type_name::TypeName, sui::table::Table<sui::object::ID, u64>>(
                 &mut reward.last_earn,
-                coinTypeName,
+                coin_type_name,
                 sui::table::new<sui::object::ID, u64>(ctx)
             );
         };
         let last_earned_times = sui::table::borrow_mut<std::type_name::TypeName, sui::table::Table<sui::object::ID, u64>>(
             &mut reward.last_earn,
-            coinTypeName
+            coin_type_name
         );
         if (sui::table::contains<sui::object::ID, u64>(last_earned_times, lock_id)) {
             sui::table::remove<sui::object::ID, u64>(last_earned_times, lock_id);
@@ -324,7 +324,7 @@ module distribution::reward {
         );
         let claim_rewards_event = EventClaimRewards {
             recipient,
-            token_name: coinTypeName,
+            token_name: coin_type_name,
             reward_amount,
         };
         sui::event::emit<EventClaimRewards>(claim_rewards_event);
@@ -332,7 +332,7 @@ module distribution::reward {
             return std::option::some<sui::balance::Balance<CoinType>>(
                 sui::bag::borrow_mut<std::type_name::TypeName, sui::balance::Balance<CoinType>>(
                     &mut reward.balances,
-                    coinTypeName
+                    coin_type_name
                 ).split<CoinType>(reward_amount)
             )
         };
@@ -346,21 +346,21 @@ module distribution::reward {
         ctx: &mut sui::tx_context::TxContext
     ) {
         let reward_amount = balance.value<CoinType>();
-        let rewardTypeName = std::type_name::get<CoinType>();
+        let reward_type_name = std::type_name::get<CoinType>();
         let epoch_start = distribution::common::epoch_start(distribution::common::current_timestamp(clock));
         if (!sui::table::contains<std::type_name::TypeName, sui::table::Table<u64, u64>>(
             &reward.token_rewards_per_epoch,
-            rewardTypeName
+            reward_type_name
         )) {
             sui::table::add<std::type_name::TypeName, sui::table::Table<u64, u64>>(
                 &mut reward.token_rewards_per_epoch,
-                rewardTypeName,
+                reward_type_name,
                 sui::table::new<u64, u64>(ctx)
             );
         };
         let rewards_per_epoch = sui::table::borrow_mut<std::type_name::TypeName, sui::table::Table<u64, u64>>(
             &mut reward.token_rewards_per_epoch,
-            rewardTypeName
+            reward_type_name
         );
         let rewards_in_current_epoch = if (sui::table::contains<u64, u64>(rewards_per_epoch, epoch_start)) {
             sui::table::remove<u64, u64>(rewards_per_epoch, epoch_start)
@@ -368,20 +368,20 @@ module distribution::reward {
             0
         };
         sui::table::add<u64, u64>(rewards_per_epoch, epoch_start, rewards_in_current_epoch + reward_amount);
-        if (!sui::bag::contains<std::type_name::TypeName>(&reward.balances, rewardTypeName)) {
+        if (!sui::bag::contains<std::type_name::TypeName>(&reward.balances, reward_type_name)) {
             sui::bag::add<std::type_name::TypeName, sui::balance::Balance<CoinType>>(
                 &mut reward.balances,
-                rewardTypeName,
+                reward_type_name,
                 balance
             );
         } else {
             sui::bag::borrow_mut<std::type_name::TypeName, sui::balance::Balance<CoinType>>(&mut reward.balances,
-                rewardTypeName
+                reward_type_name
             ).join<CoinType>(balance);
         };
         let notify_reward_event = EventNotifyReward {
             sender: sui::tx_context::sender(ctx),
-            token_name: rewardTypeName,
+            token_name: reward_type_name,
             epoch_start,
             amount: reward_amount,
         };
