@@ -186,31 +186,31 @@ module clmm_pool::pool {
         old_fee_rate: u64,
         new_fee_rate: u64,
     }
-    
-    public(package) fun new<T0, T1>(arg0: u32, arg1: u128, arg2: u64, arg3: std::string::String, arg4: u64, arg5: &sui::clock::Clock, arg6: &mut sui::tx_context::TxContext) : Pool<T0, T1> {
-        let v0 = PoolFee{
+
+    public(package) fun new<T0, T1>(tick_spacing: u32, sqrt_price: u128, fee_rate: u64, url: std::string::String, index: u64, clock: &sui::clock::Clock, ctx: &mut sui::tx_context::TxContext) : Pool<T0, T1> {
+        let gauger_fee = PoolFee{
             coin_a : 0, 
             coin_b : 0,
         };
         Pool<T0, T1>{
-            id                                  : sui::object::new(arg6), 
+            id                                  : sui::object::new(ctx), 
             coin_a                              : sui::balance::zero<T0>(), 
             coin_b                              : sui::balance::zero<T1>(), 
-            tick_spacing                        : arg0, 
-            fee_rate                            : arg2, 
+            tick_spacing                        : tick_spacing, 
+            fee_rate                            : fee_rate, 
             liquidity                           : 0, 
-            current_sqrt_price                  : arg1, 
-            current_tick_index                  : clmm_pool::tick_math::get_tick_at_sqrt_price(arg1), 
+            current_sqrt_price                  : sqrt_price, 
+            current_tick_index                  : clmm_pool::tick_math::get_tick_at_sqrt_price(sqrt_price), 
             fee_growth_global_a                 : 0, 
             fee_growth_global_b                 : 0, 
             fee_protocol_coin_a                 : 0, 
             fee_protocol_coin_b                 : 0, 
-            tick_manager                        : clmm_pool::tick::new(arg0, sui::clock::timestamp_ms(arg5), arg6), 
+            tick_manager                        : clmm_pool::tick::new(tick_spacing, sui::clock::timestamp_ms(clock), ctx), 
             rewarder_manager                    : clmm_pool::rewarder::new(), 
-            position_manager                    : clmm_pool::position::new(arg0, arg6), 
+            position_manager                    : clmm_pool::position::new(tick_spacing, ctx), 
             is_pause                            : false, 
-            index                               : arg4, 
-            url                                 : arg3, 
+            index                               : index, 
+            url                                 : url, 
             unstaked_liquidity_fee_rate         : clmm_pool::config::default_unstaked_fee_rate(), 
             magma_distribution_gauger_id        : std::option::none<sui::object::ID>(), 
             magma_distribution_growth_global    : 0, 
@@ -218,106 +218,106 @@ module clmm_pool::pool {
             magma_distribution_reserve          : 0, 
             magma_distribution_period_finish    : 0, 
             magma_distribution_rollover         : 0, 
-            magma_distribution_last_updated     : sui::clock::timestamp_ms(arg5) / 1000, 
+            magma_distribution_last_updated     : sui::clock::timestamp_ms(clock) / 1000, 
             magma_distribution_staked_liquidity : 0, 
-            magma_distribution_gauger_fee       : v0,
+            magma_distribution_gauger_fee       : gauger_fee,
         }
     }
     
-    public fun get_amount_by_liquidity(arg0: integer_mate::i32::I32, arg1: integer_mate::i32::I32, arg2: integer_mate::i32::I32, arg3: u128, arg4: u128, arg5: bool) : (u64, u64) {
-        if (arg4 == 0) {
+    public fun get_amount_by_liquidity(tick_lower: integer_mate::i32::I32, tick_upper: integer_mate::i32::I32, current_tick: integer_mate::i32::I32, current_sqrt_price: u128, liquidity: u128, round_up: bool) : (u64, u64) {
+        if (liquidity == 0) {
             return (0, 0)
         };
-        if (integer_mate::i32::lt(arg2, arg0)) {
-            (clmm_pool::clmm_math::get_delta_a(clmm_pool::tick_math::get_sqrt_price_at_tick(arg0), clmm_pool::tick_math::get_sqrt_price_at_tick(arg1), arg4, arg5), 0)
+        if (integer_mate::i32::lt(current_tick, tick_lower)) {
+            (clmm_pool::clmm_math::get_delta_a(clmm_pool::tick_math::get_sqrt_price_at_tick(tick_lower), clmm_pool::tick_math::get_sqrt_price_at_tick(tick_upper), liquidity, round_up), 0)
         } else {
-            let (v2, v3) = if (integer_mate::i32::lt(arg2, arg1)) {
-                (clmm_pool::clmm_math::get_delta_a(arg3, clmm_pool::tick_math::get_sqrt_price_at_tick(arg1), arg4, arg5), clmm_pool::clmm_math::get_delta_b(clmm_pool::tick_math::get_sqrt_price_at_tick(arg0), arg3, arg4, arg5))
+            let (amount_a, amount_b) = if (integer_mate::i32::lt(current_tick, tick_upper)) {
+                (clmm_pool::clmm_math::get_delta_a(current_sqrt_price, clmm_pool::tick_math::get_sqrt_price_at_tick(tick_upper), liquidity, round_up), clmm_pool::clmm_math::get_delta_b(clmm_pool::tick_math::get_sqrt_price_at_tick(tick_lower), current_sqrt_price, liquidity, round_up))
             } else {
-                (0, clmm_pool::clmm_math::get_delta_b(clmm_pool::tick_math::get_sqrt_price_at_tick(arg0), clmm_pool::tick_math::get_sqrt_price_at_tick(arg1), arg4, arg5))
+                (0, clmm_pool::clmm_math::get_delta_b(clmm_pool::tick_math::get_sqrt_price_at_tick(tick_lower), clmm_pool::tick_math::get_sqrt_price_at_tick(tick_upper), liquidity, round_up))
             };
-            (v2, v3)
+            (amount_a, amount_b)
         }
     }
     
-    public fun unstaked_liquidity_fee_rate<T0, T1>(arg0: &Pool<T0, T1>) : u64 {
-        arg0.unstaked_liquidity_fee_rate
+    public fun unstaked_liquidity_fee_rate<T0, T1>(pool: &Pool<T0, T1>) : u64 {
+        pool.unstaked_liquidity_fee_rate
     }
     
-    public fun borrow_position_info<T0, T1>(arg0: &Pool<T0, T1>, arg1: sui::object::ID) : &clmm_pool::position::PositionInfo {
-        clmm_pool::position::borrow_position_info(&arg0.position_manager, arg1)
+    public fun borrow_position_info<T0, T1>(pool: &Pool<T0, T1>, position_id: sui::object::ID) : &clmm_pool::position::PositionInfo {
+        clmm_pool::position::borrow_position_info(&pool.position_manager, position_id)
     }
     
-    public fun close_position<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: clmm_pool::position::Position) {
-        clmm_pool::config::checked_package_version(arg0);
-        assert!(!arg1.is_pause, 13);
-        let positionId = sui::object::id<clmm_pool::position::Position>(&arg2);
-        clmm_pool::position::close_position(&mut arg1.position_manager, arg2);
-        let v0 = ClosePositionEvent{
-            pool     : sui::object::id<Pool<T0, T1>>(arg1), 
-            position : positionId,
+    public fun close_position<T0, T1>(global_config: &clmm_pool::config::GlobalConfig, pool: &mut Pool<T0, T1>, position: clmm_pool::position::Position) {
+        clmm_pool::config::checked_package_version(global_config);
+        assert!(!pool.is_pause, 13);
+        let position_id = sui::object::id<clmm_pool::position::Position>(&position);
+        clmm_pool::position::close_position(&mut pool.position_manager, position);
+        let event = ClosePositionEvent{
+            pool     : sui::object::id<Pool<T0, T1>>(pool), 
+            position : position_id,
         };
-        sui::event::emit<ClosePositionEvent>(v0);
+        sui::event::emit<ClosePositionEvent>(event);
     }
     
-    public fun fetch_positions<T0, T1>(arg0: &Pool<T0, T1>, arg1: vector<sui::object::ID>, arg2: u64) : vector<clmm_pool::position::PositionInfo> {
-        clmm_pool::position::fetch_positions(&arg0.position_manager, arg1, arg2)
+    public fun fetch_positions<T0, T1>(pool: &Pool<T0, T1>, position_ids: vector<sui::object::ID>, limit: u64) : vector<clmm_pool::position::PositionInfo> {
+        clmm_pool::position::fetch_positions(&pool.position_manager, position_ids, limit)
     }
     
-    public fun is_position_exist<T0, T1>(arg0: &Pool<T0, T1>, arg1: sui::object::ID) : bool {
-        clmm_pool::position::is_position_exist(&arg0.position_manager, arg1)
+    public fun is_position_exist<T0, T1>(pool: &Pool<T0, T1>, position_id: sui::object::ID) : bool {
+        clmm_pool::position::is_position_exist(&pool.position_manager, position_id)
     }
     
-    public fun liquidity<T0, T1>(arg0: &Pool<T0, T1>) : u128 {
-        arg0.liquidity
+    public fun liquidity<T0, T1>(pool: &Pool<T0, T1>) : u128 {
+        pool.liquidity
     }
     
-    public fun mark_position_staked<T0, T1>(arg0: &mut Pool<T0, T1>, arg1: &gauge_cap::gauge_cap::GaugeCap, arg2: sui::object::ID) {
-        assert!(!arg0.is_pause, 13);
-        check_gauge_cap<T0, T1>(arg0, arg1);
-        clmm_pool::position::mark_position_staked(&mut arg0.position_manager, arg2, true);
+    public fun mark_position_staked<T0, T1>(pool: &mut Pool<T0, T1>, gauge_cap: &gauge_cap::gauge_cap::GaugeCap, position_id: sui::object::ID) {
+        assert!(!pool.is_pause, 13);
+        check_gauge_cap<T0, T1>(pool, gauge_cap);
+        clmm_pool::position::mark_position_staked(&mut pool.position_manager, position_id, true);
     }
     
-    public fun open_position<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: u32, arg3: u32, arg4: &mut sui::tx_context::TxContext) : clmm_pool::position::Position {
-        clmm_pool::config::checked_package_version(arg0);
-        assert!(!arg1.is_pause, 13);
-        let v0 = integer_mate::i32::from_u32(arg2);
-        let v1 = integer_mate::i32::from_u32(arg3);
-        let v2 = sui::object::id<Pool<T0, T1>>(arg1);
-        let v3 = clmm_pool::position::open_position<T0, T1>(&mut arg1.position_manager, v2, arg1.index, arg1.url, v0, v1, arg4);
-        let v4 = OpenPositionEvent{
-            pool       : v2, 
-            tick_lower : v0, 
-            tick_upper : v1, 
-            position   : sui::object::id<clmm_pool::position::Position>(&v3),
+    public fun open_position<T0, T1>(global_config: &clmm_pool::config::GlobalConfig, pool: &mut Pool<T0, T1>, tick_lower: u32, tick_upper: u32, ctx: &mut sui::tx_context::TxContext) : clmm_pool::position::Position {
+        clmm_pool::config::checked_package_version(global_config);
+        assert!(!pool.is_pause, 13);
+        let tick_lower_i32 = integer_mate::i32::from_u32(tick_lower);
+        let tick_upper_i32 = integer_mate::i32::from_u32(tick_upper);
+        let pool_id = sui::object::id<Pool<T0, T1>>(pool);
+        let position = clmm_pool::position::open_position<T0, T1>(&mut pool.position_manager, pool_id, pool.index, pool.url, tick_lower_i32, tick_upper_i32, ctx);
+        let event = OpenPositionEvent{
+            pool       : pool_id, 
+            tick_lower : tick_lower_i32, 
+            tick_upper : tick_upper_i32, 
+            position   : sui::object::id<clmm_pool::position::Position>(&position),
         };
-        sui::event::emit<OpenPositionEvent>(v4);
-        v3
+        sui::event::emit<OpenPositionEvent>(event);
+        position
     }
     
-    public fun update_emission<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: &clmm_pool::rewarder::RewarderGlobalVault, arg3: u128, arg4: &sui::clock::Clock, arg5: &mut sui::tx_context::TxContext) {
-        clmm_pool::config::checked_package_version(arg0);
-        assert!(!arg1.is_pause, 13);
-        clmm_pool::config::check_rewarder_manager_role(arg0, sui::tx_context::sender(arg5));
-        clmm_pool::rewarder::update_emission<T2>(arg2, &mut arg1.rewarder_manager, arg1.liquidity, arg3, sui::clock::timestamp_ms(arg4) / 1000);
-        let v0 = UpdateEmissionEvent{
-            pool                 : sui::object::id<Pool<T0, T1>>(arg1), 
+    public fun update_emission<T0, T1, T2>(global_config: &clmm_pool::config::GlobalConfig, pool: &mut Pool<T0, T1>, rewarder_vault: &clmm_pool::rewarder::RewarderGlobalVault, emissions_per_second: u128, clock: &sui::clock::Clock, ctx: &mut sui::tx_context::TxContext) {
+        clmm_pool::config::checked_package_version(global_config);
+        assert!(!pool.is_pause, 13);
+        clmm_pool::config::check_rewarder_manager_role(global_config, sui::tx_context::sender(ctx));
+        clmm_pool::rewarder::update_emission<T2>(rewarder_vault, &mut pool.rewarder_manager, pool.liquidity, emissions_per_second, sui::clock::timestamp_ms(clock) / 1000);
+        let event = UpdateEmissionEvent{
+            pool                 : sui::object::id<Pool<T0, T1>>(pool), 
             rewarder_type        : std::type_name::get<T2>(), 
-            emissions_per_second : arg3,
+            emissions_per_second : emissions_per_second,
         };
-        sui::event::emit<UpdateEmissionEvent>(v0);
+        sui::event::emit<UpdateEmissionEvent>(event);
     }
     
-    public fun borrow_tick<T0, T1>(arg0: &Pool<T0, T1>, arg1: integer_mate::i32::I32) : &clmm_pool::tick::Tick {
-        clmm_pool::tick::borrow_tick(&arg0.tick_manager, arg1)
+    public fun borrow_tick<T0, T1>(pool: &Pool<T0, T1>, tick: integer_mate::i32::I32) : &clmm_pool::tick::Tick {
+        clmm_pool::tick::borrow_tick(&pool.tick_manager, tick)
     }
     
-    public fun fetch_ticks<T0, T1>(arg0: &Pool<T0, T1>, arg1: vector<u32>, arg2: u64) : vector<clmm_pool::tick::Tick> {
-        clmm_pool::tick::fetch_ticks(&arg0.tick_manager, arg1, arg2)
+    public fun fetch_ticks<T0, T1>(pool: &Pool<T0, T1>, ticks: vector<u32>, limit: u64) : vector<clmm_pool::tick::Tick> {
+        clmm_pool::tick::fetch_ticks(&pool.tick_manager, ticks, limit)
     }
     
-    public fun index<T0, T1>(arg0: &Pool<T0, T1>) : u64 {
-        arg0.index
+    public fun index<T0, T1>(pool: &Pool<T0, T1>) : u64 {
+        pool.index
     }
     
     public fun add_liquidity<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Pool<T0, T1>, arg2: &mut clmm_pool::position::Position, arg3: u128, arg4: &sui::clock::Clock) : AddLiquidityReceipt<T0, T1> {

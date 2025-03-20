@@ -57,140 +57,140 @@ module clmm_pool::partner {
         type_name: std::string::String,
     }
     
-    public fun balances(arg0: &Partner) : &sui::bag::Bag {
-        &arg0.balances
+    public fun balances(partner: &Partner) : &sui::bag::Bag {
+        &partner.balances
     }
     
-    public fun claim_ref_fee<T0>(arg0: &clmm_pool::config::GlobalConfig, arg1: &PartnerCap, arg2: &mut Partner, arg3: &mut sui::tx_context::TxContext) {
-        clmm_pool::config::checked_package_version(arg0);
-        assert!(arg1.partner_id == sui::object::id<Partner>(arg2), 3);
-        let v0 = std::string::from_ascii(std::type_name::into_string(std::type_name::get<T0>()));
-        assert!(sui::bag::contains<std::string::String>(&arg2.balances, v0), 4);
-        let v1 = sui::bag::remove<std::string::String, sui::balance::Balance<T0>>(&mut arg2.balances, v0);
-        let amount = sui::balance::value<T0>(&v1);
-        sui::transfer::public_transfer<sui::coin::Coin<T0>>(sui::coin::from_balance<T0>(v1, arg3), sui::tx_context::sender(arg3));
-        let v2 = ClaimRefFeeEvent{
-            partner_id : sui::object::id<Partner>(arg2), 
+    public fun claim_ref_fee<T0>(global_config: &clmm_pool::config::GlobalConfig, partner_cap: &PartnerCap, partner: &mut Partner, ctx: &mut sui::tx_context::TxContext) {
+        clmm_pool::config::checked_package_version(global_config);
+        assert!(partner_cap.partner_id == sui::object::id<Partner>(partner), 3);
+        let type_name = std::string::from_ascii(std::type_name::into_string(std::type_name::get<T0>()));
+        assert!(sui::bag::contains<std::string::String>(&partner.balances, type_name), 4);
+        let balance = sui::bag::remove<std::string::String, sui::balance::Balance<T0>>(&mut partner.balances, type_name);
+        let amount = sui::balance::value<T0>(&balance);
+        sui::transfer::public_transfer<sui::coin::Coin<T0>>(sui::coin::from_balance<T0>(balance, ctx), sui::tx_context::sender(ctx));
+        let event = ClaimRefFeeEvent{
+            partner_id : sui::object::id<Partner>(partner), 
             amount, 
-            type_name  : v0,
+            type_name,
         };
-        sui::event::emit<ClaimRefFeeEvent>(v2);
+        sui::event::emit<ClaimRefFeeEvent>(event);
     }
     
-    public fun create_partner(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Partners, arg2: std::string::String, arg3: u64, arg4: u64, arg5: u64, arg6: address, arg7: &sui::clock::Clock, arg8: &mut sui::tx_context::TxContext) {
-        assert!(arg5 > arg4, 6);
-        assert!(arg4 >= sui::clock::timestamp_ms(arg7) / 1000, 7);
-        assert!(arg3 < 10000, 2);
-        assert!(!std::string::is_empty(&arg2), 5);
-        assert!(!sui::vec_map::contains<std::string::String, sui::object::ID>(&arg1.partners, &arg2), 5);
-        clmm_pool::config::checked_package_version(arg0);
-        clmm_pool::config::check_partner_manager_role(arg0, sui::tx_context::sender(arg8));
-        let v0 = Partner{
-            id           : sui::object::new(arg8), 
-            name         : arg2, 
-            ref_fee_rate : arg3, 
-            start_time   : arg4, 
-            end_time     : arg5, 
-            balances     : sui::bag::new(arg8),
+    public fun create_partner(global_config: &clmm_pool::config::GlobalConfig, partners: &mut Partners, name: std::string::String, ref_fee_rate: u64, start_time: u64, end_time: u64, recipient: address, clock: &sui::clock::Clock, ctx: &mut sui::tx_context::TxContext) {
+        assert!(end_time > start_time, 6);
+        assert!(start_time >= sui::clock::timestamp_ms(clock) / 1000, 7);
+        assert!(ref_fee_rate < 10000, 2);
+        assert!(!std::string::is_empty(&name), 5);
+        assert!(!sui::vec_map::contains<std::string::String, sui::object::ID>(&partners.partners, &name), 5);
+        clmm_pool::config::checked_package_version(global_config);
+        clmm_pool::config::check_partner_manager_role(global_config, sui::tx_context::sender(ctx));
+        let partner = Partner{
+            id           : sui::object::new(ctx), 
+            name         : name, 
+            ref_fee_rate : ref_fee_rate, 
+            start_time   : start_time, 
+            end_time     : end_time, 
+            balances     : sui::bag::new(ctx),
         };
-        let v1 = sui::object::id<Partner>(&v0);
-        let v2 = PartnerCap{
-            id         : sui::object::new(arg8), 
-            name       : arg2, 
-            partner_id : v1,
+        let partner_id = sui::object::id<Partner>(&partner);
+        let partner_cap = PartnerCap{
+            id         : sui::object::new(ctx), 
+            name       : name, 
+            partner_id : partner_id,
         };
-        sui::vec_map::insert<std::string::String, sui::object::ID>(&mut arg1.partners, arg2, v1);
-        sui::transfer::share_object<Partner>(v0);
-        let partner_cap_id = sui::object::id<PartnerCap>(&v2);
-        sui::transfer::transfer<PartnerCap>(v2, arg6);
-        let v3 = CreatePartnerEvent{
-            recipient      : arg6, 
-            partner_id     : v1, 
+        sui::vec_map::insert<std::string::String, sui::object::ID>(&mut partners.partners, name, partner_id);
+        sui::transfer::share_object<Partner>(partner);
+        let partner_cap_id = sui::object::id<PartnerCap>(&partner_cap);
+        sui::transfer::transfer<PartnerCap>(partner_cap, recipient);
+        let event = CreatePartnerEvent{
+            recipient      : recipient, 
+            partner_id     : partner_id, 
             partner_cap_id,
-            ref_fee_rate   : arg3, 
-            name           : arg2, 
-            start_time     : arg4, 
-            end_time       : arg5,
+            ref_fee_rate   : ref_fee_rate, 
+            name          : name, 
+            start_time     : start_time, 
+            end_time       : end_time,
         };
-        sui::event::emit<CreatePartnerEvent>(v3);
+        sui::event::emit<CreatePartnerEvent>(event);
     }
     
-    public fun current_ref_fee_rate(arg0: &Partner, arg1: u64) : u64 {
-        if (arg0.start_time > arg1 || arg0.end_time <= arg1) {
+    public fun current_ref_fee_rate(partner: &Partner, current_time: u64) : u64 {
+        if (partner.start_time > current_time || partner.end_time <= current_time) {
             return 0
         };
-        arg0.ref_fee_rate
+        partner.ref_fee_rate
     }
     
-    public fun end_time(arg0: &Partner) : u64 {
-        arg0.end_time
+    public fun end_time(partner: &Partner) : u64 {
+        partner.end_time
     }
     
-    fun init(arg0: &mut sui::tx_context::TxContext) {
-        let v0 = Partners{
-            id       : sui::object::new(arg0), 
+    fun init(ctx: &mut sui::tx_context::TxContext) {
+        let partners = Partners{
+            id       : sui::object::new(ctx), 
             partners : sui::vec_map::empty<std::string::String, sui::object::ID>(),
         };
-        let partners_id = sui::object::id<Partners>(&v0);
-        sui::transfer::share_object<Partners>(v0);
-        let v1 = InitPartnerEvent{partners_id};
-        sui::event::emit<InitPartnerEvent>(v1);
+        let partners_id = sui::object::id<Partners>(&partners);
+        sui::transfer::share_object<Partners>(partners);
+        let event = InitPartnerEvent{partners_id};
+        sui::event::emit<InitPartnerEvent>(event);
     }
     
-    public fun name(arg0: &Partner) : std::string::String {
-        arg0.name
+    public fun name(partner: &Partner) : std::string::String {
+        partner.name
     }
     
-    public fun receive_ref_fee<T0>(arg0: &mut Partner, arg1: sui::balance::Balance<T0>) {
-        let v0 = std::string::from_ascii(std::type_name::into_string(std::type_name::get<T0>()));
-        let amount = sui::balance::value<T0>(&arg1);
-        if (sui::bag::contains<std::string::String>(&arg0.balances, v0)) {
-            sui::balance::join<T0>(sui::bag::borrow_mut<std::string::String, sui::balance::Balance<T0>>(&mut arg0.balances, v0), arg1);
+    public fun receive_ref_fee<T0>(partner: &mut Partner, balance: sui::balance::Balance<T0>) {
+        let type_name = std::string::from_ascii(std::type_name::into_string(std::type_name::get<T0>()));
+        let amount = sui::balance::value<T0>(&balance);
+        if (sui::bag::contains<std::string::String>(&partner.balances, type_name)) {
+            sui::balance::join<T0>(sui::bag::borrow_mut<std::string::String, sui::balance::Balance<T0>>(&mut partner.balances, type_name), balance);
         } else {
-            sui::bag::add<std::string::String, sui::balance::Balance<T0>>(&mut arg0.balances, v0, arg1);
+            sui::bag::add<std::string::String, sui::balance::Balance<T0>>(&mut partner.balances, type_name, balance);
         };
-        let v1 = ReceiveRefFeeEvent{
-            partner_id : sui::object::id<Partner>(arg0), 
+        let event = ReceiveRefFeeEvent{
+            partner_id : sui::object::id<Partner>(partner), 
             amount,
-            type_name  : v0,
+            type_name  : type_name,
         };
-        sui::event::emit<ReceiveRefFeeEvent>(v1);
+        sui::event::emit<ReceiveRefFeeEvent>(event);
     }
     
-    public fun ref_fee_rate(arg0: &Partner) : u64 {
-        arg0.ref_fee_rate
+    public fun ref_fee_rate(partner: &Partner) : u64 {
+        partner.ref_fee_rate
     }
     
-    public fun start_time(arg0: &Partner) : u64 {
-        arg0.start_time
+    public fun start_time(partner: &Partner) : u64 {
+        partner.start_time
     }
     
-    public fun update_ref_fee_rate(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Partner, arg2: u64, arg3: &mut sui::tx_context::TxContext) {
-        assert!(arg2 < 10000, 2);
-        clmm_pool::config::checked_package_version(arg0);
-        clmm_pool::config::check_partner_manager_role(arg0, sui::tx_context::sender(arg3));
-        arg1.ref_fee_rate = arg2;
-        let v0 = UpdateRefFeeRateEvent{
-            partner_id   : sui::object::id<Partner>(arg1), 
-            old_fee_rate : arg1.ref_fee_rate, 
-            new_fee_rate : arg2,
+    public fun update_ref_fee_rate(global_config: &clmm_pool::config::GlobalConfig, partner: &mut Partner, new_fee_rate: u64, ctx: &mut sui::tx_context::TxContext) {
+        assert!(new_fee_rate < 10000, 2);
+        clmm_pool::config::checked_package_version(global_config);
+        clmm_pool::config::check_partner_manager_role(global_config, sui::tx_context::sender(ctx));
+        partner.ref_fee_rate = new_fee_rate;
+        let event = UpdateRefFeeRateEvent{
+            partner_id   : sui::object::id<Partner>(partner), 
+            old_fee_rate : partner.ref_fee_rate, 
+            new_fee_rate : new_fee_rate,
         };
-        sui::event::emit<UpdateRefFeeRateEvent>(v0);
+        sui::event::emit<UpdateRefFeeRateEvent>(event);
     }
     
-    public fun update_time_range(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut Partner, arg2: u64, arg3: u64, arg4: &sui::clock::Clock, arg5: &mut sui::tx_context::TxContext) {
-        assert!(arg3 > arg2, 6);
-        assert!(arg3 > sui::clock::timestamp_ms(arg4) / 1000, 6);
-        clmm_pool::config::checked_package_version(arg0);
-        clmm_pool::config::check_partner_manager_role(arg0, sui::tx_context::sender(arg5));
-        arg1.start_time = arg2;
-        arg1.end_time = arg3;
-        let v0 = UpdateTimeRangeEvent{
-            partner_id : sui::object::id<Partner>(arg1), 
-            start_time : arg2, 
-            end_time   : arg3,
+    public fun update_time_range(global_config: &clmm_pool::config::GlobalConfig, partner: &mut Partner, start_time: u64, end_time: u64, clock: &sui::clock::Clock, ctx: &mut sui::tx_context::TxContext) {
+        assert!(end_time > start_time, 6);
+        assert!(end_time > sui::clock::timestamp_ms(clock) / 1000, 6);
+        clmm_pool::config::checked_package_version(global_config);
+        clmm_pool::config::check_partner_manager_role(global_config, sui::tx_context::sender(ctx));
+        partner.start_time = start_time;
+        partner.end_time = end_time;
+        let event = UpdateTimeRangeEvent{
+            partner_id : sui::object::id<Partner>(partner), 
+            start_time : start_time, 
+            end_time   : end_time,
         };
-        sui::event::emit<UpdateTimeRangeEvent>(v0);
+        sui::event::emit<UpdateTimeRangeEvent>(event);
     }
     
     // decompiled from Move bytecode v6
