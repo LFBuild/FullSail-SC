@@ -3,13 +3,13 @@ module clmm_pool::partner {
         id: sui::object::UID,
         partners: sui::vec_map::VecMap<std::string::String, sui::object::ID>,
     }
-    
+
     public struct PartnerCap has store, key {
         id: sui::object::UID,
         name: std::string::String,
         partner_id: sui::object::ID,
     }
-    
+
     public struct Partner has store, key {
         id: sui::object::UID,
         name: std::string::String,
@@ -18,11 +18,11 @@ module clmm_pool::partner {
         end_time: u64,
         balances: sui::bag::Bag,
     }
-    
+
     public struct InitPartnerEvent has copy, drop {
         partners_id: sui::object::ID,
     }
-    
+
     public struct CreatePartnerEvent has copy, drop {
         recipient: address,
         partner_id: sui::object::ID,
@@ -32,25 +32,25 @@ module clmm_pool::partner {
         start_time: u64,
         end_time: u64,
     }
-    
+
     public struct UpdateRefFeeRateEvent has copy, drop {
         partner_id: sui::object::ID,
         old_fee_rate: u64,
         new_fee_rate: u64,
     }
-    
+
     public struct UpdateTimeRangeEvent has copy, drop {
         partner_id: sui::object::ID,
         start_time: u64,
         end_time: u64,
     }
-    
+
     public struct ReceiveRefFeeEvent has copy, drop {
         partner_id: sui::object::ID,
         amount: u64,
         type_name: std::string::String,
     }
-    
+
     public struct ClaimRefFeeEvent has copy, drop {
         partner_id: sui::object::ID,
         amount: u64,
@@ -192,7 +192,7 @@ module clmm_pool::partner {
         };
         sui::event::emit<UpdateTimeRangeEvent>(event);
     }
-    
+
     // decompiled from Move bytecode v6
 }
 

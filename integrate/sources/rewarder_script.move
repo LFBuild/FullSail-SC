@@ -1,21 +1,63 @@
 module integrate::rewarder_script {
-    public entry fun deposit_reward<T0>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::rewarder::RewarderGlobalVault, arg2: vector<sui::coin::Coin<T0>>, arg3: u64, arg4: &mut sui::tx_context::TxContext) {
-        let mut v0 = integrate::utils::merge_coins<T0>(arg2, arg4);
-        assert!(sui::coin::value<T0>(&v0) >= arg3, 1);
-        clmm_pool::rewarder::deposit_reward<T0>(arg0, arg1, sui::coin::into_balance<T0>(sui::coin::split<T0>(&mut v0, arg3, arg4)));
-        integrate::utils::send_coin<T0>(v0, sui::tx_context::sender(arg4));
+    public entry fun deposit_reward<RewardCoinType>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        rewarder_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
+        reward_input_coins: vector<sui::coin::Coin<RewardCoinType>>,
+        amount: u64,
+        ctx: &mut sui::tx_context::TxContext
+    ) {
+        let mut reward_coin = integrate::utils::merge_coins<RewardCoinType>(reward_input_coins, ctx);
+        assert!(reward_coin.value<RewardCoinType>() >= amount, 1);
+        clmm_pool::rewarder::deposit_reward<RewardCoinType>(
+            global_config,
+            rewarder_vault,
+            sui::coin::into_balance<RewardCoinType>(sui::coin::split<RewardCoinType>(&mut reward_coin, amount, ctx))
+        );
+        integrate::utils::send_coin<RewardCoinType>(reward_coin, sui::tx_context::sender(ctx));
     }
-    
-    public entry fun emergent_withdraw<T0>(arg0: &clmm_pool::config::AdminCap, arg1: &clmm_pool::config::GlobalConfig, arg2: &mut clmm_pool::rewarder::RewarderGlobalVault, arg3: u64, arg4: address, arg5: &mut sui::tx_context::TxContext) {
-        assert!(clmm_pool::rewarder::balance_of<T0>(arg2) >= arg3, 2);
-        integrate::utils::send_coin<T0>(sui::coin::from_balance<T0>(clmm_pool::rewarder::emergent_withdraw<T0>(arg0, arg1, arg2, arg3), arg5), arg4);
+
+    public entry fun emergent_withdraw<RewardCoinType>(
+        admin_cap: &clmm_pool::config::AdminCap,
+        global_config: &clmm_pool::config::GlobalConfig,
+        rewarder_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
+        amount: u64,
+        recipient: address,
+        ctx: &mut sui::tx_context::TxContext
+    ) {
+        assert!(clmm_pool::rewarder::balance_of<RewardCoinType>(rewarder_vault) >= amount, 2);
+        integrate::utils::send_coin<RewardCoinType>(
+            sui::coin::from_balance<RewardCoinType>(clmm_pool::rewarder::emergent_withdraw<RewardCoinType>(
+                admin_cap,
+                global_config,
+                rewarder_vault,
+                amount
+            ), ctx),
+            recipient
+        );
     }
-    
-    public entry fun emergent_withdraw_all<T0>(arg0: &clmm_pool::config::AdminCap, arg1: &clmm_pool::config::GlobalConfig, arg2: &mut clmm_pool::rewarder::RewarderGlobalVault, arg3: address, arg4: &mut sui::tx_context::TxContext) {
-        let global_vault_balance = clmm_pool::rewarder::balance_of<T0>(arg2);
-        integrate::utils::send_coin<T0>(sui::coin::from_balance<T0>(clmm_pool::rewarder::emergent_withdraw<T0>(arg0, arg1, arg2, global_vault_balance), arg4), arg3);
+
+    public entry fun emergent_withdraw_all<RewardCoinType>(
+        admin_cap: &clmm_pool::config::AdminCap,
+        global_config: &clmm_pool::config::GlobalConfig,
+        global_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
+        recipient: address,
+        ctx: &mut sui::tx_context::TxContext
+    ) {
+        let global_vault_balance = clmm_pool::rewarder::balance_of<RewardCoinType>(global_vault);
+        integrate::utils::send_coin<RewardCoinType>(
+            sui::coin::from_balance<RewardCoinType>(
+                clmm_pool::rewarder::emergent_withdraw<RewardCoinType>(
+                    admin_cap,
+                    global_config,
+                    global_vault,
+                    global_vault_balance
+                ),
+                ctx
+            ),
+            recipient
+        );
     }
-    
+
     // decompiled from Move bytecode v6
 }
 

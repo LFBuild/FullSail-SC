@@ -1,120 +1,417 @@
 module integrate::router_with_partner {
-    public fun swap_ab_bc_with_partner<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: &mut clmm_pool::pool::Pool<T1, T2>, arg3: &mut clmm_pool::partner::Partner, arg4: sui::coin::Coin<T0>, mut arg5: sui::coin::Coin<T2>, arg6: bool, arg7: u64, arg8: u64, arg9: u128, arg10: u128, arg11: &sui::clock::Clock, arg12: &mut sui::tx_context::TxContext) : (sui::coin::Coin<T0>, sui::coin::Coin<T2>) {
-        if (arg6) {
-            let (v2, v3) = swap_with_partner<T0, T1>(arg0, arg1, arg3, arg4, sui::coin::zero<T1>(arg12), true, true, arg7, arg9, false, arg11, arg12);
-            let v4 = v3;
-            let amount = sui::coin::value<T1>(&v4);
-            let (v5, v6) = swap_with_partner<T1, T2>(arg0, arg2, arg3, v4, arg5, true, true, amount, arg10, false, arg11, arg12);
-            let v7 = v5;
-            assert!(sui::coin::value<T1>(&v7) == 0, 5);
-            sui::coin::destroy_zero<T1>(v7);
-            (v2, v6)
+    public fun swap_ab_bc_with_partner<CoinTypeA, CoinTypeB, CoinTypeC>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool_ab: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        pool_bc: &mut clmm_pool::pool::Pool<CoinTypeB, CoinTypeC>,
+        partner: &mut clmm_pool::partner::Partner,
+        coin_from: sui::coin::Coin<CoinTypeA>,
+        mut coin_to: sui::coin::Coin<CoinTypeC>,
+        by_amount_in: bool,
+        amount_ab: u64,
+        amount_bc: u64,
+        sqrt_price_limit_ab: u128,
+        sqrt_price_limit_bc: u128,
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext
+    ): (sui::coin::Coin<CoinTypeA>, sui::coin::Coin<CoinTypeC>) {
+        if (by_amount_in) {
+            let (coin_a_out, intermediate_coin_b) = swap_with_partner<CoinTypeA, CoinTypeB>(
+                global_config,
+                pool_ab,
+                partner,
+                coin_from,
+                sui::coin::zero<CoinTypeB>(ctx),
+                true,
+                true,
+                amount_ab,
+                sqrt_price_limit_ab,
+                false,
+                clock,
+                ctx
+            );
+            let intermediate_amount = intermediate_coin_b.value<CoinTypeB>();
+            let (unused_coin_b, final_coin_c) = swap_with_partner<CoinTypeB, CoinTypeC>(
+                global_config,
+                pool_bc,
+                partner,
+                intermediate_coin_b,
+                coin_to,
+                true,
+                true,
+                intermediate_amount,
+                sqrt_price_limit_bc,
+                false,
+                clock,
+                ctx
+            );
+            assert!(unused_coin_b.value<CoinTypeB>() == 0, 5);
+            sui::coin::destroy_zero<CoinTypeB>(unused_coin_b);
+            (coin_a_out, final_coin_c)
         } else {
-            let (v8, v9, v10) = clmm_pool::pool::flash_swap_with_partner<T1, T2>(arg0, arg2, arg3, true, false, arg8, arg10, arg11);
-            let v11 = v10;
-            let (v12, v13) = swap_with_partner<T0, T1>(arg0, arg1, arg3, arg4, sui::coin::from_balance<T1>(v8, arg12), true, false, clmm_pool::pool::swap_pay_amount<T1, T2>(&v11), arg9, false, arg11, arg12);
-            clmm_pool::pool::repay_flash_swap_with_partner<T1, T2>(arg0, arg2, arg3, sui::coin::into_balance<T1>(v13), sui::balance::zero<T2>(), v11);
-            sui::coin::join<T2>(&mut arg5, sui::coin::from_balance<T2>(v9, arg12));
-            (v12, arg5)
+            let (b_balance, c_balance, receipt) = clmm_pool::pool::flash_swap_with_partner<CoinTypeB, CoinTypeC>(
+                global_config,
+                pool_bc,
+                partner,
+                true,
+                false,
+                amount_bc,
+                sqrt_price_limit_bc,
+                clock
+            );
+            let (final_coin_a, coin_b_for_repay) = swap_with_partner<CoinTypeA, CoinTypeB>(
+                global_config,
+                pool_ab,
+                partner,
+                coin_from,
+                sui::coin::from_balance<CoinTypeB>(b_balance, ctx),
+                true,
+                false,
+                clmm_pool::pool::swap_pay_amount<CoinTypeB, CoinTypeC>(&receipt),
+                sqrt_price_limit_ab,
+                false,
+                clock,
+                ctx
+            );
+            clmm_pool::pool::repay_flash_swap_with_partner<CoinTypeB, CoinTypeC>(
+                global_config,
+                pool_bc,
+                partner,
+                sui::coin::into_balance<CoinTypeB>(coin_b_for_repay),
+                sui::balance::zero<CoinTypeC>(),
+                receipt
+            );
+            sui::coin::join<CoinTypeC>(&mut coin_to, sui::coin::from_balance<CoinTypeC>(c_balance, ctx));
+            (final_coin_a, coin_to)
         }
     }
-    
-    public fun swap_ab_cb_with_partner<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: &mut clmm_pool::pool::Pool<T2, T1>, arg3: &mut clmm_pool::partner::Partner, arg4: sui::coin::Coin<T0>, mut arg5: sui::coin::Coin<T2>, arg6: bool, arg7: u64, arg8: u64, arg9: u128, arg10: u128, arg11: &sui::clock::Clock, arg12: &mut sui::tx_context::TxContext) : (sui::coin::Coin<T0>, sui::coin::Coin<T2>) {
-        if (arg6) {
-            let (v2, v3) = swap_with_partner<T0, T1>(arg0, arg1, arg3, arg4, sui::coin::zero<T1>(arg12), true, arg6, arg7, arg9, false, arg11, arg12);
-            let v4 = v3;
-            let amount = sui::coin::value<T1>(&v4);
-            let (v5, v6) = swap_with_partner<T2, T1>(arg0, arg2, arg3, arg5, v4, false, true, amount, arg10, false, arg11, arg12);
-            let v7 = v6;
-            assert!(sui::coin::value<T1>(&v7) == 0, 5);
-            sui::coin::destroy_zero<T1>(v7);
-            (v2, v5)
+
+    public fun swap_ab_cb_with_partner<CoinTypeA, CoinTypeB, CoinTypeC>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool_ab: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        pool_cb: &mut clmm_pool::pool::Pool<CoinTypeC, CoinTypeB>,
+        partner: &mut clmm_pool::partner::Partner,
+        coin_from: sui::coin::Coin<CoinTypeA>,
+        mut coin_to: sui::coin::Coin<CoinTypeC>,
+        by_amount_in: bool,
+        amount_ab: u64,
+        amount_cb: u64,
+        sqrt_price_limit_ab: u128,
+        sqrt_price_limit_cb: u128,
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext
+    ): (sui::coin::Coin<CoinTypeA>, sui::coin::Coin<CoinTypeC>) {
+        if (by_amount_in) {
+            let (coin_a_out, intermediate_coin_b) = swap_with_partner<CoinTypeA, CoinTypeB>(
+                global_config,
+                pool_ab,
+                partner,
+                coin_from,
+                sui::coin::zero<CoinTypeB>(ctx),
+                true,
+                by_amount_in,
+                amount_ab,
+                sqrt_price_limit_ab,
+                false,
+                clock,
+                ctx
+            );
+            let intermediate_amount = sui::coin::value<CoinTypeB>(&intermediate_coin_b);
+            let (final_coin_c, unused_coin_b) = swap_with_partner<CoinTypeC, CoinTypeB>(
+                global_config,
+                pool_cb,
+                partner,
+                coin_to,
+                intermediate_coin_b,
+                false,
+                true,
+                intermediate_amount,
+                sqrt_price_limit_cb,
+                false,
+                clock,
+                ctx
+            );
+            assert!(unused_coin_b.value<CoinTypeB>() == 0, 5);
+            sui::coin::destroy_zero<CoinTypeB>(unused_coin_b);
+            (coin_a_out, final_coin_c)
         } else {
-            let (v8, v9, v10) = clmm_pool::pool::flash_swap_with_partner<T2, T1>(arg0, arg2, arg3, false, false, arg8, arg10, arg11);
-            let v11 = v10;
-            let (v12, v13) = swap_with_partner<T0, T1>(arg0, arg1, arg3, arg4, sui::coin::from_balance<T1>(v9, arg12), true, false, clmm_pool::pool::swap_pay_amount<T2, T1>(&v11), arg9, false, arg11, arg12);
-            clmm_pool::pool::repay_flash_swap_with_partner<T2, T1>(arg0, arg2, arg3, sui::balance::zero<T2>(), sui::coin::into_balance<T1>(v13), v11);
-            sui::coin::join<T2>(&mut arg5, sui::coin::from_balance<T2>(v8, arg12));
-            (v12, arg5)
+            let (c_balance, b_balance, receipt) = clmm_pool::pool::flash_swap_with_partner<CoinTypeC, CoinTypeB>(
+                global_config,
+                pool_cb,
+                partner,
+                false,
+                false,
+                amount_cb,
+                sqrt_price_limit_cb,
+                clock
+            );
+            let (final_coin_a, coin_b_for_repay) = swap_with_partner<CoinTypeA, CoinTypeB>(
+                global_config,
+                pool_ab,
+                partner,
+                coin_from,
+                sui::coin::from_balance<CoinTypeB>(b_balance, ctx),
+                true,
+                false,
+                clmm_pool::pool::swap_pay_amount<CoinTypeC, CoinTypeB>(&receipt),
+                sqrt_price_limit_ab,
+                false,
+                clock,
+                ctx
+            );
+            clmm_pool::pool::repay_flash_swap_with_partner<CoinTypeC, CoinTypeB>(
+                global_config,
+                pool_cb,
+                partner,
+                sui::balance::zero<CoinTypeC>(),
+                sui::coin::into_balance<CoinTypeB>(coin_b_for_repay),
+                receipt
+            );
+            coin_to.join<CoinTypeC>(sui::coin::from_balance<CoinTypeC>(c_balance, ctx));
+            (final_coin_a, coin_to)
         }
     }
-    
-    public fun swap_ba_bc_with_partner<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T1, T0>, arg2: &mut clmm_pool::pool::Pool<T1, T2>, arg3: &mut clmm_pool::partner::Partner, arg4: sui::coin::Coin<T0>, mut arg5: sui::coin::Coin<T2>, arg6: bool, arg7: u64, arg8: u64, arg9: u128, arg10: u128, arg11: &sui::clock::Clock, arg12: &mut sui::tx_context::TxContext) : (sui::coin::Coin<T0>, sui::coin::Coin<T2>) {
-        if (arg6) {
-            let (v2, v3) = swap_with_partner<T1, T0>(arg0, arg1, arg3, sui::coin::zero<T1>(arg12), arg4, false, arg6, arg7, arg9, false, arg11, arg12);
-            let v4 = v2;
-            let amount = sui::coin::value<T1>(&v4);
-            let (v5, v6) = swap_with_partner<T1, T2>(arg0, arg2, arg3, v4, arg5, true, true, amount, arg10, false, arg11, arg12);
-            let v7 = v5;
-            assert!(sui::coin::value<T1>(&v7) == 0, 5);
-            sui::coin::destroy_zero<T1>(v7);
-            (v3, v6)
+
+    public fun swap_ba_bc_with_partner<CoinTypeA, CoinTypeB, CoinTypeC>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool_ba: &mut clmm_pool::pool::Pool<CoinTypeB, CoinTypeA>,
+        pool_bc: &mut clmm_pool::pool::Pool<CoinTypeB, CoinTypeC>,
+        partner: &mut clmm_pool::partner::Partner,
+        coin_from: sui::coin::Coin<CoinTypeA>,
+        mut coin_to: sui::coin::Coin<CoinTypeC>,
+        by_amount_in: bool,
+        amount_ba: u64,
+        amount_bc: u64,
+        sqrt_price_limit_ba: u128,
+        sqrt_price_limit_bc: u128,
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext
+    ): (sui::coin::Coin<CoinTypeA>, sui::coin::Coin<CoinTypeC>) {
+        if (by_amount_in) {
+            let (intemediate_coin_b, coin_a_out) = swap_with_partner<CoinTypeB, CoinTypeA>(
+                global_config,
+                pool_ba,
+                partner,
+                sui::coin::zero<CoinTypeB>(ctx),
+                coin_from,
+                false,
+                by_amount_in,
+                amount_ba,
+                sqrt_price_limit_ba,
+                false,
+                clock,
+                ctx
+            );
+            let intemediate_coin_b = intemediate_coin_b;
+            let intemediate_amount = intemediate_coin_b.value<CoinTypeB>();
+            let (unused_coin_b, final_coin_c) = swap_with_partner<CoinTypeB, CoinTypeC>(
+                global_config,
+                pool_bc,
+                partner,
+                intemediate_coin_b,
+                coin_to,
+                true,
+                true,
+                intemediate_amount,
+                sqrt_price_limit_bc,
+                false,
+                clock,
+                ctx
+            );
+            assert!(unused_coin_b.value<CoinTypeB>() == 0, 5);
+            sui::coin::destroy_zero<CoinTypeB>(unused_coin_b);
+            (coin_a_out, final_coin_c)
         } else {
-            let (v8, v9, v10) = clmm_pool::pool::flash_swap_with_partner<T1, T2>(arg0, arg2, arg3, true, false, arg8, arg10, arg11);
-            let v11 = v10;
-            let (v12, v13) = swap_with_partner<T1, T0>(arg0, arg1, arg3, sui::coin::from_balance<T1>(v8, arg12), arg4, false, false, clmm_pool::pool::swap_pay_amount<T1, T2>(&v11), arg9, false, arg11, arg12);
-            clmm_pool::pool::repay_flash_swap_with_partner<T1, T2>(arg0, arg2, arg3, sui::coin::into_balance<T1>(v12), sui::balance::zero<T2>(), v11);
-            sui::coin::join<T2>(&mut arg5, sui::coin::from_balance<T2>(v9, arg12));
-            (v13, arg5)
+            let (b_balance, c_balance, receipt) = clmm_pool::pool::flash_swap_with_partner<CoinTypeB, CoinTypeC>(
+                global_config,
+                pool_bc,
+                partner,
+                true,
+                false,
+                amount_bc,
+                sqrt_price_limit_bc,
+                clock
+            );
+            let (coin_b_for_repay, final_coin_a) = swap_with_partner<CoinTypeB, CoinTypeA>(
+                global_config,
+                pool_ba,
+                partner,
+                sui::coin::from_balance<CoinTypeB>(b_balance, ctx),
+                coin_from,
+                false,
+                false,
+                clmm_pool::pool::swap_pay_amount<CoinTypeB, CoinTypeC>(&receipt),
+                sqrt_price_limit_ba,
+                false,
+                clock,
+                ctx
+            );
+            clmm_pool::pool::repay_flash_swap_with_partner<CoinTypeB, CoinTypeC>(
+                global_config,
+                pool_bc,
+                partner,
+                sui::coin::into_balance<CoinTypeB>(coin_b_for_repay),
+                sui::balance::zero<CoinTypeC>(),
+                receipt
+            );
+            coin_to.join<CoinTypeC>(sui::coin::from_balance<CoinTypeC>(c_balance, ctx));
+            (final_coin_a, coin_to)
         }
     }
-    
-    public fun swap_ba_cb_with_partner<T0, T1, T2>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T1, T0>, arg2: &mut clmm_pool::pool::Pool<T2, T1>, arg3: &mut clmm_pool::partner::Partner, arg4: sui::coin::Coin<T0>, mut arg5: sui::coin::Coin<T2>, arg6: bool, arg7: u64, arg8: u64, arg9: u128, arg10: u128, arg11: &sui::clock::Clock, arg12: &mut sui::tx_context::TxContext) : (sui::coin::Coin<T0>, sui::coin::Coin<T2>) {
-        if (arg6) {
-            let (v2, v3) = swap_with_partner<T1, T0>(arg0, arg1, arg3, sui::coin::zero<T1>(arg12), arg4, false, true, arg7, arg9, false, arg11, arg12);
-            let v4 = v2;
-            let amount = sui::coin::value<T1>(&v4);
-            let (v5, v6) = swap_with_partner<T2, T1>(arg0, arg2, arg3, arg5, v4, false, arg6, amount, arg10, false, arg11, arg12);
-            let v7 = v6;
-            assert!(sui::coin::value<T1>(&v7) == 0, 5);
-            sui::coin::destroy_zero<T1>(v7);
-            (v3, v5)
+
+    public fun swap_ba_cb_with_partner<CoinTypeA, CoinTypeB, CoinTypeC>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool_ba: &mut clmm_pool::pool::Pool<CoinTypeB, CoinTypeA>,
+        pool_cb: &mut clmm_pool::pool::Pool<CoinTypeC, CoinTypeB>,
+        partner: &mut clmm_pool::partner::Partner,
+        coin_from: sui::coin::Coin<CoinTypeA>,
+        mut coin_to: sui::coin::Coin<CoinTypeC>,
+        by_amount_in: bool,
+        amount_ba: u64,
+        amount_bc: u64,
+        sqrt_price_limit_ba: u128,
+        sqrt_price_limit_bc: u128,
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext
+    ): (sui::coin::Coin<CoinTypeA>, sui::coin::Coin<CoinTypeC>) {
+        if (by_amount_in) {
+            let (intermediate_coin_b, coin_a_out) = swap_with_partner<CoinTypeB, CoinTypeA>(
+                global_config,
+                pool_ba,
+                partner,
+                sui::coin::zero<CoinTypeB>(ctx),
+                coin_from,
+                false,
+                true,
+                amount_ba,
+                sqrt_price_limit_ba,
+                false,
+                clock,
+                ctx
+            );
+            let amount = sui::coin::value<CoinTypeB>(&intermediate_coin_b);
+            let (final_coin_c, unused_coin_b) = swap_with_partner<CoinTypeC, CoinTypeB>(
+                global_config,
+                pool_cb,
+                partner,
+                coin_to,
+                intermediate_coin_b,
+                false,
+                by_amount_in,
+                amount,
+                sqrt_price_limit_bc,
+                false,
+                clock,
+                ctx
+            );
+            assert!(unused_coin_b.value<CoinTypeB>() == 0, 5);
+            sui::coin::destroy_zero<CoinTypeB>(unused_coin_b);
+            (coin_a_out, final_coin_c)
         } else {
-            let (v8, v9, v10) = clmm_pool::pool::flash_swap_with_partner<T2, T1>(arg0, arg2, arg3, false, false, arg8, arg10, arg11);
-            let v11 = v10;
-            let (v12, v13) = swap_with_partner<T1, T0>(arg0, arg1, arg3, sui::coin::from_balance<T1>(v9, arg12), arg4, false, false, clmm_pool::pool::swap_pay_amount<T2, T1>(&v11), arg9, false, arg11, arg12);
-            clmm_pool::pool::repay_flash_swap_with_partner<T2, T1>(arg0, arg2, arg3, sui::balance::zero<T2>(), sui::coin::into_balance<T1>(v12), v11);
-            sui::coin::join<T2>(&mut arg5, sui::coin::from_balance<T2>(v8, arg12));
-            (v13, arg5)
+            let (c_balance, b_balance, receipt) = clmm_pool::pool::flash_swap_with_partner<CoinTypeC, CoinTypeB>(
+                global_config,
+                pool_cb,
+                partner,
+                false,
+                false,
+                amount_bc,
+                sqrt_price_limit_bc,
+                clock
+            );
+            let (coin_b_for_repay, final_coin_a) = swap_with_partner<CoinTypeB, CoinTypeA>(
+                global_config,
+                pool_ba,
+                partner,
+                sui::coin::from_balance<CoinTypeB>(b_balance, ctx),
+                coin_from,
+                false,
+                false,
+                clmm_pool::pool::swap_pay_amount<CoinTypeC, CoinTypeB>(&receipt),
+                sqrt_price_limit_ba,
+                false,
+                clock,
+                ctx
+            );
+            clmm_pool::pool::repay_flash_swap_with_partner<CoinTypeC, CoinTypeB>(
+                global_config,
+                pool_cb,
+                partner,
+                sui::balance::zero<CoinTypeC>(),
+                sui::coin::into_balance<CoinTypeB>(coin_b_for_repay),
+                receipt
+            );
+            coin_to.join<CoinTypeC>(sui::coin::from_balance<CoinTypeC>(c_balance, ctx));
+            (final_coin_a, coin_to)
         }
     }
-    
-    public fun swap_with_partner<T0, T1>(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::pool::Pool<T0, T1>, arg2: &mut clmm_pool::partner::Partner, mut arg3: sui::coin::Coin<T0>, mut arg4: sui::coin::Coin<T1>, arg5: bool, arg6: bool, mut arg7: u64, arg8: u128, arg9: bool, arg10: &sui::clock::Clock, arg11: &mut sui::tx_context::TxContext) : (sui::coin::Coin<T0>, sui::coin::Coin<T1>) {
-        if (arg6 && arg9) {
-            let v0 = if (arg5) {
-                sui::coin::value<T0>(&arg3)
+
+    public fun swap_with_partner<CoinTypeA, CoinTypeB>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        partner: &mut clmm_pool::partner::Partner,
+        mut coin_a: sui::coin::Coin<CoinTypeA>,
+        mut coin_b: sui::coin::Coin<CoinTypeB>,
+        a2b: bool,
+        by_amount_in: bool,
+        mut amount: u64,
+        sqrt_price_limit: u128,
+        use_full_input: bool,
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext
+    ): (sui::coin::Coin<CoinTypeA>, sui::coin::Coin<CoinTypeB>) {
+        if (by_amount_in && use_full_input) {
+            let amount_to_use = if (a2b) {
+                coin_a.value<CoinTypeA>()
             } else {
-                sui::coin::value<T1>(&arg4)
+                coin_b.value<CoinTypeB>()
             };
-            arg7 = v0;
+            amount = amount_to_use;
         };
-        let (v1, v2, v3) = clmm_pool::pool::flash_swap_with_partner<T0, T1>(arg0, arg1, arg2, arg5, arg6, arg7, arg8, arg10);
-        let v4 = v3;
-        let v5 = v2;
-        let v6 = v1;
-        let v7 = clmm_pool::pool::swap_pay_amount<T0, T1>(&v4);
-        let v8 = if (arg5) {
-            sui::balance::value<T1>(&v5)
+        let (coin_a_out, coin_b_out, receipt) = clmm_pool::pool::flash_swap_with_partner<CoinTypeA, CoinTypeB>(
+            global_config,
+            pool,
+            partner,
+            a2b,
+            by_amount_in,
+            amount,
+            sqrt_price_limit,
+            clock
+        );
+        let pay_mount = clmm_pool::pool::swap_pay_amount<CoinTypeA, CoinTypeB>(&receipt);
+        let coin_out_value = if (a2b) {
+            coin_b_out.value<CoinTypeB>()
         } else {
-            sui::balance::value<T0>(&v6)
+            coin_a_out.value<CoinTypeA>()
         };
-        if (arg6) {
-            assert!(v7 == arg7, 1);
+        if (by_amount_in) {
+            assert!(pay_mount == amount, 1);
         } else {
-            assert!(v8 == arg7, 1);
+            assert!(coin_out_value == amount, 1);
         };
-        let (v9, v10) = if (arg5) {
-            assert!(sui::coin::value<T0>(&arg3) >= v7, 4);
-            (sui::coin::into_balance<T0>(sui::coin::split<T0>(&mut arg3, v7, arg11)), sui::balance::zero<T1>())
+        let (repay_amount_a, repay_amount_b) = if (a2b) {
+            assert!(coin_a.value<CoinTypeA>() >= pay_mount, 4);
+            (
+                sui::coin::into_balance<CoinTypeA>(coin_a.split<CoinTypeA>(pay_mount, ctx)),
+                sui::balance::zero<CoinTypeB>()
+            )
         } else {
-            (sui::balance::zero<T0>(), sui::coin::into_balance<T1>(sui::coin::split<T1>(&mut arg4, v7, arg11)))
+            (
+                sui::balance::zero<CoinTypeA>(),
+                sui::coin::into_balance<CoinTypeB>(
+                    coin_b.split<CoinTypeB>(pay_mount, ctx)
+                )
+            )
         };
-        sui::coin::join<T0>(&mut arg3, sui::coin::from_balance<T0>(v6, arg11));
-        sui::coin::join<T1>(&mut arg4, sui::coin::from_balance<T1>(v5, arg11));
-        clmm_pool::pool::repay_flash_swap_with_partner<T0, T1>(arg0, arg1, arg2, v9, v10, v4);
-        (arg3, arg4)
+        coin_a.join<CoinTypeA>(sui::coin::from_balance<CoinTypeA>(coin_a_out, ctx));
+        coin_b.join<CoinTypeB>(sui::coin::from_balance<CoinTypeB>(coin_b_out, ctx));
+        clmm_pool::pool::repay_flash_swap_with_partner<CoinTypeA, CoinTypeB>(
+            global_config,
+            pool,
+            partner,
+            repay_amount_a,
+            repay_amount_b,
+            receipt
+        );
+        (coin_a, coin_b)
     }
-    
-    // decompiled from Move bytecode v6
 }
 

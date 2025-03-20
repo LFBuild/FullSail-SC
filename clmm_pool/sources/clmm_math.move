@@ -1,5 +1,13 @@
 module clmm_pool::clmm_math {
-    public fun compute_swap_step(arg0: u128, arg1: u128, arg2: u128, arg3: u64, arg4: u64, arg5: bool, arg6: bool) : (u64, u64, u128, u64) {
+    public fun compute_swap_step(
+        arg0: u128,
+        arg1: u128,
+        arg2: u128,
+        arg3: u64,
+        arg4: u64,
+        arg5: bool,
+        arg6: bool
+    ): (u64, u64, u128, u64) {
         if (arg2 == 0) {
             return (0, 0, arg1, 0)
         };
@@ -38,28 +46,50 @@ module clmm_pool::clmm_math {
         };
         (v2, v3, v1, v0)
     }
-    
-    public fun fee_rate_denominator() : u64 {
+
+    public fun fee_rate_denominator(): u64 {
         1000000
     }
-    
-    public fun get_amount_by_liquidity(arg0: integer_mate::i32::I32, arg1: integer_mate::i32::I32, arg2: integer_mate::i32::I32, arg3: u128, arg4: u128, arg5: bool) : (u64, u64) {
+
+    public fun get_amount_by_liquidity(
+        arg0: integer_mate::i32::I32,
+        arg1: integer_mate::i32::I32,
+        arg2: integer_mate::i32::I32,
+        arg3: u128,
+        arg4: u128,
+        arg5: bool
+    ): (u64, u64) {
         if (arg4 == 0) {
             return (0, 0)
         };
         if (integer_mate::i32::lt(arg2, arg0)) {
-            (get_delta_a(clmm_pool::tick_math::get_sqrt_price_at_tick(arg0), clmm_pool::tick_math::get_sqrt_price_at_tick(arg1), arg4, arg5), 0)
+            (get_delta_a(
+                clmm_pool::tick_math::get_sqrt_price_at_tick(arg0),
+                clmm_pool::tick_math::get_sqrt_price_at_tick(arg1),
+                arg4,
+                arg5
+            ), 0)
         } else {
             let (v2, v3) = if (integer_mate::i32::lt(arg2, arg1)) {
-                (get_delta_a(arg3, clmm_pool::tick_math::get_sqrt_price_at_tick(arg1), arg4, arg5), get_delta_b(clmm_pool::tick_math::get_sqrt_price_at_tick(arg0), arg3, arg4, arg5))
+                (get_delta_a(arg3, clmm_pool::tick_math::get_sqrt_price_at_tick(arg1), arg4, arg5), get_delta_b(
+                    clmm_pool::tick_math::get_sqrt_price_at_tick(arg0),
+                    arg3,
+                    arg4,
+                    arg5
+                ))
             } else {
-                (0, get_delta_b(clmm_pool::tick_math::get_sqrt_price_at_tick(arg0), clmm_pool::tick_math::get_sqrt_price_at_tick(arg1), arg4, arg5))
+                (0, get_delta_b(
+                    clmm_pool::tick_math::get_sqrt_price_at_tick(arg0),
+                    clmm_pool::tick_math::get_sqrt_price_at_tick(arg1),
+                    arg4,
+                    arg5
+                ))
             };
             (v2, v3)
         }
     }
-    
-    public fun get_delta_a(arg0: u128, arg1: u128, arg2: u128, arg3: bool) : u64 {
+
+    public fun get_delta_a(arg0: u128, arg1: u128, arg2: u128, arg3: bool): u64 {
         let v0 = if (arg0 > arg1) {
             arg0 - arg1
         } else {
@@ -74,8 +104,8 @@ module clmm_pool::clmm_math {
         };
         integer_mate::math_u256::div_round(v1, integer_mate::full_math_u128::full_mul(arg0, arg1), arg3) as u64
     }
-    
-    public fun get_delta_b(arg0: u128, arg1: u128, arg2: u128, arg3: bool) : u64 {
+
+    public fun get_delta_b(arg0: u128, arg1: u128, arg2: u128, arg3: bool): u64 {
         let v0 = if (arg0 > arg1) {
             arg0 - arg1
         } else {
@@ -90,8 +120,8 @@ module clmm_pool::clmm_math {
         };
         (v1 >> 64) as u64
     }
-    
-    public fun get_delta_down_from_output(arg0: u128, arg1: u128, arg2: u128, arg3: bool) : u256 {
+
+    public fun get_delta_down_from_output(arg0: u128, arg1: u128, arg2: u128, arg3: bool): u256 {
         let v0 = if (arg0 > arg1) {
             arg0 - arg1
         } else {
@@ -110,8 +140,8 @@ module clmm_pool::clmm_math {
             integer_mate::math_u256::div_round(v2, integer_mate::full_math_u128::full_mul(arg0, arg1), false)
         }
     }
-    
-    public fun get_delta_up_from_input(arg0: u128, arg1: u128, arg2: u128, arg3: bool) : u256 {
+
+    public fun get_delta_up_from_input(arg0: u128, arg1: u128, arg2: u128, arg3: bool): u256 {
         let v0 = if (arg0 > arg1) {
             arg0 - arg1
         } else {
@@ -136,11 +166,23 @@ module clmm_pool::clmm_math {
             v5
         }
     }
-    
-    public fun get_liquidity_by_amount(arg0: integer_mate::i32::I32, arg1: integer_mate::i32::I32, arg2: integer_mate::i32::I32, arg3: u128, arg4: u64, arg5: bool) : (u128, u64, u64) {
+
+    public fun get_liquidity_by_amount(
+        arg0: integer_mate::i32::I32,
+        arg1: integer_mate::i32::I32,
+        arg2: integer_mate::i32::I32,
+        arg3: u128,
+        arg4: u64,
+        arg5: bool
+    ): (u128, u64, u64) {
         if (arg5) {
             let (v3, v4) = if (integer_mate::i32::lt(arg2, arg0)) {
-                (get_liquidity_from_a(clmm_pool::tick_math::get_sqrt_price_at_tick(arg0), clmm_pool::tick_math::get_sqrt_price_at_tick(arg1), arg4, false), 0)
+                (get_liquidity_from_a(
+                    clmm_pool::tick_math::get_sqrt_price_at_tick(arg0),
+                    clmm_pool::tick_math::get_sqrt_price_at_tick(arg1),
+                    arg4,
+                    false
+                ), 0)
             } else {
                 assert!(integer_mate::i32::lt(arg2, arg1), 3018);
                 let v5 = get_liquidity_from_a(arg3, clmm_pool::tick_math::get_sqrt_price_at_tick(arg1), arg4, false);
@@ -149,7 +191,12 @@ module clmm_pool::clmm_math {
             (v3, arg4, v4)
         } else {
             let (v6, v7) = if (integer_mate::i32::gte(arg2, arg1)) {
-                (get_liquidity_from_b(clmm_pool::tick_math::get_sqrt_price_at_tick(arg0), clmm_pool::tick_math::get_sqrt_price_at_tick(arg1), arg4, false), 0)
+                (get_liquidity_from_b(
+                    clmm_pool::tick_math::get_sqrt_price_at_tick(arg0),
+                    clmm_pool::tick_math::get_sqrt_price_at_tick(arg1),
+                    arg4,
+                    false
+                ), 0)
             } else {
                 assert!(integer_mate::i32::gte(arg2, arg0), 3018);
                 let v8 = get_liquidity_from_b(clmm_pool::tick_math::get_sqrt_price_at_tick(arg0), arg3, arg4, false);
@@ -158,17 +205,21 @@ module clmm_pool::clmm_math {
             (v6, v7, arg4)
         }
     }
-    
-    public fun get_liquidity_from_a(arg0: u128, arg1: u128, arg2: u64, arg3: bool) : u128 {
+
+    public fun get_liquidity_from_a(arg0: u128, arg1: u128, arg2: u64, arg3: bool): u128 {
         let v0 = if (arg0 > arg1) {
             arg0 - arg1
         } else {
             arg1 - arg0
         };
-        integer_mate::math_u256::div_round((integer_mate::full_math_u128::full_mul(arg0, arg1) >> 64) * (arg2 as u256), v0 as u256, arg3) as u128
+        integer_mate::math_u256::div_round(
+            (integer_mate::full_math_u128::full_mul(arg0, arg1) >> 64) * (arg2 as u256),
+            v0 as u256,
+            arg3
+        ) as u128
     }
-    
-    public fun get_liquidity_from_b(arg0: u128, arg1: u128, arg2: u64, arg3: bool) : u128 {
+
+    public fun get_liquidity_from_b(arg0: u128, arg1: u128, arg2: u64, arg3: bool): u128 {
         let v0 = if (arg0 > arg1) {
             arg0 - arg1
         } else {
@@ -176,8 +227,8 @@ module clmm_pool::clmm_math {
         };
         integer_mate::math_u256::div_round((arg2 as u256) << 64, v0 as u256, arg3) as u128
     }
-    
-    public fun get_next_sqrt_price_a_up(arg0: u128, arg1: u128, arg2: u64, arg3: bool) : u128 {
+
+    public fun get_next_sqrt_price_a_up(arg0: u128, arg1: u128, arg2: u64, arg3: bool): u128 {
         if (arg2 == 0) {
             return arg0
         };
@@ -186,9 +237,17 @@ module clmm_pool::clmm_math {
             abort 2
         };
         let v2 = if (arg3) {
-            integer_mate::math_u256::div_round(v0, ((arg1 as u256) << 64) + integer_mate::full_math_u128::full_mul(arg0, arg2 as u128), true) as u128
+            integer_mate::math_u256::div_round(
+                v0,
+                ((arg1 as u256) << 64) + integer_mate::full_math_u128::full_mul(arg0, arg2 as u128),
+                true
+            ) as u128
         } else {
-            integer_mate::math_u256::div_round(v0, ((arg1 as u256) << 64) - integer_mate::full_math_u128::full_mul(arg0, arg2 as u128), true) as u128
+            integer_mate::math_u256::div_round(
+                v0,
+                ((arg1 as u256) << 64) - integer_mate::full_math_u128::full_mul(arg0, arg2 as u128),
+                true
+            ) as u128
         };
         if (v2 > clmm_pool::tick_math::max_sqrt_price()) {
             abort 0
@@ -198,8 +257,8 @@ module clmm_pool::clmm_math {
         };
         v2
     }
-    
-    public fun get_next_sqrt_price_b_down(arg0: u128, arg1: u128, arg2: u64, arg3: bool) : u128 {
+
+    public fun get_next_sqrt_price_b_down(arg0: u128, arg1: u128, arg2: u64, arg3: bool): u128 {
         let v0 = if (arg3) {
             arg0 + integer_mate::math_u128::checked_div_round((arg2 as u128) << 64, arg1, !arg3)
         } else {
@@ -213,23 +272,23 @@ module clmm_pool::clmm_math {
         };
         v0
     }
-    
-    public fun get_next_sqrt_price_from_input(arg0: u128, arg1: u128, arg2: u64, arg3: bool) : u128 {
+
+    public fun get_next_sqrt_price_from_input(arg0: u128, arg1: u128, arg2: u64, arg3: bool): u128 {
         if (arg3) {
             get_next_sqrt_price_a_up(arg0, arg1, arg2, true)
         } else {
             get_next_sqrt_price_b_down(arg0, arg1, arg2, true)
         }
     }
-    
-    public fun get_next_sqrt_price_from_output(arg0: u128, arg1: u128, arg2: u64, arg3: bool) : u128 {
+
+    public fun get_next_sqrt_price_from_output(arg0: u128, arg1: u128, arg2: u64, arg3: bool): u128 {
         if (arg3) {
             get_next_sqrt_price_b_down(arg0, arg1, arg2, false)
         } else {
             get_next_sqrt_price_a_up(arg0, arg1, arg2, false)
         }
     }
-    
+
     // decompiled from Move bytecode v6
 }
 

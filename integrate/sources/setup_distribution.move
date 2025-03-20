@@ -1,23 +1,63 @@
 module integrate::setup_distribution {
-    public entry fun create<T0>(arg0: &sui::package::Publisher, arg1: address, arg2: &sui::clock::Clock, arg3: &mut sui::tx_context::TxContext) {
-        let (v0, v1) = distribution::minter::create<T0>(arg0, std::option::none<distribution::fullsail_token::MinterCap<T0>>(), arg3);
-        let v2 = v1;
-        let mut v3 = v0;
-        let mut v4 = std::vector::empty<std::type_name::TypeName>();
-        std::vector::push_back<std::type_name::TypeName>(&mut v4, std::type_name::get<T0>());
-        let (v5, v6) = distribution::voter::create<T0>(arg0, v4, arg3);
-        let v7 = v5;
-        let (v8, v9) = distribution::reward_distributor::create<T0>(arg0, arg2, arg3);
-        distribution::minter::set_notify_reward_cap<T0>(&mut v3, &v2, v6);
-        distribution::minter::set_reward_distributor_cap<T0>(&mut v3, &v2, v9);
-        distribution::minter::set_team_wallet<T0>(&mut v3, &v2, arg1);
-        sui::transfer::public_transfer<distribution::minter::AdminCap>(v2, sui::tx_context::sender(arg3));
-        sui::transfer::public_share_object<distribution::reward_distributor::RewardDistributor<T0>>(v8);
-        sui::transfer::public_share_object<distribution::voting_escrow::VotingEscrow<T0>>(distribution::voting_escrow::create<T0>(arg0, sui::object::id<distribution::voter::Voter<T0>>(&v7), arg2, arg3));
-        sui::transfer::public_share_object<distribution::voter::Voter<T0>>(v7);
-        sui::transfer::public_share_object<distribution::minter::Minter<T0>>(v3);
+    public entry fun create<SailCoinType>(
+        publisher: &sui::package::Publisher,
+        team_wallet: address,
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext
+    ) {
+        let (minter_immut, admin_cap) = distribution::minter::create<SailCoinType>(
+            publisher,
+            std::option::none<distribution::fullsail_token::MinterCap<SailCoinType>>(),
+            ctx
+        );
+        let mut minter = minter_immut;
+        let mut supported_coins = std::vector::empty<std::type_name::TypeName>();
+        std::vector::push_back<std::type_name::TypeName>(
+            &mut supported_coins,
+            std::type_name::get<SailCoinType>()
+        );
+        let (voter, notify_reward_cap) = distribution::voter::create<SailCoinType>(
+            publisher,
+            supported_coins,
+            ctx
+        );
+        let (reward_distributor, reward_distributor_cap) = distribution::reward_distributor::create<SailCoinType>(
+            publisher,
+            clock,
+            ctx
+        );
+        distribution::minter::set_notify_reward_cap<SailCoinType>(
+            &mut minter,
+            &admin_cap,
+            notify_reward_cap
+        );
+        distribution::minter::set_reward_distributor_cap<SailCoinType>(
+            &mut minter,
+            &admin_cap,
+            reward_distributor_cap
+        );
+        distribution::minter::set_team_wallet<SailCoinType>(
+            &mut minter,
+            &admin_cap,
+            team_wallet
+        );
+        sui::transfer::public_transfer<distribution::minter::AdminCap>(
+            admin_cap,
+            sui::tx_context::sender(ctx)
+        );
+        sui::transfer::public_share_object<distribution::reward_distributor::RewardDistributor<SailCoinType>>(
+            reward_distributor
+        );
+        sui::transfer::public_share_object<distribution::voting_escrow::VotingEscrow<SailCoinType>>(
+            distribution::voting_escrow::create<SailCoinType>(
+                publisher,
+                sui::object::id<distribution::voter::Voter<SailCoinType>>(&voter),
+                clock,
+                ctx
+            )
+        );
+        sui::transfer::public_share_object<distribution::voter::Voter<SailCoinType>>(voter);
+        sui::transfer::public_share_object<distribution::minter::Minter<SailCoinType>>(minter);
     }
-    
-    // decompiled from Move bytecode v6
 }
 

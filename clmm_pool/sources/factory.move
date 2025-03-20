@@ -1,7 +1,6 @@
 module clmm_pool::factory {
-    public struct FACTORY has drop {
-    }
-    
+    public struct FACTORY has drop {}
+
     public struct PoolSimpleInfo has copy, drop, store {
         pool_id: sui::object::ID,
         pool_key: sui::object::ID,
@@ -9,17 +8,17 @@ module clmm_pool::factory {
         coin_type_b: std::type_name::TypeName,
         tick_spacing: u32,
     }
-    
+
     public struct Pools has store, key {
         id: sui::object::UID,
         list: move_stl::linked_table::LinkedTable<sui::object::ID, PoolSimpleInfo>,
         index: u64,
     }
-    
+
     public struct InitFactoryEvent has copy, drop {
         pools_id: sui::object::ID,
     }
-    
+
     public struct CreatePoolEvent has copy, drop {
         pool_id: sui::object::ID,
         coin_type_a: std::string::String,
@@ -192,7 +191,7 @@ module clmm_pool::factory {
     public fun tick_spacing(info: &PoolSimpleInfo) : u32 {
         info.tick_spacing
     }
-    
+
     // decompiled from Move bytecode v6
 }
 

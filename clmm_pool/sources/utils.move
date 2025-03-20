@@ -1,5 +1,5 @@
 module clmm_pool::utils {
-    public fun str(mut arg0: u64) : std::string::String {
+    public fun str(mut arg0: u64): std::string::String {
         if (arg0 == 0) {
             return std::string::utf8(b"0")
         };
@@ -12,7 +12,7 @@ module clmm_pool::utils {
         std::vector::reverse<u8>(&mut v0);
         std::string::utf8(v0)
     }
-    
+
     // decompiled from Move bytecode v6
 }
 

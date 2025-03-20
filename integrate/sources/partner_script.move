@@ -1,20 +1,56 @@
 module integrate::partner_script {
-    public entry fun claim_ref_fee<T0>(arg0: &clmm_pool::config::GlobalConfig, arg1: &clmm_pool::partner::PartnerCap, arg2: &mut clmm_pool::partner::Partner, arg3: &mut sui::tx_context::TxContext) {
-        clmm_pool::partner::claim_ref_fee<T0>(arg0, arg1, arg2, arg3);
+
+    public entry fun claim_ref_fee<T0>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        partner_cap: &clmm_pool::partner::PartnerCap,
+        partner: &mut clmm_pool::partner::Partner,
+        ctx: &mut sui::tx_context::TxContext
+    ) {
+        clmm_pool::partner::claim_ref_fee<T0>(global_config, partner_cap, partner, ctx);
     }
-    
-    public entry fun create_partner(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::partner::Partners, arg2: std::string::String, arg3: u64, arg4: u64, arg5: u64, arg6: address, arg7: &sui::clock::Clock, arg8: &mut sui::tx_context::TxContext) {
-        clmm_pool::partner::create_partner(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
+
+    public entry fun create_partner(
+        global_config: &clmm_pool::config::GlobalConfig,
+        partners: &mut clmm_pool::partner::Partners,
+        name: std::string::String,
+        ref_fee_rate: u64,
+        start_time: u64,
+        end_time: u64,
+        recipient: address,
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext
+    ) {
+        clmm_pool::partner::create_partner(
+            global_config,
+            partners,
+            name,
+            ref_fee_rate,
+            start_time,
+            end_time,
+            recipient,
+            clock,
+            ctx
+        );
     }
-    
-    public entry fun update_partner_ref_fee_rate(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::partner::Partner, arg2: u64, arg3: &mut sui::tx_context::TxContext) {
-        clmm_pool::partner::update_ref_fee_rate(arg0, arg1, arg2, arg3);
+
+    public entry fun update_partner_ref_fee_rate(
+        global_config: &clmm_pool::config::GlobalConfig,
+        partner: &mut clmm_pool::partner::Partner,
+        new_fee_rate: u64,
+        ctx: &mut sui::tx_context::TxContext
+    ) {
+        clmm_pool::partner::update_ref_fee_rate(global_config, partner, new_fee_rate, ctx);
     }
-    
-    public entry fun update_partner_time_range(arg0: &clmm_pool::config::GlobalConfig, arg1: &mut clmm_pool::partner::Partner, arg2: u64, arg3: u64, arg4: &sui::clock::Clock, arg5: &mut sui::tx_context::TxContext) {
-        clmm_pool::partner::update_time_range(arg0, arg1, arg2, arg3, arg4, arg5);
+
+    public entry fun update_partner_time_range(
+        global_config: &clmm_pool::config::GlobalConfig,
+        partner: &mut clmm_pool::partner::Partner,
+        start_time: u64,
+        end_time: u64,
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext
+    ) {
+        clmm_pool::partner::update_time_range(global_config, partner, start_time, end_time, clock, ctx);
     }
-    
-    // decompiled from Move bytecode v6
 }
 
