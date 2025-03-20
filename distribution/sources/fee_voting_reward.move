@@ -84,10 +84,19 @@ module distribution::fee_voting_reward {
     ) {
         let lock_id = sui::object::id<distribution::voting_escrow::Lock>(lock);
         let lock_owner = distribution::voting_escrow::owner_of<SailCoinType>(voting_escrow, lock_id);
-        let mut reward_balance = distribution::reward::get_reward_internal<FeeCoinType>(&mut reward.reward, lock_owner, lock_id, clock, ctx);
+        let mut reward_balance = distribution::reward::get_reward_internal<FeeCoinType>(
+            &mut reward.reward,
+            lock_owner,
+            lock_id,
+            clock,
+            ctx
+        );
         if (std::option::is_some<sui::balance::Balance<FeeCoinType>>(&reward_balance)) {
             sui::transfer::public_transfer<sui::coin::Coin<FeeCoinType>>(
-                sui::coin::from_balance<FeeCoinType>(std::option::extract<sui::balance::Balance<FeeCoinType>>(&mut reward_balance), ctx),
+                sui::coin::from_balance<FeeCoinType>(
+                    std::option::extract<sui::balance::Balance<FeeCoinType>>(&mut reward_balance),
+                    ctx
+                ),
                 lock_owner
             );
         };
@@ -105,7 +114,10 @@ module distribution::fee_voting_reward {
             reward_authorized_cap,
             distribution::reward::authorized(&reward.reward)
         );
-        assert!(distribution::reward::rewards_contains(&reward.reward, std::type_name::get<FeeCoinType>()), ENotifyRewardAmountTokenNotWhitelisted);
+        assert!(
+            distribution::reward::rewards_contains(&reward.reward, std::type_name::get<FeeCoinType>()),
+            ENotifyRewardAmountTokenNotWhitelisted
+        );
         distribution::reward::notify_reward_amount_internal<FeeCoinType>(
             &mut reward.reward,
             sui::coin::into_balance<FeeCoinType>(coin),
