@@ -405,7 +405,7 @@ module distribution::voting_escrow {
                             integer_mate::i128::from((v1.ts as u128))
                         )
                     ),
-                    integer_mate::i128::from(18446744073709551616)
+                    integer_mate::i128::from(1<<64)
                 )
             );
             if (integer_mate::i128::is_neg(v1.bias)) {
@@ -494,26 +494,26 @@ module distribution::voting_escrow {
                 v0.slope = integer_mate::i128::from(
                     integer_mate::full_math_u128::mul_div_floor(
                         (arg2.amount as u128),
-                        18446744073709551616,
+                        1<<64,
                         (distribution::common::max_lock_time() as u128)
                     )
                 );
                 v0.bias = integer_mate::i128::div(
                     integer_mate::i128::mul(v0.slope, integer_mate::i128::from(((arg2.end - v6) as u128))),
-                    integer_mate::i128::from(18446744073709551616)
+                    integer_mate::i128::from(1<<64)
                 );
             };
             if (arg3.end > v6 && arg3.amount > 0) {
                 v1.slope = integer_mate::i128::from(
                     integer_mate::full_math_u128::mul_div_floor(
                         (arg3.amount as u128),
-                        18446744073709551616,
+                        1<<64,
                         (distribution::common::max_lock_time() as u128)
                     )
                 );
                 v1.bias = integer_mate::i128::div(
                     integer_mate::i128::mul(v1.slope, integer_mate::i128::from(((arg3.end - v6) as u128))),
-                    integer_mate::i128::from(18446744073709551616)
+                    integer_mate::i128::from(1<<64)
                 );
             };
             let v8 = if (sui::table::contains<u64, integer_mate::i128::I128>(&arg0.slope_changes, arg2.end)) {
@@ -567,7 +567,7 @@ module distribution::voting_escrow {
                 v11.bias,
                 integer_mate::i128::div(
                     integer_mate::i128::mul(v11.slope, integer_mate::i128::from(((v13 - v12) as u128))),
-                    integer_mate::i128::from(18446744073709551616)
+                    integer_mate::i128::from(1<<64)
                 )
             );
             v11.slope = integer_mate::i128::add(v11.slope, v16);
@@ -1703,7 +1703,7 @@ module distribution::voting_escrow {
                 v2,
                 integer_mate::i128::div(
                     integer_mate::i128::mul(v3, integer_mate::i128::from(((v5 - v4) as u128))),
-                    integer_mate::i128::from(18446744073709551616)
+                    integer_mate::i128::from(1<<64)
                 )
             );
             if (v5 == arg2) {

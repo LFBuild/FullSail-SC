@@ -643,7 +643,7 @@ module distribution::voter {
         } else {
             arg0.total_weight
         };
-        let v6 = integer_mate::full_math_u128::mul_div_floor(v1 as u128, 18446744073709551616, v5 as u128);
+        let v6 = integer_mate::full_math_u128::mul_div_floor(v1 as u128, 1<<64, v5 as u128);
         if (v6 > 0) {
             arg0.index = arg0.index + v6;
         };
@@ -956,7 +956,7 @@ module distribution::voter {
                 sui::table::add<GaugeID, u64>(
                     &mut arg0.claimable,
                     arg1,
-                    v6 + (integer_mate::full_math_u128::mul_div_floor(v0 as u128, v3, 18446744073709551616) as u64)
+                    v6 + (integer_mate::full_math_u128::mul_div_floor(v0 as u128, v3, 1<<64) as u64)
                 );
             };
         } else {
