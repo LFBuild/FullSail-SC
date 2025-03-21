@@ -1,134 +1,157 @@
 module distribution::fee_voting_reward {
+    const ENotifyRewardAmountTokenNotWhitelisted: u64 = 9223372427696799743;
+    const EVoterGetRewardInvalidVoter: u64 = 9223372358977323007;
+
     public struct FeeVotingReward has store, key {
         id: sui::object::UID,
         gauge: sui::object::ID,
         reward: distribution::reward::Reward,
     }
 
-    public fun balance<T0>(arg0: &FeeVotingReward): u64 {
-        distribution::reward::balance<T0>(&arg0.reward)
+    public fun balance<FeeCoinType>(arg0: &FeeVotingReward): u64 {
+        distribution::reward::balance<FeeCoinType>(&arg0.reward)
     }
 
     public(package) fun create(
-        arg0: sui::object::ID,
-        arg1: sui::object::ID,
-        arg2: sui::object::ID,
-        arg3: vector<std::type_name::TypeName>,
-        arg4: &mut sui::tx_context::TxContext
+        voter: sui::object::ID,
+        ve: sui::object::ID,
+        authorized: sui::object::ID,
+        reward_coin_types: vector<std::type_name::TypeName>,
+        ctx: &mut sui::tx_context::TxContext
     ): FeeVotingReward {
         FeeVotingReward {
-            id: sui::object::new(arg4),
-            gauge: arg2,
-            reward: distribution::reward::create(arg0, arg1, arg0, arg3, arg4),
+            id: sui::object::new(ctx),
+            gauge: authorized,
+            reward: distribution::reward::create(voter, ve, voter, reward_coin_types, ctx),
         }
     }
 
     public fun deposit(
-        arg0: &mut FeeVotingReward,
-        arg1: &distribution::reward_authorized_cap::RewardAuthorizedCap,
-        arg2: u64,
-        arg3: sui::object::ID,
-        arg4: &sui::clock::Clock,
-        arg5: &mut sui::tx_context::TxContext
+        reward: &mut FeeVotingReward,
+        reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
+        amount: u64,
+        lock_id: sui::object::ID,
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext
     ) {
-        distribution::reward::deposit(&mut arg0.reward, arg1, arg2, arg3, arg4, arg5);
+        distribution::reward::deposit(
+            &mut reward.reward,
+            reward_authorized_cap,
+            amount,
+            lock_id,
+            clock,
+            ctx
+        );
     }
 
-    public fun earned<T0>(arg0: &FeeVotingReward, arg1: sui::object::ID, arg2: &sui::clock::Clock): u64 {
-        distribution::reward::earned<T0>(&arg0.reward, arg1, arg2)
+    public fun earned<FeeCoinType>(reward: &FeeVotingReward, lock_id: sui::object::ID, clock: &sui::clock::Clock): u64 {
+        distribution::reward::earned<FeeCoinType>(&reward.reward, lock_id, clock)
     }
 
-    public fun get_prior_balance_index(arg0: &FeeVotingReward, arg1: sui::object::ID, arg2: u64): u64 {
-        distribution::reward::get_prior_balance_index(&arg0.reward, arg1, arg2)
+    public fun get_prior_balance_index(reward: &FeeVotingReward, lock_id: sui::object::ID, time: u64): u64 {
+        distribution::reward::get_prior_balance_index(&reward.reward, lock_id, time)
     }
 
-    public fun get_prior_supply_index(arg0: &FeeVotingReward, arg1: u64): u64 {
-        distribution::reward::get_prior_supply_index(&arg0.reward, arg1)
+    public fun get_prior_supply_index(reward: &FeeVotingReward, time: u64): u64 {
+        distribution::reward::get_prior_supply_index(&reward.reward, time)
     }
 
-    public fun rewards_list_length(arg0: &FeeVotingReward): u64 {
-        distribution::reward::rewards_list_length(&arg0.reward)
+    public fun rewards_list_length(reward: &FeeVotingReward): u64 {
+        distribution::reward::rewards_list_length(&reward.reward)
     }
 
     public fun withdraw(
-        arg0: &mut FeeVotingReward,
-        arg1: &distribution::reward_authorized_cap::RewardAuthorizedCap,
-        arg2: u64,
-        arg3: sui::object::ID,
-        arg4: &sui::clock::Clock,
-        arg5: &mut sui::tx_context::TxContext
+        reward: &mut FeeVotingReward,
+        reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
+        amount: u64,
+        lock_id: sui::object::ID,
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext
     ) {
-        distribution::reward::withdraw(&mut arg0.reward, arg1, arg2, arg3, arg4, arg5);
+        distribution::reward::withdraw(&mut reward.reward, reward_authorized_cap, amount, lock_id, clock, ctx);
     }
 
-    public fun borrow_reward(arg0: &FeeVotingReward): &distribution::reward::Reward {
-        &arg0.reward
+    public fun borrow_reward(reward: &FeeVotingReward): &distribution::reward::Reward {
+        &reward.reward
     }
 
-    public fun get_reward<T0, T1>(
-        arg0: &mut FeeVotingReward,
-        arg1: &distribution::voting_escrow::VotingEscrow<T0>,
-        arg2: &distribution::voting_escrow::Lock,
-        arg3: &sui::clock::Clock,
-        arg4: &mut sui::tx_context::TxContext
+    public fun get_reward<SailCoinType, FeeCoinType>(
+        reward: &mut FeeVotingReward,
+        voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        lock: &distribution::voting_escrow::Lock,
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext
     ) {
-        let v0 = sui::object::id<distribution::voting_escrow::Lock>(arg2);
-        let v1 = distribution::voting_escrow::owner_of<T0>(arg1, v0);
-        let mut v2 = distribution::reward::get_reward_internal<T1>(&mut arg0.reward, v1, v0, arg3, arg4);
-        if (std::option::is_some<sui::balance::Balance<T1>>(&v2)) {
-            sui::transfer::public_transfer<sui::coin::Coin<T1>>(
-                sui::coin::from_balance<T1>(std::option::extract<sui::balance::Balance<T1>>(&mut v2), arg4),
-                v1
+        let lock_id = sui::object::id<distribution::voting_escrow::Lock>(lock);
+        let lock_owner = distribution::voting_escrow::owner_of<SailCoinType>(voting_escrow, lock_id);
+        let mut reward_balance = distribution::reward::get_reward_internal<FeeCoinType>(
+            &mut reward.reward,
+            lock_owner,
+            lock_id,
+            clock,
+            ctx
+        );
+        if (std::option::is_some<sui::balance::Balance<FeeCoinType>>(&reward_balance)) {
+            sui::transfer::public_transfer<sui::coin::Coin<FeeCoinType>>(
+                sui::coin::from_balance<FeeCoinType>(
+                    std::option::extract<sui::balance::Balance<FeeCoinType>>(&mut reward_balance),
+                    ctx
+                ),
+                lock_owner
             );
         };
-        std::option::destroy_none<sui::balance::Balance<T1>>(v2);
+        std::option::destroy_none<sui::balance::Balance<FeeCoinType>>(reward_balance);
     }
 
-    public fun notify_reward_amount<T0>(
-        arg0: &mut FeeVotingReward,
-        arg1: &distribution::reward_authorized_cap::RewardAuthorizedCap,
-        arg2: sui::coin::Coin<T0>,
-        arg3: &sui::clock::Clock,
-        arg4: &mut sui::tx_context::TxContext
+    public fun notify_reward_amount<FeeCoinType>(
+        reward: &mut FeeVotingReward,
+        reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
+        coin: sui::coin::Coin<FeeCoinType>,
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext
     ) {
-        distribution::reward_authorized_cap::validate(arg1, distribution::reward::authorized(&arg0.reward));
-        assert!(distribution::reward::rewards_contains(&arg0.reward, std::type_name::get<T0>()), 9223372427696799743);
-        distribution::reward::notify_reward_amount_internal<T0>(
-            &mut arg0.reward,
-            sui::coin::into_balance<T0>(arg2),
-            arg3,
-            arg4
+        distribution::reward_authorized_cap::validate(
+            reward_authorized_cap,
+            distribution::reward::authorized(&reward.reward)
         );
-    }
-
-    public fun voter_get_reward<T0, T1>(
-        arg0: &mut FeeVotingReward,
-        arg1: &distribution::voter_cap::VoterCap,
-        arg2: &distribution::voting_escrow::VotingEscrow<T0>,
-        arg3: sui::object::ID,
-        arg4: &sui::clock::Clock,
-        arg5: &mut sui::tx_context::TxContext
-    ): sui::balance::Balance<T1> {
         assert!(
-            distribution::voter_cap::get_voter_id(arg1) == distribution::reward::voter(&arg0.reward),
-            9223372358977323007
+            distribution::reward::rewards_contains(&reward.reward, std::type_name::get<FeeCoinType>()),
+            ENotifyRewardAmountTokenNotWhitelisted
         );
-        let mut v0 = distribution::reward::get_reward_internal<T1>(
-            &mut arg0.reward,
-            distribution::voting_escrow::owner_of<T0>(arg2, arg3),
-            arg3,
-            arg4,
-            arg5
+        distribution::reward::notify_reward_amount_internal<FeeCoinType>(
+            &mut reward.reward,
+            sui::coin::into_balance<FeeCoinType>(coin),
+            clock,
+            ctx
         );
-        let v1 = if (std::option::is_some<sui::balance::Balance<T1>>(&v0)) {
-            std::option::extract<sui::balance::Balance<T1>>(&mut v0)
-        } else {
-            sui::balance::zero<T1>()
-        };
-        std::option::destroy_none<sui::balance::Balance<T1>>(v0);
-        v1
     }
 
-    // decompiled from Move bytecode v6
+    public fun voter_get_reward<SailCoinType, FeeCoinType>(
+        reward: &mut FeeVotingReward,
+        voter_cap: &distribution::voter_cap::VoterCap,
+        voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        lock_id: sui::object::ID,
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext
+    ): sui::balance::Balance<FeeCoinType> {
+        assert!(
+            distribution::voter_cap::get_voter_id(voter_cap) == distribution::reward::voter(&reward.reward),
+            EVoterGetRewardInvalidVoter
+        );
+        let mut reward_balance_option = distribution::reward::get_reward_internal<FeeCoinType>(
+            &mut reward.reward,
+            distribution::voting_escrow::owner_of<SailCoinType>(voting_escrow, lock_id),
+            lock_id,
+            clock,
+            ctx
+        );
+        let reward_balance = if (std::option::is_some<sui::balance::Balance<FeeCoinType>>(&reward_balance_option)) {
+            std::option::extract<sui::balance::Balance<FeeCoinType>>(&mut reward_balance_option)
+        } else {
+            sui::balance::zero<FeeCoinType>()
+        };
+        std::option::destroy_none<sui::balance::Balance<FeeCoinType>>(reward_balance_option);
+        reward_balance
+    }
 }
 
