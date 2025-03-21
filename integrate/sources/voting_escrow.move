@@ -220,7 +220,8 @@ module integrate::voting_escrow {
         let total_locked = distribution::voting_escrow::total_locked<SailCoinType>(voting_escrow);
         let epoch_emissions = distribution::minter::epoch_emissions<SailCoinType>(minter);
         let rebase_growth = distribution::minter::calculate_rebase_growth(
-            epoch_emissions, distribution::minter::total_supply<SailCoinType>(minter),
+            epoch_emissions,
+            distribution::minter::total_supply<SailCoinType>(minter),
             total_locked
         );
         let summary_event = Summary {
