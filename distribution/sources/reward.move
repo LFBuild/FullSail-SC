@@ -66,6 +66,14 @@ module distribution::reward {
         reward.authorized
     }
 
+    public fun balance_of(reward: &Reward, lock_id: sui::object::ID): u64 {
+        if (!sui::table::contains<sui::object::ID, u64>(&reward.balance_of, lock_id)) {
+            0
+        } else {
+            *sui::table::borrow<sui::object::ID, u64>(&reward.balance_of, lock_id)
+        }
+    }
+
     public(package) fun create(
         voter: sui::object::ID,
         ve: sui::object::ID,
@@ -165,13 +173,17 @@ module distribution::reward {
             sui::table::borrow<sui::object::ID, sui::table::Table<u64, Checkpoint>>(&reward.checkpoints, lock_id),
             get_prior_balance_index(reward, lock_id, last_earn_epoch_time)
         );
-        let latest_epoch_time = if (last_earn_epoch_time >= distribution::common::epoch_start(prior_checkpoint.timestamp)) {
+        let latest_epoch_time = if (last_earn_epoch_time >= distribution::common::epoch_start(
+            prior_checkpoint.timestamp
+        )) {
             last_earn_epoch_time
         } else {
             distribution::common::epoch_start(prior_checkpoint.timestamp)
         };
         let mut next_epoch_time = latest_epoch_time;
-        let epochs_until_now = (distribution::common::epoch_start(distribution::common::current_timestamp(clock)) - latest_epoch_time) / 604800;
+        let epochs_until_now = (distribution::common::epoch_start(
+            distribution::common::current_timestamp(clock)
+        ) - latest_epoch_time) / 604800;
         if (epochs_until_now > 0) {
             let mut i = 0;
             while (i < epochs_until_now) {
@@ -189,7 +201,10 @@ module distribution::reward {
                 )) {
                     1
                 } else {
-                    let checkpoint_supply = sui::table::borrow<u64, SupplyCheckpoint>(&reward.supply_checkpoints, supply_index).supply;
+                    let checkpoint_supply = sui::table::borrow<u64, SupplyCheckpoint>(
+                        &reward.supply_checkpoints,
+                        supply_index
+                    ).supply;
                     let mut checkpoint_supply_mut = checkpoint_supply;
                     if (checkpoint_supply == 0) {
                         checkpoint_supply_mut = 1;
@@ -224,7 +239,11 @@ module distribution::reward {
     * Returns the index of the latest checkpoint that has timestamp lower or equal to the specified time.
     */
     public fun get_prior_balance_index(reward: &Reward, lock_id: sui::object::ID, time: u64): u64 {
-        let num_checkpoints = *sui::table::borrow<sui::object::ID, u64>(&reward.num_checkpoints, lock_id);
+        let num_checkpoints = if (sui::table::contains<sui::object::ID, u64>(&reward.num_checkpoints, lock_id)) {
+            *sui::table::borrow<sui::object::ID, u64>(&reward.num_checkpoints, lock_id)
+        } else {
+            0
+        };
         if (num_checkpoints == 0) {
             return 0
         };
@@ -268,7 +287,10 @@ module distribution::reward {
         if (num_checkpoints == 0) {
             return 0
         };
-        if (sui::table::borrow<u64, SupplyCheckpoint>(&reward.supply_checkpoints, num_checkpoints - 1).timestamp <= time) {
+        if (sui::table::borrow<u64, SupplyCheckpoint>(
+            &reward.supply_checkpoints,
+            num_checkpoints - 1
+        ).timestamp <= time) {
             return num_checkpoints - 1
         };
         if (sui::table::borrow<u64, SupplyCheckpoint>(&reward.supply_checkpoints, 0).timestamp > time) {
@@ -398,6 +420,44 @@ module distribution::reward {
 
     public(package) fun rewards_list_length(arg0: &Reward): u64 {
         arg0.rewards.size<std::type_name::TypeName>()
+    }
+
+    public fun rewards_per_epoch<CoinType>(reward: &Reward): &sui::table::Table<u64, u64> {
+        let coin_type_name = std::type_name::get<CoinType>();
+        assert!(
+            sui::table::contains<std::type_name::TypeName, sui::table::Table<u64, u64>>(
+                &reward.token_rewards_per_epoch,
+                coin_type_name
+            ),
+            9223372492121309183
+        );
+        sui::table::borrow<std::type_name::TypeName, sui::table::Table<u64, u64>>(
+            &reward.token_rewards_per_epoch,
+            coin_type_name
+        )
+    }
+
+    public fun rewards_this_epoch<CoinType>(reward: &Reward, clock: &sui::clock::Clock): u64 {
+        let coin_type_name = std::type_name::get<CoinType>();
+        if (!sui::table::contains<std::type_name::TypeName, sui::table::Table<u64, u64>>(
+            &reward.token_rewards_per_epoch,
+            coin_type_name
+        )) {
+            return 0
+        };
+        let epoch_start_time = distribution::common::epoch_start(distribution::common::current_timestamp(clock));
+        let rewards_per_epoch = sui::table::borrow<std::type_name::TypeName, sui::table::Table<u64, u64>>(
+            &reward.token_rewards_per_epoch,
+            coin_type_name
+        );
+        if (!sui::table::contains<u64, u64>(rewards_per_epoch, epoch_start_time)) {
+            return 0
+        };
+        *sui::table::borrow<u64, u64>(rewards_per_epoch, epoch_start_time)
+    }
+
+    public fun total_supply(reward: &Reward): u64 {
+        reward.total_supply
     }
 
     public fun ve(reward: &Reward): sui::object::ID {

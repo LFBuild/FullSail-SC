@@ -20,15 +20,20 @@ module distribution::reward_distributor {
         amount: u64,
     }
 
-    public struct RewardDistributor<phantom T0> has store, key {
+    public struct RewardDistributor<phantom SailCoinType> has store, key {
         id: sui::object::UID,
         start_time: u64,
         time_cursor_of: sui::table::Table<sui::object::ID, u64>,
         last_token_time: u64,
         tokens_per_period: sui::table::Table<u64, u64>,
         token_last_balance: u64,
-        balance: sui::balance::Balance<T0>,
+        balance: sui::balance::Balance<SailCoinType>,
         minter_active_period: u64,
+    }
+
+
+    public fun balance<SailCoinType>(reward: &RewardDistributor<SailCoinType>): u64 {
+        reward.balance.value<SailCoinType>()
     }
 
     public fun create<SailCoinType>(
@@ -65,11 +70,9 @@ module distribution::reward_distributor {
     fun checkpoint_token_internal<SailCoinType>(arg0: &mut RewardDistributor<SailCoinType>, arg1: u64) {
         let v0 = sui::balance::value<SailCoinType>(&arg0.balance);
         let v1 = v0 - arg0.token_last_balance;
-        arg0.token_last_balance = v0;
         let v2 = arg0.last_token_time;
         let mut v3 = v2;
         let v4 = arg1 - v2;
-        arg0.last_token_time = arg1;
         let mut v5 = distribution::common::to_period(v2);
         let mut v6 = 0;
         while (v6 < 20) {
@@ -84,19 +87,29 @@ module distribution::reward_distributor {
                     sui::table::add<u64, u64>(&mut arg0.tokens_per_period, v5, v7 + v1);
                     break
                 };
-                sui::table::add<u64, u64>(&mut arg0.tokens_per_period, v5, v7 + v1 * (arg1 - v3) / v4);
+                sui::table::add<u64, u64>(
+                    &mut arg0.tokens_per_period,
+                    v5,
+                    v7 + integer_mate::full_math_u64::mul_div_floor(v1, arg1 - v3, v4)
+                );
                 break
             };
             if (v4 == 0 && v8 == v3) {
                 sui::table::add<u64, u64>(&mut arg0.tokens_per_period, v5, v7 + v1);
             } else {
                 let v9 = v8 - v3;
-                sui::table::add<u64, u64>(&mut arg0.tokens_per_period, v5, v7 + v1 * v9 / v4);
+                sui::table::add<u64, u64>(
+                    &mut arg0.tokens_per_period,
+                    v5,
+                    v7 + integer_mate::full_math_u64::mul_div_floor(v1, v9, v4)
+                );
             };
             v3 = v8;
             v5 = v8;
             v6 = v6 + 1;
         };
+        arg0.token_last_balance = v0;
+        arg0.last_token_time = arg1;
         let v10 = EventCheckpointToken { to_distribute: v1 };
         sui::event::emit<EventCheckpointToken>(v10);
     }
@@ -112,7 +125,9 @@ module distribution::reward_distributor {
         assert!(
             reward_distributor.minter_active_period >= distribution::common::current_period(clock), EMinterNotActive);
         assert!(
-            distribution::voting_escrow::is_locked(distribution::voting_escrow::escrow_type<SailCoinType>(voting_escrow, lock_id)) == false,
+            distribution::voting_escrow::is_locked(
+                distribution::voting_escrow::escrow_type<SailCoinType>(voting_escrow, lock_id)
+            ) == false,
             EOnlyLockedVotingEscrowCanClaim
         );
         let period = distribution::common::to_period(reward_distributor.last_token_time);
@@ -129,7 +144,6 @@ module distribution::reward_distributor {
             } else {
                 distribution::voting_escrow::deposit_for<SailCoinType>(
                     voting_escrow,
-                    std::option::none<distribution::voting_escrow::DistributorCap>(),
                     lock,
                     sui::coin::from_balance<SailCoinType>(reward_distributor.balance.split<SailCoinType>(reward), ctx),
                     clock,
@@ -193,7 +207,10 @@ module distribution::reward_distributor {
         lock_id: sui::object::ID,
         max_period: u64
     ): (u64, u64, u64) {
-        let last_checkpoint_time = if (sui::table::contains<sui::object::ID, u64>(&reward_distributor.time_cursor_of, lock_id)) {
+        let last_checkpoint_time = if (sui::table::contains<sui::object::ID, u64>(
+            &reward_distributor.time_cursor_of,
+            lock_id
+        )) {
             *sui::table::borrow<sui::object::ID, u64>(&reward_distributor.time_cursor_of, lock_id)
         } else {
             0
@@ -206,7 +223,9 @@ module distribution::reward_distributor {
         };
         if (last_checkpoint_time == 0) {
             let user_point = distribution::voting_escrow::user_point_history<SailCoinType>(voting_escrow, lock_id, 1);
-            let initial_period = distribution::common::to_period(distribution::voting_escrow::user_point_ts(&user_point));
+            let initial_period = distribution::common::to_period(
+                distribution::voting_escrow::user_point_ts(&user_point)
+            );
             epoch_end = initial_period;
             epoch_start = initial_period;
         };
@@ -214,7 +233,7 @@ module distribution::reward_distributor {
             return (0, epoch_start, epoch_end)
         };
         if (epoch_end < reward_distributor.start_time) {
-            epoch_end = reward_distributor.start_time;
+            epoch_end = distribution::common::to_period(reward_distributor.start_time);
         };
         let mut i = 0;
         while (i < 50) {
@@ -243,7 +262,11 @@ module distribution::reward_distributor {
             } else {
                 0
             };
-            total_reward = total_reward + user_balance * period_reward_tokens / non_zero_total_supply;
+            total_reward = total_reward + integer_mate::full_math_u64::mul_div_floor(
+                user_balance,
+                period_reward_tokens,
+                non_zero_total_supply
+            );
             epoch_end = epoch_end + distribution::common::week();
             i = i + 1;
         };
@@ -255,6 +278,14 @@ module distribution::reward_distributor {
 
     fun init(otw: REWARD_DISTRIBUTOR, ctx: &mut sui::tx_context::TxContext) {
         sui::package::claim_and_keep<REWARD_DISTRIBUTOR>(otw, ctx);
+    }
+
+    public fun last_token_time<SailCoinType>(reward_distributor: &RewardDistributor<SailCoinType>): u64 {
+        reward_distributor.last_token_time
+    }
+
+    public fun minter_active_period<SailCoinType>(reward_distributor: &RewardDistributor<SailCoinType>): u64 {
+        reward_distributor.minter_active_period
     }
 
     /**
@@ -274,6 +305,13 @@ module distribution::reward_distributor {
         reward_distributor.minter_active_period = minter_active_period;
         let start_event = EventStart { dummy_field: false };
         sui::event::emit<EventStart>(start_event);
+    }
+
+    public fun tokens_per_period<SailCoinType>(
+        reward_distributor: &RewardDistributor<SailCoinType>,
+        period_start_time: u64
+    ): u64 {
+        *sui::table::borrow<u64, u64>(&reward_distributor.tokens_per_period, period_start_time)
     }
 
     public(package) fun update_active_period<SailCoinType>(

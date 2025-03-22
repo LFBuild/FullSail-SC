@@ -56,15 +56,8 @@ module distribution::voting_dao {
             )
         };
         let v2 = v1;
-        assert!(
-            sui::table::length<u64, Checkpoint>(
-                sui::table::borrow<sui::object::ID, sui::table::Table<u64, Checkpoint>>(&arg0.checkpoints, arg1)
-            ) == v0,
-            9223372307437715455
-        );
         let mut v3 = create_checkpoint();
         v3.from_timestamp = get_block_timestamp(arg4);
-        assert!(v2.owner != @0x0, 9223372346092421119);
         v3.owner = v2.owner;
         let v4 = if (arg3) {
             v2.delegated_balance + arg2
@@ -79,23 +72,35 @@ module distribution::voting_dao {
         v3.delegated_balance = v4;
         v3.delegatee = v2.delegatee;
         if (is_checkpoint_in_new_block(arg0, arg1, get_block_timestamp(arg4))) {
-            let checkpoint_value = sui::table::remove<sui::object::ID, u64>(&mut arg0.num_checkpoints, arg1) + 1;
-            sui::table::add<sui::object::ID, u64>(&mut arg0.num_checkpoints, arg1, checkpoint_value);
+            let v6 = if (sui::table::contains<sui::object::ID, u64>(&arg0.num_checkpoints, arg1)) {
+                sui::table::remove<sui::object::ID, u64>(&mut arg0.num_checkpoints, arg1)
+            } else {
+                0
+            };
+            let v7 = v6 + 1;
+            sui::table::add<sui::object::ID, u64>(&mut arg0.num_checkpoints, arg1, v7);
+            if (!sui::table::contains<sui::object::ID, sui::table::Table<u64, Checkpoint>>(&arg0.checkpoints, arg1)) {
+                sui::table::add<sui::object::ID, sui::table::Table<u64, Checkpoint>>(
+                    &mut arg0.checkpoints,
+                    arg1,
+                    sui::table::new<u64, Checkpoint>(arg5)
+                );
+            };
             sui::table::add<u64, Checkpoint>(
                 sui::table::borrow_mut<sui::object::ID, sui::table::Table<u64, Checkpoint>>(
                     &mut arg0.checkpoints,
                     arg1
                 ),
-                v0,
+                v7,
                 v3
             );
         } else {
-            let v6 = sui::table::borrow_mut<sui::object::ID, sui::table::Table<u64, Checkpoint>>(
+            let v8 = sui::table::borrow_mut<sui::object::ID, sui::table::Table<u64, Checkpoint>>(
                 &mut arg0.checkpoints,
                 arg1
             );
-            sui::table::remove<u64, Checkpoint>(v6, v0 - 1);
-            sui::table::add<u64, Checkpoint>(v6, v0 - 1, v3);
+            sui::table::remove<u64, Checkpoint>(v8, v0 - 1);
+            sui::table::add<u64, Checkpoint>(v8, v0 - 1, v3);
         };
     }
 
@@ -134,7 +139,7 @@ module distribution::voting_dao {
             sui::table::length<u64, Checkpoint>(
                 sui::table::borrow<sui::object::ID, sui::table::Table<u64, Checkpoint>>(&arg0.checkpoints, arg1)
             ) == v0,
-            9223372608085426175
+            9223372642445164543
         );
         checkpoint_delegatee(arg0, v2.delegatee, arg2, false, arg5, arg6);
         let mut v3 = create_checkpoint();
@@ -143,8 +148,12 @@ module distribution::voting_dao {
         v3.delegatee = arg3;
         v3.owner = arg4;
         if (is_checkpoint_in_new_block(arg0, arg1, get_block_timestamp(arg5))) {
-            let checkpoint_value = sui::table::remove<sui::object::ID, u64>(&mut arg0.num_checkpoints, arg1) + 1;
-            sui::table::add<sui::object::ID, u64>(&mut arg0.num_checkpoints, arg1, checkpoint_value);
+            let num_checkpoints_new = sui::table::remove<sui::object::ID, u64>(&mut arg0.num_checkpoints, arg1) + 1;
+            sui::table::add<sui::object::ID, u64>(
+                &mut arg0.num_checkpoints,
+                arg1,
+                num_checkpoints_new,
+            );
             sui::table::add<u64, Checkpoint>(
                 sui::table::borrow_mut<sui::object::ID, sui::table::Table<u64, Checkpoint>>(
                     &mut arg0.checkpoints,
@@ -198,7 +207,7 @@ module distribution::voting_dao {
         *sui::table::borrow<sui::object::ID, sui::object::ID>(&arg0.delegates, arg1)
     }
 
-    fun get_block_timestamp(arg0: &sui::clock::Clock): u64 {
+    public fun get_block_timestamp(arg0: &sui::clock::Clock): u64 {
         sui::clock::timestamp_ms(arg0)
     }
 
