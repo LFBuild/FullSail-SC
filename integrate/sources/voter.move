@@ -27,11 +27,19 @@ module integrate::voter {
 
     public entry fun create<SailCoinType>(
         publisher: &sui::package::Publisher,
+        global_config: sui::object::ID,
+        distribution_config: sui::object::ID,
         ctx: &mut sui::tx_context::TxContext
     ) {
         let mut supported_coins = std::vector::empty<std::type_name::TypeName>();
         std::vector::push_back<std::type_name::TypeName>(&mut supported_coins, std::type_name::get<SailCoinType>());
-        let (voter, notify_reward_cap) = distribution::voter::create<SailCoinType>(publisher, supported_coins, ctx);
+        let (voter, notify_reward_cap) = distribution::voter::create<SailCoinType>(
+            publisher,
+            global_config,
+            distribution_config,
+            supported_coins,
+            ctx
+        );
         sui::transfer::public_share_object<distribution::voter::Voter<SailCoinType>>(voter);
         sui::transfer::public_transfer<distribution::notify_reward_cap::NotifyRewardCap>(
             notify_reward_cap,
@@ -41,6 +49,7 @@ module integrate::voter {
 
     public entry fun create_gauge<CoinTypeA, CoinTypeB, SailCoinType>(
         voter: &mut distribution::voter::Voter<SailCoinType>,
+        distribtuion_config: &mut distribution::distribution_config::DistributionConfig,
         create_cap: &gauge_cap::gauge_cap::CreateCap,
         governor_cap: &distribution::voter_cap::GovernorCap,
         voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
@@ -51,6 +60,7 @@ module integrate::voter {
         sui::transfer::public_share_object<distribution::gauge::Gauge<CoinTypeA, CoinTypeB, SailCoinType>>(
             distribution::voter::create_gauge<CoinTypeA, CoinTypeB, SailCoinType>(
                 voter,
+                distribtuion_config,
                 create_cap,
                 governor_cap,
                 voting_escrow,
@@ -64,6 +74,7 @@ module integrate::voter {
     public entry fun poke<SailCoinType>(
         voter: &mut distribution::voter::Voter<SailCoinType>,
         voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        distribtuion_config: &distribution::distribution_config::DistributionConfig,
         lock: &distribution::voting_escrow::Lock,
         clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext
@@ -71,6 +82,7 @@ module integrate::voter {
         distribution::voter::poke<SailCoinType>(
             voter,
             voting_escrow,
+            distribtuion_config,
             lock,
             clock,
             ctx
@@ -80,6 +92,7 @@ module integrate::voter {
     public entry fun vote<SailCoinType>(
         voter: &mut distribution::voter::Voter<SailCoinType>,
         voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        distribtuion_config: &distribution::distribution_config::DistributionConfig,
         lock: &distribution::voting_escrow::Lock,
         pools: vector<sui::object::ID>,
         weights: vector<u64>,
@@ -89,6 +102,7 @@ module integrate::voter {
         distribution::voter::vote<SailCoinType>(
             voter,
             voting_escrow,
+            distribtuion_config,
             lock,
             pools,
             weights,
@@ -336,6 +350,7 @@ module integrate::voter {
     public entry fun distribute<CoinTypeA, CoinTypeB, SailCoinType>(
         minter: &mut distribution::minter::Minter<SailCoinType>,
         voter: &mut distribution::voter::Voter<SailCoinType>,
+        distribtuion_config: &distribution::distribution_config::DistributionConfig,
         voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
         reward_distributor: &mut distribution::reward_distributor::RewardDistributor<SailCoinType>,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB, SailCoinType>,
@@ -360,7 +375,14 @@ module integrate::voter {
         let event_distribute_reward = EventDistributeReward {
             sender: sui::tx_context::sender(ctx),
             gauge: sui::object::id<distribution::gauge::Gauge<CoinTypeA, CoinTypeB, SailCoinType>>(gauge),
-            amount: distribution::voter::distribute_gauge<CoinTypeA, CoinTypeB, SailCoinType>(voter, gauge, pool, clock, ctx),
+            amount: distribution::voter::distribute_gauge<CoinTypeA, CoinTypeB, SailCoinType>(
+                voter,
+                distribtuion_config,
+                gauge,
+                pool,
+                clock,
+                ctx
+            ),
         };
         sui::event::emit<EventDistributeReward>(event_distribute_reward);
     }

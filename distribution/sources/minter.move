@@ -184,8 +184,8 @@ module distribution::minter {
             epoch_emissions: 0,
             minter_cap,
             base_supply: 10000000000000, // 10M coins
-            epoch_grow_rate: 10300,
-            epoch_decay_rate: 9900,
+            epoch_grow_rate: 300,
+            epoch_decay_rate: 100,
             grow_epochs: 14,
             decay_epochs: 67,
             tail_emission_rate: 67,
@@ -306,6 +306,10 @@ module distribution::minter {
 
     public fun team_emission_rate<SailCoinType>(minter: &Minter<SailCoinType>): u64 {
         minter.team_emission_rate
+    }
+
+    public fun tail_emission_rate<SailCoinType>(minter: &Minter<SailCoinType>) : u64 {
+        minter.tail_emission_rate
     }
 
     public fun pause<SailCoinType>(minter: &mut Minter<SailCoinType>, admin_cap: &AdminCap) {

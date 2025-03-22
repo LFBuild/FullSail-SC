@@ -44,10 +44,10 @@ module distribution::voter_cap {
         }
     }
 
-    public fun drop_epoch_grovernor_cap(arg0: EpochGovernorCap) {
+    public fun drop_epoch_governor_cap(arg0: EpochGovernorCap) {
         let EpochGovernorCap {
-            id: v0,
-            voter_id: _,
+            id       : v0,
+            voter_id : _,
         } = arg0;
         sui::object::delete(v0);
     }

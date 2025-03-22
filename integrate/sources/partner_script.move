@@ -20,12 +20,17 @@ module integrate::partner_script {
         clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext
     ) {
+        let partner_start_time = if (start_time == 0) {
+            sui::clock::timestamp_ms(clock) / 1000
+        } else {
+            start_time
+        };
         clmm_pool::partner::create_partner(
             global_config,
             partners,
             name,
             ref_fee_rate,
-            start_time,
+            partner_start_time,
             end_time,
             recipient,
             clock,

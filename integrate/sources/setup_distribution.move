@@ -1,6 +1,8 @@
 module integrate::setup_distribution {
     public entry fun create<SailCoinType>(
         publisher: &sui::package::Publisher,
+        global_config: &clmm_pool::config::GlobalConfig,
+        distribtuion_config: &distribution::distribution_config::DistributionConfig,
         team_wallet: address,
         clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext
@@ -18,6 +20,8 @@ module integrate::setup_distribution {
         );
         let (voter, notify_reward_cap) = distribution::voter::create<SailCoinType>(
             publisher,
+            sui::object::id(global_config),
+            sui::object::id(distribtuion_config),
             supported_coins,
             ctx
         );

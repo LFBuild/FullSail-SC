@@ -81,26 +81,32 @@ module distribution::fee_voting_reward {
         lock: &distribution::voting_escrow::Lock,
         clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext
-    ) {
+    ): u64 {
         let lock_id = sui::object::id<distribution::voting_escrow::Lock>(lock);
         let lock_owner = distribution::voting_escrow::owner_of<SailCoinType>(voting_escrow, lock_id);
-        let mut reward_balance = distribution::reward::get_reward_internal<FeeCoinType>(
+        let mut reward_balance_opt = distribution::reward::get_reward_internal<FeeCoinType>(
             &mut reward.reward,
             lock_owner,
             lock_id,
             clock,
             ctx
         );
-        if (std::option::is_some<sui::balance::Balance<FeeCoinType>>(&reward_balance)) {
+        let reward_amount = if (std::option::is_some<sui::balance::Balance<FeeCoinType>>(&reward_balance_opt)) {
+            let reward_balance = std::option::extract<sui::balance::Balance<FeeCoinType>>(&mut reward_balance_opt);
+            let amount = reward_balance.value();
             sui::transfer::public_transfer<sui::coin::Coin<FeeCoinType>>(
                 sui::coin::from_balance<FeeCoinType>(
-                    std::option::extract<sui::balance::Balance<FeeCoinType>>(&mut reward_balance),
+                    reward_balance,
                     ctx
                 ),
                 lock_owner
             );
+            amount
+        } else {
+            0
         };
-        std::option::destroy_none<sui::balance::Balance<FeeCoinType>>(reward_balance);
+        std::option::destroy_none<sui::balance::Balance<FeeCoinType>>(reward_balance_opt);
+        reward_amount
     }
 
     public fun notify_reward_amount<FeeCoinType>(

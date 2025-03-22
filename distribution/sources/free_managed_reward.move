@@ -137,6 +137,12 @@ module distribution::free_managed_reward {
             );
             distribution::reward::add_reward_token(&mut reward.reward, coin_type_name);
         };
+        if (std::option::is_some<distribution::whitelisted_tokens::WhitelistedToken>(&whitelisted_token)) {
+            distribution::whitelisted_tokens::validate<RewardCoinType>(
+                std::option::extract<distribution::whitelisted_tokens::WhitelistedToken>(&mut whitelisted_token),
+                distribution::reward::voter(&reward.reward)
+            );
+        };
         std::option::destroy_none<distribution::whitelisted_tokens::WhitelistedToken>(whitelisted_token);
         distribution::reward::notify_reward_amount_internal<RewardCoinType>(
             &mut reward.reward,
