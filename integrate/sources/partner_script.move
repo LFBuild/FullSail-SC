@@ -4,7 +4,7 @@ module integrate::partner_script {
         global_config: &clmm_pool::config::GlobalConfig,
         partner_cap: &clmm_pool::partner::PartnerCap,
         partner: &mut clmm_pool::partner::Partner,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         clmm_pool::partner::claim_ref_fee<T0>(global_config, partner_cap, partner, ctx);
     }
@@ -18,7 +18,7 @@ module integrate::partner_script {
         end_time: u64,
         recipient: address,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         let partner_start_time = if (start_time == 0) {
             clock.timestamp_ms() / 1000
@@ -42,7 +42,7 @@ module integrate::partner_script {
         global_config: &clmm_pool::config::GlobalConfig,
         partner: &mut clmm_pool::partner::Partner,
         new_fee_rate: u64,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         clmm_pool::partner::update_ref_fee_rate(global_config, partner, new_fee_rate, ctx);
     }
@@ -53,7 +53,7 @@ module integrate::partner_script {
         start_time: u64,
         end_time: u64,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         clmm_pool::partner::update_time_range(global_config, partner, start_time, end_time, clock, ctx);
     }

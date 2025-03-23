@@ -1,11 +1,11 @@
 module distribution::gauge_to_fee {
     public struct GaugeToFeeProof {
-        voter: sui::object::ID,
-        gauge: sui::object::ID,
-        reward: sui::object::ID,
+        voter: ID,
+        gauge: ID,
+        reward: ID,
     }
 
-    public fun consume(gauge_to_fee_proof: GaugeToFeeProof): (sui::object::ID, sui::object::ID, sui::object::ID) {
+    public fun consume(gauge_to_fee_proof: GaugeToFeeProof): (ID, ID, ID) {
         let GaugeToFeeProof {
             voter,
             gauge,
@@ -14,7 +14,7 @@ module distribution::gauge_to_fee {
         (voter, gauge, reward)
     }
 
-    public(package) fun issue(voter: sui::object::ID, gauge: sui::object::ID, reward: sui::object::ID): GaugeToFeeProof {
+    public(package) fun issue(voter: ID, gauge: ID, reward: ID): GaugeToFeeProof {
         GaugeToFeeProof {
             voter,
             gauge,

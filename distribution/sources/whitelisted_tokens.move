@@ -1,23 +1,23 @@
 module distribution::whitelisted_tokens {
     public struct WhitelistedTokenPair {
-        voter: sui::object::ID,
+        voter: ID,
         token0: std::type_name::TypeName,
         token1: std::type_name::TypeName,
     }
 
     public struct WhitelistedToken {
-        voter: sui::object::ID,
+        voter: ID,
         token: std::type_name::TypeName,
     }
 
-    public(package) fun create<T0>(arg0: sui::object::ID): WhitelistedToken {
+    public(package) fun create<T0>(arg0: ID): WhitelistedToken {
         WhitelistedToken {
             voter: arg0,
             token: std::type_name::get<T0>(),
         }
     }
 
-    public(package) fun create_pair<T0, T1>(arg0: sui::object::ID): WhitelistedTokenPair {
+    public(package) fun create_pair<T0, T1>(arg0: ID): WhitelistedTokenPair {
         WhitelistedTokenPair {
             voter: arg0,
             token0: std::type_name::get<T0>(),
@@ -25,7 +25,7 @@ module distribution::whitelisted_tokens {
         }
     }
 
-    public fun validate<T0>(arg0: WhitelistedToken, arg1: sui::object::ID) {
+    public fun validate<T0>(arg0: WhitelistedToken, arg1: ID) {
         let WhitelistedToken {
             voter: v0,
             token: v1,
@@ -36,7 +36,7 @@ module distribution::whitelisted_tokens {
         };
     }
 
-    public fun validate_pair<T0, T1>(arg0: WhitelistedTokenPair, arg1: sui::object::ID) {
+    public fun validate_pair<T0, T1>(arg0: WhitelistedTokenPair, arg1: ID) {
         let WhitelistedTokenPair {
             voter: v0,
             token0: v1,

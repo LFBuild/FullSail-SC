@@ -12,7 +12,7 @@ module integrate::router_with_partner {
         sqrt_price_limit_ab: u128,
         sqrt_price_limit_bc: u128,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ): (sui::coin::Coin<CoinTypeA>, sui::coin::Coin<CoinTypeC>) {
         if (by_amount_in) {
             let (coin_a_out, intermediate_coin_b) = swap_with_partner<CoinTypeA, CoinTypeB>(
@@ -98,7 +98,7 @@ module integrate::router_with_partner {
         sqrt_price_limit_ab: u128,
         sqrt_price_limit_cb: u128,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ): (sui::coin::Coin<CoinTypeA>, sui::coin::Coin<CoinTypeC>) {
         if (by_amount_in) {
             let (coin_a_out, intermediate_coin_b) = swap_with_partner<CoinTypeA, CoinTypeB>(
@@ -184,7 +184,7 @@ module integrate::router_with_partner {
         sqrt_price_limit_ba: u128,
         sqrt_price_limit_bc: u128,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ): (sui::coin::Coin<CoinTypeA>, sui::coin::Coin<CoinTypeC>) {
         if (by_amount_in) {
             let (intemediate_coin_b, coin_a_out) = swap_with_partner<CoinTypeB, CoinTypeA>(
@@ -271,7 +271,7 @@ module integrate::router_with_partner {
         sqrt_price_limit_ba: u128,
         sqrt_price_limit_bc: u128,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ): (sui::coin::Coin<CoinTypeA>, sui::coin::Coin<CoinTypeC>) {
         if (by_amount_in) {
             let (intermediate_coin_b, coin_a_out) = swap_with_partner<CoinTypeB, CoinTypeA>(
@@ -356,7 +356,7 @@ module integrate::router_with_partner {
         sqrt_price_limit: u128,
         use_full_input: bool,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ): (sui::coin::Coin<CoinTypeA>, sui::coin::Coin<CoinTypeB>) {
         if (by_amount_in && use_full_input) {
             let amount_to_use = if (a2b) {

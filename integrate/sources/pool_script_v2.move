@@ -11,7 +11,7 @@ module integrate::pool_script_v2 {
         amount_limit: u64,
         sqrt_price_limit: u128,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         let (coin_a_out, coin_b_out, receipt) = clmm_pool::pool::flash_swap<CoinTypeA, CoinTypeB>(
             global_config,
@@ -49,8 +49,8 @@ module integrate::pool_script_v2 {
         );
         coin_b.join(sui::coin::from_balance<CoinTypeB>(coin_b_out, ctx));
         coin_a.join(sui::coin::from_balance<CoinTypeA>(coin_a_out, ctx));
-        integrate::utils::send_coin<CoinTypeA>(coin_a, sui::tx_context::sender(ctx));
-        integrate::utils::send_coin<CoinTypeB>(coin_b, sui::tx_context::sender(ctx));
+        integrate::utils::send_coin<CoinTypeA>(coin_a, tx_context::sender(ctx));
+        integrate::utils::send_coin<CoinTypeB>(coin_b, tx_context::sender(ctx));
     }
 
     public entry fun create_pool<CoinTypeA, CoinTypeB>(
@@ -60,7 +60,7 @@ module integrate::pool_script_v2 {
         current_sqrt_price: u128,
         url: std::string::String,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         pools.create_pool<CoinTypeA, CoinTypeB>(global_config, tick_spacing, current_sqrt_price, url, clock, ctx);
     }
@@ -79,7 +79,7 @@ module integrate::pool_script_v2 {
         liquidity_amount_b: u64,
         fix_amount_a: bool,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         let (position, remaining_coin_a, remaining_coin_b) = pools.create_pool_with_liquidity(
             global_config,
@@ -96,9 +96,9 @@ module integrate::pool_script_v2 {
             clock,
             ctx
         );
-        integrate::utils::send_coin<CoinTypeA>(remaining_coin_a, sui::tx_context::sender(ctx));
-        integrate::utils::send_coin<CoinTypeB>(remaining_coin_b, sui::tx_context::sender(ctx));
-        sui::transfer::public_transfer<clmm_pool::position::Position>(position, sui::tx_context::sender(ctx));
+        integrate::utils::send_coin<CoinTypeA>(remaining_coin_a, tx_context::sender(ctx));
+        integrate::utils::send_coin<CoinTypeB>(remaining_coin_b, tx_context::sender(ctx));
+        transfer::public_transfer<clmm_pool::position::Position>(position, tx_context::sender(ctx));
     }
 
     public entry fun add_liquidity<CoinTypeA, CoinTypeB>(
@@ -111,7 +111,7 @@ module integrate::pool_script_v2 {
         max_amount_b: u64,
         delta_liquidity: u128,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         let receipt = clmm_pool::pool::add_liquidity<CoinTypeA, CoinTypeB>(
             global_config,
@@ -139,7 +139,7 @@ module integrate::pool_script_v2 {
         min_amount_a: u64,
         min_amount_b: u64,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         let liquidity = position.liquidity();
         if (liquidity > 0) {
@@ -163,7 +163,7 @@ module integrate::pool_script_v2 {
         position: &mut clmm_pool::position::Position,
         mut coin_a: sui::coin::Coin<CoinTypeA>,
         mut coin_b: sui::coin::Coin<CoinTypeB>,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         let (collected_fee_a, collected_fee_b) = clmm_pool::pool::collect_fee<CoinTypeA, CoinTypeB>(
             global_config,
@@ -173,8 +173,8 @@ module integrate::pool_script_v2 {
         );
         coin_a.join(sui::coin::from_balance<CoinTypeA>(collected_fee_a, ctx));
         coin_b.join(sui::coin::from_balance<CoinTypeB>(collected_fee_b, ctx));
-        integrate::utils::send_coin<CoinTypeA>(coin_a, sui::tx_context::sender(ctx));
-        integrate::utils::send_coin<CoinTypeB>(coin_b, sui::tx_context::sender(ctx));
+        integrate::utils::send_coin<CoinTypeA>(coin_a, tx_context::sender(ctx));
+        integrate::utils::send_coin<CoinTypeB>(coin_b, tx_context::sender(ctx));
     }
 
     public entry fun collect_protocol_fee<CoinTypeA, CoinTypeB>(
@@ -182,7 +182,7 @@ module integrate::pool_script_v2 {
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         mut coin_a: sui::coin::Coin<CoinTypeA>,
         mut coin_b: sui::coin::Coin<CoinTypeB>,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         let (collected_fee_a, collected_fee_b) = clmm_pool::pool::collect_protocol_fee<CoinTypeA, CoinTypeB>(
             global_config,
@@ -191,8 +191,8 @@ module integrate::pool_script_v2 {
         );
         coin_a.join(sui::coin::from_balance<CoinTypeA>(collected_fee_a, ctx));
         coin_b.join(sui::coin::from_balance<CoinTypeB>(collected_fee_b, ctx));
-        integrate::utils::send_coin<CoinTypeA>(coin_a, sui::tx_context::sender(ctx));
-        integrate::utils::send_coin<CoinTypeB>(coin_b, sui::tx_context::sender(ctx));
+        integrate::utils::send_coin<CoinTypeA>(coin_a, tx_context::sender(ctx));
+        integrate::utils::send_coin<CoinTypeB>(coin_b, tx_context::sender(ctx));
     }
 
     public entry fun collect_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
@@ -202,7 +202,7 @@ module integrate::pool_script_v2 {
         rewarder: &mut clmm_pool::rewarder::RewarderGlobalVault,
         mut reward_coin: sui::coin::Coin<RewardCoinType>,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         reward_coin.join<RewardCoinType>(sui::coin::from_balance<RewardCoinType>(
             clmm_pool::pool::collect_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
@@ -215,13 +215,13 @@ module integrate::pool_script_v2 {
             ),
             ctx
         ));
-        integrate::utils::send_coin<RewardCoinType>(reward_coin, sui::tx_context::sender(ctx));
+        integrate::utils::send_coin<RewardCoinType>(reward_coin, tx_context::sender(ctx));
     }
 
     public entry fun initialize_rewarder<CoinTypeA, CoinTypeB, RewardCoinType>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         clmm_pool::pool::initialize_rewarder<CoinTypeA, CoinTypeB, RewardCoinType>(global_config, pool, ctx);
     }
@@ -231,9 +231,9 @@ module integrate::pool_script_v2 {
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         tick_lower: u32,
         tick_upper: u32,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
-        sui::transfer::public_transfer<clmm_pool::position::Position>(
+        transfer::public_transfer<clmm_pool::position::Position>(
             clmm_pool::pool::open_position<CoinTypeA, CoinTypeB>(
                 global_config,
                 pool,
@@ -241,7 +241,7 @@ module integrate::pool_script_v2 {
                 tick_upper,
                 ctx
             ),
-            sui::tx_context::sender(ctx)
+            tx_context::sender(ctx)
         );
     }
 
@@ -253,7 +253,7 @@ module integrate::pool_script_v2 {
         min_amount_a: u64,
         min_amount_b: u64,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         let (removed_a, removed_b) = clmm_pool::pool::remove_liquidity<CoinTypeA, CoinTypeB>(
             global_config,
@@ -276,11 +276,11 @@ module integrate::pool_script_v2 {
         mut_removed_b.join<CoinTypeB>(collected_fee_b);
         integrate::utils::send_coin<CoinTypeA>(
             sui::coin::from_balance<CoinTypeA>(mut_removed_a, ctx),
-            sui::tx_context::sender(ctx)
+            tx_context::sender(ctx)
         );
         integrate::utils::send_coin<CoinTypeB>(
             sui::coin::from_balance<CoinTypeB>(mut_removed_b, ctx),
-            sui::tx_context::sender(ctx)
+            tx_context::sender(ctx)
         );
     }
 
@@ -292,7 +292,7 @@ module integrate::pool_script_v2 {
         mut coin_b: sui::coin::Coin<CoinTypeB>,
         max_amount_a: u64,
         max_amount_b: u64,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         let (pay_amount_a, pay_amount_b) = receipt.add_liquidity_pay_amount();
         assert!(pay_amount_a <= max_amount_a, 0);
@@ -304,8 +304,8 @@ module integrate::pool_script_v2 {
             coin_b.split<CoinTypeB>(pay_amount_b, ctx).into_balance(),
             receipt
         );
-        integrate::utils::send_coin<CoinTypeA>(coin_a, sui::tx_context::sender(ctx));
-        integrate::utils::send_coin<CoinTypeB>(coin_b, sui::tx_context::sender(ctx));
+        integrate::utils::send_coin<CoinTypeA>(coin_a, tx_context::sender(ctx));
+        integrate::utils::send_coin<CoinTypeB>(coin_b, tx_context::sender(ctx));
     }
 
     public entry fun set_display<CoinTypeA, CoinTypeB>(
@@ -317,7 +317,7 @@ module integrate::pool_script_v2 {
         link: std::string::String,
         project_url: std::string::String,
         creator: std::string::String,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         clmm_pool::pool::set_display<CoinTypeA, CoinTypeB>(
             global_config,
@@ -336,7 +336,7 @@ module integrate::pool_script_v2 {
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         fee_rate: u64,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         clmm_pool::pool::update_fee_rate<CoinTypeA, CoinTypeB>(
             global_config,
@@ -350,7 +350,7 @@ module integrate::pool_script_v2 {
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         url: std::string::String,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         clmm_pool::pool::update_position_url<CoinTypeA, CoinTypeB>(global_config, pool, url, ctx);
     }
@@ -365,7 +365,7 @@ module integrate::pool_script_v2 {
         amount_b: u64,
         fix_amount_a: bool,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         let amount_in = if (fix_amount_a) {
             amount_a
@@ -403,7 +403,7 @@ module integrate::pool_script_v2 {
         max_amount_b: u64,
         delta_liquidity: u128,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         let mut position = clmm_pool::pool::open_position<CoinTypeA, CoinTypeB>(
             global_config,
@@ -429,7 +429,7 @@ module integrate::pool_script_v2 {
             max_amount_b,
             ctx
         );
-        sui::transfer::public_transfer<clmm_pool::position::Position>(position, sui::tx_context::sender(ctx));
+        transfer::public_transfer<clmm_pool::position::Position>(position, tx_context::sender(ctx));
     }
 
     public entry fun open_position_with_liquidity_by_fix_coin<CoinTypeA, CoinTypeB>(
@@ -443,7 +443,7 @@ module integrate::pool_script_v2 {
         amount_b: u64,
         fix_amount_a: bool,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         let mut position = clmm_pool::pool::open_position<CoinTypeA, CoinTypeB>(
             global_config,
@@ -475,13 +475,13 @@ module integrate::pool_script_v2 {
             amount_b,
             ctx
         );
-        sui::transfer::public_transfer<clmm_pool::position::Position>(position, sui::tx_context::sender(ctx));
+        transfer::public_transfer<clmm_pool::position::Position>(position, tx_context::sender(ctx));
     }
 
     public entry fun pause_pool<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         clmm_pool::pool::pause<CoinTypeA, CoinTypeB>(global_config, pool, ctx);
     }
@@ -496,7 +496,7 @@ module integrate::pool_script_v2 {
         amount_limit: u64,
         sqrt_price_limit: u128,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         swap<CoinTypeA, CoinTypeB>(
             global_config,
@@ -524,7 +524,7 @@ module integrate::pool_script_v2 {
         amount_limit: u64,
         sqrt_price_limit: u128,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         swap_with_partner<CoinTypeA, CoinTypeB>(
             global_config,
@@ -552,7 +552,7 @@ module integrate::pool_script_v2 {
         amount_limit: u64,
         sqrt_price_limit: u128,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         swap<CoinTypeA, CoinTypeB>(
             global_config,
@@ -580,7 +580,7 @@ module integrate::pool_script_v2 {
         amount_limit: u64,
         sqrt_price_limit: u128,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         swap_with_partner<CoinTypeA, CoinTypeB>(
             global_config,
@@ -610,7 +610,7 @@ module integrate::pool_script_v2 {
         amount_limit: u64,
         sqrt_price_limit: u128,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         let (coin_a_out, coin_b_out, swap_receipt) = clmm_pool::pool::flash_swap_with_partner<CoinTypeA, CoinTypeB>(
             global_config,
@@ -650,14 +650,14 @@ module integrate::pool_script_v2 {
         );
         coin_b.join(sui::coin::from_balance<CoinTypeB>(coin_b_out, ctx));
         coin_a.join(sui::coin::from_balance<CoinTypeA>(coin_a_out, ctx));
-        integrate::utils::send_coin<CoinTypeA>(coin_a, sui::tx_context::sender(ctx));
-        integrate::utils::send_coin<CoinTypeB>(coin_b, sui::tx_context::sender(ctx));
+        integrate::utils::send_coin<CoinTypeA>(coin_a, tx_context::sender(ctx));
+        integrate::utils::send_coin<CoinTypeB>(coin_b, tx_context::sender(ctx));
     }
 
     public entry fun unpause_pool<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         clmm_pool::pool::unpause<CoinTypeA, CoinTypeB>(global_config, pool, ctx);
     }
@@ -668,7 +668,7 @@ module integrate::pool_script_v2 {
         rewarder_global_vault: &clmm_pool::rewarder::RewarderGlobalVault,
         emissions_per_second: u128,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         clmm_pool::pool::update_emission<CoinTypeA, CoinTypeB, RewardCoinType>(
             global_config,

@@ -9,7 +9,7 @@ module integrate::pool_creator_v2 {
         coin_a: &mut sui::coin::Coin<CoinTypeA>,
         coin_b: &mut sui::coin::Coin<CoinTypeB>,
         fix_amount_a: bool,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ): (sui::coin::Coin<CoinTypeA>, sui::coin::Coin<CoinTypeB>) {
         let value_a = coin_a.value<CoinTypeA>();
         let value_b = coin_b.value<CoinTypeB>();
@@ -45,7 +45,7 @@ module integrate::pool_creator_v2 {
         _metadata_b: &sui::coin::CoinMetadata<CoinTypeB>,
         fix_amount_a: bool,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         let (coin_a_for_pool, coin_b_for_pool) = build_init_position_arg<CoinTypeA, CoinTypeB>(
             initialize_sqrt_price,
@@ -75,7 +75,7 @@ module integrate::pool_creator_v2 {
         );
         remaining_coin_a.destroy_zero();
         remaining_coin_b.destroy_zero();
-        sui::transfer::public_transfer<clmm_pool::position::Position>(position, sui::tx_context::sender(ctx));
+        transfer::public_transfer<clmm_pool::position::Position>(position, tx_context::sender(ctx));
     }
 }
 

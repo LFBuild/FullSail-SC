@@ -14,16 +14,16 @@ module distribution::reward_distributor {
     }
 
     public struct EventClaimed has copy, drop, store {
-        id: sui::object::ID,
+        id: ID,
         epoch_start: u64,
         epoch_end: u64,
         amount: u64,
     }
 
     public struct RewardDistributor<phantom SailCoinType> has store, key {
-        id: sui::object::UID,
+        id: UID,
         start_time: u64,
-        time_cursor_of: sui::table::Table<sui::object::ID, u64>,
+        time_cursor_of: sui::table::Table<ID, u64>,
         last_token_time: u64,
         tokens_per_period: sui::table::Table<u64, u64>,
         token_last_balance: u64,
@@ -39,20 +39,20 @@ module distribution::reward_distributor {
     public fun create<SailCoinType>(
         _publisher: &sui::package::Publisher,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ): (RewardDistributor<SailCoinType>, distribution::reward_distributor_cap::RewardDistributorCap) {
-        let uid = sui::object::new(ctx);
+        let uid = object::new(ctx);
         let reward_distributor = RewardDistributor<SailCoinType> {
             id: uid,
             start_time: distribution::common::current_timestamp(clock),
-            time_cursor_of: sui::table::new<sui::object::ID, u64>(ctx),
+            time_cursor_of: sui::table::new<ID, u64>(ctx),
             last_token_time: distribution::common::current_timestamp(clock),
             tokens_per_period: sui::table::new<u64, u64>(ctx),
             token_last_balance: 0,
             balance: sui::balance::zero<SailCoinType>(),
             minter_active_period: 0,
         };
-        let id = *sui::object::uid_as_inner(&reward_distributor.id);
+        let id = *object::uid_as_inner(&reward_distributor.id);
         (reward_distributor, distribution::reward_distributor_cap::create(id, ctx))
     }
 
@@ -62,7 +62,7 @@ module distribution::reward_distributor {
         arg2: sui::coin::Coin<SailCoinType>,
         arg3: &sui::clock::Clock
     ) {
-        arg1.validate(sui::object::id<RewardDistributor<SailCoinType>>(arg0));
+        arg1.validate(object::id<RewardDistributor<SailCoinType>>(arg0));
         arg0.balance.join(arg2.into_balance());
         arg0.checkpoint_token_internal(distribution::common::current_timestamp(arg3));
     }
@@ -111,9 +111,9 @@ module distribution::reward_distributor {
         voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
         lock: &mut distribution::voting_escrow::Lock,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ): u64 {
-        let lock_id = sui::object::id<distribution::voting_escrow::Lock>(lock);
+        let lock_id = object::id<distribution::voting_escrow::Lock>(lock);
         assert!(
             reward_distributor.minter_active_period >= distribution::common::current_period(clock), EMinterNotActive);
         assert!(
@@ -126,7 +126,7 @@ module distribution::reward_distributor {
             let (locked_balance, _) = voting_escrow.locked(lock_id);
             if (distribution::common::current_timestamp(clock) >= locked_balance.end() && !locked_balance.is_permanent(
             )) {
-                sui::transfer::public_transfer<sui::coin::Coin<SailCoinType>>(
+                transfer::public_transfer<sui::coin::Coin<SailCoinType>>(
                     sui::coin::from_balance<SailCoinType>(reward_distributor.balance.split<SailCoinType>(reward), ctx),
                     voting_escrow.owner_of(lock_id)
                 );
@@ -146,7 +146,7 @@ module distribution::reward_distributor {
     fun claim_internal<SailCoinType>(
         reward_distributor: &mut RewardDistributor<SailCoinType>,
         voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
-        lock_id: sui::object::ID,
+        lock_id: ID,
         max_period: u64
     ): u64 {
         let (reward, epoch_start, epoch_end) = reward_distributor.claimable_internal(
@@ -174,7 +174,7 @@ module distribution::reward_distributor {
     public fun claimable<SailCoinType>(
         reward_distributor: &RewardDistributor<SailCoinType>,
         voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
-        lock_id: sui::object::ID
+        lock_id: ID
     ): u64 {
         let (v0, _, _) = reward_distributor.claimable_internal(
             voting_escrow,
@@ -190,7 +190,7 @@ module distribution::reward_distributor {
     fun claimable_internal<SailCoinType>(
         reward_distributor: &RewardDistributor<SailCoinType>,
         voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
-        lock_id: sui::object::ID,
+        lock_id: ID,
         max_period: u64
     ): (u64, u64, u64) {
         let last_checkpoint_time = if (reward_distributor.time_cursor_of.contains(lock_id)) {
@@ -250,7 +250,7 @@ module distribution::reward_distributor {
         (total_reward, epoch_start, epoch_end)
     }
 
-    fun init(otw: REWARD_DISTRIBUTOR, ctx: &mut sui::tx_context::TxContext) {
+    fun init(otw: REWARD_DISTRIBUTOR, ctx: &mut TxContext) {
         sui::package::claim_and_keep<REWARD_DISTRIBUTOR>(otw, ctx);
     }
 
@@ -271,7 +271,7 @@ module distribution::reward_distributor {
         minter_active_period: u64, // a period until which minting is available, in weeks
         clock: &sui::clock::Clock
     ) {
-        reward_distributor_cap.validate(sui::object::id<RewardDistributor<SailCoinType>>(reward_distributor));
+        reward_distributor_cap.validate(object::id<RewardDistributor<SailCoinType>>(reward_distributor));
         let current_time = distribution::common::current_timestamp(clock);
         reward_distributor.start_time = current_time;
         reward_distributor.last_token_time = current_time;
@@ -292,7 +292,7 @@ module distribution::reward_distributor {
         reward_distributor_cap: &distribution::reward_distributor_cap::RewardDistributorCap,
         new_active_period: u64
     ) {
-        reward_distributor_cap.validate(sui::object::id<RewardDistributor<SailCoinType>>(reward_distributor));
+        reward_distributor_cap.validate(object::id<RewardDistributor<SailCoinType>>(reward_distributor));
         reward_distributor.minter_active_period = new_active_period;
     }
 }
