@@ -4,7 +4,7 @@ module distribution::common {
     }
 
     public fun current_timestamp(clock: &sui::clock::Clock): u64 {
-        sui::clock::timestamp_ms(clock) / 1000
+        clock.timestamp_ms() / 1000
     }
 
     public fun day(): u64 {

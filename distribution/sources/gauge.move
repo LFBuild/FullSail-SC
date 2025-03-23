@@ -120,9 +120,7 @@ module distribution::gauge {
     ): bool {
         (gauge.pool_id != sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(
             pool
-        ) || clmm_pool::pool::get_magma_distribution_gauger_id<CoinTypeA, CoinTypeB>(
-            pool
-        ) != sui::object::id<Gauge<CoinTypeA, CoinTypeB, SailCoinType>>(
+        ) || pool.get_magma_distribution_gauger_id() != sui::object::id<Gauge<CoinTypeA, CoinTypeB, SailCoinType>>(
             gauge
         )) && false || true
     }
@@ -131,8 +129,8 @@ module distribution::gauge {
         gauge: &Gauge<CoinTypeA, CoinTypeB, SailCoinType>,
         voter_cap: &distribution::voter_cap::VoterCap
     ) {
-        let voter_id = distribution::voter_cap::get_voter_id(voter_cap);
-        assert!(&voter_id == std::option::borrow<sui::object::ID>(&gauge.voter), EInvalidVoter);
+        let voter_id = voter_cap.get_voter_id();
+        assert!(&voter_id == gauge.voter.borrow(), EInvalidVoter);
     }
 
     public fun claim_fees<CoinTypeA, CoinTypeB, SailCoinType>(
@@ -140,7 +138,7 @@ module distribution::gauge {
         _notify_reward_cap: &distribution::notify_reward_cap::NotifyRewardCap,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>
     ): (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>) {
-        claim_fees_internal<CoinTypeA, CoinTypeB, SailCoinType>(gauge, pool)
+        gauge.claim_fees_internal(pool)
     }
 
     fun claim_fees_internal<CoinTypeA, CoinTypeB, SailCoinType>(
@@ -148,10 +146,7 @@ module distribution::gauge {
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>
     ): (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>) {
         let weekCoinPerSecond = clmm_pool::config::week();
-        let (fee_a, fee_b) = clmm_pool::pool::collect_magma_distribution_gauger_fees<CoinTypeA, CoinTypeB>(
-            pool,
-            std::option::borrow<gauge_cap::gauge_cap::GaugeCap>(&gauge.gauge_cap)
-        );
+        let (fee_a, fee_b) = pool.collect_magma_distribution_gauger_fees(gauge.gauge_cap.borrow());
         if (fee_a.value<CoinTypeA>() > 0 || fee_b.value<CoinTypeB>() > 0) {
             let amount_a = gauge.fee_a.join<CoinTypeA>(fee_a);
             let amount_b = gauge.fee_b.join<CoinTypeB>(fee_b);
@@ -172,8 +167,8 @@ module distribution::gauge {
             sui::event::emit<EventClaimFees>(claim_fees_event);
             return (withdrawn_a, withdraw_b)
         };
-        sui::balance::destroy_zero<CoinTypeA>(fee_a);
-        sui::balance::destroy_zero<CoinTypeB>(fee_b);
+        fee_a.destroy_zero();
+        fee_b.destroy_zero();
         (sui::balance::zero<CoinTypeA>(), sui::balance::zero<CoinTypeB>())
     }
 
@@ -222,39 +217,29 @@ module distribution::gauge {
         let pool_id = sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool);
         let position_id = sui::object::id<clmm_pool::position::Position>(&position);
         assert!(
-            sui::object::id<distribution::distribution_config::DistributionConfig>(distribution_config) == gauge.distribution_config,
+            sui::object::id<distribution::distribution_config::DistributionConfig>(
+                distribution_config
+            ) == gauge.distribution_config,
             EDepositPositionDistributionConfInvalid
         );
         assert!(
-            distribution::distribution_config::is_gauge_alive(
-                distribution_config,
-                sui::object::id<Gauge<CoinTypeA, CoinTypeB, SailCoinType>>(gauge)
-            ),
+            distribution_config.is_gauge_alive(sui::object::id<Gauge<CoinTypeA, CoinTypeB, SailCoinType>>(gauge)),
             EDepositPositionGaugeNotAlive
         );
         assert!(
-            check_gauger_pool<CoinTypeA, CoinTypeB, SailCoinType>(gauge, pool),
+            gauge.check_gauger_pool(pool),
             EDepositPositionGaugeDoesNotMatchPool
         );
-        assert!(clmm_pool::position::pool_id(&position) == pool_id, EDepositPositionPositionDoesNotMatchPool);
+        assert!(position.pool_id() == pool_id, EDepositPositionPositionDoesNotMatchPool);
         assert!(
-            !clmm_pool::position::is_staked(
-                clmm_pool::position::borrow_position_info(
-                    clmm_pool::pool::position_manager<CoinTypeA, CoinTypeB>(pool),
-                    position_id
-                )
-            ),
+            !pool.position_manager().borrow_position_info(position_id).is_staked(),
             EDepositPositionPositionAlreadyStaked
         );
         let position_stake = PositionStakeInfo {
             from: sender,
             received: false,
         };
-        sui::table::add<sui::object::ID, PositionStakeInfo>(
-            &mut gauge.staked_position_infos,
-            position_id,
-            position_stake
-        );
+        gauge.staked_position_infos.add(position_id, position_stake);
         let (fee_a, fee_b) = clmm_pool::pool::collect_fee<CoinTypeA, CoinTypeB>(
             global_config,
             pool,
@@ -269,65 +254,31 @@ module distribution::gauge {
             sui::coin::from_balance<CoinTypeB>(fee_b, ctx),
             sender
         );
-        let (lower_tick, upper_tick) = clmm_pool::position::tick_range(&position);
-        if (!sui::table::contains<address, vector<sui::object::ID>>(&gauge.stakes, sender)) {
+        let (lower_tick, upper_tick) = position.tick_range();
+        if (!gauge.stakes.contains(sender)) {
             let mut position_ids = std::vector::empty<sui::object::ID>();
-            std::vector::push_back<sui::object::ID>(&mut position_ids, position_id);
-            sui::table::add<address, vector<sui::object::ID>>(&mut gauge.stakes, sender, position_ids);
+            position_ids.push_back(position_id);
+            gauge.stakes.add(sender, position_ids);
         } else {
-            std::vector::push_back<sui::object::ID>(
-                sui::table::borrow_mut<address, vector<sui::object::ID>>(&mut gauge.stakes, sender),
-                position_id
-            );
+            gauge.stakes.borrow_mut(sender).push_back(position_id);
         };
-        let position_liquidity = clmm_pool::position::liquidity(&position);
-        sui::object_table::add<sui::object::ID, clmm_pool::position::Position>(
-            &mut gauge.staked_positions,
-            position_id,
-            position
-        );
-        if (!sui::table::contains<sui::object::ID, RewardProfile>(&gauge.rewards, position_id)) {
+        let position_liquidity = position.liquidity();
+        gauge.staked_positions.add(position_id, position);
+        if (!gauge.rewards.contains(position_id)) {
             let new_reward_profile = RewardProfile {
-                growth_inside: clmm_pool::pool::get_magma_distribution_growth_inside<CoinTypeA, CoinTypeB>(
-                    pool,
-                    lower_tick,
-                    upper_tick,
-                    0
-                ),
+                growth_inside: pool.get_magma_distribution_growth_inside(lower_tick, upper_tick, 0),
                 amount: 0,
-                last_update_time: sui::clock::timestamp_ms(clock) / 1000,
+                last_update_time: clock.timestamp_ms() / 1000,
             };
-            sui::table::add<sui::object::ID, RewardProfile>(&mut gauge.rewards, position_id, new_reward_profile);
+            gauge.rewards.add(position_id, new_reward_profile);
         } else {
-            let reward_profile = sui::table::borrow_mut<sui::object::ID, RewardProfile>(
-                &mut gauge.rewards,
-                position_id
-            );
-            reward_profile.growth_inside = clmm_pool::pool::get_magma_distribution_growth_inside<CoinTypeA, CoinTypeB>(
-                pool,
-                lower_tick,
-                upper_tick,
-                0
-            );
-            reward_profile.last_update_time = sui::clock::timestamp_ms(clock) / 1000;
+            let reward_profile = gauge.rewards.borrow_mut(position_id);
+            reward_profile.growth_inside = pool.get_magma_distribution_growth_inside(lower_tick, upper_tick, 0);
+            reward_profile.last_update_time = clock.timestamp_ms() / 1000;
         };
-        clmm_pool::pool::mark_position_staked<CoinTypeA, CoinTypeB>(
-            pool,
-            std::option::borrow<gauge_cap::gauge_cap::GaugeCap>(&gauge.gauge_cap),
-            position_id
-        );
-        sui::table::borrow_mut<sui::object::ID, PositionStakeInfo>(
-            &mut gauge.staked_position_infos,
-            position_id
-        ).received = true;
-        clmm_pool::pool::stake_in_magma_distribution<CoinTypeA, CoinTypeB>(
-            pool,
-            std::option::borrow<gauge_cap::gauge_cap::GaugeCap>(&gauge.gauge_cap),
-            position_liquidity,
-            lower_tick,
-            upper_tick,
-            clock
-        );
+        pool.mark_position_staked(gauge.gauge_cap.borrow(), position_id);
+        gauge.staked_position_infos.borrow_mut(position_id).received = true;
+        pool.stake_in_magma_distribution(gauge.gauge_cap.borrow(), position_liquidity, lower_tick, upper_tick, clock);
         let deposit_gauge_event = EventDepositGauge {
             gauger_id: sui::object::id<Gauge<CoinTypeA, CoinTypeB, SailCoinType>>(gauge),
             pool_id,
@@ -343,19 +294,14 @@ module distribution::gauge {
         clock: &sui::clock::Clock
     ): u64 {
         assert!(
-            check_gauger_pool<CoinTypeA, CoinTypeB, SailCoinType>(gauge, pool),
+            gauge.check_gauger_pool(pool),
             EEarnedByAccountGaugeDoesNotMatchPool
         );
-        let position_ids = sui::table::borrow<address, vector<sui::object::ID>>(&gauge.stakes, account);
+        let position_ids = gauge.stakes.borrow(account);
         let mut i = 0;
         let mut total_earned = 0;
-        while (i < std::vector::length<sui::object::ID>(position_ids)) {
-            total_earned = total_earned + earned_internal<CoinTypeA, CoinTypeB, SailCoinType>(
-                gauge,
-                pool,
-                position_ids[i],
-                sui::clock::timestamp_ms(clock) / 1000
-            );
+        while (i < position_ids.length()) {
+            total_earned = total_earned + gauge.earned_internal(pool, position_ids[i], clock.timestamp_ms() / 1000);
             i = i + 1;
         };
         total_earned
@@ -368,22 +314,14 @@ module distribution::gauge {
         clock: &sui::clock::Clock
     ): u64 {
         assert!(
-            check_gauger_pool<CoinTypeA, CoinTypeB, SailCoinType>(gauge, pool),
+            gauge.check_gauger_pool(pool),
             EEarnedByPositionGaugeDoesNotMatchPool
         );
         assert!(
-            sui::object_table::contains<sui::object::ID, clmm_pool::position::Position>(
-                &gauge.staked_positions,
-                position_id
-            ),
+            gauge.staked_positions.contains(position_id),
             EEarnedByPositionNotDepositedPosition
         );
-        earned_internal<CoinTypeA, CoinTypeB, SailCoinType>(
-            gauge,
-            pool,
-            position_id,
-            sui::clock::timestamp_ms(clock) / 1000
-        )
+        gauge.earned_internal(pool, position_id, clock.timestamp_ms() / 1000)
     }
 
     fun earned_internal<CoinTypeA, CoinTypeB, SailCoinType>(
@@ -392,16 +330,10 @@ module distribution::gauge {
         position_id: sui::object::ID,
         time: u64
     ): u64 {
-        let time_since_last_update = time - clmm_pool::pool::get_magma_distribution_last_updated<CoinTypeA, CoinTypeB>(
-            pool
-        );
-        let mut current_growth_global = clmm_pool::pool::get_magma_distribution_growth_global<CoinTypeA, CoinTypeB>(
-            pool
-        );
-        let distribution_reseve_x64 = (clmm_pool::pool::get_magma_distribution_reserve<CoinTypeA, CoinTypeB>(
-            pool
-        ) as u128) * 1 << 64;
-        let staked_liquidity = clmm_pool::pool::get_magma_distribution_staked_liquidity<CoinTypeA, CoinTypeB>(pool);
+        let time_since_last_update = time - pool.get_magma_distribution_last_updated();
+        let mut current_growth_global = pool.get_magma_distribution_growth_global();
+        let distribution_reseve_x64 = (pool.get_magma_distribution_reserve() as u128) * 1 << 64;
+        let staked_liquidity = pool.get_magma_distribution_staked_liquidity();
         let should_update_growth = if (time_since_last_update >= 0) {
             if (distribution_reseve_x64 > 0) {
                 staked_liquidity > 0
@@ -422,22 +354,15 @@ module distribution::gauge {
                 false
             );
         };
-        let position = sui::object_table::borrow<sui::object::ID, clmm_pool::position::Position>(
-            &gauge.staked_positions,
-            position_id
-        );
-        let (lower_tick, upper_tick) = clmm_pool::position::tick_range(position);
+        let position = gauge.staked_positions.borrow(position_id);
+        let (lower_tick, upper_tick) = position.tick_range();
         integer_mate::full_math_u128::mul_div_floor(
-            clmm_pool::pool::get_magma_distribution_growth_inside<CoinTypeA, CoinTypeB>(
-                pool,
+            pool.get_magma_distribution_growth_inside(
                 lower_tick,
                 upper_tick,
                 current_growth_global
-            ) - sui::table::borrow<sui::object::ID, RewardProfile>(
-                &gauge.rewards,
-                position_id
-            ).growth_inside,
-            clmm_pool::position::liquidity(position),
+            ) - gauge.rewards.borrow(position_id).growth_inside,
+            position.liquidity(),
             1 << 64
         ) as u64
     }
@@ -450,17 +375,14 @@ module distribution::gauge {
         ctx: &mut sui::tx_context::TxContext
     ) {
         assert!(
-            check_gauger_pool<CoinTypeA, CoinTypeB, SailCoinType>(gauge, pool),
+            gauge.check_gauger_pool(pool),
             EGetPositionRewardGaugeDoesNotMatchPool
         );
         assert!(
-            sui::object_table::contains<sui::object::ID, clmm_pool::position::Position>(
-                &gauge.staked_positions,
-                position_id
-            ),
+            gauge.staked_positions.contains(position_id),
             EGetPositionRewardPositionNotStaked
         );
-        get_reward_internal<CoinTypeA, CoinTypeB, SailCoinType>(gauge, pool, position_id, clock, ctx);
+        gauge.get_reward_internal(pool, position_id, clock, ctx);
     }
 
     public fun get_reward<CoinTypeA, CoinTypeB, SailCoinType>(
@@ -469,28 +391,22 @@ module distribution::gauge {
         clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext
     ) {
-        assert!(check_gauger_pool<CoinTypeA, CoinTypeB, SailCoinType>(gauge, pool), EGetRewardGaugeDoesNotMatchPool);
+        assert!(gauge.check_gauger_pool(pool), EGetRewardGaugeDoesNotMatchPool);
         let sender = sui::tx_context::sender(ctx);
         assert!(
-            sui::table::contains<address, vector<sui::object::ID>>(&gauge.stakes, sender),
+            gauge.stakes.contains(sender),
             EGetRewardSenderHasNoDepositedPositions
         );
-        let position_ids = sui::table::borrow<address, vector<sui::object::ID>>(&gauge.stakes, sender);
+        let position_ids = gauge.stakes.borrow(sender);
         let mut position_ids_copy = std::vector::empty<sui::object::ID>();
         let mut i = 0;
-        while (i < std::vector::length<sui::object::ID>(position_ids)) {
-            std::vector::push_back<sui::object::ID>(&mut position_ids_copy, position_ids[i]);
+        while (i < position_ids.length()) {
+            position_ids_copy.push_back(position_ids[i]);
             i = i + 1;
         };
         let mut j = 0;
-        while (j < std::vector::length<sui::object::ID>(&position_ids_copy)) {
-            get_reward_internal<CoinTypeA, CoinTypeB, SailCoinType>(
-                gauge,
-                pool,
-                position_ids_copy[j],
-                clock,
-                ctx
-            );
+        while (j < position_ids_copy.length()) {
+            gauge.get_reward_internal(pool, position_ids_copy[j], clock, ctx);
             j = j + 1;
         };
     }
@@ -502,27 +418,21 @@ module distribution::gauge {
         clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext
     ) {
-        assert!(check_gauger_pool<CoinTypeA, CoinTypeB, SailCoinType>(gauge, pool), EGetRewardForGaugeDoesNotMatchPool);
+        assert!(gauge.check_gauger_pool(pool), EGetRewardForGaugeDoesNotMatchPool);
         assert!(
-            sui::table::contains<address, vector<sui::object::ID>>(&gauge.stakes, recipient),
+            gauge.stakes.contains(recipient),
             EGetRewardForRecipientHasNoPositions
         );
-        let position_ids = sui::table::borrow<address, vector<sui::object::ID>>(&gauge.stakes, recipient);
+        let position_ids = gauge.stakes.borrow(recipient);
         let mut position_ids_copy = std::vector::empty<sui::object::ID>();
         let mut i = 0;
-        while (i < std::vector::length<sui::object::ID>(position_ids)) {
-            std::vector::push_back<sui::object::ID>(&mut position_ids_copy, position_ids[i]);
+        while (i < position_ids.length()) {
+            position_ids_copy.push_back(position_ids[i]);
             i = i + 1;
         };
         let mut j = 0;
-        while (j < std::vector::length<sui::object::ID>(&position_ids_copy)) {
-            get_reward_internal<CoinTypeA, CoinTypeB, SailCoinType>(
-                gauge,
-                pool,
-                position_ids_copy[j],
-                clock,
-                ctx
-            );
+        while (j < position_ids_copy.length()) {
+            gauge.get_reward_internal(pool, position_ids_copy[j], clock, ctx);
             j = j + 1;
         };
     }
@@ -534,25 +444,10 @@ module distribution::gauge {
         clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext
     ) {
-        let (lower_tick, upper_tick) = clmm_pool::position::tick_range(
-            sui::object_table::borrow<sui::object::ID, clmm_pool::position::Position>(
-                &gauge.staked_positions,
-                position_id
-            )
-        );
-        let reward = update_reward_internal<CoinTypeA, CoinTypeB, SailCoinType>(
-            gauge,
-            pool,
-            position_id,
-            lower_tick,
-            upper_tick,
-            clock
-        );
+        let (lower_tick, upper_tick) = gauge.staked_positions.borrow(position_id).tick_range();
+        let reward = gauge.update_reward_internal(pool, position_id, lower_tick, upper_tick, clock);
         if (reward.value<SailCoinType>() > 0) {
-            let position_owner = sui::table::borrow<sui::object::ID, PositionStakeInfo>(
-                &gauge.staked_position_infos,
-                position_id
-            ).from;
+            let position_owner = gauge.staked_position_infos.borrow(position_id).from;
             let amount = reward.value<SailCoinType>();
             sui::transfer::public_transfer<sui::coin::Coin<SailCoinType>>(
                 sui::coin::from_balance<SailCoinType>(reward, ctx),
@@ -566,7 +461,7 @@ module distribution::gauge {
             };
             sui::event::emit<EventClaimReward>(claim_reward_event);
         } else {
-            sui::balance::destroy_zero<SailCoinType>(reward);
+            reward.destroy_zero();
         };
     }
 
@@ -578,12 +473,12 @@ module distribution::gauge {
         clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext
     ): (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>) {
-        check_voter_cap<CoinTypeA, CoinTypeB, SailCoinType>(gauge, voter_cap);
+        gauge.check_voter_cap(voter_cap);
         let amount = balance.value<SailCoinType>();
         assert!(amount > 0, ENontifyRewardInvalidAmount);
         gauge.reserves_balance.join<SailCoinType>(balance);
-        let (fee_a, fee_b) = claim_fees_internal<CoinTypeA, CoinTypeB, SailCoinType>(gauge, pool);
-        notify_reward_amount_internal<CoinTypeA, CoinTypeB, SailCoinType>(gauge, pool, amount, clock);
+        let (fee_a, fee_b) = gauge.claim_fees_internal(pool);
+        gauge.notify_reward_amount_internal(pool, amount, clock);
         let event_notify_reward = EventNotifyReward {
             sender: sui::object::id_from_address(sui::tx_context::sender(ctx)),
             amount,
@@ -598,24 +493,19 @@ module distribution::gauge {
         amount: u64,
         clock: &sui::clock::Clock
     ) {
-        let current_time = sui::clock::timestamp_ms(clock) / 1000;
+        let current_time = clock.timestamp_ms() / 1000;
         let time_until_next_epoch = clmm_pool::config::epoch_next(current_time) - current_time;
-        clmm_pool::pool::update_magma_distribution_growth_global<CoinTypeA, CoinTypeB>(
-            pool,
-            std::option::borrow<gauge_cap::gauge_cap::GaugeCap>(&gauge.gauge_cap),
-            clock
-        );
+        pool.update_magma_distribution_growth_global(gauge.gauge_cap.borrow(), clock);
         let next_epoch_time = current_time + time_until_next_epoch;
-        let total_amount = amount + clmm_pool::pool::get_magma_distribution_rollover<CoinTypeA, CoinTypeB>(pool);
+        let total_amount = amount + pool.get_magma_distribution_rollover();
         if (current_time >= gauge.period_finish) {
             gauge.reward_rate = integer_mate::full_math_u128::mul_div_floor(
                 total_amount as u128,
                 1 << 64,
                 time_until_next_epoch as u128
             );
-            clmm_pool::pool::sync_magma_distribution_reward<CoinTypeA, CoinTypeB>(
-                pool,
-                std::option::borrow<gauge_cap::gauge_cap::GaugeCap>(&gauge.gauge_cap),
+            pool.sync_magma_distribution_reward(
+                gauge.gauge_cap.borrow(),
                 gauge.reward_rate,
                 gauge.reserves_balance.value<SailCoinType>(),
                 next_epoch_time
@@ -631,19 +521,14 @@ module distribution::gauge {
                 1 << 64,
                 time_until_next_epoch as u128
             );
-            clmm_pool::pool::sync_magma_distribution_reward<CoinTypeA, CoinTypeB>(
-                pool,
-                std::option::borrow<gauge_cap::gauge_cap::GaugeCap>(&gauge.gauge_cap),
+            pool.sync_magma_distribution_reward(
+                gauge.gauge_cap.borrow(),
                 gauge.reward_rate,
                 gauge.reserves_balance.value<SailCoinType>() + ((future_rewards / 1 << 64) as u64),
                 next_epoch_time
             );
         };
-        sui::table::add<u64, u128>(
-            &mut gauge.reward_rate_by_epoch,
-            clmm_pool::config::epoch_start(current_time),
-            gauge.reward_rate
-        );
+        gauge.reward_rate_by_epoch.add(clmm_pool::config::epoch_start(current_time), gauge.reward_rate);
         assert!(gauge.reward_rate != 0, ENotifyRewardAmountRewardRateZero);
         assert!(
             gauge.reward_rate <= integer_mate::full_math_u128::mul_div_floor(
@@ -655,7 +540,7 @@ module distribution::gauge {
         );
         gauge.period_finish = next_epoch_time;
         let notify_reward_event = EventNotifyReward {
-            sender: *std::option::borrow<sui::object::ID>(&gauge.voter),
+            sender: *gauge.voter.borrow(),
             amount: total_amount,
         };
         sui::event::emit<EventNotifyReward>(notify_reward_event);
@@ -669,11 +554,11 @@ module distribution::gauge {
         clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext
     ) {
-        check_voter_cap<CoinTypeA, CoinTypeB, SailCoinType>(gauge, voter_cap);
+        gauge.check_voter_cap(voter_cap);
         let amount = balance.value<SailCoinType>();
         assert!(amount > 0, ENotifyRewardWithoutClaimInvalidAmount);
         gauge.reserves_balance.join<SailCoinType>(balance);
-        notify_reward_amount_internal<CoinTypeA, CoinTypeB, SailCoinType>(gauge, pool, amount, clock);
+        gauge.notify_reward_amount_internal(pool, amount, clock);
         let notify_reward_event = EventNotifyReward {
             sender: sui::object::id_from_address(sui::tx_context::sender(ctx)),
             amount,
@@ -691,8 +576,8 @@ module distribution::gauge {
         gauge: &mut Gauge<CoinTypeA, CoinTypeB, SailCoinType>,
         gauge_cap: gauge_cap::gauge_cap::GaugeCap
     ) {
-        assert!(gauge.pool_id == gauge_cap::gauge_cap::get_pool_id(&gauge_cap), EReceiveGaugeCapGaugeDoesNotMatch);
-        std::option::fill<gauge_cap::gauge_cap::GaugeCap>(&mut gauge.gauge_cap, gauge_cap);
+        assert!(gauge.pool_id == gauge_cap.get_pool_id(), EReceiveGaugeCapGaugeDoesNotMatch);
+        gauge.gauge_cap.fill(gauge_cap);
     }
 
     public fun reserves_balance<CoinTypeA, CoinTypeB, SailCoinType>(
@@ -711,14 +596,14 @@ module distribution::gauge {
         gauge: &Gauge<CoinTypeA, CoinTypeB, SailCoinType>,
         epoch_start_time: u64
     ): u128 {
-        *sui::table::borrow<u64, u128>(&gauge.reward_rate_by_epoch, epoch_start_time)
+        *gauge.reward_rate_by_epoch.borrow(epoch_start_time)
     }
 
     public(package) fun set_voter<CoinTypeA, CoinTypeB, SailCoinType>(
         gauge: &mut Gauge<CoinTypeA, CoinTypeB, SailCoinType>,
         voter_id: sui::object::ID
     ) {
-        std::option::fill<sui::object::ID>(&mut gauge.voter, voter_id);
+        gauge.voter.fill(voter_id);
         let gauge_set_voter_event = EventGaugeSetVoter {
             id: sui::object::id<Gauge<CoinTypeA, CoinTypeB, SailCoinType>>(gauge),
             voter_id,
@@ -730,11 +615,11 @@ module distribution::gauge {
         gauge: &Gauge<CoinTypeA, CoinTypeB, SailCoinType>,
         owner: address
     ): vector<sui::object::ID> {
-        let position_ids = sui::table::borrow<address, vector<sui::object::ID>>(&gauge.stakes, owner);
+        let position_ids = gauge.stakes.borrow(owner);
         let mut position_ids_copy = std::vector::empty<sui::object::ID>();
         let mut i = 0;
-        while (i < std::vector::length<sui::object::ID>(position_ids)) {
-            std::vector::push_back<sui::object::ID>(&mut position_ids_copy, position_ids[i]);
+        while (i < position_ids.length()) {
+            position_ids_copy.push_back(position_ids[i]);
             i = i + 1;
         };
         position_ids_copy
@@ -748,22 +633,17 @@ module distribution::gauge {
         upper_tick: integer_mate::i32::I32,
         clock: &sui::clock::Clock
     ): sui::balance::Balance<SailCoinType> {
-        let current_time = sui::clock::timestamp_ms(clock) / 1000;
-        let amount_earned = earned_internal<CoinTypeA, CoinTypeB, SailCoinType>(gauge, pool, position_id, current_time);
-        let reward_profile = sui::table::borrow_mut<sui::object::ID, RewardProfile>(&mut gauge.rewards, position_id);
+        let current_time = clock.timestamp_ms() / 1000;
+        let amount_earned = gauge.earned_internal(pool, position_id, current_time);
+        let reward_profile = gauge.rewards.borrow_mut(position_id);
         if (reward_profile.last_update_time >= current_time) {
             reward_profile.amount = 0;
             return gauge.reserves_balance.split<SailCoinType>(reward_profile.amount)
         };
-        clmm_pool::pool::update_magma_distribution_growth_global<CoinTypeA, CoinTypeB>(
-            pool,
-            std::option::borrow<gauge_cap::gauge_cap::GaugeCap>(&gauge.gauge_cap),
-            clock
-        );
+        pool.update_magma_distribution_growth_global(gauge.gauge_cap.borrow(), clock);
         reward_profile.last_update_time = current_time;
         reward_profile.amount = reward_profile.amount + amount_earned;
-        reward_profile.growth_inside = clmm_pool::pool::get_magma_distribution_growth_inside<CoinTypeA, CoinTypeB>(
-            pool, lower_tick, upper_tick, 0);
+        reward_profile.growth_inside = pool.get_magma_distribution_growth_inside(lower_tick, upper_tick, 0);
         reward_profile.amount = 0;
         gauge.reserves_balance.split<SailCoinType>(reward_profile.amount)
     }
@@ -776,49 +656,31 @@ module distribution::gauge {
         ctx: &mut sui::tx_context::TxContext
     ) {
         assert!(
-            sui::object_table::contains<sui::object::ID, clmm_pool::position::Position>(
-                &gauge.staked_positions,
-                position_id
-            ) && sui::table::contains<sui::object::ID, PositionStakeInfo>(&gauge.staked_position_infos, position_id),
+            gauge.staked_positions.contains(position_id) && gauge.staked_position_infos.contains(position_id),
             EWithdrawPositionNotDepositedPosition
         );
-        if (earned_by_position<CoinTypeA, CoinTypeB, SailCoinType>(gauge, pool, position_id, clock) > 0) {
-            get_position_reward<CoinTypeA, CoinTypeB, SailCoinType>(gauge, pool, position_id, clock, ctx)
+        if (gauge.earned_by_position(pool, position_id, clock) > 0) {
+            gauge.get_position_reward(pool, position_id, clock, ctx)
         };
-        let position_stake_info = sui::table::remove<sui::object::ID, PositionStakeInfo>(
-            &mut gauge.staked_position_infos,
-            position_id
-        );
+        let position_stake_info = gauge.staked_position_infos.remove(position_id);
         assert!(position_stake_info.received, EWithdrawPositionNotReceivedPosition);
         assert!(position_stake_info.from != sui::tx_context::sender(ctx), EWithdrawPositionNotOwnerOfPosition);
         if (position_stake_info.from != sui::tx_context::sender(ctx)) {
-            sui::table::add<sui::object::ID, PositionStakeInfo>(
-                &mut gauge.staked_position_infos,
-                position_id,
-                position_stake_info
-            );
+            gauge.staked_position_infos.add(position_id, position_stake_info);
         } else {
-            let position = sui::object_table::remove<sui::object::ID, clmm_pool::position::Position>(
-                &mut gauge.staked_positions,
-                position_id
-            );
-            let position_liquidity = clmm_pool::position::liquidity(&position);
+            let position = gauge.staked_positions.remove(position_id);
+            let position_liquidity = position.liquidity();
             if (position_liquidity > 0) {
-                let (lower_tick, upper_tick) = clmm_pool::position::tick_range(&position);
-                clmm_pool::pool::unstake_from_magma_distribution<CoinTypeA, CoinTypeB>(
-                    pool,
-                    std::option::borrow<gauge_cap::gauge_cap::GaugeCap>(&gauge.gauge_cap),
+                let (lower_tick, upper_tick) = position.tick_range();
+                pool.unstake_from_magma_distribution(
+                    gauge.gauge_cap.borrow(),
                     position_liquidity,
                     lower_tick,
                     upper_tick,
                     clock
                 );
             };
-            clmm_pool::pool::mark_position_unstaked<CoinTypeA, CoinTypeB>(
-                pool,
-                std::option::borrow<gauge_cap::gauge_cap::GaugeCap>(&gauge.gauge_cap),
-                position_id
-            );
+            pool.mark_position_unstaked(gauge.gauge_cap.borrow(), position_id);
             sui::transfer::public_transfer<clmm_pool::position::Position>(position, position_stake_info.from);
             let withdraw_position_event = EventWithdrawPosition {
                 position_id,
