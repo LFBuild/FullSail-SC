@@ -32,7 +32,7 @@ module integrate::voter {
         ctx: &mut sui::tx_context::TxContext
     ) {
         let mut supported_coins = std::vector::empty<std::type_name::TypeName>();
-        std::vector::push_back<std::type_name::TypeName>(&mut supported_coins, std::type_name::get<SailCoinType>());
+        supported_coins.push_back(std::type_name::get<SailCoinType>());
         let (voter, notify_reward_cap) = distribution::voter::create<SailCoinType>(
             publisher,
             global_config,
@@ -58,16 +58,7 @@ module integrate::voter {
         ctx: &mut sui::tx_context::TxContext
     ) {
         sui::transfer::public_share_object<distribution::gauge::Gauge<CoinTypeA, CoinTypeB, SailCoinType>>(
-            distribution::voter::create_gauge<CoinTypeA, CoinTypeB, SailCoinType>(
-                voter,
-                distribtuion_config,
-                create_cap,
-                governor_cap,
-                voting_escrow,
-                pool,
-                clock,
-                ctx
-            )
+            voter.create_gauge(distribtuion_config, create_cap, governor_cap, voting_escrow, pool, clock, ctx)
         );
     }
 
@@ -79,14 +70,7 @@ module integrate::voter {
         clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext
     ) {
-        distribution::voter::poke<SailCoinType>(
-            voter,
-            voting_escrow,
-            distribtuion_config,
-            lock,
-            clock,
-            ctx
-        );
+        voter.poke(voting_escrow, distribtuion_config, lock, clock, ctx);
     }
 
     public entry fun vote<SailCoinType>(
@@ -99,16 +83,7 @@ module integrate::voter {
         clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext
     ) {
-        distribution::voter::vote<SailCoinType>(
-            voter,
-            voting_escrow,
-            distribtuion_config,
-            lock,
-            pools,
-            weights,
-            clock,
-            ctx
-        );
+        voter.vote(voting_escrow, distribtuion_config, lock, pools, weights, clock, ctx);
     }
 
     public fun claim_voting_bribes<SailCoinType, BribeCoinType>(
@@ -119,26 +94,14 @@ module integrate::voter {
         ctx: &mut sui::tx_context::TxContext
     ) {
         let mut i = 0;
-        while (i < std::vector::length<distribution::voting_escrow::Lock>(&locks)) {
-            distribution::voter::claim_voting_bribe<SailCoinType, BribeCoinType>(
-                voter,
-                voting_escrow,
-                std::vector::borrow<distribution::voting_escrow::Lock>(&locks, i),
-                clock,
-                ctx
-            );
+        while (i < locks.length()) {
+            voter.claim_voting_bribe<SailCoinType, BribeCoinType>(voting_escrow, locks.borrow(i), clock, ctx);
             i = i + 1;
         };
-        while (std::vector::length<distribution::voting_escrow::Lock>(&locks) > 0) {
-            distribution::voting_escrow::transfer<SailCoinType>(
-                std::vector::pop_back<distribution::voting_escrow::Lock>(&mut locks),
-                voting_escrow,
-                sui::tx_context::sender(ctx),
-                clock,
-                ctx
-            );
+        while (locks.length() > 0) {
+            locks.pop_back().transfer(voting_escrow, sui::tx_context::sender(ctx), clock, ctx);
         };
-        std::vector::destroy_empty<distribution::voting_escrow::Lock>(locks);
+        locks.destroy_empty();
     }
 
     public fun claim_voting_bribes_2<SailCoinType, BribeCoinType1, BribeCoinType2>(
@@ -149,34 +112,16 @@ module integrate::voter {
         ctx: &mut sui::tx_context::TxContext
     ) {
         let mut i = 0;
-        while (i < std::vector::length<distribution::voting_escrow::Lock>(&locks)) {
-            let lock = std::vector::borrow<distribution::voting_escrow::Lock>(&locks, i);
-            distribution::voter::claim_voting_bribe<SailCoinType, BribeCoinType1>(
-                voter,
-                voting_escrow,
-                lock,
-                clock,
-                ctx
-            );
-            distribution::voter::claim_voting_bribe<SailCoinType, BribeCoinType2>(
-                voter,
-                voting_escrow,
-                lock,
-                clock,
-                ctx
-            );
+        while (i < locks.length()) {
+            let lock = locks.borrow(i);
+            voter.claim_voting_bribe<SailCoinType, BribeCoinType1>(voting_escrow, lock, clock, ctx);
+            voter.claim_voting_bribe<SailCoinType, BribeCoinType2>(voting_escrow, lock, clock, ctx);
             i = i + 1;
         };
-        while (std::vector::length<distribution::voting_escrow::Lock>(&locks) > 0) {
-            distribution::voting_escrow::transfer<SailCoinType>(
-                std::vector::pop_back<distribution::voting_escrow::Lock>(&mut locks),
-                voting_escrow,
-                sui::tx_context::sender(ctx),
-                clock,
-                ctx
-            );
+        while (locks.length() > 0) {
+            locks.pop_back().transfer(voting_escrow, sui::tx_context::sender(ctx), clock, ctx);
         };
-        std::vector::destroy_empty<distribution::voting_escrow::Lock>(locks);
+        locks.destroy_empty();
     }
 
     public fun claim_voting_bribes_3<SailCoinType, BribeCoinType1, BribeCoinType2, BribeCoinType3>(
@@ -187,23 +132,17 @@ module integrate::voter {
         ctx: &mut sui::tx_context::TxContext
     ) {
         let mut i = 0;
-        while (i < std::vector::length<distribution::voting_escrow::Lock>(&lock)) {
-            let lock = std::vector::borrow<distribution::voting_escrow::Lock>(&lock, i);
-            distribution::voter::claim_voting_bribe<SailCoinType, BribeCoinType1>(voter, voting_escrow, lock, clock, ctx);
-            distribution::voter::claim_voting_bribe<SailCoinType, BribeCoinType2>(voter, voting_escrow, lock, clock, ctx);
-            distribution::voter::claim_voting_bribe<SailCoinType, BribeCoinType3>(voter, voting_escrow, lock, clock, ctx);
+        while (i < lock.length()) {
+            let lock = lock.borrow(i);
+            voter.claim_voting_bribe<SailCoinType, BribeCoinType1>(voting_escrow, lock, clock, ctx);
+            voter.claim_voting_bribe<SailCoinType, BribeCoinType2>(voting_escrow, lock, clock, ctx);
+            voter.claim_voting_bribe<SailCoinType, BribeCoinType3>(voting_escrow, lock, clock, ctx);
             i = i + 1;
         };
-        while (std::vector::length<distribution::voting_escrow::Lock>(&lock) > 0) {
-            distribution::voting_escrow::transfer<SailCoinType>(
-                std::vector::pop_back<distribution::voting_escrow::Lock>(&mut lock),
-                voting_escrow,
-                sui::tx_context::sender(ctx),
-                clock,
-                ctx
-            );
+        while (lock.length() > 0) {
+            lock.pop_back().transfer(voting_escrow, sui::tx_context::sender(ctx), clock, ctx);
         };
-        std::vector::destroy_empty<distribution::voting_escrow::Lock>(lock);
+        lock.destroy_empty();
     }
 
     public fun claim_voting_fee_rewards<SailCoinType, RewardCoinType1, RewardCoinType2>(
@@ -214,34 +153,16 @@ module integrate::voter {
         ctx: &mut sui::tx_context::TxContext
     ) {
         let mut i = 0;
-        while (i < std::vector::length<distribution::voting_escrow::Lock>(&locks)) {
-            let lock = std::vector::borrow<distribution::voting_escrow::Lock>(&locks, i);
-            distribution::voter::claim_voting_fee_reward<SailCoinType, RewardCoinType1>(
-                voter,
-                voting_escrow,
-                lock,
-                clock,
-                ctx
-            );
-            distribution::voter::claim_voting_fee_reward<SailCoinType, RewardCoinType2>(
-                voter,
-                voting_escrow,
-                lock,
-                clock,
-                ctx
-            );
+        while (i < locks.length()) {
+            let lock = locks.borrow(i);
+            voter.claim_voting_fee_reward<SailCoinType, RewardCoinType1>(voting_escrow, lock, clock, ctx);
+            voter.claim_voting_fee_reward<SailCoinType, RewardCoinType2>(voting_escrow, lock, clock, ctx);
             i = i + 1;
         };
-        while (std::vector::length<distribution::voting_escrow::Lock>(&locks) > 0) {
-            distribution::voting_escrow::transfer<SailCoinType>(
-                std::vector::pop_back<distribution::voting_escrow::Lock>(&mut locks),
-                voting_escrow,
-                sui::tx_context::sender(ctx),
-                clock,
-                ctx
-            );
+        while (locks.length() > 0) {
+            locks.pop_back().transfer(voting_escrow, sui::tx_context::sender(ctx), clock, ctx);
         };
-        std::vector::destroy_empty<distribution::voting_escrow::Lock>(locks);
+        locks.destroy_empty();
     }
 
     public fun claim_voting_fee_rewards_single<SailCoinType, RewardCoinType1, RewardCoinType2>(
@@ -251,20 +172,8 @@ module integrate::voter {
         clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext
     ) {
-        distribution::voter::claim_voting_fee_reward<SailCoinType, RewardCoinType1>(
-            voter,
-            voting_escrow,
-            lock,
-            clock,
-            ctx
-        );
-        distribution::voter::claim_voting_fee_reward<SailCoinType, RewardCoinType2>(
-            voter,
-            voting_escrow,
-            lock,
-            clock,
-            ctx
-        );
+        voter.claim_voting_fee_reward<SailCoinType, RewardCoinType1>(voting_escrow, lock, clock, ctx);
+        voter.claim_voting_fee_reward<SailCoinType, RewardCoinType2>(voting_escrow, lock, clock, ctx);
     }
 
     public fun claimable_voting_bribes<SailCoinType, BribeCoinType>(
@@ -326,21 +235,14 @@ module integrate::voter {
         lock_id: sui::object::ID,
         clock: &sui::clock::Clock
     ): sui::vec_map::VecMap<sui::object::ID, u64> {
-        let voted_pools_ids = distribution::voter::voted_pools<SailCoinType>(voter, lock_id);
+        let voted_pools_ids = voter.voted_pools(lock_id);
         let mut i = 0;
         let mut reward_by_pool = sui::vec_map::empty<sui::object::ID, u64>();
-        while (i < std::vector::length<sui::object::ID>(&voted_pools_ids)) {
+        while (i < voted_pools_ids.length()) {
             let pool_id = voted_pools_ids[i];
             reward_by_pool.insert<sui::object::ID, u64>(
                 pool_id,
-                distribution::bribe_voting_reward::earned<BribeCoinType>(
-                    distribution::voter::borrow_bribe_voting_reward<SailCoinType>(
-                        voter,
-                        distribution::voter::pool_to_gauge<SailCoinType>(voter, pool_id)
-                    ),
-                    lock_id,
-                    clock
-                )
+                voter.borrow_bribe_voting_reward(voter.pool_to_gauge(pool_id)).earned<BribeCoinType>(lock_id, clock)
             );
             i = i + 1;
         };
@@ -358,31 +260,17 @@ module integrate::voter {
         clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext
     ) {
-        if (distribution::minter::active_period<SailCoinType>(minter) + 604800 < distribution::common::current_timestamp(clock)) {
-            distribution::minter::update_period<SailCoinType>(
-                minter,
-                voter,
-                voting_escrow,
-                reward_distributor,
-                clock,
-                ctx
-            );
+        if (minter.active_period() + 604800 < distribution::common::current_timestamp(clock)) {
+            minter.update_period(voter, voting_escrow, reward_distributor, clock, ctx);
         };
         assert!(
-            distribution::gauge::pool_id<CoinTypeA, CoinTypeB, SailCoinType>(gauge) == sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool),
+            gauge.pool_id() == sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool),
             EDistributeInccorectGaugePool
         );
         let event_distribute_reward = EventDistributeReward {
             sender: sui::tx_context::sender(ctx),
             gauge: sui::object::id<distribution::gauge::Gauge<CoinTypeA, CoinTypeB, SailCoinType>>(gauge),
-            amount: distribution::voter::distribute_gauge<CoinTypeA, CoinTypeB, SailCoinType>(
-                voter,
-                distribtuion_config,
-                gauge,
-                pool,
-                clock,
-                ctx
-            ),
+            amount: voter.distribute_gauge(distribtuion_config, gauge, pool, clock, ctx),
         };
         sui::event::emit<EventDistributeReward>(event_distribute_reward);
     }
@@ -392,20 +280,13 @@ module integrate::voter {
         lock_id: sui::object::ID
     ) {
         let mut bribe_tokens_by_pool = sui::vec_map::empty<sui::object::ID, vector<std::type_name::TypeName>>();
-        let voted_pools_ids = distribution::voter::voted_pools<SailCoinType>(voter, lock_id);
+        let voted_pools_ids = voter.voted_pools(lock_id);
         let mut i = 0;
-        while (i < std::vector::length<sui::object::ID>(&voted_pools_ids)) {
+        while (i < voted_pools_ids.length()) {
             let pool_id = voted_pools_ids[i];
             bribe_tokens_by_pool.insert<sui::object::ID, vector<std::type_name::TypeName>>(
                 pool_id,
-                distribution::reward::rewards_list(
-                    distribution::bribe_voting_reward::borrow_reward(
-                        distribution::voter::borrow_bribe_voting_reward<SailCoinType>(
-                            voter,
-                            distribution::voter::pool_to_gauge<SailCoinType>(voter, pool_id)
-                        )
-                    )
-                )
+                voter.borrow_bribe_voting_reward(voter.pool_to_gauge(pool_id)).borrow_reward().rewards_list()
             );
             i = i + 1;
         };
@@ -418,37 +299,22 @@ module integrate::voter {
         pool_id: sui::object::ID
     ) {
         let mut bribe_tokens_by_pool = sui::vec_map::empty<sui::object::ID, vector<std::type_name::TypeName>>();
-        bribe_tokens_by_pool.insert<sui::object::ID, vector<std::type_name::TypeName>>(pool_id, distribution::reward::rewards_list(
-            distribution::bribe_voting_reward::borrow_reward(
-                distribution::voter::borrow_bribe_voting_reward<SailCoinType>(
-                    voter,
-                    distribution::voter::pool_to_gauge<SailCoinType>(voter, pool_id)
-                )
-            )
-        ));
+        bribe_tokens_by_pool.insert<sui::object::ID, vector<std::type_name::TypeName>>(pool_id,
+            voter.borrow_bribe_voting_reward(voter.pool_to_gauge(pool_id)).borrow_reward().rewards_list()
+        );
         let reward_tokens_event = EventRewardTokens { list: bribe_tokens_by_pool };
         sui::event::emit<EventRewardTokens>(reward_tokens_event);
     }
 
     public entry fun get_voting_fee_reward_tokens<SailCoinType>(voter: &distribution::voter::Voter<SailCoinType>, lock_id: sui::object::ID) {
         let mut reward_tokens_by_pool = sui::vec_map::empty<sui::object::ID, vector<std::type_name::TypeName>>();
-        let voted_pools_ids = distribution::voter::voted_pools<SailCoinType>(voter, lock_id);
+        let voted_pools_ids = voter.voted_pools(lock_id);
         let mut i = 0;
-        while (i < std::vector::length<sui::object::ID>(&voted_pools_ids)) {
+        while (i < voted_pools_ids.length()) {
             let pool_id = voted_pools_ids[i];
             reward_tokens_by_pool.insert<sui::object::ID, vector<std::type_name::TypeName>>(
                 pool_id,
-                distribution::reward::rewards_list(
-                    distribution::fee_voting_reward::borrow_reward(
-                        distribution::voter::borrow_fee_voting_reward<SailCoinType>(
-                            voter,
-                            distribution::voter::pool_to_gauge<SailCoinType>(
-                                voter,
-                                pool_id
-                            )
-                        )
-                    )
-                )
+                voter.borrow_fee_voting_reward(voter.pool_to_gauge(pool_id)).borrow_reward().rewards_list()
             );
             i = i + 1;
         };
@@ -463,9 +329,8 @@ module integrate::voter {
         clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext
     ) {
-        let gauge = distribution::voter::pool_to_gauge<SailCoinType>(voter, pool_id);
-        distribution::bribe_voting_reward::notify_reward_amount<BribeCoinType>(
-            distribution::voter::borrow_bribe_voting_reward_mut<SailCoinType>(voter, gauge),
+        let gauge = voter.pool_to_gauge(pool_id);
+        voter.borrow_bribe_voting_reward_mut(gauge).notify_reward_amount(
             std::option::none<distribution::whitelisted_tokens::WhitelistedToken>(),
             reward_coin,
             clock,
@@ -476,15 +341,12 @@ module integrate::voter {
     public entry fun pools_tally<SailCoinType>(voter: &distribution::voter::Voter<SailCoinType>, pool_ids: vector<sui::object::ID>) {
         let mut pool_weights = std::vector::empty<PoolWeight>();
         let mut i = 0;
-        while (i < std::vector::length<sui::object::ID>(&pool_ids)) {
+        while (i < pool_ids.length()) {
             let v2 = PoolWeight {
                 id: pool_ids[i],
-                weight: distribution::voter::get_pool_weight<SailCoinType>(
-                    voter,
-                    pool_ids[i]
-                ),
+                weight: voter.get_pool_weight(pool_ids[i]),
             };
-            std::vector::push_back<PoolWeight>(&mut pool_weights, v2);
+            pool_weights.push_back(v2);
             i = i + 1;
         };
         let pools_tally = PoolsTally { list: pool_weights };

@@ -9,7 +9,7 @@ module distribution::fee_voting_reward {
     }
 
     public fun balance<FeeCoinType>(arg0: &FeeVotingReward): u64 {
-        distribution::reward::balance<FeeCoinType>(&arg0.reward)
+        arg0.reward.balance<FeeCoinType>()
     }
 
     public(package) fun create(
@@ -34,30 +34,23 @@ module distribution::fee_voting_reward {
         clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext
     ) {
-        distribution::reward::deposit(
-            &mut reward.reward,
-            reward_authorized_cap,
-            amount,
-            lock_id,
-            clock,
-            ctx
-        );
+        reward.reward.deposit(reward_authorized_cap, amount, lock_id, clock, ctx);
     }
 
     public fun earned<FeeCoinType>(reward: &FeeVotingReward, lock_id: sui::object::ID, clock: &sui::clock::Clock): u64 {
-        distribution::reward::earned<FeeCoinType>(&reward.reward, lock_id, clock)
+        reward.reward.earned<FeeCoinType>(lock_id, clock)
     }
 
     public fun get_prior_balance_index(reward: &FeeVotingReward, lock_id: sui::object::ID, time: u64): u64 {
-        distribution::reward::get_prior_balance_index(&reward.reward, lock_id, time)
+        reward.reward.get_prior_balance_index(lock_id, time)
     }
 
     public fun get_prior_supply_index(reward: &FeeVotingReward, time: u64): u64 {
-        distribution::reward::get_prior_supply_index(&reward.reward, time)
+        reward.reward.get_prior_supply_index(time)
     }
 
     public fun rewards_list_length(reward: &FeeVotingReward): u64 {
-        distribution::reward::rewards_list_length(&reward.reward)
+        reward.reward.rewards_list_length()
     }
 
     public fun withdraw(
@@ -68,7 +61,7 @@ module distribution::fee_voting_reward {
         clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext
     ) {
-        distribution::reward::withdraw(&mut reward.reward, reward_authorized_cap, amount, lock_id, clock, ctx);
+        reward.reward.withdraw(reward_authorized_cap, amount, lock_id, clock, ctx);
     }
 
     public fun borrow_reward(reward: &FeeVotingReward): &distribution::reward::Reward {
@@ -83,16 +76,10 @@ module distribution::fee_voting_reward {
         ctx: &mut sui::tx_context::TxContext
     ): u64 {
         let lock_id = sui::object::id<distribution::voting_escrow::Lock>(lock);
-        let lock_owner = distribution::voting_escrow::owner_of<SailCoinType>(voting_escrow, lock_id);
-        let mut reward_balance_opt = distribution::reward::get_reward_internal<FeeCoinType>(
-            &mut reward.reward,
-            lock_owner,
-            lock_id,
-            clock,
-            ctx
-        );
-        let reward_amount = if (std::option::is_some<sui::balance::Balance<FeeCoinType>>(&reward_balance_opt)) {
-            let reward_balance = std::option::extract<sui::balance::Balance<FeeCoinType>>(&mut reward_balance_opt);
+        let lock_owner = voting_escrow.owner_of(lock_id);
+        let mut reward_balance_opt = reward.reward.get_reward_internal<FeeCoinType>(lock_owner, lock_id, clock, ctx);
+        let reward_amount = if (reward_balance_opt.is_some()) {
+            let reward_balance = reward_balance_opt.extract();
             let amount = reward_balance.value();
             sui::transfer::public_transfer<sui::coin::Coin<FeeCoinType>>(
                 sui::coin::from_balance<FeeCoinType>(
@@ -105,7 +92,7 @@ module distribution::fee_voting_reward {
         } else {
             0
         };
-        std::option::destroy_none<sui::balance::Balance<FeeCoinType>>(reward_balance_opt);
+        reward_balance_opt.destroy_none();
         reward_amount
     }
 
@@ -116,20 +103,12 @@ module distribution::fee_voting_reward {
         clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext
     ) {
-        distribution::reward_authorized_cap::validate(
-            reward_authorized_cap,
-            distribution::reward::authorized(&reward.reward)
-        );
+        reward_authorized_cap.validate(reward.reward.authorized());
         assert!(
-            distribution::reward::rewards_contains(&reward.reward, std::type_name::get<FeeCoinType>()),
+            reward.reward.rewards_contains(std::type_name::get<FeeCoinType>()),
             ENotifyRewardAmountTokenNotWhitelisted
         );
-        distribution::reward::notify_reward_amount_internal<FeeCoinType>(
-            &mut reward.reward,
-            sui::coin::into_balance<FeeCoinType>(coin),
-            clock,
-            ctx
-        );
+        reward.reward.notify_reward_amount_internal(coin.into_balance(), clock, ctx);
     }
 
     public fun voter_get_reward<SailCoinType, FeeCoinType>(
@@ -141,22 +120,21 @@ module distribution::fee_voting_reward {
         ctx: &mut sui::tx_context::TxContext
     ): sui::balance::Balance<FeeCoinType> {
         assert!(
-            distribution::voter_cap::get_voter_id(voter_cap) == distribution::reward::voter(&reward.reward),
+            voter_cap.get_voter_id() == reward.reward.voter(),
             EVoterGetRewardInvalidVoter
         );
-        let mut reward_balance_option = distribution::reward::get_reward_internal<FeeCoinType>(
-            &mut reward.reward,
-            distribution::voting_escrow::owner_of<SailCoinType>(voting_escrow, lock_id),
+        let mut reward_balance_option = reward.reward.get_reward_internal<FeeCoinType>(
+            voting_escrow.owner_of(lock_id),
             lock_id,
             clock,
             ctx
         );
-        let reward_balance = if (std::option::is_some<sui::balance::Balance<FeeCoinType>>(&reward_balance_option)) {
-            std::option::extract<sui::balance::Balance<FeeCoinType>>(&mut reward_balance_option)
+        let reward_balance = if (reward_balance_option.is_some()) {
+            reward_balance_option.extract()
         } else {
             sui::balance::zero<FeeCoinType>()
         };
-        std::option::destroy_none<sui::balance::Balance<FeeCoinType>>(reward_balance_option);
+        reward_balance_option.destroy_none();
         reward_balance
     }
 }

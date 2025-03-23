@@ -2,10 +2,8 @@
 name = "move_stl"
 edition = "2024"
 
-published-at = "0x488b927da11f1a626d56d3d000cf49b5cd40b3ed4d989ba15ac35a6c4791f83e"
-
 [dependencies]
 Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet", override = true }
 
 [addresses]
-move_stl = "0x488b927da11f1a626d56d3d000cf49b5cd40b3ed4d989ba15ac35a6c4791f83e"
+move_stl = "0x2439526f2e94a1a14241d4ca0542952a81828bc7d75e0e85f65b136998581ae0"

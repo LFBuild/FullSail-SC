@@ -16,7 +16,7 @@ module distribution::free_managed_reward {
         ctx: &mut sui::tx_context::TxContext
     ): FreeManagedReward {
         let mut type_name_vec = std::vector::empty<std::type_name::TypeName>();
-        std::vector::push_back<std::type_name::TypeName>(&mut type_name_vec, reward_coin_type);
+        type_name_vec.push_back(reward_coin_type);
         FreeManagedReward {
             id: sui::object::new(ctx),
             reward: distribution::reward::create(voter, ve, ve, type_name_vec, ctx),
@@ -31,14 +31,7 @@ module distribution::free_managed_reward {
         clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext
     ) {
-        distribution::reward::deposit(
-            &mut reward.reward,
-            reward_authorized_cap,
-            amount,
-            lock_id,
-            clock,
-            ctx
-        );
+        reward.reward.deposit(reward_authorized_cap, amount, lock_id, clock, ctx);
     }
 
     public fun earned<RewardCoinType>(
@@ -46,7 +39,7 @@ module distribution::free_managed_reward {
         lock_id: sui::object::ID,
         clock: &sui::clock::Clock
     ): u64 {
-        distribution::reward::earned<RewardCoinType>(&reward.reward, lock_id, clock)
+        reward.reward.earned<RewardCoinType>(lock_id, clock)
     }
 
     public fun get_prior_balance_index(
@@ -54,15 +47,15 @@ module distribution::free_managed_reward {
         lock_id: sui::object::ID,
         time: u64
     ): u64 {
-        distribution::reward::get_prior_balance_index(&reward.reward, lock_id, time)
+        reward.reward.get_prior_balance_index(lock_id, time)
     }
 
     public fun rewards_list(reward: &FreeManagedReward): vector<std::type_name::TypeName> {
-        distribution::reward::rewards_list(&reward.reward)
+        reward.reward.rewards_list()
     }
 
     public fun rewards_list_length(reward: &FreeManagedReward): u64 {
-        distribution::reward::rewards_list_length(&reward.reward)
+        reward.reward.rewards_list_length()
     }
 
     public fun withdraw(
@@ -73,14 +66,7 @@ module distribution::free_managed_reward {
         clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext
     ) {
-        distribution::reward::withdraw(
-            &mut reward.reward,
-            reward_authorized_cap,
-            amount,
-            lock_id,
-            clock,
-            ctx
-        );
+        reward.reward.withdraw(reward_authorized_cap, amount, lock_id, clock, ctx);
     }
 
     public fun borrow_reward(reward: &FreeManagedReward): &distribution::reward::Reward {
@@ -88,7 +74,7 @@ module distribution::free_managed_reward {
     }
 
     public fun get_prior_supply_index(reward: &FreeManagedReward, time: u64): u64 {
-        get_prior_supply_index(reward, time)
+        reward.get_prior_supply_index(time)
     }
 
     public fun get_reward<RewardCoinType>(
@@ -97,25 +83,24 @@ module distribution::free_managed_reward {
         clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext
     ) {
-        let (prover, lock, owner) = distribution::lock_owner::consume(owner_proff);
-        assert!(distribution::reward::ve(&reward.reward) == prover, EGetRewardInvalidProver);
-        let mut reward_coin = distribution::reward::get_reward_internal<RewardCoinType>(
-            &mut reward.reward,
+        let (prover, lock, owner) = owner_proff.consume();
+        assert!(reward.reward.ve() == prover, EGetRewardInvalidProver);
+        let mut reward_coin = reward.reward.get_reward_internal<RewardCoinType>(
             sui::tx_context::sender(ctx),
             lock,
             clock,
             ctx
         );
-        if (std::option::is_some<sui::balance::Balance<RewardCoinType>>(&reward_coin)) {
+        if (reward_coin.is_some()) {
             sui::transfer::public_transfer<sui::coin::Coin<RewardCoinType>>(
                 sui::coin::from_balance<RewardCoinType>(
-                    std::option::extract<sui::balance::Balance<RewardCoinType>>(&mut reward_coin),
+                    reward_coin.extract(),
                     ctx
                 ),
                 owner
             );
         };
-        std::option::destroy_none<sui::balance::Balance<RewardCoinType>>(reward_coin);
+        reward_coin.destroy_none();
     }
 
     public fun notify_reward_amount<RewardCoinType>(
@@ -126,30 +111,19 @@ module distribution::free_managed_reward {
         ctx: &mut sui::tx_context::TxContext
     ) {
         let coin_type_name = std::type_name::get<RewardCoinType>();
-        if (!distribution::reward::rewards_contains(&reward.reward, coin_type_name)) {
+        if (!reward.reward.rewards_contains(coin_type_name)) {
             assert!(
-                std::option::is_some<distribution::whitelisted_tokens::WhitelistedToken>(&whitelisted_token),
+                whitelisted_token.is_some(),
                 ENotifyRewardAmountTokenNotAllowed
             );
-            distribution::whitelisted_tokens::validate<RewardCoinType>(
-                std::option::extract<distribution::whitelisted_tokens::WhitelistedToken>(&mut whitelisted_token),
-                distribution::reward::voter(&reward.reward)
-            );
-            distribution::reward::add_reward_token(&mut reward.reward, coin_type_name);
+            whitelisted_token.extract().validate<RewardCoinType>(reward.reward.voter());
+            reward.reward.add_reward_token(coin_type_name);
         };
-        if (std::option::is_some<distribution::whitelisted_tokens::WhitelistedToken>(&whitelisted_token)) {
-            distribution::whitelisted_tokens::validate<RewardCoinType>(
-                std::option::extract<distribution::whitelisted_tokens::WhitelistedToken>(&mut whitelisted_token),
-                distribution::reward::voter(&reward.reward)
-            );
+        if (whitelisted_token.is_some()) {
+            whitelisted_token.extract().validate<RewardCoinType>(reward.reward.voter());
         };
-        std::option::destroy_none<distribution::whitelisted_tokens::WhitelistedToken>(whitelisted_token);
-        distribution::reward::notify_reward_amount_internal<RewardCoinType>(
-            &mut reward.reward,
-            sui::coin::into_balance<RewardCoinType>(coin),
-            clock,
-            ctx
-        );
+        whitelisted_token.destroy_none();
+        reward.reward.notify_reward_amount_internal(coin.into_balance(), clock, ctx);
     }
 }
 

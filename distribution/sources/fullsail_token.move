@@ -6,8 +6,11 @@ module distribution::fullsail_token {
         cap: sui::coin::TreasuryCap<SailCoinType>,
     }
 
-    public fun burn<SailCoinType>(minter_cap: &mut MinterCap<SailCoinType>, coin_to_burn: sui::coin::Coin<SailCoinType>) {
-        sui::coin::burn<SailCoinType>(&mut minter_cap.cap, coin_to_burn);
+    public fun burn<SailCoinType>(
+        minter_cap: &mut MinterCap<SailCoinType>,
+        coin_to_burn: sui::coin::Coin<SailCoinType>
+    ) {
+        minter_cap.cap.burn(coin_to_burn);
     }
 
     public fun mint<SailCoinType>(
@@ -18,11 +21,11 @@ module distribution::fullsail_token {
         ctx: &mut sui::tx_context::TxContext
     ): sui::coin::Coin<SailCoinType> {
         assert!(recipient != @0x0, 0);
-        sui::coin::mint<SailCoinType>(&mut minter_cap.cap, amount, ctx)
+        minter_cap.cap.mint(amount, ctx)
     }
 
     public fun total_supply<SailCoinType>(minter_cap: &MinterCap<SailCoinType>): u64 {
-        sui::coin::total_supply<SailCoinType>(&minter_cap.cap)
+        minter_cap.cap.total_supply()
     }
 
     fun init(otw: FULLSAIL_TOKEN, ctx: &mut sui::tx_context::TxContext) {

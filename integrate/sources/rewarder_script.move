@@ -11,7 +11,7 @@ module integrate::rewarder_script {
         clmm_pool::rewarder::deposit_reward<RewardCoinType>(
             global_config,
             rewarder_vault,
-            sui::coin::into_balance<RewardCoinType>(sui::coin::split<RewardCoinType>(&mut reward_coin, amount, ctx))
+            reward_coin.split(amount, ctx).into_balance()
         );
         integrate::utils::send_coin<RewardCoinType>(reward_coin, sui::tx_context::sender(ctx));
     }
@@ -24,7 +24,7 @@ module integrate::rewarder_script {
         recipient: address,
         ctx: &mut sui::tx_context::TxContext
     ) {
-        assert!(clmm_pool::rewarder::balance_of<RewardCoinType>(rewarder_vault) >= amount, 2);
+        assert!(rewarder_vault.balance_of<RewardCoinType>() >= amount, 2);
         integrate::utils::send_coin<RewardCoinType>(
             sui::coin::from_balance<RewardCoinType>(clmm_pool::rewarder::emergent_withdraw<RewardCoinType>(
                 admin_cap,
@@ -43,7 +43,7 @@ module integrate::rewarder_script {
         recipient: address,
         ctx: &mut sui::tx_context::TxContext
     ) {
-        let global_vault_balance = clmm_pool::rewarder::balance_of<RewardCoinType>(global_vault);
+        let global_vault_balance = global_vault.balance_of<RewardCoinType>();
         integrate::utils::send_coin<RewardCoinType>(
             sui::coin::from_balance<RewardCoinType>(
                 clmm_pool::rewarder::emergent_withdraw<RewardCoinType>(

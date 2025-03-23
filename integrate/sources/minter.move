@@ -4,7 +4,7 @@ module integrate::minter {
         minter: &mut distribution::minter::Minter<CoinType>,
         minter_cap: distribution::fullsail_token::MinterCap<CoinType>
     ) {
-        distribution::minter::set_minter_cap<CoinType>(minter, admin_cap, minter_cap);
+        minter.set_minter_cap(admin_cap, minter_cap);
     }
 
     // decompiled from Move bytecode v6

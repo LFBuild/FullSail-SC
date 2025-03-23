@@ -24,7 +24,7 @@ module integrate::pool_script {
             sqrt_price_limit,
             clock
         );
-        let pay_amount = clmm_pool::pool::swap_pay_amount<CoinTypeA, CoinTypeB>(&receipt);
+        let pay_amount = receipt.swap_pay_amount();
         let coin_out_value = if (a2b) {
             coin_b_out.value<CoinTypeB>()
         } else {
@@ -38,13 +38,9 @@ module integrate::pool_script {
             assert!(pay_amount <= amount_limit, 0);
         };
         let (repay_amount_a, repay_amount_b) = if (a2b) {
-            (sui::coin::into_balance<CoinTypeA>(
-                coin_b.split<CoinTypeA>(pay_amount, ctx)
-            ), sui::balance::zero<CoinTypeB>())
+            (coin_b.split<CoinTypeA>(pay_amount, ctx).into_balance(), sui::balance::zero<CoinTypeB>())
         } else {
-            (sui::balance::zero<CoinTypeA>(), sui::coin::into_balance<CoinTypeB>(
-                coin_a.split<CoinTypeB>(pay_amount, ctx)
-            ))
+            (sui::balance::zero<CoinTypeA>(), coin_a.split<CoinTypeB>(pay_amount, ctx).into_balance())
         };
         coin_a.join<CoinTypeB>(sui::coin::from_balance<CoinTypeB>(coin_b_out, ctx));
         coin_b.join<CoinTypeA>(sui::coin::from_balance<CoinTypeA>(coin_a_out, ctx));
@@ -68,15 +64,7 @@ module integrate::pool_script {
         clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext
     ) {
-        clmm_pool::factory::create_pool<CoinTypeA, CoinTypeB>(
-            pools,
-            global_config,
-            tick_spacing,
-            current_sqrt_price,
-            url,
-            clock,
-            ctx
-        );
+        pools.create_pool<CoinTypeA, CoinTypeB>(global_config, tick_spacing, current_sqrt_price, url, clock, ctx);
     }
 
     public entry fun close_position<CoinTypeA, CoinTypeB>(
@@ -88,7 +76,7 @@ module integrate::pool_script {
         clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext
     ) {
-        let liquidity = clmm_pool::position::liquidity(&position);
+        let liquidity = position.liquidity();
         if (liquidity > 0) {
             remove_liquidity<CoinTypeA, CoinTypeB>(
                 global_config,
@@ -248,14 +236,14 @@ module integrate::pool_script {
     ) {
         let mut coin_a = integrate::utils::merge_coins<CoinTypeA>(coin_a_input, ctx);
         let mut coin_b = integrate::utils::merge_coins<CoinTypeB>(coin_b_input, ctx);
-        let (pay_amount_a, pay_amount_b) = clmm_pool::pool::add_liquidity_pay_amount<CoinTypeA, CoinTypeB>(&receipt);
+        let (pay_amount_a, pay_amount_b) = receipt.add_liquidity_pay_amount();
         assert!(pay_amount_a <= max_amount_a, 0);
         assert!(pay_amount_b <= max_amount_b, 0);
         clmm_pool::pool::repay_add_liquidity<CoinTypeA, CoinTypeB>(
             global_config,
             pool,
-            sui::coin::into_balance<CoinTypeA>(coin_a.split<CoinTypeA>(pay_amount_a, ctx)),
-            sui::coin::into_balance<CoinTypeB>(coin_b.split<CoinTypeB>(pay_amount_b, ctx)),
+            coin_a.split<CoinTypeA>(pay_amount_a, ctx).into_balance(),
+            coin_b.split<CoinTypeB>(pay_amount_b, ctx).into_balance(),
             receipt
         );
         integrate::utils::send_coin<CoinTypeA>(coin_a, sui::tx_context::sender(ctx));
@@ -516,8 +504,7 @@ module integrate::pool_script {
         clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext
     ) {
-        let (v0, v1, v2) = clmm_pool::factory::create_pool_with_liquidity<CoinTypeA, CoinTypeB>(
-            pools,
+        let (v0, v1, v2) = pools.create_pool_with_liquidity(
             global_config,
             tick_spacing,
             initialize_sqrt_price,
@@ -532,7 +519,7 @@ module integrate::pool_script {
             clock,
             ctx
         );
-        sui::coin::destroy_zero<CoinTypeB>(v2);
+        v2.destroy_zero();
         integrate::utils::send_coin<CoinTypeA>(v1, sui::tx_context::sender(ctx));
         sui::transfer::public_transfer<clmm_pool::position::Position>(v0, sui::tx_context::sender(ctx));
     }
@@ -550,8 +537,7 @@ module integrate::pool_script {
         clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext
     ) {
-        let (v0, v1, v2) = clmm_pool::factory::create_pool_with_liquidity<CoinTypeA, CoinTypeB>(
-            pools,
+        let (v0, v1, v2) = pools.create_pool_with_liquidity(
             global_config,
             tick_spacing,
             initialize_sqrt_price,
@@ -566,7 +552,7 @@ module integrate::pool_script {
             clock,
             ctx
         );
-        sui::coin::destroy_zero<CoinTypeA>(v1);
+        v1.destroy_zero();
         integrate::utils::send_coin<CoinTypeB>(v2, sui::tx_context::sender(ctx));
         sui::transfer::public_transfer<clmm_pool::position::Position>(v0, sui::tx_context::sender(ctx));
     }
@@ -587,8 +573,7 @@ module integrate::pool_script {
         clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext
     ) {
-        let (v0, v1, v2) = clmm_pool::factory::create_pool_with_liquidity<CoinTypeA, CoinTypeB>(
-            pools,
+        let (v0, v1, v2) = pools.create_pool_with_liquidity(
             global_config,
             tick_spacing,
             initialize_sqrt_price,
@@ -872,7 +857,7 @@ module integrate::pool_script {
             sqrt_price_limit,
             clock
         );
-        let pay_amount = clmm_pool::pool::swap_pay_amount<CoinTypeA, CoinTypeB>(&swap_receipt);
+        let pay_amount = swap_receipt.swap_pay_amount();
         let coin_out_value = if (a2b) {
             coin_b_out.value<CoinTypeB>()
         } else {
@@ -886,13 +871,9 @@ module integrate::pool_script {
             assert!(pay_amount <= amount_limit, 0);
         };
         let (repay_amount_a, repay_amount_b) = if (a2b) {
-            (sui::coin::into_balance<CoinTypeA>(
-                coin_a.split<CoinTypeA>(pay_amount, ctx)
-            ), sui::balance::zero<CoinTypeB>())
+            (coin_a.split<CoinTypeA>(pay_amount, ctx).into_balance(), sui::balance::zero<CoinTypeB>())
         } else {
-            (sui::balance::zero<CoinTypeA>(), sui::coin::into_balance<CoinTypeB>(
-                coin_b.split<CoinTypeB>(pay_amount, ctx)
-            ))
+            (sui::balance::zero<CoinTypeA>(), coin_b.split<CoinTypeB>(pay_amount, ctx).into_balance())
         };
         coin_a.join<CoinTypeA>(sui::coin::from_balance<CoinTypeA>(coin_a_out, ctx));
         coin_b.join<CoinTypeB>(sui::coin::from_balance<CoinTypeB>(coin_b_out, ctx));

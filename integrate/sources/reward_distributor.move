@@ -16,11 +16,7 @@ module integrate::reward_distributor {
     ) {
         let claimable_event = Claimable {
             lock_id,
-            amount: distribution::reward_distributor::claimable<SailCoinType>(
-                reward_distributor,
-                voting_escrow,
-                lock_id
-            ),
+            amount: reward_distributor.claimable(voting_escrow, lock_id),
         };
         sui::event::emit<Claimable>(claimable_event);
     }
@@ -51,13 +47,7 @@ module integrate::reward_distributor {
     ) {
         let claim_and_lock_event = ClaimAndLock {
             lock_id: sui::object::id<distribution::voting_escrow::Lock>(lock),
-            amount: distribution::reward_distributor::claim<SailCoinType>(
-                reward_distributor,
-                voting_escrow,
-                lock,
-                clock,
-                ctx
-            ),
+            amount: reward_distributor.claim(voting_escrow, lock, clock, ctx),
         };
         sui::event::emit<ClaimAndLock>(claim_and_lock_event);
     }

@@ -58,8 +58,7 @@ module integrate::pool_creator_v2 {
         );
         let liquidity_amount_a = coin_a_for_pool.value<CoinTypeA>();
         let liquidity_amount_b = coin_b_for_pool.value<CoinTypeB>();
-        let (position, remaining_coin_a, remaining_coin_b) = clmm_pool::factory::create_pool_with_liquidity<CoinTypeA, CoinTypeB>(
-            pools,
+        let (position, remaining_coin_a, remaining_coin_b) = pools.create_pool_with_liquidity(
             global_config,
             tick_spacing,
             initialize_sqrt_price,
@@ -74,8 +73,8 @@ module integrate::pool_creator_v2 {
             clock,
             ctx
         );
-        sui::coin::destroy_zero<CoinTypeA>(remaining_coin_a);
-        sui::coin::destroy_zero<CoinTypeB>(remaining_coin_b);
+        remaining_coin_a.destroy_zero();
+        remaining_coin_b.destroy_zero();
         sui::transfer::public_transfer<clmm_pool::position::Position>(position, sui::tx_context::sender(ctx));
     }
 }

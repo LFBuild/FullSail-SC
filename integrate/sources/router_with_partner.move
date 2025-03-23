@@ -45,7 +45,7 @@ module integrate::router_with_partner {
                 ctx
             );
             assert!(unused_coin_b.value<CoinTypeB>() == 0, 5);
-            sui::coin::destroy_zero<CoinTypeB>(unused_coin_b);
+            unused_coin_b.destroy_zero();
             (coin_a_out, final_coin_c)
         } else {
             let (b_balance, c_balance, receipt) = clmm_pool::pool::flash_swap_with_partner<CoinTypeB, CoinTypeC>(
@@ -66,7 +66,7 @@ module integrate::router_with_partner {
                 sui::coin::from_balance<CoinTypeB>(b_balance, ctx),
                 true,
                 false,
-                clmm_pool::pool::swap_pay_amount<CoinTypeB, CoinTypeC>(&receipt),
+                receipt.swap_pay_amount(),
                 sqrt_price_limit_ab,
                 false,
                 clock,
@@ -76,11 +76,11 @@ module integrate::router_with_partner {
                 global_config,
                 pool_bc,
                 partner,
-                sui::coin::into_balance<CoinTypeB>(coin_b_for_repay),
+                coin_b_for_repay.into_balance(),
                 sui::balance::zero<CoinTypeC>(),
                 receipt
             );
-            sui::coin::join<CoinTypeC>(&mut coin_to, sui::coin::from_balance<CoinTypeC>(c_balance, ctx));
+            coin_to.join(sui::coin::from_balance<CoinTypeC>(c_balance, ctx));
             (final_coin_a, coin_to)
         }
     }
@@ -115,7 +115,7 @@ module integrate::router_with_partner {
                 clock,
                 ctx
             );
-            let intermediate_amount = sui::coin::value<CoinTypeB>(&intermediate_coin_b);
+            let intermediate_amount = intermediate_coin_b.value();
             let (final_coin_c, unused_coin_b) = swap_with_partner<CoinTypeC, CoinTypeB>(
                 global_config,
                 pool_cb,
@@ -131,7 +131,7 @@ module integrate::router_with_partner {
                 ctx
             );
             assert!(unused_coin_b.value<CoinTypeB>() == 0, 5);
-            sui::coin::destroy_zero<CoinTypeB>(unused_coin_b);
+            unused_coin_b.destroy_zero();
             (coin_a_out, final_coin_c)
         } else {
             let (c_balance, b_balance, receipt) = clmm_pool::pool::flash_swap_with_partner<CoinTypeC, CoinTypeB>(
@@ -152,7 +152,7 @@ module integrate::router_with_partner {
                 sui::coin::from_balance<CoinTypeB>(b_balance, ctx),
                 true,
                 false,
-                clmm_pool::pool::swap_pay_amount<CoinTypeC, CoinTypeB>(&receipt),
+                receipt.swap_pay_amount(),
                 sqrt_price_limit_ab,
                 false,
                 clock,
@@ -163,7 +163,7 @@ module integrate::router_with_partner {
                 pool_cb,
                 partner,
                 sui::balance::zero<CoinTypeC>(),
-                sui::coin::into_balance<CoinTypeB>(coin_b_for_repay),
+                coin_b_for_repay.into_balance(),
                 receipt
             );
             coin_to.join<CoinTypeC>(sui::coin::from_balance<CoinTypeC>(c_balance, ctx));
@@ -218,7 +218,7 @@ module integrate::router_with_partner {
                 ctx
             );
             assert!(unused_coin_b.value<CoinTypeB>() == 0, 5);
-            sui::coin::destroy_zero<CoinTypeB>(unused_coin_b);
+            unused_coin_b.destroy_zero();
             (coin_a_out, final_coin_c)
         } else {
             let (b_balance, c_balance, receipt) = clmm_pool::pool::flash_swap_with_partner<CoinTypeB, CoinTypeC>(
@@ -239,7 +239,7 @@ module integrate::router_with_partner {
                 coin_from,
                 false,
                 false,
-                clmm_pool::pool::swap_pay_amount<CoinTypeB, CoinTypeC>(&receipt),
+                receipt.swap_pay_amount(),
                 sqrt_price_limit_ba,
                 false,
                 clock,
@@ -249,7 +249,7 @@ module integrate::router_with_partner {
                 global_config,
                 pool_bc,
                 partner,
-                sui::coin::into_balance<CoinTypeB>(coin_b_for_repay),
+                coin_b_for_repay.into_balance(),
                 sui::balance::zero<CoinTypeC>(),
                 receipt
             );
@@ -288,7 +288,7 @@ module integrate::router_with_partner {
                 clock,
                 ctx
             );
-            let amount = sui::coin::value<CoinTypeB>(&intermediate_coin_b);
+            let amount = intermediate_coin_b.value();
             let (final_coin_c, unused_coin_b) = swap_with_partner<CoinTypeC, CoinTypeB>(
                 global_config,
                 pool_cb,
@@ -304,7 +304,7 @@ module integrate::router_with_partner {
                 ctx
             );
             assert!(unused_coin_b.value<CoinTypeB>() == 0, 5);
-            sui::coin::destroy_zero<CoinTypeB>(unused_coin_b);
+            unused_coin_b.destroy_zero();
             (coin_a_out, final_coin_c)
         } else {
             let (c_balance, b_balance, receipt) = clmm_pool::pool::flash_swap_with_partner<CoinTypeC, CoinTypeB>(
@@ -325,7 +325,7 @@ module integrate::router_with_partner {
                 coin_from,
                 false,
                 false,
-                clmm_pool::pool::swap_pay_amount<CoinTypeC, CoinTypeB>(&receipt),
+                receipt.swap_pay_amount(),
                 sqrt_price_limit_ba,
                 false,
                 clock,
@@ -336,7 +336,7 @@ module integrate::router_with_partner {
                 pool_cb,
                 partner,
                 sui::balance::zero<CoinTypeC>(),
-                sui::coin::into_balance<CoinTypeB>(coin_b_for_repay),
+                coin_b_for_repay.into_balance(),
                 receipt
             );
             coin_to.join<CoinTypeC>(sui::coin::from_balance<CoinTypeC>(c_balance, ctx));
@@ -376,7 +376,7 @@ module integrate::router_with_partner {
             sqrt_price_limit,
             clock
         );
-        let pay_mount = clmm_pool::pool::swap_pay_amount<CoinTypeA, CoinTypeB>(&receipt);
+        let pay_mount = receipt.swap_pay_amount();
         let coin_out_value = if (a2b) {
             coin_b_out.value<CoinTypeB>()
         } else {
@@ -390,15 +390,13 @@ module integrate::router_with_partner {
         let (repay_amount_a, repay_amount_b) = if (a2b) {
             assert!(coin_a.value<CoinTypeA>() >= pay_mount, 4);
             (
-                sui::coin::into_balance<CoinTypeA>(coin_a.split<CoinTypeA>(pay_mount, ctx)),
+                coin_a.split<CoinTypeA>(pay_mount, ctx).into_balance(),
                 sui::balance::zero<CoinTypeB>()
             )
         } else {
             (
                 sui::balance::zero<CoinTypeA>(),
-                sui::coin::into_balance<CoinTypeB>(
-                    coin_b.split<CoinTypeB>(pay_mount, ctx)
-                )
+                coin_b.split<CoinTypeB>(pay_mount, ctx).into_balance()
             )
         };
         coin_a.join<CoinTypeA>(sui::coin::from_balance<CoinTypeA>(coin_a_out, ctx));
