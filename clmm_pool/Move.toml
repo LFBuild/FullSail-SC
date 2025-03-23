@@ -21,7 +21,7 @@ gauge_cap = { local = "../gauge_cap" }
 # Override = { local = "../conflicting/version", override = true }
 
 [addresses]
-clmm_pool = "0x0"
+clmm_pool = "0x40dee50cf77b008de39da6cbe7adf8cd6b142cd3f098b6206ac32057a75f2300"
 
 # Named addresses will be accessible in Move as `@name`. They're also exported:
 # for example, `std = "0x1"` is exported by the Standard Library.

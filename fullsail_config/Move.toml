@@ -19,7 +19,7 @@ Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-fram
 # Override = { local = "../conflicting/version", override = true }
 
 [addresses]
-fullsail_config = "0x0"
+fullsail_config = "0xfbc54ce0d4ff93241a535b5d5eeb235438bd41e7a6aa6fc2c2cad283aa2ad601"
 
 # Named addresses will be accessible in Move as `@name`. They're also exported:
 # for example, `std = "0x1"` is exported by the Standard Library.

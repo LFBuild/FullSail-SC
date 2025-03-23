@@ -80,3 +80,4 @@ This step is required to build the packages later.
 - [clmm_pool](https://testnet.suivision.xyz/txblock/JDixgrY2ukAH7osgCeJX8YfTeq9xSEPE68VJPmF1EBJs)
 - [distribution](https://testnet.suivision.xyz/txblock/ECihTgcyGtTsQdDDs6SjC9x2616brY6jnq4sZnSQc23R)
 - [integrate](https://testnet.suivision.xyz/txblock/7FhEtcJBxGJGyntVUwMkemhqgGEZZwgUL63M3xSqwDDb)
+- [fullsail_config](https://testnet.suivision.xyz/txblock/6tH7SWipN55Rut3QUNhKhQo82fgWCN8Lp6JrfXnTj8t9)
