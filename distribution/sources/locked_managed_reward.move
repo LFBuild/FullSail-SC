@@ -1,19 +1,19 @@
 module distribution::locked_managed_reward {
     public struct LockedManagedReward has store, key {
-        id: sui::object::UID,
+        id: UID,
         reward: distribution::reward::Reward,
     }
 
     public(package) fun create(
-        voter: sui::object::ID,
-        ve: sui::object::ID,
+        voter: ID,
+        ve: ID,
         reward_coin_type: std::type_name::TypeName,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ): LockedManagedReward {
         let mut coin_types_vec = std::vector::empty<std::type_name::TypeName>();
         coin_types_vec.push_back(reward_coin_type);
         LockedManagedReward {
-            id: sui::object::new(ctx),
+            id: object::new(ctx),
             reward: distribution::reward::create(voter, ve, ve, coin_types_vec, ctx),
         }
     }
@@ -22,22 +22,22 @@ module distribution::locked_managed_reward {
         reward: &mut LockedManagedReward,
         reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
         amount: u64,
-        lock_id: sui::object::ID,
+        lock_id: ID,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         reward.reward.deposit(reward_authorized_cap, amount, lock_id, clock, ctx);
     }
 
     public fun earned<RewardCoinType>(
         reward: &LockedManagedReward,
-        lock_id: sui::object::ID,
+        lock_id: ID,
         clock: &sui::clock::Clock
     ): u64 {
         reward.reward.earned<RewardCoinType>(lock_id, clock)
     }
 
-    public fun get_prior_balance_index(reward: &LockedManagedReward, lock_id: sui::object::ID, time: u64): u64 {
+    public fun get_prior_balance_index(reward: &LockedManagedReward, lock_id: ID, time: u64): u64 {
         reward.reward.get_prior_balance_index(lock_id, time)
     }
 
@@ -53,9 +53,9 @@ module distribution::locked_managed_reward {
         reward: &mut LockedManagedReward,
         reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
         amount: u64,
-        lock_id: sui::object::ID,
+        lock_id: ID,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         reward.reward.withdraw(reward_authorized_cap, amount, lock_id, clock, ctx);
     }
@@ -67,14 +67,14 @@ module distribution::locked_managed_reward {
     public fun get_reward<RewardCoinType>(
         reward: &mut LockedManagedReward,
         reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
-        lock_id: sui::object::ID,
+        lock_id: ID,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ): sui::balance::Balance<RewardCoinType> {
         reward_authorized_cap.validate(reward.reward.ve());
         let vote_escrow_id = reward.reward.ve();
         let mut reward_balance_option = reward.reward.get_reward_internal<RewardCoinType>(
-            sui::object::id_to_address(&vote_escrow_id),
+            object::id_to_address(&vote_escrow_id),
             lock_id,
             clock,
             ctx
@@ -93,7 +93,7 @@ module distribution::locked_managed_reward {
         reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
         coin: sui::coin::Coin<RewardCoinType>,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         reward_authorized_cap.validate(reward.reward.ve());
         reward.reward.notify_reward_amount_internal(coin.into_balance(), clock, ctx);

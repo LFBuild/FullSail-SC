@@ -2,7 +2,7 @@ module distribution::fullsail_token {
     public struct FULLSAIL_TOKEN has drop {}
 
     public struct MinterCap<phantom SailCoinType> has store, key {
-        id: sui::object::UID,
+        id: UID,
         cap: sui::coin::TreasuryCap<SailCoinType>,
     }
 
@@ -18,7 +18,7 @@ module distribution::fullsail_token {
         amount: u64,
         // TODO: recipient arg probably useless
         recipient: address,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ): sui::coin::Coin<SailCoinType> {
         assert!(recipient != @0x0, 0);
         minter_cap.cap.mint(amount, ctx)
@@ -28,22 +28,22 @@ module distribution::fullsail_token {
         minter_cap.cap.total_supply()
     }
 
-    fun init(otw: FULLSAIL_TOKEN, ctx: &mut sui::tx_context::TxContext) {
+    fun init(otw: FULLSAIL_TOKEN, ctx: &mut TxContext) {
         let (treasury_cap, metadata) = sui::coin::create_currency<FULLSAIL_TOKEN>(
             otw,
             6,
             b"FSAIL",
             b"FullSail",
             b"FullSail Governance Token with ve(4,4) capabilities",
-            std::option::none<sui::url::Url>(),
+            option::none<sui::url::Url>(),
             ctx
         );
         let minter_cap = MinterCap<FULLSAIL_TOKEN> {
-            id: sui::object::new(ctx),
+            id: object::new(ctx),
             cap: treasury_cap,
         };
-        sui::transfer::transfer<MinterCap<FULLSAIL_TOKEN>>(minter_cap, sui::tx_context::sender(ctx));
-        sui::transfer::public_transfer<sui::coin::CoinMetadata<FULLSAIL_TOKEN>>(metadata, sui::tx_context::sender(ctx));
+        transfer::transfer<MinterCap<FULLSAIL_TOKEN>>(minter_cap, tx_context::sender(ctx));
+        transfer::public_transfer<sui::coin::CoinMetadata<FULLSAIL_TOKEN>>(metadata, tx_context::sender(ctx));
     }
 }
 

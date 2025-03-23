@@ -1,13 +1,13 @@
 module distribution::reward {
     public struct EventDeposit has copy, drop, store {
         sender: address,
-        lock_id: sui::object::ID,
+        lock_id: ID,
         amount: u64,
     }
 
     public struct EventWithdraw has copy, drop, store {
         sender: address,
-        lock_id: sui::object::ID,
+        lock_id: ID,
         amount: u64,
     }
 
@@ -35,17 +35,17 @@ module distribution::reward {
     }
 
     public struct Reward has store, key {
-        id: sui::object::UID,
-        voter: sui::object::ID,
-        ve: sui::object::ID,
-        authorized: sui::object::ID,
+        id: UID,
+        voter: ID,
+        ve: ID,
+        authorized: ID,
         total_supply: u64,
-        balance_of: sui::table::Table<sui::object::ID, u64>,
+        balance_of: sui::table::Table<ID, u64>,
         token_rewards_per_epoch: sui::table::Table<std::type_name::TypeName, sui::table::Table<u64, u64>>,
-        last_earn: sui::table::Table<std::type_name::TypeName, sui::table::Table<sui::object::ID, u64>>,
+        last_earn: sui::table::Table<std::type_name::TypeName, sui::table::Table<ID, u64>>,
         rewards: sui::vec_set::VecSet<std::type_name::TypeName>,
-        checkpoints: sui::table::Table<sui::object::ID, sui::table::Table<u64, Checkpoint>>,
-        num_checkpoints: sui::table::Table<sui::object::ID, u64>,
+        checkpoints: sui::table::Table<ID, sui::table::Table<u64, Checkpoint>>,
+        num_checkpoints: sui::table::Table<ID, u64>,
         supply_checkpoints: sui::table::Table<u64, SupplyCheckpoint>,
         supply_num_checkpoints: u64,
         balances: sui::bag::Bag,
@@ -61,11 +61,11 @@ module distribution::reward {
         reward.rewards.insert<std::type_name::TypeName>(coinTypeName);
     }
 
-    public fun authorized(reward: &Reward): sui::object::ID {
+    public fun authorized(reward: &Reward): ID {
         reward.authorized
     }
 
-    public fun balance_of(reward: &Reward, lock_id: sui::object::ID): u64 {
+    public fun balance_of(reward: &Reward, lock_id: ID): u64 {
         if (!reward.balance_of.contains(lock_id)) {
             0
         } else {
@@ -74,24 +74,24 @@ module distribution::reward {
     }
 
     public(package) fun create(
-        voter: sui::object::ID,
-        ve: sui::object::ID,
-        authorized: sui::object::ID,
+        voter: ID,
+        ve: ID,
+        authorized: ID,
         reward_coin_types: vector<std::type_name::TypeName>,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ): Reward {
         let mut reward = Reward {
-            id: sui::object::new(ctx),
+            id: object::new(ctx),
             voter,
             ve,
             authorized,
             total_supply: 0,
-            balance_of: sui::table::new<sui::object::ID, u64>(ctx),
+            balance_of: sui::table::new<ID, u64>(ctx),
             token_rewards_per_epoch: sui::table::new<std::type_name::TypeName, sui::table::Table<u64, u64>>(ctx),
-            last_earn: sui::table::new<std::type_name::TypeName, sui::table::Table<sui::object::ID, u64>>(ctx),
+            last_earn: sui::table::new<std::type_name::TypeName, sui::table::Table<ID, u64>>(ctx),
             rewards: sui::vec_set::empty<std::type_name::TypeName>(),
-            checkpoints: sui::table::new<sui::object::ID, sui::table::Table<u64, Checkpoint>>(ctx),
-            num_checkpoints: sui::table::new<sui::object::ID, u64>(ctx),
+            checkpoints: sui::table::new<ID, sui::table::Table<u64, Checkpoint>>(ctx),
+            num_checkpoints: sui::table::new<ID, u64>(ctx),
             supply_checkpoints: sui::table::new<u64, SupplyCheckpoint>(ctx),
             supply_num_checkpoints: 0,
             balances: sui::bag::new(ctx),
@@ -110,9 +110,9 @@ module distribution::reward {
         reward: &mut Reward,
         reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
         amount: u64,
-        lock_id: sui::object::ID,
+        lock_id: ID,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         reward_authorized_cap.validate(reward.authorized);
         reward.total_supply = reward.total_supply + amount;
@@ -127,14 +127,14 @@ module distribution::reward {
         reward.write_checkpoint_internal(lock_id, updated_lock_votes_balance, current_time, ctx);
         reward.write_supply_checkpoint_internal(current_time);
         let deposit_event = EventDeposit {
-            sender: sui::tx_context::sender(ctx),
+            sender: tx_context::sender(ctx),
             lock_id,
             amount,
         };
         sui::event::emit<EventDeposit>(deposit_event);
     }
 
-    public(package) fun earned<CoinType>(reward: &Reward, lock_id: sui::object::ID, clock: &sui::clock::Clock): u64 {
+    public(package) fun earned<CoinType>(reward: &Reward, lock_id: ID, clock: &sui::clock::Clock): u64 {
         let zero_checkpoints = if (!reward.num_checkpoints.contains(lock_id)) {
             true
         } else {
@@ -207,7 +207,7 @@ module distribution::reward {
     /**
     * Returns the index of the latest checkpoint that has timestamp lower or equal to the specified time.
     */
-    public fun get_prior_balance_index(reward: &Reward, lock_id: sui::object::ID, time: u64): u64 {
+    public fun get_prior_balance_index(reward: &Reward, lock_id: ID, time: u64): u64 {
         let num_checkpoints = if (reward.num_checkpoints.contains(lock_id)) {
             *reward.num_checkpoints.borrow(lock_id)
         } else {
@@ -273,14 +273,14 @@ module distribution::reward {
     public(package) fun get_reward_internal<CoinType>(
         reward: &mut Reward,
         recipient: address,
-        lock_id: sui::object::ID,
+        lock_id: ID,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
-    ): std::option::Option<sui::balance::Balance<CoinType>> {
+        ctx: &mut TxContext
+    ): Option<sui::balance::Balance<CoinType>> {
         let reward_amount = reward.earned<CoinType>(lock_id, clock);
         let coin_type_name = std::type_name::get<CoinType>();
         if (!reward.last_earn.contains(coin_type_name)) {
-            reward.last_earn.add(coin_type_name, sui::table::new<sui::object::ID, u64>(ctx));
+            reward.last_earn.add(coin_type_name, sui::table::new<ID, u64>(ctx));
         };
         let last_earned_times = reward.last_earn.borrow_mut(coin_type_name);
         if (last_earned_times.contains(lock_id)) {
@@ -294,20 +294,20 @@ module distribution::reward {
         };
         sui::event::emit<EventClaimRewards>(claim_rewards_event);
         if (reward_amount > 0) {
-            return std::option::some<sui::balance::Balance<CoinType>>(
+            return option::some<sui::balance::Balance<CoinType>>(
                 reward.balances.borrow_mut<std::type_name::TypeName, sui::balance::Balance<CoinType>>(
                     coin_type_name
                 ).split<CoinType>(reward_amount)
             )
         };
-        std::option::none<sui::balance::Balance<CoinType>>()
+        option::none<sui::balance::Balance<CoinType>>()
     }
 
     public(package) fun notify_reward_amount_internal<CoinType>(
         reward: &mut Reward,
         balance: sui::balance::Balance<CoinType>,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         let reward_amount = balance.value<CoinType>();
         let reward_type_name = std::type_name::get<CoinType>();
@@ -330,7 +330,7 @@ module distribution::reward {
             ).join<CoinType>(balance);
         };
         let notify_reward_event = EventNotifyReward {
-            sender: sui::tx_context::sender(ctx),
+            sender: tx_context::sender(ctx),
             token_name: reward_type_name,
             epoch_start,
             amount: reward_amount,
@@ -376,11 +376,11 @@ module distribution::reward {
         reward.total_supply
     }
 
-    public fun ve(reward: &Reward): sui::object::ID {
+    public fun ve(reward: &Reward): ID {
         reward.ve
     }
 
-    public fun voter(reward: &Reward): sui::object::ID {
+    public fun voter(reward: &Reward): ID {
         reward.voter
     }
 
@@ -388,9 +388,9 @@ module distribution::reward {
         reward: &mut Reward,
         reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
         amount: u64,
-        lock_id: sui::object::ID,
+        lock_id: ID,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         reward_authorized_cap.validate(reward.authorized);
         reward.total_supply = reward.total_supply - amount;
@@ -400,7 +400,7 @@ module distribution::reward {
         reward.write_checkpoint_internal(lock_id, lock_balance - amount, current_time, ctx);
         reward.write_supply_checkpoint_internal(current_time);
         let v2 = EventWithdraw {
-            sender: sui::tx_context::sender(ctx),
+            sender: tx_context::sender(ctx),
             lock_id,
             amount,
         };
@@ -409,10 +409,10 @@ module distribution::reward {
 
     fun write_checkpoint_internal(
         reward: &mut Reward,
-        lock_id: sui::object::ID,
+        lock_id: ID,
         balance: u64,
         time: u64,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         let num_of_checkpoints = if (reward.num_checkpoints.contains(lock_id)) {
             *reward.num_checkpoints.borrow(lock_id)

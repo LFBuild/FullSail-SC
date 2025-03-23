@@ -20,7 +20,7 @@ module integrate::voting_escrow {
         lock: distribution::voting_escrow::Lock,
         recipient: address,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         lock.transfer(voting_escrow, recipient, clock, ctx);
     }
@@ -31,11 +31,11 @@ module integrate::voting_escrow {
 
     public entry fun create<SailCoinType>(
         publisher: &sui::package::Publisher,
-        voter_id: sui::object::ID,
+        voter_id: ID,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
-        sui::transfer::public_share_object<distribution::voting_escrow::VotingEscrow<SailCoinType>>(
+        transfer::public_share_object<distribution::voting_escrow::VotingEscrow<SailCoinType>>(
             distribution::voting_escrow::create<SailCoinType>(
                 publisher,
                 voter_id,
@@ -51,7 +51,7 @@ module integrate::voting_escrow {
         lock_duration_days: u64,
         permanent: bool,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         arg0.create_lock(
             integrate::utils::merge_coins<SailCoinType>(coins, ctx),
@@ -67,7 +67,7 @@ module integrate::voting_escrow {
         lock: &mut distribution::voting_escrow::Lock,
         coins: vector<sui::coin::Coin<SailCoinType>>,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         voting_escrow.increase_amount(lock, integrate::utils::merge_coins<SailCoinType>(coins, ctx), clock, ctx);
     }
@@ -77,7 +77,7 @@ module integrate::voting_escrow {
         lock: &mut distribution::voting_escrow::Lock,
         new_lock_duration_days: u64,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         voting_escrow.increase_unlock_time(lock, new_lock_duration_days, clock, ctx);
     }
@@ -86,7 +86,7 @@ module integrate::voting_escrow {
         voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
         lock: &mut distribution::voting_escrow::Lock,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         voting_escrow.lock_permanent(lock, clock, ctx);
     }
@@ -95,7 +95,7 @@ module integrate::voting_escrow {
         voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
         lock: &mut distribution::voting_escrow::Lock,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         voting_escrow.unlock_permanent(lock, clock, ctx);
     }
@@ -106,7 +106,7 @@ module integrate::voting_escrow {
         lock_duration_days: u64,
         permanent: bool,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         let mut v0 = std::vector::empty<sui::coin::Coin<SailCoinType>>();
         v0.push_back(coin);
@@ -118,7 +118,7 @@ module integrate::voting_escrow {
         lock: &mut distribution::voting_escrow::Lock,
         coin: sui::coin::Coin<SailCoinType>,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         voting_escrow.increase_amount(lock, coin, clock, ctx);
     }
@@ -127,7 +127,7 @@ module integrate::voting_escrow {
         voter: &distribution::voter::Voter<SailCoinType>,
         voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
         reward_distributor: &distribution::reward_distributor::RewardDistributor<SailCoinType>,
-        lock_id: sui::object::ID,
+        lock_id: ID,
         clock: &sui::clock::Clock
     ) {
         sui::event::emit<LockSummary>(lock_summary_internal<SailCoinType>(
@@ -143,7 +143,7 @@ module integrate::voting_escrow {
         voter: &distribution::voter::Voter<SailCoinType>,
         voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
         reward_distributor: &distribution::reward_distributor::RewardDistributor<SailCoinType>,
-        lock_id: sui::object::ID,
+        lock_id: ID,
         clock: &sui::clock::Clock
     ): LockSummary {
         let mut total_incentives = 0;
@@ -173,7 +173,7 @@ module integrate::voting_escrow {
         lock_a: distribution::voting_escrow::Lock,
         lock_b: &mut distribution::voting_escrow::Lock,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         voting_escrow.merge(lock_a, lock_b, clock, ctx);
     }

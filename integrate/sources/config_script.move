@@ -3,7 +3,7 @@ module integrate::config_script {
         global_config: &mut clmm_pool::config::GlobalConfig,
         tick_spacing: u32,
         fee_rate: u64,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         global_config.add_fee_tier(tick_spacing, fee_rate, ctx);
     }
@@ -20,7 +20,7 @@ module integrate::config_script {
     public entry fun delete_fee_tier(
         global_config: &mut clmm_pool::config::GlobalConfig,
         tick_spacing: u32,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         global_config.delete_fee_tier(tick_spacing, ctx);
     }
@@ -55,7 +55,7 @@ module integrate::config_script {
         global_config: &mut clmm_pool::config::GlobalConfig,
         tick_spacing: u32,
         new_fee_rate: u64,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         global_config.update_fee_tier(tick_spacing, new_fee_rate, ctx);
     }
@@ -63,7 +63,7 @@ module integrate::config_script {
     public entry fun update_protocol_fee_rate(
         global_config: &mut clmm_pool::config::GlobalConfig,
         new_fee_rate: u64,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         global_config.update_protocol_fee_rate(new_fee_rate, ctx);
     }
@@ -71,7 +71,7 @@ module integrate::config_script {
     public entry fun init_fee_tiers(
         global_config: &mut clmm_pool::config::GlobalConfig,
         _admin_cap: &clmm_pool::config::AdminCap,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         global_config.add_fee_tier(2, 100, ctx);
         global_config.add_fee_tier(10, 500, ctx);
@@ -86,7 +86,7 @@ module integrate::config_script {
         link: std::string::String,
         project_url: std::string::String,
         creator: std::string::String,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         clmm_pool::position::set_display(
             global_config,

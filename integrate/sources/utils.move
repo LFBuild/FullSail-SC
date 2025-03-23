@@ -2,7 +2,7 @@ module integrate::utils {
 
     public fun merge_coins<CoinType>(
         mut coins: vector<sui::coin::Coin<CoinType>>,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ): sui::coin::Coin<CoinType> {
         if (coins.is_empty()) {
             coins.destroy_empty();
@@ -19,7 +19,7 @@ module integrate::utils {
         recipient: address
     ) {
         if (coin.value<CoinType>() > 0) {
-            sui::transfer::public_transfer<sui::coin::Coin<CoinType>>(coin, recipient);
+            transfer::public_transfer<sui::coin::Coin<CoinType>>(coin, recipient);
         } else {
             coin.destroy_zero();
         };
@@ -27,10 +27,10 @@ module integrate::utils {
 
     public fun transfer_coin_to_sender<CoinType>(
         coin: sui::coin::Coin<CoinType>,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         if (coin.value<CoinType>() > 0) {
-            sui::transfer::public_transfer<sui::coin::Coin<CoinType>>(coin, sui::tx_context::sender(ctx));
+            transfer::public_transfer<sui::coin::Coin<CoinType>>(coin, tx_context::sender(ctx));
         } else {
             coin.destroy_zero();
         };

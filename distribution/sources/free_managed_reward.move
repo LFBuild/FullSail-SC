@@ -5,20 +5,20 @@ module distribution::free_managed_reward {
     const ENotifyRewardAmountTokenNotAllowed: u64 = 9223372389042094079;
 
     public struct FreeManagedReward has store, key {
-        id: sui::object::UID,
+        id: UID,
         reward: distribution::reward::Reward,
     }
 
     public(package) fun create(
-        voter: sui::object::ID,
-        ve: sui::object::ID,
+        voter: ID,
+        ve: ID,
         reward_coin_type: std::type_name::TypeName,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ): FreeManagedReward {
         let mut type_name_vec = std::vector::empty<std::type_name::TypeName>();
         type_name_vec.push_back(reward_coin_type);
         FreeManagedReward {
-            id: sui::object::new(ctx),
+            id: object::new(ctx),
             reward: distribution::reward::create(voter, ve, ve, type_name_vec, ctx),
         }
     }
@@ -27,16 +27,16 @@ module distribution::free_managed_reward {
         reward: &mut FreeManagedReward,
         reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
         amount: u64,
-        lock_id: sui::object::ID,
+        lock_id: ID,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         reward.reward.deposit(reward_authorized_cap, amount, lock_id, clock, ctx);
     }
 
     public fun earned<RewardCoinType>(
         reward: &FreeManagedReward,
-        lock_id: sui::object::ID,
+        lock_id: ID,
         clock: &sui::clock::Clock
     ): u64 {
         reward.reward.earned<RewardCoinType>(lock_id, clock)
@@ -44,7 +44,7 @@ module distribution::free_managed_reward {
 
     public fun get_prior_balance_index(
         reward: &FreeManagedReward,
-        lock_id: sui::object::ID,
+        lock_id: ID,
         time: u64
     ): u64 {
         reward.reward.get_prior_balance_index(lock_id, time)
@@ -62,9 +62,9 @@ module distribution::free_managed_reward {
         reward: &mut FreeManagedReward,
         reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
         amount: u64,
-        lock_id: sui::object::ID,
+        lock_id: ID,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         reward.reward.withdraw(reward_authorized_cap, amount, lock_id, clock, ctx);
     }
@@ -81,18 +81,18 @@ module distribution::free_managed_reward {
         reward: &mut FreeManagedReward,
         owner_proff: distribution::lock_owner::OwnerProof,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         let (prover, lock, owner) = owner_proff.consume();
         assert!(reward.reward.ve() == prover, EGetRewardInvalidProver);
         let mut reward_coin = reward.reward.get_reward_internal<RewardCoinType>(
-            sui::tx_context::sender(ctx),
+            tx_context::sender(ctx),
             lock,
             clock,
             ctx
         );
         if (reward_coin.is_some()) {
-            sui::transfer::public_transfer<sui::coin::Coin<RewardCoinType>>(
+            transfer::public_transfer<sui::coin::Coin<RewardCoinType>>(
                 sui::coin::from_balance<RewardCoinType>(
                     reward_coin.extract(),
                     ctx
@@ -105,10 +105,10 @@ module distribution::free_managed_reward {
 
     public fun notify_reward_amount<RewardCoinType>(
         reward: &mut FreeManagedReward,
-        mut whitelisted_token: std::option::Option<distribution::whitelisted_tokens::WhitelistedToken>,
+        mut whitelisted_token: Option<distribution::whitelisted_tokens::WhitelistedToken>,
         coin: sui::coin::Coin<RewardCoinType>,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         let coin_type_name = std::type_name::get<RewardCoinType>();
         if (!reward.reward.rewards_contains(coin_type_name)) {

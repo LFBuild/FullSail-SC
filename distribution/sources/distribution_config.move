@@ -1,26 +1,26 @@
 module distribution::distribution_config {
     public struct DistributionConfig has store, key {
-        id: sui::object::UID,
-        alive_gauges: sui::vec_set::VecSet<sui::object::ID>,
+        id: UID,
+        alive_gauges: sui::vec_set::VecSet<ID>,
     }
 
-    fun init(arg0: &mut sui::tx_context::TxContext) {
+    fun init(arg0: &mut TxContext) {
         let v0 = DistributionConfig {
-            id: sui::object::new(arg0),
-            alive_gauges: sui::vec_set::empty<sui::object::ID>(),
+            id: object::new(arg0),
+            alive_gauges: sui::vec_set::empty<ID>(),
         };
-        sui::transfer::share_object<DistributionConfig>(v0);
+        transfer::share_object<DistributionConfig>(v0);
     }
 
-    public fun is_gauge_alive(arg0: &DistributionConfig, arg1: sui::object::ID): bool {
+    public fun is_gauge_alive(arg0: &DistributionConfig, arg1: ID): bool {
         arg0.alive_gauges.contains(&arg1)
     }
 
     public(package) fun update_gauge_liveness(
         arg0: &mut DistributionConfig,
-        arg1: vector<sui::object::ID>,
+        arg1: vector<ID>,
         arg2: bool,
-        _arg3: &mut sui::tx_context::TxContext
+        _arg3: &mut TxContext
     ) {
         let mut v0 = 0;
         let v1 = arg1.length();

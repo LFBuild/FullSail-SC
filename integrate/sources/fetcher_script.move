@@ -17,26 +17,26 @@ module integrate::fetcher_script {
 
     public struct FetchPositionRewardsEvent has copy, drop, store {
         data: vector<u64>,
-        position_id: sui::object::ID,
+        position_id: ID,
     }
 
     public struct FetchPositionFeesEvent has copy, drop, store {
-        position_id: sui::object::ID,
+        position_id: ID,
         fee_owned_a: u64,
         fee_owned_b: u64,
     }
 
     public struct FetchPositionPointsEvent has copy, drop, store {
-        position_id: sui::object::ID,
+        position_id: ID,
         points_owned: u128,
     }
 
     public struct FetchPositionMagmaDistributionEvent has copy, drop, store {
-        position_id: sui::object::ID,
+        position_id: ID,
         distribution: u64,
     }
 
-    public entry fun fetch_pools(pools: &clmm_pool::factory::Pools, pool_ids: vector<sui::object::ID>, limit: u64) {
+    public entry fun fetch_pools(pools: &clmm_pool::factory::Pools, pool_ids: vector<ID>, limit: u64) {
         let fetched_pools = clmm_pool::factory::fetch_pools(pools, pool_ids, limit);
         let fetch_pools_event = FetchPoolsEvent { pools: fetched_pools, };
         sui::event::emit<FetchPoolsEvent>(fetch_pools_event);
@@ -62,7 +62,7 @@ module integrate::fetcher_script {
 
     public entry fun fetch_positions<CoinTypeA, CoinTypeB>(
         pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        position_ids: vector<sui::object::ID>,
+        position_ids: vector<ID>,
         limit: u64
     ) {
         let positions = clmm_pool::pool::fetch_positions<CoinTypeA, CoinTypeB>(pool, position_ids, limit);
@@ -83,7 +83,7 @@ module integrate::fetcher_script {
     public entry fun fetch_position_fees<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        position_id: sui::object::ID
+        position_id: ID
     ) {
         let (fee_owned_a, fee_owned_b) = clmm_pool::pool::calculate_and_update_fee<CoinTypeA, CoinTypeB>(global_config, pool, position_id);
         let fetch_position_fees_event = FetchPositionFeesEvent {
@@ -97,7 +97,7 @@ module integrate::fetcher_script {
     public entry fun fetch_position_magma_distribution<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        position_id: sui::object::ID,
+        position_id: ID,
         clock: &sui::clock::Clock
     ) {
         let distribution = clmm_pool::pool::calculate_and_update_magma_distribution<CoinTypeA, CoinTypeB>(
@@ -115,7 +115,7 @@ module integrate::fetcher_script {
     public entry fun fetch_position_points<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        position_id: sui::object::ID,
+        position_id: ID,
         clock: &sui::clock::Clock
     ) {
         let points_owned = clmm_pool::pool::calculate_and_update_points<CoinTypeA, CoinTypeB>(global_config, pool, position_id, clock);
@@ -129,7 +129,7 @@ module integrate::fetcher_script {
     public entry fun fetch_position_rewards<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        position_id: sui::object::ID,
+        position_id: ID,
         clock: &sui::clock::Clock
     ) {
         let data = clmm_pool::pool::calculate_and_update_rewards<CoinTypeA, CoinTypeB>(global_config, pool, position_id, clock);
