@@ -83,3 +83,17 @@ This step is required to build the packages later.
 - [fullsail_config](https://testnet.suivision.xyz/txblock/6tH7SWipN55Rut3QUNhKhQo82fgWCN8Lp6JrfXnTj8t9)
 
 [Setup distribution tx](https://testnet.suivision.xyz/txblock/6Z1DjeSo25XEu48MSteNSSmkv1MAD17hH5w1D3YckaL7)
+
+### Mainnet (test version)
+
+#### Publication transactions
+
+- [move_stl](https://suivision.xyz/txblock/DJSKVGhe4Zc27dbWHjq4QVyoXGxXePKTZJMahpxsKssf)
+- [integer_mate](https://suivision.xyz/txblock/7KCHahBXG6hfFMnRwNfnWg4Zy6QpWK5qK3cDgg7DcR8R)
+- [gauge_cap](https://suivision.xyz/txblock/EgSaGcfSMcqemH9QgcQrwquue4kbCWxEiHnfzTcnQwsP)
+- [clmm_pool](https://suivision.xyz/txblock/CuoZkRJNFEqZrA9oByC83BMdhxcHTeLpCaBPjQCyyUpA)
+- [distribution](https://suivision.xyz/txblock/CbKBgFnwjhEPemt7LCB9qmpXUEST5BUyyuUJVmapTMRe)
+- [integrate](https://suivision.xyz/txblock/Es3DqkbX1cibjToEmiWcd1awpAh763mb36amNAuAm3Xh)
+- [fullsail_config](https://suivision.xyz/txblock/RUpBRB5ke3T2keVeRYK39j17vdztWgVwVgNL8hACmpY)
+
+[Setup distribution tx](https://suivision.xyz/txblock/76dT6eHyzTiXR4fe14pzAASeEpq2FnX6DBkpcLATVBrQ)

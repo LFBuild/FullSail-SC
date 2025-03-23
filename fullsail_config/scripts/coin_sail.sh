@@ -1,4 +1,4 @@
-export COIN_TYPE=0x56e79fddd96ef2a0710f52edcb6025dbdf6d85b0029c8d599429da518bed0509::fullsail_token::FULLSAIL_TOKEN
+export COIN_TYPE=0xfc42c50c11c4d6abfbb36d1d38e1023140d610e68c5ca1b8caff7cd6c0b405cb::sail_token::SAIL_TOKEN
 export COIN_NAME='"FullSail"'
 export COIN_SYMBOL='"SAIL"'
 export COIN_COINGECKO_ID='""'

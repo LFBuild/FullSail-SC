@@ -6,4 +6,4 @@ edition = "2024"
 Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet", override = true }
 
 [addresses]
-move_stl = "0x2439526f2e94a1a14241d4ca0542952a81828bc7d75e0e85f65b136998581ae0"
+move_stl = "0x0"

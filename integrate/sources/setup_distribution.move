@@ -9,7 +9,7 @@ module integrate::setup_distribution {
     ) {
         let (minter_immut, admin_cap) = distribution::minter::create<SailCoinType>(
             publisher,
-            option::none<distribution::fullsail_token::MinterCap<SailCoinType>>(),
+            option::none<distribution::sail_token::MinterCap<SailCoinType>>(),
             ctx
         );
         let mut minter = minter_immut;
