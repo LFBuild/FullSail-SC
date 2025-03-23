@@ -4,10 +4,8 @@
 name = "integer_mate"
 edition = "2024"
 
-published-at = "0x17cc5a58c7e6f6473c5e20c4770411b0df7ecdaa40dd15d8ba778061bea28cc1"
-
 [dependencies]
 Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet", override = true }
 
 [addresses]
-integer_mate = "0x17cc5a58c7e6f6473c5e20c4770411b0df7ecdaa40dd15d8ba778061bea28cc1"
+integer_mate = "0x0"
