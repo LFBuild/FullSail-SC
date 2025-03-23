@@ -1,4 +1,4 @@
-export COIN_TYPE=0x5c6d5739ac03c13d4986671f160dfed00ac9416f15cc9dbcfd30acff3fe1026e::token_d::TOKEN_D
+export COIN_TYPE=0x03a89a0230bb207ce47dbb179116d795b79b4d1dc77657ca9b7708e79a801131::token_d::TOKEN_D
 export COIN_NAME='"TokenD"'
 export COIN_SYMBOL='"TKND"'
 export COIN_COINGECKO_ID='""'

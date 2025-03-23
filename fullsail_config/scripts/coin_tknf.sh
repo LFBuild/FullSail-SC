@@ -1,4 +1,4 @@
-export COIN_TYPE=0x2da14abf338f02e4d3cd04190ee682aabdacb8a30feb50ffcb457cf978046556::token_f::TOKEN_F
+export COIN_TYPE=0x04d1b0c8341a4d02e6d4170b0f29806e47a20b7805e5c0a2fea309f42643a687::token_f::TOKEN_F
 export COIN_NAME='"TokenF"'
 export COIN_SYMBOL='"TKNF"'
 export COIN_COINGECKO_ID='""'
