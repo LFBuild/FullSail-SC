@@ -14,10 +14,7 @@ module integrate::setup_distribution {
         );
         let mut minter = minter_immut;
         let mut supported_coins = std::vector::empty<std::type_name::TypeName>();
-        std::vector::push_back<std::type_name::TypeName>(
-            &mut supported_coins,
-            std::type_name::get<SailCoinType>()
-        );
+        supported_coins.push_back(std::type_name::get<SailCoinType>());
         let (voter, notify_reward_cap) = distribution::voter::create<SailCoinType>(
             publisher,
             sui::object::id(global_config),
@@ -30,21 +27,9 @@ module integrate::setup_distribution {
             clock,
             ctx
         );
-        distribution::minter::set_notify_reward_cap<SailCoinType>(
-            &mut minter,
-            &admin_cap,
-            notify_reward_cap
-        );
-        distribution::minter::set_reward_distributor_cap<SailCoinType>(
-            &mut minter,
-            &admin_cap,
-            reward_distributor_cap
-        );
-        distribution::minter::set_team_wallet<SailCoinType>(
-            &mut minter,
-            &admin_cap,
-            team_wallet
-        );
+        minter.set_notify_reward_cap(&admin_cap, notify_reward_cap);
+        minter.set_reward_distributor_cap(&admin_cap, reward_distributor_cap);
+        minter.set_team_wallet(&admin_cap, team_wallet);
         sui::transfer::public_transfer<distribution::minter::AdminCap>(
             admin_cap,
             sui::tx_context::sender(ctx)

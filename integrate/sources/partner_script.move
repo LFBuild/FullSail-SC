@@ -21,7 +21,7 @@ module integrate::partner_script {
         ctx: &mut sui::tx_context::TxContext
     ) {
         let partner_start_time = if (start_time == 0) {
-            sui::clock::timestamp_ms(clock) / 1000
+            clock.timestamp_ms() / 1000
         } else {
             start_time
         };
