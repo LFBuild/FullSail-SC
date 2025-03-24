@@ -47,58 +47,58 @@ module clmm_pool::position {
         growth_inside: u128,
         amount_owned: u64,
     }
-
-    public fun is_empty(arg0: &PositionInfo): bool {
-        let mut v0 = true;
-        let mut v1 = 0;
-        while (v1 < std::vector::length<PositionReward>(&arg0.rewards)) {
-            let v2 = std::vector::borrow<PositionReward>(&arg0.rewards, v1).amount_owned == 0;
-            v0 = v2;
-            if (!v2) {
+    
+    public fun is_empty(position_info: &PositionInfo): bool {
+        let mut all_rewards_empty = true;
+        let mut reward_index = 0;
+        while (reward_index < std::vector::length<PositionReward>(&position_info.rewards)) {
+            let reward_is_empty = std::vector::borrow<PositionReward>(&position_info.rewards, reward_index).amount_owned == 0;
+            all_rewards_empty = reward_is_empty;
+            if (!reward_is_empty) {
                 break
             };
-            v1 = v1 + 1;
+            reward_index = reward_index + 1;
         };
-        let v3 = if (arg0.liquidity == 0) {
-            if (arg0.fee_owned_a == 0) {
-                arg0.fee_owned_b == 0
+        let position_empty = if (position_info.liquidity == 0) {
+            if (position_info.fee_owned_a == 0) {
+                position_info.fee_owned_b == 0
             } else {
                 false
             }
         } else {
             false
         };
-        v3 && v0
+        position_empty && all_rewards_empty
     }
-
-    public(package) fun new(arg0: u32, arg1: &mut sui::tx_context::TxContext): PositionManager {
+    
+    public(package) fun new(tick_spacing: u32, ctx: &mut sui::tx_context::TxContext): PositionManager {
         PositionManager {
-            tick_spacing: arg0,
+            tick_spacing,
             position_index: 0,
-            positions: move_stl::linked_table::new<sui::object::ID, PositionInfo>(arg1),
+            positions: move_stl::linked_table::new<sui::object::ID, PositionInfo>(ctx),
         }
     }
 
-    fun borrow_mut_position_info(arg0: &mut PositionManager, arg1: sui::object::ID): &mut PositionInfo {
-        assert!(move_stl::linked_table::contains<sui::object::ID, PositionInfo>(&arg0.positions, arg1), 6);
-        let v0 = move_stl::linked_table::borrow_mut<sui::object::ID, PositionInfo>(&mut arg0.positions, arg1);
-        assert!(v0.position_id == arg1, 6);
-        v0
+    fun borrow_mut_position_info(position_manager: &mut PositionManager, position_id: sui::object::ID): &mut PositionInfo {
+        assert!(move_stl::linked_table::contains<sui::object::ID, PositionInfo>(&position_manager.positions, position_id), 6);
+        let position_info = move_stl::linked_table::borrow_mut<sui::object::ID, PositionInfo>(&mut position_manager.positions, position_id);
+        assert!(position_info.position_id == position_id, 6);
+        position_info
     }
-
-    public fun borrow_position_info(arg0: &PositionManager, arg1: sui::object::ID): &PositionInfo {
-        assert!(move_stl::linked_table::contains<sui::object::ID, PositionInfo>(&arg0.positions, arg1), 6);
-        let v0 = move_stl::linked_table::borrow<sui::object::ID, PositionInfo>(&arg0.positions, arg1);
-        assert!(v0.position_id == arg1, 6);
-        v0
+    
+    public fun borrow_position_info(position_manager: &PositionManager, position_id: sui::object::ID): &PositionInfo {
+        assert!(move_stl::linked_table::contains<sui::object::ID, PositionInfo>(&position_manager.positions, position_id), 6);
+        let position_info = move_stl::linked_table::borrow<sui::object::ID, PositionInfo>(&position_manager.positions, position_id);
+        assert!(position_info.position_id == position_id, 6);
+        position_info
     }
-
-    public fun check_position_tick_range(arg0: integer_mate::i32::I32, arg1: integer_mate::i32::I32, arg2: u32) {
-        let v0 = if (integer_mate::i32::lt(arg0, arg1)) {
-            if (integer_mate::i32::gte(arg0, clmm_pool::tick_math::min_tick())) {
-                if (integer_mate::i32::lte(arg1, clmm_pool::tick_math::max_tick())) {
-                    if (integer_mate::i32::mod(arg0, integer_mate::i32::from(arg2)) == integer_mate::i32::zero()) {
-                        integer_mate::i32::mod(arg1, integer_mate::i32::from(arg2)) == integer_mate::i32::zero()
+    
+    public fun check_position_tick_range(tick_lower: integer_mate::i32::I32, tick_upper: integer_mate::i32::I32, tick_spacing: u32) {
+        let is_valid = if (integer_mate::i32::lt(tick_lower, tick_upper)) {
+            if (integer_mate::i32::gte(tick_lower, clmm_pool::tick_math::min_tick())) {
+                if (integer_mate::i32::lte(tick_upper, clmm_pool::tick_math::max_tick())) {
+                    if (integer_mate::i32::mod(tick_lower, integer_mate::i32::from(tick_spacing)) == integer_mate::i32::zero()) {
+                        integer_mate::i32::mod(tick_upper, integer_mate::i32::from(tick_spacing)) == integer_mate::i32::zero()
                     } else {
                         false
                     }
@@ -111,49 +111,48 @@ module clmm_pool::position {
         } else {
             false
         };
-        assert!(v0, 5);
+        assert!(is_valid, 5);
     }
-
-    public(package) fun close_position(arg0: &mut PositionManager, arg1: Position) {
-        let v0 = sui::object::id<Position>(&arg1);
-        if (!is_empty(borrow_mut_position_info(arg0, v0))) {
+    
+    public(package) fun close_position(position_manager: &mut PositionManager, position: Position) {
+        let position_id = sui::object::id<Position>(&position);
+        if (!is_empty(borrow_mut_position_info(position_manager, position_id))) {
             abort 7
         };
-        move_stl::linked_table::remove<sui::object::ID, PositionInfo>(&mut arg0.positions, v0);
-        destroy(arg1);
+        move_stl::linked_table::remove<sui::object::ID, PositionInfo>(&mut position_manager.positions, position_id);
+        destroy(position);
     }
-
     public(package) fun decrease_liquidity(
-        arg0: &mut PositionManager,
-        arg1: &mut Position,
-        arg2: u128,
-        arg3: u128,
-        arg4: u128,
-        arg5: u128,
-        arg6: vector<u128>,
-        arg7: u128
+        position_manager: &mut PositionManager,
+        position: &mut Position,
+        liquidity: u128,
+        fee_growth_a: u128,
+        fee_growth_b: u128,
+        points_growth: u128,
+        rewards_growth: vector<u128>,
+        magma_growth: u128
     ): u128 {
-        let v0 = borrow_mut_position_info(arg0, sui::object::id<Position>(arg1));
-        if (arg2 == 0) {
-            return v0.liquidity
+        let position_info = borrow_mut_position_info(position_manager, sui::object::id<Position>(position));
+        if (liquidity == 0) {
+            return position_info.liquidity
         };
-        update_fee_internal(v0, arg3, arg4);
-        update_points_internal(v0, arg5);
-        update_rewards_internal(v0, arg6);
-        update_magma_distribution_internal(v0, arg7);
-        assert!(v0.liquidity >= arg2, 9);
-        v0.liquidity = v0.liquidity - arg2;
-        arg1.liquidity = v0.liquidity;
-        v0.liquidity
+        update_fee_internal(position_info, fee_growth_a, fee_growth_b);
+        update_points_internal(position_info, points_growth);
+        update_rewards_internal(position_info, rewards_growth);
+        update_magma_distribution_internal(position_info, magma_growth);
+        assert!(position_info.liquidity >= liquidity, 9);
+        position_info.liquidity = position_info.liquidity - liquidity;
+        position.liquidity = position_info.liquidity;
+        position_info.liquidity
+    }
+    
+    public fun description(position: &Position): std::string::String {
+        position.description
     }
 
-    public fun description(arg0: &Position): std::string::String {
-        arg0.description
-    }
-
-    fun destroy(arg0: Position) {
+    fun destroy(position: Position) {
         let Position {
-            id: v0,
+            id: position_id,
             pool: _,
             index: _,
             coin_type_a: _,
@@ -164,204 +163,204 @@ module clmm_pool::position {
             tick_lower_index: _,
             tick_upper_index: _,
             liquidity: _,
-        } = arg0;
-        sui::object::delete(v0);
+        } = position;
+        sui::object::delete(position_id);
     }
-
-    public fun fetch_positions(arg0: &PositionManager, arg1: vector<sui::object::ID>, arg2: u64): vector<PositionInfo> {
-        let mut v0 = std::vector::empty<PositionInfo>();
-        let v1 = if (std::vector::is_empty<sui::object::ID>(&arg1)) {
-            move_stl::linked_table::head<sui::object::ID, PositionInfo>(&arg0.positions)
+    public fun fetch_positions(
+        position_manager: &PositionManager,
+        position_ids: vector<sui::object::ID>,
+        limit: u64
+    ): vector<PositionInfo> {
+        let mut positions = std::vector::empty<PositionInfo>();
+        let next_id = if (std::vector::is_empty<sui::object::ID>(&position_ids)) {
+            move_stl::linked_table::head<sui::object::ID, PositionInfo>(&position_manager.positions)
         } else {
             move_stl::linked_table::next<sui::object::ID, PositionInfo>(
                 move_stl::linked_table::borrow_node<sui::object::ID, PositionInfo>(
-                    &arg0.positions,
-                    *std::vector::borrow<sui::object::ID>(&arg1, 0)
+                    &position_manager.positions,
+                    *std::vector::borrow<sui::object::ID>(&position_ids, 0)
                 )
             )
         };
-        let mut v2 = v1;
-        let mut v3 = 0;
-        while (std::option::is_some<sui::object::ID>(&v2)) {
-            let v4 = move_stl::linked_table::borrow_node<sui::object::ID, PositionInfo>(
-                &arg0.positions,
-                *std::option::borrow<sui::object::ID>(&v2)
+        let mut current_id = next_id;
+        let mut count = 0;
+        while (std::option::is_some<sui::object::ID>(&current_id)) {
+            let node = move_stl::linked_table::borrow_node<sui::object::ID, PositionInfo>(
+                &position_manager.positions,
+                *std::option::borrow<sui::object::ID>(&current_id)
             );
-            v2 = move_stl::linked_table::next<sui::object::ID, PositionInfo>(v4);
+            current_id = move_stl::linked_table::next<sui::object::ID, PositionInfo>(node);
             std::vector::push_back<PositionInfo>(
-                &mut v0,
-                *move_stl::linked_table::borrow_value<sui::object::ID, PositionInfo>(v4)
+                &mut positions,
+                *move_stl::linked_table::borrow_value<sui::object::ID, PositionInfo>(node)
             );
-            let v5 = v3 + 1;
-            v3 = v5;
-            if (v5 == arg2) {
+            let new_count = count + 1;
+            count = new_count;
+            if (new_count == limit) {
                 break
             };
         };
-        v0
+        positions
     }
-
     public(package) fun increase_liquidity(
-        arg0: &mut PositionManager,
-        arg1: &mut Position,
-        arg2: u128,
-        arg3: u128,
-        arg4: u128,
-        arg5: u128,
-        arg6: vector<u128>,
-        arg7: u128
+        position_manager: &mut PositionManager,
+        position: &mut Position,
+        liquidity_delta: u128,
+        fee_growth_a: u128,
+        fee_growth_b: u128,
+        points_growth: u128,
+        rewards_growth: vector<u128>,
+        magma_growth: u128
     ): u128 {
-        let v0 = borrow_mut_position_info(arg0, sui::object::id<Position>(arg1));
-        update_fee_internal(v0, arg3, arg4);
-        update_points_internal(v0, arg5);
-        update_rewards_internal(v0, arg6);
-        update_magma_distribution_internal(v0, arg7);
-        assert!(integer_mate::math_u128::add_check(v0.liquidity, arg2), 8);
-        v0.liquidity = v0.liquidity + arg2;
-        arg1.liquidity = v0.liquidity;
-        v0.liquidity
+        let position_info = borrow_mut_position_info(position_manager, sui::object::id<Position>(position));
+        update_fee_internal(position_info, fee_growth_a, fee_growth_b);
+        update_points_internal(position_info, points_growth);
+        update_rewards_internal(position_info, rewards_growth);
+        update_magma_distribution_internal(position_info, magma_growth);
+        assert!(integer_mate::math_u128::add_check(position_info.liquidity, liquidity_delta), 8);
+        position_info.liquidity = position_info.liquidity + liquidity_delta;
+        position.liquidity = position_info.liquidity;
+        position_info.liquidity
+    }
+    public fun index(position: &Position): u64 {
+        position.index
     }
 
-    public fun index(arg0: &Position): u64 {
-        arg0.index
+    public fun info_fee_growth_inside(position_info: &PositionInfo): (u128, u128) {
+        (position_info.fee_growth_inside_a, position_info.fee_growth_inside_b)
     }
 
-    public fun info_fee_growth_inside(arg0: &PositionInfo): (u128, u128) {
-        (arg0.fee_growth_inside_a, arg0.fee_growth_inside_b)
+    public fun info_fee_owned(position_info: &PositionInfo): (u64, u64) {
+        (position_info.fee_owned_a, position_info.fee_owned_b)
     }
 
-    public fun info_fee_owned(arg0: &PositionInfo): (u64, u64) {
-        (arg0.fee_owned_a, arg0.fee_owned_b)
+    public fun info_liquidity(position_info: &PositionInfo): u128 {
+        position_info.liquidity
     }
 
-    public fun info_liquidity(arg0: &PositionInfo): u128 {
-        arg0.liquidity
+    public fun info_magma_distribution_owned(position_info: &PositionInfo): u64 {
+        position_info.magma_distribution_owned
     }
 
-    public fun info_magma_distribution_owned(arg0: &PositionInfo): u64 {
-        arg0.magma_distribution_owned
+    public fun info_points_growth_inside(position_info: &PositionInfo): u128 {
+        position_info.points_growth_inside
     }
 
-    public fun info_points_growth_inside(arg0: &PositionInfo): u128 {
-        arg0.points_growth_inside
+    public fun info_points_owned(position_info: &PositionInfo): u128 {
+        position_info.points_owned
     }
 
-    public fun info_points_owned(arg0: &PositionInfo): u128 {
-        arg0.points_owned
+    public fun info_position_id(position_info: &PositionInfo): sui::object::ID {
+        position_info.position_id
     }
 
-    public fun info_position_id(arg0: &PositionInfo): sui::object::ID {
-        arg0.position_id
+    public fun info_rewards(position_info: &PositionInfo): &vector<PositionReward> {
+        &position_info.rewards
     }
 
-    public fun info_rewards(arg0: &PositionInfo): &vector<PositionReward> {
-        &arg0.rewards
+    public fun info_tick_range(position_info: &PositionInfo): (integer_mate::i32::I32, integer_mate::i32::I32) {
+        (position_info.tick_lower_index, position_info.tick_upper_index)
     }
+    fun init(position_witness: POSITION, ctx: &mut sui::tx_context::TxContext) {
+        let mut display_keys = std::vector::empty<std::string::String>();
+        std::vector::push_back<std::string::String>(&mut display_keys, std::string::utf8(b"name"));
+        std::vector::push_back<std::string::String>(&mut display_keys, std::string::utf8(b"coin_a"));
+        std::vector::push_back<std::string::String>(&mut display_keys, std::string::utf8(b"coin_b")); 
+        std::vector::push_back<std::string::String>(&mut display_keys, std::string::utf8(b"link"));
+        std::vector::push_back<std::string::String>(&mut display_keys, std::string::utf8(b"image_url"));
+        std::vector::push_back<std::string::String>(&mut display_keys, std::string::utf8(b"description"));
+        std::vector::push_back<std::string::String>(&mut display_keys, std::string::utf8(b"project_url"));
+        std::vector::push_back<std::string::String>(&mut display_keys, std::string::utf8(b"creator"));
 
-    public fun info_tick_range(arg0: &PositionInfo): (integer_mate::i32::I32, integer_mate::i32::I32) {
-        (arg0.tick_lower_index, arg0.tick_upper_index)
-    }
-
-    fun init(arg0: POSITION, arg1: &mut sui::tx_context::TxContext) {
-        let mut v0 = std::vector::empty<std::string::String>();
-        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"name"));
-        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"coin_a"));
-        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"coin_b"));
-        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"link"));
-        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"image_url"));
-        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"description"));
-        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"project_url"));
-        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"creator"));
-        let mut v1 = std::vector::empty<std::string::String>();
-        std::vector::push_back<std::string::String>(&mut v1, std::string::utf8(b"{name}"));
-        std::vector::push_back<std::string::String>(&mut v1, std::string::utf8(b"{coin_type_a}"));
-        std::vector::push_back<std::string::String>(&mut v1, std::string::utf8(b"{coin_type_b}"));
+        let mut display_values = std::vector::empty<std::string::String>();
+        std::vector::push_back<std::string::String>(&mut display_values, std::string::utf8(b"{name}"));
+        std::vector::push_back<std::string::String>(&mut display_values, std::string::utf8(b"{coin_type_a}"));
+        std::vector::push_back<std::string::String>(&mut display_values, std::string::utf8(b"{coin_type_b}"));
         std::vector::push_back<std::string::String>(
-            &mut v1,
+            &mut display_values,
             std::string::utf8(b"https://app.cetus.zone/position?chain=sui&id={id}")
         );
-        std::vector::push_back<std::string::String>(&mut v1, std::string::utf8(b"{url}"));
-        std::vector::push_back<std::string::String>(&mut v1, std::string::utf8(b"{description}"));
-        std::vector::push_back<std::string::String>(&mut v1, std::string::utf8(b"https://cetus.zone"));
-        std::vector::push_back<std::string::String>(&mut v1, std::string::utf8(b"Cetus"));
-        let v2 = sui::package::claim<POSITION>(arg0, arg1);
-        let mut v3 = sui::display::new_with_fields<Position>(&v2, v0, v1, arg1);
-        sui::display::update_version<Position>(&mut v3);
-        sui::transfer::public_transfer<sui::display::Display<Position>>(v3, sui::tx_context::sender(arg1));
-        sui::transfer::public_transfer<sui::package::Publisher>(v2, sui::tx_context::sender(arg1));
-    }
+        std::vector::push_back<std::string::String>(&mut display_values, std::string::utf8(b"{url}"));
+        std::vector::push_back<std::string::String>(&mut display_values, std::string::utf8(b"{description}"));
+        std::vector::push_back<std::string::String>(&mut display_values, std::string::utf8(b"https://cetus.zone"));
+        std::vector::push_back<std::string::String>(&mut display_values, std::string::utf8(b"Cetus"));
 
-    public fun inited_rewards_count(arg0: &PositionManager, arg1: sui::object::ID): u64 {
+        let publisher = sui::package::claim<POSITION>(position_witness, ctx);
+        let mut display = sui::display::new_with_fields<Position>(&publisher, display_keys, display_values, ctx);
+        sui::display::update_version<Position>(&mut display);
+        sui::transfer::public_transfer<sui::display::Display<Position>>(display, sui::tx_context::sender(ctx));
+        sui::transfer::public_transfer<sui::package::Publisher>(publisher, sui::tx_context::sender(ctx));
+    }
+    public fun inited_rewards_count(position_manager: &PositionManager, position_id: sui::object::ID): u64 {
         std::vector::length<PositionReward>(
-            &move_stl::linked_table::borrow<sui::object::ID, PositionInfo>(&arg0.positions, arg1).rewards
+            &move_stl::linked_table::borrow<sui::object::ID, PositionInfo>(&position_manager.positions, position_id).rewards
         )
     }
 
-    public fun is_position_exist(arg0: &PositionManager, arg1: sui::object::ID): bool {
-        move_stl::linked_table::contains<sui::object::ID, PositionInfo>(&arg0.positions, arg1)
+    public fun is_position_exist(position_manager: &PositionManager, position_id: sui::object::ID): bool {
+        move_stl::linked_table::contains<sui::object::ID, PositionInfo>(&position_manager.positions, position_id)
     }
 
-    public fun is_staked(arg0: &PositionInfo): bool {
-        arg0.magma_distribution_staked
+    public fun is_staked(position_info: &PositionInfo): bool {
+        position_info.magma_distribution_staked
     }
 
-    public fun liquidity(arg0: &Position): u128 {
-        arg0.liquidity
+    public fun liquidity(position: &Position): u128 {
+        position.liquidity
     }
 
-    public(package) fun mark_position_staked(arg0: &mut PositionManager, arg1: sui::object::ID, arg2: bool) {
-        let v0 = borrow_mut_position_info(arg0, arg1);
-        assert!(v0.magma_distribution_staked != arg2, 11);
-        v0.magma_distribution_staked = arg2;
-        let v1 = StakePositionEvent {
-            position_id: v0.position_id,
-            staked: arg2,
+    public(package) fun mark_position_staked(position_manager: &mut PositionManager, position_id: sui::object::ID, staked: bool) {
+        let position_info = borrow_mut_position_info(position_manager, position_id);
+        assert!(position_info.magma_distribution_staked != staked, 11);
+        position_info.magma_distribution_staked = staked;
+        let stake_event = StakePositionEvent {
+            position_id: position_info.position_id,
+            staked: staked,
         };
-        sui::event::emit<StakePositionEvent>(v1);
+        sui::event::emit<StakePositionEvent>(stake_event);
     }
 
-    public fun name(arg0: &Position): std::string::String {
-        arg0.name
+    public fun name(position: &Position): std::string::String {
+        position.name
     }
-
-    fun new_position_name(arg0: u64, arg1: u64): std::string::String {
-        let mut v0 = std::string::utf8(b"Magma position:");
-        std::string::append(&mut v0, clmm_pool::utils::str(arg0));
-        std::string::append_utf8(&mut v0, b"-");
-        std::string::append(&mut v0, clmm_pool::utils::str(arg1));
-        v0
+    
+    fun new_position_name(pool_index: u64, position_index: u64): std::string::String {
+        let mut position_name = std::string::utf8(b"Magma position:");
+        std::string::append(&mut position_name, clmm_pool::utils::str(pool_index));
+        std::string::append_utf8(&mut position_name, b"-");
+        std::string::append(&mut position_name, clmm_pool::utils::str(position_index));
+        position_name
     }
-
     public(package) fun open_position<T0, T1>(
-        arg0: &mut PositionManager,
-        arg1: sui::object::ID,
-        arg2: u64,
-        arg3: std::string::String,
-        arg4: integer_mate::i32::I32,
-        arg5: integer_mate::i32::I32,
-        arg6: &mut sui::tx_context::TxContext
+        position_manager: &mut PositionManager,
+        pool_id: sui::object::ID,
+        pool_index: u64,
+        pool_url: std::string::String,
+        tick_lower: integer_mate::i32::I32,
+        tick_upper: integer_mate::i32::I32,
+        ctx: &mut sui::tx_context::TxContext
     ): Position {
-        check_position_tick_range(arg4, arg5, arg0.tick_spacing);
-        let v0 = arg0.position_index + 1;
-        let v1 = Position {
-            id: sui::object::new(arg6),
-            pool: arg1,
-            index: v0,
+        check_position_tick_range(tick_lower, tick_upper, position_manager.tick_spacing);
+        let next_position_index = position_manager.position_index + 1;
+        let position = Position {
+            id: sui::object::new(ctx),
+            pool: pool_id,
+            index: next_position_index,
             coin_type_a: std::type_name::get<T0>(),
             coin_type_b: std::type_name::get<T1>(),
-            name: new_position_name(arg2, v0),
+            name: new_position_name(pool_index, next_position_index),
             description: std::string::utf8(b"Magma Liquidity Position"),
-            url: arg3,
-            tick_lower_index: arg4,
-            tick_upper_index: arg5,
+            url: pool_url,
+            tick_lower_index: tick_lower,
+            tick_upper_index: tick_upper,
             liquidity: 0,
         };
-        let v2 = sui::object::id<Position>(&v1);
-        let v3 = PositionInfo {
-            position_id: v2,
+        let position_id = sui::object::id<Position>(&position);
+        let position_info = PositionInfo {
+            position_id,
             liquidity: 0,
-            tick_lower_index: arg4,
-            tick_upper_index: arg5,
+            tick_lower_index: tick_lower,
+            tick_upper_index: tick_upper,
             fee_growth_inside_a: 0,
             fee_growth_inside_b: 0,
             fee_owned_a: 0,
@@ -373,49 +372,48 @@ module clmm_pool::position {
             magma_distribution_growth_inside: 0,
             magma_distribution_owned: 0,
         };
-        move_stl::linked_table::push_back<sui::object::ID, PositionInfo>(&mut arg0.positions, v2, v3);
-        arg0.position_index = v0;
-        v1
+        move_stl::linked_table::push_back<sui::object::ID, PositionInfo>(&mut position_manager.positions, position_id, position_info);
+        position_manager.position_index = next_position_index;
+        position
     }
 
-    public fun pool_id(arg0: &Position): sui::object::ID {
-        arg0.pool
+    public fun pool_id(position: &Position): sui::object::ID {
+        position.pool
     }
 
-    public(package) fun reset_fee(arg0: &mut PositionManager, arg1: sui::object::ID): (u64, u64) {
-        let v0 = borrow_mut_position_info(arg0, arg1);
-        v0.fee_owned_a = 0;
-        v0.fee_owned_b = 0;
-        (v0.fee_owned_a, v0.fee_owned_b)
+    public(package) fun reset_fee(position_manager: &mut PositionManager, position_id: sui::object::ID): (u64, u64) {
+        let position_info = borrow_mut_position_info(position_manager, position_id);
+        position_info.fee_owned_a = 0;
+        position_info.fee_owned_b = 0;
+        (position_info.fee_owned_a, position_info.fee_owned_b)
+    }
+    
+    public(package) fun reset_rewarder(position_manager: &mut PositionManager, position_id: sui::object::ID, reward_index: u64): u64 {
+        let reward = std::vector::borrow_mut<PositionReward>(&mut borrow_mut_position_info(position_manager, position_id).rewards, reward_index);
+        reward.amount_owned = 0;
+        reward.amount_owned
     }
 
-    public(package) fun reset_rewarder(arg0: &mut PositionManager, arg1: sui::object::ID, arg2: u64): u64 {
-        let v0 = std::vector::borrow_mut<PositionReward>(&mut borrow_mut_position_info(arg0, arg1).rewards, arg2);
-        v0.amount_owned = 0;
-        v0.amount_owned
+    public fun reward_amount_owned(reward: &PositionReward): u64 {
+        reward.amount_owned
     }
 
-    public fun reward_amount_owned(arg0: &PositionReward): u64 {
-        arg0.amount_owned
+    public fun reward_growth_inside(reward: &PositionReward): u128 {
+        reward.growth_inside
     }
-
-    public fun reward_growth_inside(arg0: &PositionReward): u128 {
-        arg0.growth_inside
-    }
-
-    public(package) fun rewards_amount_owned(arg0: &PositionManager, arg1: sui::object::ID): vector<u64> {
-        let v0 = info_rewards(borrow_position_info(arg0, arg1));
-        let mut v1 = 0;
-        let mut v2 = std::vector::empty<u64>();
-        while (v1 < std::vector::length<PositionReward>(v0)) {
-            std::vector::push_back<u64>(&mut v2, reward_amount_owned(std::vector::borrow<PositionReward>(v0, v1)));
-            v1 = v1 + 1;
+    public(package) fun rewards_amount_owned(position_manager: &PositionManager, position_id: sui::object::ID): vector<u64> {
+        let rewards = info_rewards(borrow_position_info(position_manager, position_id));
+        let mut index = 0;
+        let mut amounts = std::vector::empty<u64>();
+        while (index < std::vector::length<PositionReward>(rewards)) {
+            std::vector::push_back<u64>(&mut amounts, reward_amount_owned(std::vector::borrow<PositionReward>(rewards, index)));
+            index = index + 1;
         };
-        v2
+        amounts
     }
 
-    public fun set_description(arg0: &mut Position, arg1: std::string::String) {
-        arg0.description = arg1;
+    public fun set_description(position: &mut Position, description: std::string::String) {
+        position.description = description;
     }
 
     public fun set_display(
@@ -428,69 +426,66 @@ module clmm_pool::position {
         ctx: &mut sui::tx_context::TxContext
     ) {
         clmm_pool::config::checked_package_version(global_config);
-        let mut v0 = std::vector::empty<std::string::String>();
-        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"name"));
-        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"coin_a"));
-        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"coin_b"));
-        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"link"));
-        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"image_url"));
-        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"description"));
-        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"project_url"));
-        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"creator"));
-        let mut v1 = std::vector::empty<std::string::String>();
-        std::vector::push_back<std::string::String>(&mut v1, std::string::utf8(b"{name}"));
-        std::vector::push_back<std::string::String>(&mut v1, std::string::utf8(b"{coin_type_a}"));
-        std::vector::push_back<std::string::String>(&mut v1, std::string::utf8(b"{coin_type_b}"));
-        std::vector::push_back<std::string::String>(&mut v1, link);
-        std::vector::push_back<std::string::String>(&mut v1, std::string::utf8(b"{url}"));
-        std::vector::push_back<std::string::String>(&mut v1, description);
-        std::vector::push_back<std::string::String>(&mut v1, project_url);
-        std::vector::push_back<std::string::String>(&mut v1, creator);
-        let mut v2 = sui::display::new_with_fields<Position>(publisher, v0, v1, ctx);
-        sui::display::update_version<Position>(&mut v2);
-        sui::transfer::public_transfer<sui::display::Display<Position>>(v2, sui::tx_context::sender(ctx));
+        let mut keys = std::vector::empty<std::string::String>();
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"name"));
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"coin_a"));
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"coin_b")); 
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"link"));
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"image_url"));
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"description"));
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"project_url"));
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"creator"));
+        let mut values = std::vector::empty<std::string::String>();
+        std::vector::push_back<std::string::String>(&mut values, std::string::utf8(b"{name}"));
+        std::vector::push_back<std::string::String>(&mut values, std::string::utf8(b"{coin_type_a}"));
+        std::vector::push_back<std::string::String>(&mut values, std::string::utf8(b"{coin_type_b}"));
+        std::vector::push_back<std::string::String>(&mut values, link);
+        std::vector::push_back<std::string::String>(&mut values, std::string::utf8(b"{url}"));
+        std::vector::push_back<std::string::String>(&mut values, description);
+        std::vector::push_back<std::string::String>(&mut values, project_url);
+        std::vector::push_back<std::string::String>(&mut values, creator);
+        let mut display = sui::display::new_with_fields<Position>(publisher, keys, values, ctx);
+        sui::display::update_version<Position>(&mut display);
+        sui::transfer::public_transfer<sui::display::Display<Position>>(display, sui::tx_context::sender(ctx));
     }
 
-    public fun tick_range(arg0: &Position): (integer_mate::i32::I32, integer_mate::i32::I32) {
-        (arg0.tick_lower_index, arg0.tick_upper_index)
+    public fun tick_range(position: &Position): (integer_mate::i32::I32, integer_mate::i32::I32) {
+        (position.tick_lower_index, position.tick_upper_index)
     }
-
     public(package) fun update_and_reset_fee(
-        arg0: &mut PositionManager,
-        arg1: sui::object::ID,
-        arg2: u128,
-        arg3: u128
+        position_manager: &mut PositionManager,
+        position_id: sui::object::ID,
+        fee_growth_a: u128,
+        fee_growth_b: u128
     ): (u64, u64) {
-        let v0 = borrow_mut_position_info(arg0, arg1);
-        update_fee_internal(v0, arg2, arg3);
-        v0.fee_owned_a = 0;
-        v0.fee_owned_b = 0;
-        (v0.fee_owned_a, v0.fee_owned_b)
+        let position_info = borrow_mut_position_info(position_manager, position_id);
+        update_fee_internal(position_info, fee_growth_a, fee_growth_b);
+        position_info.fee_owned_a = 0;
+        position_info.fee_owned_b = 0;
+        (position_info.fee_owned_a, position_info.fee_owned_b)
     }
-
     public(package) fun update_and_reset_magma_distribution(
-        arg0: &mut PositionManager,
-        arg1: sui::object::ID,
-        arg2: u128
+        position_manager: &mut PositionManager,
+        position_id: sui::object::ID,
+        magma_growth: u128
     ): u64 {
-        let v0 = borrow_mut_position_info(arg0, arg1);
-        update_magma_distribution_internal(v0, arg2);
-        v0.magma_distribution_owned = 0;
-        v0.magma_distribution_owned
+        let position_info = borrow_mut_position_info(position_manager, position_id);
+        update_magma_distribution_internal(position_info, magma_growth);
+        position_info.magma_distribution_owned = 0;
+        position_info.magma_distribution_owned
     }
-
     public(package) fun update_and_reset_rewards(
-        arg0: &mut PositionManager,
-        arg1: sui::object::ID,
-        arg2: vector<u128>,
-        arg3: u64
+        position_manager: &mut PositionManager,
+        position_id: sui::object::ID,
+        rewards_growth: vector<u128>,
+        reward_index: u64
     ): u64 {
-        assert!(std::vector::length<u128>(&arg2) > arg3, 10);
-        let v0 = borrow_mut_position_info(arg0, arg1);
-        update_rewards_internal(v0, arg2);
-        let v1 = std::vector::borrow_mut<PositionReward>(&mut v0.rewards, arg3);
-        v1.amount_owned = 0;
-        v1.amount_owned
+        assert!(std::vector::length<u128>(&rewards_growth) > reward_index, 10);
+        let position_info = borrow_mut_position_info(position_manager, position_id);
+        update_rewards_internal(position_info, rewards_growth);
+        let reward = std::vector::borrow_mut<PositionReward>(&mut position_info.rewards, reward_index);
+        reward.amount_owned = 0;
+        reward.amount_owned
     }
 
     public(package) fun update_fee(

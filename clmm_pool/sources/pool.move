@@ -1,10 +1,10 @@
 module clmm_pool::pool {
     public struct POOL has drop {}
 
-    public struct Pool<phantom T0, phantom T1> has store, key {
+    public struct Pool<phantom CoinTypeA, phantom CoinTypeB> has store, key {
         id: sui::object::UID,
-        coin_a: sui::balance::Balance<T0>,
-        coin_b: sui::balance::Balance<T1>,
+        coin_a: sui::balance::Balance<CoinTypeA>,
+        coin_b: sui::balance::Balance<CoinTypeB>,
         tick_spacing: u32,
         fee_rate: u64,
         liquidity: u128,
@@ -47,7 +47,7 @@ module clmm_pool::pool {
         steps: u64,
     }
 
-    public struct FlashSwapReceipt<phantom T0, phantom T1> {
+    public struct FlashSwapReceipt<phantom CoinTypeA, phantom CoinTypeB> {
         pool_id: sui::object::ID,
         a2b: bool,
         partner_id: sui::object::ID,
@@ -58,7 +58,7 @@ module clmm_pool::pool {
         gauge_fee_amount: u64,
     }
 
-    public struct AddLiquidityReceipt<phantom T0, phantom T1> {
+    public struct AddLiquidityReceipt<phantom CoinTypeA, phantom CoinTypeB> {
         pool_id: sui::object::ID,
         amount_a: u64,
         amount_b: u64,
@@ -185,44 +185,51 @@ module clmm_pool::pool {
         old_fee_rate: u64,
         new_fee_rate: u64,
     }
-
-    public(package) fun new<T0, T1>(tick_spacing: u32, sqrt_price: u128, fee_rate: u64, url: std::string::String, index: u64, clock: &sui::clock::Clock, ctx: &mut sui::tx_context::TxContext) : Pool<T0, T1> {
-        let gauger_fee = PoolFee{
-            coin_a : 0, 
-            coin_b : 0,
+    public(package) fun new<CoinTypeA, CoinTypeB>(
+        tick_spacing: u32,
+        initial_sqrt_price: u128,
+        fee_rate: u64,
+        pool_url: std::string::String,
+        pool_index: u64,
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext
+    ): Pool<CoinTypeA, CoinTypeB> {
+        let initial_pool_fee = PoolFee {
+            coin_a: 0,
+            coin_b: 0,
         };
-        Pool<T0, T1>{
-            id                                  : sui::object::new(ctx), 
-            coin_a                              : sui::balance::zero<T0>(), 
-            coin_b                              : sui::balance::zero<T1>(), 
-            tick_spacing                        : tick_spacing, 
-            fee_rate                            : fee_rate, 
-            liquidity                           : 0, 
-            current_sqrt_price                  : sqrt_price, 
-            current_tick_index                  : clmm_pool::tick_math::get_tick_at_sqrt_price(sqrt_price), 
-            fee_growth_global_a                 : 0, 
-            fee_growth_global_b                 : 0, 
-            fee_protocol_coin_a                 : 0, 
-            fee_protocol_coin_b                 : 0, 
-            tick_manager                        : clmm_pool::tick::new(tick_spacing, sui::clock::timestamp_ms(clock), ctx), 
-            rewarder_manager                    : clmm_pool::rewarder::new(), 
-            position_manager                    : clmm_pool::position::new(tick_spacing, ctx), 
-            is_pause                            : false, 
-            index                               : index, 
-            url                                 : url, 
-            unstaked_liquidity_fee_rate         : clmm_pool::config::default_unstaked_fee_rate(), 
-            magma_distribution_gauger_id        : std::option::none<sui::object::ID>(), 
-            magma_distribution_growth_global    : 0, 
-            magma_distribution_rate             : 0, 
-            magma_distribution_reserve          : 0, 
-            magma_distribution_period_finish    : 0, 
-            magma_distribution_rollover         : 0, 
-            magma_distribution_last_updated     : sui::clock::timestamp_ms(clock) / 1000, 
-            magma_distribution_staked_liquidity : 0, 
-            magma_distribution_gauger_fee       : gauger_fee,
+        Pool<CoinTypeA, CoinTypeB> {
+            id: sui::object::new(ctx),
+            coin_a: sui::balance::zero<CoinTypeA>(),
+            coin_b: sui::balance::zero<CoinTypeB>(),
+            tick_spacing,
+            fee_rate,
+            liquidity: 0,
+            current_sqrt_price: initial_sqrt_price,
+            current_tick_index: clmm_pool::tick_math::get_tick_at_sqrt_price(initial_sqrt_price),
+            fee_growth_global_a: 0,
+            fee_growth_global_b: 0,
+            fee_protocol_coin_a: 0,
+            fee_protocol_coin_b: 0,
+            tick_manager: clmm_pool::tick::new(tick_spacing, sui::clock::timestamp_ms(clock), ctx),
+            rewarder_manager: clmm_pool::rewarder::new(),
+            position_manager: clmm_pool::position::new(tick_spacing, ctx),
+            is_pause: false,
+            index: pool_index,
+            url: pool_url,
+            unstaked_liquidity_fee_rate: clmm_pool::config::default_unstaked_fee_rate(),
+            magma_distribution_gauger_id: std::option::none<sui::object::ID>(),
+            magma_distribution_growth_global: 0,
+            magma_distribution_rate: 0,
+            magma_distribution_reserve: 0,
+            magma_distribution_period_finish: 0,
+            magma_distribution_rollover: 0,
+            magma_distribution_last_updated: sui::clock::timestamp_ms(clock) / 1000,
+            magma_distribution_staked_liquidity: 0,
+            magma_distribution_gauger_fee: initial_pool_fee,
         }
     }
-
+    
     public fun get_amount_by_liquidity(
         tick_lower: integer_mate::i32::I32,
         tick_upper: integer_mate::i32::I32,
@@ -235,778 +242,877 @@ module clmm_pool::pool {
             return (0, 0)
         };
         if (integer_mate::i32::lt(current_tick, tick_lower)) {
-            (clmm_pool::clmm_math::get_delta_a(clmm_pool::tick_math::get_sqrt_price_at_tick(tick_lower), clmm_pool::tick_math::get_sqrt_price_at_tick(tick_upper), liquidity, round_up), 0)
+            (clmm_pool::clmm_math::get_delta_a(
+                clmm_pool::tick_math::get_sqrt_price_at_tick(tick_lower),
+                clmm_pool::tick_math::get_sqrt_price_at_tick(tick_upper),
+                liquidity,
+                round_up
+            ), 0)
         } else {
             let (amount_a, amount_b) = if (integer_mate::i32::lt(current_tick, tick_upper)) {
-                (clmm_pool::clmm_math::get_delta_a(current_sqrt_price, clmm_pool::tick_math::get_sqrt_price_at_tick(tick_upper), liquidity, round_up), clmm_pool::clmm_math::get_delta_b(clmm_pool::tick_math::get_sqrt_price_at_tick(tick_lower), current_sqrt_price, liquidity, round_up))
+                (clmm_pool::clmm_math::get_delta_a(
+                    current_sqrt_price,
+                    clmm_pool::tick_math::get_sqrt_price_at_tick(tick_upper),
+                    liquidity,
+                    round_up
+                ), clmm_pool::clmm_math::get_delta_b(
+                    clmm_pool::tick_math::get_sqrt_price_at_tick(tick_lower),
+                    current_sqrt_price,
+                    liquidity,
+                    round_up
+                ))
             } else {
-                (0, clmm_pool::clmm_math::get_delta_b(clmm_pool::tick_math::get_sqrt_price_at_tick(tick_lower), clmm_pool::tick_math::get_sqrt_price_at_tick(tick_upper), liquidity, round_up))
+                (0, clmm_pool::clmm_math::get_delta_b(
+                    clmm_pool::tick_math::get_sqrt_price_at_tick(tick_lower),
+                    clmm_pool::tick_math::get_sqrt_price_at_tick(tick_upper),
+                    liquidity,
+                    round_up
+                ))
             };
             (amount_a, amount_b)
         }
     }
-    
-    public fun unstaked_liquidity_fee_rate<T0, T1>(pool: &Pool<T0, T1>) : u64 {
+    public fun unstaked_liquidity_fee_rate<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): u64 {
         pool.unstaked_liquidity_fee_rate
     }
-    
-    public fun borrow_position_info<T0, T1>(pool: &Pool<T0, T1>, position_id: sui::object::ID) : &clmm_pool::position::PositionInfo {
+
+    public fun borrow_position_info<CoinTypeA, CoinTypeB>(
+        pool: &Pool<CoinTypeA, CoinTypeB>,
+        position_id: sui::object::ID
+    ): &clmm_pool::position::PositionInfo {
         clmm_pool::position::borrow_position_info(&pool.position_manager, position_id)
     }
-    
-    public fun close_position<T0, T1>(global_config: &clmm_pool::config::GlobalConfig, pool: &mut Pool<T0, T1>, position: clmm_pool::position::Position) {
-        clmm_pool::config::checked_package_version(global_config);
+
+    public fun close_position<CoinTypeA, CoinTypeB>(
+        config: &clmm_pool::config::GlobalConfig,
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        position: clmm_pool::position::Position
+    ) {
+        clmm_pool::config::checked_package_version(config);
         assert!(!pool.is_pause, 13);
         let position_id = sui::object::id<clmm_pool::position::Position>(&position);
         clmm_pool::position::close_position(&mut pool.position_manager, position);
-        let event = ClosePositionEvent{
-            pool     : sui::object::id<Pool<T0, T1>>(pool), 
-            position : position_id,
+        let event = ClosePositionEvent {
+            pool: sui::object::id<Pool<CoinTypeA, CoinTypeB>>(pool),
+            position: position_id,
         };
         sui::event::emit<ClosePositionEvent>(event);
     }
-    
-    public fun fetch_positions<T0, T1>(pool: &Pool<T0, T1>, position_ids: vector<sui::object::ID>, limit: u64) : vector<clmm_pool::position::PositionInfo> {
+    public fun fetch_positions<CoinTypeA, CoinTypeB>(
+        pool: &Pool<CoinTypeA, CoinTypeB>,
+        position_ids: vector<sui::object::ID>,
+        limit: u64
+    ): vector<clmm_pool::position::PositionInfo> {
         clmm_pool::position::fetch_positions(&pool.position_manager, position_ids, limit)
     }
-    
-    public fun is_position_exist<T0, T1>(pool: &Pool<T0, T1>, position_id: sui::object::ID) : bool {
+
+    public fun is_position_exist<CoinTypeA, CoinTypeB>(
+        pool: &Pool<CoinTypeA, CoinTypeB>, 
+        position_id: sui::object::ID
+    ): bool {
         clmm_pool::position::is_position_exist(&pool.position_manager, position_id)
     }
-    
-    public fun liquidity<T0, T1>(pool: &Pool<T0, T1>) : u128 {
+
+    public fun liquidity<CoinTypeA, CoinTypeB>(
+        pool: &Pool<CoinTypeA, CoinTypeB>
+    ): u128 {
         pool.liquidity
     }
-    
-    public fun mark_position_staked<T0, T1>(pool: &mut Pool<T0, T1>, gauge_cap: &gauge_cap::gauge_cap::GaugeCap, position_id: sui::object::ID) {
+
+    public fun mark_position_staked<CoinTypeA, CoinTypeB>(
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        gauge_cap: &gauge_cap::gauge_cap::GaugeCap,
+        position_id: sui::object::ID
+    ) {
         assert!(!pool.is_pause, 13);
-        check_gauge_cap<T0, T1>(pool, gauge_cap);
+        check_gauge_cap<CoinTypeA, CoinTypeB>(pool, gauge_cap);
         clmm_pool::position::mark_position_staked(&mut pool.position_manager, position_id, true);
     }
-    
-    public fun open_position<T0, T1>(global_config: &clmm_pool::config::GlobalConfig, pool: &mut Pool<T0, T1>, tick_lower: u32, tick_upper: u32, ctx: &mut sui::tx_context::TxContext) : clmm_pool::position::Position {
+    public fun open_position<CoinTypeA, CoinTypeB>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        tick_lower: u32,
+        tick_upper: u32,
+        ctx: &mut sui::tx_context::TxContext
+    ): clmm_pool::position::Position {
         clmm_pool::config::checked_package_version(global_config);
         assert!(!pool.is_pause, 13);
         let tick_lower_i32 = integer_mate::i32::from_u32(tick_lower);
         let tick_upper_i32 = integer_mate::i32::from_u32(tick_upper);
-        let pool_id = sui::object::id<Pool<T0, T1>>(pool);
-        let position = clmm_pool::position::open_position<T0, T1>(&mut pool.position_manager, pool_id, pool.index, pool.url, tick_lower_i32, tick_upper_i32, ctx);
-        let event = OpenPositionEvent{
-            pool       : pool_id, 
-            tick_lower : tick_lower_i32, 
-            tick_upper : tick_upper_i32, 
-            position   : sui::object::id<clmm_pool::position::Position>(&position),
+        let pool_id = sui::object::id<Pool<CoinTypeA, CoinTypeB>>(pool);
+        let position = clmm_pool::position::open_position<CoinTypeA, CoinTypeB>(
+            &mut pool.position_manager,
+            pool_id,
+            pool.index,
+            pool.url,
+            tick_lower_i32,
+            tick_upper_i32,
+            ctx
+        );
+        let event = OpenPositionEvent {
+            pool: pool_id,
+            tick_lower: tick_lower_i32,
+            tick_upper: tick_upper_i32,
+            position: sui::object::id<clmm_pool::position::Position>(&position),
         };
         sui::event::emit<OpenPositionEvent>(event);
         position
     }
-    
-    public fun update_emission<T0, T1, T2>(global_config: &clmm_pool::config::GlobalConfig, pool: &mut Pool<T0, T1>, rewarder_vault: &clmm_pool::rewarder::RewarderGlobalVault, emissions_per_second: u128, clock: &sui::clock::Clock, ctx: &mut sui::tx_context::TxContext) {
+    public fun update_emission<CoinTypeA, CoinTypeB, RewardCoinType>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        rewarder_global_vault: &clmm_pool::rewarder::RewarderGlobalVault,
+        emissions_per_second: u128,
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext
+    ) {
         clmm_pool::config::checked_package_version(global_config);
         assert!(!pool.is_pause, 13);
         clmm_pool::config::check_rewarder_manager_role(global_config, sui::tx_context::sender(ctx));
-        clmm_pool::rewarder::update_emission<T2>(rewarder_vault, &mut pool.rewarder_manager, pool.liquidity, emissions_per_second, sui::clock::timestamp_ms(clock) / 1000);
-        let event = UpdateEmissionEvent{
-            pool                 : sui::object::id<Pool<T0, T1>>(pool), 
-            rewarder_type        : std::type_name::get<T2>(), 
-            emissions_per_second : emissions_per_second,
+        clmm_pool::rewarder::update_emission<RewardCoinType>(
+            rewarder_global_vault,
+            &mut pool.rewarder_manager,
+            pool.liquidity,
+            emissions_per_second,
+            sui::clock::timestamp_ms(clock) / 1000
+        );
+        let event = UpdateEmissionEvent {
+            pool: sui::object::id<Pool<CoinTypeA, CoinTypeB>>(pool),
+            rewarder_type: std::type_name::get<RewardCoinType>(),
+            emissions_per_second: emissions_per_second,
         };
         sui::event::emit<UpdateEmissionEvent>(event);
     }
-    
-    public fun borrow_tick<T0, T1>(pool: &Pool<T0, T1>, tick: integer_mate::i32::I32) : &clmm_pool::tick::Tick {
-        clmm_pool::tick::borrow_tick(&pool.tick_manager, tick)
+    public fun borrow_tick<CoinTypeA, CoinTypeB>(
+        pool: &Pool<CoinTypeA, CoinTypeB>,
+        tick_index: integer_mate::i32::I32
+    ): &clmm_pool::tick::Tick {
+        clmm_pool::tick::borrow_tick(&pool.tick_manager, tick_index)
     }
-    
-    public fun fetch_ticks<T0, T1>(pool: &Pool<T0, T1>, ticks: vector<u32>, limit: u64) : vector<clmm_pool::tick::Tick> {
-        clmm_pool::tick::fetch_ticks(&pool.tick_manager, ticks, limit)
+
+    public fun fetch_ticks<CoinTypeA, CoinTypeB>(
+        pool: &Pool<CoinTypeA, CoinTypeB>, 
+        tick_indexes: vector<u32>,
+        limit: u64
+    ): vector<clmm_pool::tick::Tick> {
+        clmm_pool::tick::fetch_ticks(&pool.tick_manager, tick_indexes, limit)
     }
-    
-    public fun index<T0, T1>(pool: &Pool<T0, T1>) : u64 {
+
+    public fun index<CoinTypeA, CoinTypeB>(
+        pool: &Pool<CoinTypeA, CoinTypeB>
+    ): u64 {
         pool.index
     }
-
-    public fun add_liquidity<T0, T1>(
-        arg0: &clmm_pool::config::GlobalConfig,
-        arg1: &mut Pool<T0, T1>,
-        arg2: &mut clmm_pool::position::Position,
-        arg3: u128,
-        arg4: &sui::clock::Clock
-    ): AddLiquidityReceipt<T0, T1> {
-        clmm_pool::config::checked_package_version(arg0);
-        assert!(arg3 != 0, 3);
-        add_liquidity_internal<T0, T1>(arg1, arg2, false, arg3, 0, false, sui::clock::timestamp_ms(arg4) / 1000)
+    
+    public fun add_liquidity<CoinTypeA, CoinTypeB>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        position: &mut clmm_pool::position::Position,
+        delta_liquidity: u128,
+        clock: &sui::clock::Clock
+    ): AddLiquidityReceipt<CoinTypeA, CoinTypeB> {
+        clmm_pool::config::checked_package_version(global_config);
+        assert!(delta_liquidity != 0, 3);
+        add_liquidity_internal<CoinTypeA, CoinTypeB>(
+            pool,
+            position,
+            false,
+            delta_liquidity,
+            0,
+            false,
+            sui::clock::timestamp_ms(clock) / 1000
+        )
     }
-
-    public fun add_liquidity_fix_coin<T0, T1>(
-        arg0: &clmm_pool::config::GlobalConfig,
-        arg1: &mut Pool<T0, T1>,
-        arg2: &mut clmm_pool::position::Position,
-        arg3: u64,
-        arg4: bool,
-        arg5: &sui::clock::Clock
-    ): AddLiquidityReceipt<T0, T1> {
-        clmm_pool::config::checked_package_version(arg0);
-        assert!(arg3 > 0, 0);
-        add_liquidity_internal<T0, T1>(arg1, arg2, true, 0, arg3, arg4, sui::clock::timestamp_ms(arg5) / 1000)
+    public fun add_liquidity_fix_coin<CoinTypeA, CoinTypeB>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        position: &mut clmm_pool::position::Position,
+        amount_in: u64,
+        fix_amount_a: bool,
+        clock: &sui::clock::Clock
+    ): AddLiquidityReceipt<CoinTypeA, CoinTypeB> {
+        clmm_pool::config::checked_package_version(global_config);
+        assert!(amount_in > 0, 0);
+        add_liquidity_internal<CoinTypeA, CoinTypeB>(
+            pool,
+            position,
+            true,
+            0,
+            amount_in,
+            fix_amount_a,
+            sui::clock::timestamp_ms(clock) / 1000
+        )
     }
+    
+    fun add_liquidity_internal<CoinTypeA, CoinTypeB>(
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        position: &mut clmm_pool::position::Position,
+        is_fix_amount: bool,
+        liquidity_delta: u128,
+        amount_in: u64,
+        is_fix_amount_a: bool,
+        timestamp: u64
+    ): AddLiquidityReceipt<CoinTypeA, CoinTypeB> {
+        assert!(!pool.is_pause, 13);
+        validate_pool_position<CoinTypeA, CoinTypeB>(pool, position);
+        clmm_pool::rewarder::settle(&mut pool.rewarder_manager, pool.liquidity, timestamp);
 
-    fun add_liquidity_internal<T0, T1>(
-        arg0: &mut Pool<T0, T1>,
-        arg1: &mut clmm_pool::position::Position,
-        arg2: bool,
-        arg3: u128,
-        arg4: u64,
-        arg5: bool,
-        arg6: u64
-    ): AddLiquidityReceipt<T0, T1> {
-        assert!(!arg0.is_pause, 13);
-        validate_pool_position<T0, T1>(arg0, arg1);
-        clmm_pool::rewarder::settle(&mut arg0.rewarder_manager, arg0.liquidity, arg6);
-        let (v0, v1) = clmm_pool::position::tick_range(arg1);
-        let (v2, v3, v4) = if (arg2) {
-            let (v5, v6, v7) = clmm_pool::clmm_math::get_liquidity_by_amount(
-                v0,
-                v1,
-                arg0.current_tick_index,
-                arg0.current_sqrt_price,
-                arg4,
-                arg5
+        let (tick_lower, tick_upper) = clmm_pool::position::tick_range(position);
+
+        let (liquidity, amount_a, amount_b) = if (is_fix_amount) {
+            let (liquidity_calc, amount_a_calc, amount_b_calc) = clmm_pool::clmm_math::get_liquidity_by_amount(
+                tick_lower,
+                tick_upper,
+                pool.current_tick_index,
+                pool.current_sqrt_price,
+                amount_in,
+                is_fix_amount_a
             );
-            (v5, v6, v7)
+            (liquidity_calc, amount_a_calc, amount_b_calc)
         } else {
-            let (v8, v9) = clmm_pool::clmm_math::get_amount_by_liquidity(
-                v0,
-                v1,
-                arg0.current_tick_index,
-                arg0.current_sqrt_price,
-                arg3,
+            let (amount_a_calc, amount_b_calc) = clmm_pool::clmm_math::get_amount_by_liquidity(
+                tick_lower,
+                tick_upper,
+                pool.current_tick_index,
+                pool.current_sqrt_price,
+                liquidity_delta,
                 true
             );
-            (arg3, v8, v9)
+            (liquidity_delta, amount_a_calc, amount_b_calc)
         };
-        let (v10, v11, v12, v13, v14) = get_all_growths_in_tick_range<T0, T1>(arg0, v0, v1);
+
+        let (fee_growth_a, fee_growth_b, rewards_growth, points_growth, magma_growth) = 
+            get_all_growths_in_tick_range<CoinTypeA, CoinTypeB>(pool, tick_lower, tick_upper);
+
         clmm_pool::tick::increase_liquidity(
-            &mut arg0.tick_manager,
-            arg0.current_tick_index,
-            v0,
-            v1,
-            v2,
-            arg0.fee_growth_global_a,
-            arg0.fee_growth_global_b,
-            clmm_pool::rewarder::points_growth_global(&arg0.rewarder_manager),
-            clmm_pool::rewarder::rewards_growth_global(&arg0.rewarder_manager),
-            arg0.magma_distribution_growth_global
+            &mut pool.tick_manager,
+            pool.current_tick_index,
+            tick_lower,
+            tick_upper,
+            liquidity,
+            pool.fee_growth_global_a,
+            pool.fee_growth_global_b,
+            clmm_pool::rewarder::points_growth_global(&pool.rewarder_manager),
+            clmm_pool::rewarder::rewards_growth_global(&pool.rewarder_manager),
+            pool.magma_distribution_growth_global
         );
-        if (integer_mate::i32::gte(arg0.current_tick_index, v0) && integer_mate::i32::lt(arg0.current_tick_index, v1)) {
-            assert!(integer_mate::math_u128::add_check(arg0.liquidity, v2), 1);
-            arg0.liquidity = arg0.liquidity + v2;
+
+        if (integer_mate::i32::gte(pool.current_tick_index, tick_lower) && 
+            integer_mate::i32::lt(pool.current_tick_index, tick_upper)) {
+            assert!(integer_mate::math_u128::add_check(pool.liquidity, liquidity), 1);
+            pool.liquidity = pool.liquidity + liquidity;
         };
-        let v15 = AddLiquidityEvent {
-            pool: sui::object::id<Pool<T0, T1>>(arg0),
-            position: sui::object::id<clmm_pool::position::Position>(arg1),
-            tick_lower: v0,
-            tick_upper: v1,
-            liquidity: arg3,
+
+        let event = AddLiquidityEvent {
+            pool: sui::object::id<Pool<CoinTypeA, CoinTypeB>>(pool),
+            position: sui::object::id<clmm_pool::position::Position>(position),
+            tick_lower,
+            tick_upper,
+            liquidity: liquidity_delta,
             after_liquidity: clmm_pool::position::increase_liquidity(
-                &mut arg0.position_manager,
-                arg1,
-                v2,
-                v10,
-                v11,
-                v13,
-                v12,
-                v14
+                &mut pool.position_manager,
+                position,
+                liquidity,
+                fee_growth_a,
+                fee_growth_b,
+                points_growth,
+                rewards_growth,
+                magma_growth
             ),
-            amount_a: v3,
-            amount_b: v4,
+            amount_a,
+            amount_b,
         };
-        sui::event::emit<AddLiquidityEvent>(v15);
-        AddLiquidityReceipt<T0, T1> {
-            pool_id: sui::object::id<Pool<T0, T1>>(arg0),
-            amount_a: v3,
-            amount_b: v4,
+
+        sui::event::emit<AddLiquidityEvent>(event);
+
+        AddLiquidityReceipt<CoinTypeA, CoinTypeB> {
+            pool_id: sui::object::id<Pool<CoinTypeA, CoinTypeB>>(pool),
+            amount_a,
+            amount_b,
         }
     }
 
-    public fun add_liquidity_pay_amount<T0, T1>(arg0: &AddLiquidityReceipt<T0, T1>): (u64, u64) {
-        (arg0.amount_a, arg0.amount_b)
+    public fun add_liquidity_pay_amount<CoinTypeA, CoinTypeB>(receipt: &AddLiquidityReceipt<CoinTypeA, CoinTypeB>): (u64, u64) {
+        (receipt.amount_a, receipt.amount_b)
     }
 
-    fun apply_unstaked_fees(arg0: u128, arg1: u128, arg2: u64): (u128, u128) {
-        let v0 = integer_mate::full_math_u128::mul_div_ceil(arg0, arg2 as u128, 10000);
-        (arg0 - v0, arg1 + v0)
+    fun apply_unstaked_fees(fee_amount: u128, total_amount: u128, unstaked_fee_rate: u64): (u128, u128) {
+        let unstaked_fee = integer_mate::full_math_u128::mul_div_ceil(fee_amount, unstaked_fee_rate as u128, 10000);
+        (fee_amount - unstaked_fee, total_amount + unstaked_fee)
     }
 
-    public fun balances<T0, T1>(arg0: &Pool<T0, T1>): (u64, u64) {
-        (sui::balance::value<T0>(&arg0.coin_a), sui::balance::value<T1>(&arg0.coin_b))
+    public fun balances<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): (u64, u64) {
+        (sui::balance::value<CoinTypeA>(&pool.coin_a), sui::balance::value<CoinTypeB>(&pool.coin_b))
     }
-
-    public fun calculate_and_update_fee<T0, T1>(
-        arg0: &clmm_pool::config::GlobalConfig,
-        arg1: &mut Pool<T0, T1>,
-        arg2: sui::object::ID
+    public fun calculate_and_update_fee<CoinTypeA, CoinTypeB>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        position_id: sui::object::ID
     ): (u64, u64) {
-        clmm_pool::config::checked_package_version(arg0);
-        assert!(!arg1.is_pause, 13);
-        let v0 = clmm_pool::position::borrow_position_info(&arg1.position_manager, arg2);
-        if (clmm_pool::position::info_liquidity(v0) != 0) {
-            let (v3, v4) = clmm_pool::position::info_tick_range(v0);
-            let (v5, v6) = get_fee_in_tick_range<T0, T1>(arg1, v3, v4);
-            let (v7, v8) = clmm_pool::position::update_fee(&mut arg1.position_manager, arg2, v5, v6);
-            (v7, v8)
+        clmm_pool::config::checked_package_version(global_config);
+        assert!(!pool.is_pause, 13);
+        let position_info = clmm_pool::position::borrow_position_info(&pool.position_manager, position_id);
+        if (clmm_pool::position::info_liquidity(position_info) != 0) {
+            let (tick_lower, tick_upper) = clmm_pool::position::info_tick_range(position_info);
+            let (fee_growth_a, fee_growth_b) = get_fee_in_tick_range<CoinTypeA, CoinTypeB>(pool, tick_lower, tick_upper);
+            let (fee_a, fee_b) = clmm_pool::position::update_fee(&mut pool.position_manager, position_id, fee_growth_a, fee_growth_b);
+            (fee_a, fee_b)
         } else {
-            let (v9, v10) = clmm_pool::position::info_fee_owned(v0);
-            (v9, v10)
+            let (fee_a, fee_b) = clmm_pool::position::info_fee_owned(position_info);
+            (fee_a, fee_b)
         }
     }
-
-    public fun calculate_and_update_magma_distribution<T0, T1>(
-        arg0: &clmm_pool::config::GlobalConfig,
-        arg1: &mut Pool<T0, T1>,
-        arg2: sui::object::ID
+    public fun calculate_and_update_magma_distribution<CoinTypeA, CoinTypeB>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        position_id: sui::object::ID
     ): u64 {
-        clmm_pool::config::checked_package_version(arg0);
-        assert!(!arg1.is_pause, 13);
-        let v0 = clmm_pool::position::borrow_position_info(&arg1.position_manager, arg2);
-        if (clmm_pool::position::info_liquidity(v0) != 0) {
-            let (v2, v3) = clmm_pool::position::info_tick_range(v0);
+        clmm_pool::config::checked_package_version(global_config);
+        assert!(!pool.is_pause, 13);
+        let position_info = clmm_pool::position::borrow_position_info(&pool.position_manager, position_id);
+        if (clmm_pool::position::info_liquidity(position_info) != 0) {
+            let (tick_lower, tick_upper) = clmm_pool::position::info_tick_range(position_info);
             clmm_pool::position::update_magma_distribution(
-                &mut arg1.position_manager,
-                arg2,
+                &mut pool.position_manager,
+                position_id,
                 clmm_pool::tick::get_magma_distribution_growth_in_range(
-                    arg1.current_tick_index,
-                    arg1.magma_distribution_growth_global,
-                    clmm_pool::tick::try_borrow_tick(&arg1.tick_manager, v2),
-                    clmm_pool::tick::try_borrow_tick(&arg1.tick_manager, v3)
+                    pool.current_tick_index,
+                    pool.magma_distribution_growth_global,
+                    clmm_pool::tick::try_borrow_tick(&pool.tick_manager, tick_lower),
+                    clmm_pool::tick::try_borrow_tick(&pool.tick_manager, tick_upper)
                 )
             )
         } else {
-            clmm_pool::position::info_magma_distribution_owned(v0)
+            clmm_pool::position::info_magma_distribution_owned(position_info)
         }
     }
-
-    public fun calculate_and_update_points<T0, T1>(
-        arg0: &clmm_pool::config::GlobalConfig,
-        arg1: &mut Pool<T0, T1>,
-        arg2: sui::object::ID,
-        arg3: &sui::clock::Clock
+    public fun calculate_and_update_points<CoinTypeA, CoinTypeB>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        position_id: sui::object::ID,
+        clock: &sui::clock::Clock
     ): u128 {
-        clmm_pool::config::checked_package_version(arg0);
-        assert!(!arg1.is_pause, 13);
-        clmm_pool::rewarder::settle(&mut arg1.rewarder_manager, arg1.liquidity, sui::clock::timestamp_ms(arg3) / 1000);
-        let v0 = clmm_pool::position::borrow_position_info(&arg1.position_manager, arg2);
-        if (clmm_pool::position::info_liquidity(v0) != 0) {
-            let (v2, v3) = clmm_pool::position::info_tick_range(v0);
-            let points = get_points_in_tick_range<T0, T1>(arg1, v2, v3);
-            let positionManager = &mut arg1.position_manager;
-            clmm_pool::position::update_points(positionManager, arg2, points)
+        clmm_pool::config::checked_package_version(global_config);
+        assert!(!pool.is_pause, 13);
+        clmm_pool::rewarder::settle(&mut pool.rewarder_manager, pool.liquidity, sui::clock::timestamp_ms(clock) / 1000);
+        let position_info = clmm_pool::position::borrow_position_info(&pool.position_manager, position_id);
+        if (clmm_pool::position::info_liquidity(position_info) != 0) {
+            let (tick_lower, tick_upper) = clmm_pool::position::info_tick_range(position_info);
+            let points = get_points_in_tick_range<CoinTypeA, CoinTypeB>(pool, tick_lower, tick_upper);
+            let position_manager = &mut pool.position_manager;
+            clmm_pool::position::update_points(position_manager, position_id, points)
         } else {
             clmm_pool::position::info_points_owned(
-                clmm_pool::position::borrow_position_info(&arg1.position_manager, arg2)
+                clmm_pool::position::borrow_position_info(&pool.position_manager, position_id)
             )
         }
     }
-
-    public fun calculate_and_update_reward<T0, T1, T2>(
-        arg0: &clmm_pool::config::GlobalConfig,
-        arg1: &mut Pool<T0, T1>,
-        arg2: sui::object::ID,
-        arg3: &sui::clock::Clock
+    public fun calculate_and_update_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        position_id: sui::object::ID,
+        clock: &sui::clock::Clock
     ): u64 {
-        let mut v0 = clmm_pool::rewarder::rewarder_index<T2>(&arg1.rewarder_manager);
-        assert!(std::option::is_some<u64>(&v0), 17);
-        let v1 = calculate_and_update_rewards<T0, T1>(arg0, arg1, arg2, arg3);
-        *std::vector::borrow<u64>(&v1, std::option::extract<u64>(&mut v0))
+        let mut rewarder_idx = clmm_pool::rewarder::rewarder_index<RewardCoinType>(&pool.rewarder_manager);
+        assert!(std::option::is_some<u64>(&rewarder_idx), 17);
+        let rewards = calculate_and_update_rewards<CoinTypeA, CoinTypeB>(global_config, pool, position_id, clock);
+        *std::vector::borrow<u64>(&rewards, std::option::extract<u64>(&mut rewarder_idx))
     }
-
-    public fun calculate_and_update_rewards<T0, T1>(
-        arg0: &clmm_pool::config::GlobalConfig,
-        arg1: &mut Pool<T0, T1>,
-        arg2: sui::object::ID,
-        arg3: &sui::clock::Clock
+    public fun calculate_and_update_rewards<CoinTypeA, CoinTypeB>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        position_id: sui::object::ID,
+        clock: &sui::clock::Clock
     ): vector<u64> {
-        clmm_pool::config::checked_package_version(arg0);
-        assert!(!arg1.is_pause, 13);
-        clmm_pool::rewarder::settle(&mut arg1.rewarder_manager, arg1.liquidity, sui::clock::timestamp_ms(arg3) / 1000);
-        let v0 = clmm_pool::position::borrow_position_info(&arg1.position_manager, arg2);
-        if (clmm_pool::position::info_liquidity(v0) != 0) {
-            let (v2, v3) = clmm_pool::position::info_tick_range(v0);
-            let rewards = get_rewards_in_tick_range<T0, T1>(arg1, v2, v3);
-            let positionManager = &mut arg1.position_manager;
-            clmm_pool::position::update_rewards(positionManager, arg2, rewards)
+        clmm_pool::config::checked_package_version(global_config);
+        assert!(!pool.is_pause, 13);
+        clmm_pool::rewarder::settle(&mut pool.rewarder_manager, pool.liquidity, sui::clock::timestamp_ms(clock) / 1000);
+        let position_info = clmm_pool::position::borrow_position_info(&pool.position_manager, position_id);
+        if (clmm_pool::position::info_liquidity(position_info) != 0) {
+            let (tick_lower, tick_upper) = clmm_pool::position::info_tick_range(position_info);
+            let rewards = get_rewards_in_tick_range<CoinTypeA, CoinTypeB>(pool, tick_lower, tick_upper);
+            let position_manager = &mut pool.position_manager;
+            clmm_pool::position::update_rewards(position_manager, position_id, rewards)
         } else {
-            clmm_pool::position::rewards_amount_owned(&arg1.position_manager, arg2)
+            clmm_pool::position::rewards_amount_owned(&pool.position_manager, position_id)
         }
     }
-
-    fun calculate_fees<T0, T1>(arg0: &Pool<T0, T1>, arg1: u64, arg2: u128, arg3: u128, arg4: u64): (u128, u64) {
-        if (arg2 == arg0.magma_distribution_staked_liquidity) {
-            (0, arg1)
+    fun calculate_fees<CoinTypeA, CoinTypeB>(
+        pool: &Pool<CoinTypeA, CoinTypeB>,
+        fee_amount: u64,
+        total_liquidity: u128,
+        staked_liquidity: u128,
+        unstaked_fee_rate: u64
+    ): (u128, u64) {
+        if (total_liquidity == pool.magma_distribution_staked_liquidity) {
+            (0, fee_amount)
         } else {
-            let (v2, v3) = if (arg3 == 0) {
-                let (v4, v5) = apply_unstaked_fees(arg1 as u128, 0, arg4);
-                (integer_mate::full_math_u128::mul_div_floor(v4, 18446744073709551616, arg2), v5 as u64)
+            let (staked_fee, unstaked_fee) = if (staked_liquidity == 0) {
+                let (unstaked_amount, unstaked_fee_amount) = apply_unstaked_fees(fee_amount as u128, 0, unstaked_fee_rate);
+                (integer_mate::full_math_u128::mul_div_floor(unstaked_amount, 18446744073709551616, total_liquidity), unstaked_fee_amount as u64)
             } else {
-                let (v6, v7) = split_fees(arg1, arg2, arg3, arg4);
-                (integer_mate::full_math_u128::mul_div_floor(v6 as u128, 18446744073709551616, arg2 - arg3), v7)
+                let (staked_amount, unstaked_fee_amount) = split_fees(fee_amount, total_liquidity, staked_liquidity, unstaked_fee_rate);
+                (integer_mate::full_math_u128::mul_div_floor(staked_amount as u128, 18446744073709551616, total_liquidity - staked_liquidity), unstaked_fee_amount)
             };
-            (v2, v3)
+            (staked_fee, unstaked_fee)
         }
     }
-
-    public fun calculate_swap_result<T0, T1>(
-        arg0: &clmm_pool::config::GlobalConfig,
-        arg1: &Pool<T0, T1>,
-        arg2: bool,
-        arg3: bool,
-        arg4: u64
+    public fun calculate_swap_result<CoinTypeA, CoinTypeB>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &Pool<CoinTypeA, CoinTypeB>,
+        a2b: bool,
+        by_amount_in: bool,
+        amount: u64
     ): CalculatedSwapResult {
-        let mut v0 = arg1.current_sqrt_price;
-        let mut v1 = arg1.liquidity;
-        let mut v2 = arg1.magma_distribution_staked_liquidity;
-        let mut v3 = default_swap_result();
-        let mut v4 = arg4;
-        let mut v5 = clmm_pool::tick::first_score_for_swap(&arg1.tick_manager, arg1.current_tick_index, arg2);
-        let mut v6 = CalculatedSwapResult {
+        let mut current_sqrt_price = pool.current_sqrt_price;
+        let mut current_liquidity = pool.liquidity;
+        let mut staked_liquidity = pool.magma_distribution_staked_liquidity;
+        let mut swap_result = default_swap_result();
+        let mut remaining_amount = amount;
+        let mut next_tick = clmm_pool::tick::first_score_for_swap(&pool.tick_manager, pool.current_tick_index, a2b);
+        let mut calculated_result = CalculatedSwapResult {
             amount_in: 0,
             amount_out: 0,
             fee_amount: 0,
-            fee_rate: arg1.fee_rate,
+            fee_rate: pool.fee_rate,
             ref_fee_amount: 0,
             gauge_fee_amount: 0,
             protocol_fee_amount: 0,
-            after_sqrt_price: arg1.current_sqrt_price,
+            after_sqrt_price: pool.current_sqrt_price,
             is_exceed: false,
             step_results: std::vector::empty<SwapStepResult>(),
         };
-        let v7 = if (arg1.unstaked_liquidity_fee_rate == clmm_pool::config::default_unstaked_fee_rate()) {
-            clmm_pool::config::unstaked_liquidity_fee_rate(arg0)
+        let unstaked_fee_rate = if (pool.unstaked_liquidity_fee_rate == clmm_pool::config::default_unstaked_fee_rate()) {
+            clmm_pool::config::unstaked_liquidity_fee_rate(global_config)
         } else {
-            arg1.unstaked_liquidity_fee_rate
+            pool.unstaked_liquidity_fee_rate
         };
-        while (v4 > 0) {
-            if (move_stl::option_u64::is_none(&v5)) {
-                v6.is_exceed = true;
+        while (remaining_amount > 0) {
+            if (move_stl::option_u64::is_none(&next_tick)) {
+                calculated_result.is_exceed = true;
                 break
             };
-            let (v8, v9) = clmm_pool::tick::borrow_tick_for_swap(
-                &arg1.tick_manager,
-                move_stl::option_u64::borrow(&v5),
-                arg2
+            let (tick, next_tick_score) = clmm_pool::tick::borrow_tick_for_swap(
+                &pool.tick_manager,
+                move_stl::option_u64::borrow(&next_tick),
+                a2b
             );
-            v5 = v9;
-            let v10 = clmm_pool::tick::sqrt_price(v8);
-            let (v11, v12, v13, v14) = clmm_pool::clmm_math::compute_swap_step(
-                v0,
-                v10,
-                v1,
-                v4,
-                arg1.fee_rate,
-                arg2,
-                arg3
+            next_tick = next_tick_score;
+            let target_sqrt_price = clmm_pool::tick::sqrt_price(tick);
+            let (amount_in, amount_out, next_sqrt_price, fee_amount) = clmm_pool::clmm_math::compute_swap_step(
+                current_sqrt_price,
+                target_sqrt_price,
+                current_liquidity,
+                remaining_amount,
+                pool.fee_rate,
+                a2b,
+                by_amount_in
             );
-            if (v11 != 0 || v14 != 0) {
-                let v15 = if (arg3) {
-                    let v16 = check_remainer_amount_sub(v4, v11);
-                    check_remainer_amount_sub(v16, v14)
+            if (amount_in != 0 || fee_amount != 0) {
+                let new_remaining_amount = if (by_amount_in) {
+                    let after_amount_in = check_remainer_amount_sub(remaining_amount, amount_in);
+                    check_remainer_amount_sub(after_amount_in, fee_amount)
                 } else {
-                    check_remainer_amount_sub(v4, v12)
+                    check_remainer_amount_sub(remaining_amount, amount_out)
                 };
-                v4 = v15;
-                let v17 = integer_mate::full_math_u64::mul_div_ceil(
-                    v14,
-                    clmm_pool::config::protocol_fee_rate(arg0),
+                remaining_amount = new_remaining_amount;
+                let protocol_fee = integer_mate::full_math_u64::mul_div_ceil(
+                    fee_amount,
+                    clmm_pool::config::protocol_fee_rate(global_config),
                     clmm_pool::config::protocol_fee_rate_denom()
                 );
-                let (_, v19) = calculate_fees<T0, T1>(
-                    arg1,
-                    v14 - v17,
-                    arg1.liquidity,
-                    arg1.magma_distribution_staked_liquidity,
-                    v7
+                let (_, gauge_fee) = calculate_fees<CoinTypeA, CoinTypeB>(
+                    pool,
+                    fee_amount - protocol_fee,
+                    pool.liquidity,
+                    pool.magma_distribution_staked_liquidity,
+                    unstaked_fee_rate
                 );
-                update_swap_result(&mut v3, v11, v12, v14, v17, 0, v19);
+                update_swap_result(&mut swap_result, amount_in, amount_out, fee_amount, protocol_fee, 0, gauge_fee);
             };
-            let v20 = SwapStepResult {
-                current_sqrt_price: v0,
-                target_sqrt_price: v10,
-                current_liquidity: v1,
-                amount_in: v11,
-                amount_out: v12,
-                fee_amount: v14,
-                remainder_amount: v4,
+            let step_result = SwapStepResult {
+                current_sqrt_price,
+                target_sqrt_price,
+                current_liquidity,
+                amount_in,
+                amount_out,
+                fee_amount,
+                remainder_amount: remaining_amount,
             };
-            std::vector::push_back<SwapStepResult>(&mut v6.step_results, v20);
-            if (v13 == v10) {
-                v0 = v10;
-                let (v21, v22) = if (arg2) {
-                    (integer_mate::i128::neg(clmm_pool::tick::liquidity_net(v8)), integer_mate::i128::neg(
-                        clmm_pool::tick::magma_distribution_staked_liquidity_net(v8)
+            std::vector::push_back<SwapStepResult>(&mut calculated_result.step_results, step_result);
+            if (next_sqrt_price == target_sqrt_price) {
+                current_sqrt_price = target_sqrt_price;
+                let (liquidity_delta, staked_liquidity_delta) = if (a2b) {
+                    (integer_mate::i128::neg(clmm_pool::tick::liquidity_net(tick)), integer_mate::i128::neg(
+                        clmm_pool::tick::magma_distribution_staked_liquidity_net(tick)
                     ))
                 } else {
-                    (clmm_pool::tick::liquidity_net(v8), clmm_pool::tick::magma_distribution_staked_liquidity_net(v8))
+                    (clmm_pool::tick::liquidity_net(tick), clmm_pool::tick::magma_distribution_staked_liquidity_net(tick))
                 };
-                let v23 = integer_mate::i128::abs_u128(v21);
-                let v24 = integer_mate::i128::abs_u128(v22);
-                if (!integer_mate::i128::is_neg(v21)) {
-                    assert!(integer_mate::math_u128::add_check(v1, v23), 1);
-                    v1 = v1 + v23;
+                let liquidity_abs = integer_mate::i128::abs_u128(liquidity_delta);
+                let staked_liquidity_abs = integer_mate::i128::abs_u128(staked_liquidity_delta);
+                if (!integer_mate::i128::is_neg(liquidity_delta)) {
+                    assert!(integer_mate::math_u128::add_check(current_liquidity, liquidity_abs), 1);
+                    current_liquidity = current_liquidity + liquidity_abs;
                 } else {
-                    assert!(v1 >= v23, 1);
-                    v1 = v1 - v23;
+                    assert!(current_liquidity >= liquidity_abs, 1);
+                    current_liquidity = current_liquidity - liquidity_abs;
                 };
-                if (!integer_mate::i128::is_neg(v22)) {
-                    assert!(integer_mate::math_u128::add_check(v2, v24), 1);
-                    v2 = v2 + v24;
+                if (!integer_mate::i128::is_neg(staked_liquidity_delta)) {
+                    assert!(integer_mate::math_u128::add_check(staked_liquidity, staked_liquidity_abs), 1);
+                    staked_liquidity = staked_liquidity + staked_liquidity_abs;
                     continue
                 };
-                assert!(v2 >= v24, 1);
-                v2 = v2 - v24;
+                assert!(staked_liquidity >= staked_liquidity_abs, 1);
+                staked_liquidity = staked_liquidity - staked_liquidity_abs;
                 continue
             };
-            v0 = v13;
+            current_sqrt_price = next_sqrt_price;
         };
-        v6.amount_in = v3.amount_in;
-        v6.amount_out = v3.amount_out;
-        v6.fee_amount = v3.fee_amount;
-        v6.gauge_fee_amount = v3.gauge_fee_amount;
-        v6.protocol_fee_amount = v3.protocol_fee_amount;
-        v6.after_sqrt_price = v0;
-        v6
+        calculated_result.amount_in = swap_result.amount_in;
+        calculated_result.amount_out = swap_result.amount_out;
+        calculated_result.fee_amount = swap_result.fee_amount;
+        calculated_result.gauge_fee_amount = swap_result.gauge_fee_amount;
+        calculated_result.protocol_fee_amount = swap_result.protocol_fee_amount;
+        calculated_result.after_sqrt_price = current_sqrt_price;
+        calculated_result
     }
-
-    public fun calculate_swap_result_step_results(arg0: &CalculatedSwapResult): &vector<SwapStepResult> {
-        &arg0.step_results
+    public fun calculate_swap_result_step_results(calculated_swap_result: &CalculatedSwapResult): &vector<SwapStepResult> {
+        &calculated_swap_result.step_results
     }
-
-    public fun calculate_swap_result_with_partner<T0, T1>(
-        arg0: &clmm_pool::config::GlobalConfig,
-        arg1: &Pool<T0, T1>,
-        arg2: bool,
-        arg3: bool,
-        arg4: u64,
-        arg5: u64
+    public fun calculate_swap_result_with_partner<CoinTypeA, CoinTypeB>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &Pool<CoinTypeA, CoinTypeB>,
+        a2b: bool,
+        by_amount_in: bool,
+        amount: u64,
+        ref_fee_rate: u64
     ): CalculatedSwapResult {
-        let mut v0 = arg1.current_sqrt_price;
-        let mut v1 = arg1.liquidity;
-        let mut v2 = arg1.magma_distribution_staked_liquidity;
-        let mut v3 = default_swap_result();
-        let mut v4 = arg4;
-        let mut v5 = clmm_pool::tick::first_score_for_swap(&arg1.tick_manager, arg1.current_tick_index, arg2);
-        let mut v6 = CalculatedSwapResult {
+        let mut current_sqrt_price = pool.current_sqrt_price;
+        let mut current_liquidity = pool.liquidity;
+        let mut staked_liquidity = pool.magma_distribution_staked_liquidity;
+        let mut swap_result = default_swap_result();
+        let mut remaining_amount = amount;
+        let mut next_tick = clmm_pool::tick::first_score_for_swap(&pool.tick_manager, pool.current_tick_index, a2b);
+        let mut calculated_result = CalculatedSwapResult {
             amount_in: 0,
             amount_out: 0,
             fee_amount: 0,
-            fee_rate: arg1.fee_rate,
+            fee_rate: pool.fee_rate,
             ref_fee_amount: 0,
             gauge_fee_amount: 0,
             protocol_fee_amount: 0,
-            after_sqrt_price: arg1.current_sqrt_price,
+            after_sqrt_price: pool.current_sqrt_price,
             is_exceed: false,
             step_results: std::vector::empty<SwapStepResult>(),
         };
-        let v7 = if (arg1.unstaked_liquidity_fee_rate == clmm_pool::config::default_unstaked_fee_rate()) {
-            clmm_pool::config::unstaked_liquidity_fee_rate(arg0)
+        let unstaked_fee_rate = if (pool.unstaked_liquidity_fee_rate == clmm_pool::config::default_unstaked_fee_rate()) {
+            clmm_pool::config::unstaked_liquidity_fee_rate(global_config)
         } else {
-            arg1.unstaked_liquidity_fee_rate
+            pool.unstaked_liquidity_fee_rate
         };
-        while (v4 > 0) {
-            if (move_stl::option_u64::is_none(&v5)) {
-                v6.is_exceed = true;
+        while (remaining_amount > 0) {
+            if (move_stl::option_u64::is_none(&next_tick)) {
+                calculated_result.is_exceed = true;
                 break
             };
-            let (v8, v9) = clmm_pool::tick::borrow_tick_for_swap(
-                &arg1.tick_manager,
-                move_stl::option_u64::borrow(&v5),
-                arg2
+            let (tick, next_tick_score) = clmm_pool::tick::borrow_tick_for_swap(
+                &pool.tick_manager,
+                move_stl::option_u64::borrow(&next_tick),
+                a2b
             );
-            v5 = v9;
-            let v10 = clmm_pool::tick::sqrt_price(v8);
-            let (v11, v12, v13, v14) = clmm_pool::clmm_math::compute_swap_step(
-                v0,
-                v10,
-                v1,
-                v4,
-                arg1.fee_rate,
-                arg2,
-                arg3
+            next_tick = next_tick_score;
+            let target_sqrt_price = clmm_pool::tick::sqrt_price(tick);
+            let (amount_in, amount_out, next_sqrt_price, fee_amount) = clmm_pool::clmm_math::compute_swap_step(
+                current_sqrt_price,
+                target_sqrt_price,
+                current_liquidity,
+                remaining_amount,
+                pool.fee_rate,
+                a2b,
+                by_amount_in
             );
-            if (v11 != 0 || v14 != 0) {
-                let v15 = if (arg3) {
-                    let v16 = check_remainer_amount_sub(v4, v11);
-                    check_remainer_amount_sub(v16, v14)
+            if (amount_in != 0 || fee_amount != 0) {
+                let new_remaining_amount = if (by_amount_in) {
+                    let amount_after_in = check_remainer_amount_sub(remaining_amount, amount_in);
+                    check_remainer_amount_sub(amount_after_in, fee_amount)
                 } else {
-                    check_remainer_amount_sub(v4, v12)
+                    check_remainer_amount_sub(remaining_amount, amount_out)
                 };
-                v4 = v15;
-                let v17 = integer_mate::full_math_u64::mul_div_ceil(
-                    v14,
-                    arg5,
+                remaining_amount = new_remaining_amount;
+                let ref_fee = integer_mate::full_math_u64::mul_div_ceil(
+                    fee_amount,
+                    ref_fee_rate,
                     clmm_pool::config::protocol_fee_rate_denom()
                 );
-                let v18 = v14 - v17;
-                let mut v19 = 0;
-                let mut v20 = 0;
-                if (v18 > 0) {
-                    let v21 = integer_mate::full_math_u64::mul_div_ceil(
-                        v18,
-                        clmm_pool::config::protocol_fee_rate(arg0),
+                let remaining_fee = fee_amount - ref_fee;
+                let mut gauge_fee = 0;
+                let mut protocol_fee = 0;
+                if (remaining_fee > 0) {
+                    let protocol_fee_amount = integer_mate::full_math_u64::mul_div_ceil(
+                        remaining_fee,
+                        clmm_pool::config::protocol_fee_rate(global_config),
                         clmm_pool::config::protocol_fee_rate_denom()
                     );
-                    v20 = v21;
-                    let v22 = v18 - v21;
-                    if (v22 > 0) {
-                        let (_, v24) = calculate_fees<T0, T1>(
-                            arg1,
-                            v22,
-                            arg1.liquidity,
-                            arg1.magma_distribution_staked_liquidity,
-                            v7
+                    protocol_fee = protocol_fee_amount;
+                    let fee_after_protocol = remaining_fee - protocol_fee_amount;
+                    if (fee_after_protocol > 0) {
+                        let (_, gauge_fee_amount) = calculate_fees<CoinTypeA, CoinTypeB>(
+                            pool,
+                            fee_after_protocol,
+                            pool.liquidity,
+                            pool.magma_distribution_staked_liquidity,
+                            unstaked_fee_rate
                         );
-                        v19 = v24;
+                        gauge_fee = gauge_fee_amount;
                     };
                 };
-                update_swap_result(&mut v3, v11, v12, v14, v20, v17, v19);
+                update_swap_result(&mut swap_result, amount_in, amount_out, fee_amount, protocol_fee, ref_fee, gauge_fee);
             };
-            let v25 = SwapStepResult {
-                current_sqrt_price: v0,
-                target_sqrt_price: v10,
-                current_liquidity: v1,
-                amount_in: v11,
-                amount_out: v12,
-                fee_amount: v14,
-                remainder_amount: v4,
+            let step_result = SwapStepResult {
+                current_sqrt_price,
+                target_sqrt_price,
+                current_liquidity,
+                amount_in,
+                amount_out,
+                fee_amount,
+                remainder_amount: remaining_amount,
             };
-            std::vector::push_back<SwapStepResult>(&mut v6.step_results, v25);
-            if (v13 == v10) {
-                v0 = v10;
-                let (v26, v27) = if (arg2) {
-                    (integer_mate::i128::neg(clmm_pool::tick::liquidity_net(v8)), integer_mate::i128::neg(
-                        clmm_pool::tick::magma_distribution_staked_liquidity_net(v8)
+            std::vector::push_back<SwapStepResult>(&mut calculated_result.step_results, step_result);
+            if (next_sqrt_price == target_sqrt_price) {
+                current_sqrt_price = target_sqrt_price;
+                let (liquidity_delta, staked_liquidity_delta) = if (a2b) {
+                    (integer_mate::i128::neg(clmm_pool::tick::liquidity_net(tick)), integer_mate::i128::neg(
+                        clmm_pool::tick::magma_distribution_staked_liquidity_net(tick)
                     ))
                 } else {
-                    (clmm_pool::tick::liquidity_net(v8), clmm_pool::tick::magma_distribution_staked_liquidity_net(v8))
+                    (clmm_pool::tick::liquidity_net(tick), clmm_pool::tick::magma_distribution_staked_liquidity_net(tick))
                 };
-                let v28 = integer_mate::i128::abs_u128(v26);
-                let v29 = integer_mate::i128::abs_u128(v27);
-                if (!integer_mate::i128::is_neg(v26)) {
-                    assert!(integer_mate::math_u128::add_check(v1, v28), 1);
-                    v1 = v1 + v28;
+                let liquidity_abs = integer_mate::i128::abs_u128(liquidity_delta);
+                let staked_liquidity_abs = integer_mate::i128::abs_u128(staked_liquidity_delta);
+                if (!integer_mate::i128::is_neg(liquidity_delta)) {
+                    assert!(integer_mate::math_u128::add_check(current_liquidity, liquidity_abs), 1);
+                    current_liquidity = current_liquidity + liquidity_abs;
                 } else {
-                    assert!(v1 >= v28, 1);
-                    v1 = v1 - v28;
+                    assert!(current_liquidity >= liquidity_abs, 1);
+                    current_liquidity = current_liquidity - liquidity_abs;
                 };
-                if (!integer_mate::i128::is_neg(v27)) {
-                    assert!(integer_mate::math_u128::add_check(v2, v29), 1);
-                    v2 = v2 + v29;
+                if (!integer_mate::i128::is_neg(staked_liquidity_delta)) {
+                    assert!(integer_mate::math_u128::add_check(staked_liquidity, staked_liquidity_abs), 1);
+                    staked_liquidity = staked_liquidity + staked_liquidity_abs;
                     continue
                 };
-                assert!(v2 >= v29, 1);
-                v2 = v2 - v29;
+                assert!(staked_liquidity >= staked_liquidity_abs, 1);
+                staked_liquidity = staked_liquidity - staked_liquidity_abs;
                 continue
             };
-            v0 = v13;
+            current_sqrt_price = next_sqrt_price;
         };
-        v6.amount_in = v3.amount_in;
-        v6.amount_out = v3.amount_out;
-        v6.fee_amount = v3.fee_amount;
-        v6.gauge_fee_amount = v3.gauge_fee_amount;
-        v6.protocol_fee_amount = v3.protocol_fee_amount;
-        v6.ref_fee_amount = v3.ref_fee_amount;
-        v6.after_sqrt_price = v0;
-        v6
+        calculated_result.amount_in = swap_result.amount_in;
+        calculated_result.amount_out = swap_result.amount_out;
+        calculated_result.fee_amount = swap_result.fee_amount;
+        calculated_result.gauge_fee_amount = swap_result.gauge_fee_amount;
+        calculated_result.protocol_fee_amount = swap_result.protocol_fee_amount;
+        calculated_result.ref_fee_amount = swap_result.ref_fee_amount;
+        calculated_result.after_sqrt_price = current_sqrt_price;
+        calculated_result
+    }
+    public fun calculated_swap_result_after_sqrt_price(swap_result: &CalculatedSwapResult): u128 {
+        swap_result.after_sqrt_price
     }
 
-    public fun calculated_swap_result_after_sqrt_price(arg0: &CalculatedSwapResult): u128 {
-        arg0.after_sqrt_price
+    public fun calculated_swap_result_amount_in(swap_result: &CalculatedSwapResult): u64 {
+        swap_result.amount_in
     }
 
-    public fun calculated_swap_result_amount_in(arg0: &CalculatedSwapResult): u64 {
-        arg0.amount_in
+    public fun calculated_swap_result_amount_out(swap_result: &CalculatedSwapResult): u64 {
+        swap_result.amount_out
     }
 
-    public fun calculated_swap_result_amount_out(arg0: &CalculatedSwapResult): u64 {
-        arg0.amount_out
+    public fun calculated_swap_result_fees_amount(swap_result: &CalculatedSwapResult): (u64, u64, u64, u64) {
+        (swap_result.fee_amount, swap_result.ref_fee_amount, swap_result.protocol_fee_amount, swap_result.gauge_fee_amount)
     }
 
-    public fun calculated_swap_result_fees_amount(arg0: &CalculatedSwapResult): (u64, u64, u64, u64) {
-        (arg0.fee_amount, arg0.ref_fee_amount, arg0.protocol_fee_amount, arg0.gauge_fee_amount)
+    public fun calculated_swap_result_is_exceed(swap_result: &CalculatedSwapResult): bool {
+        swap_result.is_exceed
     }
 
-    public fun calculated_swap_result_is_exceed(arg0: &CalculatedSwapResult): bool {
-        arg0.is_exceed
+    public fun calculated_swap_result_step_swap_result(swap_result: &CalculatedSwapResult, step_index: u64): &SwapStepResult {
+        std::vector::borrow<SwapStepResult>(&swap_result.step_results, step_index)
     }
 
-    public fun calculated_swap_result_step_swap_result(arg0: &CalculatedSwapResult, arg1: u64): &SwapStepResult {
-        std::vector::borrow<SwapStepResult>(&arg0.step_results, arg1)
+    public fun calculated_swap_result_steps_length(swap_result: &CalculatedSwapResult): u64 {
+        std::vector::length<SwapStepResult>(&swap_result.step_results)
     }
-
-    public fun calculated_swap_result_steps_length(arg0: &CalculatedSwapResult): u64 {
-        std::vector::length<SwapStepResult>(&arg0.step_results)
-    }
-
-    fun check_gauge_cap<T0, T1>(arg0: &Pool<T0, T1>, arg1: &gauge_cap::gauge_cap::GaugeCap) {
-        let v0 = if (gauge_cap::gauge_cap::get_pool_id(arg1) == sui::object::id<Pool<T0, T1>>(arg0)) {
-            let v1 = &arg0.magma_distribution_gauger_id;
-            let v2 = if (std::option::is_some<sui::object::ID>(v1)) {
-                let v3 = gauge_cap::gauge_cap::get_gauge_id(arg1);
-                std::option::borrow<sui::object::ID>(v1) == &v3
+    fun check_gauge_cap<CoinTypeA, CoinTypeB>(
+        pool: &Pool<CoinTypeA, CoinTypeB>, 
+        gauge_cap: &gauge_cap::gauge_cap::GaugeCap
+    ) {
+        let is_valid = if (gauge_cap::gauge_cap::get_pool_id(gauge_cap) == sui::object::id<Pool<CoinTypeA, CoinTypeB>>(pool)) {
+            let gauger_id = &pool.magma_distribution_gauger_id;
+            let has_valid_gauge = if (std::option::is_some<sui::object::ID>(gauger_id)) {
+                let cap_gauge_id = gauge_cap::gauge_cap::get_gauge_id(gauge_cap);
+                std::option::borrow<sui::object::ID>(gauger_id) == &cap_gauge_id
             } else {
                 false
             };
-            v2
+            has_valid_gauge
         } else {
             false
         };
-        assert!(v0, 9223379355479048191);
+        assert!(is_valid, 9223379355479048191);
     }
 
-    fun check_remainer_amount_sub(arg0: u64, arg1: u64): u64 {
-        assert!(arg0 >= arg1, 5);
-        arg0 - arg1
+    fun check_remainer_amount_sub(amount: u64, sub_amount: u64): u64 {
+        assert!(amount >= sub_amount, 5);
+        amount - sub_amount
     }
-
-    fun check_tick_range(arg0: integer_mate::i32::I32, arg1: integer_mate::i32::I32): bool {
-        let v0 = if (integer_mate::i32::gte(arg0, arg1)) {
+    fun check_tick_range(tick_lower: integer_mate::i32::I32, tick_upper: integer_mate::i32::I32): bool {
+        let is_invalid = if (integer_mate::i32::gte(tick_lower, tick_upper)) {
             true
         } else {
-            if (integer_mate::i32::lt(arg0, clmm_pool::tick_math::min_tick())) {
+            if (integer_mate::i32::lt(tick_lower, clmm_pool::tick_math::min_tick())) {
                 true
             } else {
-                integer_mate::i32::gt(arg1, clmm_pool::tick_math::max_tick())
+                integer_mate::i32::gt(tick_upper, clmm_pool::tick_math::max_tick())
             }
         };
-        if (v0) {
+        if (is_invalid) {
             return false
         };
         true
     }
-
-    public fun collect_fee<T0, T1>(
-        arg0: &clmm_pool::config::GlobalConfig,
-        arg1: &mut Pool<T0, T1>,
-        arg2: &clmm_pool::position::Position,
-        arg3: bool
-    ): (sui::balance::Balance<T0>, sui::balance::Balance<T1>) {
-        clmm_pool::config::checked_package_version(arg0);
-        assert!(!arg1.is_pause, 13);
-        let v0 = sui::object::id<clmm_pool::position::Position>(arg2);
-        if (clmm_pool::position::is_staked(borrow_position_info<T0, T1>(arg1, v0))) {
-            return (sui::balance::zero<T0>(), sui::balance::zero<T1>())
+    
+    public fun collect_fee<CoinTypeA, CoinTypeB>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        position: &clmm_pool::position::Position,
+        update_fee: bool
+    ): (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>) {
+        clmm_pool::config::checked_package_version(global_config);
+        assert!(!pool.is_pause, 13);
+        let position_id = sui::object::id<clmm_pool::position::Position>(position);
+        if (clmm_pool::position::is_staked(borrow_position_info<CoinTypeA, CoinTypeB>(pool, position_id))) {
+            return (sui::balance::zero<CoinTypeA>(), sui::balance::zero<CoinTypeB>())
         };
-        let (v1, v2) = clmm_pool::position::tick_range(arg2);
-        let (v3, v4) = if (arg3 && clmm_pool::position::liquidity(arg2) != 0) {
-            let (v5, v6) = get_fee_in_tick_range<T0, T1>(arg1, v1, v2);
-            let (v7, v8) = clmm_pool::position::update_and_reset_fee(&mut arg1.position_manager, v0, v5, v6);
-            (v7, v8)
+        let (tick_lower, tick_upper) = clmm_pool::position::tick_range(position);
+        let (fee_amount_a, fee_amount_b) = if (update_fee && clmm_pool::position::liquidity(position) != 0) {
+            let (fee_growth_a, fee_growth_b) = get_fee_in_tick_range<CoinTypeA, CoinTypeB>(pool, tick_lower, tick_upper);
+            let (amount_a, amount_b) = clmm_pool::position::update_and_reset_fee(&mut pool.position_manager, position_id, fee_growth_a, fee_growth_b);
+            (amount_a, amount_b)
         } else {
-            let (v9, v10) = clmm_pool::position::reset_fee(&mut arg1.position_manager, v0);
-            (v9, v10)
+            let (amount_a, amount_b) = clmm_pool::position::reset_fee(&mut pool.position_manager, position_id);
+            (amount_a, amount_b)
         };
-        let v11 = CollectFeeEvent {
-            position: v0,
-            pool: sui::object::id<Pool<T0, T1>>(arg1),
-            amount_a: v3,
-            amount_b: v4,
+        let collect_fee_event = CollectFeeEvent {
+            position: position_id,
+            pool: sui::object::id<Pool<CoinTypeA, CoinTypeB>>(pool),
+            amount_a: fee_amount_a,
+            amount_b: fee_amount_b,
         };
-        sui::event::emit<CollectFeeEvent>(v11);
-        (sui::balance::split<T0>(&mut arg1.coin_a, v3), sui::balance::split<T1>(&mut arg1.coin_b, v4))
+        sui::event::emit<CollectFeeEvent>(collect_fee_event);
+        (sui::balance::split<CoinTypeA>(&mut pool.coin_a, fee_amount_a), sui::balance::split<CoinTypeB>(&mut pool.coin_b, fee_amount_b))
     }
-
-    public fun collect_magma_distribution_gauger_fees<T0, T1>(
-        arg0: &mut Pool<T0, T1>,
-        arg1: &gauge_cap::gauge_cap::GaugeCap
-    ): (sui::balance::Balance<T0>, sui::balance::Balance<T1>) {
-        assert!(!arg0.is_pause, 13);
-        check_gauge_cap<T0, T1>(arg0, arg1);
-        let mut v0 = sui::balance::zero<T0>();
-        let mut v1 = sui::balance::zero<T1>();
-        if (arg0.magma_distribution_gauger_fee.coin_a > 0) {
-            sui::balance::join<T0>(
-                &mut v0,
-                sui::balance::split<T0>(&mut arg0.coin_a, arg0.magma_distribution_gauger_fee.coin_a)
+    
+    public fun collect_magma_distribution_gauger_fees<CoinTypeA, CoinTypeB>(
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        gauge_cap: &gauge_cap::gauge_cap::GaugeCap
+    ): (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>) {
+        assert!(!pool.is_pause, 13);
+        check_gauge_cap<CoinTypeA, CoinTypeB>(pool, gauge_cap);
+        let mut balance_a = sui::balance::zero<CoinTypeA>();
+        let mut balance_b = sui::balance::zero<CoinTypeB>();
+        
+        if (pool.magma_distribution_gauger_fee.coin_a > 0) {
+            sui::balance::join<CoinTypeA>(
+                &mut balance_a,
+                sui::balance::split<CoinTypeA>(&mut pool.coin_a, pool.magma_distribution_gauger_fee.coin_a)
             );
-            arg0.magma_distribution_gauger_fee.coin_a = 0;
+            pool.magma_distribution_gauger_fee.coin_a = 0;
         };
-        if (arg0.magma_distribution_gauger_fee.coin_b > 0) {
-            sui::balance::join<T1>(
-                &mut v1,
-                sui::balance::split<T1>(&mut arg0.coin_b, arg0.magma_distribution_gauger_fee.coin_b)
+
+        if (pool.magma_distribution_gauger_fee.coin_b > 0) {
+            sui::balance::join<CoinTypeB>(
+                &mut balance_b,
+                sui::balance::split<CoinTypeB>(&mut pool.coin_b, pool.magma_distribution_gauger_fee.coin_b)
             );
-            arg0.magma_distribution_gauger_fee.coin_b = 0;
+            pool.magma_distribution_gauger_fee.coin_b = 0;
         };
-        let v2 = CollectGaugeFeeEvent {
-            pool: sui::object::id<Pool<T0, T1>>(arg0),
-            amount_a: sui::balance::value<T0>(&v0),
-            amount_b: sui::balance::value<T1>(&v1),
-        };
-        sui::event::emit<CollectGaugeFeeEvent>(v2);
-        (v0, v1)
-    }
 
-    public fun collect_protocol_fee<T0, T1>(
-        arg0: &clmm_pool::config::GlobalConfig,
-        arg1: &mut Pool<T0, T1>,
-        arg2: &mut sui::tx_context::TxContext
-    ): (sui::balance::Balance<T0>, sui::balance::Balance<T1>) {
-        clmm_pool::config::checked_package_version(arg0);
-        assert!(!arg1.is_pause, 13);
-        clmm_pool::config::check_protocol_fee_claim_role(arg0, sui::tx_context::sender(arg2));
-        let v0 = arg1.fee_protocol_coin_a;
-        let v1 = arg1.fee_protocol_coin_b;
-        arg1.fee_protocol_coin_a = 0;
-        arg1.fee_protocol_coin_b = 0;
-        let v2 = CollectProtocolFeeEvent {
-            pool: sui::object::id<Pool<T0, T1>>(arg1),
-            amount_a: v0,
-            amount_b: v1,
+        let event = CollectGaugeFeeEvent {
+            pool: sui::object::id<Pool<CoinTypeA, CoinTypeB>>(pool),
+            amount_a: sui::balance::value<CoinTypeA>(&balance_a),
+            amount_b: sui::balance::value<CoinTypeB>(&balance_b),
         };
-        sui::event::emit<CollectProtocolFeeEvent>(v2);
-        (sui::balance::split<T0>(&mut arg1.coin_a, v0), sui::balance::split<T1>(&mut arg1.coin_b, v1))
+        sui::event::emit<CollectGaugeFeeEvent>(event);
+        (balance_a, balance_b)
     }
+    
+    public fun collect_protocol_fee<CoinTypeA, CoinTypeB>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &mut Pool<CoinTypeA, CoinTypeB>, 
+        ctx: &mut sui::tx_context::TxContext
+    ): (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>) {
+        clmm_pool::config::checked_package_version(global_config);
+        assert!(!pool.is_pause, 13);
+        clmm_pool::config::check_protocol_fee_claim_role(global_config, sui::tx_context::sender(ctx));
+        
+        let fee_amount_a = pool.fee_protocol_coin_a;
+        let fee_amount_b = pool.fee_protocol_coin_b;
+        pool.fee_protocol_coin_a = 0;
+        pool.fee_protocol_coin_b = 0;
 
-    public fun collect_reward<T0, T1, T2>(
-        arg0: &clmm_pool::config::GlobalConfig,
-        arg1: &mut Pool<T0, T1>,
-        arg2: &clmm_pool::position::Position,
-        arg3: &mut clmm_pool::rewarder::RewarderGlobalVault,
-        arg4: bool,
-        arg5: &sui::clock::Clock
-    ): sui::balance::Balance<T2> {
-        clmm_pool::config::checked_package_version(arg0);
-        assert!(!arg1.is_pause, 13);
-        clmm_pool::rewarder::settle(&mut arg1.rewarder_manager, arg1.liquidity, sui::clock::timestamp_ms(arg5) / 1000);
-        let v0 = sui::object::id<clmm_pool::position::Position>(arg2);
-        let mut v1 = clmm_pool::rewarder::rewarder_index<T2>(&arg1.rewarder_manager);
-        assert!(std::option::is_some<u64>(&v1), 17);
-        let v2 = std::option::extract<u64>(&mut v1);
-        let v3 = if (arg4 && clmm_pool::position::liquidity(arg2) != 0 || clmm_pool::position::inited_rewards_count(
-            &arg1.position_manager,
-            v0
-        ) <= v2) {
-            let (v4, v5) = clmm_pool::position::tick_range(arg2);
-            let rewards = get_rewards_in_tick_range<T0, T1>(arg1, v4, v5);
-            let positionManager = &mut arg1.position_manager;
-            clmm_pool::position::update_and_reset_rewards(positionManager, v0, rewards, v2)
+        let event = CollectProtocolFeeEvent {
+            pool: sui::object::id<Pool<CoinTypeA, CoinTypeB>>(pool),
+            amount_a: fee_amount_a,
+            amount_b: fee_amount_b,
+        };
+        sui::event::emit<CollectProtocolFeeEvent>(event);
+        
+        (sui::balance::split<CoinTypeA>(&mut pool.coin_a, fee_amount_a), 
+         sui::balance::split<CoinTypeB>(&mut pool.coin_b, fee_amount_b))
+    }
+    public fun collect_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        position: &clmm_pool::position::Position,
+        rewarder_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
+        update_rewards: bool,
+        clock: &sui::clock::Clock
+    ): sui::balance::Balance<RewardCoinType> {
+        clmm_pool::config::checked_package_version(global_config);
+        assert!(!pool.is_pause, 13);
+        clmm_pool::rewarder::settle(&mut pool.rewarder_manager, pool.liquidity, sui::clock::timestamp_ms(clock) / 1000);
+        let position_id = sui::object::id<clmm_pool::position::Position>(position);
+        let mut rewarder_idx = clmm_pool::rewarder::rewarder_index<RewardCoinType>(&pool.rewarder_manager);
+        assert!(std::option::is_some<u64>(&rewarder_idx), 17);
+        let rewarder_index = std::option::extract<u64>(&mut rewarder_idx);
+        let reward_amount = if (update_rewards && clmm_pool::position::liquidity(position) != 0 || clmm_pool::position::inited_rewards_count(
+            &pool.position_manager,
+            position_id
+        ) <= rewarder_index) {
+            let (tick_lower, tick_upper) = clmm_pool::position::tick_range(position);
+            let rewards = get_rewards_in_tick_range<CoinTypeA, CoinTypeB>(pool, tick_lower, tick_upper);
+            let position_manager = &mut pool.position_manager;
+            clmm_pool::position::update_and_reset_rewards(position_manager, position_id, rewards, rewarder_index)
         } else {
-            clmm_pool::position::reset_rewarder(&mut arg1.position_manager, v0, v2)
+            clmm_pool::position::reset_rewarder(&mut pool.position_manager, position_id, rewarder_index)
         };
-        let v6 = CollectRewardEvent {
-            position: v0,
-            pool: sui::object::id<Pool<T0, T1>>(arg1),
-            amount: v3,
+        let event = CollectRewardEvent {
+            position: position_id,
+            pool: sui::object::id<Pool<CoinTypeA, CoinTypeB>>(pool),
+            amount: reward_amount,
         };
-        sui::event::emit<CollectRewardEvent>(v6);
-        clmm_pool::rewarder::withdraw_reward<T2>(arg3, v3)
+        sui::event::emit<CollectRewardEvent>(event);
+        clmm_pool::rewarder::withdraw_reward<RewardCoinType>(rewarder_vault, reward_amount)
+    }
+    
+    public fun current_sqrt_price<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): u128 {
+        pool.current_sqrt_price
     }
 
-    public fun current_sqrt_price<T0, T1>(arg0: &Pool<T0, T1>): u128 {
-        arg0.current_sqrt_price
-    }
-
-    public fun current_tick_index<T0, T1>(arg0: &Pool<T0, T1>): integer_mate::i32::I32 {
-        arg0.current_tick_index
+    public fun current_tick_index<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): integer_mate::i32::I32 {
+        pool.current_tick_index
     }
 
     fun default_swap_result(): SwapResult {
@@ -1020,558 +1126,619 @@ module clmm_pool::pool {
             steps: 0,
         }
     }
-
-    public fun fee_rate<T0, T1>(arg0: &Pool<T0, T1>): u64 {
-        arg0.fee_rate
+    public fun fee_rate<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): u64 {
+        pool.fee_rate
     }
 
-    public fun fees_amount<T0, T1>(arg0: &FlashSwapReceipt<T0, T1>): (u64, u64, u64, u64) {
-        (arg0.fee_amount, arg0.ref_fee_amount, arg0.protocol_fee_amount, arg0.gauge_fee_amount)
+    public fun fees_amount<CoinTypeA, CoinTypeB>(receipt: &FlashSwapReceipt<CoinTypeA, CoinTypeB>): (u64, u64, u64, u64) {
+        (receipt.fee_amount, receipt.ref_fee_amount, receipt.protocol_fee_amount, receipt.gauge_fee_amount)
     }
 
-    public fun fees_growth_global<T0, T1>(arg0: &Pool<T0, T1>): (u128, u128) {
-        (arg0.fee_growth_global_a, arg0.fee_growth_global_b)
+    public fun fees_growth_global<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): (u128, u128) {
+        (pool.fee_growth_global_a, pool.fee_growth_global_b)
     }
-
-    public fun flash_swap<T0, T1>(
-        arg0: &clmm_pool::config::GlobalConfig,
-        arg1: &mut Pool<T0, T1>,
-        arg2: bool,
-        arg3: bool,
-        arg4: u64,
-        arg5: u128,
-        arg6: &sui::clock::Clock
-    ): (sui::balance::Balance<T0>, sui::balance::Balance<T1>, FlashSwapReceipt<T0, T1>) {
-        clmm_pool::config::checked_package_version(arg0);
-        assert!(!arg1.is_pause, 13);
-        flash_swap_internal<T0, T1>(arg1, arg0, sui::object::id_from_address(@0x0), 0, arg2, arg3, arg4, arg5, arg6)
-    }
-
-    fun flash_swap_internal<T0, T1>(
-        arg0: &mut Pool<T0, T1>,
-        arg1: &clmm_pool::config::GlobalConfig,
-        arg2: sui::object::ID,
-        arg3: u64,
-        arg4: bool,
-        arg5: bool,
-        arg6: u64,
-        arg7: u128,
-        arg8: &sui::clock::Clock
-    ): (sui::balance::Balance<T0>, sui::balance::Balance<T1>, FlashSwapReceipt<T0, T1>) {
-        assert!(arg6 > 0, 0);
-        clmm_pool::rewarder::settle(&mut arg0.rewarder_manager, arg0.liquidity, sui::clock::timestamp_ms(arg8) / 1000);
-        if (arg4) {
-            assert!(arg0.current_sqrt_price > arg7 && arg7 >= clmm_pool::tick_math::min_sqrt_price(), 11);
-        } else {
-            assert!(arg0.current_sqrt_price < arg7 && arg7 <= clmm_pool::tick_math::max_sqrt_price(), 11);
-        };
-        let v0 = arg0.unstaked_liquidity_fee_rate;
-        let v1 = if (v0 == clmm_pool::config::default_unstaked_fee_rate()) {
-            clmm_pool::config::unstaked_liquidity_fee_rate(arg1)
-        } else {
-            v0
-        };
-        let v2 = swap_in_pool<T0, T1>(
-            arg0,
-            arg4,
-            arg5,
-            arg7,
-            arg6,
-            v1,
-            clmm_pool::config::protocol_fee_rate(arg1),
-            arg3,
-            arg8
-        );
-        assert!(v2.amount_out > 0, 18);
-        let (v3, v4) = if (arg4) {
-            (sui::balance::split<T1>(&mut arg0.coin_b, v2.amount_out), sui::balance::zero<T0>())
-        } else {
-            (sui::balance::zero<T1>(), sui::balance::split<T0>(&mut arg0.coin_a, v2.amount_out))
-        };
-        let v5 = SwapEvent {
-            atob: arg4,
-            pool: sui::object::id<Pool<T0, T1>>(arg0),
-            partner: arg2,
-            amount_in: v2.amount_in + v2.fee_amount,
-            amount_out: v2.amount_out,
-            magma_fee_amount: v2.gauge_fee_amount,
-            protocol_fee_amount: v2.protocol_fee_amount,
-            ref_fee_amount: v2.ref_fee_amount,
-            fee_amount: v2.fee_amount,
-            vault_a_amount: sui::balance::value<T0>(&arg0.coin_a),
-            vault_b_amount: sui::balance::value<T1>(&arg0.coin_b),
-            before_sqrt_price: arg0.current_sqrt_price,
-            after_sqrt_price: arg0.current_sqrt_price,
-            steps: v2.steps,
-        };
-        sui::event::emit<SwapEvent>(v5);
-        let v6 = FlashSwapReceipt<T0, T1> {
-            pool_id: sui::object::id<Pool<T0, T1>>(arg0),
-            a2b: arg4,
-            partner_id: arg2,
-            pay_amount: v2.amount_in + v2.fee_amount,
-            fee_amount: v2.fee_amount,
-            protocol_fee_amount: v2.protocol_fee_amount,
-            ref_fee_amount: v2.ref_fee_amount,
-            gauge_fee_amount: v2.gauge_fee_amount,
-        };
-        (v4, v3, v6)
-    }
-
-    public fun flash_swap_with_partner<T0, T1>(
-        arg0: &clmm_pool::config::GlobalConfig,
-        arg1: &mut Pool<T0, T1>,
-        arg2: &clmm_pool::partner::Partner,
-        arg3: bool,
-        arg4: bool,
-        arg5: u64,
-        arg6: u128,
-        arg7: &sui::clock::Clock
-    ): (sui::balance::Balance<T0>, sui::balance::Balance<T1>, FlashSwapReceipt<T0, T1>) {
-        clmm_pool::config::checked_package_version(arg0);
-        assert!(!arg1.is_pause, 13);
-        flash_swap_internal<T0, T1>(
-            arg1,
-            arg0,
-            sui::object::id<clmm_pool::partner::Partner>(arg2),
-            clmm_pool::partner::current_ref_fee_rate(arg2, sui::clock::timestamp_ms(arg7) / 1000),
-            arg3,
-            arg4,
-            arg5,
-            arg6,
-            arg7
+    public fun flash_swap<CoinTypeA, CoinTypeB>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        a2b: bool,
+        by_amount_in: bool,
+        amount: u64,
+        sqrt_price_limit: u128,
+        clock: &sui::clock::Clock
+    ): (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>, FlashSwapReceipt<CoinTypeA, CoinTypeB>) {
+        clmm_pool::config::checked_package_version(global_config);
+        assert!(!pool.is_pause, 13);
+        flash_swap_internal<CoinTypeA, CoinTypeB>(
+            pool,
+            global_config,
+            sui::object::id_from_address(@0x0),
+            0,
+            a2b,
+            by_amount_in,
+            amount,
+            sqrt_price_limit,
+            clock
         )
     }
-
-    public fun get_all_growths_in_tick_range<T0, T1>(
-        arg0: &Pool<T0, T1>,
-        arg1: integer_mate::i32::I32,
-        arg2: integer_mate::i32::I32
-    ): (u128, u128, vector<u128>, u128, u128) {
-        let v0 = clmm_pool::tick::try_borrow_tick(&arg0.tick_manager, arg1);
-        let v1 = clmm_pool::tick::try_borrow_tick(&arg0.tick_manager, arg2);
-        let (v2, v3) = clmm_pool::tick::get_fee_in_range(
-            arg0.current_tick_index,
-            arg0.fee_growth_global_a,
-            arg0.fee_growth_global_b,
-            v0,
-            v1
+    fun flash_swap_internal<CoinTypeA, CoinTypeB>(
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        global_config: &clmm_pool::config::GlobalConfig,
+        partner_id: sui::object::ID,
+        ref_fee_rate: u64,
+        a2b: bool,
+        by_amount_in: bool,
+        amount: u64,
+        sqrt_price_limit: u128,
+        clock: &sui::clock::Clock
+    ): (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>, FlashSwapReceipt<CoinTypeA, CoinTypeB>) {
+        assert!(amount > 0, 0);
+        clmm_pool::rewarder::settle(&mut pool.rewarder_manager, pool.liquidity, sui::clock::timestamp_ms(clock) / 1000);
+        if (a2b) {
+            assert!(pool.current_sqrt_price > sqrt_price_limit && sqrt_price_limit >= clmm_pool::tick_math::min_sqrt_price(), 11);
+        } else {
+            assert!(pool.current_sqrt_price < sqrt_price_limit && sqrt_price_limit <= clmm_pool::tick_math::max_sqrt_price(), 11);
+        };
+        let unstaked_fee_rate = pool.unstaked_liquidity_fee_rate;
+        let final_unstaked_fee_rate = if (unstaked_fee_rate == clmm_pool::config::default_unstaked_fee_rate()) {
+            clmm_pool::config::unstaked_liquidity_fee_rate(global_config)
+        } else {
+            unstaked_fee_rate
+        };
+        let swap_result = swap_in_pool<CoinTypeA, CoinTypeB>(
+            pool,
+            a2b,
+            by_amount_in,
+            sqrt_price_limit,
+            amount,
+            final_unstaked_fee_rate,
+            clmm_pool::config::protocol_fee_rate(global_config),
+            ref_fee_rate,
+            clock
         );
-        (v2, v3, clmm_pool::tick::get_rewards_in_range(
-            arg0.current_tick_index,
-            clmm_pool::rewarder::rewards_growth_global(&arg0.rewarder_manager),
-            v0,
-            v1
-        ), clmm_pool::tick::get_points_in_range(
-            arg0.current_tick_index,
-            clmm_pool::rewarder::points_growth_global(&arg0.rewarder_manager),
-            v0,
-            v1
-        ), clmm_pool::tick::get_magma_distribution_growth_in_range(
-            arg0.current_tick_index,
-            arg0.magma_distribution_growth_global,
-            v0,
-            v1
-        ))
+        assert!(swap_result.amount_out > 0, 18);
+        let (balance_b, balance_a) = if (a2b) {
+            (sui::balance::split<CoinTypeB>(&mut pool.coin_b, swap_result.amount_out), sui::balance::zero<CoinTypeA>())
+        } else {
+            (sui::balance::zero<CoinTypeB>(), sui::balance::split<CoinTypeA>(&mut pool.coin_a, swap_result.amount_out))
+        };
+        let swap_event = SwapEvent {
+            atob: a2b,
+            pool: sui::object::id<Pool<CoinTypeA, CoinTypeB>>(pool),
+            partner: partner_id,
+            amount_in: swap_result.amount_in + swap_result.fee_amount,
+            amount_out: swap_result.amount_out,
+            magma_fee_amount: swap_result.gauge_fee_amount,
+            protocol_fee_amount: swap_result.protocol_fee_amount,
+            ref_fee_amount: swap_result.ref_fee_amount,
+            fee_amount: swap_result.fee_amount,
+            vault_a_amount: sui::balance::value<CoinTypeA>(&pool.coin_a),
+            vault_b_amount: sui::balance::value<CoinTypeB>(&pool.coin_b),
+            before_sqrt_price: pool.current_sqrt_price,
+            after_sqrt_price: pool.current_sqrt_price,
+            steps: swap_result.steps,
+        };
+        sui::event::emit<SwapEvent>(swap_event);
+        let receipt = FlashSwapReceipt<CoinTypeA, CoinTypeB> {
+            pool_id: sui::object::id<Pool<CoinTypeA, CoinTypeB>>(pool),
+            a2b: a2b,
+            partner_id: partner_id,
+            pay_amount: swap_result.amount_in + swap_result.fee_amount,
+            fee_amount: swap_result.fee_amount,
+            protocol_fee_amount: swap_result.protocol_fee_amount,
+            ref_fee_amount: swap_result.ref_fee_amount,
+            gauge_fee_amount: swap_result.gauge_fee_amount,
+        };
+        (balance_a, balance_b, receipt)
     }
 
-    public fun get_fee_in_tick_range<T0, T1>(
-        arg0: &Pool<T0, T1>,
-        arg1: integer_mate::i32::I32,
-        arg2: integer_mate::i32::I32
+    public fun flash_swap_with_partner<CoinTypeA, CoinTypeB>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        partner: &clmm_pool::partner::Partner,
+        a2b: bool,
+        by_amount_in: bool,
+        amount: u64,
+        sqrt_price_limit: u128,
+        clock: &sui::clock::Clock
+    ): (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>, FlashSwapReceipt<CoinTypeA, CoinTypeB>) {
+        clmm_pool::config::checked_package_version(global_config);
+        assert!(!pool.is_pause, 13);
+        flash_swap_internal<CoinTypeA, CoinTypeB>(
+            pool,
+            global_config,
+            sui::object::id<clmm_pool::partner::Partner>(partner),
+            clmm_pool::partner::current_ref_fee_rate(partner, sui::clock::timestamp_ms(clock) / 1000),
+            a2b,
+            by_amount_in,
+            amount,
+            sqrt_price_limit,
+            clock
+        )
+    }
+    public fun get_all_growths_in_tick_range<CoinTypeA, CoinTypeB>(
+        pool: &Pool<CoinTypeA, CoinTypeB>,
+        tick_lower: integer_mate::i32::I32,
+        tick_upper: integer_mate::i32::I32
+    ): (u128, u128, vector<u128>, u128, u128) {
+        let tick_lower_info = clmm_pool::tick::try_borrow_tick(&pool.tick_manager, tick_lower);
+        let tick_upper_info = clmm_pool::tick::try_borrow_tick(&pool.tick_manager, tick_upper);
+        let (fee_growth_a, fee_growth_b) = clmm_pool::tick::get_fee_in_range(
+            pool.current_tick_index,
+            pool.fee_growth_global_a,
+            pool.fee_growth_global_b,
+            tick_lower_info,
+            tick_upper_info
+        );
+        (
+            fee_growth_a,
+            fee_growth_b,
+            clmm_pool::tick::get_rewards_in_range(
+                pool.current_tick_index,
+                clmm_pool::rewarder::rewards_growth_global(&pool.rewarder_manager),
+                tick_lower_info,
+                tick_upper_info
+            ),
+            clmm_pool::tick::get_points_in_range(
+                pool.current_tick_index,
+                clmm_pool::rewarder::points_growth_global(&pool.rewarder_manager),
+                tick_lower_info,
+                tick_upper_info
+            ),
+            clmm_pool::tick::get_magma_distribution_growth_in_range(
+                pool.current_tick_index,
+                pool.magma_distribution_growth_global,
+                tick_lower_info,
+                tick_upper_info
+            )
+        )
+    }
+    public fun get_fee_in_tick_range<CoinTypeA, CoinTypeB>(
+        pool: &Pool<CoinTypeA, CoinTypeB>,
+        tick_lower: integer_mate::i32::I32,
+        tick_upper: integer_mate::i32::I32
     ): (u128, u128) {
         clmm_pool::tick::get_fee_in_range(
-            arg0.current_tick_index,
-            arg0.fee_growth_global_a,
-            arg0.fee_growth_global_b,
-            clmm_pool::tick::try_borrow_tick(&arg0.tick_manager, arg1),
-            clmm_pool::tick::try_borrow_tick(&arg0.tick_manager, arg2)
+            pool.current_tick_index,
+            pool.fee_growth_global_a,
+            pool.fee_growth_global_b,
+            clmm_pool::tick::try_borrow_tick(&pool.tick_manager, tick_lower),
+            clmm_pool::tick::try_borrow_tick(&pool.tick_manager, tick_upper)
         )
     }
-
     public fun get_liquidity_from_amount(
-        arg0: integer_mate::i32::I32,
-        arg1: integer_mate::i32::I32,
-        arg2: integer_mate::i32::I32,
-        arg3: u128,
-        arg4: u64,
-        arg5: bool
+        tick_lower: integer_mate::i32::I32,
+        tick_upper: integer_mate::i32::I32,
+        current_tick: integer_mate::i32::I32,
+        current_sqrt_price: u128,
+        amount: u64,
+        a2b: bool
     ): (u128, u64, u64) {
-        if (arg5) {
-            let (v3, v4) = if (integer_mate::i32::lt(arg2, arg0)) {
+        if (a2b) {
+            let (liquidity_a, amount_b) = if (integer_mate::i32::lt(current_tick, tick_lower)) {
                 (clmm_pool::clmm_math::get_liquidity_from_a(
-                    clmm_pool::tick_math::get_sqrt_price_at_tick(arg0),
-                    clmm_pool::tick_math::get_sqrt_price_at_tick(arg1),
-                    arg4,
+                    clmm_pool::tick_math::get_sqrt_price_at_tick(tick_lower),
+                    clmm_pool::tick_math::get_sqrt_price_at_tick(tick_upper),
+                    amount,
                     false
                 ), 0)
             } else {
-                assert!(integer_mate::i32::lt(arg2, arg1), 19);
-                let v5 = clmm_pool::clmm_math::get_liquidity_from_a(
-                    arg3,
-                    clmm_pool::tick_math::get_sqrt_price_at_tick(arg1),
-                    arg4,
+                assert!(integer_mate::i32::lt(current_tick, tick_upper), 19);
+                let liquidity_current = clmm_pool::clmm_math::get_liquidity_from_a(
+                    current_sqrt_price,
+                    clmm_pool::tick_math::get_sqrt_price_at_tick(tick_upper),
+                    amount,
                     false
                 );
-                (v5, clmm_pool::clmm_math::get_delta_b(
-                    arg3,
-                    clmm_pool::tick_math::get_sqrt_price_at_tick(arg0),
-                    v5,
+                (liquidity_current, clmm_pool::clmm_math::get_delta_b(
+                    current_sqrt_price,
+                    clmm_pool::tick_math::get_sqrt_price_at_tick(tick_lower),
+                    liquidity_current,
                     true
                 ))
             };
-            (v3, arg4, v4)
+            (liquidity_a, amount, amount_b)
         } else {
-            let (v6, v7) = if (integer_mate::i32::gte(arg2, arg1)) {
+            let (liquidity_b, amount_a) = if (integer_mate::i32::gte(current_tick, tick_upper)) {
                 (clmm_pool::clmm_math::get_liquidity_from_b(
-                    clmm_pool::tick_math::get_sqrt_price_at_tick(arg0),
-                    clmm_pool::tick_math::get_sqrt_price_at_tick(arg1),
-                    arg4,
+                    clmm_pool::tick_math::get_sqrt_price_at_tick(tick_lower),
+                    clmm_pool::tick_math::get_sqrt_price_at_tick(tick_upper),
+                    amount,
                     false
                 ), 0)
             } else {
-                assert!(integer_mate::i32::gte(arg2, arg0), 19);
-                let v8 = clmm_pool::clmm_math::get_liquidity_from_b(
-                    clmm_pool::tick_math::get_sqrt_price_at_tick(arg0),
-                    arg3,
-                    arg4,
+                assert!(integer_mate::i32::gte(current_tick, tick_lower), 19);
+                let liquidity_current = clmm_pool::clmm_math::get_liquidity_from_b(
+                    clmm_pool::tick_math::get_sqrt_price_at_tick(tick_lower),
+                    current_sqrt_price,
+                    amount,
                     false
                 );
-                (v8, clmm_pool::clmm_math::get_delta_a(
-                    arg3,
-                    clmm_pool::tick_math::get_sqrt_price_at_tick(arg1),
-                    v8,
+                (liquidity_current, clmm_pool::clmm_math::get_delta_a(
+                    current_sqrt_price,
+                    clmm_pool::tick_math::get_sqrt_price_at_tick(tick_upper),
+                    liquidity_current,
                     true
                 ))
             };
-            (v6, v7, arg4)
+            (liquidity_b, amount_a, amount)
         }
     }
-
-    public fun get_magma_distribution_gauger_id<T0, T1>(arg0: &Pool<T0, T1>): sui::object::ID {
-        assert!(std::option::is_some<sui::object::ID>(&arg0.magma_distribution_gauger_id), 9223379295349506047);
-        *std::option::borrow<sui::object::ID>(&arg0.magma_distribution_gauger_id)
+    public fun get_magma_distribution_gauger_id<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): sui::object::ID {
+        assert!(std::option::is_some<sui::object::ID>(&pool.magma_distribution_gauger_id), 9223379295349506047);
+        *std::option::borrow<sui::object::ID>(&pool.magma_distribution_gauger_id)
     }
 
-    public fun get_magma_distribution_growth_global<T0, T1>(arg0: &Pool<T0, T1>): u128 {
-        arg0.magma_distribution_growth_global
+    public fun get_magma_distribution_growth_global<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): u128 {
+        pool.magma_distribution_growth_global
     }
-
-    public fun get_magma_distribution_growth_inside<T0, T1>(
-        arg0: &Pool<T0, T1>,
-        arg1: integer_mate::i32::I32,
-        arg2: integer_mate::i32::I32,
-        mut arg3: u128
+    public fun get_magma_distribution_growth_inside<CoinTypeA, CoinTypeB>(
+        pool: &Pool<CoinTypeA, CoinTypeB>,
+        tick_lower: integer_mate::i32::I32,
+        tick_upper: integer_mate::i32::I32,
+        mut growth_global: u128
     ): u128 {
-        assert!(check_tick_range(arg1, arg2), 9223378947457155071);
-        if (arg3 == 0) {
-            arg3 = arg0.magma_distribution_growth_global;
+        assert!(check_tick_range(tick_lower, tick_upper), 9223378947457155071);
+        if (growth_global == 0) {
+            growth_global = pool.magma_distribution_growth_global;
         };
         clmm_pool::tick::get_magma_distribution_growth_in_range(
-            arg0.current_tick_index,
-            arg3,
-            std::option::some<clmm_pool::tick::Tick>(*borrow_tick<T0, T1>(arg0, arg1)),
-            std::option::some<clmm_pool::tick::Tick>(*borrow_tick<T0, T1>(arg0, arg2))
+            pool.current_tick_index,
+            growth_global,
+            std::option::some<clmm_pool::tick::Tick>(*borrow_tick<CoinTypeA, CoinTypeB>(pool, tick_lower)),
+            std::option::some<clmm_pool::tick::Tick>(*borrow_tick<CoinTypeA, CoinTypeB>(pool, tick_upper))
         )
     }
-
-    public fun get_magma_distribution_last_updated<T0, T1>(arg0: &Pool<T0, T1>): u64 {
-        arg0.magma_distribution_last_updated
+    public fun get_magma_distribution_last_updated<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): u64 {
+        pool.magma_distribution_last_updated
     }
 
-    public fun get_magma_distribution_reserve<T0, T1>(arg0: &Pool<T0, T1>): u64 {
-        arg0.magma_distribution_reserve
+    public fun get_magma_distribution_reserve<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): u64 {
+        pool.magma_distribution_reserve
     }
 
-    public fun get_magma_distribution_rollover<T0, T1>(arg0: &Pool<T0, T1>): u64 {
-        arg0.magma_distribution_rollover
+    public fun get_magma_distribution_rollover<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): u64 {
+        pool.magma_distribution_rollover
     }
 
-    public fun get_magma_distribution_staked_liquidity<T0, T1>(arg0: &Pool<T0, T1>): u128 {
-        arg0.magma_distribution_staked_liquidity
+    public fun get_magma_distribution_staked_liquidity<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): u128 {
+        pool.magma_distribution_staked_liquidity
     }
 
-    public fun get_points_in_tick_range<T0, T1>(
-        arg0: &Pool<T0, T1>,
-        arg1: integer_mate::i32::I32,
-        arg2: integer_mate::i32::I32
+    public fun get_points_in_tick_range<CoinTypeA, CoinTypeB>(
+        pool: &Pool<CoinTypeA, CoinTypeB>,
+        tick_lower: integer_mate::i32::I32,
+        tick_upper: integer_mate::i32::I32
     ): u128 {
         clmm_pool::tick::get_points_in_range(
-            arg0.current_tick_index,
-            clmm_pool::rewarder::points_growth_global(&arg0.rewarder_manager),
-            clmm_pool::tick::try_borrow_tick(&arg0.tick_manager, arg1),
-            clmm_pool::tick::try_borrow_tick(&arg0.tick_manager, arg2)
+            pool.current_tick_index,
+            clmm_pool::rewarder::points_growth_global(&pool.rewarder_manager),
+            clmm_pool::tick::try_borrow_tick(&pool.tick_manager, tick_lower),
+            clmm_pool::tick::try_borrow_tick(&pool.tick_manager, tick_upper)
         )
     }
 
-    public fun get_position_amounts<T0, T1>(arg0: &mut Pool<T0, T1>, arg1: sui::object::ID): (u64, u64) {
-        let v0 = clmm_pool::position::borrow_position_info(&arg0.position_manager, arg1);
-        let (v1, v2) = clmm_pool::position::info_tick_range(v0);
+    public fun get_position_amounts<CoinTypeA, CoinTypeB>(
+        pool_state: &mut Pool<CoinTypeA, CoinTypeB>,
+        position_id: sui::object::ID
+    ): (u64, u64) {
+        let current_position = clmm_pool::position::borrow_position_info(&pool_state.position_manager, position_id);
+        let (tick_lower, tick_upper) = clmm_pool::position::info_tick_range(current_position);
         get_amount_by_liquidity(
-            v1,
-            v2,
-            arg0.current_tick_index,
-            arg0.current_sqrt_price,
-            clmm_pool::position::info_liquidity(v0),
+            tick_lower,
+            tick_upper, 
+            pool_state.current_tick_index,
+            pool_state.current_sqrt_price,
+            clmm_pool::position::info_liquidity(current_position),
             false
         )
     }
-
-    public fun get_position_fee<T0, T1>(arg0: &Pool<T0, T1>, arg1: sui::object::ID): (u64, u64) {
-        clmm_pool::position::info_fee_owned(clmm_pool::position::borrow_position_info(&arg0.position_manager, arg1))
-    }
-
-    public fun get_position_points<T0, T1>(arg0: &Pool<T0, T1>, arg1: sui::object::ID): u128 {
-        clmm_pool::position::info_points_owned(clmm_pool::position::borrow_position_info(&arg0.position_manager, arg1))
-    }
-
-    public fun get_position_reward<T0, T1, T2>(arg0: &Pool<T0, T1>, arg1: sui::object::ID): u64 {
-        let mut v0 = clmm_pool::rewarder::rewarder_index<T2>(&arg0.rewarder_manager);
-        assert!(std::option::is_some<u64>(&v0), 17);
-        let v1 = clmm_pool::position::rewards_amount_owned(&arg0.position_manager, arg1);
-        *std::vector::borrow<u64>(&v1, std::option::extract<u64>(&mut v0))
-    }
-
-    public fun get_position_rewards<T0, T1>(arg0: &Pool<T0, T1>, arg1: sui::object::ID): vector<u64> {
-        clmm_pool::position::rewards_amount_owned(&arg0.position_manager, arg1)
-    }
-
-    public fun get_rewards_in_tick_range<T0, T1>(
-        arg0: &Pool<T0, T1>,
-        arg1: integer_mate::i32::I32,
-        arg2: integer_mate::i32::I32
-    ): vector<u128> {
-        clmm_pool::tick::get_rewards_in_range(
-            arg0.current_tick_index,
-            clmm_pool::rewarder::rewards_growth_global(&arg0.rewarder_manager),
-            clmm_pool::tick::try_borrow_tick(&arg0.tick_manager, arg1),
-            clmm_pool::tick::try_borrow_tick(&arg0.tick_manager, arg2)
+    public fun get_position_fee<CoinTypeA, CoinTypeB>(
+        pool: &Pool<CoinTypeA, CoinTypeB>,
+        position_id: sui::object::ID
+    ): (u64, u64) {
+        clmm_pool::position::info_fee_owned(
+            clmm_pool::position::borrow_position_info(&pool.position_manager, position_id)
         )
     }
 
-    fun init(arg0: POOL, arg1: &mut sui::tx_context::TxContext) {
+    public fun get_position_points<CoinTypeA, CoinTypeB>(
+        pool: &Pool<CoinTypeA, CoinTypeB>, 
+        position_id: sui::object::ID
+    ): u128 {
+        clmm_pool::position::info_points_owned(
+            clmm_pool::position::borrow_position_info(&pool.position_manager, position_id)
+        )
+    }
+    
+    public fun get_position_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
+        pool: &Pool<CoinTypeA, CoinTypeB>,
+        position_id: sui::object::ID
+    ): u64 {
+        let mut rewarder_idx = clmm_pool::rewarder::rewarder_index<RewardCoinType>(&pool.rewarder_manager);
+        assert!(std::option::is_some<u64>(&rewarder_idx), 17);
+        let rewards = clmm_pool::position::rewards_amount_owned(&pool.position_manager, position_id);
+        *std::vector::borrow<u64>(&rewards, std::option::extract<u64>(&mut rewarder_idx))
+    }
+
+    public fun get_position_rewards<CoinTypeA, CoinTypeB>(
+        pool: &Pool<CoinTypeA, CoinTypeB>, 
+        position_id: sui::object::ID
+    ): vector<u64> {
+        clmm_pool::position::rewards_amount_owned(&pool.position_manager, position_id)
+    }
+
+    public fun get_rewards_in_tick_range<CoinTypeA, CoinTypeB>(
+        pool: &Pool<CoinTypeA, CoinTypeB>,
+        tick_lower: integer_mate::i32::I32,
+        tick_upper: integer_mate::i32::I32
+    ): vector<u128> {
+        clmm_pool::tick::get_rewards_in_range(
+            pool.current_tick_index,
+            clmm_pool::rewarder::rewards_growth_global(&pool.rewarder_manager),
+            clmm_pool::tick::try_borrow_tick(&pool.tick_manager, tick_lower),
+            clmm_pool::tick::try_borrow_tick(&pool.tick_manager, tick_upper)
+        )
+    }
+
+    fun init(pool: POOL, ctx: &mut sui::tx_context::TxContext) {
         sui::transfer::public_transfer<sui::package::Publisher>(
-            sui::package::claim<POOL>(arg0, arg1),
-            sui::tx_context::sender(arg1)
+            sui::package::claim<POOL>(pool, ctx),
+            sui::tx_context::sender(ctx)
         );
     }
-
-    public fun init_magma_distribution_gauge<T0, T1>(arg0: &mut Pool<T0, T1>, arg1: &gauge_cap::gauge_cap::GaugeCap) {
-        assert!(gauge_cap::gauge_cap::get_pool_id(arg1) == sui::object::id<Pool<T0, T1>>(arg0), 9223379334004211711);
-        std::option::fill<sui::object::ID>(
-            &mut arg0.magma_distribution_gauger_id,
-            gauge_cap::gauge_cap::get_gauge_id(arg1)
-        );
-    }
-
-    public fun initialize_rewarder<T0, T1, T2>(
-        arg0: &clmm_pool::config::GlobalConfig,
-        arg1: &mut Pool<T0, T1>,
-        arg2: &mut sui::tx_context::TxContext
+    public fun init_magma_distribution_gauge<CoinTypeA, CoinTypeB>(
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        gauge_cap: &gauge_cap::gauge_cap::GaugeCap
     ) {
-        clmm_pool::config::checked_package_version(arg0);
-        assert!(!arg1.is_pause, 13);
-        clmm_pool::config::check_rewarder_manager_role(arg0, sui::tx_context::sender(arg2));
-        clmm_pool::rewarder::add_rewarder<T2>(&mut arg1.rewarder_manager);
-        let v0 = AddRewarderEvent {
-            pool: sui::object::id<Pool<T0, T1>>(arg1),
-            rewarder_type: std::type_name::get<T2>(),
+        assert!(
+            gauge_cap::gauge_cap::get_pool_id(gauge_cap) == sui::object::id<Pool<CoinTypeA, CoinTypeB>>(pool),
+            9223379334004211711
+        );
+        std::option::fill<sui::object::ID>(
+            &mut pool.magma_distribution_gauger_id,
+            gauge_cap::gauge_cap::get_gauge_id(gauge_cap)
+        );
+    }
+
+    public fun initialize_rewarder<CoinTypeA, CoinTypeB, RewardCoinType>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        ctx: &mut sui::tx_context::TxContext
+    ) {
+        clmm_pool::config::checked_package_version(global_config);
+        assert!(!pool.is_pause, 13);
+        clmm_pool::config::check_rewarder_manager_role(global_config, sui::tx_context::sender(ctx));
+        clmm_pool::rewarder::add_rewarder<RewardCoinType>(&mut pool.rewarder_manager);
+        let event = AddRewarderEvent {
+            pool: sui::object::id<Pool<CoinTypeA, CoinTypeB>>(pool),
+            rewarder_type: std::type_name::get<RewardCoinType>(),
         };
-        sui::event::emit<AddRewarderEvent>(v0);
+        sui::event::emit<AddRewarderEvent>(event);
     }
 
-    public fun is_pause<T0, T1>(arg0: &Pool<T0, T1>): bool {
-        arg0.is_pause
+    public fun is_pause<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): bool {
+        pool.is_pause
     }
 
-    public fun magma_distribution_gauger_fee<T0, T1>(arg0: &Pool<T0, T1>): PoolFee {
+    public fun magma_distribution_gauger_fee<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): PoolFee {
         PoolFee {
-            coin_a: arg0.magma_distribution_gauger_fee.coin_a,
-            coin_b: arg0.magma_distribution_gauger_fee.coin_b,
+            coin_a: pool.magma_distribution_gauger_fee.coin_a,
+            coin_b: pool.magma_distribution_gauger_fee.coin_b,
         }
     }
 
-    public fun mark_position_unstaked<T0, T1>(
-        arg0: &mut Pool<T0, T1>,
-        arg1: &gauge_cap::gauge_cap::GaugeCap,
-        arg2: sui::object::ID
+    public fun mark_position_unstaked<CoinTypeA, CoinTypeB>(
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        gauge_cap: &gauge_cap::gauge_cap::GaugeCap,
+        position_id: sui::object::ID
     ) {
-        assert!(!arg0.is_pause, 13);
-        check_gauge_cap<T0, T1>(arg0, arg1);
-        clmm_pool::position::mark_position_staked(&mut arg0.position_manager, arg2, false);
+        assert!(!pool.is_pause, 13);
+        check_gauge_cap<CoinTypeA, CoinTypeB>(pool, gauge_cap);
+        clmm_pool::position::mark_position_staked(&mut pool.position_manager, position_id, false);
     }
 
-    public fun pause<T0, T1>(
-        arg0: &clmm_pool::config::GlobalConfig,
-        arg1: &mut Pool<T0, T1>,
-        arg2: &mut sui::tx_context::TxContext
+    public fun pause<CoinTypeA, CoinTypeB>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        ctx: &mut sui::tx_context::TxContext
     ) {
-        clmm_pool::config::checked_package_version(arg0);
-        clmm_pool::config::check_pool_manager_role(arg0, sui::tx_context::sender(arg2));
-        assert!(!arg1.is_pause, 9223376739843964927);
-        arg1.is_pause = true;
+        clmm_pool::config::checked_package_version(global_config);
+        clmm_pool::config::check_pool_manager_role(global_config, sui::tx_context::sender(ctx));
+        assert!(!pool.is_pause, 9223376739843964927);
+        pool.is_pause = true;
     }
 
-    public fun pool_fee_a_b(arg0: &PoolFee): (u64, u64) {
-        (arg0.coin_a, arg0.coin_b)
+    public fun pool_fee_a_b(pool_fee: &PoolFee): (u64, u64) {
+        (pool_fee.coin_a, pool_fee.coin_b)
     }
 
-    public fun position_manager<T0, T1>(arg0: &Pool<T0, T1>): &clmm_pool::position::PositionManager {
-        &arg0.position_manager
+    public fun position_manager<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): &clmm_pool::position::PositionManager {
+        &pool.position_manager
     }
 
-    public fun protocol_fee<T0, T1>(arg0: &Pool<T0, T1>): (u64, u64) {
-        (arg0.fee_protocol_coin_a, arg0.fee_protocol_coin_b)
+    public fun protocol_fee<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): (u64, u64) {
+        (pool.fee_protocol_coin_a, pool.fee_protocol_coin_b)
     }
-
-    public fun remove_liquidity<T0, T1>(
-        arg0: &clmm_pool::config::GlobalConfig,
-        arg1: &mut Pool<T0, T1>,
-        arg2: &mut clmm_pool::position::Position,
-        arg3: u128,
-        arg4: &sui::clock::Clock
-    ): (sui::balance::Balance<T0>, sui::balance::Balance<T1>) {
-        clmm_pool::config::checked_package_version(arg0);
-        assert!(!arg1.is_pause, 13);
-        assert!(arg3 > 0, 3);
-        clmm_pool::rewarder::settle(&mut arg1.rewarder_manager, arg1.liquidity, sui::clock::timestamp_ms(arg4) / 1000);
-        let (v0, v1) = clmm_pool::position::tick_range(arg2);
-        let (v2, v3, v4, v5, v6) = get_all_growths_in_tick_range<T0, T1>(arg1, v0, v1);
-        clmm_pool::tick::decrease_liquidity(
-            &mut arg1.tick_manager,
-            arg1.current_tick_index,
-            v0,
-            v1,
-            arg3,
-            arg1.fee_growth_global_a,
-            arg1.fee_growth_global_b,
-            clmm_pool::rewarder::points_growth_global(&arg1.rewarder_manager),
-            clmm_pool::rewarder::rewards_growth_global(&arg1.rewarder_manager),
-            arg1.magma_distribution_growth_global
+    
+    public fun remove_liquidity<CoinTypeA, CoinTypeB>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        position: &mut clmm_pool::position::Position,
+        liquidity: u128,
+        clock: &sui::clock::Clock
+    ): (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>) {
+        clmm_pool::config::checked_package_version(global_config);
+        assert!(!pool.is_pause, 13);
+        assert!(liquidity > 0, 3);
+        
+        clmm_pool::rewarder::settle(
+            &mut pool.rewarder_manager, 
+            pool.liquidity, 
+            sui::clock::timestamp_ms(clock) / 1000
         );
-        if (integer_mate::i32::lte(v0, arg1.current_tick_index) && integer_mate::i32::lt(arg1.current_tick_index, v1)) {
-            arg1.liquidity = arg1.liquidity - arg3;
+
+        let (tick_lower, tick_upper) = clmm_pool::position::tick_range(position);
+        
+        let (
+            fee_growth_a,
+            fee_growth_b,
+            rewards_growth,
+            points_growth,
+            magma_growth,
+        ) = get_all_growths_in_tick_range<CoinTypeA, CoinTypeB>(
+            pool,
+            tick_lower,
+            tick_upper
+        );
+
+        clmm_pool::tick::decrease_liquidity(
+            &mut pool.tick_manager,
+            pool.current_tick_index,
+            tick_lower,
+            tick_upper,
+            liquidity,
+            pool.fee_growth_global_a,
+            pool.fee_growth_global_b,
+            clmm_pool::rewarder::points_growth_global(&pool.rewarder_manager),
+            clmm_pool::rewarder::rewards_growth_global(&pool.rewarder_manager),
+            pool.magma_distribution_growth_global
+        );
+
+        if (integer_mate::i32::lte(tick_lower, pool.current_tick_index) && 
+            integer_mate::i32::lt(pool.current_tick_index, tick_upper)) {
+            pool.liquidity = pool.liquidity - liquidity;
         };
-        let (v7, v8) = get_amount_by_liquidity(v0, v1, arg1.current_tick_index, arg1.current_sqrt_price, arg3, false);
-        let v9 = RemoveLiquidityEvent {
-            pool: sui::object::id<Pool<T0, T1>>(arg1),
-            position: sui::object::id<clmm_pool::position::Position>(arg2),
-            tick_lower: v0,
-            tick_upper: v1,
-            liquidity: arg3,
+
+        let (amount_a, amount_b) = get_amount_by_liquidity(
+            tick_lower,
+            tick_upper,
+            pool.current_tick_index,
+            pool.current_sqrt_price,
+            liquidity,
+            false
+        );
+
+        let event = RemoveLiquidityEvent {
+            pool: sui::object::id<Pool<CoinTypeA, CoinTypeB>>(pool),
+            position: sui::object::id<clmm_pool::position::Position>(position),
+            tick_lower,
+            tick_upper,
+            liquidity,
             after_liquidity: clmm_pool::position::decrease_liquidity(
-                &mut arg1.position_manager,
-                arg2,
-                arg3,
-                v2,
-                v3,
-                v5,
-                v4,
-                v6
+                &mut pool.position_manager,
+                position,
+                liquidity,
+                fee_growth_a,
+                fee_growth_b,
+                points_growth,
+                rewards_growth,
+                magma_growth
             ),
-            amount_a: v7,
-            amount_b: v8,
+            amount_a,
+            amount_b,
         };
-        sui::event::emit<RemoveLiquidityEvent>(v9);
-        (sui::balance::split<T0>(&mut arg1.coin_a, v7), sui::balance::split<T1>(&mut arg1.coin_b, v8))
-    }
 
-    public fun repay_add_liquidity<T0, T1>(
-        arg0: &clmm_pool::config::GlobalConfig,
-        arg1: &mut Pool<T0, T1>,
-        arg2: sui::balance::Balance<T0>,
-        arg3: sui::balance::Balance<T1>,
-        arg4: AddLiquidityReceipt<T0, T1>
+        sui::event::emit<RemoveLiquidityEvent>(event);
+
+        (
+            sui::balance::split<CoinTypeA>(&mut pool.coin_a, amount_a),
+            sui::balance::split<CoinTypeB>(&mut pool.coin_b, amount_b)
+        )
+    }
+    public fun repay_add_liquidity<CoinTypeA, CoinTypeB>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        balance_a: sui::balance::Balance<CoinTypeA>,
+        balance_b: sui::balance::Balance<CoinTypeB>,
+        receipt: AddLiquidityReceipt<CoinTypeA, CoinTypeB>
     ) {
-        clmm_pool::config::checked_package_version(arg0);
+        clmm_pool::config::checked_package_version(global_config);
         let AddLiquidityReceipt {
-            pool_id: v0,
-            amount_a: v1,
-            amount_b: v2,
-        } = arg4;
-        assert!(sui::balance::value<T0>(&arg2) == v1, 0);
-        assert!(sui::balance::value<T1>(&arg3) == v2, 0);
-        assert!(sui::object::id<Pool<T0, T1>>(arg1) == v0, 12);
-        sui::balance::join<T0>(&mut arg1.coin_a, arg2);
-        sui::balance::join<T1>(&mut arg1.coin_b, arg3);
+            pool_id,
+            amount_a,
+            amount_b,
+        } = receipt;
+        assert!(sui::balance::value<CoinTypeA>(&balance_a) == amount_a, 0);
+        assert!(sui::balance::value<CoinTypeB>(&balance_b) == amount_b, 0);
+        assert!(sui::object::id<Pool<CoinTypeA, CoinTypeB>>(pool) == pool_id, 12);
+        sui::balance::join<CoinTypeA>(&mut pool.coin_a, balance_a);
+        sui::balance::join<CoinTypeB>(&mut pool.coin_b, balance_b);
     }
 
-    public fun repay_flash_swap<T0, T1>(
-        arg0: &clmm_pool::config::GlobalConfig,
-        arg1: &mut Pool<T0, T1>,
-        arg2: sui::balance::Balance<T0>,
-        arg3: sui::balance::Balance<T1>,
-        arg4: FlashSwapReceipt<T0, T1>
+    public fun repay_flash_swap<CoinTypeA, CoinTypeB>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        balance_a: sui::balance::Balance<CoinTypeA>,
+        balance_b: sui::balance::Balance<CoinTypeB>,
+        receipt: FlashSwapReceipt<CoinTypeA, CoinTypeB>
     ) {
-        clmm_pool::config::checked_package_version(arg0);
-        assert!(!arg1.is_pause, 13);
+        clmm_pool::config::checked_package_version(global_config);
+        assert!(!pool.is_pause, 13);
         let FlashSwapReceipt {
-            pool_id: v0,
-            a2b: v1,
+            pool_id,
+            a2b,
             partner_id: _,
-            pay_amount: v3,
+            pay_amount,
             fee_amount: _,
             protocol_fee_amount: _,
-            ref_fee_amount: v6,
+            ref_fee_amount,
             gauge_fee_amount: _,
-        } = arg4;
-        assert!(sui::object::id<Pool<T0, T1>>(arg1) == v0, 14);
-        assert!(v6 == 0, 14);
-        if (v1) {
-            assert!(sui::balance::value<T0>(&arg2) == v3, 0);
-            sui::balance::join<T0>(&mut arg1.coin_a, arg2);
-            sui::balance::destroy_zero<T1>(arg3);
+        } = receipt;
+        assert!(sui::object::id<Pool<CoinTypeA, CoinTypeB>>(pool) == pool_id, 14);
+        assert!(ref_fee_amount == 0, 14);
+        if (a2b) {
+            assert!(sui::balance::value<CoinTypeA>(&balance_a) == pay_amount, 0);
+            sui::balance::join<CoinTypeA>(&mut pool.coin_a, balance_a);
+            sui::balance::destroy_zero<CoinTypeB>(balance_b);
         } else {
-            assert!(sui::balance::value<T1>(&arg3) == v3, 0);
-            sui::balance::join<T1>(&mut arg1.coin_b, arg3);
-            sui::balance::destroy_zero<T0>(arg2);
+            assert!(sui::balance::value<CoinTypeB>(&balance_b) == pay_amount, 0);
+            sui::balance::join<CoinTypeB>(&mut pool.coin_b, balance_b);
+            sui::balance::destroy_zero<CoinTypeA>(balance_a);
         };
     }
-
-    public fun repay_flash_swap_with_partner<T0, T1>(
-        arg0: &clmm_pool::config::GlobalConfig,
-        arg1: &mut Pool<T0, T1>,
-        arg2: &mut clmm_pool::partner::Partner,
-        mut arg3: sui::balance::Balance<T0>,
-        mut arg4: sui::balance::Balance<T1>,
-        arg5: FlashSwapReceipt<T0, T1>
+    public fun repay_flash_swap_with_partner<CoinTypeA, CoinTypeB>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        partner: &mut clmm_pool::partner::Partner,
+        mut balance_a: sui::balance::Balance<CoinTypeA>,
+        mut balance_b: sui::balance::Balance<CoinTypeB>,
+        receipt: FlashSwapReceipt<CoinTypeA, CoinTypeB>
     ) {
-        clmm_pool::config::checked_package_version(arg0);
-        assert!(!arg1.is_pause, 13);
+        clmm_pool::config::checked_package_version(global_config);
+        assert!(!pool.is_pause, 13);
         let FlashSwapReceipt {
-            pool_id: v0,
-            a2b: v1,
-            partner_id: v2,
-            pay_amount: v3,
+            pool_id: pool_id,
+            a2b: a2b,
+            partner_id: partner_id,
+            pay_amount: pay_amount,
             fee_amount: _,
             protocol_fee_amount: _,
-            ref_fee_amount: v6,
+            ref_fee_amount: ref_fee_amount,
             gauge_fee_amount: _,
-        } = arg5;
-        assert!(sui::object::id<Pool<T0, T1>>(arg1) == v0, 14);
-        assert!(sui::object::id<clmm_pool::partner::Partner>(arg2) == v2, 14);
-        if (v1) {
-            assert!(sui::balance::value<T0>(&arg3) == v3, 0);
-            if (v6 > 0) {
-                clmm_pool::partner::receive_ref_fee<T0>(arg2, sui::balance::split<T0>(&mut arg3, v6));
+        } = receipt;
+        assert!(sui::object::id<Pool<CoinTypeA, CoinTypeB>>(pool) == pool_id, 14);
+        assert!(sui::object::id<clmm_pool::partner::Partner>(partner) == partner_id, 14);
+        if (a2b) {
+            assert!(sui::balance::value<CoinTypeA>(&balance_a) == pay_amount, 0);
+            if (ref_fee_amount > 0) {
+                clmm_pool::partner::receive_ref_fee<CoinTypeA>(partner, sui::balance::split<CoinTypeA>(&mut balance_a, ref_fee_amount));
             };
-            sui::balance::join<T0>(&mut arg1.coin_a, arg3);
-            sui::balance::destroy_zero<T1>(arg4);
+            sui::balance::join<CoinTypeA>(&mut pool.coin_a, balance_a);
+            sui::balance::destroy_zero<CoinTypeB>(balance_b);
         } else {
-            assert!(sui::balance::value<T1>(&arg4) == v3, 0);
-            if (v6 > 0) {
-                clmm_pool::partner::receive_ref_fee<T1>(arg2, sui::balance::split<T1>(&mut arg4, v6));
+            assert!(sui::balance::value<CoinTypeB>(&balance_b) == pay_amount, 0);
+            if (ref_fee_amount > 0) {
+                clmm_pool::partner::receive_ref_fee<CoinTypeB>(partner, sui::balance::split<CoinTypeB>(&mut balance_b, ref_fee_amount));
             };
-            sui::balance::join<T1>(&mut arg1.coin_b, arg4);
-            sui::balance::destroy_zero<T0>(arg3);
+            sui::balance::join<CoinTypeB>(&mut pool.coin_b, balance_b);
+            sui::balance::destroy_zero<CoinTypeA>(balance_a);
         };
     }
 
-    public fun rewarder_manager<T0, T1>(arg0: &Pool<T0, T1>): &clmm_pool::rewarder::RewarderManager {
-        &arg0.rewarder_manager
+    public fun rewarder_manager<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): &clmm_pool::rewarder::RewarderManager {
+        &pool.rewarder_manager
     }
-
-    public fun set_display<T0, T1>(
+    public fun set_display<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         publisher: &sui::package::Publisher,
         name: std::string::String,
@@ -1583,209 +1750,224 @@ module clmm_pool::pool {
         ctx: &mut sui::tx_context::TxContext
     ) {
         clmm_pool::config::checked_package_version(global_config);
-        let mut v0 = std::vector::empty<std::string::String>();
-        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"name"));
-        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"coin_a"));
-        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"coin_b"));
-        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"link"));
-        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"image_url"));
-        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"description"));
-        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"project_url"));
-        std::vector::push_back<std::string::String>(&mut v0, std::string::utf8(b"creator"));
-        let mut v1 = std::vector::empty<std::string::String>();
-        std::vector::push_back<std::string::String>(&mut v1, name);
+        let mut keys = std::vector::empty<std::string::String>();
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"name"));
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"coin_a"));
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"coin_b"));
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"link"));
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"image_url"));
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"description"));
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"project_url"));
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"creator"));
+        let mut values = std::vector::empty<std::string::String>();
+        std::vector::push_back<std::string::String>(&mut values, name);
         std::vector::push_back<std::string::String>(
-            &mut v1,
-            std::string::from_ascii(std::type_name::into_string(std::type_name::get<T0>()))
+            &mut values,
+            std::string::from_ascii(std::type_name::into_string(std::type_name::get<CoinTypeA>()))
         );
         std::vector::push_back<std::string::String>(
-            &mut v1,
-            std::string::from_ascii(std::type_name::into_string(std::type_name::get<T1>()))
+            &mut values,
+            std::string::from_ascii(std::type_name::into_string(std::type_name::get<CoinTypeB>()))
         );
-        std::vector::push_back<std::string::String>(&mut v1, link);
-        std::vector::push_back<std::string::String>(&mut v1, image_url);
-        std::vector::push_back<std::string::String>(&mut v1, description);
-        std::vector::push_back<std::string::String>(&mut v1, project_url);
-        std::vector::push_back<std::string::String>(&mut v1, creator);
-        let mut v2 = sui::display::new_with_fields<Pool<T0, T1>>(publisher, v0, v1, ctx);
-        sui::display::update_version<Pool<T0, T1>>(&mut v2);
-        sui::transfer::public_transfer<sui::display::Display<Pool<T0, T1>>>(v2, sui::tx_context::sender(ctx));
+        std::vector::push_back<std::string::String>(&mut values, link);
+        std::vector::push_back<std::string::String>(&mut values, image_url);
+        std::vector::push_back<std::string::String>(&mut values, description);
+        std::vector::push_back<std::string::String>(&mut values, project_url);
+        std::vector::push_back<std::string::String>(&mut values, creator);
+        let mut display = sui::display::new_with_fields<Pool<CoinTypeA, CoinTypeB>>(publisher, keys, values, ctx);
+        sui::display::update_version<Pool<CoinTypeA, CoinTypeB>>(&mut display);
+        sui::transfer::public_transfer<sui::display::Display<Pool<CoinTypeA, CoinTypeB>>>(display, sui::tx_context::sender(ctx));
+    }
+    fun split_fees(
+        fee_amount: u64,
+        total_growth: u128,
+        growth_inside: u128,
+        unstaked_fee_rate: u64
+    ): (u64, u64) {
+        let inside_amount = integer_mate::full_math_u128::mul_div_ceil(
+            fee_amount as u128,
+            growth_inside,
+            total_growth
+        );
+        let (staked_amount, unstaked_amount) = apply_unstaked_fees(
+            (fee_amount as u128) - inside_amount,
+            inside_amount,
+            unstaked_fee_rate
+        );
+        (staked_amount as u64, unstaked_amount as u64)
     }
 
-    fun split_fees(arg0: u64, arg1: u128, arg2: u128, arg3: u64): (u64, u64) {
-        let v0 = integer_mate::full_math_u128::mul_div_ceil(arg0 as u128, arg2, arg1);
-        let (v1, v2) = apply_unstaked_fees((arg0 as u128) - v0, v0, arg3);
-        (v1 as u64, v2 as u64)
-    }
-
-    public fun stake_in_magma_distribution<T0, T1>(
-        arg0: &mut Pool<T0, T1>,
-        arg1: &gauge_cap::gauge_cap::GaugeCap,
-        arg2: u128,
-        arg3: integer_mate::i32::I32,
-        arg4: integer_mate::i32::I32,
-        arg5: &sui::clock::Clock
+    public fun stake_in_magma_distribution<CoinTypeA, CoinTypeB>(
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        gauge_cap: &gauge_cap::gauge_cap::GaugeCap, 
+        liquidity: u128,
+        tick_lower: integer_mate::i32::I32,
+        tick_upper: integer_mate::i32::I32,
+        clock: &sui::clock::Clock
     ) {
-        assert!(!arg0.is_pause, 13);
-        assert!(arg2 != 0, 9223379140730683391);
-        check_gauge_cap<T0, T1>(arg0, arg1);
-        update_magma_distribution_internal<T0, T1>(arg0, integer_mate::i128::from(arg2), arg3, arg4, arg5);
+        assert!(!pool.is_pause, 13);
+        assert!(liquidity != 0, 9223379140730683391);
+        check_gauge_cap<CoinTypeA, CoinTypeB>(pool, gauge_cap);
+        update_magma_distribution_internal<CoinTypeA, CoinTypeB>(
+            pool,
+            integer_mate::i128::from(liquidity),
+            tick_lower,
+            tick_upper,
+            clock
+        );
+    }
+    public fun step_swap_result_amount_in(result: &SwapStepResult): u64 {
+        result.amount_in
     }
 
-    public fun step_swap_result_amount_in(arg0: &SwapStepResult): u64 {
-        arg0.amount_in
+    public fun step_swap_result_amount_out(result: &SwapStepResult): u64 {
+        result.amount_out
     }
 
-    public fun step_swap_result_amount_out(arg0: &SwapStepResult): u64 {
-        arg0.amount_out
+    public fun step_swap_result_current_liquidity(result: &SwapStepResult): u128 {
+        result.current_liquidity
     }
 
-    public fun step_swap_result_current_liquidity(arg0: &SwapStepResult): u128 {
-        arg0.current_liquidity
+    public fun step_swap_result_current_sqrt_price(result: &SwapStepResult): u128 {
+        result.current_sqrt_price
     }
 
-    public fun step_swap_result_current_sqrt_price(arg0: &SwapStepResult): u128 {
-        arg0.current_sqrt_price
+    public fun step_swap_result_fee_amount(result: &SwapStepResult): u64 {
+        result.fee_amount
     }
 
-    public fun step_swap_result_fee_amount(arg0: &SwapStepResult): u64 {
-        arg0.fee_amount
+    public fun step_swap_result_remainder_amount(result: &SwapStepResult): u64 {
+        result.remainder_amount
     }
 
-    public fun step_swap_result_remainder_amount(arg0: &SwapStepResult): u64 {
-        arg0.remainder_amount
+    public fun step_swap_result_target_sqrt_price(result: &SwapStepResult): u128 {
+        result.target_sqrt_price
     }
-
-    public fun step_swap_result_target_sqrt_price(arg0: &SwapStepResult): u128 {
-        arg0.target_sqrt_price
-    }
-
-    fun swap_in_pool<T0, T1>(
-        arg0: &mut Pool<T0, T1>,
-        arg1: bool,
-        arg2: bool,
-        arg3: u128,
-        arg4: u64,
-        arg5: u64,
-        arg6: u64,
-        arg7: u64,
-        arg8: &sui::clock::Clock
+    fun swap_in_pool<CoinTypeA, CoinTypeB>(
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        a2b: bool,
+        by_amount_in: bool,
+        sqrt_price_limit: u128,
+        amount: u64,
+        unstaked_fee_rate: u64,
+        protocol_fee_rate: u64,
+        ref_fee_rate: u64,
+        clock: &sui::clock::Clock
     ): SwapResult {
-        assert!(arg7 <= 10000, 16);
-        let mut v0 = default_swap_result();
-        let mut v1 = arg4;
-        let mut v2 = clmm_pool::tick::first_score_for_swap(&arg0.tick_manager, arg0.current_tick_index, arg1);
-        while (v1 > 0 && arg0.current_sqrt_price != arg3) {
-            if (move_stl::option_u64::is_none(&v2)) {
+        assert!(ref_fee_rate <= 10000, 16);
+        let mut swap_result = default_swap_result();
+        let mut remaining_amount = amount;
+        let mut next_tick_score = clmm_pool::tick::first_score_for_swap(&pool.tick_manager, pool.current_tick_index, a2b);
+        while (remaining_amount > 0 && pool.current_sqrt_price != sqrt_price_limit) {
+            if (move_stl::option_u64::is_none(&next_tick_score)) {
                 abort 20
             };
-            let (v3, v4) = clmm_pool::tick::borrow_tick_for_swap(
-                &arg0.tick_manager,
-                move_stl::option_u64::borrow(&v2),
-                arg1
+            let (tick_info, next_score) = clmm_pool::tick::borrow_tick_for_swap(
+                &pool.tick_manager,
+                move_stl::option_u64::borrow(&next_tick_score),
+                a2b
             );
-            v2 = v4;
-            let v5 = clmm_pool::tick::index(v3);
-            let v6 = clmm_pool::tick::sqrt_price(v3);
-            let v7 = if (arg1) {
-                integer_mate::math_u128::max(arg3, v6)
+            next_tick_score = next_score;
+            let tick_index = clmm_pool::tick::index(tick_info);
+            let tick_sqrt_price = clmm_pool::tick::sqrt_price(tick_info);
+            let target_sqrt_price = if (a2b) {
+                integer_mate::math_u128::max(sqrt_price_limit, tick_sqrt_price)
             } else {
-                integer_mate::math_u128::min(arg3, v6)
+                integer_mate::math_u128::min(sqrt_price_limit, tick_sqrt_price)
             };
-            let (v8, v9, v10, v11) = clmm_pool::clmm_math::compute_swap_step(
-                arg0.current_sqrt_price,
-                v7,
-                arg0.liquidity,
-                v1,
-                arg0.fee_rate,
-                arg1,
-                arg2
+            let (amount_in, amount_out, next_sqrt_price, fee_amount) = clmm_pool::clmm_math::compute_swap_step(
+                pool.current_sqrt_price,
+                target_sqrt_price,
+                pool.liquidity,
+                remaining_amount,
+                pool.fee_rate,
+                a2b,
+                by_amount_in
             );
-            if (v8 != 0 || v11 != 0) {
-                if (arg2) {
-                    let v12 = check_remainer_amount_sub(v1, v8);
-                    v1 = check_remainer_amount_sub(v12, v11);
+            if (amount_in != 0 || fee_amount != 0) {
+                if (by_amount_in) {
+                    let amount_after_in = check_remainer_amount_sub(remaining_amount, amount_in);
+                    remaining_amount = check_remainer_amount_sub(amount_after_in, fee_amount);
                 } else {
-                    v1 = check_remainer_amount_sub(v1, v9);
+                    remaining_amount = check_remainer_amount_sub(remaining_amount, amount_out);
                 };
-                let v13 = integer_mate::full_math_u64::mul_div_ceil(
-                    v11,
-                    arg7,
+                let protocol_fee = integer_mate::full_math_u64::mul_div_ceil(
+                    fee_amount,
+                    protocol_fee_rate,
                     clmm_pool::config::protocol_fee_rate_denom()
                 );
-                let v14 = v11 - v13;
-                let mut v15 = v14;
-                let mut v16 = 0;
-                let mut v17 = 0;
-                if (v14 > 0) {
-                    let v18 = integer_mate::full_math_u64::mul_div_ceil(
-                        v14,
-                        arg6,
+                let remaining_fee = fee_amount - protocol_fee;
+                let mut fee_after_protocol = remaining_fee;
+                let mut gauge_fee = 0;
+                let mut ref_fee = 0;
+                if (remaining_fee > 0) {
+                    let ref_fee_amount = integer_mate::full_math_u64::mul_div_ceil(
+                        remaining_fee,
+                        ref_fee_rate,
                         clmm_pool::config::protocol_fee_rate_denom()
                     );
-                    v17 = v18;
-                    let v19 = v14 - v18;
-                    v15 = v19;
-                    if (v19 > 0) {
-                        let (_, v21) = calculate_fees<T0, T1>(
-                            arg0,
-                            v19,
-                            arg0.liquidity,
-                            arg0.magma_distribution_staked_liquidity,
-                            arg5
+                    ref_fee = ref_fee_amount;
+                    let fee_after_ref = remaining_fee - ref_fee_amount;
+                    fee_after_protocol = fee_after_ref;
+                    if (fee_after_ref > 0) {
+                        let (_, gauge_fee_amount) = calculate_fees<CoinTypeA, CoinTypeB>(
+                            pool,
+                            fee_after_ref,
+                            pool.liquidity,
+                            pool.magma_distribution_staked_liquidity,
+                            unstaked_fee_rate
                         );
-                        v16 = v21;
-                        v15 = v19 - v21;
+                        gauge_fee = gauge_fee_amount;
+                        fee_after_protocol = fee_after_ref - gauge_fee_amount;
                     };
                 };
-                update_swap_result(&mut v0, v8, v9, v11, v17, v13, v16);
-                if (v15 > 0) {
-                    update_fee_growth_global<T0, T1>(arg0, v15, arg1);
+                update_swap_result(&mut swap_result, amount_in, amount_out, fee_amount, ref_fee, protocol_fee, gauge_fee);
+                if (fee_after_protocol > 0) {
+                    update_fee_growth_global<CoinTypeA, CoinTypeB>(pool, fee_after_protocol, a2b);
                 };
             };
-            if (v10 == v6) {
-                arg0.current_sqrt_price = v7;
-                let v22 = if (arg1) {
-                    integer_mate::i32::sub(v5, integer_mate::i32::from(1))
+            if (next_sqrt_price == tick_sqrt_price) {
+                pool.current_sqrt_price = target_sqrt_price;
+                let next_tick_index = if (a2b) {
+                    integer_mate::i32::sub(tick_index, integer_mate::i32::from(1))
                 } else {
-                    v5
+                    tick_index
                 };
-                arg0.current_tick_index = v22;
-                update_magma_distribution_growth_global_internal<T0, T1>(arg0, arg8);
-                let (v23, v24) = clmm_pool::tick::cross_by_swap(
-                    &mut arg0.tick_manager,
-                    v5,
-                    arg1,
-                    arg0.liquidity,
-                    arg0.magma_distribution_staked_liquidity,
-                    arg0.fee_growth_global_a,
-                    arg0.fee_growth_global_b,
-                    clmm_pool::rewarder::points_growth_global(&arg0.rewarder_manager),
-                    clmm_pool::rewarder::rewards_growth_global(&arg0.rewarder_manager),
-                    arg0.magma_distribution_growth_global
+                pool.current_tick_index = next_tick_index;
+                update_magma_distribution_growth_global_internal<CoinTypeA, CoinTypeB>(pool, clock);
+                let (new_liquidity, new_staked_liquidity) = clmm_pool::tick::cross_by_swap(
+                    &mut pool.tick_manager,
+                    tick_index,
+                    a2b,
+                    pool.liquidity,
+                    pool.magma_distribution_staked_liquidity,
+                    pool.fee_growth_global_a,
+                    pool.fee_growth_global_b,
+                    clmm_pool::rewarder::points_growth_global(&pool.rewarder_manager),
+                    clmm_pool::rewarder::rewards_growth_global(&pool.rewarder_manager),
+                    pool.magma_distribution_growth_global
                 );
-                arg0.liquidity = v23;
-                arg0.magma_distribution_staked_liquidity = v24;
+                pool.liquidity = new_liquidity;
+                pool.magma_distribution_staked_liquidity = new_staked_liquidity;
                 continue
             };
-            if (arg0.current_sqrt_price != v10) {
-                arg0.current_sqrt_price = v10;
-                arg0.current_tick_index = clmm_pool::tick_math::get_tick_at_sqrt_price(v10);
+            if (pool.current_sqrt_price != next_sqrt_price) {
+                pool.current_sqrt_price = next_sqrt_price;
+                pool.current_tick_index = clmm_pool::tick_math::get_tick_at_sqrt_price(next_sqrt_price);
                 continue
             };
         };
-        if (arg1) {
-            arg0.fee_protocol_coin_a = arg0.fee_protocol_coin_a + v0.protocol_fee_amount;
-            arg0.magma_distribution_gauger_fee.coin_a = arg0.magma_distribution_gauger_fee.coin_a + v0.gauge_fee_amount;
+        if (a2b) {
+            pool.fee_protocol_coin_a = pool.fee_protocol_coin_a + swap_result.protocol_fee_amount;
+            pool.magma_distribution_gauger_fee.coin_a = pool.magma_distribution_gauger_fee.coin_a + swap_result.gauge_fee_amount;
         } else {
-            arg0.fee_protocol_coin_b = arg0.fee_protocol_coin_b + v0.protocol_fee_amount;
-            arg0.magma_distribution_gauger_fee.coin_b = arg0.magma_distribution_gauger_fee.coin_b + v0.gauge_fee_amount;
+            pool.fee_protocol_coin_b = pool.fee_protocol_coin_b + swap_result.protocol_fee_amount;
+            pool.magma_distribution_gauger_fee.coin_b = pool.magma_distribution_gauger_fee.coin_b + swap_result.gauge_fee_amount;
         };
-        v0
+        swap_result
     }
-
-    public fun swap_pay_amount<T0, T1>(arg0: &FlashSwapReceipt<T0, T1>): u64 {
-        arg0.pay_amount
+    public fun swap_pay_amount<CoinTypeA, CoinTypeB>(receipt: &FlashSwapReceipt<CoinTypeA, CoinTypeB>): u64 {
+        receipt.pay_amount
     }
 
     public fun sync_magma_distribution_reward<T0, T1>(
@@ -1803,27 +1985,26 @@ module clmm_pool::pool {
         arg0.magma_distribution_rollover = 0;
     }
 
-    public fun tick_manager<T0, T1>(arg0: &Pool<T0, T1>): &clmm_pool::tick::TickManager {
-        &arg0.tick_manager
+    public fun tick_manager<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): &clmm_pool::tick::TickManager {
+        &pool.tick_manager
     }
 
-    public fun tick_spacing<T0, T1>(arg0: &Pool<T0, T1>): u32 {
-        arg0.tick_spacing
+    public fun tick_spacing<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): u32 {
+        pool.tick_spacing
     }
-
-    public fun unpause<T0, T1>(
-        arg0: &clmm_pool::config::GlobalConfig,
-        arg1: &mut Pool<T0, T1>,
-        arg2: &mut sui::tx_context::TxContext
+    public fun unpause<CoinTypeA, CoinTypeB>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &mut Pool<CoinTypeA, CoinTypeB>, 
+        ctx: &mut sui::tx_context::TxContext
     ) {
-        clmm_pool::config::checked_package_version(arg0);
-        clmm_pool::config::check_pool_manager_role(arg0, sui::tx_context::sender(arg2));
-        assert!(arg1.is_pause, 9223378204427812863);
-        arg1.is_pause = false;
+        clmm_pool::config::checked_package_version(global_config);
+        clmm_pool::config::check_pool_manager_role(global_config, sui::tx_context::sender(ctx));
+        assert!(pool.is_pause, 9223378204427812863);
+        pool.is_pause = false;
     }
 
-    public fun unstake_from_magma_distribution<T0, T1>(
-        arg0: &mut Pool<T0, T1>,
+    public fun unstake_from_magma_distribution<CoinTypeA, CoinTypeB>(
+        arg0: &mut Pool<CoinTypeA, CoinTypeB>,
         arg1: &gauge_cap::gauge_cap::GaugeCap,
         arg2: u128,
         arg3: integer_mate::i32::I32,
@@ -1832,8 +2013,8 @@ module clmm_pool::pool {
     ) {
         assert!(!arg0.is_pause, 13);
         assert!(arg2 != 0, 9223379200860225535);
-        check_gauge_cap<T0, T1>(arg0, arg1);
-        update_magma_distribution_internal<T0, T1>(
+        check_gauge_cap<CoinTypeA, CoinTypeB>(arg0, arg1);
+        update_magma_distribution_internal<CoinTypeA, CoinTypeB>(
             arg0,
             integer_mate::i128::neg(integer_mate::i128::from(arg2)),
             arg3,
@@ -1841,183 +2022,186 @@ module clmm_pool::pool {
             arg5
         );
     }
-
-    fun update_fee_growth_global<T0, T1>(arg0: &mut Pool<T0, T1>, arg1: u64, arg2: bool) {
-        if (arg1 == 0 || arg0.liquidity == 0) {
+    
+    fun update_fee_growth_global<CoinTypeA, CoinTypeB>(pool: &mut Pool<CoinTypeA, CoinTypeB>, fee_after_protocol: u64, a2b: bool) {
+        if (fee_after_protocol == 0 || pool.liquidity == 0) {
             return
         };
-        if (arg2) {
-            arg0.fee_growth_global_a = integer_mate::math_u128::wrapping_add(
-                arg0.fee_growth_global_a,
-                ((arg1 as u128) << 64) / arg0.liquidity
+        if (a2b) {
+            pool.fee_growth_global_a = integer_mate::math_u128::wrapping_add(
+                pool.fee_growth_global_a,
+                ((fee_after_protocol as u128) << 64) / pool.liquidity
             );
         } else {
-            arg0.fee_growth_global_b = integer_mate::math_u128::wrapping_add(
-                arg0.fee_growth_global_b,
-                ((arg1 as u128) << 64) / arg0.liquidity
+            pool.fee_growth_global_b = integer_mate::math_u128::wrapping_add(
+                pool.fee_growth_global_b,
+                ((fee_after_protocol as u128) << 64) / pool.liquidity
             );
         };
     }
-
-    public fun update_fee_rate<T0, T1>(
-        arg0: &clmm_pool::config::GlobalConfig,
-        arg1: &mut Pool<T0, T1>,
-        arg2: u64,
-        arg3: &mut sui::tx_context::TxContext
+    public fun update_fee_rate<CoinTypeA, CoinTypeB>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        fee_rate: u64,
+        ctx: &mut sui::tx_context::TxContext
     ) {
-        clmm_pool::config::checked_package_version(arg0);
-        assert!(!arg1.is_pause, 13);
-        if (arg2 > clmm_pool::config::max_fee_rate()) {
+        clmm_pool::config::checked_package_version(global_config);
+        assert!(!pool.is_pause, 13);
+        if (fee_rate > clmm_pool::config::max_fee_rate()) {
             abort 9
         };
-        clmm_pool::config::check_pool_manager_role(arg0, sui::tx_context::sender(arg3));
-        arg1.fee_rate = arg2;
-        let v0 = UpdateFeeRateEvent {
-            pool: sui::object::id<Pool<T0, T1>>(arg1),
-            old_fee_rate: arg1.fee_rate,
-            new_fee_rate: arg2,
+        clmm_pool::config::check_pool_manager_role(global_config, sui::tx_context::sender(ctx));
+        pool.fee_rate = fee_rate;
+        let event = UpdateFeeRateEvent {
+            pool: sui::object::id<Pool<CoinTypeA, CoinTypeB>>(pool),
+            old_fee_rate: pool.fee_rate,
+            new_fee_rate: fee_rate,
         };
-        sui::event::emit<UpdateFeeRateEvent>(v0);
+        sui::event::emit<UpdateFeeRateEvent>(event);
     }
 
-    public fun update_magma_distribution_growth_global<T0, T1>(
-        arg0: &mut Pool<T0, T1>,
+    public fun update_magma_distribution_growth_global<CoinTypeA, CoinTypeB>(
+        arg0: &mut Pool<CoinTypeA, CoinTypeB>,
         arg1: &gauge_cap::gauge_cap::GaugeCap,
         arg2: &sui::clock::Clock
     ) {
         assert!(!arg0.is_pause, 13);
-        check_gauge_cap<T0, T1>(arg0, arg1);
-        update_magma_distribution_growth_global_internal<T0, T1>(arg0, arg2);
+        check_gauge_cap<CoinTypeA, CoinTypeB>(arg0, arg1);
+        update_magma_distribution_growth_global_internal<CoinTypeA, CoinTypeB>(arg0, arg2);
     }
-
-    fun update_magma_distribution_growth_global_internal<T0, T1>(
-        arg0: &mut Pool<T0, T1>,
-        arg1: &sui::clock::Clock
+    fun update_magma_distribution_growth_global_internal<CoinTypeA, CoinTypeB>(
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        clock: &sui::clock::Clock
     ): u64 {
-        let v0 = sui::clock::timestamp_ms(arg1) / 1000;
-        let v1 = v0 - arg0.magma_distribution_last_updated;
-        let mut v2 = 0;
-        if (v1 != 0) {
-            if (arg0.magma_distribution_reserve > 0) {
-                let v3 = integer_mate::full_math_u128::mul_div_floor(
-                    arg0.magma_distribution_rate,
-                    v1 as u128,
+        let current_timestamp = sui::clock::timestamp_ms(clock) / 1000;
+        let time_delta = current_timestamp - pool.magma_distribution_last_updated;
+        let mut distributed_amount = 0;
+        if (time_delta != 0) {
+            if (pool.magma_distribution_reserve > 0) {
+                let calculated_distribution = integer_mate::full_math_u128::mul_div_floor(
+                    pool.magma_distribution_rate,
+                    time_delta as u128,
                     18446744073709551616
                 ) as u64;
-                let mut v4 = v3;
-                if (v3 > arg0.magma_distribution_reserve) {
-                    v4 = arg0.magma_distribution_reserve;
+                let mut actual_distribution = calculated_distribution;
+                if (calculated_distribution > pool.magma_distribution_reserve) {
+                    actual_distribution = pool.magma_distribution_reserve;
                 };
-                arg0.magma_distribution_reserve = arg0.magma_distribution_reserve - v4;
-                if (arg0.magma_distribution_staked_liquidity > 0) {
-                    arg0.magma_distribution_growth_global = arg0.magma_distribution_growth_global + integer_mate::full_math_u128::mul_div_floor(
-                        v4 as u128,
+                pool.magma_distribution_reserve = pool.magma_distribution_reserve - actual_distribution;
+                if (pool.magma_distribution_staked_liquidity > 0) {
+                    pool.magma_distribution_growth_global = pool.magma_distribution_growth_global + integer_mate::full_math_u128::mul_div_floor(
+                        actual_distribution as u128,
                         18446744073709551616,
-                        arg0.magma_distribution_staked_liquidity
+                        pool.magma_distribution_staked_liquidity
                     );
                 } else {
-                    arg0.magma_distribution_rollover = arg0.magma_distribution_rollover + v4;
+                    pool.magma_distribution_rollover = pool.magma_distribution_rollover + actual_distribution;
                 };
-                v2 = v4;
+                distributed_amount = actual_distribution;
             };
-            arg0.magma_distribution_last_updated = v0;
+            pool.magma_distribution_last_updated = current_timestamp;
         };
-        v2
+        distributed_amount
     }
-
-    fun update_magma_distribution_internal<T0, T1>(
-        arg0: &mut Pool<T0, T1>,
-        arg1: integer_mate::i128::I128,
-        arg2: integer_mate::i32::I32,
-        arg3: integer_mate::i32::I32,
-        arg4: &sui::clock::Clock
+    
+    fun update_magma_distribution_internal<CoinTypeA, CoinTypeB>(
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        liquidity_delta: integer_mate::i128::I128,
+        tick_lower: integer_mate::i32::I32,
+        tick_upper: integer_mate::i32::I32,
+        clock: &sui::clock::Clock
     ) {
-        if (integer_mate::i32::gte(arg0.current_tick_index, arg2) && integer_mate::i32::lt(
-            arg0.current_tick_index,
-            arg3
+        if (integer_mate::i32::gte(pool.current_tick_index, tick_lower) && integer_mate::i32::lt(
+            pool.current_tick_index,
+            tick_upper
         )) {
-            update_magma_distribution_growth_global_internal<T0, T1>(arg0, arg4);
-            if (integer_mate::i128::is_neg(arg1)) {
+            update_magma_distribution_growth_global_internal<CoinTypeA, CoinTypeB>(pool, clock);
+            if (integer_mate::i128::is_neg(liquidity_delta)) {
                 assert!(
-                    arg0.magma_distribution_staked_liquidity >= integer_mate::i128::abs_u128(arg1),
+                    pool.magma_distribution_staked_liquidity >= integer_mate::i128::abs_u128(liquidity_delta),
                     9223379024766566399
                 );
             } else {
-                let (_, v1) = integer_mate::i128::overflowing_add(
-                    integer_mate::i128::from(arg0.magma_distribution_staked_liquidity),
-                    arg1
+                let (_, overflow) = integer_mate::i128::overflowing_add(
+                    integer_mate::i128::from(pool.magma_distribution_staked_liquidity),
+                    liquidity_delta
                 );
-                assert!(!v1, 9223379033357877270);
+                assert!(!overflow, 9223379033357877270);
             };
-            arg0.magma_distribution_staked_liquidity = integer_mate::i128::as_u128(
-                integer_mate::i128::add(integer_mate::i128::from(arg0.magma_distribution_staked_liquidity), arg1)
+            pool.magma_distribution_staked_liquidity = integer_mate::i128::as_u128(
+                integer_mate::i128::add(integer_mate::i128::from(pool.magma_distribution_staked_liquidity), liquidity_delta)
             );
         };
-        let v2 = clmm_pool::tick::try_borrow_tick(&arg0.tick_manager, arg2);
-        let v3 = clmm_pool::tick::try_borrow_tick(&arg0.tick_manager, arg3);
-        if (std::option::is_some<clmm_pool::tick::Tick>(&v2)) {
-            clmm_pool::tick::update_magma_stake(&mut arg0.tick_manager, arg2, arg1, false);
+        let tick_lower_opt = clmm_pool::tick::try_borrow_tick(&pool.tick_manager, tick_lower);
+        let tick_upper_opt = clmm_pool::tick::try_borrow_tick(&pool.tick_manager, tick_upper);
+        if (std::option::is_some<clmm_pool::tick::Tick>(&tick_lower_opt)) {
+            clmm_pool::tick::update_magma_stake(&mut pool.tick_manager, tick_lower, liquidity_delta, false);
         };
-        if (std::option::is_some<clmm_pool::tick::Tick>(&v3)) {
-            clmm_pool::tick::update_magma_stake(&mut arg0.tick_manager, arg3, arg1, true);
+        if (std::option::is_some<clmm_pool::tick::Tick>(&tick_upper_opt)) {
+            clmm_pool::tick::update_magma_stake(&mut pool.tick_manager, tick_upper, liquidity_delta, true);
         };
     }
-
-    public fun update_position_url<T0, T1>(
-        arg0: &clmm_pool::config::GlobalConfig,
-        arg1: &mut Pool<T0, T1>,
-        arg2: std::string::String,
-        arg3: &mut sui::tx_context::TxContext
+    public fun update_position_url<CoinTypeA, CoinTypeB>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        new_url: std::string::String,
+        ctx: &mut sui::tx_context::TxContext
     ) {
-        clmm_pool::config::checked_package_version(arg0);
-        assert!(!arg1.is_pause, 13);
-        clmm_pool::config::check_pool_manager_role(arg0, sui::tx_context::sender(arg3));
-        arg1.url = arg2;
+        clmm_pool::config::checked_package_version(global_config);
+        assert!(!pool.is_pause, 13);
+        clmm_pool::config::check_pool_manager_role(global_config, sui::tx_context::sender(ctx));
+        pool.url = new_url;
     }
-
-    fun update_swap_result(arg0: &mut SwapResult, arg1: u64, arg2: u64, arg3: u64, arg4: u64, arg5: u64, arg6: u64) {
-        assert!(integer_mate::math_u64::add_check(arg0.amount_in, arg1), 6);
-        assert!(integer_mate::math_u64::add_check(arg0.amount_out, arg2), 7);
-        assert!(integer_mate::math_u64::add_check(arg0.fee_amount, arg3), 8);
-        arg0.amount_in = arg0.amount_in + arg1;
-        arg0.amount_out = arg0.amount_out + arg2;
-        arg0.fee_amount = arg0.fee_amount + arg3;
-        arg0.protocol_fee_amount = arg0.protocol_fee_amount + arg4;
-        arg0.gauge_fee_amount = arg0.gauge_fee_amount + arg6;
-        arg0.ref_fee_amount = arg0.ref_fee_amount + arg5;
-        arg0.steps = arg0.steps + 1;
-    }
-
-    public fun update_unstaked_liquidity_fee_rate<T0, T1>(
-        arg0: &clmm_pool::config::GlobalConfig,
-        arg1: &mut Pool<T0, T1>,
-        arg2: u64,
-        arg3: &mut sui::tx_context::TxContext
+    fun update_swap_result(
+        swap_result: &mut SwapResult,
+        amount_in_delta: u64,
+        amount_out_delta: u64,
+        fee_amount_delta: u64,
+        protocol_fee_delta: u64,
+        ref_fee_delta: u64,
+        gauge_fee_delta: u64
     ) {
-        clmm_pool::config::checked_package_version(arg0);
-        assert!(!arg1.is_pause, 13);
+        assert!(integer_mate::math_u64::add_check(swap_result.amount_in, amount_in_delta), 6);
+        assert!(integer_mate::math_u64::add_check(swap_result.amount_out, amount_out_delta), 7);
+        assert!(integer_mate::math_u64::add_check(swap_result.fee_amount, fee_amount_delta), 8);
+        swap_result.amount_in = swap_result.amount_in + amount_in_delta;
+        swap_result.amount_out = swap_result.amount_out + amount_out_delta;
+        swap_result.fee_amount = swap_result.fee_amount + fee_amount_delta;
+        swap_result.protocol_fee_amount = swap_result.protocol_fee_amount + protocol_fee_delta;
+        swap_result.gauge_fee_amount = swap_result.gauge_fee_amount + gauge_fee_delta;
+        swap_result.ref_fee_amount = swap_result.ref_fee_amount + ref_fee_delta;
+        swap_result.steps = swap_result.steps + 1;
+    }
+    public fun update_unstaked_liquidity_fee_rate<CoinTypeA, CoinTypeB>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &mut Pool<CoinTypeA, CoinTypeB>, 
+        new_fee_rate: u64,
+        ctx: &mut sui::tx_context::TxContext
+    ) {
+        clmm_pool::config::checked_package_version(global_config);
+        assert!(!pool.is_pause, 13);
         assert!(
-            arg2 == clmm_pool::config::default_unstaked_fee_rate(
-            ) || arg2 <= clmm_pool::config::max_unstaked_liquidity_fee_rate(),
+            new_fee_rate == clmm_pool::config::default_unstaked_fee_rate() || 
+            new_fee_rate <= clmm_pool::config::max_unstaked_liquidity_fee_rate(),
             9
         );
-        assert!(arg2 != arg1.unstaked_liquidity_fee_rate, 9);
-        clmm_pool::config::check_pool_manager_role(arg0, sui::tx_context::sender(arg3));
-        arg1.unstaked_liquidity_fee_rate = arg2;
-        let v0 = UpdateUnstakedLiquidityFeeRateEvent {
-            pool: sui::object::id<Pool<T0, T1>>(arg1),
-            old_fee_rate: arg1.unstaked_liquidity_fee_rate,
-            new_fee_rate: arg2,
+        assert!(new_fee_rate != pool.unstaked_liquidity_fee_rate, 9);
+        clmm_pool::config::check_pool_manager_role(global_config, sui::tx_context::sender(ctx));
+        pool.unstaked_liquidity_fee_rate = new_fee_rate;
+        let event = UpdateUnstakedLiquidityFeeRateEvent {
+            pool: sui::object::id<Pool<CoinTypeA, CoinTypeB>>(pool),
+            old_fee_rate: pool.unstaked_liquidity_fee_rate,
+            new_fee_rate: new_fee_rate,
         };
-        sui::event::emit<UpdateUnstakedLiquidityFeeRateEvent>(v0);
+        sui::event::emit<UpdateUnstakedLiquidityFeeRateEvent>(event);
     }
 
-    public fun url<T0, T1>(arg0: &Pool<T0, T1>): std::string::String {
-        arg0.url
+    public fun url<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): std::string::String {
+        pool.url
     }
 
-    fun validate_pool_position<T0, T1>(arg0: &Pool<T0, T1>, arg1: &clmm_pool::position::Position) {
-        assert!(sui::object::id<Pool<T0, T1>>(arg0) == clmm_pool::position::pool_id(arg1), 9223373806381301759);
+    fun validate_pool_position<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>, position: &clmm_pool::position::Position) {
+        assert!(sui::object::id<Pool<CoinTypeA, CoinTypeB>>(pool) == clmm_pool::position::pool_id(position), 9223373806381301759);
     }
 
     // decompiled from Move bytecode v6
