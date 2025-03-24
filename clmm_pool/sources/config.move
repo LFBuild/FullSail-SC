@@ -217,8 +217,8 @@ module clmm_pool::config {
     fun init(ctx: &mut sui::tx_context::TxContext) {
         let mut global_config = GlobalConfig {
             id: sui::object::new(ctx),
-            protocol_fee_rate: 0,
-            unstaked_liquidity_fee_rate: 1000,
+            protocol_fee_rate : 2000, 
+            unstaked_liquidity_fee_rate : 0, 
             fee_tiers: sui::vec_map::empty<u32, FeeTier>(),
             acl: clmm_pool::acl::new(ctx),
             package_version: 1,

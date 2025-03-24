@@ -21,6 +21,7 @@ module clmm_pool::acl {
             move_stl::linked_table::push_back<address, u128>(&mut acl.permissions, member_addr, 1 << role);
         };
     }
+
     public fun get_members(acl: &ACL): vector<Member> {
         let mut members = std::vector::empty<Member>();
         let mut current_addr = move_stl::linked_table::head<address, u128>(&acl.permissions);
@@ -36,6 +37,7 @@ module clmm_pool::acl {
         };
         members
     }
+
     public fun get_permission(acl: &ACL, member_addr: address): u128 {
         if (!move_stl::linked_table::contains<address, u128>(&acl.permissions, member_addr)) {
             0
@@ -43,7 +45,7 @@ module clmm_pool::acl {
             *move_stl::linked_table::borrow<address, u128>(&acl.permissions, member_addr)
         }
     }
-
+    
     public fun has_role(acl: &ACL, member_addr: address, role: u8): bool {
         assert!(role < 128, 1);
         move_stl::linked_table::contains<address, u128>(
@@ -51,6 +53,7 @@ module clmm_pool::acl {
             member_addr
         ) && *move_stl::linked_table::borrow<address, u128>(&acl.permissions, member_addr) & 1 << role > 0
     }
+
     public fun remove_member(acl: &mut ACL, member_addr: address) {
         if (move_stl::linked_table::contains<address, u128>(&acl.permissions, member_addr)) {
             move_stl::linked_table::remove<address, u128>(&mut acl.permissions, member_addr);
@@ -66,6 +69,7 @@ module clmm_pool::acl {
             };
         };
     }
+
     public fun set_roles(acl: &mut ACL, member_addr: address, permission: u128) {
         if (move_stl::linked_table::contains<address, u128>(&acl.permissions, member_addr)) {
             *move_stl::linked_table::borrow_mut<address, u128>(&mut acl.permissions, member_addr) = permission;

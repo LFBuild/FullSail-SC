@@ -122,6 +122,7 @@ module clmm_pool::position {
         move_stl::linked_table::remove<sui::object::ID, PositionInfo>(&mut position_manager.positions, position_id);
         destroy(position);
     }
+
     public(package) fun decrease_liquidity(
         position_manager: &mut PositionManager,
         position: &mut Position,
@@ -166,6 +167,7 @@ module clmm_pool::position {
         } = position;
         sui::object::delete(position_id);
     }
+
     public fun fetch_positions(
         position_manager: &PositionManager,
         position_ids: vector<sui::object::ID>,
@@ -175,12 +177,7 @@ module clmm_pool::position {
         let next_id = if (std::vector::is_empty<sui::object::ID>(&position_ids)) {
             move_stl::linked_table::head<sui::object::ID, PositionInfo>(&position_manager.positions)
         } else {
-            move_stl::linked_table::next<sui::object::ID, PositionInfo>(
-                move_stl::linked_table::borrow_node<sui::object::ID, PositionInfo>(
-                    &position_manager.positions,
-                    *std::vector::borrow<sui::object::ID>(&position_ids, 0)
-                )
-            )
+            std::option::some<sui::object::ID>(*std::vector::borrow<sui::object::ID>(&position_ids, 0))
         };
         let mut current_id = next_id;
         let mut count = 0;
@@ -261,6 +258,7 @@ module clmm_pool::position {
     public fun info_tick_range(position_info: &PositionInfo): (integer_mate::i32::I32, integer_mate::i32::I32) {
         (position_info.tick_lower_index, position_info.tick_upper_index)
     }
+
     fun init(position_witness: POSITION, ctx: &mut sui::tx_context::TxContext) {
         let mut display_keys = std::vector::empty<std::string::String>();
         std::vector::push_back<std::string::String>(&mut display_keys, std::string::utf8(b"name"));
@@ -269,7 +267,7 @@ module clmm_pool::position {
         std::vector::push_back<std::string::String>(&mut display_keys, std::string::utf8(b"link"));
         std::vector::push_back<std::string::String>(&mut display_keys, std::string::utf8(b"image_url"));
         std::vector::push_back<std::string::String>(&mut display_keys, std::string::utf8(b"description"));
-        std::vector::push_back<std::string::String>(&mut display_keys, std::string::utf8(b"project_url"));
+        std::vector::push_back<std::string::String>(&mut display_keys, std::string::utf8(b"website"));
         std::vector::push_back<std::string::String>(&mut display_keys, std::string::utf8(b"creator"));
 
         let mut display_values = std::vector::empty<std::string::String>();
@@ -278,12 +276,12 @@ module clmm_pool::position {
         std::vector::push_back<std::string::String>(&mut display_values, std::string::utf8(b"{coin_type_b}"));
         std::vector::push_back<std::string::String>(
             &mut display_values,
-            std::string::utf8(b"https://app.cetus.zone/position?chain=sui&id={id}")
+            std::string::utf8(b"https://app.magmafinance.io/position?chain=sui&id={id}")
         );
         std::vector::push_back<std::string::String>(&mut display_values, std::string::utf8(b"{url}"));
         std::vector::push_back<std::string::String>(&mut display_values, std::string::utf8(b"{description}"));
-        std::vector::push_back<std::string::String>(&mut display_values, std::string::utf8(b"https://cetus.zone"));
-        std::vector::push_back<std::string::String>(&mut display_values, std::string::utf8(b"Cetus"));
+        std::vector::push_back<std::string::String>(&mut display_values, std::string::utf8(b"https://magmafinance.io"));
+        std::vector::push_back<std::string::String>(&mut display_values, std::string::utf8(b"MAGMA"));
 
         let publisher = sui::package::claim<POSITION>(position_witness, ctx);
         let mut display = sui::display::new_with_fields<Position>(&publisher, display_keys, display_values, ctx);

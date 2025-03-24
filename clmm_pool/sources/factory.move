@@ -1,5 +1,7 @@
 module clmm_pool::factory {
-    public struct FACTORY has drop {}
+    public struct FACTORY has drop {
+        dummy_field: bool,
+    }
 
     public struct PoolSimpleInfo has copy, drop, store {
         pool_id: sui::object::ID,
@@ -29,6 +31,7 @@ module clmm_pool::factory {
     public fun coin_types(pool_info: &PoolSimpleInfo): (std::type_name::TypeName, std::type_name::TypeName) {
         (pool_info.coin_type_a, pool_info.coin_type_b)
     }
+    
     public fun create_pool<CoinTypeA, CoinTypeB>(
         pools: &mut Pools,
         global_config: &clmm_pool::config::GlobalConfig,
@@ -161,12 +164,13 @@ module clmm_pool::factory {
         let next_id = if (std::vector::is_empty<sui::object::ID>(&pool_ids)) {
             move_stl::linked_table::head<sui::object::ID, PoolSimpleInfo>(&pools.list)
         } else {
-            move_stl::linked_table::next<sui::object::ID, PoolSimpleInfo>(
-                move_stl::linked_table::borrow_node<sui::object::ID, PoolSimpleInfo>(
-                    &pools.list,
-                    *std::vector::borrow<sui::object::ID>(&pool_ids, 0)
-                )
-            )
+            // move_stl::linked_table::next<sui::object::ID, PoolSimpleInfo>(
+            //     move_stl::linked_table::borrow_node<sui::object::ID, PoolSimpleInfo>(
+            //         &pools.list,
+            //         *std::vector::borrow<sui::object::ID>(&pool_ids, 0)
+            //     )
+            // )
+            std::option::some<sui::object::ID>(*std::vector::borrow<sui::object::ID>(&pool_ids, 0))
         };
         let mut current_id = next_id;
         let mut count = 0;
