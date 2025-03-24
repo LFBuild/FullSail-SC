@@ -1,9 +1,12 @@
 module distribution::minter {
 
+    const EActivateMinterAlreadyActive: u64 = 9223373106302222346;
+    const EActivateMinterNoDistributorCap: u64 = 9223373110598238234;
+
     const EMinterCapAlreadySet: u64 = 9223372831423725567;
 
     public struct AdminCap has store, key {
-        id: sui::object::UID,
+        id: UID,
     }
 
     public struct MINTER has drop {}
@@ -14,22 +17,18 @@ module distribution::minter {
         new_emissions: u64,
     }
 
-    public struct EventPauseEmission has copy, drop, store {
-        dummy_field: bool,
-    }
+    public struct EventPauseEmission has copy, drop, store {}
 
-    public struct EventUnpauseEmission has copy, drop, store {
-        dummy_field: bool,
-    }
+    public struct EventUnpauseEmission has copy, drop, store {}
 
     public struct EventGrantAdmin has copy, drop, store {
         who: address,
-        admin_cap: sui::object::ID,
+        admin_cap: ID,
     }
 
-    public struct Minter<phantom T0> has store, key {
-        id: sui::object::UID,
-        revoked_admins: sui::vec_set::VecSet<sui::object::ID>,
+    public struct Minter<phantom SailCoinType> has store, key {
+        id: UID,
+        revoked_admins: sui::vec_set::VecSet<ID>,
         paused: bool,
         activated_at: u64,
         active_period: u64,
@@ -37,7 +36,7 @@ module distribution::minter {
         total_emissions: u64,
         last_epoch_update_time: u64,
         epoch_emissions: u64,
-        minter_cap: std::option::Option<distribution::fullsail_token::MinterCap<T0>>,
+        minter_cap: Option<distribution::sail_token::MinterCap<SailCoinType>>,
         base_supply: u64,
         epoch_grow_rate: u64,
         epoch_decay_rate: u64,
@@ -46,104 +45,128 @@ module distribution::minter {
         tail_emission_rate: u64,
         team_emission_rate: u64,
         team_wallet: address,
-        reward_distributor_cap: std::option::Option<distribution::reward_distributor_cap::RewardDistributorCap>,
-        notify_reward_cap: std::option::Option<distribution::notify_reward_cap::NotifyRewardCap>,
+        reward_distributor_cap: Option<distribution::reward_distributor_cap::RewardDistributorCap>,
+        notify_reward_cap: Option<distribution::notify_reward_cap::NotifyRewardCap>,
         nudges: sui::vec_set::VecSet<u64>,
     }
 
-    public fun total_supply<T0>(arg0: &Minter<T0>): u64 {
-        distribution::fullsail_token::total_supply<T0>(
-            std::option::borrow<distribution::fullsail_token::MinterCap<T0>>(&arg0.minter_cap)
-        )
+    public fun total_supply<SailCoinType>(minter: &Minter<SailCoinType>): u64 {
+        option::borrow<distribution::sail_token::MinterCap<SailCoinType>>(&minter.minter_cap).total_supply()
     }
 
-    public fun activate<T0>(
-        arg0: &mut Minter<T0>,
-        arg1: &AdminCap,
-        arg2: &mut distribution::reward_distributor::RewardDistributor<T0>,
-        arg3: &sui::clock::Clock
+    public fun activate<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        admin_cap: &AdminCap,
+        reward_distributor: &mut distribution::reward_distributor::RewardDistributor<SailCoinType>,
+        clock: &sui::clock::Clock
     ) {
-        check_admin<T0>(arg0, arg1);
-        assert!(!is_active<T0>(arg0, arg3), 9223373106302222346);
+        minter.check_admin(admin_cap);
+        assert!(!minter.is_active(clock), EActivateMinterAlreadyActive);
         assert!(
-            std::option::is_some<distribution::reward_distributor_cap::RewardDistributorCap>(
-                &arg0.reward_distributor_cap
+            option::is_some<distribution::reward_distributor_cap::RewardDistributorCap>(
+                &minter.reward_distributor_cap
             ),
-            9223373110598238234
+            EActivateMinterNoDistributorCap
         );
-        let v0 = distribution::common::current_timestamp(arg3);
-        arg0.activated_at = v0;
-        arg0.active_period = distribution::common::to_period(arg0.activated_at);
-        arg0.last_epoch_update_time = v0;
-        arg0.epoch_emissions = arg0.base_supply;
-        distribution::reward_distributor::start<T0>(
-            arg2,
-            std::option::borrow<distribution::reward_distributor_cap::RewardDistributorCap>(
-                &arg0.reward_distributor_cap
-            ),
-            arg0.active_period,
-            arg3
-        );
+        let current_time = distribution::common::current_timestamp(clock);
+        minter.activated_at = current_time;
+        minter.active_period = distribution::common::to_period(minter.activated_at);
+        minter.last_epoch_update_time = current_time;
+        minter.epoch_emissions = minter.base_supply;
+        reward_distributor.start(option::borrow<distribution::reward_distributor_cap::RewardDistributorCap>(
+            &minter.reward_distributor_cap
+        ), minter.active_period, clock);
     }
 
-    public fun activated_at<T0>(arg0: &Minter<T0>): u64 {
-        arg0.activated_at
+    public fun activated_at<SailCoinType>(minter: &Minter<SailCoinType>): u64 {
+        minter.activated_at
     }
 
-    public fun active_period<T0>(arg0: &Minter<T0>): u64 {
-        arg0.active_period
+    public fun active_period<SailCoinType>(minter: &Minter<SailCoinType>): u64 {
+        minter.active_period
     }
 
-    public fun base_supply<T0>(arg0: &Minter<T0>): u64 {
-        arg0.base_supply
+    public fun base_supply<SailCoinType>(minter: &Minter<SailCoinType>): u64 {
+        minter.base_supply
     }
 
-    public fun calculate_epoch_emissions<T0>(arg0: &Minter<T0>): (u64, u64) {
-        if (arg0.epoch_emissions < 8969150000000) {
-            (integer_mate::full_math_u64::mul_div_ceil(
-                distribution::fullsail_token::total_supply<T0>(
-                    std::option::borrow<distribution::fullsail_token::MinterCap<T0>>(&arg0.minter_cap)
+    /**
+    * Calculates current epoch emissions and next epoch emission according to
+    * FullSail tokenomics.
+    * The function returns (current_epoch_emissions, next_epoch_emissions).
+    *
+    * The emission schedule is separated into three stages:
+    * - Emission starts at 10 million tokens per week. For the first 14 weeks, the emission increases by 3% each week.
+    * - After 14 weeks, the emission rate decreases by 1% per week until it falls below 9 million tokens per week.
+    * - Once the emission rate drops below 9 million tokens, it becomes fixed at a rate of 0.67% per week and remains unchanged thereafter.
+    */
+    public fun calculate_epoch_emissions<SailCoinType>(minter: &Minter<SailCoinType>): (u64, u64) {
+        if (minter.epoch_emissions < 8969150000000) {
+            // epoch emissions drop under 9M
+            // weekly emissions after that stabilize at 0.67%
+            (
+                integer_mate::full_math_u64::mul_div_ceil(
+                    option::borrow<distribution::sail_token::MinterCap<SailCoinType>>(&minter.minter_cap).total_supply(
+                    ),
+                    minter.tail_emission_rate,
+                    10000
                 ),
-                arg0.tail_emission_rate,
-                10000
-            ), arg0.epoch_emissions)
+                minter.epoch_emissions
+            )
         } else {
-            let (v2, v3) = if (arg0.epoch_count < 14) {
-                let v4 = if (arg0.epoch_emissions == 0) {
-                    arg0.base_supply
+            let (current_epoch_emissions, next_epoch_emissions) = if (minter.epoch_count < 14) {
+                // take-off phase, emissions increase at 3% per week
+                let current_emissions = if (minter.epoch_emissions == 0) {
+                    minter.base_supply
                 } else {
-                    arg0.epoch_emissions
+                    minter.epoch_emissions
                 };
-                (v4, v4 + integer_mate::full_math_u64::mul_div_ceil(v4, arg0.epoch_grow_rate, 10000))
+                (
+                    current_emissions,
+                    current_emissions + integer_mate::full_math_u64::mul_div_ceil(
+                        current_emissions,
+                        minter.epoch_grow_rate,
+                        10000
+                    )
+                )
             } else {
-                let v5 = arg0.epoch_emissions;
-                (v5, v5 - integer_mate::full_math_u64::mul_div_ceil(v5, arg0.epoch_decay_rate, 10000))
+                // cruise phase, emissions decay at 1% per week
+                let current_emissions = minter.epoch_emissions;
+                (
+                    current_emissions,
+                    current_emissions - integer_mate::full_math_u64::mul_div_ceil(
+                        current_emissions,
+                        minter.epoch_decay_rate,
+                        10000
+                    )
+                )
             };
-            (v2, v3)
+            (current_epoch_emissions, next_epoch_emissions)
         }
     }
 
-    public fun calculate_rebase_growth(arg0: u64, arg1: u64, arg2: u64): u64 {
+    public fun calculate_rebase_growth(epoch_emissions: u64, total_supply: u64, total_locked: u64): u64 {
+        // epoch_emissions * ((total_supply - total_locked) / total_supply)^2 / 2
         integer_mate::full_math_u64::mul_div_ceil(
-            integer_mate::full_math_u64::mul_div_ceil(arg0, arg1 - arg2, arg1),
-            arg1 - arg2,
-            arg1
+            integer_mate::full_math_u64::mul_div_ceil(epoch_emissions, total_supply - total_locked, total_supply),
+            total_supply - total_locked,
+            total_supply
         ) / 2
     }
 
-    public fun check_admin<T0>(arg0: &Minter<T0>, arg1: &AdminCap) {
-        let v0 = sui::object::id<AdminCap>(arg1);
-        assert!(!sui::vec_set::contains<sui::object::ID>(&arg0.revoked_admins, &v0), 9223372809948889087);
+    public fun check_admin<SailCoinType>(minter: &Minter<SailCoinType>, admin_cap: &AdminCap) {
+        let v0 = object::id<AdminCap>(admin_cap);
+        assert!(!minter.revoked_admins.contains<ID>(&v0), 9223372809948889087);
     }
 
-    public fun create<T0>(
-        _arg0: &sui::package::Publisher,
-        arg1: std::option::Option<distribution::fullsail_token::MinterCap<T0>>,
-        arg2: &mut sui::tx_context::TxContext
-    ): (Minter<T0>, AdminCap) {
-        let v0 = Minter<T0> {
-            id: sui::object::new(arg2),
-            revoked_admins: sui::vec_set::empty<sui::object::ID>(),
+    public fun create<SailCoinType>(
+        _publisher: &sui::package::Publisher,
+        minter_cap: Option<distribution::sail_token::MinterCap<SailCoinType>>,
+        ctx: &mut TxContext
+    ): (Minter<SailCoinType>, AdminCap) {
+        let minter = Minter<SailCoinType> {
+            id: object::new(ctx),
+            revoked_admins: sui::vec_set::empty<ID>(),
             paused: false,
             activated_at: 0,
             active_period: 0,
@@ -151,49 +174,49 @@ module distribution::minter {
             total_emissions: 0,
             last_epoch_update_time: 0,
             epoch_emissions: 0,
-            minter_cap: arg1,
-            base_supply: 10000000000000,
-            epoch_grow_rate: 10300,
-            epoch_decay_rate: 9900,
+            minter_cap,
+            base_supply: 10000000000000, // 10M coins
+            epoch_grow_rate: 300,
+            epoch_decay_rate: 100,
             grow_epochs: 14,
             decay_epochs: 67,
             tail_emission_rate: 67,
             team_emission_rate: 500,
             team_wallet: @0x0,
-            reward_distributor_cap: std::option::none<distribution::reward_distributor_cap::RewardDistributorCap>(),
-            notify_reward_cap: std::option::none<distribution::notify_reward_cap::NotifyRewardCap>(),
+            reward_distributor_cap: option::none<distribution::reward_distributor_cap::RewardDistributorCap>(),
+            notify_reward_cap: option::none<distribution::notify_reward_cap::NotifyRewardCap>(),
             nudges: sui::vec_set::empty<u64>(),
         };
-        let v1 = AdminCap { id: sui::object::new(arg2) };
-        (v0, v1)
+        let admin_cap = AdminCap { id: object::new(ctx) };
+        (minter, admin_cap)
     }
 
-    public fun epoch<T0>(arg0: &Minter<T0>): u64 {
+    public fun epoch<SailCoinType>(arg0: &Minter<SailCoinType>): u64 {
         arg0.epoch_count
     }
 
-    public fun epoch_emissions<T0>(arg0: &Minter<T0>): u64 {
-        arg0.epoch_emissions
+    public fun epoch_emissions<SailCoinType>(minter: &Minter<SailCoinType>): u64 {
+        minter.epoch_emissions
     }
 
-    public fun grant_admin(_arg0: &sui::package::Publisher, arg1: address, arg2: &mut sui::tx_context::TxContext) {
-        let v0 = AdminCap { id: sui::object::new(arg2) };
+    public fun grant_admin(_arg0: &sui::package::Publisher, arg1: address, arg2: &mut TxContext) {
+        let v0 = AdminCap { id: object::new(arg2) };
         let v1 = EventGrantAdmin {
             who: arg1,
-            admin_cap: sui::object::id<AdminCap>(&v0),
+            admin_cap: object::id<AdminCap>(&v0),
         };
         sui::event::emit<EventGrantAdmin>(v1);
-        sui::transfer::transfer<AdminCap>(v0, arg1);
+        transfer::transfer<AdminCap>(v0, arg1);
     }
 
-    fun init(arg0: MINTER, arg1: &mut sui::tx_context::TxContext) {
+    fun init(arg0: MINTER, arg1: &mut TxContext) {
         sui::package::claim_and_keep<MINTER>(arg0, arg1);
     }
 
-    public fun is_active<T0>(arg0: &Minter<T0>, arg1: &sui::clock::Clock): bool {
-        if (arg0.activated_at > 0) {
-            if (!arg0.paused) {
-                distribution::common::current_period(arg1) >= arg0.active_period
+    public fun is_active<SailCoinType>(minter: &Minter<SailCoinType>, clock: &sui::clock::Clock): bool {
+        if (minter.activated_at > 0) {
+            if (!minter.paused) {
+                distribution::common::current_period(clock) >= minter.active_period
             } else {
                 false
             }
@@ -202,7 +225,7 @@ module distribution::minter {
         }
     }
 
-    public fun last_epoch_update_time<T0>(arg0: &Minter<T0>): u64 {
+    public fun last_epoch_update_time<SailCoinType>(arg0: &Minter<SailCoinType>): u64 {
         arg0.last_epoch_update_time
     }
 
@@ -210,15 +233,12 @@ module distribution::minter {
         10000
     }
 
-    public fun pause<T0>(arg0: &mut Minter<T0>, arg1: &AdminCap) {
-        check_admin<T0>(arg0, arg1);
-        arg0.paused = true;
-        let v0 = EventPauseEmission { dummy_field: false };
-        sui::event::emit<EventPauseEmission>(v0);
-    }
-
-    public fun revoke_admin<T0>(arg0: &mut Minter<T0>, _arg1: &sui::package::Publisher, arg2: sui::object::ID) {
-        sui::vec_set::insert<sui::object::ID>(&mut arg0.revoked_admins, arg2);
+    public fun revoke_admin<SailCoinType>(
+        arg0: &mut Minter<SailCoinType>,
+        _arg1: &sui::package::Publisher,
+        arg2: ID
+    ) {
+        arg0.revoked_admins.insert(arg2);
     }
 
     /**
@@ -227,129 +247,132 @@ module distribution::minter {
     public fun set_minter_cap<SailCoinType>(
         minter: &mut Minter<SailCoinType>,
         admin_cap: &AdminCap,
-        minter_cap: distribution::fullsail_token::MinterCap<SailCoinType>
+        minter_cap: distribution::sail_token::MinterCap<SailCoinType>
     ) {
-        check_admin<SailCoinType>(minter, admin_cap);
+        minter.check_admin(admin_cap);
         assert!(
-            std::option::is_none<distribution::fullsail_token::MinterCap<SailCoinType>>(&minter.minter_cap),
+            option::is_none<distribution::sail_token::MinterCap<SailCoinType>>(&minter.minter_cap),
             EMinterCapAlreadySet
         );
-        std::option::fill<distribution::fullsail_token::MinterCap<SailCoinType>>(&mut minter.minter_cap, minter_cap);
+        option::fill<distribution::sail_token::MinterCap<SailCoinType>>(&mut minter.minter_cap, minter_cap);
     }
 
-    public fun set_notify_reward_cap<T0>(
-        arg0: &mut Minter<T0>,
-        arg1: &AdminCap,
-        arg2: distribution::notify_reward_cap::NotifyRewardCap
+    public fun set_notify_reward_cap<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        admin_cap: &AdminCap,
+        notify_reward_cap: distribution::notify_reward_cap::NotifyRewardCap
     ) {
-        check_admin<T0>(arg0, arg1);
-        std::option::fill<distribution::notify_reward_cap::NotifyRewardCap>(&mut arg0.notify_reward_cap, arg2);
-    }
-
-    public fun set_reward_distributor_cap<T0>(
-        arg0: &mut Minter<T0>,
-        arg1: &AdminCap,
-        arg2: distribution::reward_distributor_cap::RewardDistributorCap
-    ) {
-        check_admin<T0>(arg0, arg1);
-        std::option::fill<distribution::reward_distributor_cap::RewardDistributorCap>(
-            &mut arg0.reward_distributor_cap,
-            arg2
+        minter.check_admin(admin_cap);
+        option::fill<distribution::notify_reward_cap::NotifyRewardCap>(
+            &mut minter.notify_reward_cap,
+            notify_reward_cap
         );
     }
 
-    public fun set_team_emission_rate<T0>(arg0: &mut Minter<T0>, arg1: &AdminCap, arg2: u64) {
-        check_admin<T0>(arg0, arg1);
+    public fun set_reward_distributor_cap<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        admin_cap: &AdminCap,
+        reward_distributor_cap: distribution::reward_distributor_cap::RewardDistributorCap
+    ) {
+        minter.check_admin(admin_cap);
+        option::fill<distribution::reward_distributor_cap::RewardDistributorCap>(
+            &mut minter.reward_distributor_cap,
+            reward_distributor_cap
+        );
+    }
+
+    public fun set_team_emission_rate<SailCoinType>(arg0: &mut Minter<SailCoinType>, arg1: &AdminCap, arg2: u64) {
+        arg0.check_admin(arg1);
         assert!(arg2 <= 500, 9223372921618038783);
         arg0.team_emission_rate = arg2;
     }
 
-    public fun set_team_wallet<T0>(arg0: &mut Minter<T0>, arg1: &AdminCap, arg2: address) {
-        check_admin<T0>(arg0, arg1);
-        arg0.team_wallet = arg2;
-    }
-
-    public fun team_emission_rate<T0>(arg0: &Minter<T0>): u64 {
-        arg0.team_emission_rate
-    }
-
-    public fun unpause<T0>(arg0: &mut Minter<T0>, arg1: &AdminCap) {
-        check_admin<T0>(arg0, arg1);
-        arg0.paused = false;
-        let v0 = EventUnpauseEmission { dummy_field: false };
-        sui::event::emit<EventUnpauseEmission>(v0);
-    }
-
-    public fun update_period<T0>(
-        arg0: &mut Minter<T0>,
-        arg1: &mut distribution::voter::Voter<T0>,
-        arg2: &distribution::voting_escrow::VotingEscrow<T0>,
-        arg3: &mut distribution::reward_distributor::RewardDistributor<T0>,
-        arg4: &sui::clock::Clock,
-        arg5: &mut sui::tx_context::TxContext
+    public fun set_team_wallet<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        admin_cap: &AdminCap,
+        team_wallet: address
     ) {
-        assert!(is_active<T0>(arg0, arg4), 9223373394064900104);
+        minter.check_admin(admin_cap);
+        minter.team_wallet = team_wallet;
+    }
+
+    public fun team_emission_rate<SailCoinType>(minter: &Minter<SailCoinType>): u64 {
+        minter.team_emission_rate
+    }
+
+    public fun tail_emission_rate<SailCoinType>(minter: &Minter<SailCoinType>) : u64 {
+        minter.tail_emission_rate
+    }
+
+    public fun pause<SailCoinType>(minter: &mut Minter<SailCoinType>, admin_cap: &AdminCap) {
+        minter.check_admin(admin_cap);
+        minter.paused = true;
+        let pause_event = EventPauseEmission {};
+        sui::event::emit<EventPauseEmission>(pause_event);
+    }
+
+    public fun unpause<SailCoinType>(minter: &mut Minter<SailCoinType>, admin_cap: &AdminCap) {
+        minter.check_admin(admin_cap);
+        minter.paused = false;
+        let unpaused_event = EventUnpauseEmission {};
+        sui::event::emit<EventUnpauseEmission>(unpaused_event);
+    }
+
+    public fun update_period<SailCoinType>(
+        arg0: &mut Minter<SailCoinType>,
+        arg1: &mut distribution::voter::Voter<SailCoinType>,
+        arg2: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        arg3: &mut distribution::reward_distributor::RewardDistributor<SailCoinType>,
+        arg4: &sui::clock::Clock,
+        arg5: &mut TxContext
+    ) {
+        assert!(arg0.is_active(arg4), 9223373394064900104);
         assert!(
             arg0.active_period + distribution::common::week() < distribution::common::current_timestamp(arg4),
             9223373406950588436
         );
-        let (v0, v1) = calculate_epoch_emissions<T0>(arg0);
+        let (v0, v1) = arg0.calculate_epoch_emissions();
         let v2 = calculate_rebase_growth(
             v0,
-            distribution::fullsail_token::total_supply<T0>(
-                std::option::borrow<distribution::fullsail_token::MinterCap<T0>>(&arg0.minter_cap)
-            ),
-            distribution::voting_escrow::total_locked<T0>(arg2)
+            option::borrow<distribution::sail_token::MinterCap<SailCoinType>>(&arg0.minter_cap).total_supply(),
+            arg2.total_locked()
         );
-        let v3 = sui::object::id_address<Minter<T0>>(arg0);
+        let v3 = object::id_address<Minter<SailCoinType>>(arg0);
         if (arg0.team_emission_rate > 0 && arg0.team_wallet != @0x0) {
-            sui::transfer::public_transfer<sui::coin::Coin<T0>>(
-                distribution::fullsail_token::mint<T0>(
-                    std::option::borrow_mut<distribution::fullsail_token::MinterCap<T0>>(&mut arg0.minter_cap),
-                    integer_mate::full_math_u64::mul_div_floor(
-                        arg0.team_emission_rate,
-                        v2 + v0,
-                        10000 - arg0.team_emission_rate
-                    ),
-                    v3,
-                    arg5
-                ),
+            transfer::public_transfer<sui::coin::Coin<SailCoinType>>(
+                option::borrow_mut<distribution::sail_token::MinterCap<SailCoinType>>(
+                    &mut arg0.minter_cap
+                ).mint(integer_mate::full_math_u64::mul_div_floor(
+                    arg0.team_emission_rate,
+                    v2 + v0,
+                    10000 - arg0.team_emission_rate
+                ), v3, arg5),
                 arg0.team_wallet
             );
         };
-        distribution::reward_distributor::checkpoint_token<T0>(
-            arg3,
-            std::option::borrow<distribution::reward_distributor_cap::RewardDistributorCap>(
+        arg3.checkpoint_token(
+            option::borrow<distribution::reward_distributor_cap::RewardDistributorCap>(
                 &arg0.reward_distributor_cap
             ),
-            distribution::fullsail_token::mint<T0>(
-                std::option::borrow_mut<distribution::fullsail_token::MinterCap<T0>>(&mut arg0.minter_cap),
-                v2,
-                v3,
-                arg5
+            option::borrow_mut<distribution::sail_token::MinterCap<SailCoinType>>(&mut arg0.minter_cap).mint(
+                v2, v3, arg5
             ),
             arg4
         );
-        let id_address = sui::object::id_address<Minter<T0>>(arg0);
-        let minter_cap = std::option::borrow_mut<distribution::fullsail_token::MinterCap<T0>>(&mut arg0.minter_cap);
-        let notify_reward_cap = std::option::borrow<distribution::notify_reward_cap::NotifyRewardCap>(
+        let id_address = object::id_address<Minter<SailCoinType>>(arg0);
+        let minter_cap = option::borrow_mut<distribution::sail_token::MinterCap<SailCoinType>>(
+            &mut arg0.minter_cap
+        );
+        let notify_reward_cap = option::borrow<distribution::notify_reward_cap::NotifyRewardCap>(
             &arg0.notify_reward_cap
         );
-        distribution::voter::notify_rewards<T0>(
-            arg1,
-            notify_reward_cap,
-            distribution::fullsail_token::mint<T0>(minter_cap, v0, id_address, arg5)
-        );
+        arg1.notify_rewards(notify_reward_cap, minter_cap.mint(v0, id_address, arg5));
         arg0.active_period = distribution::common::current_period(arg4);
         arg0.epoch_count = arg0.epoch_count + 1;
         arg0.epoch_emissions = v1;
-        distribution::reward_distributor::update_active_period<T0>(
-            arg3,
-            std::option::borrow<distribution::reward_distributor_cap::RewardDistributorCap>(
-                &arg0.reward_distributor_cap
-            ),
-            arg0.active_period
-        );
+        arg3.update_active_period(option::borrow<distribution::reward_distributor_cap::RewardDistributorCap>(
+            &arg0.reward_distributor_cap
+        ), arg0.active_period);
         let v4 = EventUpdateEpoch {
             new_period: arg0.active_period,
             new_epoch: arg0.epoch_count,

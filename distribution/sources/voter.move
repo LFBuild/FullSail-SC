@@ -1,45 +1,114 @@
 module distribution::voter {
+
+    const EDepositManagedLockNotOwned: u64 = 9223375275260116991;
+    const EDepositManagedLockDeactivated: u64 = 9223375275262279714;
+    const EDepositManagedInvalidManaged: u64 = 9223375292439986175;
+    const EDepositManagedEpochVoteEnded: u64 = 9223375301033263156;
+
+    const EWithdrawManagedInvlidManaged: u64 = 9223375378339332095;
+
+    const EAddEpochGovernorInvalidGovernor: u64 = 9223373265216929816;
+
+    const EAlreadyVotedInCurrentEpoch: u64 = 9223373329641701404;
+    const EVotingNotStarted: u64 = 9223373333936799774;
+
+    const ECheckVoteSizesDoNotMatch: u64 = 9223374162864308236;
+    const ECheckVoteMaxVoteNumExceed: u64 = 9223374167160586272;
+    const ECheckVoteGaugeNotFound: u64 = 9223374184339275790;
+    const ECheckVoteWeightTooLarge: u64 = 9223374188634374160;
+
+    const ECreateGaugeNotAGovernor: u64 = 9223373604519346200;
+    const ECreateGaugeDistributionConfigInvalid: u64 = 9223373887985680383;
+
+    const EGetVotesNotVoted: u64 = 9223375618857500671;
+
+    const EKillGaugeStatusUnknown: u64 = 9223374012540190728;
+    const EKillGaugeDistributionConfigInvalid: u64 = 9223374308896342076;
+    const EKillGaugeAlreadyKilled: u64 = 9223374016835944468;
+
+    const EPokeVotingNotStartedYet: u64 = 9223374433448427550;
+    const EPokeLockNotVoted: u64 = 9223374510758756396;
+    const EPokePoolNotVoted: u64 = 9223374527938625580;
+
+    const EFirstTokenNotWhitelisted: u64 = 9223373870805811199;
+    const ESecondTokenNotWhitelisted: u64 = 9223373875100778495;
+
+    const ETokenNotWhitelisted: u64 = 9223373853625942015;
+
+    const EReceiveGaugeInvalidGovernor: u64 = 9223373991066402840;
+    const EReceiveGaugeAlreadyHasRepresent: u64 = 9223373720482283526;
+    const EReceiveGaugePoolAreadyHasGauge: u64 = 9223373724779872302;
+
+    const ERemoveEpochGovernorNotAGovernor: u64 = 9223373312461570072;
+
+    const EReviveGaugeInvalidDistributionConfig: u64 = 9223374403385622588;
+    const EReviveGaugeAlreadyAlive: u64 = 9223374124208881663;
+
+    const ESetMaxVotingNumGovernorInvalid: u64 = 9223373183612551192;
+    const ESetMaxVotingNumAtLeast10: u64 = 9223373187907649562;
+    const ESetMaxVotingNumNotChanged: u64 = 9223373196495945727;
+
+    const EUpdateForInternalGaugeNotAlive: u64 = 9223375717644828720;
+
+    const EVoteVotingEscrowDeactivated: u64 = 9223374631017185314;
+    const EVoteNotWhitelistedNft: u64 = 9223374648197185572;
+    const EVoteNoVotingPower: u64 = 9223374686852022310;
+
+    const EVoteInternalGaugeDoesNotExist: u64 = 9223374798519205896;
+    const EVoteInternalGaugeNotAlive: u64 = 9223374807109926932;
+    const EVoteInternalPoolAreadyVoted: u64 = 9223374832881041448;
+    const EVoteInternalWeightResultedInZeroVotes: u64 = 9223374841471107114;
+
+    const EDistributeGaugeInvalidGaugeRepresent: u64 = 9223375983929720831;
+
+    const EExtractClaimableForLessThanMin: u64 = 9223375923800178687;
+
+    const EWhitelistNftGovernorInvalid: u64 = 9223373956706664472;
+
+    const EWhitelistTokenGovernorInvalid: u64 = 9223373896577122328;
+
     public struct VOTER has drop {}
 
     public struct PoolID has copy, drop, store {
-        id: sui::object::ID,
+        id: ID,
     }
 
     public struct LockID has copy, drop, store {
-        id: sui::object::ID,
+        id: ID,
     }
 
     public struct GaugeID has copy, drop, store {
-        id: sui::object::ID,
+        id: ID,
     }
 
     public struct GaugeRepresent has drop, store {
-        gauger_id: sui::object::ID,
-        pool_id: sui::object::ID,
+        gauger_id: ID,
+        pool_id: ID,
         weight: u64,
         last_reward_time: u64,
     }
 
-    public struct Voter<phantom T0> has store, key {
-        id: sui::object::UID,
-        flag_distribution: bool,
-        governors: sui::vec_set::VecSet<sui::object::ID>,
-        epoch_governors: sui::vec_set::VecSet<sui::object::ID>,
-        emergency_council: sui::object::ID,
-        is_alive: sui::table::Table<GaugeID, bool>,
+    public struct Voter<phantom SailCoinType> has store, key {
+        id: UID,
+        global_config: ID,
+        distribution_config: ID,
+        governors: sui::vec_set::VecSet<ID>,
+        epoch_governors: sui::vec_set::VecSet<ID>,
+        emergency_council: ID,
         total_weight: u64,
         used_weights: sui::table::Table<LockID, u64>,
         pools: vector<PoolID>,
         pool_to_gauger: sui::table::Table<PoolID, GaugeID>,
         gauge_represents: sui::table::Table<GaugeID, GaugeRepresent>,
         votes: sui::table::Table<LockID, sui::table::Table<PoolID, u64>>,
-        rewards: sui::table::Table<GaugeID, sui::balance::Balance<T0>>,
+        rewards: sui::table::Table<GaugeID, sui::balance::Balance<SailCoinType>>,
         weights: sui::table::Table<GaugeID, u64>,
         epoch: u64,
         voter_cap: distribution::voter_cap::VoterCap,
         balances: sui::bag::Bag,
         index: u128,
         supply_index: sui::table::Table<GaugeID, u128>,
+        // claimable amount per gauge
         claimable: sui::table::Table<GaugeID, u64>,
         is_whitelisted_token: sui::table::Table<std::type_name::TypeName, bool>,
         is_whitelisted_nft: sui::table::Table<LockID, bool>,
@@ -53,13 +122,13 @@ module distribution::voter {
     }
 
     public struct EventNotifyReward has copy, drop, store {
-        notifier: sui::object::ID,
+        notifier: ID,
         token: std::type_name::TypeName,
         amount: u64,
     }
 
     public struct EventExtractClaimable has copy, drop, store {
-        gauger: sui::object::ID,
+        gauger: ID,
         amount: u64,
     }
 
@@ -71,1100 +140,1280 @@ module distribution::voter {
 
     public struct EventWhitelistNFT has copy, drop, store {
         sender: address,
-        id: sui::object::ID,
+        id: ID,
         listed: bool,
     }
 
     public struct EventKillGauge has copy, drop, store {
-        id: sui::object::ID,
+        id: ID,
     }
 
     public struct EventReviveGauge has copy, drop, store {
-        id: sui::object::ID,
+        id: ID,
     }
 
     public struct EventVoted has copy, drop, store {
         sender: address,
-        pool: sui::object::ID,
-        lock: sui::object::ID,
+        pool: ID,
+        lock: ID,
         voting_weight: u64,
         pool_weight: u64,
     }
 
     public struct EventAbstained has copy, drop, store {
         sender: address,
-        pool: sui::object::ID,
-        lock: sui::object::ID,
+        pool: ID,
+        lock: ID,
         votes: u64,
         pool_weight: u64,
     }
 
     public struct EventAddGovernor has copy, drop, store {
         who: address,
+        cap: ID,
     }
 
     public struct EventRemoveGovernor has copy, drop, store {
-        who: address,
+        cap: ID,
     }
 
     public struct EventAddEpochGovernor has copy, drop, store {
         who: address,
+        cap: ID,
     }
 
     public struct EventRemoveEpochGovernor has copy, drop, store {
+        cap: ID,
+    }
+
+    public struct EventClaimBribeReward has copy, drop, store {
         who: address,
+        amount: u64,
+        pool: ID,
+        gauge: ID,
+        token: std::type_name::TypeName,
     }
 
-    public fun create<T0>(
-        _arg0: &sui::package::Publisher,
-        arg1: vector<std::type_name::TypeName>,
-        arg2: &mut sui::tx_context::TxContext
-    ): (Voter<T0>, distribution::notify_reward_cap::NotifyRewardCap) {
-        let v0 = sui::object::new(arg2);
-        let v1 = *sui::object::uid_as_inner(&v0);
-        let mut v2 = Voter<T0> {
-            id: v0,
-            flag_distribution: false,
-            governors: sui::vec_set::empty<sui::object::ID>(),
-            epoch_governors: sui::vec_set::empty<sui::object::ID>(),
-            emergency_council: sui::object::id_from_address(@0x0),
-            is_alive: sui::table::new<GaugeID, bool>(arg2),
+    public struct EventClaimVotingFeeReward has copy, drop, store {
+        who: address,
+        amount: u64,
+        pool: ID,
+        gauge: ID,
+        token: std::type_name::TypeName,
+    }
+
+    public struct EventDistributeGauge has copy, drop, store {
+        pool: ID,
+        gauge: ID,
+        fee_a_amount: u64,
+        fee_b_amount: u64,
+        amount: u64,
+    }
+
+    public fun create<SailCoinType>(
+        _publisher: &sui::package::Publisher,
+        global_config: ID,
+        distribution_config: ID,
+        supported_coins: vector<std::type_name::TypeName>,
+        ctx: &mut TxContext
+    ): (Voter<SailCoinType>, distribution::notify_reward_cap::NotifyRewardCap) {
+        let uid = object::new(ctx);
+        let id = *object::uid_as_inner(&uid);
+        let mut voter = Voter<SailCoinType> {
+            id: uid,
+            global_config,
+            distribution_config,
+            governors: sui::vec_set::empty<ID>(),
+            epoch_governors: sui::vec_set::empty<ID>(),
+            emergency_council: object::id_from_address(@0x0),
             total_weight: 0,
-            used_weights: sui::table::new<LockID, u64>(arg2),
+            used_weights: sui::table::new<LockID, u64>(ctx),
             pools: std::vector::empty<PoolID>(),
-            pool_to_gauger: sui::table::new<PoolID, GaugeID>(arg2),
-            gauge_represents: sui::table::new<GaugeID, GaugeRepresent>(arg2),
-            votes: sui::table::new<LockID, sui::table::Table<PoolID, u64>>(arg2),
-            rewards: sui::table::new<GaugeID, sui::balance::Balance<T0>>(arg2),
-            weights: sui::table::new<GaugeID, u64>(arg2),
+            pool_to_gauger: sui::table::new<PoolID, GaugeID>(ctx),
+            gauge_represents: sui::table::new<GaugeID, GaugeRepresent>(ctx),
+            votes: sui::table::new<LockID, sui::table::Table<PoolID, u64>>(ctx),
+            rewards: sui::table::new<GaugeID, sui::balance::Balance<SailCoinType>>(ctx),
+            weights: sui::table::new<GaugeID, u64>(ctx),
             epoch: 0,
-            voter_cap: distribution::voter_cap::create_voter_cap(v1, arg2),
-            balances: sui::bag::new(arg2),
+            voter_cap: distribution::voter_cap::create_voter_cap(id, ctx),
+            balances: sui::bag::new(ctx),
             index: 0,
-            supply_index: sui::table::new<GaugeID, u128>(arg2),
-            claimable: sui::table::new<GaugeID, u64>(arg2),
-            is_whitelisted_token: sui::table::new<std::type_name::TypeName, bool>(arg2),
-            is_whitelisted_nft: sui::table::new<LockID, bool>(arg2),
+            supply_index: sui::table::new<GaugeID, u128>(ctx),
+            claimable: sui::table::new<GaugeID, u64>(ctx),
+            is_whitelisted_token: sui::table::new<std::type_name::TypeName, bool>(ctx),
+            is_whitelisted_nft: sui::table::new<LockID, bool>(ctx),
             max_voting_num: 10,
-            last_voted: sui::table::new<LockID, u64>(arg2),
-            pool_vote: sui::table::new<LockID, vector<PoolID>>(arg2),
-            gauge_to_fee_authorized_cap: distribution::reward_authorized_cap::create(v1, arg2),
-            gauge_to_fee: sui::table::new<GaugeID, distribution::fee_voting_reward::FeeVotingReward>(arg2),
-            gauge_to_bribe_authorized_cap: distribution::reward_authorized_cap::create(v1, arg2),
-            gauge_to_bribe: sui::table::new<GaugeID, distribution::bribe_voting_reward::BribeVotingReward>(arg2),
+            last_voted: sui::table::new<LockID, u64>(ctx),
+            pool_vote: sui::table::new<LockID, vector<PoolID>>(ctx),
+            gauge_to_fee_authorized_cap: distribution::reward_authorized_cap::create(id, ctx),
+            gauge_to_fee: sui::table::new<GaugeID, distribution::fee_voting_reward::FeeVotingReward>(ctx),
+            gauge_to_bribe_authorized_cap: distribution::reward_authorized_cap::create(id, ctx),
+            gauge_to_bribe: sui::table::new<GaugeID, distribution::bribe_voting_reward::BribeVotingReward>(ctx),
         };
-        let mut v3 = 0;
-        while (v3 < std::vector::length<std::type_name::TypeName>(&arg1)) {
-            whitelist_token_internal<T0>(
-                &mut v2,
-                *std::vector::borrow<std::type_name::TypeName>(&arg1, v3),
-                true,
-                sui::tx_context::sender(arg2)
-            );
-            v3 = v3 + 1;
+        let mut i = 0;
+        while (i < supported_coins.length()) {
+            voter.whitelist_token_internal(supported_coins[i], true, tx_context::sender(ctx));
+            i = i + 1;
         };
-        let voter_id = sui::object::id<Voter<T0>>(&v2);
-        (v2, distribution::notify_reward_cap::create_internal(voter_id, arg2))
+        let sail_coin_type = std::type_name::get<SailCoinType>();
+        if (!voter.is_whitelisted_token.contains(sail_coin_type)) {
+            voter.is_whitelisted_token.add(sail_coin_type, true);
+        };
+        let notify_reward_cap = distribution::notify_reward_cap::create_internal(
+            object::id<Voter<SailCoinType>>(&voter),
+            ctx
+        );
+        (voter, notify_reward_cap)
     }
 
-    public fun deposit_managed<T0>(
-        arg0: &mut Voter<T0>,
-        arg1: &mut distribution::voting_escrow::VotingEscrow<T0>,
-        arg2: &mut distribution::voting_escrow::Lock,
-        arg3: &mut distribution::voting_escrow::Lock,
-        arg4: &sui::clock::Clock,
-        arg5: &mut sui::tx_context::TxContext
+    public fun deposit_managed<SailCoinType>(
+        voter: &mut Voter<SailCoinType>,
+        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
+        lock: &mut distribution::voting_escrow::Lock,
+        managed_lock: &mut distribution::voting_escrow::Lock,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
     ) {
-        let v0 = into_lock_id(sui::object::id<distribution::voting_escrow::Lock>(arg2));
-        assert_only_new_epoch<T0>(arg0, v0, arg4);
+        let lock_id = into_lock_id(object::id<distribution::voting_escrow::Lock>(lock));
+        voter.assert_only_new_epoch(lock_id, clock);
+        let current_time = distribution::common::current_timestamp(clock);
+        assert!(current_time <= distribution::common::epoch_vote_end(current_time), EDepositManagedEpochVoteEnded);
+        if (voter.last_voted.contains(lock_id)) {
+            voter.last_voted.remove(lock_id);
+        };
+        voter.last_voted.add(lock_id, current_time);
+        voting_escrow.deposit_managed(&voter.voter_cap, lock, managed_lock, clock, ctx);
+        let balance = voting_escrow.balance_of_nft_at(lock_id.id, current_time);
+        voter.poke_internal(voting_escrow, distribution_config, managed_lock, balance, clock, ctx);
+    }
+
+    public fun withdraw_managed<SailCoinType>(
+        voter: &mut Voter<SailCoinType>,
+        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
+        lock: &mut distribution::voting_escrow::Lock,
+        managed_lock: &mut distribution::voting_escrow::Lock,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        let lock_id = into_lock_id(object::id<distribution::voting_escrow::Lock>(lock));
+        voter.assert_only_new_epoch(lock_id, clock);
+        let managedd_lock_id = voting_escrow.id_to_managed(lock_id.id);
         assert!(
-            distribution::voting_escrow::owner_of<T0>(arg1, v0.id) == sui::tx_context::sender(arg5),
-            9223375275260116991
+            managedd_lock_id == object::id<distribution::voting_escrow::Lock>(managed_lock),
+            EWithdrawManagedInvlidManaged
         );
-        assert!(!distribution::voting_escrow::deactivated<T0>(arg1, v0.id), 9223375275262279714);
-        let v1 = distribution::voting_escrow::id_to_managed<T0>(arg1, v0.id);
-        assert!(v1 == sui::object::id<distribution::voting_escrow::Lock>(arg3), 9223375292439986175);
-        let v2 = distribution::common::current_timestamp(arg4);
-        assert!(v2 <= distribution::common::epoch_vote_end(v2), 9223375301033263156);
-        if (sui::table::contains<LockID, u64>(&arg0.last_voted, v0)) {
-            sui::table::remove<LockID, u64>(&mut arg0.last_voted, v0);
-        };
-        sui::table::add<LockID, u64>(&mut arg0.last_voted, v0, v2);
-        distribution::voting_escrow::deposit_managed<T0>(arg1, &arg0.voter_cap, arg2, v1, arg4, arg5);
-        let balance = distribution::voting_escrow::balance_of_nft_at<T0>(arg1, v0.id, v2);
-        poke_internal<T0>(arg0, arg1, arg3, balance, arg4, arg5);
-    }
-
-    public fun withdraw_managed<T0>(
-        arg0: &mut Voter<T0>,
-        arg1: &mut distribution::voting_escrow::VotingEscrow<T0>,
-        arg2: &mut distribution::voting_escrow::Lock,
-        arg3: &mut distribution::voting_escrow::Lock,
-        arg4: &sui::clock::Clock,
-        arg5: &mut sui::tx_context::TxContext
-    ) {
-        let v0 = into_lock_id(sui::object::id<distribution::voting_escrow::Lock>(arg2));
-        assert_only_new_epoch<T0>(arg0, v0, arg4);
-        let v1 = distribution::voting_escrow::id_to_managed<T0>(arg1, v0.id);
-        assert!(v1 == sui::object::id<distribution::voting_escrow::Lock>(arg3), 9223375378339332095);
-        let v2 = distribution::voting_escrow::balance_of_nft_at<T0>(
-            arg1,
-            v1,
-            distribution::common::current_timestamp(arg4)
+        let owner_proof = voting_escrow.owner_proof(lock, ctx);
+        voting_escrow.withdraw_managed(&voter.voter_cap, lock, managed_lock, owner_proof, clock, ctx);
+        let balance_of_nft = voting_escrow.balance_of_nft_at(
+            managedd_lock_id,
+            distribution::common::current_timestamp(clock)
         );
-        if (v2 == 0) {
-            reset_internal<T0>(arg0, arg1, arg3, arg4, arg5);
-            if (sui::table::contains<LockID, u64>(&arg0.last_voted, into_lock_id(v1))) {
-                sui::table::remove<LockID, u64>(&mut arg0.last_voted, into_lock_id(v1));
+        if (balance_of_nft == 0) {
+            voter.reset_internal(voting_escrow, distribution_config, managed_lock, clock, ctx);
+            if (voter.last_voted.contains(into_lock_id(managedd_lock_id))) {
+                voter.last_voted.remove(into_lock_id(managedd_lock_id));
             };
         } else {
-            poke_internal<T0>(arg0, arg1, arg3, v2, arg4, arg5);
+            voter.poke_internal(voting_escrow, distribution_config, managed_lock, balance_of_nft, clock, ctx);
         };
-        let proof = distribution::voting_escrow::owner_proof<T0>(arg1, arg2, arg5);
-        let balance = distribution::voting_escrow::withdraw_managed<T0>(
-            arg1,
-            &arg0.voter_cap,
-            v0.id,
-            proof,
-            arg4,
-            arg5
-        );
-        sui::transfer::public_transfer<sui::coin::Coin<T0>>(
-            sui::coin::from_balance<T0>(balance, arg5),
-            sui::tx_context::sender(arg5)
-        );
     }
 
-    public fun add_epoch_governor<T0>(
-        arg0: &mut Voter<T0>,
-        arg1: &distribution::voter_cap::GovernorCap,
-        arg2: address,
-        arg3: &mut sui::tx_context::TxContext
+    public fun add_epoch_governor<SailCoinType>(
+        voter: &mut Voter<SailCoinType>,
+        governor_cap: &distribution::voter_cap::GovernorCap,
+        who: address,
+        ctx: &mut TxContext
     ) {
-        distribution::voter_cap::validate_governor_voter_id(arg1, sui::object::id<Voter<T0>>(arg0));
-        sui::transfer::public_transfer<distribution::voter_cap::EpochGovernorCap>(
-            distribution::voter_cap::create_epoch_governor_cap(sui::object::id<Voter<T0>>(arg0), arg3),
-            arg2
-        );
-        let v0 = EventAddEpochGovernor { who: arg2 };
-        sui::event::emit<EventAddEpochGovernor>(v0);
-    }
-
-    public fun add_governor<T0>(
-        arg0: &mut Voter<T0>,
-        _arg1: &sui::package::Publisher,
-        arg2: address,
-        arg3: &mut sui::tx_context::TxContext
-    ) {
-        sui::transfer::public_transfer<distribution::voter_cap::GovernorCap>(
-            distribution::voter_cap::create_governor_cap(sui::object::id<Voter<T0>>(arg0), arg2, arg3),
-            arg2
-        );
-        sui::vec_set::insert<sui::object::ID>(&mut arg0.governors, sui::object::id_from_address(arg2));
-        let v0 = EventAddGovernor { who: arg2 };
-        sui::event::emit<EventAddGovernor>(v0);
-    }
-
-    fun assert_only_new_epoch<T0>(arg0: &Voter<T0>, arg1: LockID, arg2: &sui::clock::Clock) {
-        let v0 = distribution::common::current_timestamp(arg2);
         assert!(
-            !sui::table::contains<LockID, u64>(&arg0.last_voted, arg1) || distribution::common::epoch_start(
-                v0
-            ) > *sui::table::borrow<LockID, u64>(&arg0.last_voted, arg1),
-            9223373329641701404
+            voter.is_governor(object::id<distribution::voter_cap::GovernorCap>(governor_cap)),
+            EAddEpochGovernorInvalidGovernor
         );
-        assert!(v0 > distribution::common::epoch_vote_start(v0), 9223373333936799774);
+        governor_cap.validate_governor_voter_id(object::id<Voter<SailCoinType>>(voter));
+        let epoch_governor_cap = distribution::voter_cap::create_epoch_governor_cap(
+            object::id<Voter<SailCoinType>>(voter),
+            ctx
+        );
+        let epoch_governor_cap_id = object::id<distribution::voter_cap::EpochGovernorCap>(&epoch_governor_cap);
+        transfer::public_transfer<distribution::voter_cap::EpochGovernorCap>(epoch_governor_cap, who);
+        voter.epoch_governors.insert<ID>(epoch_governor_cap_id);
+        let add_epoch_governor_event = EventAddEpochGovernor {
+            who,
+            cap: epoch_governor_cap_id,
+        };
+        sui::event::emit<EventAddEpochGovernor>(add_epoch_governor_event);
     }
 
-    public fun borrow_bribe_voting_reward<T0>(
-        arg0: &Voter<T0>,
-        arg1: sui::object::ID
+    public fun add_governor<SailCoinType>(
+        voter: &mut Voter<SailCoinType>,
+        _publisher: &sui::package::Publisher,
+        who: address,
+        ctx: &mut TxContext
+    ) {
+        let governor_cap = distribution::voter_cap::create_governor_cap(
+            object::id<Voter<SailCoinType>>(voter),
+            who,
+            ctx
+        );
+        let governor_cap_id = object::id<distribution::voter_cap::GovernorCap>(&governor_cap);
+        voter.governors.insert<ID>(governor_cap_id);
+        transfer::public_transfer<distribution::voter_cap::GovernorCap>(governor_cap, who);
+        let add_governor_event = EventAddGovernor {
+            who,
+            cap: governor_cap_id,
+        };
+        sui::event::emit<EventAddGovernor>(add_governor_event);
+    }
+
+    fun assert_only_new_epoch<SailCoinType>(voter: &Voter<SailCoinType>, lock_id: LockID, clock: &sui::clock::Clock) {
+        let current_time = distribution::common::current_timestamp(clock);
+        assert!(
+            !voter.last_voted.contains(lock_id) ||
+                distribution::common::epoch_start(current_time) > *voter.last_voted.borrow(lock_id),
+            EAlreadyVotedInCurrentEpoch
+        );
+        assert!(current_time > distribution::common::epoch_vote_start(current_time), EVotingNotStarted);
+    }
+
+    public fun borrow_bribe_voting_reward<SailCoinType>(
+        voter: &Voter<SailCoinType>,
+        gauge_id: ID
     ): &distribution::bribe_voting_reward::BribeVotingReward {
-        sui::table::borrow<GaugeID, distribution::bribe_voting_reward::BribeVotingReward>(
-            &arg0.gauge_to_bribe,
-            into_gauge_id(arg1)
-        )
+        voter.gauge_to_bribe.borrow(into_gauge_id(gauge_id))
     }
 
-    public fun borrow_bribe_voting_reward_mut<T0>(
-        arg0: &mut Voter<T0>,
-        arg1: sui::object::ID
+    public fun borrow_bribe_voting_reward_mut<SailCoinType>(
+        voter: &mut Voter<SailCoinType>,
+        gauge_id: ID
     ): &mut distribution::bribe_voting_reward::BribeVotingReward {
-        sui::table::borrow_mut<GaugeID, distribution::bribe_voting_reward::BribeVotingReward>(
-            &mut arg0.gauge_to_bribe,
-            into_gauge_id(arg1)
-        )
+        voter.gauge_to_bribe.borrow_mut(into_gauge_id(gauge_id))
     }
 
-    public fun borrow_fee_voting_reward<T0>(
-        arg0: &Voter<T0>,
-        arg1: sui::object::ID
+    public fun borrow_fee_voting_reward<SailCoinType>(
+        voter: &Voter<SailCoinType>,
+        gauge_id: ID
     ): &distribution::fee_voting_reward::FeeVotingReward {
-        sui::table::borrow<GaugeID, distribution::fee_voting_reward::FeeVotingReward>(
-            &arg0.gauge_to_fee,
-            into_gauge_id(arg1)
-        )
+        voter.gauge_to_fee.borrow(into_gauge_id(gauge_id))
     }
 
-    public fun borrow_fee_voting_reward_mut<T0>(
-        arg0: &mut Voter<T0>,
-        arg1: sui::object::ID
+    public fun borrow_fee_voting_reward_mut<SailCoinType>(
+        voter: &mut Voter<SailCoinType>,
+        gauge_id: ID
     ): &mut distribution::fee_voting_reward::FeeVotingReward {
-        sui::table::borrow_mut<GaugeID, distribution::fee_voting_reward::FeeVotingReward>(
-            &mut arg0.gauge_to_fee,
-            into_gauge_id(arg1)
-        )
+        voter.gauge_to_fee.borrow_mut(into_gauge_id(gauge_id))
     }
 
-    public fun borrow_voter_cap<T0>(
-        arg0: &Voter<T0>,
-        arg1: &distribution::notify_reward_cap::NotifyRewardCap
+    public fun borrow_voter_cap<SailCoinType>(
+        voter: &Voter<SailCoinType>,
+        notify_reward_cap: &distribution::notify_reward_cap::NotifyRewardCap
     ): &distribution::voter_cap::VoterCap {
-        distribution::notify_reward_cap::validate_notify_reward_voter_id(arg1, sui::object::id<Voter<T0>>(arg0));
-        &arg0.voter_cap
+        notify_reward_cap.validate_notify_reward_voter_id(object::id<Voter<SailCoinType>>(voter));
+        &voter.voter_cap
     }
 
-    fun check_vote<T0>(arg0: &Voter<T0>, arg1: &vector<sui::object::ID>, arg2: &vector<u64>) {
-        let v0 = std::vector::length<sui::object::ID>(arg1);
-        assert!(v0 == std::vector::length<u64>(arg2), 9223374162864308236);
-        assert!(v0 <= arg0.max_voting_num, 9223374167160586272);
-        let mut v1 = 0;
-        while (v1 < v0) {
+    fun check_vote<SailCoinType>(
+        voter: &Voter<SailCoinType>,
+        pool_ids: &vector<ID>,
+        weights: &vector<u64>
+    ) {
+        let pools_length = pool_ids.length();
+        assert!(pools_length == weights.length(), ECheckVoteSizesDoNotMatch);
+        assert!(pools_length <= voter.max_voting_num, ECheckVoteMaxVoteNumExceed);
+        let mut i = 0;
+        while (i < pools_length) {
             assert!(
-                sui::table::contains<PoolID, GaugeID>(
-                    &arg0.pool_to_gauger,
-                    into_pool_id(*std::vector::borrow<sui::object::ID>(arg1, v1))
-                ),
-                9223374184339275790
+                voter.pool_to_gauger.contains(into_pool_id(pool_ids[i])),
+                ECheckVoteGaugeNotFound
             );
-            assert!(*std::vector::borrow<u64>(arg2, v1) <= 10000, 9223374188634374160);
-            v1 = v1 + 1;
+            assert!(weights[i] <= 10000, ECheckVoteWeightTooLarge);
+            i = i + 1;
         };
     }
 
-    public fun claim_voting_bribe<T0, T1>(
-        arg0: &mut Voter<T0>,
-        arg1: &mut distribution::voting_escrow::VotingEscrow<T0>,
-        arg2: &distribution::voting_escrow::Lock,
-        arg3: &sui::clock::Clock,
-        arg4: &mut sui::tx_context::TxContext
+    public fun claim_voting_bribe<SailCoinType, BribeCoinType>(
+        voter: &mut Voter<SailCoinType>,
+        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        lock: &distribution::voting_escrow::Lock,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
     ) {
-        let v0 = sui::table::borrow<LockID, vector<PoolID>>(
-            &arg0.pool_vote,
-            into_lock_id(sui::object::id<distribution::voting_escrow::Lock>(arg2))
+        let voted_pools = voter.pool_vote.borrow(
+            into_lock_id(object::id<distribution::voting_escrow::Lock>(lock))
         );
-        let mut v1 = 0;
-        while (v1 < std::vector::length<PoolID>(v0)) {
-            distribution::bribe_voting_reward::get_reward<T0, T1>(
-                sui::table::borrow_mut<GaugeID, distribution::bribe_voting_reward::BribeVotingReward>(
-                    &mut arg0.gauge_to_bribe,
-                    *sui::table::borrow<PoolID, GaugeID>(&arg0.pool_to_gauger, *std::vector::borrow<PoolID>(v0, v1))
+        let mut i = 0;
+        while (i < voted_pools.length()) {
+            let pool_id = *voted_pools.borrow(i);
+            let gauge_id = *voter.pool_to_gauger.borrow(pool_id);
+            i = i + 1;
+            let claim_bribe_reward_event = EventClaimBribeReward {
+                who: tx_context::sender(ctx),
+                amount: voter.gauge_to_bribe.borrow_mut(gauge_id).get_reward<SailCoinType, BribeCoinType>(
+                    voting_escrow,
+                    lock,
+                    clock,
+                    ctx
                 ),
-                arg1,
-                arg2,
-                arg3,
-                arg4
-            );
-            v1 = v1 + 1;
+                pool: pool_id.id,
+                gauge: gauge_id.id,
+                token: std::type_name::get<BribeCoinType>(),
+            };
+            sui::event::emit<EventClaimBribeReward>(claim_bribe_reward_event);
         };
     }
 
-    public fun claim_voting_fee_reward<T0, T1>(
-        arg0: &mut Voter<T0>,
-        arg1: &mut distribution::voting_escrow::VotingEscrow<T0>,
-        arg2: &distribution::voting_escrow::Lock,
-        arg3: &sui::clock::Clock,
-        arg4: &mut sui::tx_context::TxContext
+    public fun claim_voting_fee_reward<SailCoinType, FeeCoinType>(
+        voter: &mut Voter<SailCoinType>,
+        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        lock: &distribution::voting_escrow::Lock,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
     ) {
-        let v0 = sui::table::borrow<LockID, vector<PoolID>>(
-            &arg0.pool_vote,
-            into_lock_id(sui::object::id<distribution::voting_escrow::Lock>(arg2))
+        let voted_pools = voter.pool_vote.borrow(
+            into_lock_id(object::id<distribution::voting_escrow::Lock>(lock))
         );
-        let mut v1 = 0;
-        while (v1 < std::vector::length<PoolID>(v0)) {
-            distribution::fee_voting_reward::get_reward<T0, T1>(
-                sui::table::borrow_mut<GaugeID, distribution::fee_voting_reward::FeeVotingReward>(
-                    &mut arg0.gauge_to_fee,
-                    *sui::table::borrow<PoolID, GaugeID>(&arg0.pool_to_gauger, *std::vector::borrow<PoolID>(v0, v1))
+        let mut i = 0;
+        while (i < voted_pools.length()) {
+            let pool_id = *voted_pools.borrow(i);
+            let gauge_id = *voter.pool_to_gauger.borrow(pool_id);
+            i = i + 1;
+            let claim_voting_fee_reward_event = EventClaimVotingFeeReward {
+                who: tx_context::sender(ctx),
+                amount: voter.gauge_to_fee.borrow_mut(gauge_id).get_reward<SailCoinType, FeeCoinType>(
+                    voting_escrow,
+                    lock,
+                    clock,
+                    ctx
                 ),
-                arg1,
-                arg2,
-                arg3,
-                arg4
-            );
-            v1 = v1 + 1;
+                pool: pool_id.id,
+                gauge: gauge_id.id,
+                token: std::type_name::get<FeeCoinType>(),
+            };
+            sui::event::emit<EventClaimVotingFeeReward>(claim_voting_fee_reward_event);
         };
     }
 
-    public fun claimable<T0>(arg0: &Voter<T0>, arg1: sui::object::ID): u64 {
-        let v0 = into_gauge_id(arg1);
-        if (sui::table::contains<GaugeID, u64>(&arg0.claimable, v0)) {
-            *sui::table::borrow<GaugeID, u64>(&arg0.claimable, v0)
+    public fun claimable<SailCoinType>(voter: &Voter<SailCoinType>, gauge_id: ID): u64 {
+        let gauge_id_obj = into_gauge_id(gauge_id);
+        if (voter.claimable.contains(gauge_id_obj)) {
+            *voter.claimable.borrow(gauge_id_obj)
         } else {
             0
         }
     }
 
-    public fun create_gauge<T0, T1, T2>(
-        arg0: &mut Voter<T2>,
-        arg1: &gauge_cap::gauge_cap::CreateCap,
-        arg2: &distribution::voter_cap::GovernorCap,
-        arg3: &distribution::voting_escrow::VotingEscrow<T2>,
-        arg4: &mut clmm_pool::pool::Pool<T0, T1>,
-        arg5: &sui::clock::Clock,
-        arg6: &mut sui::tx_context::TxContext
-    ): distribution::gauge::Gauge<T0, T1, T2> {
-        distribution::voter_cap::validate_governor_voter_id(arg2, sui::object::id<Voter<T2>>(arg0));
-        assert!(is_governor<T2>(arg0, distribution::voter_cap::who(arg2)), 9223373604519346200);
-        let mut v0 = return_new_gauge<T0, T1, T2>(arg1, arg4, arg6);
-        let mut v1 = std::vector::empty<std::type_name::TypeName>();
-        std::vector::push_back<std::type_name::TypeName>(&mut v1, std::type_name::get<T0>());
-        std::vector::push_back<std::type_name::TypeName>(&mut v1, std::type_name::get<T1>());
-        let v2 = sui::object::id<distribution::gauge::Gauge<T0, T1, T2>>(&v0);
-        let v3 = sui::object::id<Voter<T2>>(arg0);
-        let v4 = sui::object::id<distribution::voting_escrow::VotingEscrow<T2>>(arg3);
-        sui::table::add<GaugeID, distribution::fee_voting_reward::FeeVotingReward>(
-            &mut arg0.gauge_to_fee,
-            into_gauge_id(v2),
-            distribution::fee_voting_reward::create(v3, v4, v2, v1, arg6)
-        );
-        std::vector::push_back<std::type_name::TypeName>(&mut v1, std::type_name::get<T2>());
-        sui::table::add<GaugeID, distribution::bribe_voting_reward::BribeVotingReward>(
-            &mut arg0.gauge_to_bribe,
-            into_gauge_id(v2),
-            distribution::bribe_voting_reward::create(v3, v4, v2, v1, arg6)
-        );
-        receive_gauger<T0, T1, T2>(arg0, arg2, &mut v0, arg5, arg6);
-        v0
-    }
-
-    public fun distribute_gauge<T0, T1, T2>(
-        arg0: &mut Voter<T2>,
-        arg1: &mut distribution::gauge::Gauge<T0, T1, T2>,
-        arg2: &mut clmm_pool::pool::Pool<T0, T1>,
-        arg3: &sui::clock::Clock,
-        arg4: &mut sui::tx_context::TxContext
-    ): u64 {
-        let v0 = into_gauge_id(sui::object::id<distribution::gauge::Gauge<T0, T1, T2>>(arg1));
-        let v1 = sui::table::borrow<GaugeID, GaugeRepresent>(&arg0.gauge_represents, v0);
+    public fun create_gauge<CoinTypeA, CoinTypeB, SailCoinType>(
+        voter: &mut Voter<SailCoinType>,
+        distribution_config: &mut distribution::distribution_config::DistributionConfig,
+        create_cap: &gauge_cap::gauge_cap::CreateCap,
+        governor_cap: &distribution::voter_cap::GovernorCap,
+        voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ): distribution::gauge::Gauge<CoinTypeA, CoinTypeB, SailCoinType> {
+        governor_cap.validate_governor_voter_id(object::id<Voter<SailCoinType>>(voter));
         assert!(
-            v1.pool_id == sui::object::id<clmm_pool::pool::Pool<T0, T1>>(arg2) && v1.gauger_id == v0.id,
-            9223375983929720831
+            voter.is_governor(object::id<distribution::voter_cap::GovernorCap>(governor_cap)),
+            ECreateGaugeNotAGovernor
         );
-        let v2 = extract_claimable_for<T2>(arg0, v0.id);
-        let balance = sui::balance::value<T2>(&v2);
-        let (v3, v4) = distribution::gauge::notify_reward<T0, T1, T2>(arg1, &arg0.voter_cap, arg2, v2, arg3, arg4);
-        let v5 = sui::table::borrow_mut<GaugeID, distribution::fee_voting_reward::FeeVotingReward>(
-            &mut arg0.gauge_to_fee,
-            v0
-        );
-        distribution::fee_voting_reward::notify_reward_amount<T0>(
-            v5,
-            &arg0.gauge_to_fee_authorized_cap,
-            sui::coin::from_balance<T0>(v3, arg4),
-            arg3,
-            arg4
-        );
-        distribution::fee_voting_reward::notify_reward_amount<T1>(
-            v5,
-            &arg0.gauge_to_fee_authorized_cap,
-            sui::coin::from_balance<T1>(v4, arg4),
-            arg3,
-            arg4
-        );
-        balance
-    }
-
-    fun extract_claimable_for<T0>(arg0: &mut Voter<T0>, arg1: sui::object::ID): sui::balance::Balance<T0> {
-        let v0 = into_gauge_id(arg1);
-        update_for_internal<T0>(arg0, v0);
-        let v1 = *sui::table::borrow<GaugeID, u64>(&arg0.claimable, v0);
-        assert!(v1 > 604800, 9223375923800178687);
-        sui::table::remove<GaugeID, u64>(&mut arg0.claimable, v0);
-        sui::table::add<GaugeID, u64>(&mut arg0.claimable, v0, 0);
-        let v2 = EventExtractClaimable {
-            gauger: v0.id,
-            amount: v1,
-        };
-        sui::event::emit<EventExtractClaimable>(v2);
-        sui::balance::split<T0>(
-            sui::bag::borrow_mut<std::type_name::TypeName, sui::balance::Balance<T0>>(
-                &mut arg0.balances,
-                std::type_name::get<T0>()
+        assert!(
+            voter.distribution_config == object::id<distribution::distribution_config::DistributionConfig>(
+                distribution_config
             ),
-            v1
-        )
+            ECreateGaugeDistributionConfigInvalid
+        );
+        let mut gauge = return_new_gauge<CoinTypeA, CoinTypeB, SailCoinType>(
+            distribution_config,
+            create_cap,
+            pool,
+            ctx
+        );
+        let mut reward_coins = std::vector::empty<std::type_name::TypeName>();
+        reward_coins.push_back(std::type_name::get<CoinTypeA>());
+        reward_coins.push_back(std::type_name::get<CoinTypeB>());
+        let gauge_id = object::id<distribution::gauge::Gauge<CoinTypeA, CoinTypeB, SailCoinType>>(&gauge);
+        let voter_id = object::id<Voter<SailCoinType>>(voter);
+        let voting_escrow_id = object::id<distribution::voting_escrow::VotingEscrow<SailCoinType>>(voting_escrow);
+        voter.gauge_to_fee.add(
+            into_gauge_id(gauge_id),
+            distribution::fee_voting_reward::create(voter_id, voting_escrow_id, gauge_id, reward_coins, ctx)
+        );
+        reward_coins.push_back(std::type_name::get<SailCoinType>());
+        voter.gauge_to_bribe.add(
+            into_gauge_id(gauge_id),
+            distribution::bribe_voting_reward::create(voter_id, voting_escrow_id, gauge_id, reward_coins, ctx)
+        );
+        voter.receive_gauger(governor_cap, &mut gauge, clock, ctx);
+        let mut alive_gauges_vec = std::vector::empty<ID>();
+        alive_gauges_vec.push_back(gauge_id);
+        distribution_config.update_gauge_liveness(alive_gauges_vec, true, ctx);
+        gauge
     }
 
-    public fun fee_voting_reward_balance<T0, T1>(arg0: &Voter<T0>, arg1: sui::object::ID): u64 {
-        distribution::fee_voting_reward::balance<T1>(
-            sui::table::borrow<GaugeID, distribution::fee_voting_reward::FeeVotingReward>(
-                &arg0.gauge_to_fee,
-                into_gauge_id(arg1)
-            )
-        )
+    public fun distribute_gauge<CoinTypeA, CoinTypeB, SailCoinType>(
+        voter: &mut Voter<SailCoinType>,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
+        gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB, SailCoinType>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ): u64 {
+        let gauge_id = into_gauge_id(
+            object::id<distribution::gauge::Gauge<CoinTypeA, CoinTypeB, SailCoinType>>(gauge)
+        );
+        let gauge_represent = voter.gauge_represents.borrow(gauge_id);
+        assert!(
+            gauge_represent.pool_id == object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(
+                pool
+            ) && gauge_represent.gauger_id == gauge_id.id,
+            EDistributeGaugeInvalidGaugeRepresent
+        );
+        let claimable_balance = voter.extract_claimable_for(distribution_config, gauge_id.id);
+        let balance_value = claimable_balance.value();
+        let (fee_reward_a, fee_reward_b) = gauge.notify_reward(&voter.voter_cap, pool, claimable_balance, clock, ctx);
+        let fee_a_amount = fee_reward_a.value<CoinTypeA>();
+        let fee_b_amount = fee_reward_b.value<CoinTypeB>();
+        let fee_voting_reward = voter.gauge_to_fee.borrow_mut(gauge_id);
+        fee_voting_reward.notify_reward_amount(
+            &voter.gauge_to_fee_authorized_cap,
+            sui::coin::from_balance<CoinTypeA>(fee_reward_a, ctx),
+            clock,
+            ctx
+        );
+        fee_voting_reward.notify_reward_amount(
+            &voter.gauge_to_fee_authorized_cap,
+            sui::coin::from_balance<CoinTypeB>(fee_reward_b, ctx),
+            clock,
+            ctx
+        );
+        let distribute_gauge_event = EventDistributeGauge {
+            pool: object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool),
+            gauge: gauge_id.id,
+            fee_a_amount,
+            fee_b_amount,
+            amount: balance_value,
+        };
+        sui::event::emit<EventDistributeGauge>(distribute_gauge_event);
+        balance_value
     }
 
-    public fun get_gauge_weight<T0>(arg0: &Voter<T0>, arg1: GaugeID): u64 {
-        *sui::table::borrow<GaugeID, u64>(&arg0.weights, arg1)
+    fun extract_claimable_for<SailCoinType>(
+        voter: &mut Voter<SailCoinType>,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
+        gauge_id: ID
+    ): sui::balance::Balance<SailCoinType> {
+        let gauge_id = into_gauge_id(gauge_id);
+        voter.update_for_internal(distribution_config, gauge_id);
+        let amount = *voter.claimable.borrow(gauge_id);
+        voter.claimable.remove(gauge_id);
+        voter.claimable.add(gauge_id, 0);
+        let extract_claimable_event = EventExtractClaimable {
+            gauger: gauge_id.id,
+            amount,
+        };
+        sui::event::emit<EventExtractClaimable>(extract_claimable_event);
+        voter.balances.borrow_mut<std::type_name::TypeName, sui::balance::Balance<SailCoinType>>(
+            std::type_name::get<SailCoinType>()
+        ).split<SailCoinType>(amount)
     }
 
-    public fun get_pool_weight<T0>(arg0: &Voter<T0>, arg1: sui::object::ID): u64 {
-        get_gauge_weight<T0>(arg0, *sui::table::borrow<PoolID, GaugeID>(&arg0.pool_to_gauger, into_pool_id(arg1)))
+    public fun fee_voting_reward_balance<SailCoinType, CoinTypeA>(
+        voter: &Voter<SailCoinType>,
+        gauge_id: ID
+    ): u64 {
+        voter.gauge_to_fee.borrow(into_gauge_id(gauge_id)).balance<CoinTypeA>()
     }
 
-    public fun get_total_weight<T0>(arg0: &Voter<T0>): u64 {
-        arg0.total_weight
+    public fun get_balance<SailCoinType, BribeCoinType>(voter: &Voter<SailCoinType>): u64 {
+        let bribe_coin_type = std::type_name::get<BribeCoinType>();
+        if (!voter.balances.contains(bribe_coin_type)) {
+            0
+        } else {
+            voter.balances.borrow<std::type_name::TypeName, sui::balance::Balance<BribeCoinType>>(
+                bribe_coin_type
+            ).value<BribeCoinType>()
+        }
     }
 
-    public fun get_votes<T0>(arg0: &Voter<T0>, arg1: sui::object::ID): &sui::table::Table<PoolID, u64> {
-        let v0 = into_lock_id(arg1);
-        assert!(sui::table::contains<LockID, sui::table::Table<PoolID, u64>>(&arg0.votes, v0), 9223375618857500671);
-        sui::table::borrow<LockID, sui::table::Table<PoolID, u64>>(&arg0.votes, v0)
+    public fun get_gauge_weight<SailCoinType>(voter: &Voter<SailCoinType>, gauge_id: ID): u64 {
+        *voter.weights.borrow(into_gauge_id(gauge_id))
     }
 
-    fun init(arg0: VOTER, arg1: &mut sui::tx_context::TxContext) {
-        sui::package::claim_and_keep<VOTER>(arg0, arg1);
+    public fun get_pool_weight<SailCoinType>(arg0: &Voter<SailCoinType>, pool_id: ID): u64 {
+        let gauge_id = *arg0.pool_to_gauger.borrow(into_pool_id(pool_id));
+        arg0.get_gauge_weight(gauge_id.id)
     }
 
-    public(package) fun into_gauge_id(arg0: sui::object::ID): GaugeID {
-        GaugeID { id: arg0 }
+    public fun get_total_weight<SailCoinType>(voter: &Voter<SailCoinType>): u64 {
+        voter.total_weight
     }
 
-    public(package) fun into_lock_id(arg0: sui::object::ID): LockID {
-        LockID { id: arg0 }
+    public fun get_votes<SailCoinType>(
+        voter: &Voter<SailCoinType>,
+        lock_id: ID
+    ): &sui::table::Table<PoolID, u64> {
+        let lock_id_obj = into_lock_id(lock_id);
+        assert!(
+            voter.votes.contains(lock_id_obj),
+            EGetVotesNotVoted
+        );
+        voter.votes.borrow(lock_id_obj)
     }
 
-    public(package) fun into_pool_id(arg0: sui::object::ID): PoolID {
-        PoolID { id: arg0 }
+    fun init(otw: VOTER, ctx: &mut TxContext) {
+        sui::package::claim_and_keep<VOTER>(otw, ctx);
     }
 
-    fun is_gauge_alive<T0>(arg0: &Voter<T0>, arg1: GaugeID): bool {
-        sui::table::contains<GaugeID, bool>(&arg0.is_alive, arg1) && *sui::table::borrow<GaugeID, bool>(
-            &arg0.is_alive,
-            arg1
-        ) == true
+    public(package) fun into_gauge_id(id: ID): GaugeID {
+        GaugeID { id }
     }
 
-    public fun is_governor<T0>(arg0: &Voter<T0>, arg1: sui::object::ID): bool {
-        sui::vec_set::contains<sui::object::ID>(&arg0.governors, &arg1)
+    public(package) fun into_lock_id(id: ID): LockID {
+        LockID { id }
     }
 
-    public fun is_whitelisted_token<T0, T1>(arg0: &Voter<T0>): bool {
-        let v0 = std::type_name::get<T1>();
-        if (sui::table::contains<std::type_name::TypeName, bool>(&arg0.is_whitelisted_token, v0)) {
-            let v2 = true;
-            &v2 == sui::table::borrow<std::type_name::TypeName, bool>(&arg0.is_whitelisted_token, v0)
+    public(package) fun into_pool_id(id: ID): PoolID {
+        PoolID { id }
+    }
+
+    public fun is_epoch_governor<SailCoinType>(voter: &Voter<SailCoinType>, who: ID): bool {
+        voter.epoch_governors.contains<ID>(&who)
+    }
+
+    public fun is_governor<SailCoinType>(voter: &Voter<SailCoinType>, who: ID): bool {
+        voter.governors.contains<ID>(&who)
+    }
+
+    public fun is_whitelisted_nft<SailCoinType>(voter: &Voter<SailCoinType>, lock_id: ID): bool {
+        let lock_id_obj = into_lock_id(lock_id);
+        voter.is_whitelisted_nft.contains(lock_id_obj) &&
+            *voter.is_whitelisted_nft.borrow(lock_id_obj)
+    }
+
+    public fun is_whitelisted_token<SailCoinType, CoinToCheckType>(voter: &Voter<SailCoinType>): bool {
+        let coin_type_name = std::type_name::get<CoinToCheckType>();
+        if (voter.is_whitelisted_token.contains(coin_type_name)) {
+            let is_whitelisted_true = true;
+            &is_whitelisted_true == voter.is_whitelisted_token.borrow(coin_type_name)
         } else {
             false
         }
     }
 
-    public fun kill_gauger<T0>(
-        arg0: &mut Voter<T0>,
-        arg1: &distribution::emergency_council::EmergencyCouncilCap,
-        arg2: sui::object::ID,
-        _arg3: &sui::clock::Clock
-    ): sui::balance::Balance<T0> {
-        distribution::emergency_council::validate_emergency_council_voter_id(arg1, sui::object::id<Voter<T0>>(arg0));
-        let v0 = into_gauge_id(arg2);
-        assert!(sui::table::contains<GaugeID, bool>(&arg0.is_alive, v0), 9223374012540190728);
-        let v1 = true;
-        assert!(sui::table::borrow<GaugeID, bool>(&arg0.is_alive, v0) == &v1, 9223374016835944468);
-        update_for_internal<T0>(arg0, v0);
-        let v2 = sui::table::remove<GaugeID, u64>(&mut arg0.claimable, v0);
-        let mut v3 = sui::balance::zero<T0>();
-        if (v2 > 0) {
-            sui::balance::join<T0>(
-                &mut v3,
-                sui::balance::split<T0>(
-                    sui::bag::borrow_mut<std::type_name::TypeName, sui::balance::Balance<T0>>(
-                        &mut arg0.balances,
-                        std::type_name::get<T0>()
-                    ),
-                    v2
-                )
+    public fun kill_gauge<SailCoinType>(
+        voter: &mut Voter<SailCoinType>,
+        distribution_config: &mut distribution::distribution_config::DistributionConfig,
+        emergency_council_cap: &distribution::emergency_council::EmergencyCouncilCap,
+        gauge_id: ID,
+        ctx: &mut TxContext
+    ): sui::balance::Balance<SailCoinType> {
+        emergency_council_cap.validate_emergency_council_voter_id(object::id<Voter<SailCoinType>>(
+            voter
+        ));
+        assert!(
+            object::id<distribution::distribution_config::DistributionConfig>(
+                distribution_config
+            ) == voter.distribution_config,
+            EKillGaugeDistributionConfigInvalid
+        );
+        assert!(
+            distribution_config.is_gauge_alive(gauge_id),
+            EKillGaugeAlreadyKilled
+        );
+        let gauge_id_obj = into_gauge_id(gauge_id);
+        voter.update_for_internal(distribution_config, gauge_id_obj);
+        let remaining_claimable_amount = if (voter.claimable.contains(gauge_id_obj)) {
+            voter.claimable.remove(gauge_id_obj)
+        } else {
+            0
+        };
+        let mut cashback = sui::balance::zero<SailCoinType>();
+        if (remaining_claimable_amount > 0) {
+            cashback.join<SailCoinType>(
+                voter.balances.borrow_mut<std::type_name::TypeName, sui::balance::Balance<SailCoinType>>(
+                    std::type_name::get<SailCoinType>()
+                ).split<SailCoinType>(remaining_claimable_amount)
             );
         };
-        sui::table::remove<GaugeID, bool>(&mut arg0.is_alive, v0);
-        sui::table::add<GaugeID, bool>(&mut arg0.is_alive, v0, false);
-        let v4 = EventKillGauge { id: v0.id };
-        sui::event::emit<EventKillGauge>(v4);
-        v3
+        let mut killed_gauge_ids = std::vector::empty<ID>();
+        killed_gauge_ids.push_back(gauge_id_obj.id);
+        distribution_config.update_gauge_liveness(killed_gauge_ids, false, ctx);
+        let kill_gauge_event = EventKillGauge { id: gauge_id_obj.id };
+        sui::event::emit<EventKillGauge>(kill_gauge_event);
+        cashback
     }
 
-    public fun notify_rewards<T0>(
-        arg0: &mut Voter<T0>,
-        arg1: &distribution::notify_reward_cap::NotifyRewardCap,
-        arg2: sui::coin::Coin<T0>
-    ) {
-        distribution::notify_reward_cap::validate_notify_reward_voter_id(arg1, sui::object::id<Voter<T0>>(arg0));
-        let v0 = sui::coin::into_balance<T0>(arg2);
-        let v1 = sui::balance::value<T0>(&v0);
-        let v2 = std::type_name::get<T0>();
-        let v3 = if (sui::bag::contains<std::type_name::TypeName>(&arg0.balances, v2)) {
-            sui::bag::remove<std::type_name::TypeName, sui::balance::Balance<T0>>(&mut arg0.balances, v2)
+    public fun lock_last_voted_at<SailCoinType>(voter: &Voter<SailCoinType>, lock_id: ID): u64 {
+        let lock_id_obj = into_lock_id(lock_id);
+        if (!voter.last_voted.contains(lock_id_obj)) {
+            0
         } else {
-            sui::balance::zero<T0>()
+            *voter.last_voted.borrow(lock_id_obj)
+        }
+    }
+
+    public fun notify_rewards<SailCoinType>(
+        voter: &mut Voter<SailCoinType>,
+        notify_reward_cap: &distribution::notify_reward_cap::NotifyRewardCap,
+        reward: sui::coin::Coin<SailCoinType>
+    ) {
+        notify_reward_cap.validate_notify_reward_voter_id(object::id<Voter<SailCoinType>>(voter));
+        let reward_balance = reward.into_balance();
+        let reward_amount = reward_balance.value<SailCoinType>();
+        let coin_type_name = std::type_name::get<SailCoinType>();
+        let mut existing_balance = if (voter.balances.contains(coin_type_name)) {
+            voter.balances.remove<std::type_name::TypeName, sui::balance::Balance<SailCoinType>>(coin_type_name)
+        } else {
+            sui::balance::zero<SailCoinType>()
         };
-        let mut v4 = v3;
-        sui::balance::join<T0>(&mut v4, v0);
-        sui::bag::add<std::type_name::TypeName, sui::balance::Balance<T0>>(&mut arg0.balances, v2, v4);
-        let v5 = if (arg0.total_weight == 0) {
+        existing_balance.join<SailCoinType>(reward_balance);
+        voter.balances.add(coin_type_name, existing_balance);
+        let total_weight = if (voter.total_weight == 0) {
             1
         } else {
-            arg0.total_weight
+            voter.total_weight
         };
-        let v6 = integer_mate::full_math_u128::mul_div_floor(v1 as u128, 18446744073709551616, v5 as u128);
-        if (v6 > 0) {
-            arg0.index = arg0.index + v6;
-        };
-        let v7 = EventNotifyReward {
-            notifier: distribution::notify_reward_cap::who(arg1),
-            token: v2,
-            amount: v1,
-        };
-        sui::event::emit<EventNotifyReward>(v7);
-    }
-
-    public fun poke<T0>(
-        arg0: &mut Voter<T0>,
-        arg1: &mut distribution::voting_escrow::VotingEscrow<T0>,
-        arg2: &distribution::voting_escrow::Lock,
-        arg3: &sui::clock::Clock,
-        arg4: &mut sui::tx_context::TxContext
-    ) {
-        let v0 = distribution::common::current_timestamp(arg3);
-        assert!(v0 > distribution::common::epoch_vote_start(v0), 9223374433448427550);
-        let voting_power = distribution::voting_escrow::get_voting_power<T0>(arg1, arg2, arg3);
-        poke_internal<T0>(arg0, arg1, arg2, voting_power, arg3, arg4);
-    }
-
-    fun poke_internal<T0>(
-        arg0: &mut Voter<T0>,
-        arg1: &mut distribution::voting_escrow::VotingEscrow<T0>,
-        arg2: &distribution::voting_escrow::Lock,
-        arg3: u64,
-        arg4: &sui::clock::Clock,
-        arg5: &mut sui::tx_context::TxContext
-    ) {
-        let v0 = into_lock_id(sui::object::id<distribution::voting_escrow::Lock>(arg2));
-        let v1 = if (sui::table::contains<LockID, vector<PoolID>>(&arg0.pool_vote, v0)) {
-            std::vector::length<PoolID>(sui::table::borrow<LockID, vector<PoolID>>(&arg0.pool_vote, v0))
-        } else {
-            0
-        };
-        if (v1 > 0) {
-            let mut v2 = std::vector::empty<u64>();
-            let mut v3 = 0;
-            let v4 = sui::table::borrow<LockID, vector<PoolID>>(&arg0.pool_vote, v0);
-            let mut v5 = std::vector::empty<sui::object::ID>();
-            assert!(sui::table::contains<LockID, sui::table::Table<PoolID, u64>>(&arg0.votes, v0), 9223374510758756396);
-            while (v3 < v1) {
-                std::vector::push_back<sui::object::ID>(&mut v5, std::vector::borrow<PoolID>(v4, v3).id);
-                let v6 = sui::table::borrow<LockID, sui::table::Table<PoolID, u64>>(&arg0.votes, v0);
-                assert!(
-                    sui::table::contains<PoolID, u64>(v6, *std::vector::borrow<PoolID>(v4, v3)),
-                    9223374527938625580
-                );
-                std::vector::push_back<u64>(
-                    &mut v2,
-                    *sui::table::borrow<PoolID, u64>(v6, *std::vector::borrow<PoolID>(v4, v3))
-                );
-                v3 = v3 + 1;
-            };
-            vote_internal<T0>(arg0, arg1, arg2, arg3, v5, v2, arg4, arg5);
-        };
-    }
-
-    public fun pool_to_gauge<T0>(arg0: &Voter<T0>, arg1: sui::object::ID): sui::object::ID {
-        sui::table::borrow<PoolID, GaugeID>(&arg0.pool_to_gauger, into_pool_id(arg1)).id
-    }
-
-    public fun prove_pair_whitelisted<T0, T1, T2>(
-        arg0: &Voter<T0>
-    ): distribution::whitelisted_tokens::WhitelistedTokenPair {
-        assert!(is_whitelisted_token<T0, T1>(arg0), 9223373870805811199);
-        assert!(is_whitelisted_token<T0, T2>(arg0), 9223373875100778495);
-        distribution::whitelisted_tokens::create_pair<T1, T2>(sui::object::id<Voter<T0>>(arg0))
-    }
-
-    public fun prove_token_whitelisted<T0, T1>(arg0: &Voter<T0>): distribution::whitelisted_tokens::WhitelistedToken {
-        assert!(is_whitelisted_token<T0, T1>(arg0), 9223373853625942015);
-        distribution::whitelisted_tokens::create<T1>(sui::object::id<Voter<T0>>(arg0))
-    }
-
-    public fun receive_gauger<T0, T1, T2>(
-        arg0: &mut Voter<T2>,
-        arg1: &distribution::voter_cap::GovernorCap,
-        arg2: &mut distribution::gauge::Gauge<T0, T1, T2>,
-        arg3: &sui::clock::Clock,
-        arg4: &mut sui::tx_context::TxContext
-    ) {
-        distribution::voter_cap::validate_governor_voter_id(arg1, sui::object::id<Voter<T2>>(arg0));
-        let v0 = into_gauge_id(sui::object::id<distribution::gauge::Gauge<T0, T1, T2>>(arg2));
-        let v1 = into_pool_id(distribution::gauge::pool_id<T0, T1, T2>(arg2));
-        assert!(!sui::table::contains<GaugeID, GaugeRepresent>(&arg0.gauge_represents, v0), 9223373720482283526);
-        assert!(!sui::table::contains<PoolID, GaugeID>(&arg0.pool_to_gauger, v1), 9223373724779872302);
-        let v2 = GaugeRepresent {
-            gauger_id: sui::object::id<distribution::gauge::Gauge<T0, T1, T2>>(arg2),
-            pool_id: distribution::gauge::pool_id<T0, T1, T2>(arg2),
-            weight: 0,
-            last_reward_time: sui::clock::timestamp_ms(arg3),
-        };
-        sui::table::add<GaugeID, GaugeRepresent>(&mut arg0.gauge_represents, v0, v2);
-        sui::table::add<GaugeID, sui::balance::Balance<T2>>(&mut arg0.rewards, v0, sui::balance::zero<T2>());
-        sui::table::add<GaugeID, u64>(&mut arg0.weights, v0, 0);
-        std::vector::push_back<PoolID>(&mut arg0.pools, v1);
-        sui::table::add<GaugeID, bool>(&mut arg0.is_alive, v0, true);
-        sui::table::add<PoolID, GaugeID>(&mut arg0.pool_to_gauger, v1, v0);
-        distribution::gauge::set_voter<T0, T1, T2>(arg2, sui::object::id<Voter<T2>>(arg0));
-        whitelist_token<T2, T0>(arg0, arg1, true, arg4);
-        whitelist_token<T2, T1>(arg0, arg1, true, arg4);
-        if (!is_whitelisted_token<T2, T2>(arg0)) {
-            whitelist_token<T2, T2>(arg0, arg1, true, arg4);
-        };
-    }
-
-    public fun remove_epoch_governor<T0>(
-        arg0: &mut Voter<T0>,
-        arg1: &distribution::voter_cap::GovernorCap,
-        arg2: address
-    ) {
-        distribution::voter_cap::validate_governor_voter_id(arg1, sui::object::id<Voter<T0>>(arg0));
-        let v0 = sui::object::id_from_address(arg2);
-        sui::vec_set::remove<sui::object::ID>(&mut arg0.epoch_governors, &v0);
-        let v1 = EventRemoveEpochGovernor { who: arg2 };
-        sui::event::emit<EventRemoveEpochGovernor>(v1);
-    }
-
-    public fun remove_governor<T0>(arg0: &mut Voter<T0>, _arg1: &sui::package::Publisher, arg2: address) {
-        let v0 = sui::object::id_from_address(arg2);
-        sui::vec_set::remove<sui::object::ID>(&mut arg0.governors, &v0);
-        let v1 = EventRemoveGovernor { who: arg2 };
-        sui::event::emit<EventRemoveGovernor>(v1);
-    }
-
-    public fun reset<T0>(
-        arg0: &mut Voter<T0>,
-        arg1: &mut distribution::voting_escrow::VotingEscrow<T0>,
-        arg2: &distribution::voting_escrow::Lock,
-        arg3: &sui::clock::Clock,
-        arg4: &mut sui::tx_context::TxContext
-    ) {
-        assert_only_new_epoch<T0>(arg0, into_lock_id(sui::object::id<distribution::voting_escrow::Lock>(arg2)), arg3);
-        reset_internal<T0>(arg0, arg1, arg2, arg3, arg4);
-    }
-
-    fun reset_internal<T0>(
-        arg0: &mut Voter<T0>,
-        arg1: &mut distribution::voting_escrow::VotingEscrow<T0>,
-        arg2: &distribution::voting_escrow::Lock,
-        arg3: &sui::clock::Clock,
-        arg4: &mut sui::tx_context::TxContext
-    ) {
-        let v0 = into_lock_id(sui::object::id<distribution::voting_escrow::Lock>(arg2));
-        let v1 = if (sui::table::contains<LockID, vector<PoolID>>(&arg0.pool_vote, v0)) {
-            std::vector::length<PoolID>(sui::table::borrow<LockID, vector<PoolID>>(&arg0.pool_vote, v0))
-        } else {
-            0
-        };
-        let mut v2 = 0;
-        let mut v3 = 0;
-        while (v3 < v1) {
-            let v4 = *std::vector::borrow<PoolID>(sui::table::borrow<LockID, vector<PoolID>>(&arg0.pool_vote, v0), v3);
-            let v5 = *sui::table::borrow<PoolID, u64>(
-                sui::table::borrow<LockID, sui::table::Table<PoolID, u64>>(&arg0.votes, v0),
-                v4
-            );
-            let v6 = *sui::table::borrow<PoolID, GaugeID>(&arg0.pool_to_gauger, v4);
-            if (v5 != 0) {
-                update_for_internal<T0>(arg0, v6);
-                let weight = sui::table::remove<GaugeID, u64>(&mut arg0.weights, v6) - v5;
-                sui::table::add<GaugeID, u64>(&mut arg0.weights, v6, weight);
-                sui::table::remove<PoolID, u64>(
-                    sui::table::borrow_mut<LockID, sui::table::Table<PoolID, u64>>(&mut arg0.votes, v0),
-                    v4
-                );
-                distribution::fee_voting_reward::withdraw(
-                    sui::table::borrow_mut<GaugeID, distribution::fee_voting_reward::FeeVotingReward>(
-                        &mut arg0.gauge_to_fee,
-                        v6
-                    ),
-                    &arg0.gauge_to_fee_authorized_cap,
-                    v5,
-                    v0.id,
-                    arg3,
-                    arg4
-                );
-                distribution::bribe_voting_reward::withdraw(
-                    sui::table::borrow_mut<GaugeID, distribution::bribe_voting_reward::BribeVotingReward>(
-                        &mut arg0.gauge_to_bribe,
-                        v6
-                    ),
-                    &arg0.gauge_to_bribe_authorized_cap,
-                    v5,
-                    v0.id,
-                    arg3,
-                    arg4
-                );
-                v2 = v2 + v5;
-                let v7 = EventAbstained {
-                    sender: sui::tx_context::sender(arg4),
-                    pool: v4.id,
-                    lock: v0.id,
-                    votes: v5,
-                    pool_weight: *sui::table::borrow<GaugeID, u64>(&arg0.weights, v6),
-                };
-                sui::event::emit<EventAbstained>(v7);
-            };
-            v3 = v3 + 1;
-        };
-        distribution::voting_escrow::voting<T0>(arg1, &arg0.voter_cap, v0.id, false);
-        arg0.total_weight = arg0.total_weight - v2;
-        if (sui::table::contains<LockID, u64>(&arg0.used_weights, v0)) {
-            sui::table::remove<LockID, u64>(&mut arg0.used_weights, v0);
-        };
-        if (sui::table::contains<LockID, vector<PoolID>>(&arg0.pool_vote, v0)) {
-            sui::table::remove<LockID, vector<PoolID>>(&mut arg0.pool_vote, v0);
-        };
-    }
-
-    public(package) fun return_new_gauge<T0, T1, T2>(
-        arg0: &gauge_cap::gauge_cap::CreateCap,
-        arg1: &mut clmm_pool::pool::Pool<T0, T1>,
-        arg2: &mut sui::tx_context::TxContext
-    ): distribution::gauge::Gauge<T0, T1, T2> {
-        let v0 = sui::object::id<clmm_pool::pool::Pool<T0, T1>>(arg1);
-        let mut v1 = distribution::gauge::create<T0, T1, T2>(v0, arg2);
-        let v2 = gauge_cap::gauge_cap::create_gauge_cap(
-            arg0,
-            v0,
-            sui::object::id<distribution::gauge::Gauge<T0, T1, T2>>(&v1),
-            arg2
+        let reward_per_weight_unit = integer_mate::full_math_u128::mul_div_floor(
+            reward_amount as u128,
+            1 << 64,
+            total_weight as u128
         );
-        clmm_pool::pool::init_magma_distribution_gauge<T0, T1>(arg1, &v2);
-        distribution::gauge::receive_gauge_cap<T0, T1, T2>(&mut v1, v2);
-        v1
+        if (reward_per_weight_unit > 0) {
+            voter.index = voter.index + reward_per_weight_unit;
+        };
+        let notify_reward_event = EventNotifyReward {
+            notifier: notify_reward_cap.who(),
+            token: coin_type_name,
+            amount: reward_amount,
+        };
+        sui::event::emit<EventNotifyReward>(notify_reward_event);
     }
 
-    public fun revive_gauger<T0>(
-        arg0: &mut Voter<T0>,
-        arg1: &distribution::emergency_council::EmergencyCouncilCap,
-        arg2: sui::object::ID
+    public fun poke<SailCoinType>(
+        voter: &mut Voter<SailCoinType>,
+        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
+        lock: &distribution::voting_escrow::Lock,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
     ) {
-        distribution::emergency_council::validate_emergency_council_voter_id(arg1, sui::object::id<Voter<T0>>(arg0));
-        let v0 = into_gauge_id(arg2);
-        assert!(sui::table::contains<GaugeID, bool>(&arg0.is_alive, v0), 9223374115619405832);
-        let v1 = false;
-        assert!(sui::table::borrow<GaugeID, bool>(&arg0.is_alive, v0) == &v1, 9223374124208881663);
-        sui::table::remove<GaugeID, bool>(&mut arg0.is_alive, v0);
-        sui::table::add<GaugeID, bool>(&mut arg0.is_alive, v0, true);
-        let v2 = EventReviveGauge { id: v0.id };
-        sui::event::emit<EventReviveGauge>(v2);
+        let current_time = distribution::common::current_timestamp(clock);
+        assert!(current_time > distribution::common::epoch_vote_start(current_time), EPokeVotingNotStartedYet);
+        let voting_power = voting_escrow.get_voting_power(lock, clock);
+        voter.poke_internal(voting_escrow, distribution_config, lock, voting_power, clock, ctx);
     }
 
-    public fun set_max_voting_num<T0>(arg0: &mut Voter<T0>, arg1: &distribution::voter_cap::GovernorCap, arg2: u64) {
-        distribution::voter_cap::validate_governor_voter_id(arg1, sui::object::id<Voter<T0>>(arg0));
-        assert!(is_governor<T0>(arg0, distribution::voter_cap::who(arg1)), 9223373183612551192);
-        assert!(arg2 >= 10, 9223373187907649562);
-        assert!(arg2 != arg0.max_voting_num, 9223373196495945727);
-        arg0.max_voting_num = arg2;
-    }
-
-    public fun total_weight<T0>(arg0: &Voter<T0>): u64 {
-        arg0.total_weight
-    }
-
-    public fun update_for<T0>(arg0: &mut Voter<T0>, arg1: sui::object::ID) {
-        update_for_internal<T0>(arg0, into_gauge_id(arg1));
-    }
-
-    fun update_for_internal<T0>(arg0: &mut Voter<T0>, arg1: GaugeID) {
-        let v0 = if (sui::table::contains<GaugeID, u64>(&arg0.weights, arg1)) {
-            *sui::table::borrow<GaugeID, u64>(&arg0.weights, arg1)
+    fun poke_internal<SailCoinType>(
+        voter: &mut Voter<SailCoinType>,
+        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
+        lock: &distribution::voting_escrow::Lock,
+        voting_power: u64,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        let lock_id = into_lock_id(object::id<distribution::voting_escrow::Lock>(lock));
+        let pool_vote_count = if (voter.pool_vote.contains(lock_id)) {
+            voter.pool_vote.borrow(lock_id).length()
         } else {
             0
         };
-        if (v0 > 0) {
-            let v1 = if (sui::table::contains<GaugeID, u128>(&arg0.supply_index, arg1)) {
-                sui::table::remove<GaugeID, u128>(&mut arg0.supply_index, arg1)
+        if (pool_vote_count > 0) {
+            let mut vote_amounts = std::vector::empty<u64>();
+            let mut i = 0;
+            let pools_voted = voter.pool_vote.borrow(lock_id);
+            let mut pools_voted_ids = std::vector::empty<ID>();
+            assert!(
+                voter.votes.contains(lock_id),
+                EPokeLockNotVoted
+            );
+            while (i < pool_vote_count) {
+                pools_voted_ids.push_back(pools_voted.borrow(i).id);
+                let vote_amount_by_pool = voter.votes.borrow(lock_id);
+                assert!(
+                    vote_amount_by_pool.contains(pools_voted[i]),
+                    EPokePoolNotVoted
+                );
+                vote_amounts.push_back(*vote_amount_by_pool.borrow(pools_voted[i]));
+                i = i + 1;
+            };
+            voter.vote_internal(
+                voting_escrow,
+                distribution_config,
+                lock,
+                voting_power,
+                pools_voted_ids,
+                vote_amounts,
+                clock,
+                ctx
+            );
+        };
+    }
+
+    public fun pool_to_gauge<SailCoinType>(voter: &Voter<SailCoinType>, pool_id: ID): ID {
+        voter.pool_to_gauger.borrow(into_pool_id(pool_id)).id
+    }
+
+    public fun pools_gauges<SailCoinType>(
+        voter: &Voter<SailCoinType>
+    ): (vector<ID>, vector<ID>) {
+        let mut pool_ids = std::vector::empty<ID>();
+        let mut gauge_ids = std::vector::empty<ID>();
+        let mut i = 0;
+        while (i < voter.pools.length()) {
+            let pool_id = voter.pools.borrow(i).id;
+            pool_ids.push_back(pool_id);
+            gauge_ids.push_back(voter.pool_to_gauge(pool_id));
+            i = i + 1;
+        };
+        (pool_ids, gauge_ids)
+    }
+
+    public fun prove_pair_whitelisted<SailCoinType, CoinTypeA, CoinTypeB>(
+        voter: &Voter<SailCoinType>
+    ): distribution::whitelisted_tokens::WhitelistedTokenPair {
+        assert!(voter.is_whitelisted_token<SailCoinType, CoinTypeA>(), EFirstTokenNotWhitelisted);
+        assert!(voter.is_whitelisted_token<SailCoinType, CoinTypeB>(), ESecondTokenNotWhitelisted);
+        distribution::whitelisted_tokens::create_pair<CoinTypeA, CoinTypeB>(object::id<Voter<SailCoinType>>(voter))
+    }
+
+    public fun prove_token_whitelisted<SailCoinType, CoinToCheckType>(
+        voter: &Voter<SailCoinType>
+    ): distribution::whitelisted_tokens::WhitelistedToken {
+        assert!(voter.is_whitelisted_token<SailCoinType, CoinToCheckType>(), ETokenNotWhitelisted);
+        distribution::whitelisted_tokens::create<CoinToCheckType>(object::id<Voter<SailCoinType>>(voter))
+    }
+
+    public fun receive_gauger<CoinTypeA, CoinTypeB, SailCoinType>(
+        voter: &mut Voter<SailCoinType>,
+        governor_cap: &distribution::voter_cap::GovernorCap,
+        gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB, SailCoinType>,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        governor_cap.validate_governor_voter_id(object::id<Voter<SailCoinType>>(voter));
+        assert!(
+            voter.is_governor(object::id<distribution::voter_cap::GovernorCap>(governor_cap)),
+            EReceiveGaugeInvalidGovernor
+        );
+        let gauge_id = into_gauge_id(
+            object::id<distribution::gauge::Gauge<CoinTypeA, CoinTypeB, SailCoinType>>(gauge)
+        );
+        let pool_id = into_pool_id(gauge.pool_id());
+        assert!(
+            !voter.gauge_represents.contains(gauge_id),
+            EReceiveGaugeAlreadyHasRepresent
+        );
+        assert!(
+            !voter.pool_to_gauger.contains(pool_id),
+            EReceiveGaugePoolAreadyHasGauge
+        );
+        let gauge_represent = GaugeRepresent {
+            gauger_id: object::id<distribution::gauge::Gauge<CoinTypeA, CoinTypeB, SailCoinType>>(gauge),
+            pool_id: gauge.pool_id(),
+            weight: 0,
+            last_reward_time: clock.timestamp_ms(),
+        };
+        voter.gauge_represents.add(gauge_id, gauge_represent);
+        voter.rewards.add(gauge_id, sui::balance::zero<SailCoinType>());
+        voter.weights.add(gauge_id, 0);
+        voter.pools.push_back(pool_id);
+        voter.pool_to_gauger.add(pool_id, gauge_id);
+        gauge.set_voter(object::id<Voter<SailCoinType>>(voter));
+        voter.whitelist_token<SailCoinType, CoinTypeA>(governor_cap, true, ctx);
+        voter.whitelist_token<SailCoinType, CoinTypeB>(governor_cap, true, ctx);
+        if (!voter.is_whitelisted_token<SailCoinType, SailCoinType>()) {
+            voter.whitelist_token<SailCoinType, SailCoinType>(governor_cap, true, ctx);
+        };
+    }
+
+    public fun remove_epoch_governor<SailCoinType>(
+        voter: &mut Voter<SailCoinType>,
+        governor_cap: &distribution::voter_cap::GovernorCap,
+        who: ID
+    ) {
+        governor_cap.validate_governor_voter_id(object::id<Voter<SailCoinType>>(voter));
+        assert!(
+            voter.is_governor(object::id<distribution::voter_cap::GovernorCap>(governor_cap)),
+            ERemoveEpochGovernorNotAGovernor
+        );
+        voter.epoch_governors.remove<ID>(&who);
+        let remove_epoch_governor_event = EventRemoveEpochGovernor { cap: who, };
+        sui::event::emit<EventRemoveEpochGovernor>(remove_epoch_governor_event);
+    }
+
+    public fun remove_governor<SailCoinType>(
+        voter: &mut Voter<SailCoinType>,
+        _publisher: &sui::package::Publisher,
+        who: ID
+    ) {
+        voter.governors.remove<ID>(&who);
+        let remove_governor_event = EventRemoveGovernor { cap: who };
+        sui::event::emit<EventRemoveGovernor>(remove_governor_event);
+    }
+
+    public fun reset<SailCoinType>(
+        voter: &mut Voter<SailCoinType>,
+        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
+        lock: &distribution::voting_escrow::Lock,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        voter.assert_only_new_epoch(into_lock_id(object::id<distribution::voting_escrow::Lock>(lock)), clock);
+        voter.reset_internal(voting_escrow, distribution_config, lock, clock, ctx);
+    }
+
+    fun reset_internal<SailCoinType>(
+        voter: &mut Voter<SailCoinType>,
+        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
+        lock: &distribution::voting_escrow::Lock,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        let lock_id = into_lock_id(object::id<distribution::voting_escrow::Lock>(lock));
+        let total_pools_count = if (voter.pool_vote.contains(lock_id)) {
+            voter.pool_vote.borrow(lock_id).length()
+        } else {
+            0
+        };
+        let mut total_removed_weight = 0;
+        let mut pool_index = 0;
+        while (pool_index < total_pools_count) {
+            let voted_pools_vec = voter.pool_vote.borrow(lock_id);
+            let pool_id = voted_pools_vec[pool_index];
+            let pool_votes = *voter.votes.borrow(lock_id).borrow(pool_id);
+            let gauge_id = *voter.pool_to_gauger.borrow(pool_id);
+            if (pool_votes != 0) {
+                voter.update_for_internal(distribution_config, gauge_id);
+                let weight = voter.weights.remove(gauge_id) - pool_votes;
+                voter.weights.add(gauge_id, weight);
+                voter.votes.borrow_mut(lock_id).remove(pool_id);
+                voter.gauge_to_fee.borrow_mut(gauge_id).withdraw(
+                    &voter.gauge_to_fee_authorized_cap,
+                    pool_votes,
+                    lock_id.id,
+                    clock,
+                    ctx
+                );
+                voter.gauge_to_bribe.borrow_mut(gauge_id).withdraw(
+                    &voter.gauge_to_bribe_authorized_cap,
+                    pool_votes,
+                    lock_id.id,
+                    clock,
+                    ctx
+                );
+                total_removed_weight = total_removed_weight + pool_votes;
+                let abstained_event = EventAbstained {
+                    sender: tx_context::sender(ctx),
+                    pool: pool_id.id,
+                    lock: lock_id.id,
+                    votes: pool_votes,
+                    pool_weight: *voter.weights.borrow(gauge_id),
+                };
+                sui::event::emit<EventAbstained>(abstained_event);
+            };
+            pool_index = pool_index + 1;
+        };
+        voting_escrow.voting(&voter.voter_cap, lock_id.id, false);
+        voter.total_weight = voter.total_weight - total_removed_weight;
+        if (voter.used_weights.contains(lock_id)) {
+            voter.used_weights.remove(lock_id);
+        };
+        if (voter.pool_vote.contains(lock_id)) {
+            voter.pool_vote.remove(lock_id);
+        };
+    }
+
+    public(package) fun return_new_gauge<CoinTypeA, CoinTypeB, SailCoinType>(
+        distribution_config: &distribution::distribution_config::DistributionConfig,
+        gauge_create_cap: &gauge_cap::gauge_cap::CreateCap,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        ctx: &mut TxContext
+    ): distribution::gauge::Gauge<CoinTypeA, CoinTypeB, SailCoinType> {
+        let pool_id = object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool);
+        let mut gauge = distribution::gauge::create<CoinTypeA, CoinTypeB, SailCoinType>(
+            distribution_config,
+            pool_id,
+            ctx
+        );
+        let gauge_cap = gauge_create_cap.create_gauge_cap(
+            pool_id,
+            object::id<distribution::gauge::Gauge<CoinTypeA, CoinTypeB, SailCoinType>>(&gauge),
+            ctx
+        );
+        pool.init_magma_distribution_gauge(&gauge_cap);
+        gauge.receive_gauge_cap(gauge_cap);
+        gauge
+    }
+
+    public fun revive_gauge<SailCoinType>(
+        voter: &mut Voter<SailCoinType>,
+        distribution_config: &mut distribution::distribution_config::DistributionConfig,
+        emergency_council_cap: &distribution::emergency_council::EmergencyCouncilCap,
+        gauge_id: ID,
+        ctx: &mut TxContext
+    ) {
+        emergency_council_cap.validate_emergency_council_voter_id(object::id<Voter<SailCoinType>>(
+            voter
+        ));
+        assert!(
+            object::id<distribution::distribution_config::DistributionConfig>(
+                distribution_config
+            ) == voter.distribution_config,
+            EReviveGaugeInvalidDistributionConfig
+        );
+        assert!(
+            !distribution_config.is_gauge_alive(gauge_id),
+            EReviveGaugeAlreadyAlive
+        );
+        let mut alive_gauge_ids = std::vector::empty<ID>();
+        alive_gauge_ids.push_back(gauge_id);
+        distribution_config.update_gauge_liveness(alive_gauge_ids, true, ctx);
+        let revieve_gauge_event = EventReviveGauge { id: gauge_id };
+        sui::event::emit<EventReviveGauge>(revieve_gauge_event);
+    }
+
+    public fun set_max_voting_num<SailCoinType>(
+        voter: &mut Voter<SailCoinType>,
+        governor_cap: &distribution::voter_cap::GovernorCap,
+        new_max_voting_num: u64
+    ) {
+        governor_cap.validate_governor_voter_id(object::id<Voter<SailCoinType>>(voter));
+        assert!(
+            voter.is_governor(object::id<distribution::voter_cap::GovernorCap>(governor_cap)),
+            ESetMaxVotingNumGovernorInvalid
+        );
+        assert!(new_max_voting_num >= 10, ESetMaxVotingNumAtLeast10);
+        assert!(new_max_voting_num != voter.max_voting_num, ESetMaxVotingNumNotChanged);
+        voter.max_voting_num = new_max_voting_num;
+    }
+
+    public fun total_weight<SailCoinType>(voter: &Voter<SailCoinType>): u64 {
+        voter.total_weight
+    }
+
+    public fun update_for<SailCoinType>(
+        voter: &mut Voter<SailCoinType>,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
+        gauge_id: ID
+    ) {
+        voter.update_for_internal(distribution_config, into_gauge_id(gauge_id));
+    }
+
+    fun update_for_internal<SailCoinType>(
+        voter: &mut Voter<SailCoinType>,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
+        gauge_id: GaugeID
+    ) {
+        let gauge_weight = if (voter.weights.contains(gauge_id)) {
+            *voter.weights.borrow(gauge_id)
+        } else {
+            0
+        };
+        if (gauge_weight > 0) {
+            let gauge_supply_index = if (voter.supply_index.contains(gauge_id)) {
+                voter.supply_index.remove(gauge_id)
             } else {
                 0
             };
-            let v2 = arg0.index;
-            sui::table::add<GaugeID, u128>(&mut arg0.supply_index, arg1, v2);
-            let v3 = v2 - v1;
-            if (v3 > 0) {
-                let v4 = if (sui::table::contains<GaugeID, bool>(&arg0.is_alive, arg1)) {
-                    let v5 = true;
-                    sui::table::borrow<GaugeID, bool>(&arg0.is_alive, arg1) == &v5
-                } else {
-                    false
-                };
-                assert!(v4, 9223375717644828720);
-                let v6 = if (sui::table::contains<GaugeID, u64>(&arg0.claimable, arg1)) {
-                    sui::table::remove<GaugeID, u64>(&mut arg0.claimable, arg1)
+            let voter_index = voter.index;
+            voter.supply_index.add(gauge_id, voter_index);
+            let index_delta = voter_index - gauge_supply_index;
+            if (index_delta > 0) {
+                assert!(
+                    distribution_config.is_gauge_alive(gauge_id.id),
+                    EUpdateForInternalGaugeNotAlive
+                );
+                let gauge_claimable = if (voter.claimable.contains(gauge_id)) {
+                    voter.claimable.remove(gauge_id)
                 } else {
                     0
                 };
-                sui::table::add<GaugeID, u64>(
-                    &mut arg0.claimable,
-                    arg1,
-                    v6 + (integer_mate::full_math_u128::mul_div_floor(v0 as u128, v3, 18446744073709551616) as u64)
-                );
+                voter.claimable.add(gauge_id, gauge_claimable + (integer_mate::full_math_u128::mul_div_floor(
+                    gauge_weight as u128,
+                    index_delta,
+                    1 << 64
+                ) as u64));
             };
         } else {
-            if (sui::table::contains<GaugeID, u128>(&arg0.supply_index, arg1)) {
-                sui::table::remove<GaugeID, u128>(&mut arg0.supply_index, arg1);
+            if (voter.supply_index.contains(gauge_id)) {
+                voter.supply_index.remove(gauge_id);
             };
-            sui::table::add<GaugeID, u128>(&mut arg0.supply_index, arg1, arg0.index);
-        };
-        // TODO: looks like this function was disabled, check why
-        // return
-        // abort 9223375717644828720
-    }
-
-    public fun update_for_many<T0>(arg0: &mut Voter<T0>, arg1: vector<sui::object::ID>) {
-        let mut v0 = 0;
-        while (v0 < std::vector::length<sui::object::ID>(&arg1)) {
-            update_for_internal<T0>(arg0, into_gauge_id(*std::vector::borrow<sui::object::ID>(&arg1, v0)));
-            v0 = v0 + 1;
+            voter.supply_index.add(gauge_id, voter.index);
         };
     }
 
-    public fun update_for_range<T0>(arg0: &mut Voter<T0>, arg1: u64, arg2: u64) {
-        let mut v0 = 0;
-        while (arg1 + v0 < arg2) {
-            let pool_id = *std::vector::borrow<PoolID>(&arg0.pools, arg1 + v0);
-            let gauge_id = *sui::table::borrow<PoolID, GaugeID>(&arg0.pool_to_gauger, pool_id);
-            update_for_internal<T0>(arg0, gauge_id);
-            v0 = v0 + 1;
-        };
-    }
-
-    public fun used_weights<T0>(arg0: &Voter<T0>, arg1: sui::object::ID): u64 {
-        *sui::table::borrow<LockID, u64>(&arg0.used_weights, into_lock_id(arg1))
-    }
-
-    public fun vote<T0>(
-        arg0: &mut Voter<T0>,
-        arg1: &mut distribution::voting_escrow::VotingEscrow<T0>,
-        arg2: &distribution::voting_escrow::Lock,
-        arg3: vector<sui::object::ID>,
-        arg4: vector<u64>,
-        arg5: &sui::clock::Clock,
-        arg6: &mut sui::tx_context::TxContext
+    public fun update_for_many<SailCoinType>(
+        voter: &mut Voter<SailCoinType>,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
+        gauge_ids: vector<ID>
     ) {
-        let v0 = into_lock_id(sui::object::id<distribution::voting_escrow::Lock>(arg2));
-        assert_only_new_epoch<T0>(arg0, v0, arg5);
-        check_vote<T0>(arg0, &arg3, &arg4);
-        assert!(!arg0.flag_distribution, 9223374626723266610);
-        assert!(!distribution::voting_escrow::deactivated<T0>(arg1, v0.id), 9223374631017185314);
-        let v1 = distribution::common::current_timestamp(arg5);
-        let v2 = if (v1 > distribution::common::epoch_vote_end(v1)) {
-            let v3 = !sui::table::contains<LockID, bool>(
-                &arg0.is_whitelisted_nft,
-                v0
-            ) || *sui::table::borrow<LockID, bool>(&arg0.is_whitelisted_nft, v0) == false;
-            v3
-        } else {
-            false
+        let mut i = 0;
+        while (i < gauge_ids.length()) {
+            voter.update_for_internal(distribution_config, into_gauge_id(gauge_ids[i]));
+            i = i + 1;
         };
-        if (v2) {
-            abort 9223374648197185572
-        };
-        if (sui::table::contains<LockID, u64>(&arg0.last_voted, v0)) {
-            sui::table::remove<LockID, u64>(&mut arg0.last_voted, v0);
-        };
-        sui::table::add<LockID, u64>(&mut arg0.last_voted, v0, v1);
-        let v4 = distribution::voting_escrow::get_voting_power<T0>(arg1, arg2, arg5);
-        assert!(v4 > 0, 9223374686852022310);
-        vote_internal<T0>(arg0, arg1, arg2, v4, arg3, arg4, arg5, arg6);
     }
 
-    fun vote_internal<T0>(
-        arg0: &mut Voter<T0>,
-        arg1: &mut distribution::voting_escrow::VotingEscrow<T0>,
-        arg2: &distribution::voting_escrow::Lock,
-        arg3: u64,
-        arg4: vector<sui::object::ID>,
-        arg5: vector<u64>,
-        arg6: &sui::clock::Clock,
-        arg7: &mut sui::tx_context::TxContext
+    public fun update_for_range<SailCoinType>(
+        voter: &mut Voter<SailCoinType>,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
+        start_index: u64,
+        end_index: u64
     ) {
-        let v0 = into_lock_id(sui::object::id<distribution::voting_escrow::Lock>(arg2));
-        reset_internal<T0>(arg0, arg1, arg2, arg6, arg7);
-        let mut v1 = 0;
-        let mut v2 = 0;
-        let mut v3 = 0;
-        let mut v4 = 0;
-        let v5 = std::vector::length<sui::object::ID>(&arg4);
-        while (v4 < v5) {
-            let v6 = std::vector::borrow<u64>(&arg5, v4);
-            v1 = v1 + *v6;
-            v4 = v4 + 1;
+        let mut i = 0;
+        let pools_length = voter.pools.length();
+        let mut iteration_end = pools_length;
+        if (pools_length > end_index) {
+            iteration_end = end_index;
         };
-        v4 = 0;
-        while (v4 < v5) {
-            let v7 = into_pool_id(*std::vector::borrow<sui::object::ID>(&arg4, v4));
-            assert!(sui::table::contains<PoolID, GaugeID>(&arg0.pool_to_gauger, v7), 9223374798519205896);
-            let v8 = *sui::table::borrow<PoolID, GaugeID>(&arg0.pool_to_gauger, v7);
-            assert!(is_gauge_alive<T0>(arg0, v8), 9223374807109926932);
-            let v9 = integer_mate::full_math_u64::mul_div_floor(*std::vector::borrow<u64>(&arg5, v4), arg3, v1);
-            let v10 = if (sui::table::contains<LockID, sui::table::Table<PoolID, u64>>(&arg0.votes, v0)) {
-                if (sui::table::contains<PoolID, u64>(
-                    sui::table::borrow<LockID, sui::table::Table<PoolID, u64>>(&arg0.votes, v0),
-                    v7
-                )) {
-                    let v11 = 0;
-                    sui::table::borrow<PoolID, u64>(
-                        sui::table::borrow<LockID, sui::table::Table<PoolID, u64>>(&arg0.votes, v0),
-                        v7
-                    ) != &v11
+        while (start_index + i < iteration_end) {
+            let gauge_id = *voter.pool_to_gauger.borrow(voter.pools[start_index + i]);
+            voter.update_for_internal(distribution_config, gauge_id);
+            i = i + 1;
+        };
+    }
+
+    public fun used_weights<SailCoinType>(voter: &Voter<SailCoinType>, lock_id: ID): u64 {
+        *voter.used_weights.borrow(into_lock_id(lock_id))
+    }
+
+    public fun vote<SailCoinType>(
+        voter: &mut Voter<SailCoinType>,
+        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
+        lock: &distribution::voting_escrow::Lock,
+        pools: vector<ID>,
+        weights: vector<u64>,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        let lock_id = into_lock_id(object::id<distribution::voting_escrow::Lock>(lock));
+        voter.assert_only_new_epoch(lock_id, clock);
+        voter.check_vote(&pools, &weights);
+        assert!(
+            !voting_escrow.deactivated(lock_id.id),
+            EVoteVotingEscrowDeactivated
+        );
+        let current_time = distribution::common::current_timestamp(clock);
+        let epoch_vote_ended_and_nft_not_whitelisted = (
+            current_time > distribution::common::epoch_vote_end(current_time)
+        ) && (
+            !voter.is_whitelisted_nft.contains(lock_id) ||
+                *voter.is_whitelisted_nft.borrow(lock_id) == false
+        );
+        if (epoch_vote_ended_and_nft_not_whitelisted) {
+            abort EVoteNotWhitelistedNft
+        };
+        if (voter.last_voted.contains(lock_id)) {
+            voter.last_voted.remove(lock_id);
+        };
+        voter.last_voted.add(lock_id, current_time);
+        let voting_power = voting_escrow.get_voting_power(lock, clock);
+        assert!(voting_power > 0, EVoteNoVotingPower);
+        voter.vote_internal(voting_escrow, distribution_config, lock, voting_power, pools, weights, clock, ctx);
+    }
+
+    fun vote_internal<SailCoinType>(
+        voter: &mut Voter<SailCoinType>,
+        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
+        lock: &distribution::voting_escrow::Lock,
+        voting_power: u64,
+        pools: vector<ID>,
+        weights: vector<u64>,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        let lock_id = into_lock_id(object::id<distribution::voting_escrow::Lock>(lock));
+        voter.reset_internal(voting_escrow, distribution_config, lock, clock, ctx);
+        let mut input_total_weight = 0;
+        let mut lock_used_weights = 0;
+        let mut global_total_weight_delta = 0;
+        let mut i = 0;
+        let pools_length = pools.length();
+        while (i < pools_length) {
+            let weight_i = weights.borrow(i);
+            input_total_weight = input_total_weight + *weight_i;
+            i = i + 1;
+        };
+        i = 0;
+        while (i < pools_length) {
+            let pool_id = into_pool_id(pools[i]);
+            assert!(
+                voter.pool_to_gauger.contains(pool_id),
+                EVoteInternalGaugeDoesNotExist
+            );
+            let gauge_id = *voter.pool_to_gauger.borrow(pool_id);
+            assert!(
+                distribution_config.is_gauge_alive(gauge_id.id),
+                EVoteInternalGaugeNotAlive
+            );
+            let votes_for_pool = if (weights[i] == 0) {
+                0
+            } else {
+                integer_mate::full_math_u64::mul_div_floor(
+                    weights[i],
+                    voting_power,
+                    input_total_weight
+                )
+            };
+
+            let pool_has_votes = if (voter.votes.contains(lock_id)) {
+                if (voter.votes.borrow(lock_id).contains(pool_id)) {
+                    let zero_votes = 0;
+                    voter.votes.borrow(lock_id).borrow(pool_id) != &zero_votes
                 } else {
                     false
                 }
             } else {
                 false
             };
-            if (v10) {
-                abort 9223374832881041448
+
+            if (pool_has_votes) {
+                abort EVoteInternalPoolAreadyVoted
             };
-            assert!(v9 > 0, 9223374841471107114);
-            update_for_internal<T0>(arg0, v8);
-            if (!sui::table::contains<LockID, vector<PoolID>>(&arg0.pool_vote, v0)) {
-                sui::table::add<LockID, vector<PoolID>>(&mut arg0.pool_vote, v0, std::vector::empty<PoolID>());
+            assert!(votes_for_pool > 0, EVoteInternalWeightResultedInZeroVotes);
+            voter.update_for_internal(distribution_config, gauge_id);
+            if (!voter.pool_vote.contains(lock_id)) {
+                voter.pool_vote.add(lock_id, std::vector::empty<PoolID>());
             };
-            std::vector::push_back<PoolID>(sui::table::borrow_mut<LockID, vector<PoolID>>(&mut arg0.pool_vote, v0), v7);
-            let v12 = if (sui::table::contains<GaugeID, u64>(&arg0.weights, v8)) {
-                sui::table::remove<GaugeID, u64>(&mut arg0.weights, v8)
+            voter.pool_vote.borrow_mut(lock_id).push_back(pool_id);
+            let total_gauge_weight = if (voter.weights.contains(gauge_id)) {
+                voter.weights.remove(gauge_id)
             } else {
                 0
             };
-            sui::table::add<GaugeID, u64>(&mut arg0.weights, v8, v12 + v9);
-            if (!sui::table::contains<LockID, sui::table::Table<PoolID, u64>>(&arg0.votes, v0)) {
-                sui::table::add<LockID, sui::table::Table<PoolID, u64>>(
-                    &mut arg0.votes,
-                    v0,
-                    sui::table::new<PoolID, u64>(arg7)
-                );
+            voter.weights.add(gauge_id, total_gauge_weight + votes_for_pool);
+            if (!voter.votes.contains(lock_id)) {
+                voter.votes.add(lock_id, sui::table::new<PoolID, u64>(ctx));
             };
-            let v13 = sui::table::borrow_mut<LockID, sui::table::Table<PoolID, u64>>(&mut arg0.votes, v0);
-            let v14 = if (sui::table::contains<PoolID, u64>(v13, v7)) {
-                sui::table::remove<PoolID, u64>(v13, v7)
+            let lock_votes = voter.votes.borrow_mut(lock_id);
+            let lock_pool_votes = if (lock_votes.contains(pool_id)) {
+                lock_votes.remove(pool_id)
             } else {
                 0
             };
-            sui::table::add<PoolID, u64>(v13, v7, v14 + v9);
-            distribution::fee_voting_reward::deposit(
-                sui::table::borrow_mut<GaugeID, distribution::fee_voting_reward::FeeVotingReward>(
-                    &mut arg0.gauge_to_fee,
-                    v8
-                ),
-                &arg0.gauge_to_fee_authorized_cap,
-                v9,
-                v0.id,
-                arg6,
-                arg7
+            lock_votes.add(pool_id, lock_pool_votes + votes_for_pool);
+            voter.gauge_to_fee.borrow_mut(gauge_id).deposit(
+                &voter.gauge_to_fee_authorized_cap,
+                votes_for_pool,
+                lock_id.id,
+                clock,
+                ctx
             );
-            distribution::bribe_voting_reward::deposit(
-                sui::table::borrow_mut<GaugeID, distribution::bribe_voting_reward::BribeVotingReward>(
-                    &mut arg0.gauge_to_bribe,
-                    v8
-                ),
-                &arg0.gauge_to_bribe_authorized_cap,
-                v9,
-                v0.id,
-                arg6,
-                arg7
+            voter.gauge_to_bribe.borrow_mut(gauge_id).deposit(
+                &voter.gauge_to_bribe_authorized_cap,
+                votes_for_pool,
+                lock_id.id,
+                clock,
+                ctx
             );
-            v2 = v2 + v9;
-            v3 = v3 + v9;
-            let v15 = EventVoted {
-                sender: sui::tx_context::sender(arg7),
-                pool: v7.id,
-                lock: v0.id,
-                voting_weight: v9,
-                pool_weight: *sui::table::borrow<GaugeID, u64>(&arg0.weights, v8),
+            lock_used_weights = lock_used_weights + votes_for_pool;
+            global_total_weight_delta = global_total_weight_delta + votes_for_pool;
+            let voted_event = EventVoted {
+                sender: tx_context::sender(ctx),
+                pool: pool_id.id,
+                lock: lock_id.id,
+                voting_weight: votes_for_pool,
+                pool_weight: *voter.weights.borrow(gauge_id),
             };
-            sui::event::emit<EventVoted>(v15);
-            v4 = v4 + 1;
+            sui::event::emit<EventVoted>(voted_event);
+            i = i + 1;
         };
-        if (v2 > 0) {
-            distribution::voting_escrow::voting<T0>(arg1, &arg0.voter_cap, v0.id, true);
+        if (lock_used_weights > 0) {
+            voting_escrow.voting(&voter.voter_cap, lock_id.id, true);
         };
-        arg0.total_weight = arg0.total_weight + v3;
-        if (sui::table::contains<LockID, u64>(&arg0.used_weights, v0)) {
-            sui::table::remove<LockID, u64>(&mut arg0.used_weights, v0);
+        voter.total_weight = voter.total_weight + global_total_weight_delta;
+        if (voter.used_weights.contains(lock_id)) {
+            voter.used_weights.remove(lock_id);
         };
-        sui::table::add<LockID, u64>(&mut arg0.used_weights, v0, v2);
+        voter.used_weights.add(lock_id, lock_used_weights);
     }
 
-    public fun voted_pools<T0>(arg0: &Voter<T0>, arg1: sui::object::ID): vector<sui::object::ID> {
-        let mut v0 = std::vector::empty<sui::object::ID>();
-        let v1 = into_lock_id(arg1);
-        let v2 = if (sui::table::contains<LockID, vector<PoolID>>(&arg0.pool_vote, v1)) {
-            sui::table::borrow<LockID, vector<PoolID>>(&arg0.pool_vote, v1)
+    public fun voted_pools<SailCoinType>(
+        voter: &Voter<SailCoinType>,
+        lock_id: ID
+    ): vector<ID> {
+        let mut voted_pools_vec = std::vector::empty<ID>();
+        let lock_id_obj = into_lock_id(lock_id);
+        let voted_pools_from_voter = if (voter.pool_vote.contains(lock_id_obj)) {
+            voter.pool_vote.borrow(lock_id_obj)
         } else {
-            let v3 = std::vector::empty<PoolID>();
-            &v3
+            let voted_pools_empty = std::vector::empty<PoolID>();
+            &voted_pools_empty
         };
-        let mut v4 = 0;
-        while (v4 < std::vector::length<PoolID>(v2)) {
-            std::vector::push_back<sui::object::ID>(&mut v0, std::vector::borrow<PoolID>(v2, v4).id);
-            v4 = v4 + 1;
+        let mut i = 0;
+        while (i < voted_pools_from_voter.length()) {
+            voted_pools_vec.push_back(voted_pools_from_voter.borrow(i).id);
+            i = i + 1;
         };
-        v0
+        voted_pools_vec
     }
 
-    public fun whitelist_nft<T0>(
-        arg0: &mut Voter<T0>,
-        arg1: &distribution::voter_cap::GovernorCap,
-        arg2: sui::object::ID,
-        arg3: bool,
-        arg4: &mut sui::tx_context::TxContext
+    public fun whitelist_nft<SailCoinType>(
+        voter: &mut Voter<SailCoinType>,
+        governor_cap: &distribution::voter_cap::GovernorCap,
+        lock_id: ID,
+        listed: bool,
+        ctx: &mut TxContext
     ) {
-        distribution::voter_cap::validate_governor_voter_id(arg1, sui::object::id<Voter<T0>>(arg0));
-        assert!(is_governor<T0>(arg0, distribution::voter_cap::who(arg1)), 9223373956706664472);
-        let v0 = into_lock_id(arg2);
-        if (sui::table::contains<LockID, bool>(&arg0.is_whitelisted_nft, v0)) {
-            sui::table::remove<LockID, bool>(&mut arg0.is_whitelisted_nft, v0);
+        governor_cap.validate_governor_voter_id(object::id<Voter<SailCoinType>>(voter));
+        assert!(
+            voter.is_governor(object::id<distribution::voter_cap::GovernorCap>(governor_cap)),
+            EWhitelistNftGovernorInvalid
+        );
+        let lock_id_obj = into_lock_id(lock_id);
+        if (voter.is_whitelisted_nft.contains(lock_id_obj)) {
+            voter.is_whitelisted_nft.remove(lock_id_obj);
         };
-        sui::table::add<LockID, bool>(&mut arg0.is_whitelisted_nft, v0, arg3);
-        let v1 = EventWhitelistNFT {
-            sender: sui::tx_context::sender(arg4),
-            id: arg2,
-            listed: arg3,
+        voter.is_whitelisted_nft.add(lock_id_obj, listed);
+        let whitelisted_nft_event = EventWhitelistNFT {
+            sender: tx_context::sender(ctx),
+            id: lock_id,
+            listed: listed,
         };
-        sui::event::emit<EventWhitelistNFT>(v1);
+        sui::event::emit<EventWhitelistNFT>(whitelisted_nft_event);
     }
 
-    public fun whitelist_token<T0, T1>(
-        arg0: &mut Voter<T0>,
-        arg1: &distribution::voter_cap::GovernorCap,
-        arg2: bool,
-        arg3: &mut sui::tx_context::TxContext
+    public fun whitelist_token<SailCoinType, CoinToWhitelistType>(
+        voter: &mut Voter<SailCoinType>,
+        governor_cap: &distribution::voter_cap::GovernorCap,
+        listed: bool,
+        ctx: &mut TxContext
     ) {
-        distribution::voter_cap::validate_governor_voter_id(arg1, sui::object::id<Voter<T0>>(arg0));
-        assert!(is_governor<T0>(arg0, distribution::voter_cap::who(arg1)), 9223373896577122328);
-        whitelist_token_internal<T0>(arg0, std::type_name::get<T1>(), arg2, sui::tx_context::sender(arg3));
+        governor_cap.validate_governor_voter_id(object::id<Voter<SailCoinType>>(voter));
+        assert!(
+            voter.is_governor(governor_cap.who()),
+            EWhitelistTokenGovernorInvalid
+        );
+        voter.whitelist_token_internal(
+            std::type_name::get<CoinToWhitelistType>(),
+            listed,
+            tx_context::sender(ctx)
+        );
     }
 
-    fun whitelist_token_internal<T0>(arg0: &mut Voter<T0>, arg1: std::type_name::TypeName, arg2: bool, arg3: address) {
-        if (sui::table::contains<std::type_name::TypeName, bool>(&arg0.is_whitelisted_token, arg1)) {
-            sui::table::remove<std::type_name::TypeName, bool>(&mut arg0.is_whitelisted_token, arg1);
+    fun whitelist_token_internal<SailCoinType>(
+        voter: &mut Voter<SailCoinType>,
+        coinTypeName: std::type_name::TypeName,
+        listed: bool,
+        sender: address
+    ) {
+        if (voter.is_whitelisted_token.contains(coinTypeName)) {
+            voter.is_whitelisted_token.remove(coinTypeName);
         };
-        sui::table::add<std::type_name::TypeName, bool>(&mut arg0.is_whitelisted_token, arg1, arg2);
-        let v0 = EventWhitelistToken {
-            sender: arg3,
-            token: arg1,
-            listed: arg2,
+        voter.is_whitelisted_token.add(coinTypeName, listed);
+        let whitelist_token_event = EventWhitelistToken {
+            sender,
+            token: coinTypeName,
+            listed,
         };
-        sui::event::emit<EventWhitelistToken>(v0);
+        sui::event::emit<EventWhitelistToken>(whitelist_token_event);
     }
-
-    // decompiled from Move bytecode v6
 }
 
 

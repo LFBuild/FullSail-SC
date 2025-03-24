@@ -1,27 +1,25 @@
 module distribution::lock_owner {
     public struct OwnerProof {
-        prover: sui::object::ID,
-        lock: sui::object::ID,
+        prover: ID,
+        lock: ID,
         owner: address,
     }
 
-    public fun consume(arg0: OwnerProof): (sui::object::ID, sui::object::ID, address) {
+    public fun consume(owner_proof: OwnerProof): (ID, ID, address) {
         let OwnerProof {
-            prover: v0,
-            lock: v1,
-            owner: v2,
-        } = arg0;
-        (v0, v1, v2)
+            prover,
+            lock,
+            owner,
+        } = owner_proof;
+        (prover, lock, owner)
     }
 
-    public(package) fun issue(arg0: sui::object::ID, arg1: sui::object::ID, arg2: address): OwnerProof {
+    public(package) fun issue(prover: ID, lock: ID, owner: address): OwnerProof {
         OwnerProof {
-            prover: arg0,
-            lock: arg1,
-            owner: arg2,
+            prover,
+            lock,
+            owner,
         }
     }
-
-    // decompiled from Move bytecode v6
 }
 

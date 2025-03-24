@@ -5,7 +5,7 @@ module integrate::pool_script_v3 {
         position: &mut clmm_pool::position::Position,
         coin_a_input: &mut sui::coin::Coin<CoinTypeA>,
         coin_b_input: &mut sui::coin::Coin<CoinTypeB>,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         let (collected_fee_a, collected_fee_b) = clmm_pool::pool::collect_fee<CoinTypeA, CoinTypeB>(
             global_config,
@@ -24,7 +24,7 @@ module integrate::pool_script_v3 {
         rewarder_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         coin_a_input: &mut sui::coin::Coin<RewardCoinType>,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         coin_a_input.join<RewardCoinType>(sui::coin::from_balance<RewardCoinType>(
             clmm_pool::pool::collect_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
@@ -46,7 +46,7 @@ module integrate::pool_script_v3 {
         fee_numerator: u64,
         fee_denominator: u64,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         clmm_pool::pool::update_emission<CoinTypeA, CoinTypeB, RewardCoinType>(
             global_config,

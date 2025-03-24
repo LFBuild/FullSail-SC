@@ -1,30 +1,30 @@
 module distribution::common {
-    public fun current_period(arg0: &sui::clock::Clock): u64 {
-        to_period(current_timestamp(arg0))
+    public fun current_period(clock: &sui::clock::Clock): u64 {
+        to_period(current_timestamp(clock))
     }
 
-    public fun current_timestamp(arg0: &sui::clock::Clock): u64 {
-        sui::clock::timestamp_ms(arg0) / 1000
+    public fun current_timestamp(clock: &sui::clock::Clock): u64 {
+        clock.timestamp_ms() / 1000
     }
 
     public fun day(): u64 {
         86400
     }
 
-    public fun epoch_next(arg0: u64): u64 {
-        arg0 - arg0 % 604800 + 604800
+    public fun epoch_next(timestamp: u64): u64 {
+        timestamp - timestamp % 604800 + 604800
     }
 
-    public fun epoch_start(arg0: u64): u64 {
-        arg0 - arg0 % 604800
+    public fun epoch_start(timestamp: u64): u64 {
+        timestamp - timestamp % 604800
     }
 
-    public fun epoch_vote_end(arg0: u64): u64 {
-        arg0 - arg0 % 604800 + 604800 - 3600
+    public fun epoch_vote_end(timestamp: u64): u64 {
+        timestamp - timestamp % 604800 + 604800 - 3600
     }
 
-    public fun epoch_vote_start(arg0: u64): u64 {
-        arg0 - arg0 % 604800 + 3600
+    public fun epoch_vote_start(timestamp: u64): u64 {
+        timestamp - timestamp % 604800 + 3600
     }
 
     public fun get_time_to_finality(): u64 {
@@ -43,14 +43,12 @@ module distribution::common {
         604800
     }
 
-    public fun to_period(arg0: u64): u64 {
-        arg0 / 604800 * 604800
+    public fun to_period(timestamp: u64): u64 {
+        timestamp / 604800 * 604800
     }
 
     public fun week(): u64 {
         604800
     }
-
-    // decompiled from Move bytecode v6
 }
 

@@ -1,4 +1,4 @@
-export COIN_TYPE=0x9bdf28dabc0726cdd122473dca20e22a558fcbbe107abc2c80ad7f848fd771e6::token_g::TOKEN_G
+export COIN_TYPE=0x94901b6cde41a2902e4a271c37de37651e5f05f405056f5f638ac1b511337f8e::token_g::TOKEN_G
 export COIN_NAME='"TokenG"'
 export COIN_SYMBOL='"TKNG"'
 export COIN_COINGECKO_ID='""'

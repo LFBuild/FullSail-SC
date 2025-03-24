@@ -1,17 +1,17 @@
 module distribution::reward_distributor_cap {
     public struct RewardDistributorCap has store, key {
-        id: sui::object::UID,
-        reward_distributor: sui::object::ID,
+        id: UID,
+        reward_distributor: ID,
     }
 
-    public(package) fun create(arg0: sui::object::ID, arg1: &mut sui::tx_context::TxContext): RewardDistributorCap {
+    public(package) fun create(arg0: ID, arg1: &mut TxContext): RewardDistributorCap {
         RewardDistributorCap {
-            id: sui::object::new(arg1),
+            id: object::new(arg1),
             reward_distributor: arg0,
         }
     }
 
-    public fun validate(arg0: &RewardDistributorCap, arg1: sui::object::ID) {
+    public fun validate(arg0: &RewardDistributorCap, arg1: ID) {
         assert!(arg0.reward_distributor == arg1, 9223372105574252543);
     }
 

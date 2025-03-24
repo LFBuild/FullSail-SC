@@ -25,7 +25,7 @@ module integrate::router {
         sqrt_price_limit: u128,
         use_full_input: bool,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ): (sui::coin::Coin<CoinTypeA>, sui::coin::Coin<CoinTypeB>) {
         if (by_amount_in && use_full_input) {
             let amount_to_use = if (a2b) {
@@ -209,7 +209,7 @@ module integrate::router {
         sqrt_price_limit_ab: u128,
         sqrt_price_limit_bc: u128,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ): (sui::coin::Coin<CoinTypeA>, sui::coin::Coin<CoinTypeC>) {
         if (by_amount_in) {
             let (coin_a_out, coin_b_out) = swap<CoinTypeA, CoinTypeB>(
@@ -289,7 +289,7 @@ module integrate::router {
         sqrt_price_limit_ab: u128,
         sqrt_price_limit_cb: u128,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ): (sui::coin::Coin<CoinTypeA>, sui::coin::Coin<CoinTypeC>) {
         if (by_amount_in) {
             let (coin_a_remaining, coin_b_out) = swap<CoinTypeA, CoinTypeB>(
@@ -369,7 +369,7 @@ module integrate::router {
         sqrt_price_ba: u128,
         sqrt_price_bc: u128,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ): (sui::coin::Coin<CoinTypeA>, sui::coin::Coin<CoinTypeC>) {
         if (by_amount_in) {
             let (coin_b_out, coin_a_out) = swap<CoinTypeB, CoinTypeA>(
@@ -449,7 +449,7 @@ module integrate::router {
         sqrt_price_limit_ba: u128,
         sqrt_price_limit_cb: u128,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ): (sui::coin::Coin<CoinTypeA>, sui::coin::Coin<CoinTypeC>) {
         if (by_amount_in) {
             let (coin_b_out, coin_a_out) = swap<CoinTypeB, CoinTypeA>(

@@ -2,13 +2,13 @@ module integrate::utils {
 
     public fun merge_coins<CoinType>(
         mut coins: vector<sui::coin::Coin<CoinType>>,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ): sui::coin::Coin<CoinType> {
-        if (std::vector::is_empty<sui::coin::Coin<CoinType>>(&coins)) {
-            std::vector::destroy_empty<sui::coin::Coin<CoinType>>(coins);
+        if (coins.is_empty()) {
+            coins.destroy_empty();
             sui::coin::zero<CoinType>(ctx)
         } else {
-            let mut last_coin = std::vector::pop_back<sui::coin::Coin<CoinType>>(&mut coins);
+            let mut last_coin = coins.pop_back();
             sui::pay::join_vec<CoinType>(&mut last_coin, coins);
             last_coin
         }
@@ -19,20 +19,20 @@ module integrate::utils {
         recipient: address
     ) {
         if (coin.value<CoinType>() > 0) {
-            sui::transfer::public_transfer<sui::coin::Coin<CoinType>>(coin, recipient);
+            transfer::public_transfer<sui::coin::Coin<CoinType>>(coin, recipient);
         } else {
-            sui::coin::destroy_zero<CoinType>(coin);
+            coin.destroy_zero();
         };
     }
 
     public fun transfer_coin_to_sender<CoinType>(
         coin: sui::coin::Coin<CoinType>,
-        ctx: &mut sui::tx_context::TxContext
+        ctx: &mut TxContext
     ) {
         if (coin.value<CoinType>() > 0) {
-            sui::transfer::public_transfer<sui::coin::Coin<CoinType>>(coin, sui::tx_context::sender(ctx));
+            transfer::public_transfer<sui::coin::Coin<CoinType>>(coin, tx_context::sender(ctx));
         } else {
-            sui::coin::destroy_zero<CoinType>(coin);
+            coin.destroy_zero();
         };
     }
 }
