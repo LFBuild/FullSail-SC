@@ -17,140 +17,137 @@ module clmm_pool::tick {
         magma_distribution_growth_outside: u128,
     }
 
-    public(package) fun new(arg0: u32, arg1: u64, arg2: &mut sui::tx_context::TxContext): TickManager {
+    public(package) fun new(tick_spacing: u32, seed: u64, ctx: &mut sui::tx_context::TxContext): TickManager {
         TickManager {
-            tick_spacing: arg0,
-            ticks: move_stl::skip_list::new<Tick>(16, 2, arg1, arg2),
+            tick_spacing,
+            ticks: move_stl::skip_list::new<Tick>(16, 2, seed, ctx),
         }
     }
 
-    public fun borrow_tick(arg0: &TickManager, arg1: integer_mate::i32::I32): &Tick {
-        move_stl::skip_list::borrow<Tick>(&arg0.ticks, tick_score(arg1))
+    public fun borrow_tick(tick_manager: &TickManager, tick_index: integer_mate::i32::I32): &Tick {
+        move_stl::skip_list::borrow<Tick>(&tick_manager.ticks, tick_score(tick_index))
     }
 
     public fun borrow_tick_for_swap(
-        arg0: &TickManager,
-        arg1: u64,
-        arg2: bool
+        tick_manager: &TickManager,
+        score: u64,
+        is_prev: bool
     ): (&Tick, move_stl::option_u64::OptionU64) {
-        let v0 = move_stl::skip_list::borrow_node<Tick>(&arg0.ticks, arg1);
-        let v1 = if (arg2) {
-            move_stl::skip_list::prev_score<Tick>(v0)
+        let node = move_stl::skip_list::borrow_node<Tick>(&tick_manager.ticks, score);
+        let next_score = if (is_prev) {
+            move_stl::skip_list::prev_score<Tick>(node)
         } else {
-            move_stl::skip_list::next_score<Tick>(v0)
+            move_stl::skip_list::next_score<Tick>(node)
         };
-        (move_stl::skip_list::borrow_value<Tick>(v0), v1)
+        (move_stl::skip_list::borrow_value<Tick>(node), next_score)
     }
-
     public(package) fun cross_by_swap(
-        arg0: &mut TickManager,
-        arg1: integer_mate::i32::I32,
-        arg2: bool,
-        arg3: u128,
-        arg4: u128,
-        arg5: u128,
-        arg6: u128,
-        arg7: u128,
-        arg8: vector<u128>,
-        arg9: u128
+        tick_manager: &mut TickManager,
+        tick_index: integer_mate::i32::I32,
+        is_a2b: bool,
+        current_liquidity: u128,
+        staked_liquidity: u128,
+        fee_growth_global_a: u128,
+        fee_growth_global_b: u128,
+        points_growth_global: u128,
+        rewards_growth_global: vector<u128>,
+        magma_growth_global: u128
     ): (u128, u128) {
-        let v0 = move_stl::skip_list::borrow_mut<Tick>(&mut arg0.ticks, tick_score(arg1));
-        let (v1, v2) = if (arg2) {
-            (integer_mate::i128::neg(v0.liquidity_net), integer_mate::i128::neg(
-                v0.magma_distribution_staked_liquidity_net
+        let tick = move_stl::skip_list::borrow_mut<Tick>(&mut tick_manager.ticks, tick_score(tick_index));
+        let (liquidity_delta, staked_liquidity_delta) = if (is_a2b) {
+            (integer_mate::i128::neg(tick.liquidity_net), integer_mate::i128::neg(
+                tick.magma_distribution_staked_liquidity_net
             ))
         } else {
-            (v0.liquidity_net, v0.magma_distribution_staked_liquidity_net)
+            (tick.liquidity_net, tick.magma_distribution_staked_liquidity_net)
         };
-        let (v3, v4) = if (!integer_mate::i128::is_neg(v1)) {
-            let v5 = integer_mate::i128::abs_u128(v1);
-            assert!(integer_mate::math_u128::add_check(v5, arg3), 1);
-            let v6 = integer_mate::i128::abs_u128(v2);
-            assert!(integer_mate::math_u128::add_check(v6, arg4), 1);
-            (arg3 + v5, arg4 + v6)
+        let (new_liquidity, new_staked_liquidity) = if (!integer_mate::i128::is_neg(liquidity_delta)) {
+            let liquidity_abs = integer_mate::i128::abs_u128(liquidity_delta);
+            assert!(integer_mate::math_u128::add_check(liquidity_abs, current_liquidity), 1);
+            let staked_abs = integer_mate::i128::abs_u128(staked_liquidity_delta);
+            assert!(integer_mate::math_u128::add_check(staked_abs, staked_liquidity), 1);
+            (current_liquidity + liquidity_abs, staked_liquidity + staked_abs)
         } else {
-            let v7 = integer_mate::i128::abs_u128(v1);
-            assert!(arg3 >= v7, 1);
-            let v8 = integer_mate::i128::abs_u128(v2);
-            assert!(arg4 >= v8, 9223372401926995967);
-            (arg3 - v7, arg4 - v8)
+            let liquidity_abs = integer_mate::i128::abs_u128(liquidity_delta);
+            assert!(current_liquidity >= liquidity_abs, 1);
+            let staked_abs = integer_mate::i128::abs_u128(staked_liquidity_delta);
+            assert!(staked_liquidity >= staked_abs, 9223372401926995967);
+            (current_liquidity - liquidity_abs, staked_liquidity - staked_abs)
         };
-        v0.fee_growth_outside_a = integer_mate::math_u128::wrapping_sub(arg5, v0.fee_growth_outside_a);
-        v0.fee_growth_outside_b = integer_mate::math_u128::wrapping_sub(arg6, v0.fee_growth_outside_b);
-        let mut v9 = 0;
-        while (v9 < std::vector::length<u128>(&arg8)) {
-            let v10 = *std::vector::borrow<u128>(&arg8, v9);
-            if (std::vector::length<u128>(&v0.rewards_growth_outside) > v9) {
-                let v11 = std::vector::borrow_mut<u128>(&mut v0.rewards_growth_outside, v9);
-                *v11 = integer_mate::math_u128::wrapping_sub(v10, *v11);
+        tick.fee_growth_outside_a = integer_mate::math_u128::wrapping_sub(fee_growth_global_a, tick.fee_growth_outside_a);
+        tick.fee_growth_outside_b = integer_mate::math_u128::wrapping_sub(fee_growth_global_b, tick.fee_growth_outside_b);
+        let mut i = 0;
+        while (i < std::vector::length<u128>(&rewards_growth_global)) {
+            let reward_growth = *std::vector::borrow<u128>(&rewards_growth_global, i);
+            if (std::vector::length<u128>(&tick.rewards_growth_outside) > i) {
+                let reward_outside = std::vector::borrow_mut<u128>(&mut tick.rewards_growth_outside, i);
+                *reward_outside = integer_mate::math_u128::wrapping_sub(reward_growth, *reward_outside);
             } else {
-                std::vector::push_back<u128>(&mut v0.rewards_growth_outside, v10);
+                std::vector::push_back<u128>(&mut tick.rewards_growth_outside, reward_growth);
             };
-            v9 = v9 + 1;
+            i = i + 1;
         };
-        v0.points_growth_outside = integer_mate::math_u128::wrapping_sub(arg7, v0.points_growth_outside);
-        v0.magma_distribution_growth_outside = integer_mate::math_u128::wrapping_sub(
-            arg9,
-            v0.magma_distribution_growth_outside
+        tick.points_growth_outside = integer_mate::math_u128::wrapping_sub(points_growth_global, tick.points_growth_outside);
+        tick.magma_distribution_growth_outside = integer_mate::math_u128::wrapping_sub(
+            magma_growth_global,
+            tick.magma_distribution_growth_outside
         );
-        (v3, v4)
+        (new_liquidity, new_staked_liquidity)
     }
-
     public(package) fun decrease_liquidity(
-        arg0: &mut TickManager,
-        arg1: integer_mate::i32::I32,
-        arg2: integer_mate::i32::I32,
-        arg3: integer_mate::i32::I32,
-        arg4: u128,
-        arg5: u128,
-        arg6: u128,
-        arg7: u128,
-        arg8: vector<u128>,
-        arg9: u128
+        tick_manager: &mut TickManager,
+        current_tick_index: integer_mate::i32::I32,
+        tick_lower: integer_mate::i32::I32,
+        tick_upper: integer_mate::i32::I32,
+        liquidity: u128,
+        fee_growth_global_a: u128,
+        fee_growth_global_b: u128,
+        points_growth_global: u128,
+        rewards_growth_global: vector<u128>,
+        magma_growth_global: u128
     ) {
-        if (arg4 == 0) {
+        if (liquidity == 0) {
             return
         };
-        let v0 = tick_score(arg2);
-        let v1 = tick_score(arg3);
-        assert!(move_stl::skip_list::contains<Tick>(&arg0.ticks, v0), 3);
-        assert!(move_stl::skip_list::contains<Tick>(&arg0.ticks, v1), 3);
+        let lower_score = tick_score(tick_lower);
+        let upper_score = tick_score(tick_upper);
+        assert!(move_stl::skip_list::contains<Tick>(&tick_manager.ticks, lower_score), 3);
+        assert!(move_stl::skip_list::contains<Tick>(&tick_manager.ticks, upper_score), 3);
         if (update_by_liquidity(
-            move_stl::skip_list::borrow_mut<Tick>(&mut arg0.ticks, v0),
-            arg1,
-            arg4,
+            move_stl::skip_list::borrow_mut<Tick>(&mut tick_manager.ticks, lower_score),
+            current_tick_index,
+            liquidity,
             false,
             false,
             false,
-            arg5,
-            arg6,
-            arg7,
-            arg8,
-            arg9
+            fee_growth_global_a,
+            fee_growth_global_b,
+            points_growth_global,
+            rewards_growth_global,
+            magma_growth_global
         ) == 0) {
-            move_stl::skip_list::remove<Tick>(&mut arg0.ticks, v0);
+            move_stl::skip_list::remove<Tick>(&mut tick_manager.ticks, lower_score);
         };
         if (update_by_liquidity(
-            move_stl::skip_list::borrow_mut<Tick>(&mut arg0.ticks, v1),
-            arg1,
-            arg4,
+            move_stl::skip_list::borrow_mut<Tick>(&mut tick_manager.ticks, upper_score),
+            current_tick_index,
+            liquidity,
             false,
             false,
             true,
-            arg5,
-            arg6,
-            arg7,
-            arg8,
-            arg9
+            fee_growth_global_a,
+            fee_growth_global_b,
+            points_growth_global,
+            rewards_growth_global,
+            magma_growth_global
         ) == 0) {
-            move_stl::skip_list::remove<Tick>(&mut arg0.ticks, v1);
+            move_stl::skip_list::remove<Tick>(&mut tick_manager.ticks, upper_score);
         };
     }
-
-    fun default(arg0: integer_mate::i32::I32): Tick {
+    fun default(tick_index: integer_mate::i32::I32): Tick {
         Tick {
-            index: arg0,
-            sqrt_price: clmm_pool::tick_math::get_sqrt_price_at_tick(arg0),
+            index: tick_index,
+            sqrt_price: clmm_pool::tick_math::get_sqrt_price_at_tick(tick_index),
             liquidity_net: integer_mate::i128::from(0),
             liquidity_gross: 0,
             fee_growth_outside_a: 0,
@@ -162,423 +159,428 @@ module clmm_pool::tick {
         }
     }
 
-    fun default_rewards_growth_outside(arg0: u64): vector<u128> {
-        if (arg0 <= 0) {
+    fun default_rewards_growth_outside(rewards_count: u64): vector<u128> {
+        if (rewards_count <= 0) {
             std::vector::empty<u128>()
         } else {
-            let mut v1 = std::vector::empty<u128>();
-            let mut v2 = 0;
-            while (v2 < arg0) {
-                std::vector::push_back<u128>(&mut v1, 0);
-                v2 = v2 + 1;
+            let mut rewards = std::vector::empty<u128>();
+            let mut index = 0;
+            while (index < rewards_count) {
+                std::vector::push_back<u128>(&mut rewards, 0);
+                index = index + 1;
             };
-            v1
+            rewards
         }
     }
 
-    public fun fee_growth_outside(arg0: &Tick): (u128, u128) {
-        (arg0.fee_growth_outside_a, arg0.fee_growth_outside_b)
+    public fun fee_growth_outside(tick: &Tick): (u128, u128) {
+        (tick.fee_growth_outside_a, tick.fee_growth_outside_b)
     }
-
-    public fun fetch_ticks(arg0: &TickManager, arg1: vector<u32>, arg2: u64): vector<Tick> {
-        let mut v0 = std::vector::empty<Tick>();
-        let v1 = if (std::vector::is_empty<u32>(&arg1)) {
-            move_stl::skip_list::head<Tick>(&arg0.ticks)
+    public fun fetch_ticks(tick_manager: &TickManager, tick_indices: vector<u32>, limit: u64): vector<Tick> {
+        let mut result = std::vector::empty<Tick>();
+        let next_score = if (std::vector::is_empty<u32>(&tick_indices)) {
+            move_stl::skip_list::head<Tick>(&tick_manager.ticks)
         } else {
             move_stl::skip_list::find_next<Tick>(
-                &arg0.ticks,
-                tick_score(integer_mate::i32::from_u32(*std::vector::borrow<u32>(&arg1, 0))),
+                &tick_manager.ticks,
+                tick_score(integer_mate::i32::from_u32(*std::vector::borrow<u32>(&tick_indices, 0))),
                 false
             )
         };
-        let mut v2 = v1;
-        let mut v3 = 0;
-        while (move_stl::option_u64::is_some(&v2)) {
-            let v4 = move_stl::skip_list::borrow_node<Tick>(&arg0.ticks, move_stl::option_u64::borrow(&v2));
-            std::vector::push_back<Tick>(&mut v0, *move_stl::skip_list::borrow_value<Tick>(v4));
-            v2 = move_stl::skip_list::next_score<Tick>(v4);
-            let v5 = v3 + 1;
-            v3 = v5;
-            if (v5 == arg2) {
+        let mut current_score = next_score;
+        let mut count = 0;
+        while (move_stl::option_u64::is_some(&current_score)) {
+            let node = move_stl::skip_list::borrow_node<Tick>(&tick_manager.ticks, move_stl::option_u64::borrow(&current_score));
+            std::vector::push_back<Tick>(&mut result, *move_stl::skip_list::borrow_value<Tick>(node));
+            current_score = move_stl::skip_list::next_score<Tick>(node);
+            let new_count = count + 1;
+            count = new_count;
+            if (new_count == limit) {
                 break
             };
         };
-        v0
+        result
     }
-
     public fun first_score_for_swap(
-        arg0: &TickManager,
-        arg1: integer_mate::i32::I32,
-        arg2: bool
+        tick_manager: &TickManager,
+        tick_index: integer_mate::i32::I32,
+        is_reverse: bool
     ): move_stl::option_u64::OptionU64 {
-        if (arg2) {
-            move_stl::skip_list::find_prev<Tick>(&arg0.ticks, tick_score(arg1), true)
+        if (is_reverse) {
+            move_stl::skip_list::find_prev<Tick>(&tick_manager.ticks, tick_score(tick_index), true)
         } else {
-            let v1 = if (integer_mate::i32::eq(
-                arg1,
+            let next_score = if (integer_mate::i32::eq(
+                tick_index,
                 integer_mate::i32::neg_from(clmm_pool::tick_math::tick_bound() + 1)
             )) {
-                move_stl::skip_list::find_next<Tick>(&arg0.ticks, tick_score(clmm_pool::tick_math::min_tick()), true)
+                move_stl::skip_list::find_next<Tick>(&tick_manager.ticks, tick_score(clmm_pool::tick_math::min_tick()), true)
             } else {
-                move_stl::skip_list::find_next<Tick>(&arg0.ticks, tick_score(arg1), false)
+                move_stl::skip_list::find_next<Tick>(&tick_manager.ticks, tick_score(tick_index), false)
             };
-            v1
+            next_score
         }
     }
 
     public fun get_fee_in_range(
-        arg0: integer_mate::i32::I32,
-        arg1: u128,
-        arg2: u128,
-        arg3: std::option::Option<Tick>,
-        arg4: std::option::Option<Tick>
+        current_tick_index: integer_mate::i32::I32,
+        fee_growth_global_a: u128,
+        fee_growth_global_b: u128,
+        tick_lower: std::option::Option<Tick>,
+        tick_upper: std::option::Option<Tick>
     ): (u128, u128) {
-        let (v0, v1) = if (std::option::is_none<Tick>(&arg3)) {
-            (arg1, arg2)
+        let (fee_growth_below_a, fee_growth_below_b) = if (std::option::is_none<Tick>(&tick_lower)) {
+            (fee_growth_global_a, fee_growth_global_b)
         } else {
-            let v2 = std::option::borrow<Tick>(&arg3);
-            let (v3, v4) = if (integer_mate::i32::lt(arg0, v2.index)) {
+            let tick_l = std::option::borrow<Tick>(&tick_lower);
+            let (fee_a, fee_b) = if (integer_mate::i32::lt(current_tick_index, tick_l.index)) {
                 (integer_mate::math_u128::wrapping_sub(
-                    arg1,
-                    v2.fee_growth_outside_a
-                ), integer_mate::math_u128::wrapping_sub(arg2, v2.fee_growth_outside_b))
+                    fee_growth_global_a,
+                    tick_l.fee_growth_outside_a
+                ), integer_mate::math_u128::wrapping_sub(
+                    fee_growth_global_b,
+                    tick_l.fee_growth_outside_b
+                ))
             } else {
-                (v2.fee_growth_outside_a, v2.fee_growth_outside_b)
+                (tick_l.fee_growth_outside_a, tick_l.fee_growth_outside_b)
             };
-            (v3, v4)
+            (fee_a, fee_b)
         };
-        let (v5, v6) = if (std::option::is_none<Tick>(&arg4)) {
+
+        let (fee_growth_above_a, fee_growth_above_b) = if (std::option::is_none<Tick>(&tick_upper)) {
             (0, 0)
         } else {
-            let v7 = std::option::borrow<Tick>(&arg4);
-            let (v8, v9) = if (integer_mate::i32::lt(arg0, v7.index)) {
-                (v7.fee_growth_outside_a, v7.fee_growth_outside_b)
+            let tick_u = std::option::borrow<Tick>(&tick_upper);
+            let (fee_a, fee_b) = if (integer_mate::i32::lt(current_tick_index, tick_u.index)) {
+                (tick_u.fee_growth_outside_a, tick_u.fee_growth_outside_b)
             } else {
                 (integer_mate::math_u128::wrapping_sub(
-                    arg1,
-                    v7.fee_growth_outside_a
-                ), integer_mate::math_u128::wrapping_sub(arg2, v7.fee_growth_outside_b))
+                    fee_growth_global_a,
+                    tick_u.fee_growth_outside_a
+                ), integer_mate::math_u128::wrapping_sub(
+                    fee_growth_global_b,
+                    tick_u.fee_growth_outside_b
+                ))
             };
-            (v8, v9)
+            (fee_a, fee_b)
         };
         (integer_mate::math_u128::wrapping_sub(
-            integer_mate::math_u128::wrapping_sub(arg1, v0),
-            v5
-        ), integer_mate::math_u128::wrapping_sub(integer_mate::math_u128::wrapping_sub(arg2, v1), v6))
+            integer_mate::math_u128::wrapping_sub(fee_growth_global_a, fee_growth_below_a),
+            fee_growth_above_a
+        ), integer_mate::math_u128::wrapping_sub(
+            integer_mate::math_u128::wrapping_sub(fee_growth_global_b, fee_growth_below_b),
+            fee_growth_above_b
+        ))
     }
 
     public fun get_magma_distribution_growth_in_range(
-        arg0: integer_mate::i32::I32,
-        arg1: u128,
-        arg2: std::option::Option<Tick>,
-        arg3: std::option::Option<Tick>
+        current_tick_index: integer_mate::i32::I32,
+        magma_growth_global: u128,
+        tick_lower: std::option::Option<Tick>,
+        tick_upper: std::option::Option<Tick>
     ): u128 {
-        let v0 = if (std::option::is_none<Tick>(&arg2)) {
-            arg1
+        let magma_growth_below = if (std::option::is_none<Tick>(&tick_lower)) {
+            magma_growth_global
         } else {
-            let v1 = std::option::borrow<Tick>(&arg2);
-            let v2 = if (integer_mate::i32::lt(arg0, v1.index)) {
-                integer_mate::math_u128::wrapping_sub(arg1, v1.magma_distribution_growth_outside)
+            let tick_l = std::option::borrow<Tick>(&tick_lower);
+            let magma_below = if (integer_mate::i32::lt(current_tick_index, tick_l.index)) {
+                integer_mate::math_u128::wrapping_sub(magma_growth_global, tick_l.magma_distribution_growth_outside)
             } else {
-                v1.magma_distribution_growth_outside
+                tick_l.magma_distribution_growth_outside
             };
-            v2
+            magma_below
         };
-        let v3 = if (std::option::is_none<Tick>(&arg3)) {
+        let magma_growth_above = if (std::option::is_none<Tick>(&tick_upper)) {
             0
         } else {
-            let v4 = std::option::borrow<Tick>(&arg3);
-            let v5 = if (integer_mate::i32::lt(arg0, v4.index)) {
-                v4.magma_distribution_growth_outside
+            let tick_u = std::option::borrow<Tick>(&tick_upper);
+            let magma_above = if (integer_mate::i32::lt(current_tick_index, tick_u.index)) {
+                tick_u.magma_distribution_growth_outside
             } else {
-                integer_mate::math_u128::wrapping_sub(arg1, v4.magma_distribution_growth_outside)
+                integer_mate::math_u128::wrapping_sub(magma_growth_global, tick_u.magma_distribution_growth_outside)
             };
-            v5
+            magma_above
         };
-        integer_mate::math_u128::wrapping_sub(integer_mate::math_u128::wrapping_sub(arg1, v0), v3)
+        integer_mate::math_u128::wrapping_sub(integer_mate::math_u128::wrapping_sub(magma_growth_global, magma_growth_below), magma_growth_above)
     }
-
     public fun get_points_in_range(
-        arg0: integer_mate::i32::I32,
-        arg1: u128,
-        arg2: std::option::Option<Tick>,
-        arg3: std::option::Option<Tick>
+        current_tick_index: integer_mate::i32::I32,
+        points_growth_global: u128,
+        tick_lower: std::option::Option<Tick>,
+        tick_upper: std::option::Option<Tick>
     ): u128 {
-        let v0 = if (std::option::is_none<Tick>(&arg2)) {
-            arg1
+        let points_growth_below = if (std::option::is_none<Tick>(&tick_lower)) {
+            points_growth_global
         } else {
-            let v1 = std::option::borrow<Tick>(&arg2);
-            let v2 = if (integer_mate::i32::lt(arg0, v1.index)) {
-                integer_mate::math_u128::wrapping_sub(arg1, v1.points_growth_outside)
+            let tick_l = std::option::borrow<Tick>(&tick_lower);
+            let points_below = if (integer_mate::i32::lt(current_tick_index, tick_l.index)) {
+                integer_mate::math_u128::wrapping_sub(points_growth_global, tick_l.points_growth_outside)
             } else {
-                v1.points_growth_outside
+                tick_l.points_growth_outside
             };
-            v2
+            points_below
         };
-        let v3 = if (std::option::is_none<Tick>(&arg3)) {
+        let points_growth_above = if (std::option::is_none<Tick>(&tick_upper)) {
             0
         } else {
-            let v4 = std::option::borrow<Tick>(&arg3);
-            let v5 = if (integer_mate::i32::lt(arg0, v4.index)) {
-                v4.points_growth_outside
+            let tick_u = std::option::borrow<Tick>(&tick_upper);
+            let points_above = if (integer_mate::i32::lt(current_tick_index, tick_u.index)) {
+                tick_u.points_growth_outside
             } else {
-                integer_mate::math_u128::wrapping_sub(arg1, v4.points_growth_outside)
+                integer_mate::math_u128::wrapping_sub(points_growth_global, tick_u.points_growth_outside)
             };
-            v5
+            points_above
         };
-        integer_mate::math_u128::wrapping_sub(integer_mate::math_u128::wrapping_sub(arg1, v0), v3)
+        integer_mate::math_u128::wrapping_sub(integer_mate::math_u128::wrapping_sub(points_growth_global, points_growth_below), points_growth_above)
     }
 
-    public fun get_reward_growth_outside(arg0: &Tick, arg1: u64): u128 {
-        if (std::vector::length<u128>(&arg0.rewards_growth_outside) <= arg1) {
+    public fun get_reward_growth_outside(tick: &Tick, reward_index: u64): u128 {
+        if (std::vector::length<u128>(&tick.rewards_growth_outside) <= reward_index) {
             0
         } else {
-            *std::vector::borrow<u128>(&arg0.rewards_growth_outside, arg1)
+            *std::vector::borrow<u128>(&tick.rewards_growth_outside, reward_index)
         }
     }
 
     public fun get_rewards_in_range(
-        arg0: integer_mate::i32::I32,
-        arg1: vector<u128>,
-        arg2: std::option::Option<Tick>,
-        arg3: std::option::Option<Tick>
+        current_tick_index: integer_mate::i32::I32,
+        rewards_growth_global: vector<u128>,
+        tick_lower: std::option::Option<Tick>,
+        tick_upper: std::option::Option<Tick>
     ): vector<u128> {
-        let mut v0 = std::vector::empty<u128>();
-        let mut v1 = 0;
-        while (v1 < std::vector::length<u128>(&arg1)) {
-            let v2 = *std::vector::borrow<u128>(&arg1, v1);
-            let v3 = if (std::option::is_none<Tick>(&arg2)) {
-                v2
+        let mut rewards_in_range = std::vector::empty<u128>();
+        let mut reward_index = 0;
+        while (reward_index < std::vector::length<u128>(&rewards_growth_global)) {
+            let reward_growth_global = *std::vector::borrow<u128>(&rewards_growth_global, reward_index);
+            let reward_growth_below = if (std::option::is_none<Tick>(&tick_lower)) {
+                reward_growth_global
             } else {
-                let v4 = std::option::borrow<Tick>(&arg2);
-                let v5 = if (integer_mate::i32::lt(arg0, v4.index)) {
-                    integer_mate::math_u128::wrapping_sub(v2, get_reward_growth_outside(v4, v1))
+                let tick_l = std::option::borrow<Tick>(&tick_lower);
+                let reward_below = if (integer_mate::i32::lt(current_tick_index, tick_l.index)) {
+                    integer_mate::math_u128::wrapping_sub(reward_growth_global, get_reward_growth_outside(tick_l, reward_index))
                 } else {
-                    get_reward_growth_outside(v4, v1)
+                    get_reward_growth_outside(tick_l, reward_index)
                 };
-                v5
+                reward_below
             };
-            let v6 = if (std::option::is_none<Tick>(&arg3)) {
+            let reward_growth_above = if (std::option::is_none<Tick>(&tick_upper)) {
                 0
             } else {
-                let v7 = std::option::borrow<Tick>(&arg3);
-                let v8 = if (integer_mate::i32::lt(arg0, v7.index)) {
-                    get_reward_growth_outside(v7, v1)
+                let tick_u = std::option::borrow<Tick>(&tick_upper);
+                let reward_above = if (integer_mate::i32::lt(current_tick_index, tick_u.index)) {
+                    get_reward_growth_outside(tick_u, reward_index)
                 } else {
-                    let v9 = get_reward_growth_outside(v7, v1);
-                    integer_mate::math_u128::wrapping_sub(v2, v9)
+                    let reward_outside = get_reward_growth_outside(tick_u, reward_index);
+                    integer_mate::math_u128::wrapping_sub(reward_growth_global, reward_outside)
                 };
-                v8
+                reward_above
             };
             std::vector::push_back<u128>(
-                &mut v0,
-                integer_mate::math_u128::wrapping_sub(integer_mate::math_u128::wrapping_sub(v2, v3), v6)
+                &mut rewards_in_range,
+                integer_mate::math_u128::wrapping_sub(integer_mate::math_u128::wrapping_sub(reward_growth_global, reward_growth_below), reward_growth_above)
             );
-            v1 = v1 + 1;
+            reward_index = reward_index + 1;
         };
-        v0
+        rewards_in_range
     }
-
     public(package) fun increase_liquidity(
-        arg0: &mut TickManager,
-        arg1: integer_mate::i32::I32,
-        arg2: integer_mate::i32::I32,
-        arg3: integer_mate::i32::I32,
-        arg4: u128,
-        arg5: u128,
-        arg6: u128,
-        arg7: u128,
-        arg8: vector<u128>,
-        arg9: u128
+        tick_manager: &mut TickManager,
+        current_tick_index: integer_mate::i32::I32,
+        tick_lower: integer_mate::i32::I32,
+        tick_upper: integer_mate::i32::I32,
+        liquidity: u128,
+        fee_growth_global_a: u128,
+        fee_growth_global_b: u128,
+        points_growth_global: u128,
+        rewards_growth_global: vector<u128>,
+        magma_distribution_growth_global: u128
     ) {
-        if (arg4 == 0) {
+        if (liquidity == 0) {
             return
         };
-        let v0 = tick_score(arg2);
-        let v1 = tick_score(arg3);
-        let mut v2 = false;
-        let mut v3 = false;
-        if (!move_stl::skip_list::contains<Tick>(&arg0.ticks, v0)) {
-            move_stl::skip_list::insert<Tick>(&mut arg0.ticks, v0, default(arg2));
-            v3 = true;
+        let tick_lower_score = tick_score(tick_lower);
+        let tick_upper_score = tick_score(tick_upper);
+        let mut is_upper_initialized = false;
+        let mut is_lower_initialized = false;
+        if (!move_stl::skip_list::contains<Tick>(&tick_manager.ticks, tick_lower_score)) {
+            move_stl::skip_list::insert<Tick>(&mut tick_manager.ticks, tick_lower_score, default(tick_lower));
+            is_lower_initialized = true;
         };
-        if (!move_stl::skip_list::contains<Tick>(&arg0.ticks, v1)) {
-            move_stl::skip_list::insert<Tick>(&mut arg0.ticks, v1, default(arg3));
-            v2 = true;
+        if (!move_stl::skip_list::contains<Tick>(&tick_manager.ticks, tick_upper_score)) {
+            move_stl::skip_list::insert<Tick>(&mut tick_manager.ticks, tick_upper_score, default(tick_upper));
+            is_upper_initialized = true;
         };
         update_by_liquidity(
-            move_stl::skip_list::borrow_mut<Tick>(&mut arg0.ticks, v0),
-            arg1,
-            arg4,
-            v3,
+            move_stl::skip_list::borrow_mut<Tick>(&mut tick_manager.ticks, tick_lower_score),
+            current_tick_index,
+            liquidity,
+            is_lower_initialized,
             true,
             false,
-            arg5,
-            arg6,
-            arg7,
-            arg8,
-            arg9
+            fee_growth_global_a,
+            fee_growth_global_b,
+            points_growth_global,
+            rewards_growth_global,
+            magma_distribution_growth_global
         );
         update_by_liquidity(
-            move_stl::skip_list::borrow_mut<Tick>(&mut arg0.ticks, v1),
-            arg1,
-            arg4,
-            v2,
+            move_stl::skip_list::borrow_mut<Tick>(&mut tick_manager.ticks, tick_upper_score),
+            current_tick_index,
+            liquidity,
+            is_upper_initialized,
             true,
             true,
-            arg5,
-            arg6,
-            arg7,
-            arg8,
-            arg9
+            fee_growth_global_a,
+            fee_growth_global_b,
+            points_growth_global,
+            rewards_growth_global,
+            magma_distribution_growth_global
         );
     }
-
-    public fun index(arg0: &Tick): integer_mate::i32::I32 {
-        arg0.index
+    public fun index(tick: &Tick): integer_mate::i32::I32 {
+        tick.index
     }
 
-    public fun liquidity_gross(arg0: &Tick): u128 {
-        arg0.liquidity_gross
+    public fun liquidity_gross(tick: &Tick): u128 {
+        tick.liquidity_gross
     }
 
-    public fun liquidity_net(arg0: &Tick): integer_mate::i128::I128 {
-        arg0.liquidity_net
+    public fun liquidity_net(tick: &Tick): integer_mate::i128::I128 {
+        tick.liquidity_net
     }
 
-    public fun magma_distribution_growth_outside(arg0: &Tick): u128 {
-        arg0.magma_distribution_growth_outside
+    public fun magma_distribution_growth_outside(tick: &Tick): u128 {
+        tick.magma_distribution_growth_outside
     }
 
-    public fun magma_distribution_staked_liquidity_net(arg0: &Tick): integer_mate::i128::I128 {
-        arg0.magma_distribution_staked_liquidity_net
+    public fun magma_distribution_staked_liquidity_net(tick: &Tick): integer_mate::i128::I128 {
+        tick.magma_distribution_staked_liquidity_net
     }
 
-    public fun points_growth_outside(arg0: &Tick): u128 {
-        arg0.points_growth_outside
+    public fun points_growth_outside(tick: &Tick): u128 {
+        tick.points_growth_outside
     }
 
-    public fun rewards_growth_outside(arg0: &Tick): &vector<u128> {
-        &arg0.rewards_growth_outside
+    public fun rewards_growth_outside(tick: &Tick): &vector<u128> {
+        &tick.rewards_growth_outside
     }
 
-    public fun sqrt_price(arg0: &Tick): u128 {
-        arg0.sqrt_price
+    public fun sqrt_price(tick: &Tick): u128 {
+        tick.sqrt_price
     }
 
-    fun tick_score(arg0: integer_mate::i32::I32): u64 {
-        let v0 = integer_mate::i32::as_u32(
-            integer_mate::i32::add(arg0, integer_mate::i32::from(clmm_pool::tick_math::tick_bound()))
+    fun tick_score(tick_index: integer_mate::i32::I32): u64 {
+        let bound_adjusted_tick = integer_mate::i32::as_u32(
+            integer_mate::i32::add(tick_index, integer_mate::i32::from(clmm_pool::tick_math::tick_bound()))
         );
-        assert!(v0 >= 0 && v0 <= clmm_pool::tick_math::tick_bound() * 2, 2);
-        v0 as u64
+        assert!(bound_adjusted_tick >= 0 && bound_adjusted_tick <= clmm_pool::tick_math::tick_bound() * 2, 2);
+        bound_adjusted_tick as u64
     }
 
-    public fun tick_spacing(arg0: &TickManager): u32 {
-        arg0.tick_spacing
+    public fun tick_spacing(manager: &TickManager): u32 {
+        manager.tick_spacing
     }
-
-    public(package) fun try_borrow_tick(arg0: &TickManager, arg1: integer_mate::i32::I32): std::option::Option<Tick> {
-        let v0 = tick_score(arg1);
-        if (!move_stl::skip_list::contains<Tick>(&arg0.ticks, v0)) {
+    
+    public(package) fun try_borrow_tick(manager: &TickManager, tick_index: integer_mate::i32::I32): std::option::Option<Tick> {
+        let score = tick_score(tick_index);
+        if (!move_stl::skip_list::contains<Tick>(&manager.ticks, score)) {
             return std::option::none<Tick>()
         };
-        std::option::some<Tick>(*move_stl::skip_list::borrow<Tick>(&arg0.ticks, v0))
+        std::option::some<Tick>(*move_stl::skip_list::borrow<Tick>(&manager.ticks, score))
     }
 
     fun update_by_liquidity(
-        arg0: &mut Tick,
-        arg1: integer_mate::i32::I32,
-        arg2: u128,
-        arg3: bool,
-        arg4: bool,
-        arg5: bool,
-        arg6: u128,
-        arg7: u128,
-        arg8: u128,
-        arg9: vector<u128>,
-        arg10: u128
+        tick: &mut Tick,
+        current_tick_index: integer_mate::i32::I32,
+        liquidity: u128,
+        is_lower_initialized: bool,
+        is_add: bool,
+        is_upper: bool,
+        fee_growth_global_a: u128,
+        fee_growth_global_b: u128,
+        points_growth_global: u128,
+        rewards_growth_global: vector<u128>,
+        magma_distribution_growth_global: u128
     ): u128 {
-        let v0 = if (arg4) {
-            assert!(integer_mate::math_u128::add_check(arg0.liquidity_gross, arg2), 0);
-            arg0.liquidity_gross + arg2
+        let updated_liquidity_gross = if (is_add) {
+            assert!(integer_mate::math_u128::add_check(tick.liquidity_gross, liquidity), 0);
+            tick.liquidity_gross + liquidity
         } else {
-            assert!(arg0.liquidity_gross >= arg2, 1);
-            arg0.liquidity_gross - arg2
+            assert!(tick.liquidity_gross >= liquidity, 1);
+            tick.liquidity_gross - liquidity
         };
-        if (v0 == 0) {
+        if (updated_liquidity_gross == 0) {
             return 0
         };
-        let (v1, v2, v3, v4, v5) = if (arg3) {
-            let (v6, v7, v8, v9, v10) = if (integer_mate::i32::lt(arg1, arg0.index)) {
-                (0, 0, default_rewards_growth_outside(std::vector::length<u128>(&arg9)), 0, 0)
+        let (points_growth_outside, magma_growth_outside, fee_growth_outside_a, fee_growth_outside_b, rewards_growth_outside) = if (is_lower_initialized) {
+            let (fee_outside_a, fee_outside_b, rewards_outside, points_outside, magma_outside) = if (integer_mate::i32::lt(current_tick_index, tick.index)) {
+                (0, 0, default_rewards_growth_outside(std::vector::length<u128>(&rewards_growth_global)), 0, 0)
             } else {
-                (arg6, arg7, arg9, arg8, arg10)
+                (fee_growth_global_a, fee_growth_global_b, rewards_growth_global, points_growth_global, magma_distribution_growth_global)
             };
-            (v9, v10, v6, v7, v8)
+            (points_outside, magma_outside, fee_outside_a, fee_outside_b, rewards_outside)
         } else {
-            (arg0.points_growth_outside, arg0.magma_distribution_growth_outside, arg0.fee_growth_outside_a, arg0.fee_growth_outside_b, arg0.rewards_growth_outside)
+            (tick.points_growth_outside, tick.magma_distribution_growth_outside, tick.fee_growth_outside_a, tick.fee_growth_outside_b, tick.rewards_growth_outside)
         };
-        let (v11, v12) = if (arg4) {
-            let (v13, v14) = if (arg5) {
-                let (v15, v16) = integer_mate::i128::overflowing_sub(
-                    arg0.liquidity_net,
-                    integer_mate::i128::from(arg2)
+        let (liquidity_delta_result, overflow_detected) = if (is_add) {
+            let (delta_value_add, overflow_flag_add) = if (is_upper) {
+                let (subtraction_result_add, subtraction_overflow_add) = integer_mate::i128::overflowing_sub(
+                    tick.liquidity_net,
+                    integer_mate::i128::from(liquidity)
                 );
-                (v15, v16)
+                (subtraction_result_add, subtraction_overflow_add)
             } else {
-                let (v17, v18) = integer_mate::i128::overflowing_add(
-                    arg0.liquidity_net,
-                    integer_mate::i128::from(arg2)
+                let (addition_result_add, addition_overflow_add) = integer_mate::i128::overflowing_add(
+                    tick.liquidity_net,
+                    integer_mate::i128::from(liquidity)
                 );
-                (v17, v18)
+                (addition_result_add, addition_overflow_add)
             };
-            (v13, v14)
+            (delta_value_add, overflow_flag_add)
         } else {
-            let (v19, v20) = if (arg5) {
-                let (v21, v22) = integer_mate::i128::overflowing_add(
-                    arg0.liquidity_net,
-                    integer_mate::i128::from(arg2)
+            let (delta_value_sub, overflow_flag_sub) = if (is_upper) {
+                let (addition_result_sub, addition_overflow_sub) = integer_mate::i128::overflowing_add(
+                    tick.liquidity_net,
+                    integer_mate::i128::from(liquidity)
                 );
-                (v21, v22)
+                (addition_result_sub, addition_overflow_sub)
             } else {
-                let (v23, v24) = integer_mate::i128::overflowing_sub(
-                    arg0.liquidity_net,
-                    integer_mate::i128::from(arg2)
+                let (subtraction_result_sub, subtraction_overflow_sub) = integer_mate::i128::overflowing_sub(
+                    tick.liquidity_net,
+                    integer_mate::i128::from(liquidity)
                 );
-                (v23, v24)
+                (subtraction_result_sub, subtraction_overflow_sub)
             };
-            (v19, v20)
+            (delta_value_sub, overflow_flag_sub)
         };
-        if (v12) {
+        if (overflow_detected) {
             abort 0
         };
-        arg0.liquidity_gross = v0;
-        arg0.liquidity_net = v11;
-        arg0.fee_growth_outside_a = v3;
-        arg0.fee_growth_outside_b = v4;
-        arg0.rewards_growth_outside = v5;
-        arg0.points_growth_outside = v1;
-        arg0.magma_distribution_growth_outside = v2;
-        v0
+        tick.liquidity_gross = updated_liquidity_gross;
+        tick.liquidity_net = liquidity_delta_result;
+        tick.fee_growth_outside_a = fee_growth_outside_a;
+        tick.fee_growth_outside_b = fee_growth_outside_b;
+        tick.rewards_growth_outside = rewards_growth_outside;
+        tick.points_growth_outside = points_growth_outside;
+        tick.magma_distribution_growth_outside = magma_growth_outside;
+        updated_liquidity_gross
     }
 
     public(package) fun update_magma_stake(
-        arg0: &mut TickManager,
-        arg1: integer_mate::i32::I32,
-        arg2: integer_mate::i128::I128,
-        arg3: bool
+        tick_manager: &mut TickManager,
+        tick_index: integer_mate::i32::I32,
+        liquidity_delta: integer_mate::i128::I128,
+        is_decrease: bool
     ) {
-        let v0 = move_stl::skip_list::borrow_mut<Tick>(&mut arg0.ticks, tick_score(arg1));
-        if (arg3) {
-            v0.magma_distribution_staked_liquidity_net = integer_mate::i128::wrapping_sub(
-                v0.magma_distribution_staked_liquidity_net,
-                arg2
+        let tick = move_stl::skip_list::borrow_mut<Tick>(&mut tick_manager.ticks, tick_score(tick_index));
+        if (is_decrease) {
+            tick.magma_distribution_staked_liquidity_net = integer_mate::i128::wrapping_sub(
+                tick.magma_distribution_staked_liquidity_net,
+                liquidity_delta
             );
         } else {
-            v0.magma_distribution_staked_liquidity_net = integer_mate::i128::wrapping_add(
-                v0.magma_distribution_staked_liquidity_net,
-                arg2
+            tick.magma_distribution_staked_liquidity_net = integer_mate::i128::wrapping_add(
+                tick.magma_distribution_staked_liquidity_net,
+                liquidity_delta
             );
         };
     }

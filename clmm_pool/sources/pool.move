@@ -1969,20 +1969,19 @@ module clmm_pool::pool {
     public fun swap_pay_amount<CoinTypeA, CoinTypeB>(receipt: &FlashSwapReceipt<CoinTypeA, CoinTypeB>): u64 {
         receipt.pay_amount
     }
-
     public fun sync_magma_distribution_reward<T0, T1>(
-        arg0: &mut Pool<T0, T1>,
-        arg1: &gauge_cap::gauge_cap::GaugeCap,
-        arg2: u128,
-        arg3: u64,
-        arg4: u64
+        pool: &mut Pool<T0, T1>,
+        gauge_cap: &gauge_cap::gauge_cap::GaugeCap,
+        distribution_rate: u128,
+        distribution_reserve: u64,
+        period_finish: u64
     ) {
-        assert!(!arg0.is_pause, 13);
-        check_gauge_cap<T0, T1>(arg0, arg1);
-        arg0.magma_distribution_rate = arg2;
-        arg0.magma_distribution_reserve = arg3;
-        arg0.magma_distribution_period_finish = arg4;
-        arg0.magma_distribution_rollover = 0;
+        assert!(!pool.is_pause, 13);
+        check_gauge_cap<T0, T1>(pool, gauge_cap);
+        pool.magma_distribution_rate = distribution_rate;
+        pool.magma_distribution_reserve = distribution_reserve;
+        pool.magma_distribution_period_finish = period_finish;
+        pool.magma_distribution_rollover = 0;
     }
 
     public fun tick_manager<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): &clmm_pool::tick::TickManager {
@@ -2004,22 +2003,22 @@ module clmm_pool::pool {
     }
 
     public fun unstake_from_magma_distribution<CoinTypeA, CoinTypeB>(
-        arg0: &mut Pool<CoinTypeA, CoinTypeB>,
-        arg1: &gauge_cap::gauge_cap::GaugeCap,
-        arg2: u128,
-        arg3: integer_mate::i32::I32,
-        arg4: integer_mate::i32::I32,
-        arg5: &sui::clock::Clock
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        gauge_cap: &gauge_cap::gauge_cap::GaugeCap,
+        liquidity: u128,
+        tick_lower: integer_mate::i32::I32,
+        tick_upper: integer_mate::i32::I32,
+        clock: &sui::clock::Clock
     ) {
-        assert!(!arg0.is_pause, 13);
-        assert!(arg2 != 0, 9223379200860225535);
-        check_gauge_cap<CoinTypeA, CoinTypeB>(arg0, arg1);
+        assert!(!pool.is_pause, 13);
+        assert!(liquidity != 0, 9223379200860225535);
+        check_gauge_cap<CoinTypeA, CoinTypeB>(pool, gauge_cap);
         update_magma_distribution_internal<CoinTypeA, CoinTypeB>(
-            arg0,
-            integer_mate::i128::neg(integer_mate::i128::from(arg2)),
-            arg3,
-            arg4,
-            arg5
+            pool,
+            integer_mate::i128::neg(integer_mate::i128::from(liquidity)),
+            tick_lower,
+            tick_upper,
+            clock
         );
     }
     
@@ -2061,14 +2060,15 @@ module clmm_pool::pool {
     }
 
     public fun update_magma_distribution_growth_global<CoinTypeA, CoinTypeB>(
-        arg0: &mut Pool<CoinTypeA, CoinTypeB>,
-        arg1: &gauge_cap::gauge_cap::GaugeCap,
-        arg2: &sui::clock::Clock
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        gauge_cap: &gauge_cap::gauge_cap::GaugeCap,
+        clock: &sui::clock::Clock
     ) {
-        assert!(!arg0.is_pause, 13);
-        check_gauge_cap<CoinTypeA, CoinTypeB>(arg0, arg1);
-        update_magma_distribution_growth_global_internal<CoinTypeA, CoinTypeB>(arg0, arg2);
+        assert!(!pool.is_pause, 13);
+        check_gauge_cap<CoinTypeA, CoinTypeB>(pool, gauge_cap);
+        update_magma_distribution_growth_global_internal<CoinTypeA, CoinTypeB>(pool, clock);
     }
+
     fun update_magma_distribution_growth_global_internal<CoinTypeA, CoinTypeB>(
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
         clock: &sui::clock::Clock

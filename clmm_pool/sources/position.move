@@ -489,113 +489,126 @@ module clmm_pool::position {
     }
 
     public(package) fun update_fee(
-        arg0: &mut PositionManager,
-        arg1: sui::object::ID,
-        arg2: u128,
-        arg3: u128
+        position_manager: &mut PositionManager,
+        position_id: sui::object::ID,
+        fee_growth_a: u128,
+        fee_growth_b: u128
     ): (u64, u64) {
-        let v0 = borrow_mut_position_info(arg0, arg1);
-        update_fee_internal(v0, arg2, arg3);
-        info_fee_owned(v0)
+        let position_info = borrow_mut_position_info(position_manager, position_id);
+        update_fee_internal(position_info, fee_growth_a, fee_growth_b);
+        info_fee_owned(position_info)
     }
 
-    fun update_fee_internal(arg0: &mut PositionInfo, arg1: u128, arg2: u128) {
-        let v0 = integer_mate::full_math_u128::mul_shr(
-            arg0.liquidity,
-            integer_mate::math_u128::wrapping_sub(arg1, arg0.fee_growth_inside_a),
+    fun update_fee_internal(position_info: &mut PositionInfo, fee_growth_a: u128, fee_growth_b: u128) {
+        let fee_owned_a_delta = integer_mate::full_math_u128::mul_shr(
+            position_info.liquidity,
+            integer_mate::math_u128::wrapping_sub(fee_growth_a, position_info.fee_growth_inside_a),
             64
         ) as u64;
-        let v1 = integer_mate::full_math_u128::mul_shr(
-            arg0.liquidity,
-            integer_mate::math_u128::wrapping_sub(arg2, arg0.fee_growth_inside_b),
+        let fee_owned_b_delta = integer_mate::full_math_u128::mul_shr(
+            position_info.liquidity,
+            integer_mate::math_u128::wrapping_sub(fee_growth_b, position_info.fee_growth_inside_b),
             64
         ) as u64;
-        assert!(integer_mate::math_u64::add_check(arg0.fee_owned_a, v0), 1);
-        assert!(integer_mate::math_u64::add_check(arg0.fee_owned_b, v1), 1);
-        arg0.fee_owned_a = arg0.fee_owned_a + v0;
-        arg0.fee_owned_b = arg0.fee_owned_b + v1;
-        arg0.fee_growth_inside_a = arg1;
-        arg0.fee_growth_inside_b = arg2;
+        assert!(integer_mate::math_u64::add_check(position_info.fee_owned_a, fee_owned_a_delta), 1);
+        assert!(integer_mate::math_u64::add_check(position_info.fee_owned_b, fee_owned_b_delta), 1);
+        position_info.fee_owned_a = position_info.fee_owned_a + fee_owned_a_delta;
+        position_info.fee_owned_b = position_info.fee_owned_b + fee_owned_b_delta;
+        position_info.fee_growth_inside_a = fee_growth_a;
+        position_info.fee_growth_inside_b = fee_growth_b;
     }
 
-    public(package) fun update_magma_distribution(arg0: &mut PositionManager, arg1: sui::object::ID, arg2: u128): u64 {
-        let v0 = borrow_mut_position_info(arg0, arg1);
-        update_magma_distribution_internal(v0, arg2);
-        v0.magma_distribution_owned
+    public(package) fun update_magma_distribution(
+        position_manager: &mut PositionManager,
+        position_id: sui::object::ID,
+        magma_growth: u128
+    ): u64 {
+        let position_info = borrow_mut_position_info(position_manager, position_id);
+        update_magma_distribution_internal(position_info, magma_growth);
+        position_info.magma_distribution_owned
     }
 
-    fun update_magma_distribution_internal(arg0: &mut PositionInfo, arg1: u128) {
-        let v0 = integer_mate::full_math_u128::mul_shr(
-            arg0.liquidity,
-            integer_mate::math_u128::wrapping_sub(arg1, arg0.magma_distribution_growth_inside),
+    fun update_magma_distribution_internal(position_info: &mut PositionInfo, magma_growth: u128) {
+        let magma_delta = integer_mate::full_math_u128::mul_shr(
+            position_info.liquidity,
+            integer_mate::math_u128::wrapping_sub(
+                magma_growth,
+                position_info.magma_distribution_growth_inside
+            ),
             64
         ) as u64;
-        assert!(integer_mate::math_u64::add_check(arg0.magma_distribution_owned, v0), 9223374347547181055);
-        arg0.magma_distribution_owned = arg0.magma_distribution_owned + v0;
-        arg0.magma_distribution_growth_inside = arg1;
+        assert!(
+            integer_mate::math_u64::add_check(
+                position_info.magma_distribution_owned,
+                magma_delta
+            ),
+            9223374347547181055
+        );
+        position_info.magma_distribution_owned = position_info.magma_distribution_owned + magma_delta;
+        position_info.magma_distribution_growth_inside = magma_growth;
     }
 
-    public(package) fun update_points(arg0: &mut PositionManager, arg1: sui::object::ID, arg2: u128): u128 {
-        let v0 = borrow_mut_position_info(arg0, arg1);
-        update_points_internal(v0, arg2);
-        v0.points_owned
+    public(package) fun update_points(position_manager: &mut PositionManager, position_id: sui::object::ID, points_growth: u128): u128 {
+        let position_info = borrow_mut_position_info(position_manager, position_id);
+        update_points_internal(position_info, points_growth);
+        position_info.points_owned
     }
 
-    fun update_points_internal(arg0: &mut PositionInfo, arg1: u128) {
-        let v0 = integer_mate::full_math_u128::mul_shr(
-            arg0.liquidity,
-            integer_mate::math_u128::wrapping_sub(arg1, arg0.points_growth_inside),
+    fun update_points_internal(position_info: &mut PositionInfo, points_growth: u128) {
+        let points_delta = integer_mate::full_math_u128::mul_shr(
+            position_info.liquidity,
+            integer_mate::math_u128::wrapping_sub(points_growth, position_info.points_growth_inside),
             64
         );
-        assert!(integer_mate::math_u128::add_check(arg0.points_owned, v0), 3);
-        arg0.points_owned = arg0.points_owned + v0;
-        arg0.points_growth_inside = arg1;
+        assert!(integer_mate::math_u128::add_check(position_info.points_owned, points_delta), 3);
+        position_info.points_owned = position_info.points_owned + points_delta;
+        position_info.points_growth_inside = points_growth;
     }
 
     public(package) fun update_rewards(
-        arg0: &mut PositionManager,
-        arg1: sui::object::ID,
-        arg2: vector<u128>
+        position_manager: &mut PositionManager,
+        position_id: sui::object::ID,
+        rewards_growth: vector<u128>
     ): vector<u64> {
-        let v0 = borrow_mut_position_info(arg0, arg1);
-        update_rewards_internal(v0, arg2);
-        let v1 = info_rewards(v0);
-        let mut v2 = 0;
-        let mut v3 = std::vector::empty<u64>();
-        while (v2 < std::vector::length<PositionReward>(v1)) {
-            std::vector::push_back<u64>(&mut v3, reward_amount_owned(std::vector::borrow<PositionReward>(v1, v2)));
-            v2 = v2 + 1;
+        let position_info = borrow_mut_position_info(position_manager, position_id);
+        update_rewards_internal(position_info, rewards_growth);
+        let rewards = info_rewards(position_info);
+        let mut i = 0;
+        let mut result = std::vector::empty<u64>();
+        while (i < std::vector::length<PositionReward>(rewards)) {
+            std::vector::push_back<u64>(&mut result, reward_amount_owned(std::vector::borrow<PositionReward>(rewards, i)));
+            i = i + 1;
         };
-        v3
+        result
     }
 
-    fun update_rewards_internal(arg0: &mut PositionInfo, arg1: vector<u128>) {
-        let mut v0 = 0;
-        while (v0 < std::vector::length<u128>(&arg1)) {
-            let v1 = *std::vector::borrow<u128>(&arg1, v0);
-            if (std::vector::length<PositionReward>(&arg0.rewards) > v0) {
-                let v2 = std::vector::borrow_mut<PositionReward>(&mut arg0.rewards, v0);
-                let v3 = integer_mate::full_math_u128::mul_shr(
-                    integer_mate::math_u128::wrapping_sub(v1, v2.growth_inside),
-                    arg0.liquidity,
+    fun update_rewards_internal(position_info: &mut PositionInfo, rewards_growth: vector<u128>) {
+        let mut index = 0;
+        while (index < std::vector::length<u128>(&rewards_growth)) {
+            let current_growth = *std::vector::borrow<u128>(&rewards_growth, index);
+            if (std::vector::length<PositionReward>(&position_info.rewards) > index) {
+                let reward = std::vector::borrow_mut<PositionReward>(&mut position_info.rewards, index);
+                let reward_delta = integer_mate::full_math_u128::mul_shr(
+                    integer_mate::math_u128::wrapping_sub(current_growth, reward.growth_inside),
+                    position_info.liquidity,
                     64
                 ) as u64;
-                assert!(integer_mate::math_u64::add_check(v2.amount_owned, v3), 1);
-                v2.growth_inside = v1;
-                v2.amount_owned = v2.amount_owned + v3;
+                assert!(integer_mate::math_u64::add_check(reward.amount_owned, reward_delta), 1);
+                reward.growth_inside = current_growth;
+                reward.amount_owned = reward.amount_owned + reward_delta;
             } else {
-                let v4 = PositionReward {
-                    growth_inside: v1,
-                    amount_owned: integer_mate::full_math_u128::mul_shr(v1, arg0.liquidity, 64) as u64,
+                let new_reward = PositionReward {
+                    growth_inside: current_growth,
+                    amount_owned: integer_mate::full_math_u128::mul_shr(current_growth, position_info.liquidity, 64) as u64,
                 };
-                std::vector::push_back<PositionReward>(&mut arg0.rewards, v4);
+                std::vector::push_back<PositionReward>(&mut position_info.rewards, new_reward);
             };
-            v0 = v0 + 1;
+            index = index + 1;
         };
     }
 
-    public fun url(arg0: &Position): std::string::String {
-        arg0.url
+    public fun url(position: &Position): std::string::String {
+        position.url
     }
 
     // decompiled from Move bytecode v6
