@@ -377,8 +377,8 @@ module distribution::voting_escrow {
         sui::event::emit<EventSupply>(supply_event);
     }
 
-    public fun add_allowed_manager<T0>(
-        voting_escrow: &mut VotingEscrow<T0>,
+    public fun add_allowed_manager<SailCoinType>(
+        voting_escrow: &mut VotingEscrow<SailCoinType>,
         _publisher: &sui::package::Publisher,
         who: address
     ) {
@@ -711,16 +711,16 @@ module distribution::voting_escrow {
         transfer::transfer<Lock>(lock, sender);
     }
 
-    public fun create_lock_for<T0>(
-        voting_escrow: &mut VotingEscrow<T0>,
+    public fun create_lock_for<SailCoinType>(
+        voting_escrow: &mut VotingEscrow<SailCoinType>,
         owner: address,
-        coin: sui::coin::Coin<T0>,
-        arg3: u64,
+        coin: sui::coin::Coin<SailCoinType>,
+        duration_days: u64,
         permanent: bool,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        voting_escrow.validate_lock_duration(arg3);
+        voting_escrow.validate_lock_duration(duration_days);
         let lock_amount = coin.value();
         assert!(lock_amount > 0, 9223374257353129989);
         let start_time = distribution::common::current_timestamp(clock);
@@ -728,7 +728,7 @@ module distribution::voting_escrow {
             owner,
             lock_amount,
             start_time,
-            distribution::common::to_period(start_time + arg3 * distribution::common::day()),
+            distribution::common::to_period(start_time + duration_days * distribution::common::day()),
             permanent,
             clock,
             ctx
@@ -891,8 +891,8 @@ module distribution::voting_escrow {
         }
     }
 
-    public fun deactivated<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>, arg1: ID): bool {
-        voting_escrow.deactivated.contains(arg1) && *voting_escrow.deactivated.borrow(arg1)
+    public fun deactivated<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>, lock_id: ID): bool {
+        voting_escrow.deactivated.contains(lock_id) && *voting_escrow.deactivated.borrow(lock_id)
     }
 
     public fun delegate<SailCoinType>(
@@ -968,8 +968,8 @@ module distribution::voting_escrow {
         lock.amount = lock.amount + deposit_amount;
     }
 
-    fun deposit_for_internal<T0>(
-        voting_escrow: &mut VotingEscrow<T0>,
+    fun deposit_for_internal<SailCoinType>(
+        voting_escrow: &mut VotingEscrow<SailCoinType>,
         lock_id: ID,
         lock_amount: u64,
         end_time: u64,
@@ -1011,8 +1011,8 @@ module distribution::voting_escrow {
         sui::event::emit<EventSupply>(supply_event);
     }
 
-    public fun deposit_managed<T0>(
-        voting_escrow: &mut VotingEscrow<T0>,
+    public fun deposit_managed<SailCoinType>(
+        voting_escrow: &mut VotingEscrow<SailCoinType>,
         voter_cap: &distribution::voter_cap::VoterCap,
         lock: &mut Lock,
         managed_lock: &mut Lock,
@@ -1116,11 +1116,11 @@ module distribution::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        let v0 = voting_escrow.owner_proof(lock, ctx);
+        let owner_proof = voting_escrow.owner_proof(lock, ctx);
         voting_escrow.managed_to_free.borrow_mut(
             *voting_escrow.id_to_managed.borrow(object::id<Lock>(lock))
         ).get_reward<RewardCoinType>(
-            v0,
+            owner_proof,
             clock,
             ctx
         );
@@ -1155,7 +1155,7 @@ module distribution::voting_escrow {
             .rewards_list()
     }
 
-    fun get_past_global_point_index<T0>(voting_escrow: &VotingEscrow<T0>, mut epoch: u64, point_time: u64): u64 {
+    fun get_past_global_point_index<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>, mut epoch: u64, point_time: u64): u64 {
         if (epoch == 0) {
             return 0
         };
@@ -1244,10 +1244,10 @@ module distribution::voting_escrow {
         *voting_escrow.id_to_managed.borrow(lock_id)
     }
 
-    public fun increase_amount<T0>(
-        voting_escrow: &mut VotingEscrow<T0>,
+    public fun increase_amount<SailCoinType>(
+        voting_escrow: &mut VotingEscrow<SailCoinType>,
         lock: &mut Lock,
-        coin: sui::coin::Coin<T0>,
+        coin: sui::coin::Coin<SailCoinType>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
@@ -1381,8 +1381,7 @@ module distribution::voting_escrow {
 
     public fun is_split_allowed<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>, who: address): bool {
         let can_user_split = if (voting_escrow.can_split.contains(who)) {
-            let v1 = true;
-            voting_escrow.can_split.borrow(who) == &v1
+            *voting_escrow.can_split.borrow(who) == true
         } else {
             false
         };
@@ -1422,8 +1421,8 @@ module distribution::voting_escrow {
         voting_escrow.lock_permanent_internal(lock, clock, ctx);
     }
 
-    fun lock_permanent_internal<T0>(
-        voting_escrow: &mut VotingEscrow<T0>,
+    fun lock_permanent_internal<SailCoinType>(
+        voting_escrow: &mut VotingEscrow<SailCoinType>,
         lock: &mut Lock,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
@@ -1455,7 +1454,7 @@ module distribution::voting_escrow {
         lock.permanent = true;
     }
 
-    public fun locked<T0>(voting_escrow: &VotingEscrow<T0>, lock_id: ID): (LockedBalance, bool) {
+    public fun locked<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>, lock_id: ID): (LockedBalance, bool) {
         if (voting_escrow.locked.contains(lock_id)) {
             (*voting_escrow.locked.borrow(lock_id), true)
         } else {
@@ -1476,14 +1475,14 @@ module distribution::voting_escrow {
         }
     }
 
-    public fun managed_to_free<T0>(voting_escrow: &VotingEscrow<T0>, lock_id: ID): ID {
+    public fun managed_to_free<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>, lock_id: ID): ID {
         object::id<distribution::free_managed_reward::FreeManagedReward>(
             voting_escrow.managed_to_free.borrow(lock_id)
         )
     }
 
-    public fun merge<T0>(
-        voting_escrow: &mut VotingEscrow<T0>,
+    public fun merge<SailCoinType>(
+        voting_escrow: &mut VotingEscrow<SailCoinType>,
         lock_a: Lock,
         lock_b: &mut Lock,
         clock: &sui::clock::Clock,
@@ -1557,12 +1556,12 @@ module distribution::voting_escrow {
         sui::event::emit<EventMetadataUpdate>(metadata_update_event);
     }
 
-    public fun owner_of<T0>(voting_escrow: &VotingEscrow<T0>, lock_id: ID): address {
+    public fun owner_of<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>, lock_id: ID): address {
         *voting_escrow.owner_of.borrow(lock_id)
     }
 
-    public fun owner_proof<T0>(
-        voting_escrow: &VotingEscrow<T0>,
+    public fun owner_proof<SailCoinType>(
+        voting_escrow: &VotingEscrow<SailCoinType>,
         lock: &Lock,
         ctx: &mut TxContext
     ): distribution::lock_owner::OwnerProof {
@@ -1573,22 +1572,22 @@ module distribution::voting_escrow {
             9223373209380847615
         );
         distribution::lock_owner::issue(
-            object::id<VotingEscrow<T0>>(voting_escrow),
+            object::id<VotingEscrow<SailCoinType>>(voting_escrow),
             object::id<Lock>(lock),
             tx_context::sender(ctx)
         )
     }
 
-    public fun ownership_change_at<T0>(voting_escrow: &VotingEscrow<T0>, arg1: ID): u64 {
-        *voting_escrow.ownership_change_at.borrow(arg1)
+    public fun ownership_change_at<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>, lock_id: ID): u64 {
+        *voting_escrow.ownership_change_at.borrow(lock_id)
     }
 
-    public fun permanent_lock_balance<T0>(voting_escrow: &VotingEscrow<T0>): u64 {
+    public fun permanent_lock_balance<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>): u64 {
         voting_escrow.permanent_lock_balance
     }
 
-    public fun remove_allowed_manager<T0>(
-        voting_escrow: &mut VotingEscrow<T0>,
+    public fun remove_allowed_manager<SailCoinType>(
+        voting_escrow: &mut VotingEscrow<SailCoinType>,
         _publisher: &sui::package::Publisher,
         who: address
     ) {
@@ -1633,8 +1632,8 @@ module distribution::voting_escrow {
         voting_escrow.locked.add(lock_id, lock_balance);
     }
 
-    public fun set_managed_lock_deactivated<T0>(
-        voting_escrow: &mut VotingEscrow<T0>,
+    public fun set_managed_lock_deactivated<SailCoinType>(
+        voting_escrow: &mut VotingEscrow<SailCoinType>,
         _emergency_council_cap: &distribution::emergency_council::EmergencyCouncilCap,
         lock_id: ID,
         deactivated: bool
@@ -1650,15 +1649,15 @@ module distribution::voting_escrow {
         voting_escrow.deactivated.add(lock_id, deactivated);
     }
 
-    fun set_point_history<T0>(voting_escrow: &mut VotingEscrow<T0>, epoch: u64, point: GlobalPoint) {
+    fun set_point_history<SailCoinType>(voting_escrow: &mut VotingEscrow<SailCoinType>, epoch: u64, point: GlobalPoint) {
         if (voting_escrow.point_history.contains(epoch)) {
             voting_escrow.point_history.remove(epoch);
         };
         voting_escrow.point_history.add(epoch, point);
     }
 
-    fun set_slope_changes<T0>(
-        voting_escrow: &mut VotingEscrow<T0>,
+    fun set_slope_changes<SailCoinType>(
+        voting_escrow: &mut VotingEscrow<SailCoinType>,
         epoch_time: u64,
         slope_to_add: integer_mate::i128::I128
     ) {
@@ -1668,15 +1667,15 @@ module distribution::voting_escrow {
         voting_escrow.slope_changes.add(epoch_time, slope_to_add);
     }
 
-    fun set_user_point_epoch<T0>(voting_escrow: &mut VotingEscrow<T0>, lock_id: ID, epoch: u64) {
+    fun set_user_point_epoch<SailCoinType>(voting_escrow: &mut VotingEscrow<SailCoinType>, lock_id: ID, epoch: u64) {
         if (voting_escrow.user_point_epoch.contains(lock_id)) {
             voting_escrow.user_point_epoch.remove(lock_id);
         };
         voting_escrow.user_point_epoch.add(lock_id, epoch);
     }
 
-    fun set_user_point_history<T0>(
-        voting_escrow: &mut VotingEscrow<T0>,
+    fun set_user_point_history<SailCoinType>(
+        voting_escrow: &mut VotingEscrow<SailCoinType>,
         lock_id: ID,
         epoch: u64,
         point: UserPoint,
@@ -1692,13 +1691,13 @@ module distribution::voting_escrow {
         point_history.add(epoch, point);
     }
 
-    public fun toggle_split<T0>(
-        voting_escrow: &mut VotingEscrow<T0>,
+    public fun toggle_split<SailCoinType>(
+        voting_escrow: &mut VotingEscrow<SailCoinType>,
         team_cap: &distribution::team_cap::TeamCap,
         who: address,
         allowed: bool
     ) {
-        team_cap.validate(object::id<VotingEscrow<T0>>(voting_escrow));
+        team_cap.validate(object::id<VotingEscrow<SailCoinType>>(voting_escrow));
         if (voting_escrow.can_split.contains(who)) {
             voting_escrow.can_split.remove(who);
         };
@@ -1710,15 +1709,15 @@ module distribution::voting_escrow {
         sui::event::emit<EventToggleSplit>(toggle_split_event);
     }
 
-    public fun total_locked<T0>(voting_escrow: &VotingEscrow<T0>): u64 {
+    public fun total_locked<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>): u64 {
         voting_escrow.total_locked
     }
 
-    public fun total_supply_at<T0>(voting_escrow: &VotingEscrow<T0>, time: u64): u64 {
+    public fun total_supply_at<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>, time: u64): u64 {
         voting_escrow.total_supply_at_internal(voting_escrow.epoch, time)
     }
 
-    fun total_supply_at_internal<T0>(voting_escrow: &VotingEscrow<T0>, epoch: u64, time: u64): u64 {
+    fun total_supply_at_internal<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>, epoch: u64, time: u64): u64 {
         let latest_point_index = voting_escrow.get_past_global_point_index(epoch, time);
         if (latest_point_index == 0) {
             return 0
@@ -1759,8 +1758,8 @@ module distribution::voting_escrow {
         (bias.as_u128() as u64) + point.permanent_lock_balance
     }
 
-    public fun unlock_permanent<T0>(
-        voting_escrow: &mut VotingEscrow<T0>,
+    public fun unlock_permanent<SailCoinType>(
+        voting_escrow: &mut VotingEscrow<SailCoinType>,
         lock: &mut Lock,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
@@ -1809,7 +1808,7 @@ module distribution::voting_escrow {
         *voting_escrow.user_point_epoch.borrow(lock_id)
     }
 
-    public fun user_point_history<T0>(voting_escrow: &VotingEscrow<T0>, lock_id: ID, epoch: u64): UserPoint {
+    public fun user_point_history<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>, lock_id: ID, epoch: u64): UserPoint {
         *voting_escrow.user_point_history.borrow(lock_id).borrow(epoch)
     }
 
@@ -1817,11 +1816,11 @@ module distribution::voting_escrow {
         voting_escrow.ts
     }
 
-    fun validate_lock<T0>(voting_escrow: &VotingEscrow<T0>, lock: &Lock) {
-        assert!(lock.escrow == object::id<VotingEscrow<T0>>(voting_escrow), 9223376052649197567);
+    fun validate_lock<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>, lock: &Lock) {
+        assert!(lock.escrow == object::id<VotingEscrow<SailCoinType>>(voting_escrow), 9223376052649197567);
     }
 
-    fun validate_lock_duration<T0>(voting_escrow: &VotingEscrow<T0>, duration_days: u64) {
+    fun validate_lock_duration<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>, duration_days: u64) {
         assert!(
             duration_days * distribution::common::day() >= voting_escrow.min_lock_time &&
                 duration_days * distribution::common::day() <= voting_escrow.max_lock_time,
@@ -1829,8 +1828,8 @@ module distribution::voting_escrow {
         );
     }
 
-    public fun voting<T0>(
-        voting_escrow: &mut VotingEscrow<T0>,
+    public fun voting<SailCoinType>(
+        voting_escrow: &mut VotingEscrow<SailCoinType>,
         voter_cap: &distribution::voter_cap::VoterCap,
         lock_id: ID,
         is_voting: bool
@@ -1842,8 +1841,8 @@ module distribution::voting_escrow {
         voting_escrow.voted.add(lock_id, is_voting);
     }
 
-    public fun withdraw_managed<T0>(
-        voting_escrow: &mut VotingEscrow<T0>,
+    public fun withdraw_managed<SailCoinType>(
+        voting_escrow: &mut VotingEscrow<SailCoinType>,
         voter_cap: &distribution::voter_cap::VoterCap,
         lock: &mut Lock,
         managed_lock: &mut Lock,
@@ -1859,12 +1858,12 @@ module distribution::voting_escrow {
         assert!(managed_lock_id == object::id<Lock>(managed_lock), 9223378105646579759);
         let locked_managed_reward = voting_escrow.managed_to_locked.borrow_mut(managed_lock_id);
         let managed_weight = *voting_escrow.managed_weights.borrow(lock_id).borrow(managed_lock_id);
-        let new_managed_weight = managed_weight + locked_managed_reward.earned<T0>(lock_id, clock);
+        let new_managed_weight = managed_weight + locked_managed_reward.earned<SailCoinType>(lock_id, clock);
         let lock_end_time = distribution::common::to_period(
             distribution::common::current_timestamp(clock) + distribution::common::max_lock_time()
         );
-        voting_escrow.managed_to_free.borrow_mut(managed_lock_id).get_reward<T0>(owner_proof, clock, ctx);
-        voting_escrow.balance.join<T0>(locked_managed_reward.get_reward<T0>(
+        voting_escrow.managed_to_free.borrow_mut(managed_lock_id).get_reward<SailCoinType>(owner_proof, clock, ctx);
+        voting_escrow.balance.join<SailCoinType>(locked_managed_reward.get_reward<SailCoinType>(
             &voting_escrow.locked_managed_reward_authorized_cap,
             lock_id,
             clock,
