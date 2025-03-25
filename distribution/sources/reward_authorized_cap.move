@@ -1,20 +1,21 @@
 module distribution::reward_authorized_cap {
+
+    const ERewardAuthorizedCapInvalid: u64 = 9223372109869219839;
+
     public struct RewardAuthorizedCap has store, key {
         id: UID,
         authorized: ID,
     }
 
-    public(package) fun create(arg0: ID, arg1: &mut TxContext): RewardAuthorizedCap {
+    public(package) fun create(authority_id: ID, ctx: &mut TxContext): RewardAuthorizedCap {
         RewardAuthorizedCap {
-            id: object::new(arg1),
-            authorized: arg0,
+            id: object::new(ctx),
+            authorized: authority_id,
         }
     }
 
-    public fun validate(arg0: &RewardAuthorizedCap, arg1: ID) {
-        assert!(arg0.authorized == arg1, 9223372109869219839);
+    public fun validate(reward: &RewardAuthorizedCap, authority_id: ID) {
+        assert!(reward.authorized == authority_id, ERewardAuthorizedCapInvalid);
     }
-
-    // decompiled from Move bytecode v6
 }
 

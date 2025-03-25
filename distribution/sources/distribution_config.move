@@ -1,49 +1,49 @@
 module distribution::distribution_config {
+
+    const EUpdateGaugeLivenessNoGauges: u64 = 9223372148523925503;
+
     public struct DistributionConfig has store, key {
         id: UID,
         alive_gauges: sui::vec_set::VecSet<ID>,
     }
 
-    fun init(arg0: &mut TxContext) {
-        let v0 = DistributionConfig {
-            id: object::new(arg0),
+    fun init(ctx: &mut TxContext) {
+        let distribution_config = DistributionConfig {
+            id: object::new(ctx),
             alive_gauges: sui::vec_set::empty<ID>(),
         };
-        transfer::share_object<DistributionConfig>(v0);
+        transfer::share_object<DistributionConfig>(distribution_config);
     }
 
-    public fun is_gauge_alive(arg0: &DistributionConfig, arg1: ID): bool {
-        arg0.alive_gauges.contains(&arg1)
+    public fun is_gauge_alive(distribution_config: &DistributionConfig, gauge_id: ID): bool {
+        distribution_config.alive_gauges.contains(&gauge_id)
     }
 
     public(package) fun update_gauge_liveness(
-        arg0: &mut DistributionConfig,
-        arg1: vector<ID>,
-        arg2: bool,
-        _arg3: &mut TxContext
+        distribution_config: &mut DistributionConfig,
+        gauge_ids: vector<ID>,
+        is_alive: bool
     ) {
-        let mut v0 = 0;
-        let v1 = arg1.length();
-        assert!(v1 > 0, 9223372148523925503);
-        if (arg2) {
-            while (v0 < v1) {
-                if (!arg0.alive_gauges.contains(arg1.borrow(v0))) {
-                    let v2 = *arg1.borrow(v0);
-                    arg0.alive_gauges.insert(v2);
+        let mut i = 0;
+        let gauges_length = gauge_ids.length();
+        assert!(gauges_length > 0, EUpdateGaugeLivenessNoGauges);
+        if (is_alive) {
+            while (i < gauges_length) {
+                if (!distribution_config.alive_gauges.contains(gauge_ids.borrow(i))) {
+                    let gauge_id = *gauge_ids.borrow(i);
+                    distribution_config.alive_gauges.insert(gauge_id);
                 };
-                v0 = v0 + 1;
+                i = i + 1;
             };
         } else {
-            while (v0 < v1) {
-                if (arg0.alive_gauges.contains(arg1.borrow(v0))) {
-                    let v3 = arg1.borrow(v0);
-                    arg0.alive_gauges.remove(v3);
+            while (i < gauges_length) {
+                if (distribution_config.alive_gauges.contains(gauge_ids.borrow(i))) {
+                    let gauge_id = gauge_ids.borrow(i);
+                    distribution_config.alive_gauges.remove(gauge_id);
                 };
-                v0 = v0 + 1;
+                i = i + 1;
             };
         };
     }
-
-    // decompiled from Move bytecode v6
 }
 

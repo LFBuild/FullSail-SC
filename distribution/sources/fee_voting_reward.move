@@ -8,8 +8,8 @@ module distribution::fee_voting_reward {
         reward: distribution::reward::Reward,
     }
 
-    public fun balance<FeeCoinType>(arg0: &FeeVotingReward): u64 {
-        arg0.reward.balance<FeeCoinType>()
+    public fun balance<FeeCoinType>(reward: &FeeVotingReward): u64 {
+        reward.reward.balance<FeeCoinType>()
     }
 
     public(package) fun create(

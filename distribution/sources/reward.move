@@ -346,8 +346,8 @@ module distribution::reward {
         reward.rewards.into_keys<std::type_name::TypeName>()
     }
 
-    public(package) fun rewards_list_length(arg0: &Reward): u64 {
-        arg0.rewards.size<std::type_name::TypeName>()
+    public(package) fun rewards_list_length(reward: &Reward): u64 {
+        reward.rewards.size<std::type_name::TypeName>()
     }
 
     public fun rewards_per_epoch<CoinType>(reward: &Reward): &sui::table::Table<u64, u64> {

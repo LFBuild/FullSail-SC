@@ -5,5 +5,7 @@ export ADDR=$(sui client active-address)
 export PACKAGE=0xfc42c50c11c4d6abfbb36d1d38e1023140d610e68c5ca1b8caff7cd6c0b405cb
 export FULLSAIL_TOKEN_TYPE="$PACKAGE::sail_token::SAIL_TOKEN"
 export FULLSAIL_TOKEN_MITER_CAP=0x525caec1822c762caa53a43429a868fffd966be870437c128b0c58758e0ed63e
+export VOTING_ESCROW=0x6f4581cba4dc22357c6e033cf4d33b8b92c6fd9e4393716bbdf8fa8d490dd7d1
+export MINTER=0x9fa097c01f910742d273830cca61c46323d2d6e4f309158fc15244f20ede0e3e
 
 # use setup_distribution.sh script in integrate directory to create minter, voter and voting_escrow.

@@ -1,4 +1,8 @@
 module distribution::voter_cap {
+
+    const EEpochGovernorVoterIdInvalid: u64 = 9223372307437715457;
+    const EGovernorVoterIdInvalid: u64 = 9223372200063533057;
+
     public struct VoterCap has store, key {
         id: UID,
         voter_id: ID,
@@ -16,75 +20,73 @@ module distribution::voter_cap {
     }
 
     public(package) fun create_epoch_governor_cap(
-        arg0: ID,
-        arg1: &mut TxContext
+        voter_id: ID,
+        ctx: &mut TxContext
     ): EpochGovernorCap {
         EpochGovernorCap {
-            id: object::new(arg1),
-            voter_id: arg0,
+            id: object::new(ctx),
+            voter_id,
         }
     }
 
     public(package) fun create_governor_cap(
-        arg0: ID,
-        arg1: address,
-        arg2: &mut TxContext
+        voter_id: ID,
+        who: address,
+        ctx: &mut TxContext
     ): GovernorCap {
         GovernorCap {
-            id: object::new(arg2),
-            voter_id: arg0,
-            who: object::id_from_address(arg1),
+            id: object::new(ctx),
+            voter_id,
+            who: object::id_from_address(who),
         }
     }
 
-    public(package) fun create_voter_cap(arg0: ID, arg1: &mut TxContext): VoterCap {
+    public(package) fun create_voter_cap(voter_id: ID, ctx: &mut TxContext): VoterCap {
         VoterCap {
-            id: object::new(arg1),
-            voter_id: arg0,
+            id: object::new(ctx),
+            voter_id,
         }
     }
 
-    public fun drop_epoch_governor_cap(arg0: EpochGovernorCap) {
+    public fun drop_epoch_governor_cap(epoch_governor_cap: EpochGovernorCap) {
         let EpochGovernorCap {
-            id       : v0,
+            id       ,
             voter_id : _,
-        } = arg0;
-        object::delete(v0);
+        } = epoch_governor_cap;
+        object::delete(id);
     }
 
-    public fun drop_governor_cap(arg0: GovernorCap) {
+    public fun drop_governor_cap(governor_cap: GovernorCap) {
         let GovernorCap {
-            id: v0,
+            id,
             voter_id: _,
             who: _,
-        } = arg0;
-        object::delete(v0);
+        } = governor_cap;
+        object::delete(id);
     }
 
-    public fun epoch_governor_voter_id(arg0: &EpochGovernorCap): ID {
-        arg0.voter_id
+    public fun epoch_governor_voter_id(epoch_governor_cap: &EpochGovernorCap): ID {
+        epoch_governor_cap.voter_id
     }
 
-    public fun get_voter_id(arg0: &VoterCap): ID {
-        arg0.voter_id
+    public fun get_voter_id(voter_cap: &VoterCap): ID {
+        voter_cap.voter_id
     }
 
-    public fun governor_voter_id(arg0: &GovernorCap): ID {
-        arg0.voter_id
+    public fun governor_voter_id(governor_cap: &GovernorCap): ID {
+        governor_cap.voter_id
     }
 
-    public fun validate_epoch_governor_voter_id(arg0: &EpochGovernorCap, arg1: ID) {
-        assert!(arg0.voter_id == arg1, 9223372307437715457);
+    public fun validate_epoch_governor_voter_id(epoch_governor_cap: &EpochGovernorCap, voter_id: ID) {
+        assert!(epoch_governor_cap.voter_id == voter_id, EEpochGovernorVoterIdInvalid);
     }
 
-    public fun validate_governor_voter_id(arg0: &GovernorCap, arg1: ID) {
-        assert!(arg0.voter_id == arg1, 9223372200063533057);
+    public fun validate_governor_voter_id(governor_cap: &GovernorCap, voter_id: ID) {
+        assert!(governor_cap.voter_id == voter_id, EGovernorVoterIdInvalid);
     }
 
-    public fun who(arg0: &GovernorCap): ID {
-        arg0.who
+    public fun who(governor_cap: &GovernorCap): ID {
+        governor_cap.who
     }
-
-    // decompiled from Move bytecode v6
 }
 

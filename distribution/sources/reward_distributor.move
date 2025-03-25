@@ -57,53 +57,69 @@ module distribution::reward_distributor {
     }
 
     public fun checkpoint_token<SailCoinType>(
-        arg0: &mut RewardDistributor<SailCoinType>,
-        arg1: &distribution::reward_distributor_cap::RewardDistributorCap,
-        arg2: sui::coin::Coin<SailCoinType>,
-        arg3: &sui::clock::Clock
+        reward_distributon: &mut RewardDistributor<SailCoinType>,
+        reward_distributor_cap: &distribution::reward_distributor_cap::RewardDistributorCap,
+        coin: sui::coin::Coin<SailCoinType>,
+        clock: &sui::clock::Clock
     ) {
-        arg1.validate(object::id<RewardDistributor<SailCoinType>>(arg0));
-        arg0.balance.join(arg2.into_balance());
-        arg0.checkpoint_token_internal(distribution::common::current_timestamp(arg3));
+        reward_distributor_cap.validate(object::id<RewardDistributor<SailCoinType>>(reward_distributon));
+        reward_distributon.balance.join(coin.into_balance());
+        reward_distributon.checkpoint_token_internal(distribution::common::current_timestamp(clock));
     }
 
-    fun checkpoint_token_internal<SailCoinType>(arg0: &mut RewardDistributor<SailCoinType>, arg1: u64) {
-        let v0 = arg0.balance.value();
-        let v1 = v0 - arg0.token_last_balance;
-        let v2 = arg0.last_token_time;
-        let mut v3 = v2;
-        let v4 = arg1 - v2;
-        let mut v5 = distribution::common::to_period(v2);
-        let mut v6 = 0;
-        while (v6 < 20) {
-            let v7 = if (!arg0.tokens_per_period.contains(v5)) {
+    fun checkpoint_token_internal<SailCoinType>(reward_distributor: &mut RewardDistributor<SailCoinType>, time: u64) {
+        let current_balance = reward_distributor.balance.value();
+        let balance_delta = current_balance - reward_distributor.token_last_balance;
+        let mut last_token_time = reward_distributor.last_token_time;
+        let token_time_delta = time - last_token_time;
+        let mut last_token_period = distribution::common::to_period(last_token_time);
+        let mut i = 0;
+        while (i < 20) {
+            let last_period_tokens = if (!reward_distributor.tokens_per_period.contains(last_token_period)) {
                 0
             } else {
-                arg0.tokens_per_period.remove(v5)
+                reward_distributor.tokens_per_period.remove(last_token_period)
             };
-            let v8 = v5 + distribution::common::week();
-            if (arg1 < v8) {
-                if (v4 == 0 && arg1 == v3) {
-                    arg0.tokens_per_period.add(v5, v7 + v1);
+            let next_token_period = last_token_period + distribution::common::week();
+            if (time < next_token_period) {
+                if (token_time_delta == 0 && time == last_token_time) {
+                    reward_distributor.tokens_per_period.add(
+                        last_token_period,
+                        last_period_tokens + balance_delta
+                    );
                     break
                 };
-                arg0.tokens_per_period.add(v5, v7 + integer_mate::full_math_u64::mul_div_floor(v1, arg1 - v3, v4));
+                reward_distributor.tokens_per_period.add(
+                    last_token_period,
+                    last_period_tokens + integer_mate::full_math_u64::mul_div_floor(
+                        balance_delta, time - last_token_time, token_time_delta)
+                );
                 break
             };
-            if (v4 == 0 && v8 == v3) {
-                arg0.tokens_per_period.add(v5, v7 + v1);
+            if (token_time_delta == 0 && next_token_period == last_token_time) {
+                reward_distributor.tokens_per_period.add(
+                    last_token_period,
+                    last_period_tokens + balance_delta
+                );
             } else {
-                let v9 = v8 - v3;
-                arg0.tokens_per_period.add(v5, v7 + integer_mate::full_math_u64::mul_div_floor(v1, v9, v4));
+                let v9 = next_token_period - last_token_time;
+                reward_distributor.tokens_per_period.add(
+                    last_token_period,
+                    last_period_tokens + integer_mate::full_math_u64::mul_div_floor(
+                        balance_delta,
+                        v9,
+                        token_time_delta
+                    )
+                );
             };
-            v3 = v8;
-            v5 = v8;
-            v6 = v6 + 1;
+            last_token_time = next_token_period;
+            last_token_period = next_token_period;
+            i = i + 1;
         };
-        arg0.token_last_balance = v0;
-        arg0.last_token_time = arg1;
-        let v10 = EventCheckpointToken { to_distribute: v1 };
-        sui::event::emit<EventCheckpointToken>(v10);
+        reward_distributor.token_last_balance = current_balance;
+        reward_distributor.last_token_time = time;
+        let checkpoint_token_event = EventCheckpointToken { to_distribute: balance_delta };
+        sui::event::emit<EventCheckpointToken>(checkpoint_token_event);
     }
 
     public fun claim<SailCoinType>(
@@ -176,12 +192,12 @@ module distribution::reward_distributor {
         voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
         lock_id: ID
     ): u64 {
-        let (v0, _, _) = reward_distributor.claimable_internal(
+        let (claimable_amount, _, _) = reward_distributor.claimable_internal(
             voting_escrow,
             lock_id,
             distribution::common::to_period(reward_distributor.last_token_time)
         );
-        v0
+        claimable_amount
     }
 
     /**
