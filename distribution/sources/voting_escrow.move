@@ -1,4 +1,69 @@
 module distribution::voting_escrow {
+    // Error constants
+    const ESplitOwnerNotFound: u64 = 9223375992521621535;
+    const ESplitNotAllowed: u64 = 9223376001110900757;
+    const ESplitNotNormalEscrow: u64 = 9223376005406130201; 
+    const ESplitPositionVoted: u64 = 9223376009701228571;
+    const ESplitAmountZero: u64 = 9223376031174623237;
+    const ESplitAmountExceedsLocked: u64 = 9223376035471163421;
+    const ETransferInvalidEscrow: u64 = 9223376864398016511;
+    const ETransferLockedPosition: u64 = 9223376885873770511;
+    const ETransferNotOwner: u64 = 9223376898757754879;
+    const EWithdrawPositionVoted: u64 = 9223376404838219803;
+    const EWithdrawPositionNotNormalEscrow: u64 = 9223376409133056025;
+    const EWithdrawPermanentPosition: u64 = 9223376422018613283;
+    const EWithdrawBeforeEndTime: u64 = 9223376430606843913;
+    const ECreateLockAmountZero: u64 = 9223374381907181573;
+    const ECreateLockAmountMismatch: u64 = 9223374416266657791;
+    const ECreateLockForAmountZero: u64 = 9223374257353129989;
+    const ECreateLockForAmountMismatch: u64 = 9223374287417638911;
+    const ECreateLockOwnerExists: u64 = 9223374171453521919;
+    const ECreateLockLockedExists: u64 = 9223374175748489215;
+    const ECreateManagedNotAllowedManager: u64 = 9223377736277688341;
+    const EDelegateNotPermanent: u64 = 9223375657513386003;
+    const EDelegateInvalidDelegatee: u64 = 9223375661808615447;
+    const EDelegateOwnershipChangeTooRecent: u64 = 9223375683284107297;
+    const EDepositManagedInvalidVoter: u64 = 9223377839355592703;
+    const EDepositManagedNotManagedType: u64 = 9223377847948279851;
+    const EDepositManagedDeactivated: u64 = 9223377852244295739;
+    const EDepositManagedNotNormalEscrow: u64 = 9223377856537034777;
+    const EDepositManagedNoBalance: u64 = 9223377865125658629;
+    const EIncreaseAmountZero: u64 = 9223374463511560197;
+    const EIncreaseAmountLockedEscrow: u64 = 9223374472102150159;
+    const EIncreaseAmountNotExists: u64 = 9223374484986134527;
+    const EIncreaseAmountNoBalance: u64 = 9223374484987183121;
+    const EIncreaseTimeNotNormalEscrow: u64 = 9223376301758873625;
+    const EIncreaseTimePermanent: u64 = 9223376314644430883;
+    const EIncreaseTimeExpired: u64 = 9223376331822465031;
+    const EIncreaseTimeNoBalance: u64 = 9223376336118087697;
+    const EIncreaseTimeNotLater: u64 = 9223376340414365733;
+    const EIncreaseTimeTooLong: u64 = 9223376344709464103;
+    const ELockPermanentNotNormalEscrow: u64 = 9223376525097173017;
+    const ELockPermanentAlreadyPermanent: u64 = 9223376537982730275;
+    const ELockPermanentExpired: u64 = 9223376542275862535;
+    const ELockPermanentNoBalance: u64 = 9223376546571485201;
+    const EMergePositionVoted: u64 = 9223376074125738011;
+    const EMergeSourceNotNormalEscrow: u64 = 9223376078420574233;
+    const EMergeTargetNotNormalEscrow: u64 = 9223376082715541529;
+    const EMergeSamePosition: u64 = 9223376087012474935;
+    const EMergeSourcePermanent: u64 = 9223376117075935267;
+    const ESetManagedLockNotManagedType: u64 = 9223378500783308843;
+    const ESetManagedLockAlreadySet: u64 = 9223378505078931509;
+    const EUnlockPermanentNotNormalEscrow: u64 = 9223376666831093785;
+    const EUnlockPermanentPositionVoted: u64 = 9223376671126192155;
+    const EUnlockPermanentNotPermanent: u64 = 9223376679715602451;
+    const EValidateLockInvalidEscrow: u64 = 9223376052649197567;
+    const EVotingInvalidVoter: u64 = 9223374076964241407;
+    const EWithdrawManagedInvalidVoter: u64 = 9223378084171612205;
+    const EWithdrawManagedNotManaged: u64 = 9223378088466710575;
+    const EWithdrawManagedNotLockedType: u64 = 9223378092761808945;
+    const EWithdrawManagedInvalidManagedLock: u64 = 9223378105646579759;
+    const EOwnerProofNotOwner: u64 = 9223373209380847615;
+    const EValidateLockDurationInvalid: u64 = 9223374111324635147;
+    const EGetPastPowerPointError: u64 = 9223377117801086975;
+    const EGetVotingPowerOwnershipChangeTooRecent: u64 = 9223376997544099873;
+    const EPointHistoryInvalid: u64 = 999;
+
     public struct VOTING_ESCROW has drop {}
 
     public struct DistributorCap has store, key {
@@ -186,27 +251,27 @@ module distribution::voting_escrow {
     ): (ID, ID) {
         voting_escrow.validate_lock(&lock);
         let lock_id = object::id<Lock>(&lock);
-        assert!(voting_escrow.owner_of.contains(lock_id), 9223375992521621535);
+        assert!(voting_escrow.owner_of.contains(lock_id), ESplitOwnerNotFound);
         let owner_of_lock = *voting_escrow.owner_of.borrow(lock_id);
         assert!(
             voting_escrow.is_split_allowed(owner_of_lock) || voting_escrow.is_split_allowed(tx_context::sender(ctx)),
-            9223376001110900757
+            ESplitNotAllowed
         );
         let mut is_normal_escrow = if (!voting_escrow.escrow_type.contains(lock_id)) {
             true
         } else {
             *voting_escrow.escrow_type.borrow(lock_id) == EscrowType::NORMAL
         };
-        assert!(is_normal_escrow, 9223376005406130201);
+        assert!(is_normal_escrow, ESplitNotNormalEscrow);
         let lock_has_voted = voting_escrow.lock_has_voted(lock_id);
-        assert!(!lock_has_voted, 9223376009701228571);
+        assert!(!lock_has_voted, ESplitPositionVoted);
         let locked_balance = *voting_escrow.locked.borrow(lock_id);
         assert!(
             locked_balance.end > distribution::common::current_timestamp(clock) || locked_balance.is_permanent,
-            9223376026879787015
+            ESplitAmountZero
         );
-        assert!(amount > 0, 9223376031174623237);
-        assert!(locked_balance.amount > amount, 9223376035471163421);
+        assert!(amount > 0, ESplitAmountZero);
+        assert!(locked_balance.amount > amount, ESplitAmountExceedsLocked);
         let lock_escrow_id = lock.escrow;
         let lock_start = lock.start;
         let lock_end = lock.end;
@@ -251,14 +316,14 @@ module distribution::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        assert!(lock.escrow == object::id<VotingEscrow<SailCoinType>>(voting_escrow), 9223376864398016511);
+        assert!(lock.escrow == object::id<VotingEscrow<SailCoinType>>(voting_escrow), ETransferInvalidEscrow);
         let lock_id = object::id<Lock>(&lock);
         if (recipient == voting_escrow.owner_of(lock_id) && recipient == tx_context::sender(ctx)) {
             transfer::transfer<Lock>(lock, recipient);
         } else {
-            assert!(voting_escrow.escrow_type(lock_id) != EscrowType::LOCKED, 9223376885873770511);
+            assert!(voting_escrow.escrow_type(lock_id) != EscrowType::LOCKED, ETransferLockedPosition);
             let owner_of_lock = voting_escrow.owner_of.remove(lock_id);
-            assert!(owner_of_lock == tx_context::sender(ctx), 9223376898757754879);
+            assert!(owner_of_lock == tx_context::sender(ctx), ETransferNotOwner);
             voting_escrow.voting_dao.checkpoint_delegator(
                 lock_id,
                 0,
@@ -344,16 +409,16 @@ module distribution::voting_escrow {
         let sender = tx_context::sender(ctx);
         let lock_id = object::id<Lock>(&lock);
         let lock_has_voted = voting_escrow.lock_has_voted(lock_id);
-        assert!(!lock_has_voted, 9223376404838219803);
+        assert!(!lock_has_voted, EWithdrawPositionVoted);
         assert!(
             !voting_escrow.escrow_type.contains(lock_id) || *voting_escrow.escrow_type.borrow(
                 lock_id
             ) == EscrowType::NORMAL,
-            9223376409133056025
+            EWithdrawPositionNotNormalEscrow
         );
         let locked_balance = *voting_escrow.locked.borrow(lock_id);
-        assert!(!locked_balance.is_permanent, 9223376422018613283);
-        assert!(distribution::common::current_timestamp(clock) >= locked_balance.end, 9223376430606843913);
+        assert!(!locked_balance.is_permanent, EWithdrawPermanentPosition);
+        assert!(distribution::common::current_timestamp(clock) >= locked_balance.end, EWithdrawBeforeEndTime);
         let current_total_locked = voting_escrow.total_locked;
         voting_escrow.total_locked = voting_escrow.total_locked - locked_balance.amount;
         voting_escrow.burn_lock_internal(lock, locked_balance, clock, ctx);
@@ -689,7 +754,7 @@ module distribution::voting_escrow {
     ) {
         voting_escrow.validate_lock_duration(lock_duration_days);
         let lock_amount = coin_to_lock.value();
-        assert!(lock_amount > 0, 9223374381907181573);
+        assert!(lock_amount > 0, ECreateLockAmountZero);
         let current_time = distribution::common::current_timestamp(clock);
         let sender = tx_context::sender(ctx);
         let (lock_immut, create_lock_receipt) = voting_escrow.create_lock_internal(
@@ -703,7 +768,7 @@ module distribution::voting_escrow {
         );
         let mut lock = lock_immut;
         let CreateLockReceipt { amount: amout } = create_lock_receipt;
-        assert!(amout == lock_amount, 9223374416266657791);
+        assert!(amout == lock_amount, ECreateLockAmountMismatch);
         voting_escrow.balance.join(coin_to_lock.into_balance());
         if (permanent) {
             voting_escrow.lock_permanent_internal(&mut lock, clock, ctx);
@@ -722,7 +787,7 @@ module distribution::voting_escrow {
     ) {
         voting_escrow.validate_lock_duration(duration_days);
         let lock_amount = coin.value();
-        assert!(lock_amount > 0, 9223374257353129989);
+        assert!(lock_amount > 0, ECreateLockForAmountZero);
         let start_time = distribution::common::current_timestamp(clock);
         let (lock_immut, create_lock_receipt) = voting_escrow.create_lock_internal(
             owner,
@@ -735,7 +800,7 @@ module distribution::voting_escrow {
         );
         let mut lock = lock_immut;
         let CreateLockReceipt { amount } = create_lock_receipt;
-        assert!(amount == lock_amount, 9223374287417638911);
+        assert!(amount == lock_amount, ECreateLockForAmountMismatch);
         voting_escrow.balance.join(coin.into_balance());
         if (permanent) {
             voting_escrow.lock_permanent_internal(&mut lock, clock, ctx);
@@ -762,8 +827,8 @@ module distribution::voting_escrow {
             permanent,
         };
         let lock_id = object::id<Lock>(&lock);
-        assert!(!voting_escrow.owner_of.contains(lock_id), 9223374171453521919);
-        assert!(!voting_escrow.locked.contains(lock_id), 9223374175748489215);
+        assert!(!voting_escrow.owner_of.contains(lock_id), ECreateLockOwnerExists);
+        assert!(!voting_escrow.locked.contains(lock_id), ECreateLockLockedExists);
         voting_escrow.owner_of.add(lock_id, owner);
         voting_escrow.ownership_change_at.add(lock_id, clock.timestamp_ms());
         voting_escrow.voting_dao.checkpoint_delegator(
@@ -799,7 +864,7 @@ module distribution::voting_escrow {
         ctx: &mut TxContext
     ): ID {
         let sender = tx_context::sender(ctx);
-        assert!(voting_escrow.allowed_managers.contains(&sender), 9223377736277688341);
+        assert!(voting_escrow.allowed_managers.contains(&sender), ECreateManagedNotAllowedManager);
         let (lock, create_lock_receipt) = voting_escrow.create_lock_internal(
             owner,
             0,
@@ -915,10 +980,10 @@ module distribution::voting_escrow {
     ) {
         let lock_id = object::id<Lock>(lock);
         let (current_locked_balance, _) = voting_escrow.locked(lock_id);
-        assert!(current_locked_balance.is_permanent, 9223375657513386003);
+        assert!(current_locked_balance.is_permanent, EDelegateNotPermanent);
         assert!(
             delegatee == object::id_from_address(@0x0) || voting_escrow.owner_of.contains(delegatee),
-            9223375661808615447
+            EDelegateInvalidDelegatee
         );
         if (object::id<Lock>(lock) == delegatee) {
             delegatee = object::id_from_address(@0x0);
@@ -927,7 +992,7 @@ module distribution::voting_escrow {
             clock.timestamp_ms() - *voting_escrow.ownership_change_at.borrow(
                 lock_id
             ) >= distribution::common::get_time_to_finality(),
-            9223375683284107297
+            EDelegateOwnershipChangeTooRecent
         );
         let current_delegatee = voting_escrow.voting_dao.delegatee(lock_id);
         if (current_delegatee == delegatee) {
@@ -1019,15 +1084,15 @@ module distribution::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        assert!(voter_cap.get_voter_id() == voting_escrow.voter, 9223377839355592703);
+        assert!(voter_cap.get_voter_id() == voting_escrow.voter, EDepositManagedInvalidVoter);
         let lock_id = object::id<Lock>(lock);
         let managed_lock_id = object::id<Lock>(managed_lock);
-        assert!(voting_escrow.escrow_type(managed_lock_id) == EscrowType::MANAGED, 9223377847948279851);
-        assert!(!voting_escrow.deactivated(managed_lock_id), 9223377852244295739);
-        assert!(voting_escrow.escrow_type(lock_id) == EscrowType::NORMAL, 9223377856537034777);
+        assert!(voting_escrow.escrow_type(managed_lock_id) == EscrowType::MANAGED, EDepositManagedNotManagedType);
+        assert!(!voting_escrow.deactivated(managed_lock_id), EDepositManagedDeactivated);
+        assert!(voting_escrow.escrow_type(lock_id) == EscrowType::NORMAL, EDepositManagedNotNormalEscrow);
         assert!(
             voting_escrow.balance_of_nft_at_internal(lock_id, distribution::common::current_timestamp(clock)) > 0,
-            9223377865125658629
+            EDepositManagedNoBalance
         );
         let current_locked_balance = *voting_escrow.locked.borrow(lock_id);
         let current_locked_amount = current_locked_balance.amount;
@@ -1170,7 +1235,7 @@ module distribution::voting_escrow {
         let mut lower_bound = 0;
         while (epoch > lower_bound) {
             let middle_epoch = epoch - (epoch - lower_bound) / 2;
-            assert!(voting_escrow.point_history.contains(middle_epoch), 999);
+            assert!(voting_escrow.point_history.contains(middle_epoch), EPointHistoryInvalid);
             let middle_point = voting_escrow.point_history.borrow(middle_epoch);
             if (middle_point.ts == point_time) {
                 return middle_epoch
@@ -1210,7 +1275,7 @@ module distribution::voting_escrow {
             let middle_epoch = user_point_epoch - (user_point_epoch - lower_bound_epoch) / 2;
             assert!(
                 voting_escrow.user_point_history.borrow(lock_id).contains(middle_epoch),
-                9223377117801086975
+                EGetPastPowerPointError
             );
             let middle_epoch_points = voting_escrow.user_point_history.borrow(lock_id).borrow(middle_epoch);
             if (middle_epoch_points.ts == time) {
@@ -1235,7 +1300,7 @@ module distribution::voting_escrow {
             clock.timestamp_ms() - *voting_escrow.ownership_change_at.borrow(
                 lock_id
             ) >= distribution::common::get_time_to_finality(),
-            9223376997544099873
+            EGetVotingPowerOwnershipChangeTooRecent
         );
         voting_escrow.balance_of_nft_at_internal(lock_id, distribution::common::current_timestamp(clock))
     }
@@ -1271,17 +1336,17 @@ module distribution::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        assert!(amount_to_add > 0, 9223374463511560197);
+        assert!(amount_to_add > 0, EIncreaseAmountZero);
         let escrow_type = voting_escrow.escrow_type(lock_id);
-        assert!(escrow_type != EscrowType::LOCKED, 9223374472102150159);
+        assert!(escrow_type != EscrowType::LOCKED, EIncreaseAmountLockedEscrow);
         let (current_locked_balance, exists) = voting_escrow.locked(lock_id);
-        assert!(exists, 9223374484986134527);
-        assert!(current_locked_balance.amount > 0, 9223374484987183121);
+        assert!(exists, EIncreaseAmountNotExists);
+        assert!(current_locked_balance.amount > 0, EIncreaseAmountNoBalance);
         assert!(
             current_locked_balance.end > distribution::common::current_timestamp(
                 clock
             ) || current_locked_balance.is_permanent,
-            9223374493576462343
+            EIncreaseTimeNotNormalEscrow
         );
         if (current_locked_balance.is_permanent) {
             voting_escrow.permanent_lock_balance = voting_escrow.permanent_lock_balance + amount_to_add;
@@ -1328,19 +1393,19 @@ module distribution::voting_escrow {
         } else {
             *voting_escrow.escrow_type.borrow(lock_id) == EscrowType::NORMAL
         };
-        assert!(is_normal_escrow, 9223376301758873625);
+        assert!(is_normal_escrow, EIncreaseTimeNotNormalEscrow);
         let current_locked_balance = *voting_escrow.locked.borrow(lock_id);
-        assert!(!current_locked_balance.is_permanent, 9223376314644430883);
+        assert!(!current_locked_balance.is_permanent, EIncreaseTimePermanent);
         let current_time = distribution::common::current_timestamp(clock);
         let lock_end_epoch_time = distribution::common::to_period(
             current_time + days_to_add * distribution::common::day()
         );
-        assert!(current_locked_balance.end > current_time, 9223376331822465031);
-        assert!(current_locked_balance.amount > 0, 9223376336118087697);
-        assert!(lock_end_epoch_time > current_locked_balance.end, 9223376340414365733);
+        assert!(current_locked_balance.end > current_time, EIncreaseTimeExpired);
+        assert!(current_locked_balance.amount > 0, EIncreaseTimeNoBalance);
+        assert!(lock_end_epoch_time > current_locked_balance.end, EIncreaseTimeNotLater);
         assert!(
             lock_end_epoch_time < current_time + (distribution::common::max_lock_time() as u64),
-            9223376344709464103
+            EIncreaseTimeTooLong
         );
         voting_escrow.deposit_for_internal(
             lock_id,
@@ -1413,11 +1478,11 @@ module distribution::voting_escrow {
         } else {
             *voting_escrow.escrow_type.borrow(lock_id) == EscrowType::NORMAL
         };
-        assert!(is_normal_escrow, 9223376525097173017);
+        assert!(is_normal_escrow, ELockPermanentNotNormalEscrow);
         let v3 = *voting_escrow.locked.borrow(lock_id);
-        assert!(!v3.is_permanent, 9223376537982730275);
-        assert!(v3.end > distribution::common::current_timestamp(clock), 9223376542275862535);
-        assert!(v3.amount > 0, 9223376546571485201);
+        assert!(!v3.is_permanent, ELockPermanentAlreadyPermanent);
+        assert!(v3.end > distribution::common::current_timestamp(clock), ELockPermanentExpired);
+        assert!(v3.amount > 0, ELockPermanentNoBalance);
         voting_escrow.lock_permanent_internal(lock, clock, ctx);
     }
 
@@ -1491,17 +1556,17 @@ module distribution::voting_escrow {
         let lock_id_a = object::id<Lock>(&lock_a);
         let lock_id_b = object::id<Lock>(lock_b);
         let lock_a_voted = voting_escrow.lock_has_voted(lock_id_a);
-        assert!(!lock_a_voted, 9223376074125738011);
-        assert!(voting_escrow.escrow_type(lock_id_a) == EscrowType::NORMAL, 9223376078420574233);
-        assert!(voting_escrow.escrow_type(lock_id_b) == EscrowType::NORMAL, 9223376082715541529);
-        assert!(lock_id_a != lock_id_b, 9223376087012474935);
+        assert!(!lock_a_voted, EMergePositionVoted);
+        assert!(voting_escrow.escrow_type(lock_id_a) == EscrowType::NORMAL, EMergeSourceNotNormalEscrow);
+        assert!(voting_escrow.escrow_type(lock_id_b) == EscrowType::NORMAL, EMergeTargetNotNormalEscrow);
+        assert!(lock_id_a != lock_id_b, EMergeSamePosition);
         let lock_b_balance = *voting_escrow.locked.borrow(lock_id_b);
         assert!(
             lock_b_balance.end > distribution::common::current_timestamp(clock) || lock_b_balance.is_permanent == true,
-            9223376108484165639
+            EMergeSourcePermanent
         );
         let lock_a_balance = *voting_escrow.locked.borrow(lock_id_a);
-        assert!(lock_a_balance.is_permanent == false, 9223376117075935267);
+        assert!(lock_a_balance.is_permanent == false, EMergeSourcePermanent);
         let max_end_time = if (lock_a_balance.end >= lock_b_balance.end) {
             lock_a_balance.end
         } else {
@@ -1569,7 +1634,7 @@ module distribution::voting_escrow {
         let sender = tx_context::sender(ctx);
         assert!(
             voting_escrow.owner_of.borrow(object::id<Lock>(lock)) == &sender,
-            9223373209380847615
+            EOwnerProofNotOwner
         );
         distribution::lock_owner::issue(
             object::id<VotingEscrow<SailCoinType>>(voting_escrow),
@@ -1638,10 +1703,10 @@ module distribution::voting_escrow {
         lock_id: ID,
         deactivated: bool
     ) {
-        assert!(voting_escrow.escrow_type(lock_id) == EscrowType::MANAGED, 9223378500783308843);
+        assert!(voting_escrow.escrow_type(lock_id) == EscrowType::MANAGED, ESetManagedLockNotManagedType);
         assert!(
             !voting_escrow.deactivated.contains(lock_id) || voting_escrow.deactivated.borrow(lock_id) != &deactivated,
-            9223378505078931509
+            ESetManagedLockAlreadySet
         );
         if (voting_escrow.deactivated.contains(lock_id)) {
             voting_escrow.deactivated.remove(lock_id);
@@ -1771,11 +1836,11 @@ module distribution::voting_escrow {
         } else {
             *voting_escrow.escrow_type.borrow(lock_id) == EscrowType::NORMAL
         };
-        assert!(is_normal_escrow, 9223376666831093785);
+        assert!(is_normal_escrow, EUnlockPermanentNotNormalEscrow);
         let has_voted = voting_escrow.lock_has_voted(lock_id);
-        assert!(!has_voted, 9223376671126192155);
+        assert!(!has_voted, EUnlockPermanentPositionVoted);
         let mut old_locked_balance = *voting_escrow.locked.borrow(lock_id);
-        assert!(old_locked_balance.is_permanent, 9223376679715602451);
+        assert!(old_locked_balance.is_permanent, EUnlockPermanentNotPermanent);
         let current_time = distribution::common::current_timestamp(clock);
         voting_escrow.permanent_lock_balance = voting_escrow.permanent_lock_balance - old_locked_balance.amount;
         old_locked_balance.end = distribution::common::to_period(current_time + distribution::common::max_lock_time());
@@ -1817,14 +1882,14 @@ module distribution::voting_escrow {
     }
 
     fun validate_lock<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>, lock: &Lock) {
-        assert!(lock.escrow == object::id<VotingEscrow<SailCoinType>>(voting_escrow), 9223376052649197567);
+        assert!(lock.escrow == object::id<VotingEscrow<SailCoinType>>(voting_escrow), EValidateLockInvalidEscrow);
     }
 
     fun validate_lock_duration<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>, duration_days: u64) {
         assert!(
             duration_days * distribution::common::day() >= voting_escrow.min_lock_time &&
                 duration_days * distribution::common::day() <= voting_escrow.max_lock_time,
-            9223374111324635147
+            EValidateLockDurationInvalid
         );
     }
 
@@ -1834,7 +1899,7 @@ module distribution::voting_escrow {
         lock_id: ID,
         is_voting: bool
     ) {
-        assert!(voting_escrow.voter == voter_cap.get_voter_id(), 9223374076964241407);
+        assert!(voting_escrow.voter == voter_cap.get_voter_id(), EVotingInvalidVoter);
         if (voting_escrow.voted.contains(lock_id)) {
             voting_escrow.voted.remove(lock_id);
         };
@@ -1851,11 +1916,11 @@ module distribution::voting_escrow {
         ctx: &mut TxContext
     ) {
         let lock_id = object::id<Lock>(lock);
-        assert!(voter_cap.get_voter_id() == voting_escrow.voter, 9223378084171612205);
-        assert!(voting_escrow.id_to_managed.contains(lock_id), 9223378088466710575);
-        assert!(voting_escrow.escrow_type(lock_id) == EscrowType::LOCKED, 9223378092761808945);
+        assert!(voter_cap.get_voter_id() == voting_escrow.voter, EWithdrawManagedInvalidVoter);
+        assert!(voting_escrow.id_to_managed.contains(lock_id), EWithdrawManagedNotManaged);
+        assert!(voting_escrow.escrow_type(lock_id) == EscrowType::LOCKED, EWithdrawManagedNotLockedType);
         let managed_lock_id = *voting_escrow.id_to_managed.borrow(lock_id);
-        assert!(managed_lock_id == object::id<Lock>(managed_lock), 9223378105646579759);
+        assert!(managed_lock_id == object::id<Lock>(managed_lock), EWithdrawManagedInvalidManagedLock);
         let locked_managed_reward = voting_escrow.managed_to_locked.borrow_mut(managed_lock_id);
         let managed_weight = *voting_escrow.managed_weights.borrow(lock_id).borrow(managed_lock_id);
         let new_managed_weight = managed_weight + locked_managed_reward.earned<SailCoinType>(lock_id, clock);
