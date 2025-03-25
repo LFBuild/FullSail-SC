@@ -158,7 +158,5 @@ module distribution::voting_dao {
         ).from_timestamp < distribution::common::get_time_to_finality();
         !v1
     }
-
-    // decompiled from Move bytecode v6
 }
 

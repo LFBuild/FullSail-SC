@@ -1,20 +1,20 @@
 module distribution::reward_distributor_cap {
+    const ERewardDistributorInvalid: u64 = 9223372105574252543;
+
     public struct RewardDistributorCap has store, key {
         id: UID,
         reward_distributor: ID,
     }
 
-    public(package) fun create(arg0: ID, arg1: &mut TxContext): RewardDistributorCap {
+    public(package) fun create(reward_distributor_id: ID, ctx: &mut TxContext): RewardDistributorCap {
         RewardDistributorCap {
-            id: object::new(arg1),
-            reward_distributor: arg0,
+            id: object::new(ctx),
+            reward_distributor: reward_distributor_id,
         }
     }
 
-    public fun validate(arg0: &RewardDistributorCap, arg1: ID) {
-        assert!(arg0.reward_distributor == arg1, 9223372105574252543);
+    public fun validate(reward_distributor_cap: &RewardDistributorCap, reward_distributor_id: ID) {
+        assert!(reward_distributor_cap.reward_distributor == reward_distributor_id, ERewardDistributorInvalid);
     }
-
-    // decompiled from Move bytecode v6
 }
 

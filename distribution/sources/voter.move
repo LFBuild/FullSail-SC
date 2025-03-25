@@ -547,7 +547,7 @@ module distribution::voter {
         voter.receive_gauger(governor_cap, &mut gauge, clock, ctx);
         let mut alive_gauges_vec = std::vector::empty<ID>();
         alive_gauges_vec.push_back(gauge_id);
-        distribution_config.update_gauge_liveness(alive_gauges_vec, true, ctx);
+        distribution_config.update_gauge_liveness(alive_gauges_vec, true);
         gauge
     }
 
@@ -640,9 +640,9 @@ module distribution::voter {
         *voter.weights.borrow(into_gauge_id(gauge_id))
     }
 
-    public fun get_pool_weight<SailCoinType>(arg0: &Voter<SailCoinType>, pool_id: ID): u64 {
-        let gauge_id = *arg0.pool_to_gauger.borrow(into_pool_id(pool_id));
-        arg0.get_gauge_weight(gauge_id.id)
+    public fun get_pool_weight<SailCoinType>(voter: &Voter<SailCoinType>, pool_id: ID): u64 {
+        let gauge_id = *voter.pool_to_gauger.borrow(into_pool_id(pool_id));
+        voter.get_gauge_weight(gauge_id.id)
     }
 
     public fun get_total_weight<SailCoinType>(voter: &Voter<SailCoinType>): u64 {
@@ -738,7 +738,7 @@ module distribution::voter {
         };
         let mut killed_gauge_ids = std::vector::empty<ID>();
         killed_gauge_ids.push_back(gauge_id_obj.id);
-        distribution_config.update_gauge_liveness(killed_gauge_ids, false, ctx);
+        distribution_config.update_gauge_liveness(killed_gauge_ids, false);
         let kill_gauge_event = EventKillGauge { id: gauge_id_obj.id };
         sui::event::emit<EventKillGauge>(kill_gauge_event);
         cashback
@@ -1071,7 +1071,7 @@ module distribution::voter {
         );
         let mut alive_gauge_ids = std::vector::empty<ID>();
         alive_gauge_ids.push_back(gauge_id);
-        distribution_config.update_gauge_liveness(alive_gauge_ids, true, ctx);
+        distribution_config.update_gauge_liveness(alive_gauge_ids, true);
         let revieve_gauge_event = EventReviveGauge { id: gauge_id };
         sui::event::emit<EventReviveGauge>(revieve_gauge_event);
     }
