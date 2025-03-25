@@ -42,214 +42,216 @@ module clmm_pool::rewarder {
         }
     }
 
-    public(package) fun add_rewarder<T0>(arg0: &mut RewarderManager) {
-        let v0 = rewarder_index<T0>(arg0);
-        assert!(std::option::is_none<u64>(&v0), 2);
-        assert!(std::vector::length<Rewarder>(&arg0.rewarders) <= 2, 1);
-        let v1 = Rewarder {
-            reward_coin: std::type_name::get<T0>(),
+    public(package) fun add_rewarder<RewardCoinType>(rewarder_manager: &mut RewarderManager) {
+        let rewarder_idx = rewarder_index<RewardCoinType>(rewarder_manager);
+        assert!(std::option::is_none<u64>(&rewarder_idx), 2);
+        assert!(std::vector::length<Rewarder>(&rewarder_manager.rewarders) <= 2, 1);
+        let new_rewarder = Rewarder {
+            reward_coin: std::type_name::get<RewardCoinType>(),
             emissions_per_second: 0,
             growth_global: 0,
         };
-        std::vector::push_back<Rewarder>(&mut arg0.rewarders, v1);
+        std::vector::push_back<Rewarder>(&mut rewarder_manager.rewarders, new_rewarder);
     }
 
-    public fun balance_of<T0>(arg0: &RewarderGlobalVault): u64 {
-        let v0 = std::type_name::get<T0>();
-        if (!sui::bag::contains<std::type_name::TypeName>(&arg0.balances, v0)) {
+    public fun balance_of<RewardCoinType>(vault: &RewarderGlobalVault): u64 {
+        let reward_type = std::type_name::get<RewardCoinType>();
+        if (!sui::bag::contains<std::type_name::TypeName>(&vault.balances, reward_type)) {
             return 0
         };
-        sui::balance::value<T0>(
-            sui::bag::borrow<std::type_name::TypeName, sui::balance::Balance<T0>>(&arg0.balances, v0)
+        sui::balance::value<RewardCoinType>(
+            sui::bag::borrow<std::type_name::TypeName, sui::balance::Balance<RewardCoinType>>(&vault.balances, reward_type)
         )
     }
 
-    public fun balances(arg0: &RewarderGlobalVault): &sui::bag::Bag {
-        &arg0.balances
+    public fun balances(vault: &RewarderGlobalVault): &sui::bag::Bag {
+        &vault.balances
     }
-
-    public(package) fun borrow_mut_rewarder<T0>(arg0: &mut RewarderManager): &mut Rewarder {
-        let mut v0 = 0;
-        while (v0 < std::vector::length<Rewarder>(&arg0.rewarders)) {
-            if (std::vector::borrow<Rewarder>(&arg0.rewarders, v0).reward_coin == std::type_name::get<T0>()) {
-                return std::vector::borrow_mut<Rewarder>(&mut arg0.rewarders, v0)
+    public(package) fun borrow_mut_rewarder<RewardCoinType>(manager: &mut RewarderManager): &mut Rewarder {
+        let mut index = 0;
+        while (index < std::vector::length<Rewarder>(&manager.rewarders)) {
+            if (std::vector::borrow<Rewarder>(&manager.rewarders, index).reward_coin == std::type_name::get<RewardCoinType>()) {
+                return std::vector::borrow_mut<Rewarder>(&mut manager.rewarders, index)
             };
-            v0 = v0 + 1;
+            index = index + 1;
         };
         abort 5
     }
 
-    public fun borrow_rewarder<T0>(arg0: &RewarderManager): &Rewarder {
-        let mut v0 = 0;
-        while (v0 < std::vector::length<Rewarder>(&arg0.rewarders)) {
-            if (std::vector::borrow<Rewarder>(&arg0.rewarders, v0).reward_coin == std::type_name::get<T0>()) {
-                return std::vector::borrow<Rewarder>(&arg0.rewarders, v0)
+    public fun borrow_rewarder<RewardCoinType>(manager: &RewarderManager): &Rewarder {
+        let mut index = 0;
+        while (index < std::vector::length<Rewarder>(&manager.rewarders)) {
+            if (std::vector::borrow<Rewarder>(&manager.rewarders, index).reward_coin == std::type_name::get<RewardCoinType>()) {
+                return std::vector::borrow<Rewarder>(&manager.rewarders, index)
             };
-            v0 = v0 + 1;
+            index = index + 1;
         };
         abort 5
     }
 
-    public fun deposit_reward<T0>(
-        arg0: &clmm_pool::config::GlobalConfig,
-        arg1: &mut RewarderGlobalVault,
-        arg2: sui::balance::Balance<T0>
+    public fun deposit_reward<RewardCoinType>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut RewarderGlobalVault,
+        balance: sui::balance::Balance<RewardCoinType>
     ): u64 {
-        clmm_pool::config::checked_package_version(arg0);
-        let v0 = std::type_name::get<T0>();
-        if (!sui::bag::contains<std::type_name::TypeName>(&arg1.balances, v0)) {
-            sui::bag::add<std::type_name::TypeName, sui::balance::Balance<T0>>(
-                &mut arg1.balances,
-                v0,
-                sui::balance::zero<T0>()
+        clmm_pool::config::checked_package_version(global_config);
+        let reward_type = std::type_name::get<RewardCoinType>();
+        if (!sui::bag::contains<std::type_name::TypeName>(&vault.balances, reward_type)) {
+            sui::bag::add<std::type_name::TypeName, sui::balance::Balance<RewardCoinType>>(
+                &mut vault.balances,
+                reward_type,
+                sui::balance::zero<RewardCoinType>()
             );
         };
-        let deposit_amount = sui::balance::value<T0>(&arg2);
-        let v1 = sui::balance::join<T0>(
-            sui::bag::borrow_mut<std::type_name::TypeName, sui::balance::Balance<T0>>(&mut arg1.balances, v0),
-            arg2
+        let deposit_amount = sui::balance::value<RewardCoinType>(&balance);
+        let after_amount = sui::balance::join<RewardCoinType>(
+            sui::bag::borrow_mut<std::type_name::TypeName, sui::balance::Balance<RewardCoinType>>(&mut vault.balances, reward_type),
+            balance
         );
-        let v2 = DepositEvent {
-            reward_type: v0,
+        let event = DepositEvent {
+            reward_type: reward_type,
             deposit_amount: deposit_amount,
-            after_amount: v1,
+            after_amount: after_amount,
         };
-        sui::event::emit<DepositEvent>(v2);
-        v1
+        sui::event::emit<DepositEvent>(event);
+        after_amount
     }
 
-    public fun emergent_withdraw<T0>(
-        _arg0: &clmm_pool::config::AdminCap,
-        arg1: &clmm_pool::config::GlobalConfig,
-        arg2: &mut RewarderGlobalVault,
-        arg3: u64
-    ): sui::balance::Balance<T0> {
-        clmm_pool::config::checked_package_version(arg1);
-        let v0 = EmergentWithdrawEvent {
-            reward_type: std::type_name::get<T0>(),
-            withdraw_amount: arg3,
-            after_amount: balance_of<T0>(arg2),
+    public fun emergent_withdraw<RewardCoinType>(
+        admin_cap: &clmm_pool::config::AdminCap,
+        global_config: &clmm_pool::config::GlobalConfig,
+        rewarder_vault: &mut RewarderGlobalVault,
+        withdraw_amount: u64
+    ): sui::balance::Balance<RewardCoinType> {
+        clmm_pool::config::checked_package_version(global_config);
+        let event = EmergentWithdrawEvent {
+            reward_type: std::type_name::get<RewardCoinType>(),
+            withdraw_amount: withdraw_amount,
+            after_amount: balance_of<RewardCoinType>(rewarder_vault),
         };
-        sui::event::emit<EmergentWithdrawEvent>(v0);
-        withdraw_reward<T0>(arg2, arg3)
+        sui::event::emit<EmergentWithdrawEvent>(event);
+        withdraw_reward<RewardCoinType>(rewarder_vault, withdraw_amount)
     }
 
-    public fun emissions_per_second(arg0: &Rewarder): u128 {
-        arg0.emissions_per_second
+    public fun emissions_per_second(rewarder: &Rewarder): u128 {
+        rewarder.emissions_per_second
     }
 
-    public fun growth_global(arg0: &Rewarder): u128 {
-        arg0.growth_global
+    public fun growth_global(rewarder: &Rewarder): u128 {
+        rewarder.growth_global
     }
 
-    fun init(arg0: &mut sui::tx_context::TxContext) {
-        let v0 = RewarderGlobalVault {
-            id: sui::object::new(arg0),
-            balances: sui::bag::new(arg0),
+    fun init(ctx: &mut sui::tx_context::TxContext) {
+        let vault = RewarderGlobalVault {
+            id: sui::object::new(ctx),
+            balances: sui::bag::new(ctx),
         };
-        let global_vault_id = sui::object::id<RewarderGlobalVault>(&v0);
-        sui::transfer::share_object<RewarderGlobalVault>(v0);
-        let v1 = RewarderInitEvent { global_vault_id };
-        sui::event::emit<RewarderInitEvent>(v1);
+        let global_vault_id = sui::object::id<RewarderGlobalVault>(&vault);
+        sui::transfer::share_object<RewarderGlobalVault>(vault);
+        let event = RewarderInitEvent { global_vault_id };
+        sui::event::emit<RewarderInitEvent>(event);
     }
 
-    public fun last_update_time(arg0: &RewarderManager): u64 {
-        arg0.last_updated_time
+    public fun last_update_time(manager: &RewarderManager): u64 {
+        manager.last_updated_time
     }
 
-    public fun points_growth_global(arg0: &RewarderManager): u128 {
-        arg0.points_growth_global
+    public fun points_growth_global(manager: &RewarderManager): u128 {
+        manager.points_growth_global
     }
 
-    public fun points_released(arg0: &RewarderManager): u128 {
-        arg0.points_released
+    public fun points_released(manager: &RewarderManager): u128 {
+        manager.points_released
     }
 
-    public fun reward_coin(arg0: &Rewarder): std::type_name::TypeName {
-        arg0.reward_coin
+    public fun reward_coin(rewarder: &Rewarder): std::type_name::TypeName {
+        rewarder.reward_coin
     }
 
-    public fun rewarder_index<T0>(arg0: &RewarderManager): std::option::Option<u64> {
-        let mut v0 = 0;
-        while (v0 < std::vector::length<Rewarder>(&arg0.rewarders)) {
-            if (std::vector::borrow<Rewarder>(&arg0.rewarders, v0).reward_coin == std::type_name::get<T0>()) {
-                return std::option::some<u64>(v0)
+    public fun rewarder_index<RewardCoinType>(manager: &RewarderManager): std::option::Option<u64> {
+        let mut index = 0;
+        while (index < std::vector::length<Rewarder>(&manager.rewarders)) {
+            if (std::vector::borrow<Rewarder>(&manager.rewarders, index).reward_coin == std::type_name::get<RewardCoinType>()) {
+                return std::option::some<u64>(index)
             };
-            v0 = v0 + 1;
+            index = index + 1;
         };
         std::option::none<u64>()
     }
 
-    public fun rewarders(arg0: &RewarderManager): vector<Rewarder> {
-        arg0.rewarders
+    public fun rewarders(manager: &RewarderManager): vector<Rewarder> {
+        manager.rewarders
     }
 
-    public fun rewards_growth_global(arg0: &RewarderManager): vector<u128> {
-        let mut v0 = 0;
-        let mut v1 = std::vector::empty<u128>();
-        while (v0 < std::vector::length<Rewarder>(&arg0.rewarders)) {
-            std::vector::push_back<u128>(&mut v1, std::vector::borrow<Rewarder>(&arg0.rewarders, v0).growth_global);
-            v0 = v0 + 1;
+    public fun rewards_growth_global(manager: &RewarderManager): vector<u128> {
+        let mut index = 0;
+        let mut rewards = std::vector::empty<u128>();
+        while (index < std::vector::length<Rewarder>(&manager.rewarders)) {
+            std::vector::push_back<u128>(&mut rewards, std::vector::borrow<Rewarder>(&manager.rewarders, index).growth_global);
+            index = index + 1;
         };
-        v1
+        rewards
     }
 
-    public(package) fun settle(arg0: &mut RewarderManager, arg1: u128, arg2: u64) {
-        let v0 = arg0.last_updated_time;
-        arg0.last_updated_time = arg2;
-        assert!(v0 <= arg2, 3);
-        if (arg1 == 0 || v0 == arg2) {
+    public(package) fun settle(manager: &mut RewarderManager, liquidity: u128, current_time: u64) {
+        let last_time = manager.last_updated_time;
+        manager.last_updated_time = current_time;
+        assert!(last_time <= current_time, 3);
+        if (liquidity == 0 || last_time == current_time) {
             return
         };
-        let v1 = arg2 - v0;
-        let mut v2 = 0;
-        while (v2 < std::vector::length<Rewarder>(&arg0.rewarders)) {
-            std::vector::borrow_mut<Rewarder>(&mut arg0.rewarders, v2).growth_global = std::vector::borrow<Rewarder>(
-                &arg0.rewarders,
-                v2
+        let time_delta = current_time - last_time;
+        let mut index = 0;
+        while (index < std::vector::length<Rewarder>(&manager.rewarders)) {
+            std::vector::borrow_mut<Rewarder>(&mut manager.rewarders, index).growth_global = std::vector::borrow<Rewarder>(
+                &manager.rewarders,
+                index
             ).growth_global + integer_mate::full_math_u128::mul_div_floor(
-                v1 as u128,
-                std::vector::borrow<Rewarder>(&arg0.rewarders, v2).emissions_per_second,
-                arg1
+                time_delta as u128,
+                std::vector::borrow<Rewarder>(&manager.rewarders, index).emissions_per_second,
+                liquidity
             );
-            v2 = v2 + 1;
+            index = index + 1;
         };
-        arg0.points_released = arg0.points_released + (v1 as u128) * 18446744073709551616000000;
-        arg0.points_growth_global = arg0.points_growth_global + integer_mate::full_math_u128::mul_div_floor(
-            v1 as u128,
+        manager.points_released = manager.points_released + (time_delta as u128) * 18446744073709551616000000;
+        manager.points_growth_global = manager.points_growth_global + integer_mate::full_math_u128::mul_div_floor(
+            time_delta as u128,
             18446744073709551616000000,
-            arg1
+            liquidity
         );
     }
 
-    public(package) fun update_emission<T0>(
-        arg0: &RewarderGlobalVault,
-        arg1: &mut RewarderManager,
-        arg2: u128,
-        arg3: u128,
-        arg4: u64
+    public(package) fun update_emission<RewardCoinType>(
+        rewarder_vault: &RewarderGlobalVault,
+        rewarder_manager: &mut RewarderManager,
+        liquidity: u128,
+        emission_rate: u128,
+        current_time: u64
     ) {
-        settle(arg1, arg2, arg4);
-        if (arg3 > 0) {
-            let v0 = std::type_name::get<T0>();
-            assert!(sui::bag::contains<std::type_name::TypeName>(&arg0.balances, v0), 5);
+        settle(rewarder_manager, liquidity, current_time);
+        if (emission_rate > 0) {
+            let reward_type = std::type_name::get<RewardCoinType>();
+            assert!(sui::bag::contains<std::type_name::TypeName>(&rewarder_vault.balances, reward_type), 5);
             assert!(
-                (sui::balance::value<T0>(
-                    sui::bag::borrow<std::type_name::TypeName, sui::balance::Balance<T0>>(&arg0.balances, v0)
-                ) as u128) << 64 >= 86400 * arg3,
+                (sui::balance::value<RewardCoinType>(
+                    sui::bag::borrow<std::type_name::TypeName, sui::balance::Balance<RewardCoinType>>(&rewarder_vault.balances, reward_type)
+                ) as u128) << 64 >= 86400 * emission_rate,
                 4
             );
         };
-        borrow_mut_rewarder<T0>(arg1).emissions_per_second = arg3;
+        borrow_mut_rewarder<RewardCoinType>(rewarder_manager).emissions_per_second = emission_rate;
     }
 
-    public(package) fun withdraw_reward<T0>(arg0: &mut RewarderGlobalVault, arg1: u64): sui::balance::Balance<T0> {
-        sui::balance::split<T0>(
-            sui::bag::borrow_mut<std::type_name::TypeName, sui::balance::Balance<T0>>(
-                &mut arg0.balances,
-                std::type_name::get<T0>()
+    public(package) fun withdraw_reward<RewardCoinType>(
+        rewarder_vault: &mut RewarderGlobalVault,
+        amount: u64
+    ): sui::balance::Balance<RewardCoinType> {
+        sui::balance::split<RewardCoinType>(
+            sui::bag::borrow_mut<std::type_name::TypeName, sui::balance::Balance<RewardCoinType>>(
+                &mut rewarder_vault.balances,
+                std::type_name::get<RewardCoinType>()
             ),
-            arg1
+            amount
         )
     }
 
