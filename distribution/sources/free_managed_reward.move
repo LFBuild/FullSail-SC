@@ -1,4 +1,22 @@
 module distribution::free_managed_reward {
+    /// A module that provides a wrapper around the base reward system for freely distributable rewards.
+    /// This specialized wrapper enables token distribution to participants without requiring tokens to be locked.
+    ///
+    /// The FreeManagedReward serves as a key component in the reward distribution system, allowing:
+    /// - Distribution of rewards to users who hold specific assets (identified by lock_id)
+    /// - Support for multiple token types as rewards
+    /// - Time-weighted reward distribution based on the voting escrow system
+    /// - Permissioned deposit and withdrawal of rewards through an authorization system
+    ///
+    /// The key difference between this and other reward types (like locked_managed_reward) is that
+    /// rewards can be freely claimed without additional restrictions beyond ownership proof.
+    ///
+    /// This module integrates with other distribution components:
+    /// - voting_escrow: For time-weighted balances
+    /// - reward: For core reward distribution logic
+    /// - lock_owner: For ownership verification
+    /// - whitelisted_tokens: For token validation
+    /// - reward_authorized_cap: For authorization mechanisms
 
     const EGetRewardInvalidProver: u64 = 9223372337502486527;
 
@@ -9,6 +27,16 @@ module distribution::free_managed_reward {
         reward: distribution::reward::Reward,
     }
 
+    /// Creates a new FreeManagedReward instance.
+    /// 
+    /// # Arguments
+    /// * `voter` - The ID of the voter module
+    /// * `ve` - The ID of the voting escrow module
+    /// * `reward_coin_type` - The type name of the coin to be used as the initial reward
+    /// * `ctx` - The transaction context
+    /// 
+    /// # Returns
+    /// A new FreeManagedReward object with initialized reward data
     public(package) fun create(
         voter: ID,
         ve: ID,
@@ -23,6 +51,18 @@ module distribution::free_managed_reward {
         }
     }
 
+    /// Deposits an amount of tokens into the reward system for a specific lock.
+    /// 
+    /// # Arguments
+    /// * `reward` - The FreeManagedReward object to deposit into
+    /// * `reward_authorized_cap` - Capability object for authorization
+    /// * `amount` - The amount of tokens to deposit
+    /// * `lock_id` - The ID of the lock to deposit for
+    /// * `clock` - Clock object for timestamp
+    /// * `ctx` - Transaction context
+    /// 
+    /// # Aborts
+    /// * If the authorization is invalid
     public fun deposit(
         reward: &mut FreeManagedReward,
         reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
@@ -34,6 +74,15 @@ module distribution::free_managed_reward {
         reward.reward.deposit(reward_authorized_cap, amount, lock_id, clock, ctx);
     }
 
+    /// Calculates how much of a specific reward token type a lock has earned.
+    /// 
+    /// # Arguments
+    /// * `reward` - The FreeManagedReward object
+    /// * `lock_id` - The ID of the lock to check earnings for
+    /// * `clock` - Clock object for timestamp
+    /// 
+    /// # Returns
+    /// The amount of reward tokens earned
     public fun earned<RewardCoinType>(
         reward: &FreeManagedReward,
         lock_id: ID,
@@ -77,6 +126,17 @@ module distribution::free_managed_reward {
         reward.get_prior_supply_index(time)
     }
 
+    /// Claims rewards for a specific token type.
+    /// Transfers the earned rewards to the owner of the lock.
+    /// 
+    /// # Arguments
+    /// * `reward` - The FreeManagedReward object
+    /// * `owner_proff` - Proof of ownership of the lock
+    /// * `clock` - Clock object for timestamp
+    /// * `ctx` - Transaction context
+    /// 
+    /// # Aborts
+    /// * If the prover ID in the ownership proof doesn't match the reward's ve ID
     public fun get_reward<RewardCoinType>(
         reward: &mut FreeManagedReward,
         owner_proff: distribution::lock_owner::OwnerProof,
@@ -103,6 +163,19 @@ module distribution::free_managed_reward {
         reward_coin.destroy_none();
     }
 
+    /// Notifies the reward contract about new rewards being added.
+    /// Updates internal accounting and distributes rewards according to participant shares.
+    /// 
+    /// # Arguments
+    /// * `reward` - The FreeManagedReward object
+    /// * `whitelisted_token` - Optional whitelist validation for the token type
+    /// * `coin` - The coin to add as a reward
+    /// * `clock` - Clock object for timestamp
+    /// * `ctx` - Transaction context
+    /// 
+    /// # Aborts
+    /// * If the token is not in the rewards list and no whitelisted token is provided
+    /// * If the whitelisted token validation fails
     public fun notify_reward_amount<RewardCoinType>(
         reward: &mut FreeManagedReward,
         mut whitelisted_token: Option<distribution::whitelisted_tokens::WhitelistedToken>,
