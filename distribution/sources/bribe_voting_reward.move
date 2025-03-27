@@ -1,4 +1,27 @@
 module distribution::bribe_voting_reward {
+    /// The BribeVotingReward module implements a key mechanism in the platform's governance system
+    /// designed to incentivize specific voting behaviors. In decentralized finance (DeFi), bribes 
+    /// are a legitimate and common mechanism where external parties offer rewards (bribes) to token 
+    /// holders to encourage them to vote in a particular way, typically to direct protocol resources 
+    /// or emissions to specific liquidity pools.
+    /// 
+    /// This module:
+    /// - Allows protocol participants to offer tokens as rewards to voters who support specific pools
+    /// - Creates a transparent economic incentive system for governance participation
+    /// - Manages the calculation and distribution of rewards based on voting power and participation
+    /// - Connects the platform's liquidity gauges (which measure pool importance) with voting incentives
+    /// - Enables a market-driven approach to gauge weight determination
+    /// 
+    /// The BribeVotingReward system works alongside the fee distribution system, where:
+    /// - Fee rewards are protocol-generated incentives from trading activities
+    /// - Bribe rewards are externally provided incentives to influence voting
+    /// 
+    /// This dual reward system creates a comprehensive economic model that aligns
+    /// stakeholder interests and promotes active participation in the protocol's governance.
+    ///
+    /// Each BribeVotingReward instance is associated with a specific gauge and manages
+    /// the rewards offered to voters supporting that gauge's associated liquidity pool.
+
     const ENotifyRewardAmountTokenNotWhitelisted: u64 = 9223372410516930559;
 
     public struct BribeVotingReward has store, key {
