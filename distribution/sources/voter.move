@@ -235,12 +235,15 @@ module distribution::voter {
 
     /// Creates a new Voter contract.
     /// 
-    /// @param _publisher - The publisher of the package
-    /// @param global_config - The ID of the global configuration
-    /// @param distribution_config - The ID of the distribution configuration
-    /// @param supported_coins - List of initially supported token types
-    /// @param ctx - The transaction context
-    /// @return A new Voter instance and a NotifyRewardCap for reward notification
+    /// # Arguments
+    /// * `_publisher` - The publisher of the package
+    /// * `global_config` - The ID of the global configuration
+    /// * `distribution_config` - The ID of the distribution configuration
+    /// * `supported_coins` - List of initially supported token types
+    /// * `ctx` - The transaction context
+    /// 
+    /// # Returns
+    /// A new Voter instance and a NotifyRewardCap for reward notification
     public fun create<SailCoinType>(
         _publisher: &sui::package::Publisher,
         global_config: ID,
@@ -301,13 +304,18 @@ module distribution::voter {
     /// This function allows a user to deposit their lock to be managed by another lock,
     /// enabling delegation of voting power.
     ///
-    /// @param voter - The voter contract reference
-    /// @param voting_escrow - The voting escrow reference
-    /// @param distribution_config - The distribution configuration reference
-    /// @param lock - The owner's lock
-    /// @param managed_lock - The manager's lock that will control the voting
-    /// @param clock - The system clock for time-based validation
-    /// @param ctx - The transaction context
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `voting_escrow` - The voting escrow reference
+    /// * `distribution_config` - The distribution configuration reference
+    /// * `lock` - The owner's lock
+    /// * `managed_lock` - The manager's lock that will control the voting
+    /// * `clock` - The system clock for time-based validation
+    /// * `ctx` - The transaction context
+    ///
+    /// # Aborts
+    /// * If the voter has already voted in the current epoch
+    /// * If the current time is after the epoch voting end time
     public fun deposit_managed<SailCoinType>(
         voter: &mut Voter<SailCoinType>,
         voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
@@ -333,13 +341,18 @@ module distribution::voter {
     /// Withdraws a previously deposited managed lock from the voting escrow system.
     /// This function reverts the delegation of voting power.
     ///
-    /// @param voter - The voter contract reference
-    /// @param voting_escrow - The voting escrow reference
-    /// @param distribution_config - The distribution configuration reference
-    /// @param lock - The owner's lock
-    /// @param managed_lock - The manager's lock that was controlling the voting
-    /// @param clock - The system clock for time-based validation
-    /// @param ctx - The transaction context
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `voting_escrow` - The voting escrow reference
+    /// * `distribution_config` - The distribution configuration reference
+    /// * `lock` - The owner's lock
+    /// * `managed_lock` - The manager's lock that was controlling the voting
+    /// * `clock` - The system clock for time-based validation
+    /// * `ctx` - The transaction context
+    ///
+    /// # Aborts
+    /// * If the voter has already voted in the current epoch
+    /// * If the managed lock ID doesn't match the expected ID
     public fun withdraw_managed<SailCoinType>(
         voter: &mut Voter<SailCoinType>,
         voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
@@ -376,10 +389,15 @@ module distribution::voter {
     /// permissions compared to regular governors and can only manage specific
     /// operations within an epoch.
     ///
-    /// @param voter - The voter contract reference
-    /// @param governor_cap - The governor capability to authorize the operation
-    /// @param who - The address of the new epoch governor
-    /// @param ctx - The transaction context
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `governor_cap` - The governor capability to authorize the operation
+    /// * `who` - The address of the new epoch governor
+    /// * `ctx` - The transaction context
+    ///
+    /// # Aborts
+    /// * If the caller is not a governor
+    /// * If the governor capability doesn't match the voter ID
     public fun add_epoch_governor<SailCoinType>(
         voter: &mut Voter<SailCoinType>,
         governor_cap: &distribution::voter_cap::GovernorCap,
@@ -408,10 +426,14 @@ module distribution::voter {
     /// Adds a governor to the system. Governors have the highest level of 
     /// permissions and can perform administrative operations.
     ///
-    /// @param voter - The voter contract reference
-    /// @param _publisher - The publisher of the package
-    /// @param who - The address of the new governor
-    /// @param ctx - The transaction context
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `_publisher` - The publisher of the package
+    /// * `who` - The address of the new governor
+    /// * `ctx` - The transaction context
+    ///
+    /// # Emits
+    /// * `EventAddGovernor` when a governor is added
     public fun add_governor<SailCoinType>(
         voter: &mut Voter<SailCoinType>,
         _publisher: &sui::package::Publisher,
@@ -437,9 +459,14 @@ module distribution::voter {
     /// in a new epoch for a given lock. Prevents duplicate votes within
     /// the same epoch.
     ///
-    /// @param voter - The voter contract reference
-    /// @param lock_id - The ID of the lock
-    /// @param clock - The system clock for time-based validation
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `lock_id` - The ID of the lock
+    /// * `clock` - The system clock for time-based validation
+    ///
+    /// # Aborts
+    /// * If the lock has already voted in the current epoch
+    /// * If voting for the current epoch hasn't started yet
     fun assert_only_new_epoch<SailCoinType>(voter: &Voter<SailCoinType>, lock_id: LockID, clock: &sui::clock::Clock) {
         let current_time = distribution::common::current_timestamp(clock);
         assert!(
@@ -452,9 +479,12 @@ module distribution::voter {
 
     /// Get a reference to the bribe voting reward for a specific gauge.
     ///
-    /// @param voter - The voter contract reference
-    /// @param gauge_id - The ID of the gauge
-    /// @return A reference to the bribe voting reward
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `gauge_id` - The ID of the gauge
+    ///
+    /// # Returns
+    /// A reference to the bribe voting reward
     public fun borrow_bribe_voting_reward<SailCoinType>(
         voter: &Voter<SailCoinType>,
         gauge_id: ID
@@ -464,9 +494,12 @@ module distribution::voter {
 
     /// Get a mutable reference to the bribe voting reward for a specific gauge.
     ///
-    /// @param voter - The voter contract reference
-    /// @param gauge_id - The ID of the gauge
-    /// @return A mutable reference to the bribe voting reward
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `gauge_id` - The ID of the gauge
+    ///
+    /// # Returns
+    /// A mutable reference to the bribe voting reward
     public fun borrow_bribe_voting_reward_mut<SailCoinType>(
         voter: &mut Voter<SailCoinType>,
         gauge_id: ID
@@ -476,9 +509,12 @@ module distribution::voter {
 
     /// Get a reference to the fee voting reward for a specific gauge.
     ///
-    /// @param voter - The voter contract reference
-    /// @param gauge_id - The ID of the gauge
-    /// @return A reference to the fee voting reward
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `gauge_id` - The ID of the gauge
+    ///
+    /// # Returns
+    /// A reference to the fee voting reward
     public fun borrow_fee_voting_reward<SailCoinType>(
         voter: &Voter<SailCoinType>,
         gauge_id: ID
@@ -488,9 +524,12 @@ module distribution::voter {
 
     /// Get a mutable reference to the fee voting reward for a specific gauge.
     ///
-    /// @param voter - The voter contract reference
-    /// @param gauge_id - The ID of the gauge
-    /// @return A mutable reference to the fee voting reward
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `gauge_id` - The ID of the gauge
+    ///
+    /// # Returns
+    /// A mutable reference to the fee voting reward
     public fun borrow_fee_voting_reward_mut<SailCoinType>(
         voter: &mut Voter<SailCoinType>,
         gauge_id: ID
@@ -500,9 +539,15 @@ module distribution::voter {
 
     /// Borrow the voter capability after validating with the notify reward capability.
     ///
-    /// @param voter - The voter contract reference
-    /// @param notify_reward_cap - The notify reward capability for authorization
-    /// @return A reference to the voter capability
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `notify_reward_cap` - The notify reward capability for authorization
+    ///
+    /// # Returns
+    /// A reference to the voter capability
+    ///
+    /// # Aborts
+    /// * If the notify reward capability doesn't match the voter ID
     public fun borrow_voter_cap<SailCoinType>(
         voter: &Voter<SailCoinType>,
         notify_reward_cap: &distribution::notify_reward_cap::NotifyRewardCap
@@ -516,9 +561,16 @@ module distribution::voter {
     /// that the number of votes does not exceed the maximum allowed,
     /// and that all pools have valid gauges.
     ///
-    /// @param voter - The voter contract reference
-    /// @param pool_ids - The IDs of the pools to vote for
-    /// @param weights - The weights to assign to each pool
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `pool_ids` - The IDs of the pools to vote for
+    /// * `weights` - The weights to assign to each pool
+    ///
+    /// # Aborts
+    /// * If the pool IDs and weights arrays have different lengths
+    /// * If the number of votes exceeds the maximum allowed
+    /// * If any pool doesn't have a valid gauge
+    /// * If any weight is larger than 10000
     fun check_vote<SailCoinType>(
         voter: &Voter<SailCoinType>,
         pool_ids: &vector<ID>,
@@ -541,11 +593,15 @@ module distribution::voter {
     /// Claims bribe rewards across all pools that a lock has voted for.
     /// Bribes are incentives provided by external parties to encourage voting for specific pools.
     ///
-    /// @param voter - The voter contract reference
-    /// @param voting_escrow - The voting escrow reference
-    /// @param lock - The lock for which to claim bribes
-    /// @param clock - The system clock for time-based calculations
-    /// @param ctx - The transaction context
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `voting_escrow` - The voting escrow reference
+    /// * `lock` - The lock for which to claim bribes
+    /// * `clock` - The system clock for time-based calculations
+    /// * `ctx` - The transaction context
+    ///
+    /// # Emits
+    /// * `EventClaimBribeReward` for each pool with claimed rewards
     public fun claim_voting_bribe<SailCoinType, BribeCoinType>(
         voter: &mut Voter<SailCoinType>,
         voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
@@ -580,11 +636,15 @@ module distribution::voter {
     /// Claims fee rewards across all pools that a lock has voted for.
     /// Fees are the trading fees collected by the pools and distributed to voters.
     ///
-    /// @param voter - The voter contract reference
-    /// @param voting_escrow - The voting escrow reference
-    /// @param lock - The lock for which to claim fees
-    /// @param clock - The system clock for time-based calculations
-    /// @param ctx - The transaction context
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `voting_escrow` - The voting escrow reference
+    /// * `lock` - The lock for which to claim fees
+    /// * `clock` - The system clock for time-based calculations
+    /// * `ctx` - The transaction context
+    ///
+    /// # Emits
+    /// * `EventClaimVotingFeeReward` for each pool with claimed rewards
     public fun claim_voting_fee_reward<SailCoinType, FeeCoinType>(
         voter: &mut Voter<SailCoinType>,
         voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
@@ -618,9 +678,12 @@ module distribution::voter {
 
     /// Returns the amount of rewards claimable for a specific gauge.
     ///
-    /// @param voter - The voter contract reference
-    /// @param gauge_id - The ID of the gauge to check
-    /// @return The claimable amount for the specified gauge
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `gauge_id` - The ID of the gauge to check
+    ///
+    /// # Returns
+    /// The claimable amount for the specified gauge
     public fun claimable<SailCoinType>(voter: &Voter<SailCoinType>, gauge_id: ID): u64 {
         let gauge_id_obj = into_gauge_id(gauge_id);
         if (voter.claimable.contains(gauge_id_obj)) {
@@ -634,15 +697,22 @@ module distribution::voter {
     /// Gauges are mechanisms that direct rewards to liquidity pools based on votes.
     /// Only governors can create gauges.
     ///
-    /// @param voter - The voter contract reference
-    /// @param distribution_config - The distribution configuration
-    /// @param create_cap - The capability to create a gauge
-    /// @param governor_cap - The governor capability to authorize the operation
-    /// @param voting_escrow - The voting escrow reference
-    /// @param pool - The liquidity pool to create a gauge for
-    /// @param clock - The system clock
-    /// @param ctx - The transaction context
-    /// @return A new gauge for the specified pool
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `distribution_config` - The distribution configuration
+    /// * `create_cap` - The capability to create a gauge
+    /// * `governor_cap` - The governor capability to authorize the operation
+    /// * `voting_escrow` - The voting escrow reference
+    /// * `pool` - The liquidity pool to create a gauge for
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
+    ///
+    /// # Returns
+    /// A new gauge for the specified pool
+    ///
+    /// # Aborts
+    /// * If the caller is not a governor
+    /// * If the distribution configuration is invalid
     public fun create_gauge<CoinTypeA, CoinTypeB, SailCoinType>(
         voter: &mut Voter<SailCoinType>,
         distribution_config: &mut distribution::distribution_config::DistributionConfig,
@@ -695,13 +765,22 @@ module distribution::voter {
     /// Distributes accumulated rewards to a gauge.
     /// This is a key function in the reward distribution flow.
     ///
-    /// @param voter - The voter contract reference
-    /// @param distribution_config - The distribution configuration
-    /// @param gauge - The gauge to distribute rewards to
-    /// @param pool - The liquidity pool associated with the gauge
-    /// @param clock - The system clock
-    /// @param ctx - The transaction context
-    /// @return The amount of rewards distributed
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `distribution_config` - The distribution configuration
+    /// * `gauge` - The gauge to distribute rewards to
+    /// * `pool` - The liquidity pool associated with the gauge
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
+    ///
+    /// # Returns
+    /// The amount of rewards distributed
+    ///
+    /// # Aborts
+    /// * If the gauge representation is invalid
+    ///
+    /// # Emits
+    /// * `EventDistributeGauge` with information about distributed rewards
     public fun distribute_gauge<CoinTypeA, CoinTypeB, SailCoinType>(
         voter: &mut Voter<SailCoinType>,
         distribution_config: &distribution::distribution_config::DistributionConfig,
@@ -752,10 +831,16 @@ module distribution::voter {
     /// Internal function to extract the claimable amount for a gauge.
     /// Updates the gauge's state and returns the claimable balance.
     ///
-    /// @param voter - The voter contract reference
-    /// @param distribution_config - The distribution configuration
-    /// @param gauge_id - The ID of the gauge
-    /// @return The balance that can be claimed
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `distribution_config` - The distribution configuration
+    /// * `gauge_id` - The ID of the gauge
+    ///
+    /// # Returns
+    /// The balance that can be claimed
+    ///
+    /// # Emits
+    /// * `EventExtractClaimable` with the extracted amount
     fun extract_claimable_for<SailCoinType>(
         voter: &mut Voter<SailCoinType>,
         distribution_config: &distribution::distribution_config::DistributionConfig,
@@ -778,9 +863,12 @@ module distribution::voter {
 
     /// Returns the balance of a specific token type in the fee voting rewards for a gauge.
     ///
-    /// @param voter - The voter contract reference
-    /// @param gauge_id - The ID of the gauge
-    /// @return The balance of the specified token type
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `gauge_id` - The ID of the gauge
+    ///
+    /// # Returns
+    /// The balance of the specified token type
     public fun fee_voting_reward_balance<SailCoinType, CoinTypeA>(
         voter: &Voter<SailCoinType>,
         gauge_id: ID
@@ -790,8 +878,11 @@ module distribution::voter {
 
     /// Returns the balance of a specific token type in the voter contract.
     ///
-    /// @param voter - The voter contract reference
-    /// @return The balance of the specified token type
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    ///
+    /// # Returns
+    /// The balance of the specified token type
     public fun get_balance<SailCoinType, BribeCoinType>(voter: &Voter<SailCoinType>): u64 {
         let bribe_coin_type = std::type_name::get<BribeCoinType>();
         if (!voter.balances.contains(bribe_coin_type)) {
@@ -805,18 +896,24 @@ module distribution::voter {
 
     /// Returns the weight (voting power) assigned to a specific gauge.
     ///
-    /// @param voter - The voter contract reference
-    /// @param gauge_id - The ID of the gauge
-    /// @return The weight of the gauge
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `gauge_id` - The ID of the gauge
+    ///
+    /// # Returns
+    /// The weight of the gauge
     public fun get_gauge_weight<SailCoinType>(voter: &Voter<SailCoinType>, gauge_id: ID): u64 {
         *voter.weights.borrow(into_gauge_id(gauge_id))
     }
 
     /// Returns the weight (voting power) assigned to a specific pool.
     ///
-    /// @param voter - The voter contract reference
-    /// @param pool_id - The ID of the pool
-    /// @return The weight of the pool
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `pool_id` - The ID of the pool
+    ///
+    /// # Returns
+    /// The weight of the pool
     public fun get_pool_weight<SailCoinType>(voter: &Voter<SailCoinType>, pool_id: ID): u64 {
         let gauge_id = *voter.pool_to_gauger.borrow(into_pool_id(pool_id));
         voter.get_gauge_weight(gauge_id.id)
@@ -824,17 +921,26 @@ module distribution::voter {
 
     /// Returns the total voting weight across all gauges in the system.
     ///
-    /// @param voter - The voter contract reference
-    /// @return The total voting weight
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    ///
+    /// # Returns
+    /// The total voting weight
     public fun get_total_weight<SailCoinType>(voter: &Voter<SailCoinType>): u64 {
         voter.total_weight
     }
 
     /// Returns the votes cast by a specific lock.
     ///
-    /// @param voter - The voter contract reference
-    /// @param lock_id - The ID of the lock
-    /// @return A table mapping pools to their vote weights
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `lock_id` - The ID of the lock
+    ///
+    /// # Returns
+    /// A table mapping pools to their vote weights
+    ///
+    /// # Aborts
+    /// * If the lock has not voted
     public fun get_votes<SailCoinType>(
         voter: &Voter<SailCoinType>,
         lock_id: ID
@@ -848,60 +954,79 @@ module distribution::voter {
     }
 
     /// Initializes the module.
-    ///
-    /// @param otw - The one-time witness for the module
-    /// @param ctx - The transaction context
+    /// 
+    /// # Arguments
+    /// * `otw` - The one-time witness for the module
+    /// * `ctx` - The transaction context
     fun init(otw: VOTER, ctx: &mut TxContext) {
         sui::package::claim_and_keep<VOTER>(otw, ctx);
     }
 
     /// Converts an ID to a GaugeID.
-    ///
-    /// @param id - The ID to convert
-    /// @return A GaugeID containing the input ID
+    /// 
+    /// # Arguments
+    /// * `id` - The ID to convert
+    /// 
+    /// # Returns
+    /// A GaugeID containing the input ID
     public(package) fun into_gauge_id(id: ID): GaugeID {
         GaugeID { id }
     }
 
     /// Converts an ID to a LockID.
-    ///
-    /// @param id - The ID to convert
-    /// @return A LockID containing the input ID
+    /// 
+    /// # Arguments
+    /// * `id` - The ID to convert
+    /// 
+    /// # Returns
+    /// A LockID containing the input ID
     public(package) fun into_lock_id(id: ID): LockID {
         LockID { id }
     }
 
     /// Converts an ID to a PoolID.
-    ///
-    /// @param id - The ID to convert
-    /// @return A PoolID containing the input ID
+    /// 
+    /// # Arguments
+    /// * `id` - The ID to convert
+    /// 
+    /// # Returns
+    /// A PoolID containing the input ID
     public(package) fun into_pool_id(id: ID): PoolID {
         PoolID { id }
     }
 
     /// Checks if an ID corresponds to an epoch governor.
-    ///
-    /// @param voter - The voter contract reference
-    /// @param who - The ID to check
-    /// @return True if the ID is an epoch governor, false otherwise
+    /// 
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `who` - The ID to check
+    /// 
+    /// # Returns
+    /// True if the ID is an epoch governor, false otherwise
     public fun is_epoch_governor<SailCoinType>(voter: &Voter<SailCoinType>, who: ID): bool {
         voter.epoch_governors.contains<ID>(&who)
     }
 
     /// Checks if an ID corresponds to a governor.
-    ///
-    /// @param voter - The voter contract reference
-    /// @param who - The ID to check
-    /// @return True if the ID is a governor, false otherwise
+    /// 
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `who` - The ID to check
+    /// 
+    /// # Returns
+    /// True if the ID is a governor, false otherwise
     public fun is_governor<SailCoinType>(voter: &Voter<SailCoinType>, who: ID): bool {
         voter.governors.contains<ID>(&who)
     }
 
     /// Checks if an NFT (lock) is whitelisted.
-    ///
-    /// @param voter - The voter contract reference
-    /// @param lock_id - The ID of the lock to check
-    /// @return True if the lock is whitelisted, false otherwise
+    /// 
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `lock_id` - The ID of the lock to check
+    /// 
+    /// # Returns
+    /// True if the lock is whitelisted, false otherwise
     public fun is_whitelisted_nft<SailCoinType>(voter: &Voter<SailCoinType>, lock_id: ID): bool {
         let lock_id_obj = into_lock_id(lock_id);
         voter.is_whitelisted_nft.contains(lock_id_obj) &&
@@ -909,9 +1034,12 @@ module distribution::voter {
     }
 
     /// Checks if a token type is whitelisted.
-    ///
-    /// @param voter - The voter contract reference
-    /// @return True if the token type is whitelisted, false otherwise
+    /// 
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// 
+    /// # Returns
+    /// True if the token type is whitelisted, false otherwise
     public fun is_whitelisted_token<SailCoinType, CoinToCheckType>(voter: &Voter<SailCoinType>): bool {
         let coin_type_name = std::type_name::get<CoinToCheckType>();
         if (voter.is_whitelisted_token.contains(coin_type_name)) {
@@ -925,13 +1053,16 @@ module distribution::voter {
     /// Kills (deactivates) a gauge in the system.
     /// This should be used in emergency situations when a gauge needs to be disabled.
     /// Only the emergency council can perform this operation.
-    ///
-    /// @param voter - The voter contract reference
-    /// @param distribution_config - The distribution configuration
-    /// @param emergency_council_cap - The emergency council capability
-    /// @param gauge_id - The ID of the gauge to kill
-    /// @param ctx - The transaction context
-    /// @return A balance containing any undistributed rewards
+    /// 
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `distribution_config` - The distribution configuration
+    /// * `emergency_council_cap` - The emergency council capability
+    /// * `gauge_id` - The ID of the gauge to kill
+    /// * `ctx` - The transaction context
+    /// 
+    /// # Returns
+    /// A balance containing any undistributed rewards
     public fun kill_gauge<SailCoinType>(
         voter: &mut Voter<SailCoinType>,
         distribution_config: &mut distribution::distribution_config::DistributionConfig,
@@ -976,10 +1107,13 @@ module distribution::voter {
     }
 
     /// Returns the timestamp when a lock last voted.
-    ///
-    /// @param voter - The voter contract reference
-    /// @param lock_id - The ID of the lock
-    /// @return The timestamp when the lock last voted, or 0 if it never voted
+    /// 
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `lock_id` - The ID of the lock
+    /// 
+    /// # Returns
+    /// The timestamp when the lock last voted, or 0 if it never voted
     public fun lock_last_voted_at<SailCoinType>(voter: &Voter<SailCoinType>, lock_id: ID): u64 {
         let lock_id_obj = into_lock_id(lock_id);
         if (!voter.last_voted.contains(lock_id_obj)) {
@@ -991,10 +1125,11 @@ module distribution::voter {
 
     /// Notifies the voter contract of new rewards to be distributed.
     /// These rewards will be allocated to gauges based on their voting weights.
-    ///
-    /// @param voter - The voter contract reference
-    /// @param notify_reward_cap - The notify reward capability for authorization
-    /// @param reward - The coin to add as a reward
+    /// 
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `notify_reward_cap` - The notify reward capability for authorization
+    /// * `reward` - The coin to add as a reward
     public fun notify_rewards<SailCoinType>(
         voter: &mut Voter<SailCoinType>,
         notify_reward_cap: &distribution::notify_reward_cap::NotifyRewardCap,
@@ -1034,13 +1169,14 @@ module distribution::voter {
 
     /// "Pokes" the voting system to update a lock's votes based on its current voting power.
     /// This is useful when a lock's voting power changes and votes need to be recalculated.
-    ///
-    /// @param voter - The voter contract reference
-    /// @param voting_escrow - The voting escrow reference
-    /// @param distribution_config - The distribution configuration
-    /// @param lock - The lock to update votes for
-    /// @param clock - The system clock
-    /// @param ctx - The transaction context
+    /// 
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `voting_escrow` - The voting escrow reference
+    /// * `distribution_config` - The distribution configuration
+    /// * `lock` - The lock to update votes for
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
     public fun poke<SailCoinType>(
         voter: &mut Voter<SailCoinType>,
         voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
@@ -1056,14 +1192,15 @@ module distribution::voter {
     }
 
     /// Internal function to update a lock's votes based on its current voting power.
-    ///
-    /// @param voter - The voter contract reference
-    /// @param voting_escrow - The voting escrow reference
-    /// @param distribution_config - The distribution configuration
-    /// @param lock - The lock to update votes for
-    /// @param voting_power - The voting power of the lock
-    /// @param clock - The system clock
-    /// @param ctx - The transaction context
+    /// 
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `voting_escrow` - The voting escrow reference
+    /// * `distribution_config` - The distribution configuration
+    /// * `lock` - The lock to update votes for
+    /// * `voting_power` - The voting power of the lock
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
     fun poke_internal<SailCoinType>(
         voter: &mut Voter<SailCoinType>,
         voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
@@ -1112,18 +1249,24 @@ module distribution::voter {
     }
 
     /// Returns the gauge ID associated with a specific pool.
-    ///
-    /// @param voter - The voter contract reference
-    /// @param pool_id - The ID of the pool to query
-    /// @return The ID of the gauge associated with the pool
+    /// 
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `pool_id` - The ID of the pool to query
+    /// 
+    /// # Returns
+    /// The ID of the gauge associated with the pool
     public fun pool_to_gauge<SailCoinType>(voter: &Voter<SailCoinType>, pool_id: ID): ID {
         voter.pool_to_gauger.borrow(into_pool_id(pool_id)).id
     }
 
     /// Returns all pools and their associated gauges in the system.
-    ///
-    /// @param voter - The voter contract reference
-    /// @return A tuple containing vectors of pool IDs and their corresponding gauge IDs
+    /// 
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// 
+    /// # Returns
+    /// A tuple containing vectors of pool IDs and their corresponding gauge IDs
     public fun pools_gauges<SailCoinType>(
         voter: &Voter<SailCoinType>
     ): (vector<ID>, vector<ID>) {
@@ -1141,9 +1284,12 @@ module distribution::voter {
 
     /// Proves that a pair of tokens is whitelisted in the system.
     /// Used to verify token pairs for pools and other operations.
-    ///
-    /// @param voter - The voter contract reference
-    /// @return A capability proving that both tokens are whitelisted
+    /// 
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// 
+    /// # Returns
+    /// A capability proving that both tokens are whitelisted
     public fun prove_pair_whitelisted<SailCoinType, CoinTypeA, CoinTypeB>(
         voter: &Voter<SailCoinType>
     ): distribution::whitelisted_tokens::WhitelistedTokenPair {
@@ -1154,9 +1300,12 @@ module distribution::voter {
 
     /// Proves that a specific token is whitelisted in the system.
     /// Used to verify tokens for various operations.
-    ///
-    /// @param voter - The voter contract reference
-    /// @return A capability proving that the token is whitelisted
+    /// 
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// 
+    /// # Returns
+    /// A capability proving that the token is whitelisted
     public fun prove_token_whitelisted<SailCoinType, CoinToCheckType>(
         voter: &Voter<SailCoinType>
     ): distribution::whitelisted_tokens::WhitelistedToken {
@@ -1167,12 +1316,13 @@ module distribution::voter {
     /// Receives a gauge into the voter system, associating it with a pool.
     /// This is called after a gauge has been created, to integrate it fully
     /// into the voting system.
-    ///
-    /// @param voter - The voter contract reference
-    /// @param governor_cap - The governor capability to authorize the operation
-    /// @param gauge - The gauge to be received
-    /// @param clock - The system clock
-    /// @param ctx - The transaction context
+    /// 
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `governor_cap` - The governor capability to authorize the operation
+    /// * `gauge` - The gauge to be received
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
     public fun receive_gauger<CoinTypeA, CoinTypeB, SailCoinType>(
         voter: &mut Voter<SailCoinType>,
         governor_cap: &distribution::voter_cap::GovernorCap,
@@ -1217,10 +1367,11 @@ module distribution::voter {
     }
 
     /// Removes an epoch governor from the system.
-    ///
-    /// @param voter - The voter contract reference
-    /// @param governor_cap - The governor capability to authorize the operation
-    /// @param who - The ID of the epoch governor to remove
+    /// 
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `governor_cap` - The governor capability to authorize the operation
+    /// * `who` - The ID of the epoch governor to remove
     public fun remove_epoch_governor<SailCoinType>(
         voter: &mut Voter<SailCoinType>,
         governor_cap: &distribution::voter_cap::GovernorCap,
@@ -1237,10 +1388,11 @@ module distribution::voter {
     }
 
     /// Removes a governor from the system.
-    ///
-    /// @param voter - The voter contract reference
-    /// @param _publisher - The publisher of the package
-    /// @param who - The ID of the governor to remove
+    /// 
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `_publisher` - The publisher of the package
+    /// * `who` - The ID of the governor to remove
     public fun remove_governor<SailCoinType>(
         voter: &mut Voter<SailCoinType>,
         _publisher: &sui::package::Publisher,
@@ -1253,13 +1405,14 @@ module distribution::voter {
 
     /// Resets all votes for a particular lock.
     /// This effectively removes all voting power allocated by this lock.
-    ///
-    /// @param voter - The voter contract reference
-    /// @param voting_escrow - The voting escrow reference
-    /// @param distribution_config - The distribution configuration
-    /// @param lock - The lock to reset votes for
-    /// @param clock - The system clock
-    /// @param ctx - The transaction context
+    /// 
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `voting_escrow` - The voting escrow reference
+    /// * `distribution_config` - The distribution configuration
+    /// * `lock` - The lock to reset votes for
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
     public fun reset<SailCoinType>(
         voter: &mut Voter<SailCoinType>,
         voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
@@ -1274,13 +1427,14 @@ module distribution::voter {
 
     /// Internal function to reset votes for a lock.
     /// Handles the accounting of removing votes and updating weights.
-    ///
-    /// @param voter - The voter contract reference
-    /// @param voting_escrow - The voting escrow reference
-    /// @param distribution_config - The distribution configuration
-    /// @param lock - The lock to reset votes for
-    /// @param clock - The system clock
-    /// @param ctx - The transaction context
+    /// 
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `voting_escrow` - The voting escrow reference
+    /// * `distribution_config` - The distribution configuration
+    /// * `lock` - The lock to reset votes for
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
     fun reset_internal<SailCoinType>(
         voter: &mut Voter<SailCoinType>,
         voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
@@ -1345,12 +1499,15 @@ module distribution::voter {
 
     /// Creates and returns a new gauge for a pool.
     /// This is an internal function used by create_gauge.
-    ///
-    /// @param distribution_config - The distribution configuration
-    /// @param gauge_create_cap - The capability to create a gauge
-    /// @param pool - The pool to create a gauge for
-    /// @param ctx - The transaction context
-    /// @return A new gauge for the specified pool
+    /// 
+    /// # Arguments
+    /// * `distribution_config` - The distribution configuration
+    /// * `gauge_create_cap` - The capability to create a gauge
+    /// * `pool` - The pool to create a gauge for
+    /// * `ctx` - The transaction context
+    /// 
+    /// # Returns
+    /// A new gauge for the specified pool
     public(package) fun return_new_gauge<CoinTypeA, CoinTypeB, SailCoinType>(
         distribution_config: &distribution::distribution_config::DistributionConfig,
         gauge_create_cap: &gauge_cap::gauge_cap::CreateCap,
@@ -1375,12 +1532,13 @@ module distribution::voter {
 
     /// Revives a previously killed gauge, making it active again.
     /// Only the emergency council can perform this operation.
-    ///
-    /// @param voter - The voter contract reference
-    /// @param distribution_config - The distribution configuration
-    /// @param emergency_council_cap - The emergency council capability
-    /// @param gauge_id - The ID of the gauge to revive
-    /// @param ctx - The transaction context
+    /// 
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `distribution_config` - The distribution configuration
+    /// * `emergency_council_cap` - The emergency council capability
+    /// * `gauge_id` - The ID of the gauge to revive
+    /// * `ctx` - The transaction context
     public fun revive_gauge<SailCoinType>(
         voter: &mut Voter<SailCoinType>,
         distribution_config: &mut distribution::distribution_config::DistributionConfig,
@@ -1410,9 +1568,15 @@ module distribution::voter {
 
     /// Sets the maximum number of pools a user can vote for.
     ///
-    /// @param voter - The voter contract reference
-    /// @param governor_cap - The governor capability to authorize the operation
-    /// @param new_max_voting_num - The new maximum number of pools (minimum 10)
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `governor_cap` - The governor capability to authorize the operation
+    /// * `new_max_voting_num` - The new maximum number of pools (minimum 10)
+    ///
+    /// # Aborts
+    /// * If the caller is not a governor
+    /// * If the new maximum is less than 10
+    /// * If the new maximum is the same as the current maximum
     public fun set_max_voting_num<SailCoinType>(
         voter: &mut Voter<SailCoinType>,
         governor_cap: &distribution::voter_cap::GovernorCap,
@@ -1428,20 +1592,13 @@ module distribution::voter {
         voter.max_voting_num = new_max_voting_num;
     }
 
-    /// Returns the total voting weight across all gauges.
-    ///
-    /// @param voter - The voter contract reference
-    /// @return The total voting weight
-    public fun total_weight<SailCoinType>(voter: &Voter<SailCoinType>): u64 {
-        voter.total_weight
-    }
-
     /// Updates the accounting for a specific gauge.
     /// This ensures the gauge's claimable rewards are current.
     ///
-    /// @param voter - The voter contract reference
-    /// @param distribution_config - The distribution configuration
-    /// @param gauge_id - The ID of the gauge to update
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `distribution_config` - The distribution configuration
+    /// * `gauge_id` - The ID of the gauge to update
     public fun update_for<SailCoinType>(
         voter: &mut Voter<SailCoinType>,
         distribution_config: &distribution::distribution_config::DistributionConfig,
@@ -1453,9 +1610,13 @@ module distribution::voter {
     /// Internal function to update the accounting for a gauge.
     /// Calculates and updates claimable rewards based on gauge weight and index changes.
     ///
-    /// @param voter - The voter contract reference
-    /// @param distribution_config - The distribution configuration
-    /// @param gauge_id - The gauge ID to update
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `distribution_config` - The distribution configuration
+    /// * `gauge_id` - The gauge ID to update
+    ///
+    /// # Aborts
+    /// * If the gauge is not alive but has weight
     fun update_for_internal<SailCoinType>(
         voter: &mut Voter<SailCoinType>,
         distribution_config: &distribution::distribution_config::DistributionConfig,
@@ -1501,9 +1662,10 @@ module distribution::voter {
 
     /// Updates the accounting for multiple gauges at once.
     ///
-    /// @param voter - The voter contract reference
-    /// @param distribution_config - The distribution configuration
-    /// @param gauge_ids - A vector of gauge IDs to update
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `distribution_config` - The distribution configuration
+    /// * `gauge_ids` - A vector of gauge IDs to update
     public fun update_for_many<SailCoinType>(
         voter: &mut Voter<SailCoinType>,
         distribution_config: &distribution::distribution_config::DistributionConfig,
@@ -1519,10 +1681,11 @@ module distribution::voter {
     /// Updates the accounting for a range of pools in the system.
     /// This is useful for batch operations when there are many pools.
     ///
-    /// @param voter - The voter contract reference
-    /// @param distribution_config - The distribution configuration
-    /// @param start_index - The starting index in the pools array
-    /// @param end_index - The ending index in the pools array
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `distribution_config` - The distribution configuration
+    /// * `start_index` - The starting index in the pools array
+    /// * `end_index` - The ending index in the pools array
     public fun update_for_range<SailCoinType>(
         voter: &mut Voter<SailCoinType>,
         distribution_config: &distribution::distribution_config::DistributionConfig,
@@ -1544,9 +1707,12 @@ module distribution::voter {
 
     /// Returns the total voting weight used by a specific lock.
     ///
-    /// @param voter - The voter contract reference
-    /// @param lock_id - The ID of the lock
-    /// @return The used voting weight of the lock
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `lock_id` - The ID of the lock
+    ///
+    /// # Returns
+    /// The used voting weight of the lock
     public fun used_weights<SailCoinType>(voter: &Voter<SailCoinType>, lock_id: ID): u64 {
         *voter.used_weights.borrow(into_lock_id(lock_id))
     }
@@ -1554,14 +1720,21 @@ module distribution::voter {
     /// Casts votes for pools using a lock's voting power.
     /// This is the main function for participating in the ve(3,3) voting system.
     ///
-    /// @param voter - The voter contract reference
-    /// @param voting_escrow - The voting escrow reference
-    /// @param distribution_config - The distribution configuration
-    /// @param lock - The lock to vote with
-    /// @param pools - A vector of pool IDs to vote for
-    /// @param weights - A vector of weights to allocate to each pool
-    /// @param clock - The system clock
-    /// @param ctx - The transaction context
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `voting_escrow` - The voting escrow reference
+    /// * `distribution_config` - The distribution configuration
+    /// * `lock` - The lock to vote with
+    /// * `pools` - A vector of pool IDs to vote for
+    /// * `weights` - A vector of weights to allocate to each pool
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
+    ///
+    /// # Aborts
+    /// * If the voter has already voted in the current epoch
+    /// * If the voting escrow is deactivated
+    /// * If the epoch vote has ended and the NFT is not whitelisted
+    /// * If the lock has no voting power
     public fun vote<SailCoinType>(
         voter: &mut Voter<SailCoinType>,
         voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
@@ -1601,15 +1774,25 @@ module distribution::voter {
     /// Internal function to implement the voting logic.
     /// Handles the details of allocating voting power to pools based on weights.
     ///
-    /// @param voter - The voter contract reference
-    /// @param voting_escrow - The voting escrow reference
-    /// @param distribution_config - The distribution configuration
-    /// @param lock - The lock to vote with
-    /// @param voting_power - The voting power of the lock
-    /// @param pools - A vector of pool IDs to vote for
-    /// @param weights - A vector of weights to allocate to each pool
-    /// @param clock - The system clock
-    /// @param ctx - The transaction context
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `voting_escrow` - The voting escrow reference
+    /// * `distribution_config` - The distribution configuration
+    /// * `lock` - The lock to vote with
+    /// * `voting_power` - The voting power of the lock
+    /// * `pools` - A vector of pool IDs to vote for
+    /// * `weights` - A vector of weights to allocate to each pool
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
+    ///
+    /// # Aborts
+    /// * If the gauge doesn't exist
+    /// * If the gauge is not alive
+    /// * If the pool has already been voted for by this lock
+    /// * If a weight results in zero votes
+    ///
+    /// # Emits
+    /// * `EventVoted` for each pool voted for
     fun vote_internal<SailCoinType>(
         voter: &mut Voter<SailCoinType>,
         voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
@@ -1729,9 +1912,12 @@ module distribution::voter {
 
     /// Returns the pools that a specific lock has voted for.
     ///
-    /// @param voter - The voter contract reference
-    /// @param lock_id - The ID of the lock
-    /// @return A vector of pool IDs that the lock has voted for
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `lock_id` - The ID of the lock
+    ///
+    /// # Returns
+    /// A vector of pool IDs that the lock has voted for
     public fun voted_pools<SailCoinType>(
         voter: &Voter<SailCoinType>,
         lock_id: ID
@@ -1755,11 +1941,18 @@ module distribution::voter {
     /// Whitelists or de-whitelists an NFT (lock) in the system.
     /// Whitelisted NFTs can vote outside the regular voting period.
     ///
-    /// @param voter - The voter contract reference
-    /// @param governor_cap - The governor capability to authorize the operation
-    /// @param lock_id - The ID of the lock to whitelist
-    /// @param listed - Whether to whitelist (true) or de-whitelist (false)
-    /// @param ctx - The transaction context
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `governor_cap` - The governor capability to authorize the operation
+    /// * `lock_id` - The ID of the lock to whitelist
+    /// * `listed` - Whether to whitelist (true) or de-whitelist (false)
+    /// * `ctx` - The transaction context
+    ///
+    /// # Aborts
+    /// * If the caller is not a governor
+    ///
+    /// # Emits
+    /// * `EventWhitelistNFT` with whitelist information
     public fun whitelist_nft<SailCoinType>(
         voter: &mut Voter<SailCoinType>,
         governor_cap: &distribution::voter_cap::GovernorCap,
@@ -1788,10 +1981,17 @@ module distribution::voter {
     /// Whitelists or de-whitelists a token type in the system.
     /// Only whitelisted tokens can be used in the voting system.
     ///
-    /// @param voter - The voter contract reference
-    /// @param governor_cap - The governor capability to authorize the operation
-    /// @param listed - Whether to whitelist (true) or de-whitelist (false)
-    /// @param ctx - The transaction context
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `governor_cap` - The governor capability to authorize the operation
+    /// * `listed` - Whether to whitelist (true) or de-whitelist (false)
+    /// * `ctx` - The transaction context
+    ///
+    /// # Aborts
+    /// * If the caller is not a governor
+    ///
+    /// # Emits
+    /// * `EventWhitelistToken` with whitelist information
     public fun whitelist_token<SailCoinType, CoinToWhitelistType>(
         voter: &mut Voter<SailCoinType>,
         governor_cap: &distribution::voter_cap::GovernorCap,
@@ -1813,10 +2013,14 @@ module distribution::voter {
     /// Internal function to implement token whitelisting.
     /// Handles the details of updating the whitelisting status and emitting events.
     ///
-    /// @param voter - The voter contract reference
-    /// @param coinTypeName - The type name of the token to whitelist
-    /// @param listed - Whether to whitelist (true) or de-whitelist (false)
-    /// @param sender - The address of the sender for the event
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `coinTypeName` - The type name of the token to whitelist
+    /// * `listed` - Whether to whitelist (true) or de-whitelist (false)
+    /// * `sender` - The address of the sender for the event
+    ///
+    /// # Emits
+    /// * `EventWhitelistToken` with whitelist information
     fun whitelist_token_internal<SailCoinType>(
         voter: &mut Voter<SailCoinType>,
         coinTypeName: std::type_name::TypeName,

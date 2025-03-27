@@ -51,20 +51,47 @@ module distribution::reward {
         balances: sui::bag::Bag,
     }
 
+    /// Returns the balance of a specific coin type in the reward contract.
+    /// 
+    /// # Arguments
+    /// * `reward` - The reward object
+    /// 
+    /// # Returns
+    /// The amount of coins held by the reward contract
     public fun balance<CoinType>(reward: &Reward): u64 {
         reward.balances.borrow<std::type_name::TypeName, sui::balance::Balance<CoinType>>(
             std::type_name::get<CoinType>()
         ).value<CoinType>()
     }
 
+    /// Adds a new reward token type to the contract.
+    /// 
+    /// # Arguments
+    /// * `reward` - The reward object to be modified
+    /// * `coinTypeName` - The type name of the coin to add as reward
     public(package) fun add_reward_token(reward: &mut Reward, coinTypeName: std::type_name::TypeName) {
         reward.rewards.insert<std::type_name::TypeName>(coinTypeName);
     }
 
+    /// Returns the ID of the authorized entity for this reward contract.
+    /// 
+    /// # Arguments
+    /// * `reward` - The reward object
+    /// 
+    /// # Returns
+    /// The ID of the authorized entity
     public fun authorized(reward: &Reward): ID {
         reward.authorized
     }
 
+    /// Returns the balance of a specific lock in the reward system.
+    /// 
+    /// # Arguments
+    /// * `reward` - The reward object
+    /// * `lock_id` - The ID of the lock to check
+    /// 
+    /// # Returns
+    /// The amount of tokens locked for the specified lock_id
     public fun balance_of(reward: &Reward, lock_id: ID): u64 {
         if (!reward.balance_of.contains(lock_id)) {
             0
@@ -73,6 +100,17 @@ module distribution::reward {
         }
     }
 
+    /// Creates a new Reward object.
+    /// 
+    /// # Arguments
+    /// * `voter` - The ID of the voter module
+    /// * `ve` - The ID of the voting escrow module
+    /// * `authorized` - The ID for authorization
+    /// * `reward_coin_types` - A vector of coin types that can be used as rewards
+    /// * `ctx` - Transaction context
+    /// 
+    /// # Returns
+    /// A new Reward object with initialized data structures
     public(package) fun create(
         voter: ID,
         ve: ID,
@@ -106,6 +144,19 @@ module distribution::reward {
         reward
     }
 
+    /// Deposits tokens into the reward system for a specific lock.
+    /// Updates checkpoints and supply data, then emits a deposit event.
+    /// 
+    /// # Arguments
+    /// * `reward` - The reward object to deposit into
+    /// * `reward_authorized_cap` - Capability object for authorization
+    /// * `amount` - The amount of tokens to deposit
+    /// * `lock_id` - The ID of the lock to deposit for
+    /// * `clock` - Clock object for timestamp
+    /// * `ctx` - Transaction context
+    /// 
+    /// # Aborts
+    /// * If the authorization is invalid
     public(package) fun deposit(
         reward: &mut Reward,
         reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
@@ -134,6 +185,16 @@ module distribution::reward {
         sui::event::emit<EventDeposit>(deposit_event);
     }
 
+    /// Calculates how much reward a lock has earned for a specific coin type.
+    /// This complex function calculates earnings across epochs based on checkpoints and supply ratios.
+    /// 
+    /// # Arguments
+    /// * `reward` - The reward object
+    /// * `lock_id` - The ID of the lock to check earnings for
+    /// * `clock` - Clock object for timestamp
+    /// 
+    /// # Returns
+    /// The amount of coins earned as rewards
     public(package) fun earned<CoinType>(reward: &Reward, lock_id: ID, clock: &sui::clock::Clock): u64 {
         let zero_checkpoints = if (!reward.num_checkpoints.contains(lock_id)) {
             true
@@ -204,9 +265,16 @@ module distribution::reward {
         earned_amount
     }
 
-    /**
-    * Returns the index of the latest checkpoint that has timestamp lower or equal to the specified time.
-    */
+    /// Returns the index of the latest checkpoint that has timestamp lower or equal to the specified time.
+    /// Uses binary search to efficiently find the appropriate checkpoint.
+    /// 
+    /// # Arguments
+    /// * `reward` - The reward object
+    /// * `lock_id` - The ID of the lock to check checkpoints for
+    /// * `time` - The timestamp to find the prior checkpoint for
+    /// 
+    /// # Returns
+    /// The index of the checkpoint
     public fun get_prior_balance_index(reward: &Reward, lock_id: ID, time: u64): u64 {
         let num_checkpoints = if (reward.num_checkpoints.contains(lock_id)) {
             *reward.num_checkpoints.borrow(lock_id)
@@ -239,9 +307,15 @@ module distribution::reward {
         lower_bound
     }
 
-    /**
-    * Returns the index of the latest supply checkpoint that has timestamp lower or equal to the specified time.
-    */
+    /// Returns the index of the latest supply checkpoint that has timestamp lower or equal to the specified time.
+    /// Uses binary search to efficiently find the appropriate supply checkpoint.
+    /// 
+    /// # Arguments
+    /// * `reward` - The reward object
+    /// * `time` - The timestamp to find the prior checkpoint for
+    /// 
+    /// # Returns
+    /// The index of the supply checkpoint
     public fun get_prior_supply_index(reward: &Reward, time: u64): u64 {
         let num_checkpoints = reward.supply_num_checkpoints;
         if (num_checkpoints == 0) {
@@ -270,6 +344,18 @@ module distribution::reward {
         lower_bound
     }
 
+    /// Claims earned rewards for a specific lock and coin type.
+    /// Updates the last earn timestamp for the lock and emits a claim event.
+    /// 
+    /// # Arguments
+    /// * `reward` - The reward object
+    /// * `recipient` - The address that will receive the rewards
+    /// * `lock_id` - The ID of the lock to claim rewards for
+    /// * `clock` - Clock object for timestamp
+    /// * `ctx` - Transaction context
+    /// 
+    /// # Returns
+    /// An optional balance of the claimed rewards, None if no rewards to claim
     public(package) fun get_reward_internal<CoinType>(
         reward: &mut Reward,
         recipient: address,
@@ -303,6 +389,14 @@ module distribution::reward {
         option::none<sui::balance::Balance<CoinType>>()
     }
 
+    /// Adds reward tokens for distribution in the current epoch.
+    /// Tracks rewards per epoch and emits a notification event.
+    /// 
+    /// # Arguments
+    /// * `reward` - The reward object to add tokens to
+    /// * `balance` - The balance of tokens to add as rewards
+    /// * `clock` - Clock object for timestamp
+    /// * `ctx` - Transaction context
     public(package) fun notify_reward_amount_internal<CoinType>(
         reward: &mut Reward,
         balance: sui::balance::Balance<CoinType>,
@@ -338,18 +432,50 @@ module distribution::reward {
         sui::event::emit<EventNotifyReward>(notify_reward_event);
     }
 
+    /// Checks if a specific coin type is supported as a reward.
+    /// 
+    /// # Arguments
+    /// * `reward` - The reward object
+    /// * `arg1` - The type name to check
+    /// 
+    /// # Returns
+    /// Boolean indicating if the type is supported as a reward
     public fun rewards_contains(reward: &Reward, arg1: std::type_name::TypeName): bool {
         reward.rewards.contains<std::type_name::TypeName>(&arg1)
     }
 
+    /// Returns a vector of all supported reward token types.
+    /// 
+    /// # Arguments
+    /// * `reward` - The reward object
+    /// 
+    /// # Returns
+    /// Vector of type names representing all supported rewards
     public fun rewards_list(reward: &Reward): vector<std::type_name::TypeName> {
         reward.rewards.into_keys<std::type_name::TypeName>()
     }
 
+    /// Returns the number of supported reward token types.
+    /// 
+    /// # Arguments
+    /// * `reward` - The reward object
+    /// 
+    /// # Returns
+    /// The count of supported reward token types
     public(package) fun rewards_list_length(reward: &Reward): u64 {
         reward.rewards.size<std::type_name::TypeName>()
     }
 
+    /// Gets the rewards per epoch table for a specific coin type.
+    /// 
+    /// # Arguments
+    /// * `reward` - The reward object
+    /// 
+    /// # Returns
+    /// Reference to the table mapping epochs to reward amounts
+    /// 
+    /// # Aborts
+    /// * If the coin type is not supported as a reward
     public fun rewards_per_epoch<CoinType>(reward: &Reward): &sui::table::Table<u64, u64> {
         let coin_type_name = std::type_name::get<CoinType>();
         assert!(
@@ -359,6 +485,14 @@ module distribution::reward {
         reward.token_rewards_per_epoch.borrow(coin_type_name)
     }
 
+    /// Gets the total rewards available for the current epoch for a specific coin type.
+    /// 
+    /// # Arguments
+    /// * `reward` - The reward object
+    /// * `clock` - Clock object for timestamp
+    /// 
+    /// # Returns
+    /// The amount of rewards for the current epoch
     public fun rewards_this_epoch<CoinType>(reward: &Reward, clock: &sui::clock::Clock): u64 {
         let coin_type_name = std::type_name::get<CoinType>();
         if (!reward.token_rewards_per_epoch.contains(coin_type_name)) {
@@ -372,18 +506,52 @@ module distribution::reward {
         *rewards_per_epoch.borrow(epoch_start_time)
     }
 
+    /// Returns the total supply of tokens in the reward system.
+    /// 
+    /// # Arguments
+    /// * `reward` - The reward object
+    /// 
+    /// # Returns
+    /// The total supply value
     public fun total_supply(reward: &Reward): u64 {
         reward.total_supply
     }
 
+    /// Returns the ID of the voting escrow module for this reward.
+    /// 
+    /// # Arguments
+    /// * `reward` - The reward object
+    /// 
+    /// # Returns
+    /// The ID of the ve (voting escrow) module
     public fun ve(reward: &Reward): ID {
         reward.ve
     }
 
+    /// Returns the ID of the voter module for this reward.
+    /// 
+    /// # Arguments
+    /// * `reward` - The reward object
+    /// 
+    /// # Returns
+    /// The ID of the voter module
     public fun voter(reward: &Reward): ID {
         reward.voter
     }
 
+    /// Withdraws tokens from the reward system for a specific lock.
+    /// Updates checkpoints and supply data, then emits a withdraw event.
+    /// 
+    /// # Arguments
+    /// * `reward` - The reward object to withdraw from
+    /// * `reward_authorized_cap` - Capability object for authorization
+    /// * `amount` - The amount of tokens to withdraw
+    /// * `lock_id` - The ID of the lock to withdraw from
+    /// * `clock` - Clock object for timestamp
+    /// * `ctx` - Transaction context
+    /// 
+    /// # Aborts
+    /// * If the authorization is invalid
     public(package) fun withdraw(
         reward: &mut Reward,
         reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
@@ -407,6 +575,15 @@ module distribution::reward {
         sui::event::emit<EventWithdraw>(v2);
     }
 
+    /// Updates or creates a checkpoint for a lock's balance.
+    /// If a checkpoint already exists for the same epoch, it updates it; otherwise creates a new one.
+    /// 
+    /// # Arguments
+    /// * `reward` - The reward object
+    /// * `lock_id` - The ID of the lock to checkpoint
+    /// * `balance` - The current balance to record
+    /// * `time` - The timestamp for the checkpoint
+    /// * `ctx` - Transaction context
     fun write_checkpoint_internal(
         reward: &mut Reward,
         lock_id: ID,
@@ -452,6 +629,12 @@ module distribution::reward {
         };
     }
 
+    /// Updates or creates a checkpoint for the total supply.
+    /// If a checkpoint already exists for the same epoch, it updates it; otherwise creates a new one.
+    /// 
+    /// # Arguments
+    /// * `reward` - The reward object
+    /// * `current_time` - The timestamp for the checkpoint
     fun write_supply_checkpoint_internal(reward: &mut Reward, current_time: u64) {
         let num_of_checkpoints = reward.supply_num_checkpoints;
         // latest checkpoint timestam is equal to current epoch start
