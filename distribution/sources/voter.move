@@ -1592,6 +1592,10 @@ module distribution::voter {
         voter.max_voting_num = new_max_voting_num;
     }
 
+    public fun total_weight<SailCoinType>(voter: &Voter<SailCoinType>): u64 {
+        voter.total_weight
+    }
+
     /// Updates the accounting for a specific gauge.
     /// This ensures the gauge's claimable rewards are current.
     ///
