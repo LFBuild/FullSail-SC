@@ -242,6 +242,25 @@ module distribution::voting_escrow {
             MANAGED,
     }
 
+    /// Split a lock into two separate locks with different amounts. This is useful for dividing
+    /// a position to sell or delegate part of it while keeping the rest.
+    /// 
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `lock` - The lock to split
+    /// * `amount` - The amount to split into the second lock
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
+    /// 
+    /// # Returns
+    /// Returns a tuple of the two new lock IDs created from the split
+    ///
+    /// # Aborts
+    /// * If the lock is not owned by anyone
+    /// * If the sender is not allowed to split
+    /// * If the lock is not a normal escrow type
+    /// * If the lock has been used to vote
+    /// * If the amount to split is zero or exceeds the locked amount
     public fun split<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
         lock: Lock,
@@ -309,6 +328,20 @@ module distribution::voting_escrow {
         (split_lock_a_id, split_lock_b_id)
     }
 
+    /// Transfer a lock to a different address. This allows users to sell or gift their lock positions.
+    /// The lock must be a NORMAL or MANAGED type - LOCKED types cannot be transferred.
+    ///
+    /// # Arguments
+    /// * `lock` - The lock object to transfer
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `recipient` - The address of the recipient
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
+    ///
+    /// # Aborts
+    /// * If the lock does not belong to the voting escrow
+    /// * If the lock is a LOCKED type
+    /// * If the sender is not the owner of the lock
     public fun transfer<SailCoinType>(
         lock: Lock,
         voting_escrow: &mut VotingEscrow<SailCoinType>,
@@ -347,6 +380,17 @@ module distribution::voting_escrow {
         };
     }
 
+    /// Creates a new VotingEscrow instance. This is the main container that manages all locked tokens
+    /// and voting power calculations.
+    ///
+    /// # Arguments
+    /// * `_publisher` - The publisher of the module
+    /// * `voter_id` - The ID of the associated voter
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
+    ///
+    /// # Returns
+    /// A new VotingEscrow instance
     public fun create<SailCoinType>(
         _publisher: &sui::package::Publisher,
         voter_id: ID,
@@ -400,6 +444,20 @@ module distribution::voting_escrow {
         voting_escrow
     }
 
+    /// Withdraw tokens from a lock after the lock duration has expired. This allows users to reclaim
+    /// their locked tokens once the locking period is over.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `lock` - The lock containing the tokens to withdraw
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
+    ///
+    /// # Aborts
+    /// * If the lock is currently used for voting
+    /// * If the lock is not a NORMAL escrow type
+    /// * If the lock is permanent
+    /// * If the lock end time has not been reached
     public fun withdraw<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
         lock: Lock,
@@ -442,6 +500,13 @@ module distribution::voting_escrow {
         sui::event::emit<EventSupply>(supply_event);
     }
 
+    /// Adds an address to the list of allowed managers that can create managed locks.
+    /// Only allowed managers can create managed locks in the voting escrow system.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `_publisher` - The publisher of the module
+    /// * `who` - The address to add as an allowed manager
     public fun add_allowed_manager<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
         _publisher: &sui::package::Publisher,
@@ -450,10 +515,27 @@ module distribution::voting_escrow {
         voting_escrow.allowed_managers.insert(who);
     }
 
+    /// Returns the token amount in a locked balance.
+    ///
+    /// # Arguments
+    /// * `locked_balance` - The locked balance to query
+    ///
+    /// # Returns
+    /// The amount of tokens in the locked balance
     public fun amount(locked_balance: &LockedBalance): u64 {
         locked_balance.amount
     }
 
+    /// Returns the voting power of an NFT (lock) at a specific timestamp.
+    /// This is a public wrapper around the internal implementation.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `lock_id` - The ID of the lock to query
+    /// * `time` - The timestamp at which to calculate voting power
+    ///
+    /// # Returns
+    /// The voting power of the lock at the specified time
     public fun balance_of_nft_at<SailCoinType>(
         voting_escrow: &VotingEscrow<SailCoinType>,
         lock_id: ID,
@@ -462,6 +544,17 @@ module distribution::voting_escrow {
         voting_escrow.balance_of_nft_at_internal(lock_id, time)
     }
 
+    /// Internal implementation to calculate the voting power of a lock at a specific timestamp.
+    /// Voting power decays linearly over time until it reaches zero at the end of the lock period.
+    /// For permanent locks, the voting power is constant and equal to the locked amount.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `lock_id` - The ID of the lock to query
+    /// * `time` - The timestamp at which to calculate voting power
+    ///
+    /// # Returns
+    /// The voting power of the lock at the specified time
     fun balance_of_nft_at_internal<SailCoinType>(
         voting_escrow: &VotingEscrow<SailCoinType>,
         lock_id: ID,
@@ -488,18 +581,41 @@ module distribution::voting_escrow {
         }
     }
 
+    /// Returns a reference to the set of allowed managers.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    ///
+    /// # Returns
+    /// A reference to the set of allowed manager addresses
     public fun borrow_allowed_managers<SailCoinType>(
         voting_escrow: &VotingEscrow<SailCoinType>
     ): &sui::vec_set::VecSet<address> {
         &voting_escrow.allowed_managers
     }
 
+    /// Returns a reference to the set of managed locks.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    ///
+    /// # Returns
+    /// A reference to the set of managed lock IDs
     public fun borrow_managed_locks<SailCoinType>(
         voting_escrow: &VotingEscrow<SailCoinType>
     ): &sui::vec_set::VecSet<ID> {
         &voting_escrow.managed_locks
     }
 
+    /// Internal function to burn a lock and update the voting escrow state.
+    /// This is used when removing a lock completely from the system.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `lock` - The lock to burn
+    /// * `current_locked_balance` - The current locked balance of the lock
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
     fun burn_lock_internal<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
         lock: Lock,
@@ -536,6 +652,14 @@ module distribution::voting_escrow {
         object::delete(id);
     }
 
+    /// Updates the global checkpoint for the voting escrow.
+    /// This records the current state of the system and is used for accurate
+    /// voting power calculations at different points in time.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
     public fun checkpoint<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
         clock: &sui::clock::Clock,
@@ -550,6 +674,18 @@ module distribution::voting_escrow {
         );
     }
 
+    /// Internal implementation of the checkpoint mechanism.
+    /// This complex function updates the state of the voting escrow system to record
+    /// changes in locked balances and to correctly track voting power over time.
+    /// The algorithm handles both permanent locks and time-decaying locks.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `lock_id_opt` - An optional lock ID if this checkpoint is for a specific lock
+    /// * `old_locked_balance` - The previous locked balance
+    /// * `next_locked_balance` - The new locked balance
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
     fun checkpoint_internal<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
         lock_id_opt: Option<ID>,
@@ -744,6 +880,22 @@ module distribution::voting_escrow {
         };
     }
 
+    /// Creates a new lock by locking tokens for a specified duration.
+    /// This is the main entry point for users to lock their tokens and gain voting power.
+    /// Voting power depends on the amount locked and duration of the lock.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `coin_to_lock` - The tokens to lock
+    /// * `lock_duration_days` - The number of days to lock the tokens
+    /// * `permanent` - Whether this should be a permanent lock
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
+    ///
+    /// # Aborts
+    /// * If the lock duration is invalid
+    /// * If the lock amount is zero
+    /// * If the created lock amount doesn't match the expected amount
     public fun create_lock<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
         coin_to_lock: sui::coin::Coin<SailCoinType>,
@@ -776,6 +928,23 @@ module distribution::voting_escrow {
         transfer::transfer<Lock>(lock, sender);
     }
 
+    /// Creates a lock on behalf of another address.
+    /// This allows one user to create a lock for another user, which can be useful
+    /// for distributing locks to team members, incentives, or other situations.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `owner` - The address that will own the lock
+    /// * `coin` - The tokens to lock
+    /// * `duration_days` - The number of days to lock the tokens
+    /// * `permanent` - Whether this should be a permanent lock
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
+    ///
+    /// # Aborts
+    /// * If the lock duration is invalid
+    /// * If the lock amount is zero
+    /// * If the created lock amount doesn't match the expected amount
     public fun create_lock_for<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
         owner: address,
@@ -808,6 +977,25 @@ module distribution::voting_escrow {
         transfer::transfer<Lock>(lock, owner);
     }
 
+    /// Internal function to create a lock. Shared implementation for both create_lock and create_lock_for.
+    /// This sets up the lock object, records ownership, and initializes the voting power calculation.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `owner` - The address that will own the lock
+    /// * `lock_amount` - The amount of tokens to lock
+    /// * `start_time` - The start timestamp of the lock
+    /// * `end_time` - The end timestamp of the lock
+    /// * `permanent` - Whether this is a permanent lock
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
+    ///
+    /// # Returns
+    /// A tuple containing the created lock and a receipt with the lock amount
+    ///
+    /// # Aborts
+    /// * If a lock with the same ID already exists
+    /// * If there's already a locked balance for this lock ID
     fun create_lock_internal<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
         owner: address,
@@ -857,6 +1045,22 @@ module distribution::voting_escrow {
         (lock, create_lock_receipt)
     }
 
+    /// Creates a managed lock for a specified address.
+    /// Managed locks are special locks that are managed by approved managers and can receive
+    /// deposits from other users' locks. This is useful for implementing delegation pools
+    /// or other advanced staking mechanisms.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `owner` - The address that will own the managed lock
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
+    ///
+    /// # Returns
+    /// The ID of the created managed lock
+    ///
+    /// # Aborts
+    /// * If the sender is not an allowed manager
     public fun create_managed_lock_for<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
         owner: address,
@@ -907,6 +1111,22 @@ module distribution::voting_escrow {
         lock_id
     }
 
+    /// Internal function to create a lock as part of the split operation.
+    /// This creates a new lock with the specified parameters and initializes the
+    /// relevant voting escrow state.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `owner` - The address that will own the lock
+    /// * `lock_escrow_id` - The ID of the escrow this lock belongs to
+    /// * `lock_start` - The start timestamp of the lock
+    /// * `lock_end` - The end timestamp of the lock
+    /// * `current_locked_balance` - The locked balance to assign to this lock
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
+    ///
+    /// # Returns
+    /// The newly created Lock object
     fun create_split_internal<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
         owner: address,
@@ -947,6 +1167,11 @@ module distribution::voting_escrow {
         lock
     }
 
+    /// Creates a new UserPoint with default values.
+    /// UserPoint objects track the voting power calculation parameters for a specific lock.
+    ///
+    /// # Returns
+    /// A new UserPoint object with zero values
     fun create_user_point(): UserPoint {
         UserPoint {
             bias: integer_mate::i128::from(0),
@@ -956,10 +1181,31 @@ module distribution::voting_escrow {
         }
     }
 
+    /// Checks if a lock is deactivated.
+    /// Deactivated locks cannot be used for new deposits.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `lock_id` - The ID of the lock to check
+    ///
+    /// # Returns
+    /// True if the lock is deactivated, false otherwise
     public fun deactivated<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>, lock_id: ID): bool {
         voting_escrow.deactivated.contains(lock_id) && *voting_escrow.deactivated.borrow(lock_id)
     }
 
+    /// Delegates voting power from a permanent lock to another lock.
+    /// This allows users to give their voting power to another user without transferring ownership.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `lock` - The lock from which to delegate voting power
+    /// * `delegatee` - The ID of the lock to delegate voting power to
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
+    ///
+    /// # Aborts
+    /// * If the lock doesn't belong to the voting escrow
     public fun delegate<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
         lock: &Lock,
@@ -971,6 +1217,21 @@ module distribution::voting_escrow {
         voting_escrow.delegate_internal(lock, delegatee, clock, ctx);
     }
 
+    /// Internal implementation of delegation logic.
+    /// Handles the complex logic of updating delegator and delegatee state when
+    /// changing delegation relationships.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `lock` - The lock from which to delegate voting power 
+    /// * `delegatee` - The ID of the lock to delegate voting power to
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
+    ///
+    /// # Aborts
+    /// * If the lock is not a permanent lock
+    /// * If the delegatee is invalid
+    /// * If the lock ownership changed too recently
     fun delegate_internal<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
         lock: &Lock,
@@ -1014,6 +1275,15 @@ module distribution::voting_escrow {
         sui::event::emit<EventDelegateChanged>(delegatee_changed_event);
     }
 
+    /// Deposits additional tokens into an existing lock.
+    /// This increases the amount locked without changing the lock duration.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `lock` - The lock to deposit tokens into
+    /// * `coin` - The tokens to deposit
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
     public fun deposit_for<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
         lock: &mut Lock,
@@ -1033,6 +1303,18 @@ module distribution::voting_escrow {
         lock.amount = lock.amount + deposit_amount;
     }
 
+    /// Internal implementation for depositing tokens into a lock.
+    /// Updates the locked balance and the system state to reflect the new deposit.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `lock_id` - The ID of the lock to deposit into
+    /// * `lock_amount` - The amount of tokens to deposit
+    /// * `end_time` - The new end time for the lock, if changing
+    /// * `current_locked_balance` - The current locked balance of the lock
+    /// * `deposit_type` - The type of deposit being made
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
     fun deposit_for_internal<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
         lock_id: ID,
@@ -1076,6 +1358,24 @@ module distribution::voting_escrow {
         sui::event::emit<EventSupply>(supply_event);
     }
 
+    /// Deposits a lock's tokens into a managed lock.
+    /// This is used for delegation pools or other systems where users can contribute
+    /// their locked tokens to a collectively managed position.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `voter_cap` - The voter capability to authorize the operation
+    /// * `lock` - The lock containing tokens to deposit
+    /// * `managed_lock` - The managed lock to deposit into
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
+    ///
+    /// # Aborts
+    /// * If the voter capability doesn't match the voting escrow
+    /// * If the managed lock is not of type MANAGED
+    /// * If the managed lock is deactivated
+    /// * If the source lock is not of type NORMAL
+    /// * If the source lock has no balance
     public fun deposit_managed<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
         voter_cap: &distribution::voter_cap::VoterCap,
@@ -1150,10 +1450,25 @@ module distribution::voting_escrow {
         managed_lock.amount = managed_lock.amount + current_locked_amount;
     }
 
+    /// Returns the end timestamp of a locked balance.
+    ///
+    /// # Arguments
+    /// * `current_locked_balance` - The locked balance to query
+    ///
+    /// # Returns
+    /// The timestamp when the lock ends
     public fun end(current_locked_balance: &LockedBalance): u64 {
         current_locked_balance.end
     }
 
+    /// Returns the type of a lock (NORMAL, LOCKED, or MANAGED).
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `lock_id` - The ID of the lock to query
+    ///
+    /// # Returns
+    /// The EscrowType of the lock
     public fun escrow_type<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>, lock_id: ID): EscrowType {
         if (voting_escrow.escrow_type.contains(lock_id)) {
             *voting_escrow.escrow_type.borrow(lock_id)
@@ -1162,6 +1477,16 @@ module distribution::voting_escrow {
         }
     }
 
+    /// Returns the amount of rewards earned by a lock in a managed reward system.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `lock` - The lock to check rewards for
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
+    ///
+    /// # Returns
+    /// The amount of rewards earned
     public fun free_managed_reward_earned<SailCoinType, RewardCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
         lock: &mut Lock,
@@ -1175,6 +1500,13 @@ module distribution::voting_escrow {
         )
     }
 
+    /// Claims rewards for a lock from the free managed reward system.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `lock` - The lock to claim rewards for
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
     public fun free_managed_reward_get_reward<SailCoinType, RewardCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
         lock: &mut Lock,
@@ -1191,6 +1523,15 @@ module distribution::voting_escrow {
         );
     }
 
+    /// Adds new rewards to the free managed reward system for distribution.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `whitelisted_token` - Optional whitelisted token capability
+    /// * `coin` - The reward tokens to distribute
+    /// * `managed_lock_id` - The ID of the managed lock to associate rewards with
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
     public fun free_managed_reward_notify_reward<SailCoinType, RewardCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
         whitelisted_token: Option<distribution::whitelisted_tokens::WhitelistedToken>,
@@ -1210,6 +1551,14 @@ module distribution::voting_escrow {
             );
     }
 
+    /// Returns a list of reward token types available in the free managed reward system.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `lock_id` - The ID of the lock to check rewards for
+    ///
+    /// # Returns
+    /// A vector of type names representing the available reward tokens
     public fun free_managed_reward_token_list<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
         lock_id: ID
@@ -1305,6 +1654,14 @@ module distribution::voting_escrow {
         voting_escrow.balance_of_nft_at_internal(lock_id, distribution::common::current_timestamp(clock))
     }
 
+    /// Returns the ID of the managed lock associated with a locked lock.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `lock_id` - The ID of the locked lock
+    ///
+    /// # Returns
+    /// The ID of the associated managed lock
     public fun id_to_managed<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>, lock_id: ID): ID {
         *voting_escrow.id_to_managed.borrow(lock_id)
     }
@@ -1328,6 +1685,23 @@ module distribution::voting_escrow {
         lock.amount = lock.amount + amount;
     }
 
+    /// Internal implementation for increasing the amount of tokens in a lock.
+    /// Handles the complex logic of updating voting power and rewards when adding tokens.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `lock_id` - The ID of the lock to increase the amount for
+    /// * `amount_to_add` - The amount of tokens to add
+    /// * `deposit_type` - The type of deposit being made
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
+    ///
+    /// # Aborts
+    /// * If the amount to add is zero
+    /// * If the lock is of type LOCKED
+    /// * If the lock doesn't exist
+    /// * If the lock has no balance
+    /// * If the lock has expired and is not permanent
     fun increase_amount_for_internal<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
         lock_id: ID,
@@ -1428,22 +1802,58 @@ module distribution::voting_escrow {
         transfer::public_transfer<sui::package::Publisher>(publisher, tx_context::sender(ctx));
     }
 
+    /// Checks if an escrow type is LOCKED.
+    ///
+    /// # Arguments
+    /// * `escrow_type` - The escrow type to check
+    ///
+    /// # Returns
+    /// True if the escrow type is LOCKED, false otherwise
     public fun is_locked(escrow_type: EscrowType): bool {
         escrow_type == EscrowType::LOCKED
     }
 
+    /// Checks if an escrow type is MANAGED.
+    ///
+    /// # Arguments
+    /// * `escrow_type` - The escrow type to check
+    ///
+    /// # Returns
+    /// True if the escrow type is MANAGED, false otherwise
     public fun is_managed(escrow_type: EscrowType): bool {
         escrow_type == EscrowType::MANAGED
     }
 
+    /// Checks if an escrow type is NORMAL.
+    ///
+    /// # Arguments
+    /// * `escrow_type` - The escrow type to check
+    ///
+    /// # Returns
+    /// True if the escrow type is NORMAL, false otherwise
     public fun is_normal(escrow_type: EscrowType): bool {
         escrow_type == EscrowType::NORMAL
     }
 
+    /// Checks if a locked balance is permanent.
+    ///
+    /// # Arguments
+    /// * `is_permanent` - The locked balance to check
+    ///
+    /// # Returns
+    /// True if the locked balance is permanent, false otherwise
     public fun is_permanent(is_permanent: &LockedBalance): bool {
         is_permanent.is_permanent
     }
 
+    /// Checks if an address is allowed to split locks.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `who` - The address to check
+    ///
+    /// # Returns
+    /// True if the address is allowed to split locks, false otherwise
     public fun is_split_allowed<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>, who: address): bool {
         let can_user_split = if (voting_escrow.can_split.contains(who)) {
             *voting_escrow.can_split.borrow(who) == true
@@ -1466,6 +1876,20 @@ module distribution::voting_escrow {
         }
     }
 
+    /// Converts a normal lock into a permanent lock.
+    /// Permanent locks never expire and maintain constant voting power.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `lock` - The lock to make permanent
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
+    ///
+    /// # Aborts
+    /// * If the lock is not of type NORMAL
+    /// * If the lock is already permanent
+    /// * If the lock has expired
+    /// * If the lock has no balance
     public fun lock_permanent<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
         lock: &mut Lock,
@@ -1546,6 +1970,22 @@ module distribution::voting_escrow {
         )
     }
 
+    /// Merges two locks into one, combining their balances.
+    /// This is useful for consolidating multiple positions.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `lock_a` - The first lock to merge (will be consumed)
+    /// * `lock_b` - The second lock to merge (will be updated)
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
+    ///
+    /// # Aborts
+    /// * If lock_a has been used for voting
+    /// * If either lock is not of type NORMAL
+    /// * If both locks are the same
+    /// * If lock_a is permanent
+    /// * If lock_b has expired and is not permanent
     public fun merge<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
         lock_a: Lock,
@@ -1659,6 +2099,17 @@ module distribution::voting_escrow {
         voting_escrow.allowed_managers.remove(&who);
     }
 
+    /// Sets up the display properties for Lock NFTs so they appear correctly in wallets and explorers.
+    /// This function configures metadata like name, locked amount, unlock time, and other properties
+    /// that will be shown when viewing Lock NFTs.
+    ///
+    /// # Arguments
+    /// * `publisher` - The publisher of the module, used to verify display creation authority
+    /// * `ctx` - The transaction context, used to create the display and transfer it
+    ///
+    /// # Effects
+    /// Creates and initializes a Display object for Lock NFTs with Magma-specific branding
+    /// and transfers it to the transaction sender
     public fun set_display(publisher: &sui::package::Publisher, ctx: &mut TxContext) {
         let mut fields = std::vector::empty<std::string::String>();
         fields.push_back(std::string::utf8(b"name"));
@@ -1697,6 +2148,19 @@ module distribution::voting_escrow {
         voting_escrow.locked.add(lock_id, lock_balance);
     }
 
+    /// Activates or deactivates a managed lock, requiring the emergency council's authorization.
+    /// When a managed lock is deactivated, it can no longer accept new deposits, which is useful
+    /// as a safety mechanism during unexpected situations or protocol updates.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `_emergency_council_cap` - Capability proving emergency council authorization
+    /// * `lock_id` - The ID of the managed lock to activate/deactivate
+    /// * `deactivated` - Boolean flag: true to deactivate, false to activate
+    ///
+    /// # Aborts
+    /// * If the lock is not of type MANAGED
+    /// * If the lock is already in the requested activation state
     public fun set_managed_lock_deactivated<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
         _emergency_council_cap: &distribution::emergency_council::EmergencyCouncilCap,
@@ -1714,6 +2178,14 @@ module distribution::voting_escrow {
         voting_escrow.deactivated.add(lock_id, deactivated);
     }
 
+    /// Stores a global checkpoint in the point history at the specified epoch.
+    /// Updates or creates a record of the global voting power state at a particular epoch,
+    /// which is essential for calculating historical voting power distribution.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `epoch` - The epoch number to store the point at
+    /// * `point` - The GlobalPoint data containing bias, slope, timestamp and permanent lock balance
     fun set_point_history<SailCoinType>(voting_escrow: &mut VotingEscrow<SailCoinType>, epoch: u64, point: GlobalPoint) {
         if (voting_escrow.point_history.contains(epoch)) {
             voting_escrow.point_history.remove(epoch);
@@ -1721,6 +2193,14 @@ module distribution::voting_escrow {
         voting_escrow.point_history.add(epoch, point);
     }
 
+    /// Records slope changes scheduled for a future epoch time.
+    /// These slope changes track when voting power will decrease in the future due to
+    /// locks expiring, which is critical for accurate voting power calculation over time.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `epoch_time` - The timestamp of the epoch when the slope change will occur
+    /// * `slope_to_add` - The slope value to add (or subtract if negative) at that epoch time
     fun set_slope_changes<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
         epoch_time: u64,
@@ -1732,6 +2212,14 @@ module distribution::voting_escrow {
         voting_escrow.slope_changes.add(epoch_time, slope_to_add);
     }
 
+    /// Updates the latest user point epoch for a specific lock.
+    /// Keeps track of the most recent epoch number where a lock's voting power was updated,
+    /// which helps efficiently retrieve voting power history.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `lock_id` - The ID of the lock to update the epoch for
+    /// * `epoch` - The new epoch number to set
     fun set_user_point_epoch<SailCoinType>(voting_escrow: &mut VotingEscrow<SailCoinType>, lock_id: ID, epoch: u64) {
         if (voting_escrow.user_point_epoch.contains(lock_id)) {
             voting_escrow.user_point_epoch.remove(lock_id);
@@ -1739,6 +2227,16 @@ module distribution::voting_escrow {
         voting_escrow.user_point_epoch.add(lock_id, epoch);
     }
 
+    /// Records a user's voting power point in the historical record at a specific epoch.
+    /// This function maintains the per-lock voting power history, allowing the system to
+    /// determine what voting power a specific lock had at any past point in time.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `lock_id` - The ID of the lock to update the point history for
+    /// * `epoch` - The epoch number to store the point at
+    /// * `point` - The UserPoint data containing bias, slope, timestamp and permanent amount
+    /// * `ctx` - The transaction context, used to create new tables if needed
     fun set_user_point_history<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
         lock_id: ID,
@@ -1756,6 +2254,19 @@ module distribution::voting_escrow {
         point_history.add(epoch, point);
     }
 
+    /// Enables or disables the ability for an address to split locks.
+    /// Split permission control is a governance feature that allows the team to regulate
+    /// which addresses can split their locked positions, helping prevent potential market disruption
+    /// or manipulation through excessive fragmentation of positions.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `team_cap` - The team capability used to authorize this privileged operation
+    /// * `who` - The address to grant or revoke split permission for
+    /// * `allowed` - Boolean flag: true to allow splitting, false to disallow
+    ///
+    /// # Events
+    /// Emits an EventToggleSplit event with the address and new permission status
     public fun toggle_split<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
         team_cap: &distribution::team_cap::TeamCap,
@@ -1774,14 +2285,56 @@ module distribution::voting_escrow {
         sui::event::emit<EventToggleSplit>(toggle_split_event);
     }
 
+    /// Returns the total amount of tokens locked in the voting escrow.
+    /// This provides a view of the overall locked token supply, which is useful
+    /// for protocol analytics and calculating the global participation rate.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    ///
+    /// # Returns
+    /// The total amount of tokens currently locked across all locks
     public fun total_locked<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>): u64 {
         voting_escrow.total_locked
     }
 
+    /// Returns the total voting power supply at a specific timestamp.
+    /// This is crucial for governance mechanics that need to know the
+    /// total voting power at a particular point in time, such as calculating
+    /// quorum or determining the weight of each vote relative to the whole.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `time` - The timestamp at which to calculate the total voting power
+    ///
+    /// # Returns
+    /// The total voting power supply at the specified time
     public fun total_supply_at<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>, time: u64): u64 {
         voting_escrow.total_supply_at_internal(voting_escrow.epoch, time)
     }
 
+    /// Internal implementation to calculate the total voting power at a specific timestamp.
+    /// This complex function implements the core voting power decay algorithm of the ve(3,3) model.
+    /// It works by:
+    /// 1. Finding the closest historical checkpoint before the requested time
+    /// 2. Applying all scheduled slope changes between that checkpoint and the requested time
+    /// 3. Calculating how much voting power has decayed due to the passage of time
+    /// 4. Adding permanent lock balances that don't decay
+    ///
+    /// The function handles the linear decay of voting power for time-locked positions while
+    /// accounting for scheduled changes in the decay rate (slopes) when locks expire.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `epoch` - The current epoch to start searching from
+    /// * `time` - The timestamp at which to calculate the total voting power
+    ///
+    /// # Returns
+    /// The total voting power at the specified timestamp, including both decaying and permanent locks
+    ///
+    /// # Algorithm
+    /// Uses a bounded loop (max 255 iterations) to step through weekly epochs, applying slope
+    /// changes and calculating time-based decay until reaching the target timestamp
     fun total_supply_at_internal<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>, epoch: u64, time: u64): u64 {
         let latest_point_index = voting_escrow.get_past_global_point_index(epoch, time);
         if (latest_point_index == 0) {
@@ -1823,6 +2376,30 @@ module distribution::voting_escrow {
         (bias.as_u128() as u64) + point.permanent_lock_balance
     }
 
+    /// Converts a permanent lock back to a time-based lock with the maximum duration.
+    /// This allows users to eventually withdraw tokens that were previously locked permanently.
+    /// The converted lock will have a duration equal to the maximum lock time (typically 4 years),
+    /// starting from the current time.
+    ///
+    /// When a permanent lock is converted:
+    /// 1. The lock's voting power changes from constant to time-decaying
+    /// 2. Any delegations are removed (delegation is only for permanent locks)
+    /// 3. The global permanent lock balance is decreased
+    /// 4. The system is checkpointed to record this change in voting power dynamics
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `lock` - The lock to convert from permanent to time-based
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
+    ///
+    /// # Aborts
+    /// * If the lock is not of type NORMAL
+    /// * If the lock is currently used for voting
+    /// * If the lock is not permanent
+    ///
+    /// # Events
+    /// Emits EventUnlockPermanent and EventMetadataUpdate events
     public fun unlock_permanent<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
         lock: &mut Lock,
@@ -1893,6 +2470,23 @@ module distribution::voting_escrow {
         );
     }
 
+    /// Marks a lock as currently being used for voting or not.
+    /// This function is called by governance systems when a lock is used to vote on proposals,
+    /// preventing actions that might disrupt active votes (like withdrawing, splitting, or transferring).
+    /// The lock remains frozen for operations until voting is completed and this flag is cleared.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `voter_cap` - The voter capability to authorize this operation
+    /// * `lock_id` - The ID of the lock being used for voting
+    /// * `is_voting` - Boolean flag: true when the lock is actively voting, false when done
+    ///
+    /// # Aborts
+    /// * If the voter capability doesn't match the voting escrow instance
+    ///
+    /// # Security
+    /// This operation requires the voter capability to prevent unauthorized freezing of positions.
+    /// Only the authorized voter system should be able to mark locks as voting.
     public fun voting<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
         voter_cap: &distribution::voter_cap::VoterCap,
@@ -1906,6 +2500,23 @@ module distribution::voting_escrow {
         voting_escrow.voted.add(lock_id, is_voting);
     }
 
+    /// Withdraws tokens and rewards from a managed lock back to the original lock.
+    /// This allows users to exit from managed positions and regain control of their tokens.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `voter_cap` - The voter capability to authorize the operation
+    /// * `lock` - The original lock to withdraw back to
+    /// * `managed_lock` - The managed lock to withdraw from
+    /// * `owner_proof` - Proof of ownership of the lock
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
+    ///
+    /// # Aborts
+    /// * If the voter capability doesn't match the voting escrow
+    /// * If the lock is not managed
+    /// * If the lock is not of type LOCKED
+    /// * If the managed lock ID doesn't match
     public fun withdraw_managed<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
         voter_cap: &distribution::voter_cap::VoterCap,
