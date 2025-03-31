@@ -61,10 +61,23 @@ module integrate::pool_script {
         tick_spacing: u32,
         current_sqrt_price: u128,
         url: std::string::String,
+        feed_id_coin_a: address,
+        feed_id_coin_b: address,
+        auto_calculation_volumes: bool,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        pools.create_pool<CoinTypeA, CoinTypeB>(global_config, tick_spacing, current_sqrt_price, url, clock, ctx);
+        pools.create_pool<CoinTypeA, CoinTypeB>(
+            global_config,
+            tick_spacing,
+            current_sqrt_price,
+            url,
+            feed_id_coin_a,
+            feed_id_coin_b,
+            auto_calculation_volumes,
+            clock,
+            ctx
+        );
     }
 
     public entry fun close_position<CoinTypeA, CoinTypeB>(
@@ -501,6 +514,9 @@ module integrate::pool_script {
         tick_lower: u32,
         tick_upper: u32,
         liquidity_amount_a: u64,
+        feed_id_coin_a: address,
+        feed_id_coin_b: address,
+        auto_calculation_volumes: bool,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
@@ -516,6 +532,9 @@ module integrate::pool_script {
             liquidity_amount_a,
             0,
             true,
+            feed_id_coin_a,
+            feed_id_coin_b,
+            auto_calculation_volumes,
             clock,
             ctx
         );
@@ -534,6 +553,9 @@ module integrate::pool_script {
         tick_lower: u32,
         tick_upper: u32,
         liquidity_amount_b: u64,
+        feed_id_coin_a: address,
+        feed_id_coin_b: address,
+        auto_calculation_volumes: bool,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
@@ -549,6 +571,9 @@ module integrate::pool_script {
             0,
             liquidity_amount_b,
             false,
+            feed_id_coin_a,
+            feed_id_coin_b,
+            auto_calculation_volumes,
             clock,
             ctx
         );
@@ -570,6 +595,9 @@ module integrate::pool_script {
         liquidity_amount_a: u64,
         liquidity_amount_b: u64,
         fix_amount_a: bool,
+        feed_id_coin_a: address,
+        feed_id_coin_b: address,
+        auto_calculation_volumes: bool,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
@@ -585,6 +613,9 @@ module integrate::pool_script {
             liquidity_amount_a,
             liquidity_amount_b,
             fix_amount_a,
+            feed_id_coin_a,
+            feed_id_coin_b,
+            auto_calculation_volumes,
             clock,
             ctx
         );

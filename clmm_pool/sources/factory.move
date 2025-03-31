@@ -38,11 +38,25 @@ module clmm_pool::factory {
         tick_spacing: u32,
         current_sqrt_price: u128,
         url: std::string::String,
+        feed_id_coin_a: address,
+        feed_id_coin_b: address,
+        auto_calculation_volumes: bool,
         clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext
     ) {
         clmm_pool::config::checked_package_version(global_config);
-        let pool = create_pool_internal<CoinTypeA, CoinTypeB>(pools, global_config, tick_spacing, current_sqrt_price, url, clock, ctx);
+        let pool = create_pool_internal<CoinTypeA, CoinTypeB>(
+            pools,
+            global_config,
+            tick_spacing,
+            current_sqrt_price,
+            url,
+            feed_id_coin_a,
+            feed_id_coin_b,
+            auto_calculation_volumes,
+            clock,
+            ctx
+        );
         sui::transfer::public_share_object<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool);
     }
 
@@ -52,6 +66,9 @@ module clmm_pool::factory {
         tick_spacing: u32,
         current_sqrt_price: u128,
         url: std::string::String,
+        feed_id_coin_a: address,
+        feed_id_coin_b: address,
+        auto_calculation_volumes: bool,
         clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext
     ): clmm_pool::pool::Pool<CoinTypeA, CoinTypeB> {
@@ -62,16 +79,23 @@ module clmm_pool::factory {
             tick_spacing,
             current_sqrt_price,
             url,
+            feed_id_coin_a,
+            feed_id_coin_b,
+            auto_calculation_volumes,
             clock,
             ctx
         )
     }
+
     fun create_pool_internal<CoinTypeA, CoinTypeB>(
         pools: &mut Pools,
         global_config: &clmm_pool::config::GlobalConfig,
         tick_spacing: u32,
         current_sqrt_price: u128,
         url: std::string::String,
+        feed_id_coin_a: address,
+        feed_id_coin_b: address,
+        auto_calculation_volumes: bool,
         clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext
     ): clmm_pool::pool::Pool<CoinTypeA, CoinTypeB> {
@@ -94,6 +118,9 @@ module clmm_pool::factory {
             clmm_pool::config::get_fee_rate(tick_spacing, global_config),
             pool_url,
             pools.index,
+            feed_id_coin_a,
+            feed_id_coin_b,
+            auto_calculation_volumes,
             clock,
             ctx
         );
@@ -130,18 +157,45 @@ module clmm_pool::factory {
         liquidity_amount_a: u64,
         liquidity_amount_b: u64,
         fix_amount_a: bool,
+        feed_id_coin_a: address,
+        feed_id_coin_b: address,
+        auto_calculation_volumes: bool,
         clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext
     ): (clmm_pool::position::Position, sui::coin::Coin<CoinTypeA>, sui::coin::Coin<CoinTypeB>) {
         clmm_pool::config::checked_package_version(global_config);
-        let mut pool = create_pool_internal<CoinTypeA, CoinTypeB>(pools, global_config, tick_spacing, initialize_sqrt_price, url, clock, ctx);
-        let mut position = clmm_pool::pool::open_position<CoinTypeA, CoinTypeB>(global_config, &mut pool, tick_lower, tick_upper, ctx);
+        let mut pool = create_pool_internal<CoinTypeA, CoinTypeB>(
+            pools,
+            global_config,
+            tick_spacing,
+            initialize_sqrt_price,
+            url,
+            feed_id_coin_a,
+            feed_id_coin_b,
+            auto_calculation_volumes,
+            clock,
+            ctx
+        );
+        let mut position = clmm_pool::pool::open_position<CoinTypeA, CoinTypeB>(
+            global_config,
+            &mut pool,
+            tick_lower,
+            tick_upper,
+            ctx
+        );
         let fix_amount = if (fix_amount_a) {
             liquidity_amount_a
         } else {
             liquidity_amount_b
         };
-        let receipt = clmm_pool::pool::add_liquidity_fix_coin<CoinTypeA, CoinTypeB>(global_config, &mut pool, &mut position, fix_amount, fix_amount_a, clock);
+        let receipt = clmm_pool::pool::add_liquidity_fix_coin<CoinTypeA, CoinTypeB>(
+            global_config,
+            &mut pool,
+            &mut position,
+            fix_amount,
+            fix_amount_a,
+            clock
+        );
         let (amount_a, amount_b) = clmm_pool::pool::add_liquidity_pay_amount<CoinTypeA, CoinTypeB>(&receipt);
         if (fix_amount_a) {
             assert!(amount_b <= liquidity_amount_b, 4);

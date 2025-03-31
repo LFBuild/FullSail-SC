@@ -30,6 +30,11 @@ module clmm_pool::pool {
         magma_distribution_last_updated: u64,
         magma_distribution_staked_liquidity: u128,
         magma_distribution_gauger_fee: PoolFee,
+        volume_usd_coin_a: u128,
+        volume_usd_coin_b: u128,
+        feed_id_coin_a: address,
+        feed_id_coin_b: address,
+        auto_calculation_volumes: bool,
     }
 
     public struct PoolFee has drop, store {
@@ -191,6 +196,9 @@ module clmm_pool::pool {
         fee_rate: u64,
         pool_url: std::string::String,
         pool_index: u64,
+        feed_id_coin_a: address,
+        feed_id_coin_b: address,
+        auto_calculation_volumes: bool,
         clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext
     ): Pool<CoinTypeA, CoinTypeB> {
@@ -227,6 +235,11 @@ module clmm_pool::pool {
             magma_distribution_last_updated: sui::clock::timestamp_ms(clock) / 1000,
             magma_distribution_staked_liquidity: 0,
             magma_distribution_gauger_fee: initial_pool_fee,
+            volume_usd_coin_a: 0,
+            volume_usd_coin_b: 0,
+            feed_id_coin_a,
+            feed_id_coin_b,
+            auto_calculation_volumes,
         }
     }
     

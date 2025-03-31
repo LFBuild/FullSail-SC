@@ -59,10 +59,23 @@ module integrate::pool_script_v2 {
         tick_spacing: u32,
         current_sqrt_price: u128,
         url: std::string::String,
+        feed_id_coin_a: address,
+        feed_id_coin_b: address,
+        auto_calculation_volumes: bool,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        pools.create_pool<CoinTypeA, CoinTypeB>(global_config, tick_spacing, current_sqrt_price, url, clock, ctx);
+        pools.create_pool<CoinTypeA, CoinTypeB>(
+            global_config,
+            tick_spacing,
+            current_sqrt_price,
+            url,
+            feed_id_coin_a,
+            feed_id_coin_b,
+            auto_calculation_volumes,
+            clock,
+            ctx
+        );
     }
 
     public entry fun create_pool_with_liquidity<CoinTypeA, CoinTypeB>(
@@ -78,6 +91,9 @@ module integrate::pool_script_v2 {
         liquidity_amount_a: u64,
         liquidity_amount_b: u64,
         fix_amount_a: bool,
+        feed_id_coin_a: address,
+        feed_id_coin_b: address,
+        auto_calculation_volumes: bool,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
@@ -93,6 +109,9 @@ module integrate::pool_script_v2 {
             liquidity_amount_a,
             liquidity_amount_b,
             fix_amount_a,
+            feed_id_coin_a,
+            feed_id_coin_b,
+            auto_calculation_volumes,
             clock,
             ctx
         );
