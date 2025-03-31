@@ -3,7 +3,6 @@ digraph Dependencies {
     node [shape=box];
 
     // Nodes with no incoming dependencies
-    "fullsail_config";
     "integrate";
 
     // Dependency relationships:
