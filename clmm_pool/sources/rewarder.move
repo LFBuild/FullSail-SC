@@ -233,9 +233,9 @@ module clmm_pool::rewarder {
             let reward_type = std::type_name::get<RewardCoinType>();
             assert!(sui::bag::contains<std::type_name::TypeName>(&rewarder_vault.balances, reward_type), 5);
             assert!(
-                (sui::balance::value<RewardCoinType>(
+                ((sui::balance::value<RewardCoinType>(
                     sui::bag::borrow<std::type_name::TypeName, sui::balance::Balance<RewardCoinType>>(&rewarder_vault.balances, reward_type)
-                ) as u128) << 64 >= 86400 * emission_rate,
+                ) as u128) << 64) >= 86400 * emission_rate,
                 4
             );
         };
