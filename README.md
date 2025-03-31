@@ -4,7 +4,7 @@
 
 ## Overview of Specific Repo - Full_Sail_SCs
 
-A Dex Smart Contract implementing ve(3,3) model which has similar logic as [Magmafinance](https://magmafinance.io/) on SUI.
+A Dex Smart Contract implementing ve(4,4) model which has similar logic as [Magmafinance](https://magmafinance.io/) on SUI.
 
 The original code was decompiled from contracts existing deployed contracts. Contract addresses were obtained
 from [Magma config](https://github.com/MagmaFinanceIO/magma_clmm_sdk/blob/main/src/config/mainnet.ts).
