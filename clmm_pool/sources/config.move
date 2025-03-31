@@ -234,6 +234,7 @@ module clmm_pool::config {
         sui::transfer::share_object<GlobalConfig>(global_config);
         sui::event::emit<InitConfigEvent>(init_event);
     }
+
     public fun is_gauge_alive(config: &GlobalConfig, gauge_id: sui::object::ID): bool {
         sui::vec_set::contains<sui::object::ID>(&config.alive_gauges, &gauge_id)
     }

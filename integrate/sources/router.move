@@ -24,6 +24,7 @@ module integrate::router {
         mut amount: u64,
         sqrt_price_limit: u128,
         use_full_input: bool,
+        stats: &mut clmm_pool::stats::Stats,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): (sui::coin::Coin<CoinTypeA>, sui::coin::Coin<CoinTypeB>) {
@@ -42,6 +43,7 @@ module integrate::router {
             by_amount_in,
             amount,
             sqrt_price_limit,
+            stats,
             clock
         );
         let pay_amount = clmm_pool::pool::swap_pay_amount<CoinTypeA, CoinTypeB>(&receipt);
@@ -208,6 +210,7 @@ module integrate::router {
         amount_bc: u64,
         sqrt_price_limit_ab: u128,
         sqrt_price_limit_bc: u128,
+        stats: &mut clmm_pool::stats::Stats,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): (sui::coin::Coin<CoinTypeA>, sui::coin::Coin<CoinTypeC>) {
@@ -222,6 +225,7 @@ module integrate::router {
                 amount_ab,
                 sqrt_price_limit_ab,
                 false,
+                stats,
                 clock,
                 ctx
             );
@@ -236,6 +240,7 @@ module integrate::router {
                 coin_b_amount,
                 sqrt_price_limit_bc,
                 false,
+                stats,
                 clock,
                 ctx
             );
@@ -250,6 +255,7 @@ module integrate::router {
                 false,
                 amount_bc,
                 sqrt_price_limit_bc,
+                stats,
                 clock
             );
             let (final_coin_a, coin_b_for_repay) = swap<CoinTypeA, CoinTypeB>(
@@ -262,6 +268,7 @@ module integrate::router {
                 clmm_pool::pool::swap_pay_amount<CoinTypeB, CoinTypeC>(&receipt),
                 sqrt_price_limit_ab,
                 false,
+                stats,
                 clock,
                 ctx
             );
@@ -288,6 +295,7 @@ module integrate::router {
         amount_cb: u64,
         sqrt_price_limit_ab: u128,
         sqrt_price_limit_cb: u128,
+        stats: &mut clmm_pool::stats::Stats,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): (sui::coin::Coin<CoinTypeA>, sui::coin::Coin<CoinTypeC>) {
@@ -302,6 +310,7 @@ module integrate::router {
                 amount_ab,
                 sqrt_price_limit_ab,
                 false,
+                stats,
                 clock,
                 ctx
             );
@@ -316,6 +325,7 @@ module integrate::router {
                 coin_b_amount,
                 sqrt_price_limit_cb,
                 false,
+                stats,
                 clock,
                 ctx
             );
@@ -330,6 +340,7 @@ module integrate::router {
                 false,
                 amount_cb,
                 sqrt_price_limit_cb,
+                stats,
                 clock
             );
             let (final_coin_a, coin_b_for_repay) = swap<CoinTypeA, CoinTypeB>(
@@ -342,6 +353,7 @@ module integrate::router {
                 clmm_pool::pool::swap_pay_amount<CoinTypeC, CoinTypeB>(&receipt),
                 sqrt_price_limit_ab,
                 false,
+                stats,
                 clock,
                 ctx
             );
@@ -368,6 +380,7 @@ module integrate::router {
         amount_bc: u64,
         sqrt_price_ba: u128,
         sqrt_price_bc: u128,
+        stats: &mut clmm_pool::stats::Stats,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): (sui::coin::Coin<CoinTypeA>, sui::coin::Coin<CoinTypeC>) {
@@ -382,6 +395,7 @@ module integrate::router {
                 amount_ba,
                 sqrt_price_ba,
                 false,
+                stats,
                 clock,
                 ctx
             );
@@ -396,6 +410,7 @@ module integrate::router {
                 amount,
                 sqrt_price_bc,
                 false,
+                stats,
                 clock,
                 ctx
             );
@@ -410,6 +425,7 @@ module integrate::router {
                 false,
                 amount_bc,
                 sqrt_price_bc,
+                stats,
                 clock
             );
             let (coin_b_for_repay, final_coin_a) = swap<CoinTypeB, CoinTypeA>(
@@ -422,6 +438,7 @@ module integrate::router {
                 clmm_pool::pool::swap_pay_amount<CoinTypeB, CoinTypeC>(&receipt),
                 sqrt_price_ba,
                 false,
+                stats,
                 clock,
                 ctx
             );
@@ -448,6 +465,7 @@ module integrate::router {
         amount_cb: u64,
         sqrt_price_limit_ba: u128,
         sqrt_price_limit_cb: u128,
+        stats: &mut clmm_pool::stats::Stats,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): (sui::coin::Coin<CoinTypeA>, sui::coin::Coin<CoinTypeC>) {
@@ -462,6 +480,7 @@ module integrate::router {
                 amount_ba,
                 sqrt_price_limit_ba,
                 false,
+                stats,
                 clock,
                 ctx
             );
@@ -476,6 +495,7 @@ module integrate::router {
                 coin_b_amount,
                 sqrt_price_limit_cb,
                 false,
+                stats,
                 clock,
                 ctx
             );
@@ -490,6 +510,7 @@ module integrate::router {
                 false,
                 amount_cb,
                 sqrt_price_limit_cb,
+                stats,
                 clock
             );
             let (coin_b_for_repay, final_coin_a) = swap<CoinTypeB, CoinTypeA>(
@@ -502,6 +523,7 @@ module integrate::router {
                 clmm_pool::pool::swap_pay_amount<CoinTypeC, CoinTypeB>(&receipt),
                 sqrt_price_limit_ba,
                 false,
+                stats,
                 clock,
                 ctx
             );

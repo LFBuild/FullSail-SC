@@ -1157,6 +1157,7 @@ module clmm_pool::pool {
         by_amount_in: bool,
         amount: u64,
         sqrt_price_limit: u128,
+        stats: &mut clmm_pool::stats::Stats,
         clock: &sui::clock::Clock
     ): (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>, FlashSwapReceipt<CoinTypeA, CoinTypeB>) {
         clmm_pool::config::checked_package_version(global_config);
@@ -1170,9 +1171,11 @@ module clmm_pool::pool {
             by_amount_in,
             amount,
             sqrt_price_limit,
+            stats,
             clock
         )
     }
+
     fun flash_swap_internal<CoinTypeA, CoinTypeB>(
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
         global_config: &clmm_pool::config::GlobalConfig,
@@ -1182,6 +1185,7 @@ module clmm_pool::pool {
         by_amount_in: bool,
         amount: u64,
         sqrt_price_limit: u128,
+        stats: &mut clmm_pool::stats::Stats,
         clock: &sui::clock::Clock
     ): (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>, FlashSwapReceipt<CoinTypeA, CoinTypeB>) {
         assert!(amount > 0, 0);
@@ -1214,6 +1218,17 @@ module clmm_pool::pool {
         } else {
             (sui::balance::zero<CoinTypeB>(), sui::balance::split<CoinTypeA>(&mut pool.coin_a, swap_result.amount_out))
         };
+
+        // TODO volumes
+        // let price = global_config.price_supplier;
+        // if (a2b) {
+        //     pool.volume_usd_coin_a
+          //      stats.add_total_volume_internal();
+        // } else {
+        //     pool.volume_usd_coin_b
+        //  stats.add_total_volume_internal();
+        // }
+
         let swap_event = SwapEvent {
             atob: a2b,
             pool: sui::object::id<Pool<CoinTypeA, CoinTypeB>>(pool),
@@ -1252,6 +1267,7 @@ module clmm_pool::pool {
         by_amount_in: bool,
         amount: u64,
         sqrt_price_limit: u128,
+        stats: &mut clmm_pool::stats::Stats,
         clock: &sui::clock::Clock
     ): (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>, FlashSwapReceipt<CoinTypeA, CoinTypeB>) {
         clmm_pool::config::checked_package_version(global_config);
@@ -1265,6 +1281,7 @@ module clmm_pool::pool {
             by_amount_in,
             amount,
             sqrt_price_limit,
+            stats,
             clock
         )
     }

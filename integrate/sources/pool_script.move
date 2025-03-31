@@ -10,6 +10,7 @@ module integrate::pool_script {
         amount: u64,
         amount_limit: u64,
         sqrt_price_limit: u128,
+        stats: &mut clmm_pool::stats::Stats,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
@@ -22,6 +23,7 @@ module integrate::pool_script {
             by_amount_in,
             amount,
             sqrt_price_limit,
+            stats,
             clock
         );
         let pay_amount = receipt.swap_pay_amount();
@@ -762,6 +764,7 @@ module integrate::pool_script {
         amount: u64,
         amount_limit: u64,
         sqrt_price_limit: u128,
+        stats: &mut clmm_pool::stats::Stats,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
@@ -775,6 +778,7 @@ module integrate::pool_script {
             amount,
             amount_limit,
             sqrt_price_limit,
+            stats,
             clock,
             ctx
         );
@@ -789,6 +793,7 @@ module integrate::pool_script {
         amount: u64,
         amount_limit: u64,
         sqrt_price_limit: u128,
+        stats: &mut clmm_pool::stats::Stats,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
@@ -803,6 +808,7 @@ module integrate::pool_script {
             amount,
             amount_limit,
             sqrt_price_limit,
+            stats,
             clock,
             ctx
         );
@@ -816,6 +822,7 @@ module integrate::pool_script {
         amount: u64,
         amount_limit: u64,
         sqrt_price_limit: u128,
+        stats: &mut clmm_pool::stats::Stats,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
@@ -829,6 +836,7 @@ module integrate::pool_script {
             amount,
             amount_limit,
             sqrt_price_limit,
+            stats,
             clock,
             ctx
         );
@@ -843,6 +851,7 @@ module integrate::pool_script {
         amount: u64,
         amount_limit: u64,
         sqrt_price_limit: u128,
+        stats: &mut clmm_pool::stats::Stats,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
@@ -857,6 +866,7 @@ module integrate::pool_script {
             amount,
             amount_limit,
             sqrt_price_limit,
+            stats,
             clock,
             ctx
         );
@@ -873,6 +883,7 @@ module integrate::pool_script {
         amount: u64,
         amount_limit: u64,
         sqrt_price_limit: u128,
+        stats: &mut clmm_pool::stats::Stats,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
@@ -886,6 +897,7 @@ module integrate::pool_script {
             by_amount_in,
             amount,
             sqrt_price_limit,
+            stats,
             clock
         );
         let pay_amount = swap_receipt.swap_pay_amount();
