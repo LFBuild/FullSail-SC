@@ -8,4 +8,4 @@ edition = "2024"
 Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet", override = true }
 
 [addresses]
-integer_mate = "0x0"
+integer_mate = "0x810344e626dbc98b93565b08cc435ead55513182604bae4f34b4228dfb2a680d"

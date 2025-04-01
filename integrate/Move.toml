@@ -27,7 +27,7 @@ price_provider = { local = "../price_provider" }
 # Override = { local = "../conflicting/version", override = true }
 
 [addresses]
-integrate = "0x0"
+integrate = "0xe33648be0c8b91cacd86fe6d40ab277ba2e1a0d80801b00368da675f0ce9fba7"
 
 # Named addresses will be accessible in Move as `@name`. They're also exported:
 # for example, `std = "0x1"` is exported by the Standard Library.

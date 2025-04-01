@@ -2,8 +2,8 @@
 
 [move]
 version = 3
-manifest_digest = "3736317F9283E95A1C12E8058F141F0D11E8616A13AA18FDFF2FB4D353BA3E43"
-deps_digest = "397E6A9F7A624706DBDFEE056CE88391A15876868FD18A88504DA74EB458D697"
+manifest_digest = "B8C591750714793B406E11AF8780DE1FDB931721D6D72738BD5971D62A9F1BBA"
+deps_digest = "F9B494B64F0615AED0E98FC12A85B85ECD2BC5185C22D30E7F67786BB52E507C"
 dependencies = [
   { id = "Sui", name = "Sui" },
   { id = "gauge_cap", name = "gauge_cap" },
@@ -57,7 +57,7 @@ dependencies = [
 ]
 
 [move.toolchain-version]
-compiler-version = "1.45.0"
+compiler-version = "1.45.2"
 edition = "2024"
 flavor = "sui"
 
