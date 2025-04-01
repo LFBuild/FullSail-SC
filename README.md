@@ -4,17 +4,12 @@
 
 ## Overview of Specific Repo - Full_Sail_SCs
 
-A Dex Smart Contract implementing ve(3,3) model which has similar logic as [Fullsalefinance](https://fullsalefinance.io/) on sui.
+A Dex Smart Contract implementing ve(4,4) model which has similar logic as [Fullsalefinance](https://fullsalefinance.io/) on SUI.
 
-The original code was decompiled from testnet contracts:
+The original code was decompiled from contracts existing deployed contracts. Contract addresses were obtained
+from [Magma config](https://github.com/MagmaFinanceIO/magma_clmm_sdk/blob/main/src/config/mainnet.ts).
 
- - [config](https://testnet.suivision.xyz/package/0xf5ff7d5ba73b581bca6b4b9fa0049cd320360abd154b809f8700a8fd3cfaf7ca?tab=Code)
-- [clmm_pool](https://testnet.suivision.xyz/package/0x23e0b5ab4aa63d0e6fd98fa5e247bcf9b36ad716b479d39e56b2ba9ff631e09d?tab=Code)
-- [distribution](https://testnet.suivision.xyz/package/0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1?tab=Code)
-- [integrate](https://testnet.suivision.xyz/package/0x6d225cd7b90ca74b13e7de114c6eba2f844a1e5e1a4d7459048386bfff0d45df?tab=Code)
-- [gauge_cap](https://testnet.suivision.xyz/package/0x05640f87c73cced090abe3c3e4738b8f0044a070be17c39ad202224298cf3784?tab=Code)
-
-The reason why we are using this code is because it is the only ve(3,3) model on Sui and it is a good reference for us to build our own ve(3,3) model. And the code was not deployed on mainnet yet, so we had to use testnet version.
+The reason why we are using this code is because it is the only ve(3,3) model on Sui and it is a good starting point for us to build our own ve(4,4) model.
 
 Some libraries were found opensource:
     
@@ -22,8 +17,6 @@ Some libraries were found opensource:
 - [integer_mate](https://github.com/FullsaleFinanceIO/integer-mate). No license was found.
 
 To mitigate the risk of of libraries becoming unavailable, we are using the code directly.
-
-Addresses were took from the frontend [library config](https://github.com/FullsaleFinanceIO/fullsale_clmm_sdk/blob/main/src/config/testnet.ts)
 
 ## Prerequisities
 
@@ -80,7 +73,6 @@ This step is required to build the packages later.
 - [clmm_pool](https://testnet.suivision.xyz/txblock/JDixgrY2ukAH7osgCeJX8YfTeq9xSEPE68VJPmF1EBJs)
 - [distribution](https://testnet.suivision.xyz/txblock/ECihTgcyGtTsQdDDs6SjC9x2616brY6jnq4sZnSQc23R)
 - [integrate](https://testnet.suivision.xyz/txblock/7FhEtcJBxGJGyntVUwMkemhqgGEZZwgUL63M3xSqwDDb)
-- [fullsail_config](https://testnet.suivision.xyz/txblock/6tH7SWipN55Rut3QUNhKhQo82fgWCN8Lp6JrfXnTj8t9)
 
 [Setup distribution tx](https://testnet.suivision.xyz/txblock/6Z1DjeSo25XEu48MSteNSSmkv1MAD17hH5w1D3YckaL7)
 
@@ -94,6 +86,5 @@ This step is required to build the packages later.
 - [clmm_pool](https://suivision.xyz/txblock/CuoZkRJNFEqZrA9oByC83BMdhxcHTeLpCaBPjQCyyUpA)
 - [distribution](https://suivision.xyz/txblock/CbKBgFnwjhEPemt7LCB9qmpXUEST5BUyyuUJVmapTMRe)
 - [integrate](https://suivision.xyz/txblock/Es3DqkbX1cibjToEmiWcd1awpAh763mb36amNAuAm3Xh)
-- [fullsail_config](https://suivision.xyz/txblock/RUpBRB5ke3T2keVeRYK39j17vdztWgVwVgNL8hACmpY)
 
 [Setup distribution tx](https://suivision.xyz/txblock/76dT6eHyzTiXR4fe14pzAASeEpq2FnX6DBkpcLATVBrQ)
