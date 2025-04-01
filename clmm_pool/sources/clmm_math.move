@@ -1,4 +1,43 @@
+/// Mathematical utilities module for the CLMM (Concentrated Liquidity Market Maker) pool system.
+/// This module provides core mathematical functions for:
+/// * Computing swap steps and price calculations
+/// * Managing liquidity positions
+/// * Handling fee calculations
+/// * Managing price ticks and ranges
+/// 
+/// The module implements the mathematical formulas and algorithms required for:
+/// * Price movement calculations
+/// * Liquidity distribution
+/// * Fee computation
+/// * Position management
+/// * Tick spacing and range calculations
 module clmm_pool::clmm_math {
+    /// Computes a single step of a swap operation, calculating the amounts, fees, and next price.
+    /// This function handles the core swap logic including:
+    /// * Price movement calculations
+    /// * Fee computations
+    /// * Liquidity adjustments
+    /// * Amount calculations based on input/output direction
+    /// 
+    /// # Arguments
+    /// * `current_sqrt_price` - Current square root price of the pool
+    /// * `target_sqrt_price` - Target square root price to reach
+    /// * `liquidity` - Current liquidity in the pool
+    /// * `amount` - Amount of tokens to swap
+    /// * `fee_rate` - Fee rate for the swap (in basis points, 1/10000)
+    /// * `a2b` - Direction of the swap (true for token A to B, false for B to A)
+    /// * `by_amount_in` - Whether the amount parameter represents input or output amount
+    /// 
+    /// # Returns
+    /// A tuple containing:
+    /// * `amount_in` - Amount of input tokens used
+    /// * `amount_out` - Amount of output tokens received
+    /// * `next_sqrt_price` - New square root price after the swap
+    /// * `fee_amount` - Amount of fees charged
+    /// 
+    /// # Aborts
+    /// * If the target price is invalid for the swap direction (error code: 4)
+    /// * If the liquidity is zero (returns zero amounts)
     public fun compute_swap_step(
         current_sqrt_price: u128,
         target_sqrt_price: u128,
@@ -47,10 +86,36 @@ module clmm_pool::clmm_math {
         (amount_in, amount_out, next_sqrt_price, fee_amount)
     }
 
+    /// Returns the denominator used for fee rate calculations.
+    /// The fee rate is expressed as a fraction with this denominator (1/1000000).
+    /// 
+    /// # Returns
+    /// The fee rate denominator (1000000)
     public fun fee_rate_denominator(): u64 {
         1000000
     }
 
+    /// Calculates the amounts of both tokens in a liquidity position based on the current price and tick range.
+    /// This function handles three cases:
+    /// * Current price below the lower tick (only token A)
+    /// * Current price between lower and upper ticks (both tokens)
+    /// * Current price above the upper tick (only token B)
+    /// 
+    /// # Arguments
+    /// * `tick_lower` - Lower tick boundary of the position
+    /// * `tick_upper` - Upper tick boundary of the position
+    /// * `current_tick` - Current tick index of the pool
+    /// * `current_sqrt_price` - Current square root price of the pool
+    /// * `liquidity` - Amount of liquidity in the position
+    /// * `round_up` - Whether to round up the calculated amounts
+    /// 
+    /// # Returns
+    /// A tuple containing:
+    /// * Amount of token A in the position
+    /// * Amount of token B in the position
+    /// 
+    /// # Aborts
+    /// * If the current tick is invalid for the position range
     public fun get_amount_by_liquidity(
         tick_lower: integer_mate::i32::I32,
         tick_upper: integer_mate::i32::I32, 
@@ -90,6 +155,20 @@ module clmm_pool::clmm_math {
         }
     }
 
+    /// Calculates the amount of token A needed for a given price range and liquidity.
+    /// This function is used to determine the amount of token A required when adding or removing liquidity.
+    /// 
+    /// # Arguments
+    /// * `sqrt_price_a` - Square root price at point A
+    /// * `sqrt_price_b` - Square root price at point B
+    /// * `liquidity` - Amount of liquidity
+    /// * `round_up` - Whether to round up the result
+    /// 
+    /// # Returns
+    /// The amount of token A needed
+    /// 
+    /// # Aborts
+    /// * If the calculation would overflow (error code: 2)
     public fun get_delta_a(sqrt_price_a: u128, sqrt_price_b: u128, liquidity: u128, round_up: bool): u64 {
         let sqrt_price_diff = if (sqrt_price_a > sqrt_price_b) {
             sqrt_price_a - sqrt_price_b
@@ -106,6 +185,17 @@ module clmm_pool::clmm_math {
         integer_mate::math_u256::div_round(shifted_product, integer_mate::full_math_u128::full_mul(sqrt_price_a, sqrt_price_b), round_up) as u64
     }
 
+    /// Calculates the amount of token B needed for a given price range and liquidity.
+    /// This function is used to determine the amount of token B required when adding or removing liquidity.
+    /// 
+    /// # Arguments
+    /// * `sqrt_price_a` - Square root price at point A
+    /// * `sqrt_price_b` - Square root price at point B
+    /// * `liquidity` - Amount of liquidity
+    /// * `round_up` - Whether to round up the result
+    /// 
+    /// # Returns
+    /// The amount of token B needed
     public fun get_delta_b(sqrt_price_a: u128, sqrt_price_b: u128, liquidity: u128, round_up: bool): u64 {
         let sqrt_price_diff = if (sqrt_price_a > sqrt_price_b) {
             sqrt_price_a - sqrt_price_b
@@ -122,6 +212,20 @@ module clmm_pool::clmm_math {
         (product >> 64) as u64
     }
 
+    /// Calculates the output amount for a given price range and liquidity, rounding down.
+    /// Used in swap calculations when determining output amounts.
+    /// 
+    /// # Arguments
+    /// * `sqrt_price_a` - Square root price at point A
+    /// * `sqrt_price_b` - Square root price at point B
+    /// * `liquidity` - Amount of liquidity
+    /// * `round_up` - Whether to round up the result
+    /// 
+    /// # Returns
+    /// The output amount as a u256 value
+    /// 
+    /// # Aborts
+    /// * If the calculation would overflow (error code: 2)
     public fun get_delta_down_from_output(sqrt_price_a: u128, sqrt_price_b: u128, liquidity: u128, round_up: bool): u256 {
         let sqrt_price_diff = if (sqrt_price_a > sqrt_price_b) {
             sqrt_price_a - sqrt_price_b
@@ -142,6 +246,20 @@ module clmm_pool::clmm_math {
         }
     }
 
+    /// Calculates the input amount needed for a given price range and liquidity, rounding up.
+    /// Used in swap calculations when determining input amounts.
+    /// 
+    /// # Arguments
+    /// * `sqrt_price_a` - Square root price at point A
+    /// * `sqrt_price_b` - Square root price at point B
+    /// * `liquidity` - Amount of liquidity
+    /// * `round_up` - Whether to round up the result
+    /// 
+    /// # Returns
+    /// The input amount as a u256 value
+    /// 
+    /// # Aborts
+    /// * If the calculation would overflow (error code: 2)
     public fun get_delta_up_from_input(sqrt_price_a: u128, sqrt_price_b: u128, liquidity: u128, round_up: bool): u256 {
         let sqrt_price_diff = if (sqrt_price_a > sqrt_price_b) {
             sqrt_price_a - sqrt_price_b
@@ -168,6 +286,25 @@ module clmm_pool::clmm_math {
         }
     }
 
+    /// Calculates the liquidity and token amounts needed for a position based on a fixed input amount.
+    /// This function handles both cases where the input amount is fixed for either token A or B.
+    /// 
+    /// # Arguments
+    /// * `tick_lower` - Lower tick boundary of the position
+    /// * `tick_upper` - Upper tick boundary of the position
+    /// * `current_tick` - Current tick index of the pool
+    /// * `current_sqrt_price` - Current square root price of the pool
+    /// * `amount_in` - Fixed input amount of tokens
+    /// * `is_fix_amount_a` - Whether the input amount is for token A (true) or B (false)
+    /// 
+    /// # Returns
+    /// A tuple containing:
+    /// * The calculated liquidity amount
+    /// * The amount of token A needed
+    /// * The amount of token B needed
+    /// 
+    /// # Aborts
+    /// * If the current tick is outside the valid range (error code: 3018)
     public fun get_liquidity_by_amount(
         tick_lower: integer_mate::i32::I32,
         tick_upper: integer_mate::i32::I32,
@@ -207,6 +344,17 @@ module clmm_pool::clmm_math {
         }
     }
     
+    /// Calculates the liquidity needed for a position when the amount of token A is fixed.
+    /// This function is used to determine the required liquidity when adding a specific amount of token A.
+    /// 
+    /// # Arguments
+    /// * `sqrt_price_a` - Square root price at point A
+    /// * `sqrt_price_b` - Square root price at point B
+    /// * `amount` - Fixed amount of token A
+    /// * `round_up` - Whether to round up the result
+    /// 
+    /// # Returns
+    /// The calculated liquidity amount
     public fun get_liquidity_from_a(
         sqrt_price_a: u128,
         sqrt_price_b: u128,
@@ -225,6 +373,17 @@ module clmm_pool::clmm_math {
         ) as u128
     }
 
+    /// Calculates the liquidity needed for a position when the amount of token B is fixed.
+    /// This function is used to determine the required liquidity when adding a specific amount of token B.
+    /// 
+    /// # Arguments
+    /// * `sqrt_price_a` - Square root price at point A
+    /// * `sqrt_price_b` - Square root price at point B
+    /// * `amount` - Fixed amount of token B
+    /// * `round_up` - Whether to round up the result
+    /// 
+    /// # Returns
+    /// The calculated liquidity amount
     public fun get_liquidity_from_b(sqrt_price_a: u128, sqrt_price_b: u128, amount: u64, round_up: bool): u128 {
         let sqrt_price_diff = if (sqrt_price_a > sqrt_price_b) {
             sqrt_price_a - sqrt_price_b
@@ -233,6 +392,23 @@ module clmm_pool::clmm_math {
         };
         integer_mate::math_u256::div_round((amount as u256) << 64, sqrt_price_diff as u256, round_up) as u128
     }
+
+    /// Calculates the next square root price when adding or removing token A.
+    /// This function handles price movement in the direction of token A.
+    /// 
+    /// # Arguments
+    /// * `sqrt_price` - Current square root price
+    /// * `liquidity` - Current liquidity in the pool
+    /// * `amount` - Amount of token A to add or remove
+    /// * `add` - Whether to add (true) or remove (false) the amount
+    /// 
+    /// # Returns
+    /// The new square root price after the operation
+    /// 
+    /// # Aborts
+    /// * If the calculation would overflow (error code: 2)
+    /// * If the resulting price would exceed maximum allowed price (error code: 0)
+    /// * If the resulting price would be below minimum allowed price (error code: 1)
     public fun get_next_sqrt_price_a_up(sqrt_price: u128, liquidity: u128, amount: u64, add: bool): u128 {
         if (amount == 0) {
             return sqrt_price
@@ -262,6 +438,23 @@ module clmm_pool::clmm_math {
         };
         next_sqrt_price
     }
+    
+    /// Calculates the next square root price when adding or removing token B.
+    /// This function handles price movement in the direction of token B.
+    /// 
+    /// # Arguments
+    /// * `sqrt_price` - Current square root price
+    /// * `liquidity` - Current liquidity in the pool
+    /// * `amount` - Amount of token B to add or remove
+    /// * `add` - Whether to add (true) or remove (false) the amount
+    /// 
+    /// # Returns
+    /// The new square root price after the operation
+    /// 
+    /// # Aborts
+    /// * If the calculation would overflow
+    /// * If the resulting price would exceed maximum allowed price (error code: 0)
+    /// * If the resulting price would be below minimum allowed price (error code: 1)
     public fun get_next_sqrt_price_b_down(sqrt_price: u128, liquidity: u128, amount: u64, add: bool): u128 {
         let next_sqrt_price = if (add) {
             sqrt_price + integer_mate::math_u128::checked_div_round((amount as u128) << 64, liquidity, !add)
@@ -276,6 +469,23 @@ module clmm_pool::clmm_math {
         };
         next_sqrt_price
     }
+
+    /// Calculates the next square root price based on an input amount of tokens.
+    /// This function determines the price movement based on the token type and input amount.
+    /// 
+    /// # Arguments
+    /// * `sqrt_price` - Current square root price
+    /// * `liquidity` - Current liquidity in the pool
+    /// * `amount` - Input amount of tokens
+    /// * `is_token_a` - Whether the input token is token A (true) or B (false)
+    /// 
+    /// # Returns
+    /// The new square root price after the operation
+    /// 
+    /// # Aborts
+    /// * If the calculation would overflow
+    /// * If the resulting price would exceed maximum allowed price (error code: 0)
+    /// * If the resulting price would be below minimum allowed price (error code: 1)
     public fun get_next_sqrt_price_from_input(sqrt_price: u128, liquidity: u128, amount: u64, is_token_a: bool): u128 {
         if (is_token_a) {
             get_next_sqrt_price_a_up(sqrt_price, liquidity, amount, true)
@@ -284,6 +494,22 @@ module clmm_pool::clmm_math {
         }
     }
 
+    /// Calculates the next square root price based on an output amount of tokens.
+    /// This function determines the price movement based on the token type and output amount.
+    /// 
+    /// # Arguments
+    /// * `sqrt_price` - Current square root price
+    /// * `liquidity` - Current liquidity in the pool
+    /// * `amount` - Output amount of tokens
+    /// * `is_token_a` - Whether the output token is token A (true) or B (false)
+    /// 
+    /// # Returns
+    /// The new square root price after the operation
+    /// 
+    /// # Aborts
+    /// * If the calculation would overflow
+    /// * If the resulting price would exceed maximum allowed price (error code: 0)
+    /// * If the resulting price would be below minimum allowed price (error code: 1)
     public fun get_next_sqrt_price_from_output(sqrt_price: u128, liquidity: u128, amount: u64, is_token_a: bool): u128 {
         if (is_token_a) {
             get_next_sqrt_price_b_down(sqrt_price, liquidity, amount, false)
@@ -291,7 +517,5 @@ module clmm_pool::clmm_math {
             get_next_sqrt_price_a_up(sqrt_price, liquidity, amount, false)
         }
     }
-
-    // decompiled from Move bytecode v6
 }
 

@@ -1,6 +1,6 @@
 source ./export.sh
 
-#magma contracts have
+#fullsale contracts have
 
 export WRONG_PUBLISHER=0x065d0eaa9c8337788be71980a9ce26e68a39a0885ecbff808fdfa116dc9ff906
 export WHO=0xedd5ec373fa5b1f5c903cc1b6b49bb96013af6346475ff6ffe743ed88a94c1cb

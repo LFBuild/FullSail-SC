@@ -1,4 +1,37 @@
+/// Tick math module for the CLMM (Concentrated Liquidity Market Maker) pool system.
+/// This module provides functionality for:
+/// * Converting between price and tick index
+/// * Calculating square root of price
+/// * Managing tick spacing and boundaries
+/// * Handling tick-related mathematical operations
+/// 
+/// The module implements:
+/// * Price to tick index conversion
+/// * Tick index to price conversion
+/// * Square root price calculations
+/// * Tick spacing validation
+/// 
+/// # Key Concepts
+/// * Tick - A discrete price point in the pool
+/// * Price - The actual price value
+/// * Tick Index - Integer representation of a price point
+/// * Tick Spacing - Minimum distance between ticks
+/// 
+/// # Constants
+/// * MIN_TICK - Minimum allowed tick index
+/// * MAX_TICK - Maximum allowed tick index
+/// * MIN_SQRT_PRICE - Minimum allowed square root price
+/// * MAX_SQRT_PRICE - Maximum allowed square root price
 module clmm_pool::tick_math {
+    /// Converts a boolean value to u8.
+    /// Returns 1 if the input is true, 0 otherwise.
+    /// 
+    /// # Arguments
+    /// * `is_true` - Boolean value to convert
+    /// 
+    /// # Returns
+    /// * 1 if input is true
+    /// * 0 if input is false
     fun as_u8(is_true: bool): u8 {
         if (is_true) {
             1
@@ -7,6 +40,21 @@ module clmm_pool::tick_math {
         }
     }
 
+    /// Calculates the square root price for a negative tick index.
+    /// This function uses a series of bitwise operations and multiplications
+    /// to compute the square root price efficiently.
+    /// 
+    /// # Arguments
+    /// * `tick_index` - Negative tick index to calculate square root price for
+    /// 
+    /// # Returns
+    /// The square root price as a u128 value
+    /// 
+    /// # Implementation Details
+    /// The function uses a lookup table approach with pre-computed values
+    /// for different bit positions to efficiently calculate the square root price.
+    /// It performs a series of conditional multiplications based on the bit
+    /// representation of the absolute tick value.
     fun get_sqrt_price_at_negative_tick(tick_index: integer_mate::i32::I32): u128 {
         let abs_tick = integer_mate::i32::as_u32(integer_mate::i32::abs(tick_index));
         let initial_price = if (abs_tick & 1 != 0) {
@@ -72,6 +120,22 @@ module clmm_pool::tick_math {
         result
     }
 
+    /// Calculates the square root price for a positive tick index.
+    /// This function uses a series of bitwise operations and multiplications
+    /// to compute the square root price efficiently.
+    /// 
+    /// # Arguments
+    /// * `tick` - Positive tick index to calculate square root price for
+    /// 
+    /// # Returns
+    /// The square root price as a u128 value
+    /// 
+    /// # Implementation Details
+    /// The function uses a lookup table approach with pre-computed values
+    /// for different bit positions to efficiently calculate the square root price.
+    /// It performs a series of conditional multiplications based on the bit
+    /// representation of the absolute tick value.
+    /// The result is shifted right by 32 bits to normalize the output.
     fun get_sqrt_price_at_positive_tick(tick: integer_mate::i32::I32): u128 {
         let abs_tick = integer_mate::i32::as_u32(integer_mate::i32::abs(tick));
         let initial_price = if (abs_tick & 1 != 0) {
@@ -137,6 +201,24 @@ module clmm_pool::tick_math {
         result >> 32
     }
 
+    /// Calculates the square root price for a given tick index.
+    /// This function determines whether the tick is positive or negative
+    /// and calls the appropriate calculation function.
+    /// 
+    /// # Arguments
+    /// * `tick_index` - Tick index to calculate square root price for
+    /// 
+    /// # Returns
+    /// The square root price as a u128 value
+    /// 
+    /// # Abort Conditions
+    /// * If tick_index is less than MIN_TICK (error code: 1)
+    /// * If tick_index is greater than MAX_TICK (error code: 1)
+    /// 
+    /// # Implementation Details
+    /// The function first validates that the tick index is within valid bounds,
+    /// then delegates the calculation to either get_sqrt_price_at_negative_tick
+    /// or get_sqrt_price_at_positive_tick based on the sign of the tick.
     public fun get_sqrt_price_at_tick(tick_index: integer_mate::i32::I32): u128 {
         assert!(integer_mate::i32::gte(tick_index, min_tick()) && integer_mate::i32::lte(tick_index, max_tick()), 1);
         if (integer_mate::i32::is_neg(tick_index)) {
@@ -146,6 +228,27 @@ module clmm_pool::tick_math {
         }
     }
 
+    /// Calculates the tick index for a given square root price.
+    /// This function performs a binary search-like algorithm to find the closest tick
+    /// that corresponds to the given square root price.
+    /// 
+    /// # Arguments
+    /// * `sqrt_price` - Square root price to find tick index for
+    /// 
+    /// # Returns
+    /// The tick index as an I32 value
+    /// 
+    /// # Abort Conditions
+    /// * If sqrt_price is less than MIN_SQRT_PRICE (error code: 2)
+    /// * If sqrt_price is greater than MAX_SQRT_PRICE (error code: 2)
+    /// 
+    /// # Implementation Details
+    /// The function uses a combination of bit manipulation and binary search to efficiently
+    /// find the closest tick. It:
+    /// 1. Validates the input price is within valid bounds
+    /// 2. Calculates the most significant bits of the price
+    /// 3. Uses bit shifting and comparison to find the closest tick
+    /// 4. Performs final validation by checking the calculated tick's price
     public fun get_tick_at_sqrt_price(sqrt_price: u128): integer_mate::i32::I32 {
         assert!(sqrt_price >= 4295048016 && sqrt_price <= 79226673515401279992447579055, 2);
         let msb_bits = as_u8(sqrt_price >= 18446744073709551616) << 6;
@@ -197,6 +300,19 @@ module clmm_pool::tick_math {
         }
     }
 
+    /// Checks if a tick index is valid based on the tick spacing.
+    /// A tick index is valid if it:
+    /// 1. Is greater than or equal to MIN_TICK
+    /// 2. Is less than or equal to MAX_TICK
+    /// 3. Is divisible by the tick spacing
+    /// 
+    /// # Arguments
+    /// * `tick_index` - The tick index to validate
+    /// * `tick_spacing` - The minimum distance between valid ticks
+    /// 
+    /// # Returns
+    /// * true if the tick index is valid
+    /// * false otherwise
     public fun is_valid_index(tick_index: integer_mate::i32::I32, tick_spacing: u32): bool {
         if (integer_mate::i32::gte(tick_index, min_tick())) {
             if (integer_mate::i32::lte(tick_index, max_tick())) {
@@ -209,26 +325,50 @@ module clmm_pool::tick_math {
         }
     }
 
+    /// Returns the maximum allowed square root price.
+    /// This is the highest possible price that can be represented in the pool.
+    /// 
+    /// # Returns
+    /// The maximum square root price as a u128 value
     public fun max_sqrt_price(): u128 {
         79226673515401279992447579055
     }
 
+    /// Returns the maximum allowed tick index.
+    /// This is the highest possible tick that can be used in the pool.
+    /// 
+    /// # Returns
+    /// The maximum tick index as an I32 value
     public fun max_tick(): integer_mate::i32::I32 {
         integer_mate::i32::from(443636)
     }
 
+    /// Returns the minimum allowed square root price.
+    /// This is the lowest possible price that can be represented in the pool.
+    /// 
+    /// # Returns
+    /// The minimum square root price as a u128 value
     public fun min_sqrt_price(): u128 {
         4295048016
     }
 
+    /// Returns the minimum allowed tick index.
+    /// This is the lowest possible tick that can be used in the pool.
+    /// 
+    /// # Returns
+    /// The minimum tick index as an I32 value
     public fun min_tick(): integer_mate::i32::I32 {
         integer_mate::i32::neg_from(443636)
     }
 
+    /// Returns the maximum allowed tick bound.
+    /// This value represents the absolute maximum tick index that can be used,
+    /// regardless of direction (positive or negative).
+    /// 
+    /// # Returns
+    /// The maximum tick bound as a u32 value
     public fun tick_bound(): u32 {
         443636
     }
-
-    // decompiled from Move bytecode v6
 }
 

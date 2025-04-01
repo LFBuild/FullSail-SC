@@ -159,7 +159,7 @@ module distribution::gauge {
     ): bool {
         (gauge.pool_id != object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(
             pool
-        ) || pool.get_magma_distribution_gauger_id() != object::id<Gauge<CoinTypeA, CoinTypeB, SailCoinType>>(
+        ) || pool.get_fullsale_distribution_gauger_id() != object::id<Gauge<CoinTypeA, CoinTypeB, SailCoinType>>(
             gauge
         )) && false || true
     }
@@ -210,7 +210,7 @@ module distribution::gauge {
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>
     ): (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>) {
         let weekCoinPerSecond = clmm_pool::config::week();
-        let (fee_a, fee_b) = pool.collect_magma_distribution_gauger_fees(gauge.gauge_cap.borrow());
+        let (fee_a, fee_b) = pool.collect_fullsale_distribution_gauger_fees(gauge.gauge_cap.borrow());
         if (fee_a.value<CoinTypeA>() > 0 || fee_b.value<CoinTypeB>() > 0) {
             let amount_a = gauge.fee_a.join<CoinTypeA>(fee_a);
             let amount_b = gauge.fee_b.join<CoinTypeB>(fee_b);
@@ -358,19 +358,19 @@ module distribution::gauge {
         gauge.staked_positions.add(position_id, position);
         if (!gauge.rewards.contains(position_id)) {
             let new_reward_profile = RewardProfile {
-                growth_inside: pool.get_magma_distribution_growth_inside(lower_tick, upper_tick, 0),
+                growth_inside: pool.get_fullsale_distribution_growth_inside(lower_tick, upper_tick, 0),
                 amount: 0,
                 last_update_time: clock.timestamp_ms() / 1000,
             };
             gauge.rewards.add(position_id, new_reward_profile);
         } else {
             let reward_profile = gauge.rewards.borrow_mut(position_id);
-            reward_profile.growth_inside = pool.get_magma_distribution_growth_inside(lower_tick, upper_tick, 0);
+            reward_profile.growth_inside = pool.get_fullsale_distribution_growth_inside(lower_tick, upper_tick, 0);
             reward_profile.last_update_time = clock.timestamp_ms() / 1000;
         };
         pool.mark_position_staked(gauge.gauge_cap.borrow(), position_id);
         gauge.staked_position_infos.borrow_mut(position_id).received = true;
-        pool.stake_in_magma_distribution(gauge.gauge_cap.borrow(), position_liquidity, lower_tick, upper_tick, clock);
+        pool.stake_in_fullsale_distribution(gauge.gauge_cap.borrow(), position_liquidity, lower_tick, upper_tick, clock);
         let deposit_gauge_event = EventDepositGauge {
             gauger_id: object::id<Gauge<CoinTypeA, CoinTypeB, SailCoinType>>(gauge),
             pool_id,
@@ -461,10 +461,10 @@ module distribution::gauge {
         position_id: ID,
         time: u64
     ): u64 {
-        let time_since_last_update = time - pool.get_magma_distribution_last_updated();
-        let mut current_growth_global = pool.get_magma_distribution_growth_global();
-        let distribution_reseve_x64 = (pool.get_magma_distribution_reserve() as u128) * 1 << 64;
-        let staked_liquidity = pool.get_magma_distribution_staked_liquidity();
+        let time_since_last_update = time - pool.get_fullsale_distribution_last_updated();
+        let mut current_growth_global = pool.get_fullsale_distribution_growth_global();
+        let distribution_reseve_x64 = (pool.get_fullsale_distribution_reserve() as u128) * 1 << 64;
+        let staked_liquidity = pool.get_fullsale_distribution_staked_liquidity();
         let should_update_growth = if (time_since_last_update >= 0) {
             if (distribution_reseve_x64 > 0) {
                 staked_liquidity > 0
@@ -488,7 +488,7 @@ module distribution::gauge {
         let position = gauge.staked_positions.borrow(position_id);
         let (lower_tick, upper_tick) = position.tick_range();
         integer_mate::full_math_u128::mul_div_floor(
-            pool.get_magma_distribution_growth_inside(
+            pool.get_fullsale_distribution_growth_inside(
                 lower_tick,
                 upper_tick,
                 current_growth_global
@@ -700,16 +700,16 @@ module distribution::gauge {
     ) {
         let current_time = clock.timestamp_ms() / 1000;
         let time_until_next_epoch = clmm_pool::config::epoch_next(current_time) - current_time;
-        pool.update_magma_distribution_growth_global(gauge.gauge_cap.borrow(), clock);
+        pool.update_fullsale_distribution_growth_global(gauge.gauge_cap.borrow(), clock);
         let next_epoch_time = current_time + time_until_next_epoch;
-        let total_amount = amount + pool.get_magma_distribution_rollover();
+        let total_amount = amount + pool.get_fullsale_distribution_rollover();
         if (current_time >= gauge.period_finish) {
             gauge.reward_rate = integer_mate::full_math_u128::mul_div_floor(
                 total_amount as u128,
                 1 << 64,
                 time_until_next_epoch as u128
             );
-            pool.sync_magma_distribution_reward(
+            pool.sync_fullsale_distribution_reward(
                 gauge.gauge_cap.borrow(),
                 gauge.reward_rate,
                 gauge.reserves_balance.value<SailCoinType>(),
@@ -726,7 +726,7 @@ module distribution::gauge {
                 1 << 64,
                 time_until_next_epoch as u128
             );
-            pool.sync_magma_distribution_reward(
+            pool.sync_fullsale_distribution_reward(
                 gauge.gauge_cap.borrow(),
                 gauge.reward_rate,
                 gauge.reserves_balance.value<SailCoinType>() + ((future_rewards / 1 << 64) as u64),
@@ -921,10 +921,10 @@ module distribution::gauge {
             reward_profile.amount = 0;
             return gauge.reserves_balance.split<SailCoinType>(reward_profile.amount)
         };
-        pool.update_magma_distribution_growth_global(gauge.gauge_cap.borrow(), clock);
+        pool.update_fullsale_distribution_growth_global(gauge.gauge_cap.borrow(), clock);
         reward_profile.last_update_time = current_time;
         reward_profile.amount = reward_profile.amount + amount_earned;
-        reward_profile.growth_inside = pool.get_magma_distribution_growth_inside(lower_tick, upper_tick, 0);
+        reward_profile.growth_inside = pool.get_fullsale_distribution_growth_inside(lower_tick, upper_tick, 0);
         reward_profile.amount = 0;
         gauge.reserves_balance.split<SailCoinType>(reward_profile.amount)
     }
@@ -967,7 +967,7 @@ module distribution::gauge {
             let position_liquidity = position.liquidity();
             if (position_liquidity > 0) {
                 let (lower_tick, upper_tick) = position.tick_range();
-                pool.unstake_from_magma_distribution(
+                pool.unstake_from_fullsale_distribution(
                     gauge.gauge_cap.borrow(),
                     position_liquidity,
                     lower_tick,

@@ -1,6 +1,50 @@
+/// The pool module serves as the core component of the CLMM (Concentrated Liquidity Market Maker) system.
+/// It manages liquidity pools, handles swaps, and coordinates various aspects of the DEX including
+/// fee collection, reward distribution, and position management.
+///
+/// Core Functions:
+/// - Liquidity Management: Handles adding and removing liquidity from positions
+/// - Swap Execution: Processes token swaps with concentrated liquidity
+/// - Fee Management: Tracks and collects trading fees
+/// - Reward Distribution: Manages reward rates and distribution
+/// - Position Tracking: Maintains information about liquidity positions
+///
+/// Integration with Other Components:
+/// - Tick Manager: Manages price ticks and their associated data
+/// - Rewarder Manager: Handles reward distribution logic
+/// - Position Manager: Tracks and manages liquidity positions
+///
+/// The pool enables efficient trading with concentrated liquidity while providing
+/// infrastructure for fee collection and reward distribution to liquidity providers.
+
 module clmm_pool::pool {
     public struct POOL has drop {}
 
+    /// The main pool structure that represents a liquidity pool for a specific token pair.
+    /// This structure maintains the state of the pool including balances, fees, and various
+    /// management components.
+    /// 
+    /// # Fields
+    /// * `id` - The unique identifier for this shared object
+    /// * `coin_a`, `coin_b` - Balances of the two tokens in the pool
+    /// * `tick_spacing` - The minimum tick spacing for positions
+    /// * `fee_rate` - The fee rate for swaps (in basis points)
+    /// * `liquidity` - The total liquidity in the pool
+    /// * `current_sqrt_price` - The current square root price
+    /// * `current_tick_index` - The current tick index
+    /// * `fee_growth_global_a`, `fee_growth_global_b` - Global fee growth for each token
+    /// * `fee_protocol_coin_a`, `fee_protocol_coin_b` - Protocol fees collected for each token
+    /// * `tick_manager` - Manager for price ticks
+    /// * `rewarder_manager` - Manager for reward distribution
+    /// * `position_manager` - Manager for liquidity positions
+    /// * `is_pause` - Whether the pool is paused
+    /// * `index` - Pool index in the system
+    /// * `url` - URL for pool metadata
+    /// * `unstaked_liquidity_fee_rate` - Fee rate for unstaked liquidity
+    /// * `fullsale_distribution_*` fields - Various fields for fullsale distribution system
+    /// * `volume_usd_*` fields - Volume tracking in USD
+    /// * `feed_id_*` fields - Price feed IDs for tokens
+    /// * `auto_calculation_volumes` - Whether volumes are calculated automatically
     public struct Pool<phantom CoinTypeA, phantom CoinTypeB> has store, key {
         id: sui::object::UID,
         coin_a: sui::balance::Balance<CoinTypeA>,
@@ -21,15 +65,15 @@ module clmm_pool::pool {
         index: u64,
         url: std::string::String,
         unstaked_liquidity_fee_rate: u64,
-        magma_distribution_gauger_id: std::option::Option<sui::object::ID>,
-        magma_distribution_growth_global: u128,
-        magma_distribution_rate: u128,
-        magma_distribution_reserve: u64,
-        magma_distribution_period_finish: u64,
-        magma_distribution_rollover: u64,
-        magma_distribution_last_updated: u64,
-        magma_distribution_staked_liquidity: u128,
-        magma_distribution_gauger_fee: PoolFee,
+        fullsale_distribution_gauger_id: std::option::Option<sui::object::ID>,
+        fullsale_distribution_growth_global: u128,
+        fullsale_distribution_rate: u128,
+        fullsale_distribution_reserve: u64,
+        fullsale_distribution_period_finish: u64,
+        fullsale_distribution_rollover: u64,
+        fullsale_distribution_last_updated: u64,
+        fullsale_distribution_staked_liquidity: u128,
+        fullsale_distribution_gauger_fee: PoolFee,
         volume_usd_coin_a: u128,
         volume_usd_coin_b: u128,
         feed_id_coin_a: address,
@@ -37,11 +81,26 @@ module clmm_pool::pool {
         auto_calculation_volumes: bool,
     }
 
+    /// Structure representing fees collected by the pool for each token.
+    /// 
+    /// # Fields
+    /// * `coin_a` - Fee amount for token A
+    /// * `coin_b` - Fee amount for token B
     public struct PoolFee has drop, store {
         coin_a: u64,
         coin_b: u64,
     }
 
+    /// Structure representing the result of a swap operation.
+    /// 
+    /// # Fields
+    /// * `amount_in` - Amount of input token
+    /// * `amount_out` - Amount of output token
+    /// * `fee_amount` - Total fee amount
+    /// * `protocol_fee_amount` - Protocol fee amount
+    /// * `ref_fee_amount` - Referral fee amount
+    /// * `gauge_fee_amount` - Gauge fee amount
+    /// * `steps` - Number of steps taken in the swap
     public struct SwapResult has copy, drop {
         amount_in: u64,
         amount_out: u64,
@@ -52,6 +111,17 @@ module clmm_pool::pool {
         steps: u64,
     }
 
+    /// Structure representing a flash swap receipt.
+    /// 
+    /// # Fields
+    /// * `pool_id` - ID of the pool where the swap occurred
+    /// * `a2b` - Whether the swap was from token A to B
+    /// * `partner_id` - ID of the partner involved
+    /// * `pay_amount` - Amount to be paid
+    /// * `fee_amount` - Fee amount
+    /// * `protocol_fee_amount` - Protocol fee amount
+    /// * `ref_fee_amount` - Referral fee amount
+    /// * `gauge_fee_amount` - Gauge fee amount
     public struct FlashSwapReceipt<phantom CoinTypeA, phantom CoinTypeB> {
         pool_id: sui::object::ID,
         a2b: bool,
@@ -63,12 +133,31 @@ module clmm_pool::pool {
         gauge_fee_amount: u64,
     }
 
+    /// Structure representing a receipt for adding liquidity.
+    /// 
+    /// # Fields
+    /// * `pool_id` - ID of the pool where liquidity was added
+    /// * `amount_a` - Amount of token A added
+    /// * `amount_b` - Amount of token B added
     public struct AddLiquidityReceipt<phantom CoinTypeA, phantom CoinTypeB> {
         pool_id: sui::object::ID,
         amount_a: u64,
         amount_b: u64,
     }
 
+    /// Structure representing a calculated swap result with detailed information.
+    /// 
+    /// # Fields
+    /// * `amount_in` - Amount of input token
+    /// * `amount_out` - Amount of output token
+    /// * `fee_amount` - Total fee amount
+    /// * `fee_rate` - Fee rate applied
+    /// * `ref_fee_amount` - Referral fee amount
+    /// * `gauge_fee_amount` - Gauge fee amount
+    /// * `protocol_fee_amount` - Protocol fee amount
+    /// * `after_sqrt_price` - Square root price after swap
+    /// * `is_exceed` - Whether the swap exceeded limits
+    /// * `step_results` - Results of individual swap steps
     public struct CalculatedSwapResult has copy, drop, store {
         amount_in: u64,
         amount_out: u64,
@@ -82,6 +171,16 @@ module clmm_pool::pool {
         step_results: vector<SwapStepResult>,
     }
 
+    /// Structure representing the result of a single swap step.
+    /// 
+    /// # Fields
+    /// * `current_sqrt_price` - Current square root price
+    /// * `target_sqrt_price` - Target square root price
+    /// * `current_liquidity` - Current liquidity
+    /// * `amount_in` - Amount of input token
+    /// * `amount_out` - Amount of output token
+    /// * `fee_amount` - Fee amount for this step
+    /// * `remainder_amount` - Remaining amount after this step
     public struct SwapStepResult has copy, drop, store {
         current_sqrt_price: u128,
         target_sqrt_price: u128,
@@ -92,6 +191,13 @@ module clmm_pool::pool {
         remainder_amount: u64,
     }
 
+    /// Event emitted when a new position is opened.
+    /// 
+    /// # Fields
+    /// * `pool` - ID of the pool
+    /// * `tick_lower` - Lower tick of the position
+    /// * `tick_upper` - Upper tick of the position
+    /// * `position` - ID of the new position
     public struct OpenPositionEvent has copy, drop, store {
         pool: sui::object::ID,
         tick_lower: integer_mate::i32::I32,
@@ -99,11 +205,27 @@ module clmm_pool::pool {
         position: sui::object::ID,
     }
 
+    /// Event emitted when a position is closed.
+    /// 
+    /// # Fields
+    /// * `pool` - ID of the pool
+    /// * `position` - ID of the closed position
     public struct ClosePositionEvent has copy, drop, store {
         pool: sui::object::ID,
         position: sui::object::ID,
     }
 
+    /// Event emitted when liquidity is added to a position.
+    /// 
+    /// # Fields
+    /// * `pool` - ID of the pool
+    /// * `position` - ID of the position
+    /// * `tick_lower` - Lower tick of the position
+    /// * `tick_upper` - Upper tick of the position
+    /// * `liquidity` - Amount of liquidity added
+    /// * `after_liquidity` - Total liquidity after addition
+    /// * `amount_a` - Amount of token A added
+    /// * `amount_b` - Amount of token B added
     public struct AddLiquidityEvent has copy, drop, store {
         pool: sui::object::ID,
         position: sui::object::ID,
@@ -115,6 +237,17 @@ module clmm_pool::pool {
         amount_b: u64,
     }
 
+    /// Event emitted when liquidity is removed from a position.
+    /// 
+    /// # Fields
+    /// * `pool` - ID of the pool
+    /// * `position` - ID of the position
+    /// * `tick_lower` - Lower tick of the position
+    /// * `tick_upper` - Upper tick of the position
+    /// * `liquidity` - Amount of liquidity removed
+    /// * `after_liquidity` - Total liquidity after removal
+    /// * `amount_a` - Amount of token A removed
+    /// * `amount_b` - Amount of token B removed
     public struct RemoveLiquidityEvent has copy, drop, store {
         pool: sui::object::ID,
         position: sui::object::ID,
@@ -126,13 +259,30 @@ module clmm_pool::pool {
         amount_b: u64,
     }
 
+    /// Event emitted when a swap occurs.
+    /// 
+    /// # Fields
+    /// * `atob` - Whether the swap was from token A to B
+    /// * `pool` - ID of the pool
+    /// * `partner` - ID of the partner
+    /// * `amount_in` - Amount of input token
+    /// * `amount_out` - Amount of output token
+    /// * `fullsale_fee_amount` - Fullsale fee amount
+    /// * `protocol_fee_amount` - Protocol fee amount
+    /// * `ref_fee_amount` - Referral fee amount
+    /// * `fee_amount` - Total fee amount
+    /// * `vault_a_amount` - Amount in vault A
+    /// * `vault_b_amount` - Amount in vault B
+    /// * `before_sqrt_price` - Square root price before swap
+    /// * `after_sqrt_price` - Square root price after swap
+    /// * `steps` - Number of steps in the swap
     public struct SwapEvent has copy, drop, store {
         atob: bool,
         pool: sui::object::ID,
         partner: sui::object::ID,
         amount_in: u64,
         amount_out: u64,
-        magma_fee_amount: u64,
+        fullsale_fee_amount: u64,
         protocol_fee_amount: u64,
         ref_fee_amount: u64,
         fee_amount: u64,
@@ -143,12 +293,25 @@ module clmm_pool::pool {
         steps: u64,
     }
 
+    /// Event emitted when protocol fees are collected.
+    /// 
+    /// # Fields
+    /// * `pool` - ID of the pool
+    /// * `amount_a` - Amount of token A collected
+    /// * `amount_b` - Amount of token B collected
     public struct CollectProtocolFeeEvent has copy, drop, store {
         pool: sui::object::ID,
         amount_a: u64,
         amount_b: u64,
     }
 
+    /// Event emitted when fees are collected from a position.
+    /// 
+    /// # Fields
+    /// * `position` - ID of the position
+    /// * `pool` - ID of the pool
+    /// * `amount_a` - Amount of token A collected
+    /// * `amount_b` - Amount of token B collected
     public struct CollectFeeEvent has copy, drop, store {
         position: sui::object::ID,
         pool: sui::object::ID,
@@ -156,40 +319,94 @@ module clmm_pool::pool {
         amount_b: u64,
     }
 
+    /// Event emitted when the fee rate is updated.
+    /// 
+    /// # Fields
+    /// * `pool` - ID of the pool
+    /// * `old_fee_rate` - Previous fee rate
+    /// * `new_fee_rate` - New fee rate
     public struct UpdateFeeRateEvent has copy, drop, store {
         pool: sui::object::ID,
         old_fee_rate: u64,
         new_fee_rate: u64,
     }
 
+    /// Event emitted when emission rates are updated.
+    /// 
+    /// # Fields
+    /// * `pool` - ID of the pool
+    /// * `rewarder_type` - Type of rewarder
+    /// * `emissions_per_second` - New emission rate
     public struct UpdateEmissionEvent has copy, drop, store {
         pool: sui::object::ID,
         rewarder_type: std::type_name::TypeName,
         emissions_per_second: u128,
     }
 
+    /// Event emitted when a new rewarder is added.
+    /// 
+    /// # Fields
+    /// * `pool` - ID of the pool
+    /// * `rewarder_type` - Type of rewarder added
     public struct AddRewarderEvent has copy, drop, store {
         pool: sui::object::ID,
         rewarder_type: std::type_name::TypeName,
     }
 
+    /// Event emitted when rewards are collected.
+    /// 
+    /// # Fields
+    /// * `position` - ID of the position
+    /// * `pool` - ID of the pool
+    /// * `amount` - Amount of rewards collected
     public struct CollectRewardEvent has copy, drop, store {
         position: sui::object::ID,
         pool: sui::object::ID,
         amount: u64,
     }
 
+    /// Event emitted when gauge fees are collected.
+    /// 
+    /// # Fields
+    /// * `pool` - ID of the pool
+    /// * `amount_a` - Amount of token A collected
+    /// * `amount_b` - Amount of token B collected
     public struct CollectGaugeFeeEvent has copy, drop, store {
         pool: sui::object::ID,
         amount_a: u64,
         amount_b: u64,
     }
 
+    /// Event emitted when the unstaked liquidity fee rate is updated.
+    /// 
+    /// # Fields
+    /// * `pool` - ID of the pool
+    /// * `old_fee_rate` - Previous fee rate
+    /// * `new_fee_rate` - New fee rate
     public struct UpdateUnstakedLiquidityFeeRateEvent has copy, drop, store {
         pool: sui::object::ID,
         old_fee_rate: u64,
         new_fee_rate: u64,
     }
+
+    /// Creates a new liquidity pool with the specified parameters.
+    /// This function initializes all the necessary components of a pool including
+    /// tick management, reward distribution, and position tracking.
+    ///
+    /// # Arguments
+    /// * `tick_spacing` - The minimum tick spacing for positions in this pool
+    /// * `initial_sqrt_price` - The initial square root price for the pool
+    /// * `fee_rate` - The fee rate for swaps (in basis points)
+    /// * `pool_url` - URL containing pool metadata
+    /// * `pool_index` - Index of this pool in the system
+    /// * `feed_id_coin_a` - Price feed ID for token A
+    /// * `feed_id_coin_b` - Price feed ID for token B
+    /// * `auto_calculation_volumes` - Whether volumes should be calculated automatically
+    /// * `clock` - The system clock for timestamp tracking
+    /// * `ctx` - Transaction context for object creation
+    ///
+    /// # Returns
+    /// A new Pool instance with all fields initialized to their default values
     public(package) fun new<CoinTypeA, CoinTypeB>(
         tick_spacing: u32,
         initial_sqrt_price: u128,
@@ -226,15 +443,15 @@ module clmm_pool::pool {
             index: pool_index,
             url: pool_url,
             unstaked_liquidity_fee_rate: clmm_pool::config::default_unstaked_fee_rate(),
-            magma_distribution_gauger_id: std::option::none<sui::object::ID>(),
-            magma_distribution_growth_global: 0,
-            magma_distribution_rate: 0,
-            magma_distribution_reserve: 0,
-            magma_distribution_period_finish: 0,
-            magma_distribution_rollover: 0,
-            magma_distribution_last_updated: sui::clock::timestamp_ms(clock) / 1000,
-            magma_distribution_staked_liquidity: 0,
-            magma_distribution_gauger_fee: initial_pool_fee,
+            fullsale_distribution_gauger_id: std::option::none<sui::object::ID>(),
+            fullsale_distribution_growth_global: 0,
+            fullsale_distribution_rate: 0,
+            fullsale_distribution_reserve: 0,
+            fullsale_distribution_period_finish: 0,
+            fullsale_distribution_rollover: 0,
+            fullsale_distribution_last_updated: sui::clock::timestamp_ms(clock) / 1000,
+            fullsale_distribution_staked_liquidity: 0,
+            fullsale_distribution_gauger_fee: initial_pool_fee,
             volume_usd_coin_a: 0,
             volume_usd_coin_b: 0,
             feed_id_coin_a,
@@ -243,6 +460,24 @@ module clmm_pool::pool {
         }
     }
     
+    /// Calculates the amount of tokens required for a given liquidity amount within a price range.
+    /// This function handles three different scenarios based on the current tick position:
+    /// 1. Current tick below the lower tick
+    /// 2. Current tick between lower and upper ticks
+    /// 3. Current tick above the upper tick
+    ///
+    /// # Arguments
+    /// * `tick_lower` - The lower tick of the price range
+    /// * `tick_upper` - The upper tick of the price range
+    /// * `current_tick` - The current tick of the pool
+    /// * `current_sqrt_price` - The current square root price
+    /// * `liquidity` - The amount of liquidity to calculate for
+    /// * `round_up` - Whether to round up the calculated amounts
+    ///
+    /// # Returns
+    /// A tuple containing (amount_a, amount_b) where:
+    /// * `amount_a` - The amount of token A required
+    /// * `amount_b` - The amount of token B required
     public fun get_amount_by_liquidity(
         tick_lower: integer_mate::i32::I32,
         tick_upper: integer_mate::i32::I32,
@@ -285,10 +520,27 @@ module clmm_pool::pool {
             (amount_a, amount_b)
         }
     }
+    
+    /// Returns the fee rate for unstaked liquidity in the pool.
+    /// This rate is applied to liquidity that is not staked in a gauge.
+    ///
+    /// # Arguments
+    /// * `pool` - The pool to get the fee rate from
+    ///
+    /// # Returns
+    /// The fee rate for unstaked liquidity (in basis points)
     public fun unstaked_liquidity_fee_rate<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): u64 {
         pool.unstaked_liquidity_fee_rate
     }
 
+    /// Returns a reference to the position information for a given position ID.
+    ///
+    /// # Arguments
+    /// * `pool` - The pool containing the position
+    /// * `position_id` - The ID of the position to get information for
+    ///
+    /// # Returns
+    /// A reference to the PositionInfo struct for the specified position
     public fun borrow_position_info<CoinTypeA, CoinTypeB>(
         pool: &Pool<CoinTypeA, CoinTypeB>,
         position_id: sui::object::ID
@@ -296,6 +548,16 @@ module clmm_pool::pool {
         clmm_pool::position::borrow_position_info(&pool.position_manager, position_id)
     }
 
+    /// Closes a position in the pool and emits a ClosePositionEvent.
+    /// This function can only be called if the pool is not paused.
+    ///
+    /// # Arguments
+    /// * `config` - The global configuration for the pool
+    /// * `pool` - The pool containing the position to close
+    /// * `position` - The position to close
+    ///
+    /// # Aborts
+    /// If the pool is paused
     public fun close_position<CoinTypeA, CoinTypeB>(
         config: &clmm_pool::config::GlobalConfig,
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
@@ -311,6 +573,16 @@ module clmm_pool::pool {
         };
         sui::event::emit<ClosePositionEvent>(event);
     }
+
+    /// Fetches information for multiple positions from the pool.
+    ///
+    /// # Arguments
+    /// * `pool` - The pool containing the positions
+    /// * `position_ids` - Vector of position IDs to fetch information for
+    /// * `limit` - Maximum number of positions to fetch
+    ///
+    /// # Returns
+    /// Vector of PositionInfo structs for the requested positions
     public fun fetch_positions<CoinTypeA, CoinTypeB>(
         pool: &Pool<CoinTypeA, CoinTypeB>,
         position_ids: vector<sui::object::ID>,
@@ -319,6 +591,14 @@ module clmm_pool::pool {
         clmm_pool::position::fetch_positions(&pool.position_manager, position_ids, limit)
     }
 
+    /// Checks if a position exists in the pool.
+    ///
+    /// # Arguments
+    /// * `pool` - The pool to check
+    /// * `position_id` - The ID of the position to check
+    ///
+    /// # Returns
+    /// true if the position exists, false otherwise
     public fun is_position_exist<CoinTypeA, CoinTypeB>(
         pool: &Pool<CoinTypeA, CoinTypeB>, 
         position_id: sui::object::ID
@@ -326,12 +606,29 @@ module clmm_pool::pool {
         clmm_pool::position::is_position_exist(&pool.position_manager, position_id)
     }
 
+    /// Returns the total liquidity in the pool.
+    ///
+    /// # Arguments
+    /// * `pool` - The pool to get liquidity from
+    ///
+    /// # Returns
+    /// The total liquidity in the pool
     public fun liquidity<CoinTypeA, CoinTypeB>(
         pool: &Pool<CoinTypeA, CoinTypeB>
     ): u128 {
         pool.liquidity
     }
 
+    /// Marks a position as staked in the pool.
+    /// This function can only be called if the pool is not paused.
+    ///
+    /// # Arguments
+    /// * `pool` - The pool containing the position
+    /// * `gauge_cap` - The gauge capability for the position
+    /// * `position_id` - The ID of the position to mark as staked
+    ///
+    /// # Aborts
+    /// If the pool is paused
     public fun mark_position_staked<CoinTypeA, CoinTypeB>(
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
         gauge_cap: &gauge_cap::gauge_cap::GaugeCap,
@@ -341,6 +638,22 @@ module clmm_pool::pool {
         check_gauge_cap<CoinTypeA, CoinTypeB>(pool, gauge_cap);
         clmm_pool::position::mark_position_staked(&mut pool.position_manager, position_id, true);
     }
+
+    /// Opens a new position in the pool with the specified tick range.
+    /// This function can only be called if the pool is not paused.
+    ///
+    /// # Arguments
+    /// * `global_config` - The global configuration for the pool
+    /// * `pool` - The pool to open the position in
+    /// * `tick_lower` - The lower tick of the position
+    /// * `tick_upper` - The upper tick of the position
+    /// * `ctx` - Transaction context for object creation
+    ///
+    /// # Returns
+    /// A new Position instance
+    ///
+    /// # Aborts
+    /// If the pool is paused
     public fun open_position<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
@@ -371,6 +684,21 @@ module clmm_pool::pool {
         sui::event::emit<OpenPositionEvent>(event);
         position
     }
+
+    /// Updates the emission rate for rewards in the pool.
+    /// This function can only be called by the rewarder manager role and if the pool is not paused.
+    ///
+    /// # Arguments
+    /// * `global_config` - The global configuration for the pool
+    /// * `pool` - The pool to update emission for
+    /// * `rewarder_global_vault` - The global vault for reward distribution
+    /// * `emissions_per_second` - The new emission rate in tokens per second
+    /// * `clock` - The system clock for timestamp tracking
+    /// * `ctx` - Transaction context for sender verification
+    ///
+    /// # Aborts
+    /// * If the pool is paused
+    /// * If the caller is not the rewarder manager role
     public fun update_emission<CoinTypeA, CoinTypeB, RewardCoinType>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
@@ -396,6 +724,15 @@ module clmm_pool::pool {
         };
         sui::event::emit<UpdateEmissionEvent>(event);
     }
+
+    /// Returns a reference to a specific tick in the pool.
+    ///
+    /// # Arguments
+    /// * `pool` - The pool containing the tick
+    /// * `tick_index` - The index of the tick to retrieve
+    ///
+    /// # Returns
+    /// A reference to the requested Tick struct
     public fun borrow_tick<CoinTypeA, CoinTypeB>(
         pool: &Pool<CoinTypeA, CoinTypeB>,
         tick_index: integer_mate::i32::I32
@@ -403,6 +740,15 @@ module clmm_pool::pool {
         clmm_pool::tick::borrow_tick(&pool.tick_manager, tick_index)
     }
 
+    /// Fetches multiple ticks from the pool based on their indexes.
+    ///
+    /// # Arguments
+    /// * `pool` - The pool containing the ticks
+    /// * `tick_indexes` - Vector of tick indexes to fetch
+    /// * `limit` - Maximum number of ticks to fetch
+    ///
+    /// # Returns
+    /// Vector of Tick structs for the requested indexes
     public fun fetch_ticks<CoinTypeA, CoinTypeB>(
         pool: &Pool<CoinTypeA, CoinTypeB>, 
         tick_indexes: vector<u32>,
@@ -411,12 +757,35 @@ module clmm_pool::pool {
         clmm_pool::tick::fetch_ticks(&pool.tick_manager, tick_indexes, limit)
     }
 
+    /// Returns the index of the pool in the system.
+    ///
+    /// # Arguments
+    /// * `pool` - The pool to get the index from
+    ///
+    /// # Returns
+    /// The pool's index as a u64
     public fun index<CoinTypeA, CoinTypeB>(
         pool: &Pool<CoinTypeA, CoinTypeB>
     ): u64 {
         pool.index
     }
     
+    /// Adds liquidity to a position in the pool.
+    /// This function can only be called if the pool is not paused and the delta liquidity is non-zero.
+    ///
+    /// # Arguments
+    /// * `global_config` - The global configuration for the pool
+    /// * `pool` - The pool to add liquidity to
+    /// * `position` - The position to add liquidity to
+    /// * `delta_liquidity` - The amount of liquidity to add
+    /// * `clock` - The system clock for timestamp tracking
+    ///
+    /// # Returns
+    /// An AddLiquidityReceipt containing the results of the operation
+    ///
+    /// # Aborts
+    /// * If delta_liquidity is zero
+    /// * If the pool is paused
     public fun add_liquidity<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
@@ -436,6 +805,25 @@ module clmm_pool::pool {
             sui::clock::timestamp_ms(clock) / 1000
         )
     }
+    
+    /// Adds liquidity to a position with a fixed amount of one token.
+    /// This function allows adding liquidity by specifying the exact amount of either token A or B.
+    ///
+    /// # Arguments
+    /// * `global_config` - The global configuration for the pool
+    /// * `pool` - The pool to add liquidity to
+    /// * `position` - The position to add liquidity to
+    /// * `amount_in` - The fixed amount of tokens to add
+    /// * `fix_amount_a` - If true, amount_in represents token A, otherwise token B
+    /// * `clock` - The system clock for timestamp tracking
+    ///
+    /// # Returns
+    /// An AddLiquidityReceipt containing the results of the operation
+    ///
+    /// # Aborts
+    /// * If amount_in is zero
+    /// * If the pool is paused
+    /// * If the position is not valid for this pool
     public fun add_liquidity_fix_coin<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
@@ -457,6 +845,25 @@ module clmm_pool::pool {
         )
     }
     
+    /// Internal function for adding liquidity to a position.
+    /// This function handles the core logic of adding liquidity, including calculations
+    /// for both fixed liquidity and fixed token amount scenarios.
+    ///
+    /// # Arguments
+    /// * `pool` - The pool to add liquidity to
+    /// * `position` - The position to add liquidity to
+    /// * `is_fix_amount` - If true, uses amount_in as the fixed token amount, otherwise uses liquidity_delta
+    /// * `liquidity_delta` - The amount of liquidity to add (used when is_fix_amount is false)
+    /// * `amount_in` - The fixed amount of tokens to add (used when is_fix_amount is true)
+    /// * `is_fix_amount_a` - If true, amount_in represents token A, otherwise token B
+    /// * `timestamp` - Current timestamp for reward calculations
+    ///
+    /// # Returns
+    /// An AddLiquidityReceipt containing the results of the operation
+    ///
+    /// # Aborts
+    /// * If the pool is paused
+    /// * If the position is not valid for this pool
     fun add_liquidity_internal<CoinTypeA, CoinTypeB>(
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
         position: &mut clmm_pool::position::Position,
@@ -494,7 +901,7 @@ module clmm_pool::pool {
             (liquidity_delta, amount_a_calc, amount_b_calc)
         };
 
-        let (fee_growth_a, fee_growth_b, rewards_growth, points_growth, magma_growth) = 
+        let (fee_growth_a, fee_growth_b, rewards_growth, points_growth, fullsale_growth) = 
             get_all_growths_in_tick_range<CoinTypeA, CoinTypeB>(pool, tick_lower, tick_upper);
 
         clmm_pool::tick::increase_liquidity(
@@ -507,7 +914,7 @@ module clmm_pool::pool {
             pool.fee_growth_global_b,
             clmm_pool::rewarder::points_growth_global(&pool.rewarder_manager),
             clmm_pool::rewarder::rewards_growth_global(&pool.rewarder_manager),
-            pool.magma_distribution_growth_global
+            pool.fullsale_distribution_growth_global
         );
 
         if (integer_mate::i32::gte(pool.current_tick_index, tick_lower) && 
@@ -530,7 +937,7 @@ module clmm_pool::pool {
                 fee_growth_b,
                 points_growth,
                 rewards_growth,
-                magma_growth
+                fullsale_growth
             ),
             amount_a,
             amount_b,
@@ -545,18 +952,66 @@ module clmm_pool::pool {
         }
     }
 
+    /// Returns the amounts of tokens required to add liquidity based on the receipt.
+    ///
+    /// # Arguments
+    /// * `receipt` - The AddLiquidityReceipt containing the calculated amounts
+    ///
+    /// # Returns
+    /// A tuple containing (amount_a, amount_b) where:
+    /// * `amount_a` - The amount of token A required
+    /// * `amount_b` - The amount of token B required
     public fun add_liquidity_pay_amount<CoinTypeA, CoinTypeB>(receipt: &AddLiquidityReceipt<CoinTypeA, CoinTypeB>): (u64, u64) {
         (receipt.amount_a, receipt.amount_b)
     }
 
+    /// Calculates the unstaked fee portion and updates the total amount.
+    /// This function applies the unstaked fee rate to calculate the portion of fees
+    /// that should be distributed to unstaked liquidity providers.
+    ///
+    /// # Arguments
+    /// * `fee_amount` - The total fee amount to be distributed
+    /// * `total_amount` - The total amount before fee distribution
+    /// * `unstaked_fee_rate` - The fee rate for unstaked liquidity (in basis points)
+    ///
+    /// # Returns
+    /// A tuple containing (staked_fee, updated_total) where:
+    /// * `staked_fee` - The fee amount for staked liquidity
+    /// * `updated_total` - The total amount after fee distribution
     fun apply_unstaked_fees(fee_amount: u128, total_amount: u128, unstaked_fee_rate: u64): (u128, u128) {
         let unstaked_fee = integer_mate::full_math_u128::mul_div_ceil(fee_amount, unstaked_fee_rate as u128, 10000);
         (fee_amount - unstaked_fee, total_amount + unstaked_fee)
     }
 
+    /// Returns the current balances of both tokens in the pool.
+    ///
+    /// # Arguments
+    /// * `pool` - The pool to get balances from
+    ///
+    /// # Returns
+    /// A tuple containing (balance_a, balance_b) where:
+    /// * `balance_a` - The current balance of token A in the pool
+    /// * `balance_b` - The current balance of token B in the pool
     public fun balances<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): (u64, u64) {
         (sui::balance::value<CoinTypeA>(&pool.coin_a), sui::balance::value<CoinTypeB>(&pool.coin_b))
     }
+
+    /// Calculates and updates the fees earned by a position.
+    /// This function can only be called if the pool is not paused.
+    ///
+    /// # Arguments
+    /// * `global_config` - The global configuration for the pool
+    /// * `pool` - The pool containing the position
+    /// * `position_id` - The ID of the position to calculate fees for
+    ///
+    /// # Returns
+    /// A tuple containing (fee_a, fee_b) where:
+    /// * `fee_a` - The amount of fees earned in token A
+    /// * `fee_b` - The amount of fees earned in token B
+    ///
+    /// # Aborts
+    /// * If the pool is paused
+    /// * If the position is not valid for this pool
     public fun calculate_and_update_fee<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
@@ -575,7 +1030,22 @@ module clmm_pool::pool {
             (fee_a, fee_b)
         }
     }
-    public fun calculate_and_update_magma_distribution<CoinTypeA, CoinTypeB>(
+
+    /// Calculates and updates the fullsale distribution rewards for a position.
+    /// This function can only be called if the pool is not paused.
+    ///
+    /// # Arguments
+    /// * `global_config` - The global configuration for the pool
+    /// * `pool` - The pool containing the position
+    /// * `position_id` - The ID of the position to calculate rewards for
+    ///
+    /// # Returns
+    /// The amount of fullsale distribution rewards earned by the position
+    ///
+    /// # Aborts
+    /// * If the pool is paused
+    /// * If the position is not valid for this pool
+    public fun calculate_and_update_fullsale_distribution<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
         position_id: sui::object::ID
@@ -585,20 +1055,37 @@ module clmm_pool::pool {
         let position_info = clmm_pool::position::borrow_position_info(&pool.position_manager, position_id);
         if (clmm_pool::position::info_liquidity(position_info) != 0) {
             let (tick_lower, tick_upper) = clmm_pool::position::info_tick_range(position_info);
-            clmm_pool::position::update_magma_distribution(
+            clmm_pool::position::update_fullsale_distribution(
                 &mut pool.position_manager,
                 position_id,
-                clmm_pool::tick::get_magma_distribution_growth_in_range(
+                clmm_pool::tick::get_fullsale_distribution_growth_in_range(
                     pool.current_tick_index,
-                    pool.magma_distribution_growth_global,
+                    pool.fullsale_distribution_growth_global,
                     clmm_pool::tick::try_borrow_tick(&pool.tick_manager, tick_lower),
                     clmm_pool::tick::try_borrow_tick(&pool.tick_manager, tick_upper)
                 )
             )
         } else {
-            clmm_pool::position::info_magma_distribution_owned(position_info)
+            clmm_pool::position::info_fullsale_distribution_owned(position_info)
         }
     }
+
+    /// Calculates and updates the points earned by a position.
+    /// Points are used for governance and rewards distribution.
+    /// This function can only be called if the pool is not paused.
+    ///
+    /// # Arguments
+    /// * `global_config` - The global configuration for the pool
+    /// * `pool` - The pool containing the position
+    /// * `position_id` - The ID of the position to calculate points for
+    /// * `clock` - The system clock for timestamp tracking
+    ///
+    /// # Returns
+    /// The amount of points earned by the position
+    ///
+    /// # Aborts
+    /// * If the pool is paused
+    /// * If the position is not valid for this pool
     public fun calculate_and_update_points<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
@@ -620,6 +1107,23 @@ module clmm_pool::pool {
             )
         }
     }
+
+    /// Calculates and updates the rewards earned by a position for a specific reward token.
+    /// This function can only be called if the pool is not paused and the reward token exists.
+    ///
+    /// # Arguments
+    /// * `global_config` - The global configuration for the pool
+    /// * `pool` - The pool containing the position
+    /// * `position_id` - The ID of the position to calculate rewards for
+    /// * `clock` - The system clock for timestamp tracking
+    ///
+    /// # Returns
+    /// The amount of rewards earned by the position for the specified reward token
+    ///
+    /// # Aborts
+    /// * If the pool is paused
+    /// * If the position is not valid for this pool
+    /// * If the reward token does not exist
     public fun calculate_and_update_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
@@ -631,6 +1135,22 @@ module clmm_pool::pool {
         let rewards = calculate_and_update_rewards<CoinTypeA, CoinTypeB>(global_config, pool, position_id, clock);
         *std::vector::borrow<u64>(&rewards, std::option::extract<u64>(&mut rewarder_idx))
     }
+
+    /// Calculates and updates rewards for a specific position in the pool.
+    /// This function can only be called if the pool is not paused.
+    ///
+    /// # Arguments
+    /// * `global_config` - The global configuration for the pool
+    /// * `pool` - The pool containing the position
+    /// * `position_id` - The ID of the position to calculate rewards for
+    /// * `clock` - The system clock for timestamp tracking
+    ///
+    /// # Returns
+    /// A vector containing the amounts of rewards earned by the position for each reward token
+    ///
+    /// # Aborts
+    /// * If the pool is paused
+    /// * If the package version is not compatible
     public fun calculate_and_update_rewards<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
@@ -650,6 +1170,21 @@ module clmm_pool::pool {
             clmm_pool::position::rewards_amount_owned(&pool.position_manager, position_id)
         }
     }
+
+    /// Calculates the distribution of fees between staked and unstaked liquidity providers.
+    /// This function handles the fee splitting logic based on the total liquidity and staked liquidity.
+    ///
+    /// # Arguments
+    /// * `pool` - The pool containing the liquidity information
+    /// * `fee_amount` - The total amount of fees to distribute
+    /// * `total_liquidity` - The total liquidity in the pool
+    /// * `staked_liquidity` - The amount of staked liquidity
+    /// * `unstaked_fee_rate` - The fee rate for unstaked liquidity
+    ///
+    /// # Returns
+    /// A tuple containing:
+    /// * The amount of fees allocated to staked liquidity providers
+    /// * The amount of fees allocated to unstaked liquidity providers
     fun calculate_fees<CoinTypeA, CoinTypeB>(
         pool: &Pool<CoinTypeA, CoinTypeB>,
         fee_amount: u64,
@@ -657,7 +1192,7 @@ module clmm_pool::pool {
         staked_liquidity: u128,
         unstaked_fee_rate: u64
     ): (u128, u64) {
-        if (total_liquidity == pool.magma_distribution_staked_liquidity) {
+        if (total_liquidity == pool.fullsale_distribution_staked_liquidity) {
             (0, fee_amount)
         } else {
             let (staked_fee, unstaked_fee) = if (staked_liquidity == 0) {
@@ -670,6 +1205,37 @@ module clmm_pool::pool {
             (staked_fee, unstaked_fee)
         }
     }
+
+    /// Calculates the result of a swap operation in the pool without executing it.
+    /// This function simulates the swap and returns detailed information about how it would execute,
+    /// including amounts, fees, and price impact.
+    ///
+    /// # Arguments
+    /// * `global_config` - The global configuration for the pool
+    /// * `pool` - The pool to simulate the swap in
+    /// * `a2b` - Direction of the swap: true for swapping token A to B, false for B to A
+    /// * `by_amount_in` - Whether the amount specified is the input amount (true) or output amount (false)
+    /// * `amount` - The amount to swap (interpreted as input or output based on by_amount_in)
+    ///
+    /// # Returns
+    /// A CalculatedSwapResult containing:
+    /// * amount_in - The amount of input tokens that would be used
+    /// * amount_out - The amount of output tokens that would be received
+    /// * fee_amount - The total amount of fees that would be charged
+    /// * fee_rate - The fee rate used for the swap
+    /// * ref_fee_amount - The amount of referral fees
+    /// * gauge_fee_amount - The amount of fees allocated to gauges
+    /// * protocol_fee_amount - The amount of protocol fees
+    /// * after_sqrt_price - The square root of the price after the swap
+    /// * is_exceed - Whether the swap would exceed available liquidity
+    /// * step_results - Detailed results for each step of the swap calculation
+    ///
+    /// # Example
+    /// This function is typically used before executing a swap to:
+    /// * Calculate expected output amounts
+    /// * Determine price impact
+    /// * Estimate fees
+    /// * Check if the swap is viable
     public fun calculate_swap_result<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &Pool<CoinTypeA, CoinTypeB>,
@@ -679,7 +1245,7 @@ module clmm_pool::pool {
     ): CalculatedSwapResult {
         let mut current_sqrt_price = pool.current_sqrt_price;
         let mut current_liquidity = pool.liquidity;
-        let mut staked_liquidity = pool.magma_distribution_staked_liquidity;
+        let mut staked_liquidity = pool.fullsale_distribution_staked_liquidity;
         let mut swap_result = default_swap_result();
         let mut remaining_amount = amount;
         let mut next_tick = clmm_pool::tick::first_score_for_swap(&pool.tick_manager, pool.current_tick_index, a2b);
@@ -738,7 +1304,7 @@ module clmm_pool::pool {
                     pool,
                     fee_amount - protocol_fee,
                     pool.liquidity,
-                    pool.magma_distribution_staked_liquidity,
+                    pool.fullsale_distribution_staked_liquidity,
                     unstaked_fee_rate
                 );
                 update_swap_result(&mut swap_result, amount_in, amount_out, fee_amount, protocol_fee, 0, gauge_fee);
@@ -757,10 +1323,10 @@ module clmm_pool::pool {
                 current_sqrt_price = target_sqrt_price;
                 let (liquidity_delta, staked_liquidity_delta) = if (a2b) {
                     (integer_mate::i128::neg(clmm_pool::tick::liquidity_net(tick)), integer_mate::i128::neg(
-                        clmm_pool::tick::magma_distribution_staked_liquidity_net(tick)
+                        clmm_pool::tick::fullsale_distribution_staked_liquidity_net(tick)
                     ))
                 } else {
-                    (clmm_pool::tick::liquidity_net(tick), clmm_pool::tick::magma_distribution_staked_liquidity_net(tick))
+                    (clmm_pool::tick::liquidity_net(tick), clmm_pool::tick::fullsale_distribution_staked_liquidity_net(tick))
                 };
                 let liquidity_abs = integer_mate::i128::abs_u128(liquidity_delta);
                 let staked_liquidity_abs = integer_mate::i128::abs_u128(staked_liquidity_delta);
@@ -790,9 +1356,44 @@ module clmm_pool::pool {
         calculated_result.after_sqrt_price = current_sqrt_price;
         calculated_result
     }
+
+    /// Returns a reference to the vector of swap step results from the calculated swap result.
+    /// Each step result contains detailed information about a single step in the swap calculation,
+    /// including prices, liquidity, amounts, and fees.
+    ///
+    /// # Arguments
+    /// * `calculated_swap_result` - Reference to the CalculatedSwapResult containing the swap simulation data
+    ///
+    /// # Returns
+    /// A reference to the vector of SwapStepResult structs containing detailed information about each swap step
     public fun calculate_swap_result_step_results(calculated_swap_result: &CalculatedSwapResult): &vector<SwapStepResult> {
         &calculated_swap_result.step_results
     }
+
+    /// Calculates the expected result of a swap operation with partner fee rate.
+    /// This function simulates a swap operation and returns detailed information about the expected outcome,
+    /// including amounts, fees, and price changes. It handles both input and output amount-based swaps.
+    ///
+    /// # Arguments
+    /// * `global_config` - Reference to the global configuration containing protocol parameters
+    /// * `pool` - Reference to the pool containing the current state
+    /// * `a2b` - Boolean indicating the swap direction (true for A to B, false for B to A)
+    /// * `by_amount_in` - Boolean indicating whether the amount parameter represents input or output amount
+    /// * `amount` - The amount to swap (either input or output amount based on by_amount_in)
+    /// * `ref_fee_rate` - The partner fee rate in basis points
+    ///
+    /// # Returns
+    /// A CalculatedSwapResult struct containing:
+    /// * Input and output amounts
+    /// * Various fee amounts (total, gauge, protocol, referral)
+    /// * Final price after the swap
+    /// * Whether the swap would exceed available liquidity
+    /// * Detailed step-by-step results of the swap calculation
+    ///
+    /// # Aborts
+    /// * If liquidity calculations would overflow
+    /// * If fee calculations would overflow
+    /// * If price calculations would overflow
     public fun calculate_swap_result_with_partner<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &Pool<CoinTypeA, CoinTypeB>,
@@ -803,7 +1404,7 @@ module clmm_pool::pool {
     ): CalculatedSwapResult {
         let mut current_sqrt_price = pool.current_sqrt_price;
         let mut current_liquidity = pool.liquidity;
-        let mut staked_liquidity = pool.magma_distribution_staked_liquidity;
+        let mut staked_liquidity = pool.fullsale_distribution_staked_liquidity;
         let mut swap_result = default_swap_result();
         let mut remaining_amount = amount;
         let mut next_tick = clmm_pool::tick::first_score_for_swap(&pool.tick_manager, pool.current_tick_index, a2b);
@@ -874,7 +1475,7 @@ module clmm_pool::pool {
                             pool,
                             fee_after_protocol,
                             pool.liquidity,
-                            pool.magma_distribution_staked_liquidity,
+                            pool.fullsale_distribution_staked_liquidity,
                             unstaked_fee_rate
                         );
                         gauge_fee = gauge_fee_amount;
@@ -896,10 +1497,10 @@ module clmm_pool::pool {
                 current_sqrt_price = target_sqrt_price;
                 let (liquidity_delta, staked_liquidity_delta) = if (a2b) {
                     (integer_mate::i128::neg(clmm_pool::tick::liquidity_net(tick)), integer_mate::i128::neg(
-                        clmm_pool::tick::magma_distribution_staked_liquidity_net(tick)
+                        clmm_pool::tick::fullsale_distribution_staked_liquidity_net(tick)
                     ))
                 } else {
-                    (clmm_pool::tick::liquidity_net(tick), clmm_pool::tick::magma_distribution_staked_liquidity_net(tick))
+                    (clmm_pool::tick::liquidity_net(tick), clmm_pool::tick::fullsale_distribution_staked_liquidity_net(tick))
                 };
                 let liquidity_abs = integer_mate::i128::abs_u128(liquidity_delta);
                 let staked_liquidity_abs = integer_mate::i128::abs_u128(staked_liquidity_delta);
@@ -930,39 +1531,111 @@ module clmm_pool::pool {
         calculated_result.after_sqrt_price = current_sqrt_price;
         calculated_result
     }
+
+    /// Returns the square root of the price after the simulated swap.
+    /// This value represents the final price level that would be reached after executing the swap.
+    ///
+    /// # Arguments
+    /// * `swap_result` - The CalculatedSwapResult containing the swap simulation data
+    ///
+    /// # Returns
+    /// The square root of the final price as a u128 value
     public fun calculated_swap_result_after_sqrt_price(swap_result: &CalculatedSwapResult): u128 {
         swap_result.after_sqrt_price
     }
 
+    /// Returns the amount of input tokens that would be required for the swap.
+    ///
+    /// # Arguments
+    /// * `swap_result` - The CalculatedSwapResult containing the swap simulation data
+    ///
+    /// # Returns
+    /// The amount of input tokens needed as a u64 value
     public fun calculated_swap_result_amount_in(swap_result: &CalculatedSwapResult): u64 {
         swap_result.amount_in
     }
 
+    /// Returns the amount of output tokens that would be received from the swap.
+    ///
+    /// # Arguments
+    /// * `swap_result` - The CalculatedSwapResult containing the swap simulation data
+    ///
+    /// # Returns
+    /// The amount of output tokens to be received as a u64 value
     public fun calculated_swap_result_amount_out(swap_result: &CalculatedSwapResult): u64 {
         swap_result.amount_out
     }
 
+    /// Returns all fee amounts associated with the simulated swap.
+    ///
+    /// # Arguments
+    /// * `swap_result` - The CalculatedSwapResult containing the swap simulation data
+    ///
+    /// # Returns
+    /// A tuple containing:
+    /// * Total fee amount
+    /// * Referral fee amount
+    /// * Protocol fee amount
+    /// * Gauge fee amount
     public fun calculated_swap_result_fees_amount(swap_result: &CalculatedSwapResult): (u64, u64, u64, u64) {
         (swap_result.fee_amount, swap_result.ref_fee_amount, swap_result.protocol_fee_amount, swap_result.gauge_fee_amount)
     }
 
+    /// Indicates whether the simulated swap would exceed the available liquidity.
+    ///
+    /// # Arguments
+    /// * `swap_result` - The CalculatedSwapResult containing the swap simulation data
+    ///
+    /// # Returns
+    /// true if the swap would exceed available liquidity, false otherwise
     public fun calculated_swap_result_is_exceed(swap_result: &CalculatedSwapResult): bool {
         swap_result.is_exceed
     }
 
+    /// Returns a reference to a specific swap step result at the given index.
+    /// This function allows accessing detailed information about a particular step in the swap calculation.
+    ///
+    /// # Arguments
+    /// * `swap_result` - Reference to the CalculatedSwapResult containing the swap simulation data
+    /// * `step_index` - The index of the step result to retrieve
+    ///
+    /// # Returns
+    /// A reference to the SwapStepResult at the specified index
+    ///
+    /// # Aborts
+    /// * If step_index is out of bounds
     public fun calculated_swap_result_step_swap_result(swap_result: &CalculatedSwapResult, step_index: u64): &SwapStepResult {
         std::vector::borrow<SwapStepResult>(&swap_result.step_results, step_index)
     }
 
+    /// Returns the total number of steps in the swap calculation.
+    /// This function provides the count of individual steps that were calculated during the swap simulation.
+    ///
+    /// # Arguments
+    /// * `swap_result` - Reference to the CalculatedSwapResult containing the swap simulation data
+    ///
+    /// # Returns
+    /// The number of steps in the swap calculation
     public fun calculated_swap_result_steps_length(swap_result: &CalculatedSwapResult): u64 {
         std::vector::length<SwapStepResult>(&swap_result.step_results)
     }
+
+    /// Verifies that the provided gauge cap is valid for the given pool.
+    /// This function checks if the gauge cap's pool ID matches the pool's ID and if the gauge ID matches
+    /// the pool's configured gauger ID.
+    ///
+    /// # Arguments
+    /// * `pool` - Reference to the pool to check against
+    /// * `gauge_cap` - Reference to the gauge cap to validate
+    ///
+    /// # Aborts
+    /// * If the gauge cap is not valid for the pool (error code: 9223379355479048191)
     fun check_gauge_cap<CoinTypeA, CoinTypeB>(
         pool: &Pool<CoinTypeA, CoinTypeB>, 
         gauge_cap: &gauge_cap::gauge_cap::GaugeCap
     ) {
         let is_valid = if (gauge_cap::gauge_cap::get_pool_id(gauge_cap) == sui::object::id<Pool<CoinTypeA, CoinTypeB>>(pool)) {
-            let gauger_id = &pool.magma_distribution_gauger_id;
+            let gauger_id = &pool.fullsale_distribution_gauger_id;
             let has_valid_gauge = if (std::option::is_some<sui::object::ID>(gauger_id)) {
                 let cap_gauge_id = gauge_cap::gauge_cap::get_gauge_id(gauge_cap);
                 std::option::borrow<sui::object::ID>(gauger_id) == &cap_gauge_id
@@ -976,10 +1649,37 @@ module clmm_pool::pool {
         assert!(is_valid, 9223379355479048191);
     }
 
+    /// Safely subtracts a value from an amount, ensuring the result is non-negative.
+    /// This is a helper function used in swap calculations to handle amount subtractions
+    /// while preventing underflows.
+    ///
+    /// # Arguments
+    /// * `amount` - The amount to subtract from
+    /// * `sub_amount` - The amount to subtract
+    ///
+    /// # Returns
+    /// The result of the subtraction
+    ///
+    /// # Aborts
+    /// * If sub_amount is greater than amount (error code: 5)
     fun check_remainer_amount_sub(amount: u64, sub_amount: u64): u64 {
         assert!(amount >= sub_amount, 5);
         amount - sub_amount
     }
+
+    /// Validates if a given tick range is valid for the pool.
+    /// A tick range is considered valid if:
+    /// * The lower tick is less than the upper tick
+    /// * The lower tick is not less than the minimum allowed tick
+    /// * The upper tick is not greater than the maximum allowed tick
+    ///
+    /// # Arguments
+    /// * `tick_lower` - The lower tick of the range
+    /// * `tick_upper` - The upper tick of the range
+    ///
+    /// # Returns
+    /// * true if the tick range is valid
+    /// * false if the tick range is invalid
     fun check_tick_range(tick_lower: integer_mate::i32::I32, tick_upper: integer_mate::i32::I32): bool {
         let is_invalid = if (integer_mate::i32::gte(tick_lower, tick_upper)) {
             true
@@ -996,6 +1696,28 @@ module clmm_pool::pool {
         true
     }
     
+    /// Collects accumulated fees from a position in the pool.
+    /// This function handles fee collection for non-staked positions, including:
+    /// * Updating and resetting fees if requested and position has liquidity
+    /// * Resetting fees without updating if position has no liquidity
+    /// * Emitting a CollectFeeEvent with the collected amounts
+    /// * Splitting the collected fees from the pool's token balances
+    ///
+    /// # Arguments
+    /// * `global_config` - Reference to the global configuration containing protocol parameters
+    /// * `pool` - Reference to the pool containing the position
+    /// * `position` - Reference to the position to collect fees from
+    /// * `update_fee` - Boolean indicating whether to update fees before collection
+    ///
+    /// # Returns
+    /// A tuple containing:
+    /// * Balance of CoinTypeA collected as fees
+    /// * Balance of CoinTypeB collected as fees
+    ///
+    /// # Aborts
+    /// * If the pool is paused (error code: 13)
+    /// * If the package version is invalid
+    /// * If the position is staked (returns zero balances)
     public fun collect_fee<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
@@ -1027,7 +1749,26 @@ module clmm_pool::pool {
         (sui::balance::split<CoinTypeA>(&mut pool.coin_a, fee_amount_a), sui::balance::split<CoinTypeB>(&mut pool.coin_b, fee_amount_b))
     }
     
-    public fun collect_magma_distribution_gauger_fees<CoinTypeA, CoinTypeB>(
+    /// Collects accumulated gauge fees from the pool.
+    /// This function handles fee collection for the gauge, including:
+    /// * Validating the gauge cap
+    /// * Collecting accumulated fees for both token types
+    /// * Resetting the gauge fee accumulators
+    /// * Emitting a CollectGaugeFeeEvent with the collected amounts
+    ///
+    /// # Arguments
+    /// * `pool` - Reference to the pool containing the gauge fees
+    /// * `gauge_cap` - Reference to the gauge cap for validation
+    ///
+    /// # Returns
+    /// A tuple containing:
+    /// * Balance of CoinTypeA collected as gauge fees
+    /// * Balance of CoinTypeB collected as gauge fees
+    ///
+    /// # Aborts
+    /// * If the pool is paused (error code: 13)
+    /// * If the gauge cap is invalid for the pool
+    public fun collect_fullsale_distribution_gauger_fees<CoinTypeA, CoinTypeB>(
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
         gauge_cap: &gauge_cap::gauge_cap::GaugeCap
     ): (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>) {
@@ -1036,20 +1777,20 @@ module clmm_pool::pool {
         let mut balance_a = sui::balance::zero<CoinTypeA>();
         let mut balance_b = sui::balance::zero<CoinTypeB>();
         
-        if (pool.magma_distribution_gauger_fee.coin_a > 0) {
+        if (pool.fullsale_distribution_gauger_fee.coin_a > 0) {
             sui::balance::join<CoinTypeA>(
                 &mut balance_a,
-                sui::balance::split<CoinTypeA>(&mut pool.coin_a, pool.magma_distribution_gauger_fee.coin_a)
+                sui::balance::split<CoinTypeA>(&mut pool.coin_a, pool.fullsale_distribution_gauger_fee.coin_a)
             );
-            pool.magma_distribution_gauger_fee.coin_a = 0;
+            pool.fullsale_distribution_gauger_fee.coin_a = 0;
         };
 
-        if (pool.magma_distribution_gauger_fee.coin_b > 0) {
+        if (pool.fullsale_distribution_gauger_fee.coin_b > 0) {
             sui::balance::join<CoinTypeB>(
                 &mut balance_b,
-                sui::balance::split<CoinTypeB>(&mut pool.coin_b, pool.magma_distribution_gauger_fee.coin_b)
+                sui::balance::split<CoinTypeB>(&mut pool.coin_b, pool.fullsale_distribution_gauger_fee.coin_b)
             );
-            pool.magma_distribution_gauger_fee.coin_b = 0;
+            pool.fullsale_distribution_gauger_fee.coin_b = 0;
         };
 
         let event = CollectGaugeFeeEvent {
@@ -1061,6 +1802,28 @@ module clmm_pool::pool {
         (balance_a, balance_b)
     }
     
+    /// Collects accumulated protocol fees from the pool.
+    /// This function handles protocol fee collection, including:
+    /// * Validating package version
+    /// * Checking pool pause status
+    /// * Verifying protocol fee claim role
+    /// * Resetting protocol fee accumulators
+    /// * Emitting a CollectProtocolFeeEvent with the collected amounts
+    ///
+    /// # Arguments
+    /// * `global_config` - Reference to the global configuration containing protocol parameters
+    /// * `pool` - Reference to the pool containing the protocol fees
+    /// * `ctx` - Reference to the transaction context
+    ///
+    /// # Returns
+    /// A tuple containing:
+    /// * Balance of CoinTypeA collected as protocol fees
+    /// * Balance of CoinTypeB collected as protocol fees
+    ///
+    /// # Aborts
+    /// * If the pool is paused (error code: 13)
+    /// * If the package version is invalid
+    /// * If the caller does not have protocol fee claim role
     public fun collect_protocol_fee<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut Pool<CoinTypeA, CoinTypeB>, 
@@ -1085,6 +1848,30 @@ module clmm_pool::pool {
         (sui::balance::split<CoinTypeA>(&mut pool.coin_a, fee_amount_a), 
          sui::balance::split<CoinTypeB>(&mut pool.coin_b, fee_amount_b))
     }
+
+    /// Collects accumulated rewards from a position in the pool.
+    /// This function handles reward collection, including:
+    /// * Validating package version
+    /// * Checking pool pause status
+    /// * Settling rewards based on current timestamp
+    /// * Updating rewards if requested and position has liquidity
+    /// * Collecting rewards from the rewarder vault
+    ///
+    /// # Arguments
+    /// * `global_config` - Reference to the global configuration containing protocol parameters
+    /// * `pool` - Reference to the pool containing the position
+    /// * `position` - Reference to the position to collect rewards from
+    /// * `rewarder_vault` - Reference to the rewarder vault containing the rewards
+    /// * `update_rewards` - Boolean indicating whether to update rewards before collection
+    /// * `clock` - Reference to the clock for timestamp calculations
+    ///
+    /// # Returns
+    /// Balance of RewardCoinType collected as rewards
+    ///
+    /// # Aborts
+    /// * If the pool is paused (error code: 13)
+    /// * If the package version is invalid
+    /// * If the rewarder index is not found (error code: 17)
     public fun collect_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
@@ -1120,14 +1907,35 @@ module clmm_pool::pool {
         clmm_pool::rewarder::withdraw_reward<RewardCoinType>(rewarder_vault, reward_amount)
     }
     
+    /// Returns the current square root price of the pool.
+    /// This value represents the current price of the pool in square root form.
+    ///
+    /// # Arguments
+    /// * `pool` - Reference to the pool to get the price from
+    ///
+    /// # Returns
+    /// The current square root price of the pool
     public fun current_sqrt_price<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): u128 {
         pool.current_sqrt_price
     }
 
+    /// Returns the current tick index of the pool.
+    /// The tick index represents the current price level in the pool's price range.
+    ///
+    /// # Arguments
+    /// * `pool` - Reference to the pool to get the tick index from
+    ///
+    /// # Returns
+    /// The current tick index of the pool
     public fun current_tick_index<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): integer_mate::i32::I32 {
         pool.current_tick_index
     }
 
+    /// Creates a default SwapResult with all fields initialized to zero.
+    /// This is used as an initial state for swap calculations.
+    ///
+    /// # Returns
+    /// A new SwapResult with all fields set to zero
     fun default_swap_result(): SwapResult {
         SwapResult {
             amount_in: 0,
@@ -1139,17 +1947,77 @@ module clmm_pool::pool {
             steps: 0,
         }
     }
+
+    /// Returns the fee rate of the pool in basis points.
+    /// The fee rate determines the percentage of fees charged for swaps.
+    ///
+    /// # Arguments
+    /// * `pool` - Reference to the pool to get the fee rate from
+    ///
+    /// # Returns
+    /// The fee rate in basis points (1/10000)
     public fun fee_rate<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): u64 {
         pool.fee_rate
     }
 
+    /// Returns all fee amounts from a flash swap receipt.
+    /// This includes the total fee amount, referral fee, protocol fee, and gauge fee.
+    ///
+    /// # Arguments
+    /// * `receipt` - Reference to the FlashSwapReceipt containing the fee information
+    ///
+    /// # Returns
+    /// A tuple containing:
+    /// * Total fee amount
+    /// * Referral fee amount
+    /// * Protocol fee amount
+    /// * Gauge fee amount
     public fun fees_amount<CoinTypeA, CoinTypeB>(receipt: &FlashSwapReceipt<CoinTypeA, CoinTypeB>): (u64, u64, u64, u64) {
         (receipt.fee_amount, receipt.ref_fee_amount, receipt.protocol_fee_amount, receipt.gauge_fee_amount)
     }
 
+    /// Returns the global fee growth accumulators for both tokens.
+    /// These values track the total fees earned per unit of liquidity over time.
+    ///
+    /// # Arguments
+    /// * `pool` - Reference to the pool to get the fee growth from
+    ///
+    /// # Returns
+    /// A tuple containing:
+    /// * Global fee growth for token A
+    /// * Global fee growth for token B
     public fun fees_growth_global<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): (u128, u128) {
         (pool.fee_growth_global_a, pool.fee_growth_global_b)
     }
+
+    /// Executes a flash swap operation in the pool.
+    /// This function allows performing a swap operation with a specified amount and price limit.
+    /// The swap can be executed in either direction (A to B or B to A) and can be specified
+    /// by either input or output amount.
+    ///
+    /// # Arguments
+    /// * `global_config` - Reference to the global configuration containing protocol parameters
+    /// * `pool` - Reference to the pool to perform the swap in
+    /// * `a2b` - Boolean indicating the swap direction (true for A to B, false for B to A)
+    /// * `by_amount_in` - Boolean indicating whether the amount parameter represents input or output amount
+    /// * `amount` - The amount to swap (either input or output amount based on by_amount_in)
+    /// * `sqrt_price_limit` - The price limit for the swap in square root form
+    /// * `stats` - Reference to the pool statistics to update
+    /// * `price_provider` - Reference to the price provider for price calculations
+    /// * `clock` - Reference to the clock for timestamp calculations
+    ///
+    /// # Returns
+    /// A tuple containing:
+    /// * Balance of CoinTypeA (output if B to A, zero if A to B)
+    /// * Balance of CoinTypeB (output if A to B, zero if B to A)
+    /// * FlashSwapReceipt containing swap details and fees
+    ///
+    /// # Aborts
+    /// * If the pool is paused (error code: 13)
+    /// * If the package version is invalid
+    /// * If the amount is zero (error code: 0)
+    /// * If the price limit is invalid (error code: 11)
+    /// * If no output amount is received (error code: 18)
     public fun flash_swap<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
@@ -1158,6 +2026,7 @@ module clmm_pool::pool {
         amount: u64,
         sqrt_price_limit: u128,
         stats: &mut clmm_pool::stats::Stats,
+        price_provider: &price_provider::price_provider::PriceProvider,
         clock: &sui::clock::Clock
     ): (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>, FlashSwapReceipt<CoinTypeA, CoinTypeB>) {
         clmm_pool::config::checked_package_version(global_config);
@@ -1172,10 +2041,42 @@ module clmm_pool::pool {
             amount,
             sqrt_price_limit,
             stats,
+            price_provider,
             clock
         )
     }
 
+    /// Internal function that executes a flash swap operation with partner fee rate.
+    /// This function handles the core swap logic, including:
+    /// * Validating swap parameters
+    /// * Settling rewards
+    /// * Calculating fees
+    /// * Executing the swap
+    /// * Emitting swap events
+    ///
+    /// # Arguments
+    /// * `pool` - Reference to the pool to perform the swap in
+    /// * `global_config` - Reference to the global configuration containing protocol parameters
+    /// * `partner_id` - ID of the partner for fee calculation
+    /// * `ref_fee_rate` - Partner referral fee rate in basis points
+    /// * `a2b` - Boolean indicating the swap direction
+    /// * `by_amount_in` - Boolean indicating whether amount is input or output
+    /// * `amount` - The amount to swap
+    /// * `sqrt_price_limit` - The price limit for the swap
+    /// * `stats` - Reference to the pool statistics
+    /// * `price_provider` - Reference to the price provider for price calculations
+    /// * `clock` - Reference to the clock for timestamp calculations
+    ///
+    /// # Returns
+    /// A tuple containing:
+    /// * Balance of CoinTypeA (output if B to A, zero if A to B)
+    /// * Balance of CoinTypeB (output if A to B, zero if B to A)
+    /// * FlashSwapReceipt containing swap details and fees
+    ///
+    /// # Aborts
+    /// * If the amount is zero (error code: 0)
+    /// * If the price limit is invalid (error code: 11)
+    /// * If no output amount is received (error code: 18)
     fun flash_swap_internal<CoinTypeA, CoinTypeB>(
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
         global_config: &clmm_pool::config::GlobalConfig,
@@ -1186,6 +2087,7 @@ module clmm_pool::pool {
         amount: u64,
         sqrt_price_limit: u128,
         stats: &mut clmm_pool::stats::Stats,
+        price_provider: &price_provider::price_provider::PriceProvider,
         clock: &sui::clock::Clock
     ): (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>, FlashSwapReceipt<CoinTypeA, CoinTypeB>) {
         assert!(amount > 0, 0);
@@ -1222,6 +2124,7 @@ module clmm_pool::pool {
         // TODO volumes
         // let price = global_config.price_supplier;
         // if (a2b) {
+        // let price_a = price_provider::price_provider::get_price(price_provider, pool.feed_id_coin_a);
         //     pool.volume_usd_coin_a
           //      stats.add_total_volume_internal();
         // } else {
@@ -1235,7 +2138,7 @@ module clmm_pool::pool {
             partner: partner_id,
             amount_in: swap_result.amount_in + swap_result.fee_amount,
             amount_out: swap_result.amount_out,
-            magma_fee_amount: swap_result.gauge_fee_amount,
+            fullsale_fee_amount: swap_result.gauge_fee_amount,
             protocol_fee_amount: swap_result.protocol_fee_amount,
             ref_fee_amount: swap_result.ref_fee_amount,
             fee_amount: swap_result.fee_amount,
@@ -1259,6 +2162,34 @@ module clmm_pool::pool {
         (balance_a, balance_b, receipt)
     }
 
+    /// Executes a flash swap operation with partner fees.
+    /// This function is similar to flash_swap but includes partner fee calculations.
+    /// The partner's referral fee rate is determined based on the current timestamp.
+    ///
+    /// # Arguments
+    /// * `global_config` - Reference to the global configuration containing protocol parameters
+    /// * `pool` - Reference to the pool to perform the swap in
+    /// * `partner` - Reference to the partner for fee calculation
+    /// * `a2b` - Boolean indicating the swap direction (true for A to B, false for B to A)
+    /// * `by_amount_in` - Boolean indicating whether the amount parameter represents input or output amount
+    /// * `amount` - The amount to swap (either input or output amount based on by_amount_in)
+    /// * `sqrt_price_limit` - The price limit for the swap in square root form
+    /// * `stats` - Reference to the pool statistics to update
+    /// * `price_provider` - Reference to the price provider for price calculations
+    /// * `clock` - Reference to the clock for timestamp calculations
+    ///
+    /// # Returns
+    /// A tuple containing:
+    /// * Balance of CoinTypeA (output if B to A, zero if A to B)
+    /// * Balance of CoinTypeB (output if A to B, zero if B to A)
+    /// * FlashSwapReceipt containing swap details and fees
+    ///
+    /// # Aborts
+    /// * If the pool is paused (error code: 13)
+    /// * If the package version is invalid
+    /// * If the amount is zero (error code: 0)
+    /// * If the price limit is invalid (error code: 11)
+    /// * If no output amount is received (error code: 18)
     public fun flash_swap_with_partner<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
@@ -1268,6 +2199,7 @@ module clmm_pool::pool {
         amount: u64,
         sqrt_price_limit: u128,
         stats: &mut clmm_pool::stats::Stats,
+        price_provider: &price_provider::price_provider::PriceProvider,
         clock: &sui::clock::Clock
     ): (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>, FlashSwapReceipt<CoinTypeA, CoinTypeB>) {
         clmm_pool::config::checked_package_version(global_config);
@@ -1282,9 +2214,27 @@ module clmm_pool::pool {
             amount,
             sqrt_price_limit,
             stats,
+            price_provider,
             clock
         )
     }
+
+    /// Returns all growth accumulators within a specified tick range.
+    /// This function calculates the accumulated values for fees, rewards, points, and fullsale distribution
+    /// between the specified lower and upper ticks.
+    ///
+    /// # Arguments
+    /// * `pool` - Reference to the pool containing the growth accumulators
+    /// * `tick_lower` - The lower tick of the range
+    /// * `tick_upper` - The upper tick of the range
+    ///
+    /// # Returns
+    /// A tuple containing:
+    /// * Fee growth for token A
+    /// * Fee growth for token B
+    /// * Vector of reward growths for each rewarder
+    /// * Points growth
+    /// * Fullsale distribution growth
     public fun get_all_growths_in_tick_range<CoinTypeA, CoinTypeB>(
         pool: &Pool<CoinTypeA, CoinTypeB>,
         tick_lower: integer_mate::i32::I32,
@@ -1314,14 +2264,27 @@ module clmm_pool::pool {
                 tick_lower_info,
                 tick_upper_info
             ),
-            clmm_pool::tick::get_magma_distribution_growth_in_range(
+            clmm_pool::tick::get_fullsale_distribution_growth_in_range(
                 pool.current_tick_index,
-                pool.magma_distribution_growth_global,
+                pool.fullsale_distribution_growth_global,
                 tick_lower_info,
                 tick_upper_info
             )
         )
     }
+
+    /// Returns the accumulated fees within a specified tick range.
+    /// This function calculates the total fees earned for both tokens between the specified ticks.
+    ///
+    /// # Arguments
+    /// * `pool` - Reference to the pool containing the fee accumulators
+    /// * `tick_lower` - The lower tick of the range
+    /// * `tick_upper` - The upper tick of the range
+    ///
+    /// # Returns
+    /// A tuple containing:
+    /// * Fee growth for token A
+    /// * Fee growth for token B
     public fun get_fee_in_tick_range<CoinTypeA, CoinTypeB>(
         pool: &Pool<CoinTypeA, CoinTypeB>,
         tick_lower: integer_mate::i32::I32,
@@ -1335,6 +2298,27 @@ module clmm_pool::pool {
             clmm_pool::tick::try_borrow_tick(&pool.tick_manager, tick_upper)
         )
     }
+
+    /// Calculates the liquidity and token amounts for a given input amount.
+    /// This function determines the liquidity and corresponding token amounts needed
+    /// for a position within a specified price range.
+    ///
+    /// # Arguments
+    /// * `tick_lower` - The lower tick of the price range
+    /// * `tick_upper` - The upper tick of the price range
+    /// * `current_tick` - The current tick of the pool
+    /// * `current_sqrt_price` - The current square root price of the pool
+    /// * `amount` - The input amount to calculate liquidity for
+    /// * `a2b` - Boolean indicating the direction (true for A to B, false for B to A)
+    ///
+    /// # Returns
+    /// A tuple containing:
+    /// * The calculated liquidity
+    /// * Amount of token A needed
+    /// * Amount of token B needed
+    ///
+    /// # Aborts
+    /// * If current_tick is not within the specified range (error code: 19)
     public fun get_liquidity_from_amount(
         tick_lower: integer_mate::i32::I32,
         tick_upper: integer_mate::i32::I32,
@@ -1393,15 +2377,50 @@ module clmm_pool::pool {
             (liquidity_b, amount_a, amount)
         }
     }
-    public fun get_magma_distribution_gauger_id<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): sui::object::ID {
-        assert!(std::option::is_some<sui::object::ID>(&pool.magma_distribution_gauger_id), 9223379295349506047);
-        *std::option::borrow<sui::object::ID>(&pool.magma_distribution_gauger_id)
+
+    /// Returns the ID of the fullsale distribution gauger.
+    /// This function retrieves the ID of the gauger responsible for fullsale distribution in the pool.
+    ///
+    /// # Arguments
+    /// * `pool` - Reference to the pool containing the gauger ID
+    ///
+    /// # Returns
+    /// The ID of the fullsale distribution gauger
+    ///
+    /// # Aborts
+    /// * If the gauger ID is not set (error code: 9223379295349506047)
+    public fun get_fullsale_distribution_gauger_id<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): sui::object::ID {
+        assert!(std::option::is_some<sui::object::ID>(&pool.fullsale_distribution_gauger_id), 9223379295349506047);
+        *std::option::borrow<sui::object::ID>(&pool.fullsale_distribution_gauger_id)
     }
 
-    public fun get_magma_distribution_growth_global<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): u128 {
-        pool.magma_distribution_growth_global
+    /// Returns the global fullsale distribution growth accumulator.
+    /// This value represents the total fullsale distribution growth across all positions.
+    ///
+    /// # Arguments
+    /// * `pool` - Reference to the pool containing the growth accumulator
+    ///
+    /// # Returns
+    /// The global fullsale distribution growth value
+    public fun get_fullsale_distribution_growth_global<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): u128 {
+        pool.fullsale_distribution_growth_global
     }
-    public fun get_magma_distribution_growth_inside<CoinTypeA, CoinTypeB>(
+
+    /// Returns the fullsale distribution growth within a specified tick range.
+    /// This function calculates the accumulated fullsale distribution between the specified ticks.
+    ///
+    /// # Arguments
+    /// * `pool` - Reference to the pool containing the growth accumulator
+    /// * `tick_lower` - The lower tick of the range
+    /// * `tick_upper` - The upper tick of the range
+    /// * `growth_global` - Optional global growth value to use for calculation
+    ///
+    /// # Returns
+    /// The fullsale distribution growth within the specified range
+    ///
+    /// # Aborts
+    /// * If the tick range is invalid (error code: 9223378947457155071)
+    public fun get_fullsale_distribution_growth_inside<CoinTypeA, CoinTypeB>(
         pool: &Pool<CoinTypeA, CoinTypeB>,
         tick_lower: integer_mate::i32::I32,
         tick_upper: integer_mate::i32::I32,
@@ -1409,31 +2428,74 @@ module clmm_pool::pool {
     ): u128 {
         assert!(check_tick_range(tick_lower, tick_upper), 9223378947457155071);
         if (growth_global == 0) {
-            growth_global = pool.magma_distribution_growth_global;
+            growth_global = pool.fullsale_distribution_growth_global;
         };
-        clmm_pool::tick::get_magma_distribution_growth_in_range(
+        clmm_pool::tick::get_fullsale_distribution_growth_in_range(
             pool.current_tick_index,
             growth_global,
             std::option::some<clmm_pool::tick::Tick>(*borrow_tick<CoinTypeA, CoinTypeB>(pool, tick_lower)),
             std::option::some<clmm_pool::tick::Tick>(*borrow_tick<CoinTypeA, CoinTypeB>(pool, tick_upper))
         )
     }
-    public fun get_magma_distribution_last_updated<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): u64 {
-        pool.magma_distribution_last_updated
+
+    /// Returns the timestamp of the last fullsale distribution update.
+    /// This value indicates when the fullsale distribution parameters were last modified.
+    ///
+    /// # Arguments
+    /// * `pool` - Reference to the pool containing the last update timestamp
+    ///
+    /// # Returns
+    /// The timestamp of the last fullsale distribution update
+    public fun get_fullsale_distribution_last_updated<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): u64 {
+        pool.fullsale_distribution_last_updated
     }
 
-    public fun get_magma_distribution_reserve<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): u64 {
-        pool.magma_distribution_reserve
+    /// Returns the fullsale distribution reserve amount.
+    /// This value represents the amount of rewards reserved for distribution.
+    ///
+    /// # Arguments
+    /// * `pool` - Reference to the pool containing the reserve amount
+    ///
+    /// # Returns
+    /// The fullsale distribution reserve amount
+    public fun get_fullsale_distribution_reserve<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): u64 {
+        pool.fullsale_distribution_reserve
     }
 
-    public fun get_magma_distribution_rollover<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): u64 {
-        pool.magma_distribution_rollover
+    /// Returns the fullsale distribution rollover amount.
+    /// This value represents the amount of rewards that were not distributed in the previous period.
+    ///
+    /// # Arguments
+    /// * `pool` - Reference to the pool containing the rollover amount
+    ///
+    /// # Returns
+    /// The fullsale distribution rollover amount
+    public fun get_fullsale_distribution_rollover<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): u64 {
+        pool.fullsale_distribution_rollover
     }
 
-    public fun get_magma_distribution_staked_liquidity<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): u128 {
-        pool.magma_distribution_staked_liquidity
+    /// Returns the total staked liquidity for fullsale distribution.
+    /// This value represents the total amount of liquidity that is currently staked in the fullsale distribution system.
+    ///
+    /// # Arguments
+    /// * `pool` - Reference to the pool containing the staked liquidity
+    ///
+    /// # Returns
+    /// The total staked liquidity for fullsale distribution
+    public fun get_fullsale_distribution_staked_liquidity<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): u128 {
+        pool.fullsale_distribution_staked_liquidity
     }
 
+    /// Returns the accumulated points within a specified tick range.
+    /// This function calculates the total points earned between the specified ticks.
+    ///
+    /// # Arguments
+    /// * `pool` - Reference to the pool containing the points accumulator
+    /// * `tick_lower` - The lower tick of the range
+    /// * `tick_upper` - The upper tick of the range
+    ///
+    /// # Returns
+    /// The points accumulated within the specified range
     public fun get_points_in_tick_range<CoinTypeA, CoinTypeB>(
         pool: &Pool<CoinTypeA, CoinTypeB>,
         tick_lower: integer_mate::i32::I32,
@@ -1447,6 +2509,18 @@ module clmm_pool::pool {
         )
     }
 
+    /// Returns the current token amounts for a position.
+    /// This function calculates the actual token amounts based on the position's liquidity
+    /// and the current pool state.
+    ///
+    /// # Arguments
+    /// * `pool_state` - Reference to the pool containing the position
+    /// * `position_id` - ID of the position to get amounts for
+    ///
+    /// # Returns
+    /// A tuple containing:
+    /// * Amount of token A in the position
+    /// * Amount of token B in the position
     public fun get_position_amounts<CoinTypeA, CoinTypeB>(
         pool_state: &mut Pool<CoinTypeA, CoinTypeB>,
         position_id: sui::object::ID
@@ -1462,6 +2536,18 @@ module clmm_pool::pool {
             false
         )
     }
+
+    /// Returns the fee amounts for a position.
+    /// This function calculates the fee amounts earned by the position based on the current pool state.
+    ///
+    /// # Arguments
+    /// * `pool` - Reference to the pool containing the position
+    /// * `position_id` - ID of the position to get fees for
+    ///
+    /// # Returns
+    /// A tuple containing:
+    /// * Amount of fees earned in token A
+    /// * Amount of fees earned in token B
     public fun get_position_fee<CoinTypeA, CoinTypeB>(
         pool: &Pool<CoinTypeA, CoinTypeB>,
         position_id: sui::object::ID
@@ -1471,6 +2557,15 @@ module clmm_pool::pool {
         )
     }
 
+    /// Returns the points earned by a position.
+    /// This function calculates the points earned by the position based on the current pool state.
+    ///
+    /// # Arguments
+    /// * `pool` - Reference to the pool containing the position
+    /// * `position_id` - ID of the position to get points for
+    ///
+    /// # Returns
+    /// The points earned by the position
     public fun get_position_points<CoinTypeA, CoinTypeB>(
         pool: &Pool<CoinTypeA, CoinTypeB>, 
         position_id: sui::object::ID
@@ -1480,6 +2575,16 @@ module clmm_pool::pool {
         )
     }
     
+    /// Returns the rewards earned by a position for a specific reward token.
+    /// This function calculates the rewards earned by the position for a given reward token based on the current pool state.
+    ///
+    /// # Arguments
+    /// * `pool` - Reference to the pool containing the position
+    /// * `position_id` - ID of the position to get rewards for
+    /// * `rewarder_type` - Type of reward token to get rewards for
+    ///
+    /// # Returns
+    /// The rewards earned by the position for the specified reward token
     public fun get_position_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
         pool: &Pool<CoinTypeA, CoinTypeB>,
         position_id: sui::object::ID
@@ -1490,6 +2595,15 @@ module clmm_pool::pool {
         *std::vector::borrow<u64>(&rewards, std::option::extract<u64>(&mut rewarder_idx))
     }
 
+    /// Returns the rewards earned by a position for all reward tokens.
+    /// This function calculates the rewards earned by the position for all reward tokens based on the current pool state.
+    ///
+    /// # Arguments
+    /// * `pool` - Reference to the pool containing the position
+    /// * `position_id` - ID of the position to get rewards for
+    ///
+    /// # Returns
+    /// A vector containing the rewards earned by the position for each reward token
     public fun get_position_rewards<CoinTypeA, CoinTypeB>(
         pool: &Pool<CoinTypeA, CoinTypeB>, 
         position_id: sui::object::ID
@@ -1497,6 +2611,16 @@ module clmm_pool::pool {
         clmm_pool::position::rewards_amount_owned(&pool.position_manager, position_id)
     }
 
+    /// Returns the rewards earned by a position for all reward tokens within a specified tick range.
+    /// This function calculates the rewards earned by the position for all reward tokens between the specified ticks.
+    ///
+    /// # Arguments
+    /// * `pool` - Reference to the pool containing the position
+    /// * `tick_lower` - The lower tick of the range
+    /// * `tick_upper` - The upper tick of the range
+    ///
+    /// # Returns
+    /// A vector containing the rewards earned by the position for each reward token
     public fun get_rewards_in_tick_range<CoinTypeA, CoinTypeB>(
         pool: &Pool<CoinTypeA, CoinTypeB>,
         tick_lower: integer_mate::i32::I32,
@@ -1510,13 +2634,29 @@ module clmm_pool::pool {
         )
     }
 
+    /// Initializes a new pool by transferring the publisher to the sender.
+    /// This function is called during pool creation to set up the initial state.
+    ///
+    /// # Arguments
+    /// * `pool` - The pool to initialize
+    /// * `ctx` - Reference to the transaction context
     fun init(pool: POOL, ctx: &mut sui::tx_context::TxContext) {
         sui::transfer::public_transfer<sui::package::Publisher>(
             sui::package::claim<POOL>(pool, ctx),
             sui::tx_context::sender(ctx)
         );
     }
-    public fun init_magma_distribution_gauge<CoinTypeA, CoinTypeB>(
+
+    /// Initializes the fullsale distribution gauge for a pool.
+    /// This function sets up the gauge capability for fullsale distribution rewards.
+    ///
+    /// # Arguments
+    /// * `pool` - Reference to the pool to initialize the gauge for
+    /// * `gauge_cap` - Reference to the gauge capability
+    ///
+    /// # Aborts
+    /// * If the pool ID in the gauge capability does not match the pool's ID (error code: 9223379334004211711)
+    public fun init_fullsale_distribution_gauge<CoinTypeA, CoinTypeB>(
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
         gauge_cap: &gauge_cap::gauge_cap::GaugeCap
     ) {
@@ -1525,11 +2665,21 @@ module clmm_pool::pool {
             9223379334004211711
         );
         std::option::fill<sui::object::ID>(
-            &mut pool.magma_distribution_gauger_id,
+            &mut pool.fullsale_distribution_gauger_id,
             gauge_cap::gauge_cap::get_gauge_id(gauge_cap)
         );
     }
 
+    /// Initializes a new rewarder for the pool.
+    /// This function adds a new reward token type to the pool's reward system.
+    ///
+    /// # Arguments
+    /// * `global_config` - Reference to the global configuration
+    /// * `pool` - Reference to the pool to add the rewarder to
+    /// * `ctx` - Reference to the transaction context
+    ///
+    /// # Aborts
+    /// * If the pool is paused (error code: 13)
     public fun initialize_rewarder<CoinTypeA, CoinTypeB, RewardCoinType>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
@@ -1546,17 +2696,40 @@ module clmm_pool::pool {
         sui::event::emit<AddRewarderEvent>(event);
     }
 
+    /// Returns whether the pool is currently paused.
+    ///
+    /// # Arguments
+    /// * `pool` - Reference to the pool to check
+    ///
+    /// # Returns
+    /// True if the pool is paused, false otherwise
     public fun is_pause<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): bool {
         pool.is_pause
     }
 
-    public fun magma_distribution_gauger_fee<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): PoolFee {
+    /// Returns the fullsale distribution gauger fee for the pool.
+    ///
+    /// # Arguments
+    /// * `pool` - Reference to the pool containing the gauger fee
+    ///
+    /// # Returns
+    /// The fullsale distribution gauger fee structure containing fees for both tokens
+    public fun fullsale_distribution_gauger_fee<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): PoolFee {
         PoolFee {
-            coin_a: pool.magma_distribution_gauger_fee.coin_a,
-            coin_b: pool.magma_distribution_gauger_fee.coin_b,
+            coin_a: pool.fullsale_distribution_gauger_fee.coin_a,
+            coin_b: pool.fullsale_distribution_gauger_fee.coin_b,
         }
     }
 
+    /// Marks a position as unstaked in the fullsale distribution system.
+    ///
+    /// # Arguments
+    /// * `pool` - Reference to the pool containing the position
+    /// * `gauge_cap` - Reference to the gauge capability
+    /// * `position_id` - ID of the position to mark as unstaked
+    ///
+    /// # Aborts
+    /// * If the pool is paused (error code: 13)
     public fun mark_position_unstaked<CoinTypeA, CoinTypeB>(
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
         gauge_cap: &gauge_cap::gauge_cap::GaugeCap,
@@ -1567,6 +2740,16 @@ module clmm_pool::pool {
         clmm_pool::position::mark_position_staked(&mut pool.position_manager, position_id, false);
     }
 
+    /// Pauses the pool, preventing all operations except unpausing.
+    /// This function can only be called by the pool manager role.
+    ///
+    /// # Arguments
+    /// * `global_config` - Reference to the global configuration
+    /// * `pool` - Reference to the pool to pause
+    /// * `ctx` - Reference to the transaction context
+    ///
+    /// # Aborts
+    /// * If the pool is already paused (error code: 9223376739843964927)
     public fun pause<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
@@ -1578,18 +2761,62 @@ module clmm_pool::pool {
         pool.is_pause = true;
     }
 
+    /// Returns the fee amounts for both tokens in a pool fee structure.
+    ///
+    /// # Arguments
+    /// * `pool_fee` - Reference to the pool fee structure
+    ///
+    /// # Returns
+    /// A tuple containing:
+    /// * Fee amount for token A
+    /// * Fee amount for token B
     public fun pool_fee_a_b(pool_fee: &PoolFee): (u64, u64) {
         (pool_fee.coin_a, pool_fee.coin_b)
     }
 
+    /// Returns a reference to the position manager of the pool.
+    ///
+    /// # Arguments
+    /// * `pool` - Reference to the pool containing the position manager
+    ///
+    /// # Returns
+    /// A reference to the pool's position manager
     public fun position_manager<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): &clmm_pool::position::PositionManager {
         &pool.position_manager
     }
 
+    /// Returns the protocol fee amounts for both tokens.
+    ///
+    /// # Arguments
+    /// * `pool` - Reference to the pool containing the protocol fees
+    ///
+    /// # Returns
+    /// A tuple containing:
+    /// * Protocol fee amount for token A
+    /// * Protocol fee amount for token B
     public fun protocol_fee<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): (u64, u64) {
         (pool.fee_protocol_coin_a, pool.fee_protocol_coin_b)
     }
     
+    /// Removes liquidity from a position in the pool.
+    /// This function calculates the token amounts to return based on the liquidity being removed
+    /// and updates the position's state accordingly.
+    ///
+    /// # Arguments
+    /// * `global_config` - Reference to the global configuration
+    /// * `pool` - Reference to the pool containing the position
+    /// * `position` - Reference to the position to remove liquidity from
+    /// * `liquidity` - The amount of liquidity to remove
+    /// * `clock` - Reference to the clock for timestamp calculations
+    ///
+    /// # Returns
+    /// A tuple containing:
+    /// * Balance of token A to return
+    /// * Balance of token B to return
+    ///
+    /// # Aborts
+    /// * If the pool is paused (error code: 13)
+    /// * If the liquidity amount is zero or negative (error code: 3)
     public fun remove_liquidity<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
@@ -1614,7 +2841,7 @@ module clmm_pool::pool {
             fee_growth_b,
             rewards_growth,
             points_growth,
-            magma_growth,
+            fullsale_growth,
         ) = get_all_growths_in_tick_range<CoinTypeA, CoinTypeB>(
             pool,
             tick_lower,
@@ -1631,7 +2858,7 @@ module clmm_pool::pool {
             pool.fee_growth_global_b,
             clmm_pool::rewarder::points_growth_global(&pool.rewarder_manager),
             clmm_pool::rewarder::rewards_growth_global(&pool.rewarder_manager),
-            pool.magma_distribution_growth_global
+            pool.fullsale_distribution_growth_global
         );
 
         if (integer_mate::i32::lte(tick_lower, pool.current_tick_index) && 
@@ -1662,7 +2889,7 @@ module clmm_pool::pool {
                 fee_growth_b,
                 points_growth,
                 rewards_growth,
-                magma_growth
+                fullsale_growth
             ),
             amount_a,
             amount_b,
@@ -1675,6 +2902,21 @@ module clmm_pool::pool {
             sui::balance::split<CoinTypeB>(&mut pool.coin_b, amount_b)
         )
     }
+
+    /// Repays the liquidity added to a pool.
+    /// This function verifies and processes the repayment of tokens after adding liquidity.
+    ///
+    /// # Arguments
+    /// * `global_config` - Reference to the global configuration
+    /// * `pool` - Reference to the pool to repay liquidity to
+    /// * `balance_a` - Balance of token A to repay
+    /// * `balance_b` - Balance of token B to repay
+    /// * `receipt` - Receipt containing the original liquidity addition details
+    ///
+    /// # Aborts
+    /// * If the balance of token A does not match the expected amount (error code: 0)
+    /// * If the balance of token B does not match the expected amount (error code: 0)
+    /// * If the pool ID in the receipt does not match the pool's ID (error code: 12)
     public fun repay_add_liquidity<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
@@ -1695,6 +2937,22 @@ module clmm_pool::pool {
         sui::balance::join<CoinTypeB>(&mut pool.coin_b, balance_b);
     }
 
+    /// Repays a flash swap operation.
+    /// This function processes the repayment of tokens after a flash swap operation.
+    ///
+    /// # Arguments
+    /// * `global_config` - Reference to the global configuration
+    /// * `pool` - Reference to the pool to repay the flash swap to
+    /// * `balance_a` - Balance of token A to repay
+    /// * `balance_b` - Balance of token B to repay
+    /// * `receipt` - Receipt containing the flash swap operation details
+    ///
+    /// # Aborts
+    /// * If the pool is paused (error code: 13)
+    /// * If the pool ID in the receipt does not match the pool's ID (error code: 14)
+    /// * If the reference fee amount is non-zero (error code: 14)
+    /// * If the balance of token A does not match the expected amount (error code: 0)
+    /// * If the balance of token B does not match the expected amount (error code: 0)
     public fun repay_flash_swap<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
@@ -1726,6 +2984,25 @@ module clmm_pool::pool {
             sui::balance::destroy_zero<CoinTypeA>(balance_a);
         };
     }
+
+    /// Repays a flash swap operation with partner referral fees.
+    /// Processes the repayment of tokens after a flash swap operation,
+    /// handling partner referral fees if applicable.
+    ///
+    /// # Arguments
+    /// * `global_config` - Reference to the global configuration for version checking
+    /// * `pool` - Reference to the pool to repay the flash swap to
+    /// * `partner` - Reference to the partner to receive referral fees
+    /// * `balance_a` - Balance of token A to repay
+    /// * `balance_b` - Balance of token B to repay
+    /// * `receipt` - Receipt containing the flash swap operation details
+    ///
+    /// # Aborts
+    /// * If the pool is paused (error code: 13)
+    /// * If the pool ID in the receipt does not match the pool's ID (error code: 14)
+    /// * If the partner ID in the receipt does not match the partner's ID (error code: 14)
+    /// * If the balance of token A does not match the expected amount (error code: 0)
+    /// * If the balance of token B does not match the expected amount (error code: 0)
     public fun repay_flash_swap_with_partner<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
@@ -1765,9 +3042,40 @@ module clmm_pool::pool {
         };
     }
 
+    /// Returns a reference to the pool's rewarder manager.
+    /// The rewarder manager is responsible for handling reward distributions and
+    /// managing reward-related operations within the pool.
+    ///
+    /// # Arguments
+    /// * `pool` - Reference to the pool containing the rewarder manager
+    ///
+    /// # Returns
+    /// * Reference to the RewarderManager instance associated with the pool
     public fun rewarder_manager<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): &clmm_pool::rewarder::RewarderManager {
         &pool.rewarder_manager
     }
+
+    /// Sets up display metadata for the pool object.
+    /// Creates and configures display information for the pool in the Sui object system,
+    /// including basic pool information and associated resource links.
+    ///
+    /// # Arguments
+    /// * `global_config` - Reference to the global configuration for version checking
+    /// * `publisher` - Reference to the package publisher for display creation
+    /// * `name` - Name of the pool to be displayed
+    /// * `description` - Detailed description of the pool
+    /// * `image_url` - URL of the pool's image representation
+    /// * `link` - URL to the pool's main interface
+    /// * `project_url` - URL to the project's documentation or website
+    /// * `creator` - Information about the pool's creator
+    /// * `ctx` - Mutable reference to transaction context
+    ///
+    /// # Aborts
+    /// * If the package version check fails
+    ///
+    /// # Effects
+    /// * Creates a new Display object for the pool
+    /// * Transfers the Display object to the transaction sender
     public fun set_display<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         publisher: &sui::package::Publisher,
@@ -1808,6 +3116,21 @@ module clmm_pool::pool {
         sui::display::update_version<Pool<CoinTypeA, CoinTypeB>>(&mut display);
         sui::transfer::public_transfer<sui::display::Display<Pool<CoinTypeA, CoinTypeB>>>(display, sui::tx_context::sender(ctx));
     }
+
+    /// Splits fees between staked and unstaked portions of liquidity.
+    /// Calculates fee distribution based on growth inside and outside the given tick range,
+    /// and takes into account the unstaked fee rate.
+    ///
+    /// # Arguments
+    /// * `fee_amount` - Total fee amount to be distributed
+    /// * `total_growth` - Total fee growth in the pool
+    /// * `growth_inside` - Fee growth inside the given tick range
+    /// * `unstaked_fee_rate` - Fee rate for unstaked liquidity
+    ///
+    /// # Returns
+    /// A tuple of two values:
+    /// * First value - fee amount for staked liquidity
+    /// * Second value - fee amount for unstaked liquidity
     fun split_fees(
         fee_amount: u64,
         total_growth: u128,
@@ -1827,7 +3150,23 @@ module clmm_pool::pool {
         (staked_amount as u64, unstaked_amount as u64)
     }
 
-    public fun stake_in_magma_distribution<CoinTypeA, CoinTypeB>(
+    /// Stakes liquidity in the fullsale distribution system for a given tick range.
+    /// This function allows users to participate in the fullsale distribution rewards program
+    /// by staking their liquidity position within a specified tick range.
+    ///
+    /// # Arguments
+    /// * `pool` - Mutable reference to the pool where liquidity will be staked
+    /// * `gauge_cap` - Reference to the gauge capability for authorization
+    /// * `liquidity` - Amount of liquidity to stake
+    /// * `tick_lower` - Lower bound of the tick range for staking
+    /// * `tick_upper` - Upper bound of the tick range for staking
+    /// * `clock` - Reference to the Sui clock for timestamp verification
+    ///
+    /// # Aborts
+    /// * If the pool is paused (error code: 13)
+    /// * If the liquidity amount is zero (error code: 9223379140730683391)
+    /// * If the gauge capability verification fails
+    public fun stake_in_fullsale_distribution<CoinTypeA, CoinTypeB>(
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
         gauge_cap: &gauge_cap::gauge_cap::GaugeCap, 
         liquidity: u128,
@@ -1838,7 +3177,7 @@ module clmm_pool::pool {
         assert!(!pool.is_pause, 13);
         assert!(liquidity != 0, 9223379140730683391);
         check_gauge_cap<CoinTypeA, CoinTypeB>(pool, gauge_cap);
-        update_magma_distribution_internal<CoinTypeA, CoinTypeB>(
+        update_fullsale_distribution_internal<CoinTypeA, CoinTypeB>(
             pool,
             integer_mate::i128::from(liquidity),
             tick_lower,
@@ -1846,33 +3185,122 @@ module clmm_pool::pool {
             clock
         );
     }
+
+    /// Returns the amount of tokens sent in the swap step.
+    /// This function extracts the amount_in field from the SwapStepResult,
+    /// representing the actual amount of tokens sent in the swap operation.
+    ///
+    /// # Arguments
+    /// * `result` - Reference to the SwapStepResult structure containing swap step details
+    ///
+    /// # Returns
+    /// The amount of input tokens from the swap step as a u64 value
     public fun step_swap_result_amount_in(result: &SwapStepResult): u64 {
         result.amount_in
     }
 
+    /// Returns the amount of tokens received from the swap step.
+    /// This function extracts the amount_out field from the SwapStepResult,
+    /// representing the actual amount of tokens received in the swap operation.
+    ///
+    /// # Arguments
+    /// * `result` - Reference to the SwapStepResult structure containing swap step details
+    ///
+    /// # Returns
+    /// The amount of output tokens from the swap step as a u64 value
     public fun step_swap_result_amount_out(result: &SwapStepResult): u64 {
         result.amount_out
     }
 
+    /// Returns the current liquidity in the pool after the swap step.
+    /// Provides the liquidity value that remains in the pool after
+    /// the swap operation has been executed.
+    ///
+    /// # Arguments
+    /// * `result` - Reference to the SwapStepResult structure
+    ///
+    /// # Returns
+    /// The current liquidity value as a u128
     public fun step_swap_result_current_liquidity(result: &SwapStepResult): u128 {
         result.current_liquidity
     }
 
+    /// Returns the current square root price after the swap step.
+    /// This represents the updated price after the swap operation
+    /// has been completed.
+    ///
+    /// # Arguments
+    /// * `result` - Reference to the SwapStepResult structure
+    ///
+    /// # Returns
+    /// The current square root price as a u128
     public fun step_swap_result_current_sqrt_price(result: &SwapStepResult): u128 {
         result.current_sqrt_price
     }
 
+    /// Returns the fee amount collected during the swap step.
+    /// Represents the total fees charged for this particular
+    /// swap operation.
+    ///
+    /// # Arguments
+    /// * `result` - Reference to the SwapStepResult structure
+    ///
+    /// # Returns
+    /// The fee amount collected as a u64
     public fun step_swap_result_fee_amount(result: &SwapStepResult): u64 {
         result.fee_amount
     }
 
+    /// Returns the remaining amount of tokens that weren't swapped in this step.
+    /// This represents any tokens that couldn't be swapped due to price limits
+    /// or insufficient liquidity.
+    ///
+    /// # Arguments
+    /// * `result` - Reference to the SwapStepResult structure
+    ///
+    /// # Returns
+    /// The remaining amount of tokens as a u64
     public fun step_swap_result_remainder_amount(result: &SwapStepResult): u64 {
         result.remainder_amount
     }
 
+    /// Returns the target square root price for the swap step.
+    /// This represents the price limit that was set for this
+    /// particular swap operation.
+    ///
+    /// # Arguments
+    /// * `result` - Reference to the SwapStepResult structure
+    ///
+    /// # Returns
+    /// The target square root price as a u128
     public fun step_swap_result_target_sqrt_price(result: &SwapStepResult): u128 {
         result.target_sqrt_price
     }
+
+    /// Executes a swap operation within the pool.
+    /// This function handles the core swap logic, including price calculations,
+    /// fee processing, and liquidity adjustments across multiple ticks.
+    ///
+    /// # Arguments
+    /// * `pool` - Mutable reference to the pool where the swap will be executed
+    /// * `a2b` - Boolean indicating the swap direction (true for token A to B, false for B to A)
+    /// * `by_amount_in` - Boolean indicating whether the amount parameter represents input or output amount
+    /// * `sqrt_price_limit` - The price limit for the swap operation as a square root price
+    /// * `amount` - The amount of tokens to swap (either input or output depending on by_amount_in)
+    /// * `unstaked_fee_rate` - Fee rate applied to unstaked liquidity positions
+    /// * `protocol_fee_rate` - Fee rate collected by the protocol
+    /// * `ref_fee_rate` - Fee rate for referral rewards
+    /// * `clock` - Reference to the Sui clock for timestamp verification
+    ///
+    /// # Returns
+    /// A SwapResult structure containing:
+    /// - Amount of tokens input and output
+    /// - Fee amounts (protocol, referral, liquidity provider fees)
+    /// - Final square root price and tick index
+    ///
+    /// # Aborts
+    /// * If the referral fee rate exceeds 10000 (error code: 16)
+    /// * If there are no more ticks available for the swap (error code: 20)
     fun swap_in_pool<CoinTypeA, CoinTypeB>(
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
         a2b: bool,
@@ -1944,7 +3372,7 @@ module clmm_pool::pool {
                             pool,
                             fee_after_ref,
                             pool.liquidity,
-                            pool.magma_distribution_staked_liquidity,
+                            pool.fullsale_distribution_staked_liquidity,
                             unstaked_fee_rate
                         );
                         gauge_fee = gauge_fee_amount;
@@ -1964,21 +3392,21 @@ module clmm_pool::pool {
                     tick_index
                 };
                 pool.current_tick_index = next_tick_index;
-                update_magma_distribution_growth_global_internal<CoinTypeA, CoinTypeB>(pool, clock);
+                update_fullsale_distribution_growth_global_internal<CoinTypeA, CoinTypeB>(pool, clock);
                 let (new_liquidity, new_staked_liquidity) = clmm_pool::tick::cross_by_swap(
                     &mut pool.tick_manager,
                     tick_index,
                     a2b,
                     pool.liquidity,
-                    pool.magma_distribution_staked_liquidity,
+                    pool.fullsale_distribution_staked_liquidity,
                     pool.fee_growth_global_a,
                     pool.fee_growth_global_b,
                     clmm_pool::rewarder::points_growth_global(&pool.rewarder_manager),
                     clmm_pool::rewarder::rewards_growth_global(&pool.rewarder_manager),
-                    pool.magma_distribution_growth_global
+                    pool.fullsale_distribution_growth_global
                 );
                 pool.liquidity = new_liquidity;
-                pool.magma_distribution_staked_liquidity = new_staked_liquidity;
+                pool.fullsale_distribution_staked_liquidity = new_staked_liquidity;
                 continue
             };
             if (pool.current_sqrt_price != next_sqrt_price) {
@@ -1989,17 +3417,40 @@ module clmm_pool::pool {
         };
         if (a2b) {
             pool.fee_protocol_coin_a = pool.fee_protocol_coin_a + swap_result.protocol_fee_amount;
-            pool.magma_distribution_gauger_fee.coin_a = pool.magma_distribution_gauger_fee.coin_a + swap_result.gauge_fee_amount;
+            pool.fullsale_distribution_gauger_fee.coin_a = pool.fullsale_distribution_gauger_fee.coin_a + swap_result.gauge_fee_amount;
         } else {
             pool.fee_protocol_coin_b = pool.fee_protocol_coin_b + swap_result.protocol_fee_amount;
-            pool.magma_distribution_gauger_fee.coin_b = pool.magma_distribution_gauger_fee.coin_b + swap_result.gauge_fee_amount;
+            pool.fullsale_distribution_gauger_fee.coin_b = pool.fullsale_distribution_gauger_fee.coin_b + swap_result.gauge_fee_amount;
         };
         swap_result
     }
+
+    /// Returns the amount that needs to be paid for a flash swap operation.
+    /// This function extracts the payment amount from the flash swap receipt.
+    ///
+    /// # Arguments
+    /// * `receipt` - Reference to the flash swap receipt containing operation details
+    ///
+    /// # Returns
+    /// The amount of tokens that needs to be paid back as a u64 value
     public fun swap_pay_amount<CoinTypeA, CoinTypeB>(receipt: &FlashSwapReceipt<CoinTypeA, CoinTypeB>): u64 {
         receipt.pay_amount
     }
-    public fun sync_magma_distribution_reward<T0, T1>(
+
+    /// Synchronizes the fullsale distribution reward parameters for the pool.
+    /// Updates the distribution rate, reserve, period finish time, and resets the rollover amount.
+    ///
+    /// # Arguments
+    /// * `pool` - Mutable reference to the pool to update
+    /// * `gauge_cap` - Reference to the gauge capability for authorization
+    /// * `distribution_rate` - New rate at which rewards will be distributed
+    /// * `distribution_reserve` - Amount of tokens reserved for distribution
+    /// * `period_finish` - Timestamp when the distribution period ends
+    ///
+    /// # Aborts
+    /// * If the pool is paused (error code: 13)
+    /// * If the gauge capability verification fails
+    public fun sync_fullsale_distribution_reward<T0, T1>(
         pool: &mut Pool<T0, T1>,
         gauge_cap: &gauge_cap::gauge_cap::GaugeCap,
         distribution_rate: u128,
@@ -2008,19 +3459,50 @@ module clmm_pool::pool {
     ) {
         assert!(!pool.is_pause, 13);
         check_gauge_cap<T0, T1>(pool, gauge_cap);
-        pool.magma_distribution_rate = distribution_rate;
-        pool.magma_distribution_reserve = distribution_reserve;
-        pool.magma_distribution_period_finish = period_finish;
-        pool.magma_distribution_rollover = 0;
+        pool.fullsale_distribution_rate = distribution_rate;
+        pool.fullsale_distribution_reserve = distribution_reserve;
+        pool.fullsale_distribution_period_finish = period_finish;
+        pool.fullsale_distribution_rollover = 0;
     }
 
+    /// Returns a reference to the pool's tick manager.
+    /// The tick manager handles the initialization, tracking, and management
+    /// of price ticks within the pool.
+    ///
+    /// # Arguments
+    /// * `pool` - Reference to the pool containing the tick manager
+    ///
+    /// # Returns
+    /// Reference to the TickManager instance of the pool
     public fun tick_manager<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): &clmm_pool::tick::TickManager {
         &pool.tick_manager
     }
 
+    /// Returns the tick spacing value for the pool.
+    /// Tick spacing determines the minimum distance between initialized ticks
+    /// and affects the granularity of price movements.
+    ///
+    /// # Arguments
+    /// * `pool` - Reference to the pool
+    ///
+    /// # Returns
+    /// The tick spacing value as a u32
     public fun tick_spacing<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): u32 {
         pool.tick_spacing
     }
+
+    /// Unpauses the pool, allowing trading and other operations to resume.
+    /// Can only be called by an account with pool manager role.
+    ///
+    /// # Arguments
+    /// * `global_config` - Reference to the global configuration for version checking
+    /// * `pool` - Mutable reference to the pool to unpause
+    /// * `ctx` - Mutable reference to transaction context for sender verification
+    ///
+    /// # Aborts
+    /// * If the pool is not paused (error code: 9223378204427812863)
+    /// * If the caller does not have pool manager role
+    /// * If the package version check fails
     public fun unpause<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut Pool<CoinTypeA, CoinTypeB>, 
@@ -2032,7 +3514,21 @@ module clmm_pool::pool {
         pool.is_pause = false;
     }
 
-    public fun unstake_from_magma_distribution<CoinTypeA, CoinTypeB>(
+    /// Removes liquidity from the fullsale distribution system, reducing the amount of liquidity participating in reward distribution.
+    /// 
+    /// # Arguments
+    /// * `pool` - Mutable reference to the pool
+    /// * `gauge_cap` - Reference to the gauge capability for access control verification
+    /// * `liquidity` - Amount of liquidity to remove
+    /// * `tick_lower` - Lower tick boundary for the position
+    /// * `tick_upper` - Upper tick boundary for the position
+    /// * `clock` - Reference to the Sui clock for timestamp verification
+    /// 
+    /// # Aborts
+    /// * If the pool is paused (error code: 13)
+    /// * If the liquidity amount is zero (error code: 9223379200860225535)
+    /// * If gauge capability verification fails
+    public fun unstake_from_fullsale_distribution<CoinTypeA, CoinTypeB>(
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
         gauge_cap: &gauge_cap::gauge_cap::GaugeCap,
         liquidity: u128,
@@ -2043,7 +3539,7 @@ module clmm_pool::pool {
         assert!(!pool.is_pause, 13);
         assert!(liquidity != 0, 9223379200860225535);
         check_gauge_cap<CoinTypeA, CoinTypeB>(pool, gauge_cap);
-        update_magma_distribution_internal<CoinTypeA, CoinTypeB>(
+        update_fullsale_distribution_internal<CoinTypeA, CoinTypeB>(
             pool,
             integer_mate::i128::neg(integer_mate::i128::from(liquidity)),
             tick_lower,
@@ -2052,6 +3548,13 @@ module clmm_pool::pool {
         );
     }
     
+    /// Updates the global fee growth for the pool, distributing fees among all liquidity positions.
+    /// Fees are distributed proportionally to the amount of liquidity in the pool.
+    /// 
+    /// # Arguments
+    /// * `pool` - Mutable reference to the pool
+    /// * `fee_after_protocol` - Amount of fees after protocol fees deduction
+    /// * `a2b` - Flag indicating swap direction (true for A->B, false for B->A)
     fun update_fee_growth_global<CoinTypeA, CoinTypeB>(pool: &mut Pool<CoinTypeA, CoinTypeB>, fee_after_protocol: u64, a2b: bool) {
         if (fee_after_protocol == 0 || pool.liquidity == 0) {
             return
@@ -2068,6 +3571,27 @@ module clmm_pool::pool {
             );
         };
     }
+
+    /// Updates the fee rate for the pool. This function can only be called by an account with pool manager role.
+    /// The new fee rate must not exceed the maximum allowed fee rate.
+    /// 
+    /// # Arguments
+    /// * `global_config` - Reference to the global configuration for version checking and role verification
+    /// * `pool` - Mutable reference to the pool to update
+    /// * `fee_rate` - New fee rate to set for the pool
+    /// * `ctx` - Mutable reference to the transaction context for sender verification
+    /// 
+    /// # Aborts
+    /// * If the pool is paused (error code: 13)
+    /// * If the new fee rate exceeds the maximum allowed fee rate (error code: 9)
+    /// * If the caller does not have pool manager role
+    /// * If the package version check fails
+    /// 
+    /// # Events
+    /// Emits an UpdateFeeRateEvent containing:
+    /// * The pool ID
+    /// * The old fee rate
+    /// * The new fee rate
     public fun update_fee_rate<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
@@ -2089,52 +3613,84 @@ module clmm_pool::pool {
         sui::event::emit<UpdateFeeRateEvent>(event);
     }
 
-    public fun update_magma_distribution_growth_global<CoinTypeA, CoinTypeB>(
+    /// Updates the global growth of fullsale distribution rewards for the pool.
+    /// This function can only be called by an account with gauge capability.
+    /// 
+    /// # Arguments
+    /// * `pool` - Mutable reference to the pool
+    /// * `gauge_cap` - Reference to the gauge capability for access control verification
+    /// * `clock` - Reference to the Sui clock for timestamp verification
+    /// 
+    /// # Aborts
+    /// * If the pool is paused (error code: 13)
+    /// * If gauge capability verification fails
+    public fun update_fullsale_distribution_growth_global<CoinTypeA, CoinTypeB>(
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
         gauge_cap: &gauge_cap::gauge_cap::GaugeCap,
         clock: &sui::clock::Clock
     ) {
         assert!(!pool.is_pause, 13);
         check_gauge_cap<CoinTypeA, CoinTypeB>(pool, gauge_cap);
-        update_magma_distribution_growth_global_internal<CoinTypeA, CoinTypeB>(pool, clock);
+        update_fullsale_distribution_growth_global_internal<CoinTypeA, CoinTypeB>(pool, clock);
     }
 
-    fun update_magma_distribution_growth_global_internal<CoinTypeA, CoinTypeB>(
+    /// Updates the global growth of fullsale distribution rewards based on the time elapsed since last update.
+    /// Calculates and distributes rewards to all staked positions.
+    /// 
+    /// # Arguments
+    /// * `pool` - Mutable reference to the pool
+    /// * `clock` - Reference to the Sui clock for timestamp verification
+    /// 
+    /// # Returns
+    /// The amount of rewards distributed in this update
+    fun update_fullsale_distribution_growth_global_internal<CoinTypeA, CoinTypeB>(
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
         clock: &sui::clock::Clock
     ): u64 {
         let current_timestamp = sui::clock::timestamp_ms(clock) / 1000;
-        let time_delta = current_timestamp - pool.magma_distribution_last_updated;
+        let time_delta = current_timestamp - pool.fullsale_distribution_last_updated;
         let mut distributed_amount = 0;
         if (time_delta != 0) {
-            if (pool.magma_distribution_reserve > 0) {
+            if (pool.fullsale_distribution_reserve > 0) {
                 let calculated_distribution = integer_mate::full_math_u128::mul_div_floor(
-                    pool.magma_distribution_rate,
+                    pool.fullsale_distribution_rate,
                     time_delta as u128,
                     18446744073709551616
                 ) as u64;
                 let mut actual_distribution = calculated_distribution;
-                if (calculated_distribution > pool.magma_distribution_reserve) {
-                    actual_distribution = pool.magma_distribution_reserve;
+                if (calculated_distribution > pool.fullsale_distribution_reserve) {
+                    actual_distribution = pool.fullsale_distribution_reserve;
                 };
-                pool.magma_distribution_reserve = pool.magma_distribution_reserve - actual_distribution;
-                if (pool.magma_distribution_staked_liquidity > 0) {
-                    pool.magma_distribution_growth_global = pool.magma_distribution_growth_global + integer_mate::full_math_u128::mul_div_floor(
+                pool.fullsale_distribution_reserve = pool.fullsale_distribution_reserve - actual_distribution;
+                if (pool.fullsale_distribution_staked_liquidity > 0) {
+                    pool.fullsale_distribution_growth_global = pool.fullsale_distribution_growth_global + integer_mate::full_math_u128::mul_div_floor(
                         actual_distribution as u128,
                         18446744073709551616,
-                        pool.magma_distribution_staked_liquidity
+                        pool.fullsale_distribution_staked_liquidity
                     );
                 } else {
-                    pool.magma_distribution_rollover = pool.magma_distribution_rollover + actual_distribution;
+                    pool.fullsale_distribution_rollover = pool.fullsale_distribution_rollover + actual_distribution;
                 };
                 distributed_amount = actual_distribution;
             };
-            pool.magma_distribution_last_updated = current_timestamp;
+            pool.fullsale_distribution_last_updated = current_timestamp;
         };
         distributed_amount
     }
     
-    fun update_magma_distribution_internal<CoinTypeA, CoinTypeB>(
+    /// Updates the internal state of fullsale distribution for a position, including staked liquidity and growth tracking.
+    /// This function is called when liquidity is added or removed from a position.
+    /// 
+    /// # Arguments
+    /// * `pool` - Mutable reference to the pool
+    /// * `liquidity_delta` - Change in liquidity amount (positive for adding, negative for removing)
+    /// * `tick_lower` - Lower tick boundary for the position
+    /// * `tick_upper` - Upper tick boundary for the position
+    /// * `clock` - Reference to the Sui clock for timestamp verification
+    /// 
+    /// # Aborts
+    /// * If attempting to remove more liquidity than is currently staked (error code: 9223379024766566399)
+    fun update_fullsale_distribution_internal<CoinTypeA, CoinTypeB>(
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
         liquidity_delta: integer_mate::i128::I128,
         tick_lower: integer_mate::i32::I32,
@@ -2145,32 +3701,46 @@ module clmm_pool::pool {
             pool.current_tick_index,
             tick_upper
         )) {
-            update_magma_distribution_growth_global_internal<CoinTypeA, CoinTypeB>(pool, clock);
+            update_fullsale_distribution_growth_global_internal<CoinTypeA, CoinTypeB>(pool, clock);
             if (integer_mate::i128::is_neg(liquidity_delta)) {
                 assert!(
-                    pool.magma_distribution_staked_liquidity >= integer_mate::i128::abs_u128(liquidity_delta),
+                    pool.fullsale_distribution_staked_liquidity >= integer_mate::i128::abs_u128(liquidity_delta),
                     9223379024766566399
                 );
             } else {
                 let (_, overflow) = integer_mate::i128::overflowing_add(
-                    integer_mate::i128::from(pool.magma_distribution_staked_liquidity),
+                    integer_mate::i128::from(pool.fullsale_distribution_staked_liquidity),
                     liquidity_delta
                 );
                 assert!(!overflow, 9223379033357877270);
             };
-            pool.magma_distribution_staked_liquidity = integer_mate::i128::as_u128(
-                integer_mate::i128::add(integer_mate::i128::from(pool.magma_distribution_staked_liquidity), liquidity_delta)
+            pool.fullsale_distribution_staked_liquidity = integer_mate::i128::as_u128(
+                integer_mate::i128::add(integer_mate::i128::from(pool.fullsale_distribution_staked_liquidity), liquidity_delta)
             );
         };
         let tick_lower_opt = clmm_pool::tick::try_borrow_tick(&pool.tick_manager, tick_lower);
         let tick_upper_opt = clmm_pool::tick::try_borrow_tick(&pool.tick_manager, tick_upper);
         if (std::option::is_some<clmm_pool::tick::Tick>(&tick_lower_opt)) {
-            clmm_pool::tick::update_magma_stake(&mut pool.tick_manager, tick_lower, liquidity_delta, false);
+            clmm_pool::tick::update_fullsale_stake(&mut pool.tick_manager, tick_lower, liquidity_delta, false);
         };
         if (std::option::is_some<clmm_pool::tick::Tick>(&tick_upper_opt)) {
-            clmm_pool::tick::update_magma_stake(&mut pool.tick_manager, tick_upper, liquidity_delta, true);
+            clmm_pool::tick::update_fullsale_stake(&mut pool.tick_manager, tick_upper, liquidity_delta, true);
         };
     }
+
+    /// Updates the URL associated with the pool position.
+    /// This function can only be called by an account with pool manager role.
+    /// 
+    /// # Arguments
+    /// * `global_config` - Reference to the global configuration for version checking and role verification
+    /// * `pool` - Mutable reference to the pool to update
+    /// * `new_url` - New URL string to set for the pool position
+    /// * `ctx` - Mutable reference to the transaction context for sender verification
+    /// 
+    /// # Aborts
+    /// * If the pool is paused (error code: 13)
+    /// * If the caller does not have pool manager role
+    /// * If the package version check fails
     public fun update_position_url<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
@@ -2182,6 +3752,23 @@ module clmm_pool::pool {
         clmm_pool::config::check_pool_manager_role(global_config, sui::tx_context::sender(ctx));
         pool.url = new_url;
     }
+
+    /// Updates the swap result structure with new amounts and fees from a swap step.
+    /// Performs overflow checks before updating the values.
+    /// 
+    /// # Arguments
+    /// * `swap_result` - Mutable reference to the swap result structure to update
+    /// * `amount_in_delta` - Change in input amount
+    /// * `amount_out_delta` - Change in output amount
+    /// * `fee_amount_delta` - Change in fee amount
+    /// * `protocol_fee_delta` - Change in protocol fee amount
+    /// * `ref_fee_delta` - Change in referral fee amount
+    /// * `gauge_fee_delta` - Change in gauge fee amount
+    /// 
+    /// # Aborts
+    /// * If amount_in addition would overflow (error code: 6)
+    /// * If amount_out addition would overflow (error code: 7)
+    /// * If fee_amount addition would overflow (error code: 8)
     fun update_swap_result(
         swap_result: &mut SwapResult,
         amount_in_delta: u64,
@@ -2202,6 +3789,28 @@ module clmm_pool::pool {
         swap_result.ref_fee_amount = swap_result.ref_fee_amount + ref_fee_delta;
         swap_result.steps = swap_result.steps + 1;
     }
+
+    /// Updates the fee rate for unstaked liquidity positions in the pool.
+    /// This function can only be called by an account with pool manager role.
+    /// 
+    /// # Arguments
+    /// * `global_config` - Reference to the global configuration for version checking and role verification
+    /// * `pool` - Mutable reference to the pool to update
+    /// * `new_fee_rate` - New fee rate to set for unstaked liquidity
+    /// * `ctx` - Mutable reference to the transaction context for sender verification
+    /// 
+    /// # Aborts
+    /// * If the pool is paused (error code: 13)
+    /// * If the new fee rate is invalid (error code: 9)
+    /// * If the new fee rate equals the current fee rate (error code: 9)
+    /// * If the caller does not have pool manager role
+    /// * If the package version check fails
+    /// 
+    /// # Events
+    /// Emits an UpdateUnstakedLiquidityFeeRateEvent containing:
+    /// * The pool ID
+    /// * The old fee rate
+    /// * The new fee rate
     public fun update_unstaked_liquidity_fee_rate<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut Pool<CoinTypeA, CoinTypeB>, 
@@ -2226,14 +3835,27 @@ module clmm_pool::pool {
         sui::event::emit<UpdateUnstakedLiquidityFeeRateEvent>(event);
     }
 
+    /// Returns the URL associated with the pool position.
+    /// 
+    /// # Arguments
+    /// * `pool` - Reference to the pool
+    /// 
+    /// # Returns
+    /// The URL string associated with the pool position
     public fun url<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): std::string::String {
         pool.url
     }
 
+    /// Validates that a position belongs to this pool by checking the pool ID.
+    /// 
+    /// # Arguments
+    /// * `pool` - Reference to the pool
+    /// * `position` - Reference to the position to validate
+    /// 
+    /// # Aborts
+    /// * If the position's pool ID does not match this pool's ID (error code: 9223373806381301759)
     fun validate_pool_position<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>, position: &clmm_pool::position::Position) {
         assert!(sui::object::id<Pool<CoinTypeA, CoinTypeB>>(pool) == clmm_pool::position::pool_id(position), 9223373806381301759);
     }
-
-    // decompiled from Move bytecode v6
 }
 

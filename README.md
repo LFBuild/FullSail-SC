@@ -4,7 +4,7 @@
 
 ## Overview of Specific Repo - Full_Sail_SCs
 
-A Dex Smart Contract implementing ve(3,3) model which has similar logic as [Magmafinance](https://magmafinance.io/) on sui.
+A Dex Smart Contract implementing ve(3,3) model which has similar logic as [Fullsalefinance](https://fullsalefinance.io/) on sui.
 
 The original code was decompiled from testnet contracts:
 
@@ -18,12 +18,12 @@ The reason why we are using this code is because it is the only ve(3,3) model on
 
 Some libraries were found opensource:
     
-- [move_stl](https://github.com/MagmaFinanceIO/move-stl). No license was found.
-- [integer_mate](https://github.com/MagmaFinanceIO/integer-mate). No license was found.
+- [move_stl](https://github.com/FullsaleFinanceIO/move-stl). No license was found.
+- [integer_mate](https://github.com/FullsaleFinanceIO/integer-mate). No license was found.
 
 To mitigate the risk of of libraries becoming unavailable, we are using the code directly.
 
-Addresses were took from the frontend [library config](https://github.com/MagmaFinanceIO/magma_clmm_sdk/blob/main/src/config/testnet.ts)
+Addresses were took from the frontend [library config](https://github.com/FullsaleFinanceIO/fullsale_clmm_sdk/blob/main/src/config/testnet.ts)
 
 ## Prerequisities
 

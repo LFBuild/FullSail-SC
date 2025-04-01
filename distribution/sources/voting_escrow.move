@@ -2108,7 +2108,7 @@ module distribution::voting_escrow {
     /// * `ctx` - The transaction context, used to create the display and transfer it
     ///
     /// # Effects
-    /// Creates and initializes a Display object for Lock NFTs with Magma-specific branding
+    /// Creates and initializes a Display object for Lock NFTs with Fullsale-specific branding
     /// and transfers it to the transaction sender
     public fun set_display(publisher: &sui::package::Publisher, ctx: &mut TxContext) {
         let mut fields = std::vector::empty<std::string::String>();
@@ -2120,13 +2120,13 @@ module distribution::voting_escrow {
         fields.push_back(std::string::utf8(b"website"));
         fields.push_back(std::string::utf8(b"creator"));
         let mut values = std::vector::empty<std::string::String>();
-        values.push_back(std::string::utf8(b"Magma Lock"));
+        values.push_back(std::string::utf8(b"Fullsale Lock"));
         values.push_back(std::string::utf8(b"{amount}"));
         values.push_back(std::string::utf8(b"{end}"));
         values.push_back(std::string::utf8(b"{permanent}"));
         values.push_back(std::string::utf8(b""));
-        values.push_back(std::string::utf8(b"https://magmafinance.io"));
-        values.push_back(std::string::utf8(b"MAGMA"));
+        values.push_back(std::string::utf8(b"https://fullsalefinance.io"));
+        values.push_back(std::string::utf8(b"FULLSALE"));
         let mut display = sui::display::new_with_fields<Lock>(
             publisher,
             fields,
@@ -2554,18 +2554,18 @@ module distribution::voting_escrow {
         voting_escrow.checkpoint_internal(option::some<ID>(lock_id), lock_balance, new_lock_balance, clock, ctx);
         voting_escrow.locked.add(lock_id, new_lock_balance);
         let mut managed_lock_balance = *voting_escrow.locked.borrow(managed_lock_id);
-        let mut v9 = if (new_managed_weight < managed_lock_balance.amount) {
+        let mut remaining_amount = if (new_managed_weight < managed_lock_balance.amount) {
             managed_lock_balance.amount - new_managed_weight
         } else {
             0
         };
-        managed_lock_balance.amount = v9;
-        let mut v10 = if (new_managed_weight < voting_escrow.permanent_lock_balance) {
+        managed_lock_balance.amount = remaining_amount;
+        let mut new_weight = if (new_managed_weight < voting_escrow.permanent_lock_balance) {
             new_managed_weight
         } else {
             voting_escrow.permanent_lock_balance
         };
-        voting_escrow.permanent_lock_balance = voting_escrow.permanent_lock_balance - v10;
+        voting_escrow.permanent_lock_balance = voting_escrow.permanent_lock_balance - new_weight;
         let delegatee_id = voting_escrow.voting_dao.delegatee(managed_lock_id);
         voting_escrow.voting_dao.checkpoint_delegatee(delegatee_id, new_managed_weight, false, clock, ctx);
         let old_lock_balance = voting_escrow.locked.remove(managed_lock_id);

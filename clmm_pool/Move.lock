@@ -2,13 +2,14 @@
 
 [move]
 version = 3
-manifest_digest = "22A7AE53FAFAAEFF738DF6E6C17A1BBA09BB8B727FA96A097F001238FA0BEFD1"
-deps_digest = "F9B494B64F0615AED0E98FC12A85B85ECD2BC5185C22D30E7F67786BB52E507C"
+manifest_digest = "3736317F9283E95A1C12E8058F141F0D11E8616A13AA18FDFF2FB4D353BA3E43"
+deps_digest = "397E6A9F7A624706DBDFEE056CE88391A15876868FD18A88504DA74EB458D697"
 dependencies = [
   { id = "Sui", name = "Sui" },
   { id = "gauge_cap", name = "gauge_cap" },
   { id = "integer_mate", name = "integer_mate" },
   { id = "move_stl", name = "move_stl" },
+  { id = "price_provider", name = "price_provider" },
 ]
 
 [[move.package]]
@@ -42,6 +43,14 @@ dependencies = [
 [[move.package]]
 id = "move_stl"
 source = { local = "../move_stl" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+]
+
+[[move.package]]
+id = "price_provider"
+source = { local = "../price_provider" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
