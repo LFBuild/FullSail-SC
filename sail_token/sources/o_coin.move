@@ -4,10 +4,8 @@ module sail_token::o_coin;
 
 use std::ascii;
 use std::string;
-use std::type_name;
 use sui::balance::{Self, Balance, Supply};
 use sui::url::{Self, Url};
-use sui::clock::{Self, Clock};
 
 /// Trying to join two option coins with different expiry dates
 const EExpirationDateNotMatch: u64 = 9327664466072205000;
@@ -21,14 +19,14 @@ const ENotEnoughBalance: u64 = 8197057641849652000;
 /// A type passed to create_supply is not a one-time witness.
 const EBadWitness: u64 = 2560837944997814000;
 
-
 /// A option coin of type `T` worth `value` and with additional info about expiration date.
 /// Transferable and storable
 public struct OCoin<phantom T> has key, store {
-    // regular coin fields
+    /// regular coin fields
     id: UID,
+    /// Balance. When option token is exercised exact same amount of liquid tokens should be granted.
     balance: Balance<T>,
-    // expiration date of the option token
+    /// expiration date of the option token
     expiry_date_ms: u64,
 }
 
@@ -98,7 +96,7 @@ public fun take<T>(self: &mut OCoin<T>, value: u64, ctx: &mut TxContext): OCoin<
 public entry fun join<T>(self: &mut OCoin<T>, c: OCoin<T>) {
     assert!(self.expiry_date_ms == c.expiry_date_ms, EExpirationDateNotMatch);
 
-    let OCoin { id, balance, expiry_date_ms } = c;
+    let OCoin { id, balance, expiry_date_ms: _ } = c;
     id.delete();
     self.balance.join(balance);
 }
@@ -107,7 +105,7 @@ public entry fun join<T>(self: &mut OCoin<T>, c: OCoin<T>) {
 /// and the remaining balance is left is `self`. Both of new
 /// coins have the same expiry date.
 public fun split<T>(self: &mut OCoin<T>, split_amount: u64, ctx: &mut TxContext): OCoin<T> {
-    take(self, split_amount, ctx)
+    self.take(split_amount, ctx)
 }
 
 
@@ -115,11 +113,11 @@ public fun split<T>(self: &mut OCoin<T>, split_amount: u64, ctx: &mut TxContext)
 /// `self`. Return newly created option coins with the same expiry_date_ms as original coin.
 public fun divide_into_n<T>(self: &mut OCoin<T>, n: u64, ctx: &mut TxContext): vector<OCoin<T>> {
     assert!(n > 0, ECannotDivideIntoZeroCoins);
-    assert!(n <= value(self), ENotEnoughBalance);
+    assert!(n <= self.value(), ENotEnoughBalance);
 
     let mut vec = vector[];
     let mut i = 0;
-    let split_amount = value(self) / n;
+    let split_amount = self.value() / n;
     while (i < n - 1) {
         vec.push_back(self.split(split_amount, ctx));
         i = i + 1;
@@ -131,13 +129,13 @@ public fun divide_into_n<T>(self: &mut OCoin<T>, n: u64, ctx: &mut TxContext): v
 /// Make any OCoin with any expiration date with a zero value.
 /// Useful for placeholding bids/payments or preemptively making empty balances.
 public fun zero<T>(expiry_date_ms: u64, ctx: &mut TxContext): OCoin<T> {
-    OCoin { id: object::new(ctx), balance: balance::zero(), expiry_date_ms }
+    OCoin { id: object::new(ctx), balance: balance::zero(), expiry_date_ms, }
 }
 
 
 /// Destroy a coin with value zero
 public fun destroy_zero<T>(c: OCoin<T>) {
-    let OCoin { id, balance, expiry_date_ms } = c;
+    let OCoin { id, balance, expiry_date_ms: _, } = c;
     id.delete();
     balance.destroy_zero()
 }
@@ -174,13 +172,20 @@ public fun create_currency<T: drop>(
     )
 }
 
+/// TreasuryCap methods
+
 /// Create a coin worth `value` and increase the total supply
 /// in `cap` accordingly.
-public fun mint<T>(cap: &mut OTreasuryCap<T>, value: u64, expiry_date_ms: u64, ctx: &mut TxContext): OCoin<T> {
+public fun mint<T>(
+    cap: &mut OTreasuryCap<T>,
+    value: u64,
+    expiry_date_ms: u64,
+    ctx: &mut TxContext
+): OCoin<T> {
     OCoin {
         id: object::new(ctx),
         balance: cap.total_supply.increase_supply(value),
-        expiry_date_ms
+        expiry_date_ms,
     }
 }
 
@@ -188,11 +193,16 @@ public fun mint<T>(cap: &mut OTreasuryCap<T>, value: u64, expiry_date_ms: u64, c
 /// Destroy the option coin `c` and decrease the total supply in `cap`
 /// accordingly.
 public entry fun burn<T>(cap: &mut OTreasuryCap<T>, c: OCoin<T>): u64 {
-    let OCoin { id, balance, expiry_date_ms } = c;
+    let OCoin { id, balance, expiry_date_ms: _, } = c;
     id.delete();
     cap.total_supply.decrease_supply(balance)
 }
 
+
+/// Updates the expiry_date
+public fun set_expiry_date<T>(_cap: &mut OTreasuryCap<T>, c: &mut OCoin<T>, expiry_date_ms: u64) {
+    c.expiry_date_ms = expiry_date_ms;
+}
 
 /// Mint `amount` of `Coin` and send it to `recipient`. Invokes `mint()`.
 public entry fun mint_and_transfer<T>(
@@ -202,7 +212,7 @@ public entry fun mint_and_transfer<T>(
     recipient: address,
     ctx: &mut TxContext,
 ) {
-    transfer::public_transfer(mint(c, amount, expiry_date_ms, ctx), recipient)
+    transfer::public_transfer(c.mint(amount, expiry_date_ms, ctx), recipient)
 }
 
 /// Update name of the coin in `CoinMetadata`

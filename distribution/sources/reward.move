@@ -1,4 +1,6 @@
 module distribution::reward {
+    use integer_mate::full_math_u64;
+
     public struct EventDeposit has copy, drop, store {
         sender: address,
         lock_id: ID,
@@ -199,17 +201,17 @@ module distribution::reward {
         let zero_checkpoints = if (!reward.num_checkpoints.contains(lock_id)) {
             true
         } else {
-            let v1 = 0;
-            reward.num_checkpoints.borrow(lock_id) == &v1
+            *reward.num_checkpoints.borrow(lock_id) == 0
         };
         if (zero_checkpoints) {
             return 0
         };
         let coin_type_name = std::type_name::get<CoinType>();
         let mut earned_amount = 0;
-        let last_earn_epoch_time = if (reward.last_earn.contains(coin_type_name) && reward.last_earn.borrow(
-            coin_type_name
-        ).contains(lock_id)) {
+        let last_earn_epoch_time = if (
+            reward.last_earn.contains(coin_type_name) &&
+                reward.last_earn.borrow(coin_type_name).contains(lock_id)
+        ) {
             distribution::common::epoch_start(
                 *reward.last_earn.borrow(coin_type_name).borrow(lock_id)
             )
@@ -219,9 +221,9 @@ module distribution::reward {
         let prior_checkpoint = reward.checkpoints.borrow(lock_id).borrow(
             reward.get_prior_balance_index(lock_id, last_earn_epoch_time)
         );
-        let latest_epoch_time = if (last_earn_epoch_time >= distribution::common::epoch_start(
-            prior_checkpoint.timestamp
-        )) {
+        let latest_epoch_time = if (
+            last_earn_epoch_time >= distribution::common::epoch_start(prior_checkpoint.timestamp)
+        ) {
             last_earn_epoch_time
         } else {
             distribution::common::epoch_start(prior_checkpoint.timestamp)
@@ -229,14 +231,14 @@ module distribution::reward {
         let mut next_epoch_time = latest_epoch_time;
         let epochs_until_now = (distribution::common::epoch_start(
             distribution::common::current_timestamp(clock)
-        ) - latest_epoch_time) / 604800;
+        ) - latest_epoch_time) / distribution::common::week();
         if (epochs_until_now > 0) {
             let mut i = 0;
             while (i < epochs_until_now) {
                 let next_checkpoint = reward.checkpoints.borrow(lock_id).borrow(
-                    reward.get_prior_balance_index(lock_id, next_epoch_time + 604800 - 1)
+                    reward.get_prior_balance_index(lock_id, next_epoch_time + distribution::common::week() - 1)
                 );
-                let supply_index = reward.get_prior_supply_index(next_epoch_time + 604800 - 1);
+                let supply_index = reward.get_prior_supply_index(next_epoch_time + distribution::common::week() - 1);
                 let supply = if (!reward.supply_checkpoints.contains(supply_index)) {
                     1
                 } else {
@@ -252,13 +254,12 @@ module distribution::reward {
                 };
                 let rewards_per_epoch = reward.token_rewards_per_epoch.borrow(coin_type_name);
                 let reward_in_epoch = if (rewards_per_epoch.contains(next_epoch_time)) {
-                    let v17 = rewards_per_epoch.borrow(next_epoch_time);
-                    *v17
+                    *rewards_per_epoch.borrow(next_epoch_time)
                 } else {
                     0
                 };
-                earned_amount = earned_amount + next_checkpoint.balance_of * reward_in_epoch / supply;
-                next_epoch_time = next_epoch_time + 604800;
+                earned_amount = earned_amount + full_math_u64::mul_div_floor(next_checkpoint.balance_of, reward_in_epoch, supply);
+                next_epoch_time = next_epoch_time + distribution::common::week();
                 i = i + 1;
             };
         };
@@ -567,12 +568,12 @@ module distribution::reward {
         let current_time = distribution::common::current_timestamp(clock);
         reward.write_checkpoint_internal(lock_id, lock_balance - amount, current_time, ctx);
         reward.write_supply_checkpoint_internal(current_time);
-        let v2 = EventWithdraw {
+        let withdraw_event = EventWithdraw {
             sender: tx_context::sender(ctx),
             lock_id,
             amount,
         };
-        sui::event::emit<EventWithdraw>(v2);
+        sui::event::emit<EventWithdraw>(withdraw_event);
     }
 
     /// Updates or creates a checkpoint for a lock's balance.

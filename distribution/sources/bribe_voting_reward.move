@@ -212,9 +212,9 @@ module distribution::bribe_voting_reward {
     public fun notify_reward_amount<CoinType>(
         reward: &mut BribeVotingReward,
         mut witelisted_token: Option<distribution::whitelisted_tokens::WhitelistedToken>,
-        arg2: sui::coin::Coin<CoinType>,
-        arg3: &sui::clock::Clock,
-        arg4: &mut TxContext
+        coin: sui::coin::Coin<CoinType>,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
     ) {
         let coin_type_name = std::type_name::get<CoinType>();
         if (!reward.reward.rewards_contains(coin_type_name)) {
@@ -230,7 +230,7 @@ module distribution::bribe_voting_reward {
         } else {
             witelisted_token.destroy_none();
         };
-        reward.reward.notify_reward_amount_internal(arg2.into_balance(), arg3, arg4);
+        reward.reward.notify_reward_amount_internal(coin.into_balance(), clock, ctx);
     }
 
     /// Allows a voter to claim rewards for a specific lock, returning the balance instead

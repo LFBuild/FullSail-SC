@@ -5,6 +5,8 @@ module distribution::voter {
     use sui::vec_set::{Self, VecSet};
     use std::type_name::{Self, TypeName};
 
+    use sail_token::o_coin::{Self, OCoin};
+
     // Error codes for contract operations
     const EDepositManagedLockNotOwned: u64 = 9223375275260116991;
     const EDepositManagedLockDeactivated: u64 = 9223375275262279714;
@@ -120,10 +122,17 @@ module distribution::voter {
         epoch: u64,
         voter_cap: distribution::voter_cap::VoterCap,
         balances: sui::bag::Bag,
+        // expiry_date -> get_name<CoinType> -> OCoin<CoinType>
+        balances_o: Table<u64, sui::bag::Bag>,
         index: u128,
+        index_o: u128,
         supply_index: Table<GaugeID, u128>,
+        // gauge_id -> OCoin.expiry_date -> last OCoin supply index
+        supply_index_o: Table<GaugeID, Table<u64, u128>>,
         // claimable amount per gauge
         claimable: Table<GaugeID, u64>,
+        // claimable amount per gauge per expiry_date
+        claimable_o: Table<GaugeID, Table<u64, u64>>,
         is_whitelisted_token: Table<TypeName, bool>,
         is_whitelisted_nft: Table<LockID, bool>,
         max_voting_num: u64,
@@ -139,6 +148,7 @@ module distribution::voter {
     public struct EventNotifyReward has copy, drop, store {
         notifier: ID,
         token: TypeName,
+        option: bool, // if coin is option coin (i.e OCoin)
         amount: u64,
     }
 
@@ -277,9 +287,12 @@ module distribution::voter {
             epoch: 0,
             voter_cap: distribution::voter_cap::create_voter_cap(id, ctx),
             balances: sui::bag::new(ctx),
+            balances_o: table::new<u64, sui::bag::Bag>(ctx),
             index: 0,
             supply_index: table::new<GaugeID, u128>(ctx),
+            supply_index_o: table::new<GaugeID, Table<u64, u128>>(ctx),
             claimable: table::new<GaugeID, u64>(ctx),
+            claimable_o: table::new<GaugeID, Table<u64, u64>>(ctx),
             is_whitelisted_token: table::new<TypeName, bool>(ctx),
             is_whitelisted_nft: table::new<LockID, bool>(ctx),
             max_voting_num: 10,
@@ -1168,6 +1181,56 @@ module distribution::voter {
         let notify_reward_event = EventNotifyReward {
             notifier: notify_reward_cap.who(),
             token: coin_type_name,
+            option: false,
+            amount: reward_amount,
+        };
+        sui::event::emit<EventNotifyReward>(notify_reward_event);
+    }
+
+    /// Notifies the voter contract of new **option** rewards to be distributed.
+    /// These rewards will be allocated to gauges based on their voting weights.
+    ///
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `notify_reward_cap` - The notify reward capability for authorization
+    /// * `reward` - The coin to add as a reward
+    public fun notify_rewards_o<SailCoinType>(
+        voter: &mut Voter<SailCoinType>,
+        notify_reward_cap: &distribution::notify_reward_cap::NotifyRewardCap,
+        reward: OCoin<SailCoinType>
+    ) {
+        notify_reward_cap.validate_notify_reward_voter_id(object::id<Voter<SailCoinType>>(voter));
+        let reward_amount = reward.value();
+        let coin_type = type_name::get<SailCoinType>();
+        let expiry_date = reward.expiry_date_ms();
+        if (!voter.balances_o.contains(expiry_date)) {
+            voter.balances_o.add(expiry_date, sui::bag::new(ctx));
+        };
+        let bag_of_coins = voter.balances_o.borrow_mut(expiry_date);
+
+        if (!bag_of_coins.contains(coin_type)) {
+            bag_of_coins.add(coin_type, o_coin::zero::<SailCoinType>(expiry_date, ctx));
+        };
+        let existing_coin = bag_of_coins.borrow_mut::<TypeName, OCoin<SailCoinType>>(coin_type);
+        existing_coin.join(reward);
+
+        let total_weight = if (voter.total_weight == 0) {
+            1
+        } else {
+            voter.total_weight
+        };
+        let reward_per_weight_unit = integer_mate::full_math_u128::mul_div_floor(
+            reward_amount as u128,
+            1 << 64,
+            total_weight as u128
+        );
+        if (reward_per_weight_unit > 0) {
+            voter.index_o = voter.index_o + reward_per_weight_unit;
+        };
+        let notify_reward_event = EventNotifyReward {
+            notifier: notify_reward_cap.who(),
+            token: coin_type,
+            option: true,
             amount: reward_amount,
         };
         sui::event::emit<EventNotifyReward>(notify_reward_event);
@@ -1361,6 +1424,7 @@ module distribution::voter {
         };
         voter.gauge_represents.add(gauge_id, gauge_represent);
         voter.rewards.add(gauge_id, balance::zero<SailCoinType>());
+        // not adding anything to voter.rewards_o as it requires some expiry date to add
         voter.weights.add(gauge_id, 0);
         voter.pools.push_back(pool_id);
         voter.pool_to_gauger.add(pool_id, gauge_id);
@@ -1628,6 +1692,59 @@ module distribution::voter {
     /// # Aborts
     /// * If the gauge is not alive but has weight
     fun update_for_internal<SailCoinType>(
+        voter: &mut Voter<SailCoinType>,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
+        gauge_id: GaugeID
+    ) {
+        let gauge_weight = if (voter.weights.contains(gauge_id)) {
+            *voter.weights.borrow(gauge_id)
+        } else {
+            0
+        };
+        if (gauge_weight > 0) {
+            let gauge_supply_index = if (voter.supply_index.contains(gauge_id)) {
+                voter.supply_index.remove(gauge_id)
+            } else {
+                0
+            };
+            let voter_index = voter.index;
+            voter.supply_index.add(gauge_id, voter_index);
+            let index_delta = voter_index - gauge_supply_index;
+            if (index_delta > 0) {
+                assert!(
+                    distribution_config.is_gauge_alive(gauge_id.id),
+                    EUpdateForInternalGaugeNotAlive
+                );
+                let gauge_claimable = if (voter.claimable.contains(gauge_id)) {
+                    voter.claimable.remove(gauge_id)
+                } else {
+                    0
+                };
+                voter.claimable.add(gauge_id, gauge_claimable + (integer_mate::full_math_u128::mul_div_floor(
+                    gauge_weight as u128,
+                    index_delta,
+                    1 << 64
+                ) as u64));
+            };
+        } else {
+            if (voter.supply_index.contains(gauge_id)) {
+                voter.supply_index.remove(gauge_id);
+            };
+            voter.supply_index.add(gauge_id, voter.index);
+        };
+    }
+
+    /// Internal function to update the accounting for a gauge.
+    /// Calculates and updates claimable rewards based on gauge weight and index changes.
+    ///
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `distribution_config` - The distribution configuration
+    /// * `gauge_id` - The gauge ID to update
+    ///
+    /// # Aborts
+    /// * If the gauge is not alive but has weight
+    fun update_for_internal_o<SailCoinType>(
         voter: &mut Voter<SailCoinType>,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         gauge_id: GaugeID

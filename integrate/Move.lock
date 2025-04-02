@@ -2,8 +2,8 @@
 
 [move]
 version = 3
-manifest_digest = "42C184A4C1B130382C145586233EF375FC206C8B9ACB80E120DDF63AC6166D6A"
-deps_digest = "52B406A7A21811BEF51751CF88DA0E76DAEFFEAC888D4F4060B1A72BBE7D8D35"
+manifest_digest = "29E205EF17466507DD4DA950DE5BE4BAB02EDB1D16BE1BF716BC80A6F14AE69A"
+deps_digest = "CAFAD8A7CF51067FB4358215BECB86BD100DD64E57C2AC8A7AE7D74B688F5965"
 dependencies = [
   { id = "Sui", name = "Sui" },
   { id = "clmm_pool", name = "clmm_pool" },
@@ -11,6 +11,7 @@ dependencies = [
   { id = "gauge_cap", name = "gauge_cap" },
   { id = "integer_mate", name = "integer_mate" },
   { id = "move_stl", name = "move_stl" },
+  { id = "sail_token", name = "sail_token" },
 ]
 
 [[move.package]]
@@ -45,6 +46,7 @@ dependencies = [
   { id = "clmm_pool", name = "clmm_pool" },
   { id = "gauge_cap", name = "gauge_cap" },
   { id = "integer_mate", name = "integer_mate" },
+  { id = "sail_token", name = "sail_token" },
 ]
 
 [[move.package]]
@@ -66,6 +68,14 @@ dependencies = [
 [[move.package]]
 id = "move_stl"
 source = { local = "../move_stl" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+]
+
+[[move.package]]
+id = "sail_token"
+source = { local = "../sail_token" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },

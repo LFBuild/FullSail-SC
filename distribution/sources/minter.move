@@ -1,4 +1,10 @@
 module distribution::minter {
+    use clmm_pool::pool::CalculatedSwapResult;
+    use distribution::exercise_o_sail;
+    use distribution::common;
+    use integer_mate::full_math_u64;
+    use sail_token::sail_coin;
+    use sail_token::o_coin;
     /**
     * @title Minter Module
     * @notice This module manages the tokenomics and emission schedule for the FullSail protocol.
@@ -33,10 +39,23 @@ module distribution::minter {
     const EActivateMinterNoDistributorCap: u64 = 9223373110598238234;
 
     const EMinterCapAlreadySet: u64 = 9223372831423725567;
+    const EOMinterCapAlreadySet: u64 = 9739920389862062000;
     const ESetTeamEmissionRateTooBigRate: u64 = 9223372921618038783;
 
     const EUpdatePeriodMinterNotActive: u64 = 9223373394064900104;
     const EUpdatePeriodNotNotFinishedYet: u64 = 9223373406950588436;
+
+    const EExercieOSailExpired: u64 = 7388437717433252000;
+
+    const EExerciseTeamWalletNotConfigured: u64 = 823119998504602200;
+    const EExerciseMinterBalanceInsufficient: u64 = 5584205353728053000;
+
+    const EExerciseInvalidProofAmount: u64 = 4231875246843346400;
+    const EExerciseInvalidProofOSailId: u64 = 2503470763480690700;
+    const EExerciseNotEnoughLiquidity: u64 = 4342302764230574600;
+    const EExerciseSwapEsExceed: u64 = 3888758848648916500;
+    const EExerciseUsdLimitReached: u64 = 4905179424474806000;
+
 
     public struct AdminCap has store, key {
         id: UID,
@@ -59,7 +78,7 @@ module distribution::minter {
         admin_cap: ID,
     }
 
-    public struct Minter<phantom SailCoinType> has store, key {
+    public struct Minter<SailCoinType> has store, key {
         id: UID,
         revoked_admins: sui::vec_set::VecSet<ID>,
         paused: bool,
@@ -69,7 +88,9 @@ module distribution::minter {
         total_emissions: u64,
         last_epoch_update_time: u64,
         epoch_emissions: u64,
-        minter_cap: Option<distribution::sail_token::MinterCap<SailCoinType>>,
+        minter_cap: Option<sail_coin::MinterCap<SailCoinType>>,
+        o_minter_cap: Option<sail_coin::OMinterCap<SailCoinType>>,
+        balance: sui::balance::Balance<SailCoinType>,
         base_supply: u64,
         epoch_grow_rate: u64,
         epoch_decay_rate: u64,
@@ -91,7 +112,7 @@ module distribution::minter {
     /// # Returns
     /// Total supply of SailCoin
     public fun total_supply<SailCoinType>(minter: &Minter<SailCoinType>): u64 {
-        option::borrow<distribution::sail_token::MinterCap<SailCoinType>>(&minter.minter_cap).total_supply()
+        option::borrow<sail_coin::MinterCap<SailCoinType>>(&minter.minter_cap).total_supply()
     }
 
     /// Activates the minter to begin token emissions according to the protocol schedule.
@@ -186,8 +207,8 @@ module distribution::minter {
             // weekly emissions after that stabilize at 0.67%
             (
                 integer_mate::full_math_u64::mul_div_ceil(
-                    option::borrow<distribution::sail_token::MinterCap<SailCoinType>>(&minter.minter_cap).total_supply(
-                    ),
+                    option::borrow<sail_coin::MinterCap<SailCoinType>>(&minter.minter_cap)
+                        .total_supply(),
                     minter.tail_emission_rate,
                     10000
                 ),
@@ -271,7 +292,8 @@ module distribution::minter {
     /// A tuple with (minter, admin_cap), where admin_cap grants administrative privileges
     public fun create<SailCoinType>(
         _publisher: &sui::package::Publisher,
-        minter_cap: Option<distribution::sail_token::MinterCap<SailCoinType>>,
+        minter_cap: Option<sail_coin::MinterCap<SailCoinType>>,
+        o_minter_cap: Option<sail_coin::OMinterCap<SailCoinType>>,
         ctx: &mut TxContext
     ): (Minter<SailCoinType>, AdminCap) {
         let minter = Minter<SailCoinType> {
@@ -285,6 +307,9 @@ module distribution::minter {
             last_epoch_update_time: 0,
             epoch_emissions: 0,
             minter_cap,
+            o_minter_cap,
+            // stores pre-minted SAIL to allow users burn oSAIL in exchange for SAIL
+            balance: sui::balance::zero<SailCoinType>(),
             base_supply: 10000000000000, // 10M coins
             epoch_grow_rate: 300,
             epoch_decay_rate: 100,
@@ -424,14 +449,27 @@ module distribution::minter {
     public fun set_minter_cap<SailCoinType>(
         minter: &mut Minter<SailCoinType>,
         admin_cap: &AdminCap,
-        minter_cap: distribution::sail_token::MinterCap<SailCoinType>
+        minter_cap: sail_coin::MinterCap<SailCoinType>
     ) {
         minter.check_admin(admin_cap);
         assert!(
-            option::is_none<distribution::sail_token::MinterCap<SailCoinType>>(&minter.minter_cap),
+            option::is_none<sail_coin::MinterCap<SailCoinType>>(&minter.minter_cap),
             EMinterCapAlreadySet
         );
-        option::fill<distribution::sail_token::MinterCap<SailCoinType>>(&mut minter.minter_cap, minter_cap);
+        option::fill<sail_coin::MinterCap<SailCoinType>>(&mut minter.minter_cap, minter_cap);
+    }
+
+    public fun set_o_sail_minter_cap<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        admin_cap: &AdminCap,
+        o_minter_cap: sail_coin::OMinterCap<SailCoinType>,
+    ) {
+        minter.check_admin(admin_cap);
+        assert!(
+            option::is_none<sail_coin::OMinterCap<SailCoinType>>(&minter.o_minter_cap),
+            EOMinterCapAlreadySet
+        );
+        option::fill(&mut minter.o_minter_cap, o_minter_cap)
     }
 
     /// Sets the notify reward capability for the minter.
@@ -608,19 +646,18 @@ module distribution::minter {
         let (current_epoch_emissions, next_epoch_emissions) = minter.calculate_epoch_emissions();
         let rebase_growth = calculate_rebase_growth(
             current_epoch_emissions,
-            option::borrow<distribution::sail_token::MinterCap<SailCoinType>>(&minter.minter_cap).total_supply(),
+            option::borrow<sail_coin::MinterCap<SailCoinType>>(&minter.minter_cap).total_supply(),
             voting_escrow.total_locked()
         );
-        let minter_address = object::id_address<Minter<SailCoinType>>(minter);
         if (minter.team_emission_rate > 0 && minter.team_wallet != @0x0) {
             transfer::public_transfer<sui::coin::Coin<SailCoinType>>(
-                option::borrow_mut<distribution::sail_token::MinterCap<SailCoinType>>(
+                option::borrow_mut<sail_coin::MinterCap<SailCoinType>>(
                     &mut minter.minter_cap
                 ).mint(integer_mate::full_math_u64::mul_div_floor(
                     minter.team_emission_rate,
                     rebase_growth + current_epoch_emissions,
                     10000 - minter.team_emission_rate
-                ), minter_address, ctx),
+                ), ctx),
                 minter.team_wallet
             );
         };
@@ -628,21 +665,21 @@ module distribution::minter {
             option::borrow<distribution::reward_distributor_cap::RewardDistributorCap>(
                 &minter.reward_distributor_cap
             ),
-            option::borrow_mut<distribution::sail_token::MinterCap<SailCoinType>>(&mut minter.minter_cap).mint(
+            option::borrow_mut<sail_coin::MinterCap<SailCoinType>>(&mut minter.minter_cap).mint(
                 rebase_growth,
-                minter_address,
                 ctx
             ),
             clock
         );
-        let id_address = object::id_address<Minter<SailCoinType>>(minter);
-        let minter_cap = option::borrow_mut<distribution::sail_token::MinterCap<SailCoinType>>(
+        let minter_cap = option::borrow_mut<sail_coin::MinterCap<SailCoinType>>(
             &mut minter.minter_cap
         );
         let notify_reward_cap = option::borrow<distribution::notify_reward_cap::NotifyRewardCap>(
             &minter.notify_reward_cap
         );
-        voter.notify_rewards(notify_reward_cap, minter_cap.mint(current_epoch_emissions, id_address, ctx));
+        // TODO: mint here oSAIL
+        // TODO: mint SAIL and keep in minter
+        voter.notify_rewards(notify_reward_cap, minter_cap.mint(current_epoch_emissions, ctx));
         minter.active_period = distribution::common::current_period(clock);
         minter.epoch_count = minter.epoch_count + 1;
         minter.epoch_emissions = next_epoch_emissions;
@@ -658,6 +695,149 @@ module distribution::minter {
             new_emissions: minter.epoch_emissions,
         };
         sui::event::emit<EventUpdateEpoch>(update_epoch_event);
+    }
+
+    /// Checks conditions, issues exercise oSAIL proof and then exercises it.
+    public fun exercise_o_sail_ab<USDCoinType, SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &mut clmm_pool::pool::Pool<USDCoinType, SailCoinType>,
+        o_sail: o_coin::OCoin<SailCoinType>,
+        usd: sui::coin::Coin<USDCoinType>,
+        usd_amount_limit: u64,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext,
+    ): (sui::coin::Coin<USDCoinType>, sui::coin::Coin<SailCoinType>) {
+        assert!(clock.timestamp_ms() < o_sail.expiry_date_ms(), EExercieOSailExpired);
+
+        let proof = exercise_o_sail::issue(&o_sail, common::min_o_sail_discount());
+
+        minter.exercise_o_sail_proof_ab(global_config, pool, o_sail, proof, usd, usd_amount_limit, ctx)
+    }
+
+    /// withdraws SAIL from storage and burns oSAIL
+    fun exercise_o_sail_process_payment<USDCoinType, SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        o_sail: o_coin::OCoin<SailCoinType>,
+        mut usd_in: sui::coin::Coin<USDCoinType>,
+        usd_amount_in: u64,
+        ctx: &mut TxContext,
+    ): (sui::coin::Coin<USDCoinType>, sui::coin::Coin<SailCoinType>) {
+        let sail_amount_out = o_sail.value();
+        let usd_to_pay = usd_in.split(usd_amount_in, ctx);
+
+        // TODO: payment should go into reward distributing contract!!
+        assert!(minter.team_wallet != @0x0, EExerciseTeamWalletNotConfigured);
+        assert!(minter.balance.value() >= sail_amount_out, EExerciseMinterBalanceInsufficient);
+
+        transfer::public_transfer<sui::coin::Coin<USDCoinType>>(usd_to_pay, minter.team_wallet);
+
+        let o_minter_cap = option::borrow_mut<sail_coin::OMinterCap<SailCoinType>>(&mut minter.o_minter_cap);
+        let sail_out = sui::coin::from_balance(minter.balance.split(sail_amount_out), ctx);
+        o_minter_cap.burn_o(o_sail);
+
+        // remaining usd and sail
+        (usd_in, sail_out)
+    }
+
+    /// Function that calculates amount of usd to be deducted by calculating swap.
+    /// Doesn't check pool for type safety, so use with caution
+    fun exercise_o_sail_calc<SailCoinType, UsdCoinType, CoinTypeA, CoinTypeB>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        o_sail: &o_coin::OCoin<SailCoinType>,
+        proof: exercise_o_sail::ExerciseOSailProof,
+        a2b: bool, // true if pool is Pool<UsdCoinType, SailCoinType>
+    ): CalculatedSwapResult {
+        // we are not checking OSailExerciseDate to allow users to lock oSAIL in voting_escrow after expiration date
+        let (amount, o_sail_id, discount_percent) = proof.consume();
+        assert!(amount == o_sail.value(), EExerciseInvalidProofAmount);
+        assert!(o_sail_id == sui::object::id(o_sail), EExerciseInvalidProofOSailId);
+
+        let o_sail_amount = o_sail.value();
+        let pay_for_percent = common::persent_denominator() - discount_percent;
+        let sail_amount_to_pay_for = full_math_u64::mul_div_floor(
+            pay_for_percent,
+            o_sail_amount,
+            common::persent_denominator()
+        );
+
+        let swap_result = clmm_pool::pool::calculate_swap_result(
+            global_config,
+            pool,
+            a2b,
+            false, // by_amount_in = false, so by amount out
+            sail_amount_to_pay_for,
+        );
+        assert!(swap_result.calculated_swap_result_amount_out() == sail_amount_to_pay_for, EExerciseNotEnoughLiquidity);
+        assert!(!swap_result.calculated_swap_result_is_exceed(), EExerciseSwapEsExceed);
+
+        swap_result
+    }
+
+    /// Exercises oSAIL token with proof and gives you SAIL in return.
+    /// The usd coin amount must be greater than (100 - o_sail.discount_percent / 10_000)% of SAIL cost in the pool.
+    /// Function is available only to the package, cos discount_percent should be calculated elswhere.
+    public(package) fun exercise_o_sail_proof_ab<SailCoinType, UsdCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &mut clmm_pool::pool::Pool<UsdCoinType, SailCoinType>,
+        o_sail: o_coin::OCoin<SailCoinType>,
+        proof: exercise_o_sail::ExerciseOSailProof,
+        mut usd: sui::coin::Coin<UsdCoinType>,
+        usd_amount_limit: u64,
+        ctx: &mut TxContext,
+    ): (sui::coin::Coin<UsdCoinType>, sui::coin::Coin<SailCoinType>) {
+        let swap_result = exercise_o_sail_calc<SailCoinType, UsdCoinType, UsdCoinType, SailCoinType>(
+            global_config,
+            pool,
+            &o_sail,
+            proof,
+            true,
+        );
+
+        let usd_amount_to_pay = swap_result.calculated_swap_result_amount_in();
+        assert!(usd_amount_limit >= usd_amount_to_pay, EExerciseUsdLimitReached);
+
+        exercise_o_sail_process_payment(
+            minter,
+            o_sail,
+            usd,
+            usd_amount_to_pay,
+            ctx,
+        )
+    }
+
+    /// Same as `exercise_o_sail_proof_ab` but allows usage of pools with different order of type args.
+    /// see `exercise_o_sail_proof_ab` for more information.
+    public(package) fun exercise_o_sail_proof_ba<SailCoinType, UsdCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &mut clmm_pool::pool::Pool<SailCoinType, UsdCoinType>,
+        o_sail: o_coin::OCoin<SailCoinType>,
+        proof: exercise_o_sail::ExerciseOSailProof,
+        mut usd: sui::coin::Coin<UsdCoinType>,
+        usd_amount_limit: u64,
+        ctx: &mut TxContext,
+    ): (sui::coin::Coin<UsdCoinType>, sui::coin::Coin<SailCoinType>) {
+        let swap_result = exercise_o_sail_calc<SailCoinType, UsdCoinType, SailCoinType, UsdCoinType>(
+            global_config,
+            pool,
+            &o_sail,
+            proof,
+            false,
+        );
+
+        let usd_amount_to_pay = swap_result.calculated_swap_result_amount_in();
+        assert!(usd_amount_limit >= usd_amount_to_pay, EExerciseUsdLimitReached);
+
+        exercise_o_sail_process_payment(
+            minter,
+            o_sail,
+            usd,
+            usd_amount_to_pay,
+            ctx,
+        )
     }
 }
 

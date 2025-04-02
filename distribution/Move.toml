@@ -9,6 +9,7 @@ Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-fram
 clmm_pool = { local = "../clmm_pool" }
 integer_mate = { local = "../integer_mate" }
 gauge_cap = { local = "../gauge_cap" }
+sail_token = { local = "../sail_token" }
 
 # For remote import, use the `{ git = "...", subdir = "...", rev = "..." }`.
 # Revision can be a branch, a tag, and a commit hash.
