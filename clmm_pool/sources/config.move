@@ -754,5 +754,41 @@ module clmm_pool::config {
     public fun week(): u64 {
         604800
     }
+
+    #[test_only]
+    public fun test_init(ctx: &mut sui::tx_context::TxContext) {
+        let mut global_config = GlobalConfig {
+            id: sui::object::new(ctx),
+            protocol_fee_rate: 2000,
+            unstaked_liquidity_fee_rate: 0,
+            fee_tiers: sui::vec_map::empty<u32, FeeTier>(),
+            acl: clmm_pool::acl::new(ctx),
+            package_version: 1,
+            alive_gauges: sui::vec_set::empty<sui::object::ID>(),
+        };
+        let admin_cap = AdminCap { id: sui::object::new(ctx) };
+        set_roles(&admin_cap, &mut global_config, sui::tx_context::sender(ctx), 27);
+        sui::transfer::share_object(global_config);
+        sui::transfer::transfer(admin_cap, sui::tx_context::sender(ctx));
+    }
+
+    #[test]
+    fun test_init_fun() {
+        let admin = @0x123;
+        let mut scenario = sui::test_scenario::begin(admin);
+        {
+            init(scenario.ctx());
+        };
+
+       scenario.next_tx( admin);
+        {
+            let global_config = scenario.take_shared<GlobalConfig>();
+            assert!(protocol_fee_rate(&global_config) == 2000, 1);
+            assert!(unstaked_liquidity_fee_rate(&global_config) == 0, 2);
+            sui::test_scenario::return_shared(global_config);
+        };
+
+        scenario.end();
+    }
 }
 

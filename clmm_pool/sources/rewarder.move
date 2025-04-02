@@ -118,7 +118,7 @@ module clmm_pool::rewarder {
     /// 
     /// # Abort Conditions
     /// * If the rewarder already exists (error code: 2)
-    /// * If the maximum number of rewarders (2) is exceeded (error code: 1)
+    /// * If the maximum number of rewarders (3) is exceeded (error code: 1)
     public(package) fun add_rewarder<RewardCoinType>(rewarder_manager: &mut RewarderManager) {
         let rewarder_idx = rewarder_index<RewardCoinType>(rewarder_manager);
         assert!(std::option::is_none<u64>(&rewarder_idx), 2);
@@ -434,7 +434,7 @@ module clmm_pool::rewarder {
     /// * `rewarder_vault` - Reference to the rewarder global vault
     /// * `rewarder_manager` - Mutable reference to the rewarder manager
     /// * `liquidity` - Current liquidity value
-    /// * `emission_rate` - New emission rate
+    /// * `emission_rate` - New emission rate (already shifted by 64 bits)
     /// * `current_time` - Current timestamp
     /// 
     /// # Abort Conditions
@@ -452,9 +452,9 @@ module clmm_pool::rewarder {
             let reward_type = std::type_name::get<RewardCoinType>();
             assert!(sui::bag::contains<std::type_name::TypeName>(&rewarder_vault.balances, reward_type), 5);
             assert!(
-                ((sui::balance::value<RewardCoinType>(
+                (sui::balance::value<RewardCoinType>(
                     sui::bag::borrow<std::type_name::TypeName, sui::balance::Balance<RewardCoinType>>(&rewarder_vault.balances, reward_type)
-                ) as u128) << 64) >= 86400 * emission_rate,
+                ) as u128) >= (86400 * emission_rate >> 64),
                 4
             );
         };
@@ -480,6 +480,33 @@ module clmm_pool::rewarder {
             ),
             amount
         )
+    }
+
+    #[test_only]
+    public fun test_init(ctx: &mut sui::tx_context::TxContext) {
+        let vault = RewarderGlobalVault {
+            id: sui::object::new(ctx),
+            balances: sui::bag::new(ctx),
+        };
+        sui::transfer::share_object(vault);
+    }
+
+    #[test]
+    fun test_init_fun() {
+        let admin = @0x123;
+        let mut scenario = sui::test_scenario::begin(admin);
+        {
+            init(scenario.ctx());
+        };
+
+        scenario.next_tx(admin);
+        {
+            let vault = scenario.take_shared<RewarderGlobalVault>();
+            assert!(sui::bag::is_empty(&vault.balances), 1);
+            sui::test_scenario::return_shared(vault);
+        };
+
+        scenario.end();
     }
 }
 
