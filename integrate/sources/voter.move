@@ -1,4 +1,5 @@
 module integrate::voter {
+    use sui::transfer::public_transfer;
 
     const EDistributeInccorectGaugePool: u64 = 9223373041877123071;
 
@@ -84,6 +85,27 @@ module integrate::voter {
         ctx: &mut TxContext
     ) {
         voter.vote(voting_escrow, distribtuion_config, lock, pools, weights, clock, ctx);
+    }
+
+    public fun vote_batch<SailCoinType> (
+        voter: &mut distribution::voter::Voter<SailCoinType>,
+        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        distribtuion_config: &distribution::distribution_config::DistributionConfig,
+        mut locks: vector<distribution::voting_escrow::Lock>,
+        pools: vector<ID>,
+        weights: vector<u64>,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext,
+    ): vector<distribution::voting_escrow::Lock> {
+        let mut i = 0;
+        let len = locks.length();
+        while (i < len) {
+            let lock = locks.pop_back();
+            voter.vote(voting_escrow, distribtuion_config, &lock, pools, weights, clock, ctx);
+            i = i + 1;
+            public_transfer(lock, ctx.sender());
+        };
+        locks
     }
 
     public fun claim_voting_bribes<SailCoinType, BribeCoinType>(
