@@ -124,7 +124,7 @@ module integrate::voting_escrow {
     }
 
     public entry fun lock_summary<SailCoinType>(
-        voter: &distribution::voter::Voter<SailCoinType>,
+        voter: &distribution::voter::Voter,
         voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
         reward_distributor: &distribution::reward_distributor::RewardDistributor<SailCoinType>,
         lock_id: ID,
@@ -140,7 +140,7 @@ module integrate::voting_escrow {
     }
 
     fun lock_summary_internal<SailCoinType>(
-        voter: &distribution::voter::Voter<SailCoinType>,
+        voter: &distribution::voter::Voter,
         voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
         reward_distributor: &distribution::reward_distributor::RewardDistributor<SailCoinType>,
         lock_id: ID,
@@ -180,7 +180,7 @@ module integrate::voting_escrow {
 
     public entry fun summary<SailCoinType>(
         minter: &distribution::minter::Minter<SailCoinType>,
-        voter: &distribution::voter::Voter<SailCoinType>,
+        voter: &distribution::voter::Voter,
         voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
         clock: &sui::clock::Clock
     ) {

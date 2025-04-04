@@ -13,7 +13,7 @@ module integrate::fullsail_token {
         ctx: &mut TxContext
     ) {
         transfer::public_transfer<sui::coin::Coin<CoinType>>(
-            minter_cap.mint(amount, address, ctx),
+            minter_cap.mint(amount, ctx),
             address
         );
     }
