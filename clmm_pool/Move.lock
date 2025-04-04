@@ -2,13 +2,14 @@
 
 [move]
 version = 3
-manifest_digest = "B8C591750714793B406E11AF8780DE1FDB931721D6D72738BD5971D62A9F1BBA"
-deps_digest = "F9B494B64F0615AED0E98FC12A85B85ECD2BC5185C22D30E7F67786BB52E507C"
+manifest_digest = "9D52FE58D117BBC7F59D9DA7FD8809D61B0A1CBEF340492267F5382BEDAAA40E"
+deps_digest = "397E6A9F7A624706DBDFEE056CE88391A15876868FD18A88504DA74EB458D697"
 dependencies = [
   { id = "Sui", name = "Sui" },
   { id = "gauge_cap", name = "gauge_cap" },
   { id = "integer_mate", name = "integer_mate" },
   { id = "move_stl", name = "move_stl" },
+  { id = "price_provider", name = "price_provider" },
 ]
 
 [[move.package]]
@@ -47,8 +48,16 @@ dependencies = [
   { id = "Sui", name = "Sui" },
 ]
 
+[[move.package]]
+id = "price_provider"
+source = { local = "../price_provider" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+]
+
 [move.toolchain-version]
-compiler-version = "1.45.2"
+compiler-version = "1.45.0"
 edition = "2024"
 flavor = "sui"
 
