@@ -71,6 +71,7 @@ module distribution::voter {
     const EVoteInternalPoolAreadyVoted: u64 = 9223374832881041448;
     const EVoteInternalWeightResultedInZeroVotes: u64 = 9223374841471107114;
 
+    const EDistributeGaugeInvalidToken: u64 = 7271149323991462000;
     const EDistributeGaugeInvalidGaugeRepresent: u64 = 9223375983929720831;
 
     const EExtractClaimableForLessThanMin: u64 = 9223375923800178687;
@@ -797,6 +798,8 @@ module distribution::voter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): u64 {
+        assert!(voter.is_valid_epoch_token<SailCoinType>(), EDistributeGaugeInvalidToken);
+
         let gauge_id = into_gauge_id(
             object::id<distribution::gauge::Gauge<CoinTypeA, CoinTypeB, SailCoinType>>(gauge)
         );
@@ -807,7 +810,7 @@ module distribution::voter {
             ) && gauge_represent.gauger_id == gauge_id.id,
             EDistributeGaugeInvalidGaugeRepresent
         );
-        let claimable_balance = voter.extract_claimable_for(distribution_config, gauge_id.id);
+        let claimable_balance = voter.extract_claimable_for<SailCoinType>(distribution_config, gauge_id.id);
         let balance_value = claimable_balance.value();
         let (fee_reward_a, fee_reward_b) = gauge.notify_reward(&voter.voter_cap, pool, claimable_balance, clock, ctx);
         let fee_a_amount = fee_reward_a.value<CoinTypeA>();
