@@ -376,25 +376,29 @@ module clmm_pool::position {
         let next_id = if (std::vector::is_empty<sui::object::ID>(&position_ids)) {
             move_stl::linked_table::head<sui::object::ID, PositionInfo>(&position_manager.positions)
         } else {
-            std::option::some<sui::object::ID>(*std::vector::borrow<sui::object::ID>(&position_ids, 0))
+            let first_id = *std::vector::borrow<sui::object::ID>(&position_ids, 0);
+            if (!move_stl::linked_table::contains<sui::object::ID, PositionInfo>(&position_manager.positions, first_id)) {
+                return positions
+            };
+            std::option::some<sui::object::ID>(first_id)
         };
         let mut current_id = next_id;
         let mut count = 0;
-        while (std::option::is_some<sui::object::ID>(&current_id)) {
+        while (std::option::is_some<sui::object::ID>(&current_id) && count < limit) {
+            let id = *std::option::borrow<sui::object::ID>(&current_id);
+            if (!move_stl::linked_table::contains<sui::object::ID, PositionInfo>(&position_manager.positions, id)) {
+                break
+            };
             let node = move_stl::linked_table::borrow_node<sui::object::ID, PositionInfo>(
                 &position_manager.positions,
-                *std::option::borrow<sui::object::ID>(&current_id)
+                id
             );
-            current_id = move_stl::linked_table::next<sui::object::ID, PositionInfo>(node);
             std::vector::push_back<PositionInfo>(
                 &mut positions,
                 *move_stl::linked_table::borrow_value<sui::object::ID, PositionInfo>(node)
             );
-            let new_count = count + 1;
-            count = new_count;
-            if (new_count == limit) {
-                break
-            };
+            current_id = move_stl::linked_table::next<sui::object::ID, PositionInfo>(node);
+            count = count + 1;
         };
         positions
     }
@@ -406,11 +410,11 @@ module clmm_pool::position {
     /// * `position_manager` - Mutable reference to the position manager
     /// * `position` - Mutable reference to the position to modify
     /// * `liquidity_delta` - Amount of liquidity to add
-    /// * `fee_growth_a` - Updated fee growth for token A
-    /// * `fee_growth_b` - Updated fee growth for token B
-    /// * `points_growth` - Updated points growth
-    /// * `rewards_growth` - Vector of updated rewards growth
-    /// * `fullsale_growth` - Updated FULLSALE distribution growth
+    /// * `fee_growth_a` - Updated fee growth for token A in Q64.64 format
+    /// * `fee_growth_b` - Updated fee growth for token B in Q64.64 format
+    /// * `points_growth` - Updated points growth in Q64.64 format
+    /// * `rewards_growth` - Vector of updated reward growth values in Q64.64 format
+    /// * `fullsale_growth` - Updated FULLSALE distribution growth in Q64.64 format
     /// 
     /// # Returns
     /// The new liquidity amount after increase
@@ -713,8 +717,8 @@ module clmm_pool::position {
     /// This function initializes both the Position and PositionInfo structures with default values.
     /// 
     /// # Type Parameters
-    /// * `T0` - Type of the first token in the pair
-    /// * `T1` - Type of the second token in the pair
+    /// * `CoinTypeA` - Type of the coin A in the pair
+    /// * `CoinTypeB` - Type of the coin B in the pair
     /// 
     /// # Arguments
     /// * `position_manager` - Mutable reference to the position manager
@@ -737,7 +741,7 @@ module clmm_pool::position {
     /// # Abort Conditions
     /// * If the tick range is invalid (error code: 5)
     /// * If the position ID does not match (error code: 6)
-    public(package) fun open_position<T0, T1>(
+    public(package) fun open_position<CoinTypeA, CoinTypeB>(
         position_manager: &mut PositionManager,
         pool_id: sui::object::ID,
         pool_index: u64,
@@ -752,8 +756,8 @@ module clmm_pool::position {
             id: sui::object::new(ctx),
             pool: pool_id,
             index: next_position_index,
-            coin_type_a: std::type_name::get<T0>(),
-            coin_type_b: std::type_name::get<T1>(),
+            coin_type_a: std::type_name::get<CoinTypeA>(),
+            coin_type_b: std::type_name::get<CoinTypeB>(),
             name: new_position_name(pool_index, next_position_index),
             description: std::string::utf8(b"Fullsale Liquidity Position"),
             url: pool_url,
@@ -1314,6 +1318,494 @@ module clmm_pool::position {
     /// The position's URL as a string
     public fun url(position: &Position): std::string::String {
         position.url
+    }
+
+    #[test_only]
+    /// Test initialization of the position system
+    /// Replicates the init function logic for testing purposes
+    public fun test_init(ctx: &mut sui::tx_context::TxContext) {
+        let mut display_keys = std::vector::empty<std::string::String>();
+        std::vector::push_back<std::string::String>(&mut display_keys, std::string::utf8(b"name"));
+        std::vector::push_back<std::string::String>(&mut display_keys, std::string::utf8(b"coin_a"));
+        std::vector::push_back<std::string::String>(&mut display_keys, std::string::utf8(b"coin_b")); 
+        std::vector::push_back<std::string::String>(&mut display_keys, std::string::utf8(b"link"));
+        std::vector::push_back<std::string::String>(&mut display_keys, std::string::utf8(b"image_url"));
+        std::vector::push_back<std::string::String>(&mut display_keys, std::string::utf8(b"description"));
+        std::vector::push_back<std::string::String>(&mut display_keys, std::string::utf8(b"website"));
+        std::vector::push_back<std::string::String>(&mut display_keys, std::string::utf8(b"creator"));
+
+        let mut display_values = std::vector::empty<std::string::String>();
+        std::vector::push_back<std::string::String>(&mut display_values, std::string::utf8(b"{name}"));
+        std::vector::push_back<std::string::String>(&mut display_values, std::string::utf8(b"{coin_type_a}"));
+        std::vector::push_back<std::string::String>(&mut display_values, std::string::utf8(b"{coin_type_b}"));
+        std::vector::push_back<std::string::String>(
+            &mut display_values,
+            std::string::utf8(b"https://app.fullsalefinance.io/position?chain=sui&id={id}")
+        );
+        std::vector::push_back<std::string::String>(&mut display_values, std::string::utf8(b"{url}"));
+        std::vector::push_back<std::string::String>(&mut display_values, std::string::utf8(b"{description}"));
+        std::vector::push_back<std::string::String>(&mut display_values, std::string::utf8(b"https://fullsalefinance.io"));
+        std::vector::push_back<std::string::String>(&mut display_values, std::string::utf8(b"FULLSALE"));
+
+        let publisher = sui::package::claim<POSITION>(POSITION{}, ctx);
+        let mut display = sui::display::new_with_fields<Position>(&publisher, display_keys, display_values, ctx);
+        sui::display::update_version<Position>(&mut display);
+        sui::transfer::public_transfer<sui::display::Display<Position>>(display, sui::tx_context::sender(ctx));
+        sui::transfer::public_transfer<sui::package::Publisher>(publisher, sui::tx_context::sender(ctx));
+    }
+
+    #[test_only]
+    /// Creates a new PositionReward for testing purposes
+    public fun new_position_reward(growth_inside: u128, amount_owned: u64): PositionReward {
+        PositionReward {
+            growth_inside,
+            amount_owned,
+        }
+    }
+
+    #[test_only]
+    /// Creates a new PositionInfo for testing purposes
+    public fun new_position_info(
+        position_id: sui::object::ID,
+        liquidity: u128,
+        tick_lower_index: integer_mate::i32::I32,
+        tick_upper_index: integer_mate::i32::I32,
+        fee_growth_inside_a: u128,
+        fee_growth_inside_b: u128,
+        fee_owned_a: u64,
+        fee_owned_b: u64,
+        points_owned: u128,
+        points_growth_inside: u128,
+        rewards: vector<PositionReward>,
+        fullsale_distribution_staked: bool,
+        fullsale_distribution_growth_inside: u128,
+        fullsale_distribution_owned: u64,
+    ): PositionInfo {
+        PositionInfo {
+            position_id,
+            liquidity,
+            tick_lower_index,
+            tick_upper_index,
+            fee_growth_inside_a,
+            fee_growth_inside_b,
+            fee_owned_a,
+            fee_owned_b,
+            points_owned,
+            points_growth_inside,
+            rewards,
+            fullsale_distribution_staked,
+            fullsale_distribution_growth_inside,
+            fullsale_distribution_owned,
+        }
+    }
+
+    #[test]
+    /// Test initialization of the position system
+    /// Verifies:
+    /// 1. Display fields are set up correctly
+    /// 2. Publisher is created and transferred correctly
+    fun test_init_fun() {
+        let admin = @0x123;
+        let mut scenario = sui::test_scenario::begin(admin);
+        {
+            init(POSITION {}, scenario.ctx());
+        };
+
+        // Verify display fields and publisher
+        scenario.next_tx(admin);
+        {
+            let display = scenario.take_from_sender<sui::display::Display<Position>>();
+            let publisher = scenario.take_from_sender<sui::package::Publisher>();
+            // Verify that display and publisher were created and transferred
+            assert!(sui::object::id(&display) != sui::object::id(&publisher), 1);
+
+            // Verify display fields
+            let display_fields = sui::display::fields(&display);
+            
+            // Verify field names and values
+            let name_field = sui::vec_map::get(display_fields, &std::string::utf8(b"name"));
+            assert!(std::string::utf8(b"{name}") == *name_field, 3);
+
+            let coin_a_field = sui::vec_map::get(display_fields, &std::string::utf8(b"coin_a"));
+            assert!(std::string::utf8(b"{coin_type_a}") == *coin_a_field, 4);
+
+            let coin_b_field = sui::vec_map::get(display_fields, &std::string::utf8(b"coin_b"));
+            assert!(std::string::utf8(b"{coin_type_b}") == *coin_b_field, 5);
+
+            let link_field = sui::vec_map::get(display_fields, &std::string::utf8(b"link"));
+            assert!(std::string::utf8(b"https://app.fullsalefinance.io/position?chain=sui&id={id}") == *link_field, 6);
+
+            let image_url_field = sui::vec_map::get(display_fields, &std::string::utf8(b"image_url"));
+            assert!(std::string::utf8(b"{url}") == *image_url_field, 7);
+
+            let description_field = sui::vec_map::get(display_fields, &std::string::utf8(b"description"));
+            assert!(std::string::utf8(b"{description}") == *description_field, 8);
+
+            let website_field = sui::vec_map::get(display_fields, &std::string::utf8(b"website"));
+            assert!(std::string::utf8(b"https://fullsalefinance.io") == *website_field, 9);
+
+            let creator_field = sui::vec_map::get(display_fields, &std::string::utf8(b"creator"));
+            assert!(std::string::utf8(b"FULLSALE") == *creator_field, 10);
+
+            // Return objects to scenario
+            scenario.return_to_sender(display);
+            scenario.return_to_sender(publisher);
+        };
+
+        scenario.end();
+    }
+
+    /// Test structure for managing position manager in tests
+    #[test_only]
+    public struct TestPositionManager has key, store {
+        id: sui::object::UID,
+        position_manager: PositionManager,
+    }
+
+    #[test]
+    /// Test borrow_mut_position_info function
+    /// Verifies that:
+    /// 1. Mutable reference to position info can be obtained
+    /// 2. Position info can be modified through the reference
+    fun test_borrow_mut_position_info() {
+        let admin = @0x123;
+        let mut scenario = sui::test_scenario::begin(admin);
+        
+        // Create a position manager
+        let mut test_manager = TestPositionManager {
+            id: sui::object::new(scenario.ctx()),
+            position_manager: new(1, scenario.ctx())
+        };
+        
+        // Create a pool ID for testing
+        let pool_id = sui::object::id_from_address(admin);
+        let pool_index = 1;
+        let pool_url = std::string::utf8(b"https://fullsalefinance.io/pool/1");
+        
+        // Define tick range
+        let tick_lower = integer_mate::i32::from(0);
+        let tick_upper = integer_mate::i32::from(10);
+        
+        // Open a new position
+        let position = open_position<std::type_name::TypeName, std::type_name::TypeName>(
+            &mut test_manager.position_manager,
+            pool_id,
+            pool_index,
+            pool_url,
+            tick_lower,
+            tick_upper,
+            scenario.ctx()
+        );
+        
+        // Get position ID
+        let position_id = sui::object::id(&position);
+        
+        // Verify position exists in the manager
+        assert!(is_position_exist(&test_manager.position_manager, position_id), 1);
+        
+        // Get mutable reference to position info
+        let position_info = borrow_mut_position_info(&mut test_manager.position_manager, position_id);
+        
+        // Verify position info properties
+        assert!(info_position_id(position_info) == position_id, 2);
+        assert!(info_liquidity(position_info) == 0, 3);
+        
+        let (info_tick_lower, info_tick_upper) = info_tick_range(position_info);
+        assert!(integer_mate::i32::eq(info_tick_lower, tick_lower), 4);
+        assert!(integer_mate::i32::eq(info_tick_upper, tick_upper), 5);
+        
+        // Verify fee growth is initialized to 0
+        let (fee_growth_a, fee_growth_b) = info_fee_growth_inside(position_info);
+        assert!(fee_growth_a == 0, 6);
+        assert!(fee_growth_b == 0, 7);
+        
+        // Verify fee owned is initialized to 0
+        let (fee_owned_a, fee_owned_b) = info_fee_owned(position_info);
+        assert!(fee_owned_a == 0, 8);
+        assert!(fee_owned_b == 0, 9);
+        
+        // Verify points are initialized to 0
+        assert!(info_points_owned(position_info) == 0, 10);
+        assert!(info_points_growth_inside(position_info) == 0, 11);
+        
+        // Verify rewards are initialized to empty
+        let rewards = info_rewards(position_info);
+        assert!(std::vector::length(rewards) == 0, 12);
+        
+        // Verify fullsale distribution is initialized
+        assert!(!is_staked(position_info), 13);
+        assert!(info_fullsale_distribution_owned(position_info) == 0, 14);
+        
+        // Transfer objects
+        sui::transfer::public_transfer(position, admin);
+        transfer::public_transfer(test_manager, admin);
+        scenario.end();
+    }
+
+    #[test]
+    /// Test borrow_mut_position_info with non-existent position
+    /// Verifies that:
+    /// 1. Attempting to borrow mutable reference to non-existent position fails
+    #[expected_failure(abort_code = 6)]
+    fun test_borrow_mut_position_info_nonexistent() {
+        let admin = @0x123;
+        let mut scenario = sui::test_scenario::begin(admin);
+        
+        // Create a position manager
+        let mut test_manager = TestPositionManager {
+            id: sui::object::new(scenario.ctx()),
+            position_manager: new(1, scenario.ctx())
+        };
+        
+        // Create a fake position ID
+        let fake_position_id = sui::object::id_from_address(admin);
+        
+        // Verify position does not exist in the manager
+        assert!(!is_position_exist(&test_manager.position_manager, fake_position_id), 1);
+        
+        // Attempt to get mutable reference to non-existent position info
+        // This should abort with error code 6 (position not found)
+        let _position_info = borrow_mut_position_info(&mut test_manager.position_manager, fake_position_id);
+        transfer::public_transfer(test_manager, admin);
+
+        scenario.end();
+    }
+
+    #[test]
+    /// Test borrow_mut_position_info with wrong position ID
+    /// Verifies that:
+    /// 1. Attempting to borrow mutable reference with wrong position ID fails
+    #[expected_failure(abort_code = 6)]
+    fun test_borrow_mut_position_info_wrong_id() {
+        let admin = @0x123;
+        let mut scenario = sui::test_scenario::begin(admin);
+        
+        // Create a position manager
+        let mut test_manager = TestPositionManager {
+            id: sui::object::new(scenario.ctx()),
+            position_manager: new(1, scenario.ctx())
+        };
+        
+        // Create a pool ID for testing
+        let pool_id = sui::object::id_from_address(admin);
+        let pool_index = 1;
+        let pool_url = std::string::utf8(b"https://fullsalefinance.io/pool/1");
+        
+        // Define tick range
+        let tick_lower = integer_mate::i32::from(0);
+        let tick_upper = integer_mate::i32::from(10);
+        
+        // Open a new position
+        let position = open_position<std::type_name::TypeName, std::type_name::TypeName>(
+            &mut test_manager.position_manager,
+            pool_id,
+            pool_index,
+            pool_url,
+            tick_lower,
+            tick_upper,
+            scenario.ctx()
+        );
+        
+        // Get position ID
+        let position_id = sui::object::id(&position);
+        
+        // Create a different position ID
+        let different_position_id = sui::object::id_from_address(@0x456);
+        
+        // Verify position exists in the manager
+        assert!(is_position_exist(&test_manager.position_manager, position_id), 1);
+        
+        // Verify different position ID does not exist in the manager
+        assert!(!is_position_exist(&test_manager.position_manager, different_position_id), 2);
+        
+        // Attempt to get mutable reference with wrong position ID
+        // This should abort with error code 6 (position not found)
+        let _position_info = borrow_mut_position_info(&mut test_manager.position_manager, different_position_id);
+        
+        // Transfer objects
+        sui::transfer::public_transfer(position, admin);
+        sui::transfer::public_transfer(test_manager, admin);
+        scenario.end();
+    }
+
+    #[test_only]
+    /// Test version of new_position_name function
+    /// This function is only available in test mode
+    public fun test_new_position_name(pool_index: u64, position_index: u64): std::string::String {
+        new_position_name(pool_index, position_index)
+    }
+
+    #[test_only]
+    /// Test version of function to update fees
+    /// This function is only available in test mode
+    public fun test_update_fees(position_manager: &mut PositionManager, position_id: sui::object::ID, fee_owned_a: u64, fee_owned_b: u64) {
+        let position_info = borrow_mut_position_info(position_manager, position_id);
+        position_info.fee_owned_a = fee_owned_a;
+        position_info.fee_owned_b = fee_owned_b;
+    }
+
+    #[test]
+    /// Test update_fee_internal function
+    /// Verifies that:
+    /// 1. Fee growth is updated correctly
+    /// 2. Fee owned amounts are calculated correctly
+    fun test_update_fee_internal() {
+        let position_id = sui::object::id_from_address(@0x123);
+        let mut position_info = new_position_info(
+            position_id,
+            1000, // liquidity
+            integer_mate::i32::from(0), // tick_lower
+            integer_mate::i32::from(10), // tick_upper
+            0, // fee_growth_inside_a
+            0, // fee_growth_inside_b
+            0, // fee_owned_a
+            0, // fee_owned_b
+            0, // points_owned
+            0, // points_growth_inside
+            std::vector::empty<PositionReward>(), // rewards
+            false, // fullsale_distribution_staked
+            0, // fullsale_distribution_growth_inside
+            0 // fullsale_distribution_owned
+        );
+
+        // Test with non-zero growth
+        let fee_growth_a = 1000 << 64; // Q64.64 format
+        let fee_growth_b = 2000 << 64; // Q64.64 format
+
+        update_fee_internal(&mut position_info, fee_growth_a, fee_growth_b);
+
+        // Verify fee growth was updated
+        assert!(position_info.fee_growth_inside_a == fee_growth_a, 1);
+        assert!(position_info.fee_growth_inside_b == fee_growth_b, 2);
+
+        // Verify fee owned was calculated correctly
+        // For liquidity = 1000 and growth = 1000 << 64:
+        // fee_owned = (1000 * 1000 << 64) >> 64 = 1000
+        assert!(position_info.fee_owned_a == 1000 * 1000, 3);
+        assert!(position_info.fee_owned_b == 2000 * 1000, 4);
+    }
+
+    #[test]
+    /// Test update_points_internal function
+    /// Verifies that:
+    /// 1. Points growth is updated correctly
+    /// 2. Points owned amount is calculated correctly
+    fun test_update_points_internal() {
+        let position_id = sui::object::id_from_address(@0x123);
+        let mut position_info = new_position_info(
+            position_id,
+            1000, // liquidity
+            integer_mate::i32::from(0), // tick_lower
+            integer_mate::i32::from(10), // tick_upper
+            0, // fee_growth_inside_a
+            0, // fee_growth_inside_b
+            0, // fee_owned_a
+            0, // fee_owned_b
+            0, // points_owned
+            0, // points_growth_inside
+            std::vector::empty<PositionReward>(), // rewards
+            false, // fullsale_distribution_staked
+            0, // fullsale_distribution_growth_inside
+            0 // fullsale_distribution_owned
+        );
+
+        // Test with non-zero growth
+        let points_growth = 1000 << 64; // Q64.64 format
+
+        update_points_internal(&mut position_info, points_growth);
+
+        // Verify points growth was updated
+        assert!(position_info.points_growth_inside == points_growth, 1);
+
+        // Verify points owned was calculated correctly
+        // For liquidity = 1000 and growth = 1000 << 64:
+        // points_owned = (1000 * 1000 << 64) >> 64 = 1000
+        assert!(position_info.points_owned == 1000 * 1000, 2);
+    }
+
+    #[test]
+    /// Test update_rewards_internal function
+    /// Verifies that:
+    /// 1. Rewards growth is updated correctly
+    /// 2. Rewards owned amounts are calculated correctly
+    /// 3. New rewards are created when needed
+    fun test_update_rewards_internal() {
+        let position_id = sui::object::id_from_address(@0x123);
+        let mut position_info = new_position_info(
+            position_id,
+            1000, // liquidity
+            integer_mate::i32::from(0), // tick_lower
+            integer_mate::i32::from(10), // tick_upper
+            0, // fee_growth_inside_a
+            0, // fee_growth_inside_b
+            0, // fee_owned_a
+            0, // fee_owned_b
+            0, // points_owned
+            0, // points_growth_inside
+            std::vector::empty<PositionReward>(), // rewards
+            false, // fullsale_distribution_staked
+            0, // fullsale_distribution_growth_inside
+            0 // fullsale_distribution_owned
+        );
+
+        // Test with two rewards
+        let mut rewards_growth = std::vector::empty<u128>();
+        std::vector::push_back<u128>(&mut rewards_growth, 1000 << 64); // Q64.64 format
+        std::vector::push_back<u128>(&mut rewards_growth, 2000 << 64); // Q64.64 format
+
+        update_rewards_internal(&mut position_info, rewards_growth);
+
+        // Verify rewards were created
+        assert!(std::vector::length(&position_info.rewards) == 2, 1);
+
+        // Verify first reward
+        let reward0 = std::vector::borrow(&position_info.rewards, 0);
+        assert!(reward0.growth_inside == 1000 << 64, 2);
+        // For liquidity = 1000 and growth = 1000 << 64:
+        // amount_owned = (1000 * 1000 << 64) >> 64 = 1000
+        assert!(reward0.amount_owned == 1000 * 1000, 3);
+
+        // Verify second reward
+        let reward1 = std::vector::borrow(&position_info.rewards, 1);
+        assert!(reward1.growth_inside == 2000 << 64, 4);
+        // For liquidity = 1000 and growth = 2000 << 64:
+        // amount_owned = (1000 * 2000 << 64) >> 64 = 2000
+        assert!(reward1.amount_owned == 2000 * 1000, 5);
+    }
+
+    #[test]
+    /// Test update_fullsale_distribution_internal function
+    /// Verifies that:
+    /// 1. FULLSALE growth is updated correctly
+    /// 2. FULLSALE owned amount is calculated correctly
+    fun test_update_fullsale_distribution_internal() {
+        let position_id = sui::object::id_from_address(@0x123);
+        let mut position_info = new_position_info(
+            position_id,
+            1000, // liquidity
+            integer_mate::i32::from(0), // tick_lower
+            integer_mate::i32::from(10), // tick_upper
+            0, // fee_growth_inside_a
+            0, // fee_growth_inside_b
+            0, // fee_owned_a
+            0, // fee_owned_b
+            0, // points_owned
+            0, // points_growth_inside
+            std::vector::empty<PositionReward>(), // rewards
+            false, // fullsale_distribution_staked
+            0, // fullsale_distribution_growth_inside
+            0 // fullsale_distribution_owned
+        );
+
+        // Test with non-zero growth
+        let fullsale_growth = 1000 << 64; // Q64.64 format
+
+        update_fullsale_distribution_internal(&mut position_info, fullsale_growth);
+
+        // Verify FULLSALE growth was updated
+        assert!(position_info.fullsale_distribution_growth_inside == fullsale_growth, 1);
+
+        assert!(position_info.fullsale_distribution_owned == 1000*1000, 2);
     }
 }
 

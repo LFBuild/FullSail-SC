@@ -20,9 +20,9 @@ module clmm_pool::clmm_math {
     /// * Amount calculations based on input/output direction
     /// 
     /// # Arguments
-    /// * `current_sqrt_price` - Current square root price of the pool
-    /// * `target_sqrt_price` - Target square root price to reach
-    /// * `liquidity` - Current liquidity in the pool
+    /// * `current_sqrt_price` - Current square root price of the pool, scaled << 64
+    /// * `target_sqrt_price` - Target square root price to reach, scaled << 64
+    /// * `liquidity` - Current liquidity in the pool, scaled << 64
     /// * `amount` - Amount of tokens to swap
     /// * `fee_rate` - Fee rate for the swap (in basis points, 1/10000)
     /// * `a2b` - Direction of the swap (true for token A to B, false for B to A)
@@ -206,7 +206,7 @@ module clmm_pool::clmm_math {
             return 0
         };
         let product = integer_mate::full_math_u128::full_mul(liquidity, sqrt_price_diff);
-        if (round_up && product & 18446744073709551615 > 0) {
+        if (round_up && (product & 18446744073709551615 > 0)) {
             return ((product >> 64) + 1) as u64
         };
         (product >> 64) as u64

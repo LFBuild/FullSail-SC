@@ -463,4 +463,45 @@ module clmm_pool::partner {
         };
         sui::event::emit<UpdateTimeRangeEvent>(event);
     }
+
+    /// Returns whether the partners collection is empty.
+    /// 
+    /// # Arguments
+    /// * `partners` - Reference to the partners collection
+    /// 
+    /// # Returns
+    /// True if the collection is empty, false otherwise
+    public fun is_empty(partners: &Partners): bool {
+        sui::vec_map::is_empty(&partners.partners)
+    }
+
+    #[test_only]
+    public fun test_init(ctx: &mut sui::tx_context::TxContext) {
+        let partners = Partners {
+            id: sui::object::new(ctx),
+            partners: sui::vec_map::empty<std::string::String, sui::object::ID>(),
+        };
+        sui::transfer::share_object(partners);
+    }
+
+    #[test]
+    fun test_init_fun() {
+        let admin = @0x123;
+        let mut scenario = sui::test_scenario::begin(admin);
+        {
+            init(scenario.ctx());
+        };
+
+        scenario.next_tx(admin);
+        {
+            let partners = scenario.take_shared<Partners>();
+            
+            // Check that partners collection is empty
+            assert!(sui::vec_map::is_empty(&partners.partners), 1);
+            
+            sui::test_scenario::return_shared(partners);
+        };
+
+        scenario.end();
+    }
 }

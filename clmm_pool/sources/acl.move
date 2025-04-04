@@ -62,7 +62,7 @@ module clmm_pool::acl {
         assert!(role < 128, 1);
         if (move_stl::linked_table::contains<address, u128>(&acl.permissions, member_addr)) {
             let permission = move_stl::linked_table::borrow_mut<address, u128>(&mut acl.permissions, member_addr);
-            *permission = *permission | 1 << role;
+            *permission = *permission | (1 << role);
         } else {
             move_stl::linked_table::push_back<address, u128>(&mut acl.permissions, member_addr, 1 << role);
         };
@@ -125,7 +125,7 @@ module clmm_pool::acl {
         move_stl::linked_table::contains<address, u128>(
             &acl.permissions,
             member_addr
-        ) && *move_stl::linked_table::borrow<address, u128>(&acl.permissions, member_addr) & 1 << role > 0
+        ) && (*move_stl::linked_table::borrow<address, u128>(&acl.permissions, member_addr) & (1 << role) > 0)
     }
 
     /// Removes a member and all their roles from the ACL.
@@ -152,7 +152,7 @@ module clmm_pool::acl {
         assert!(role < 128, 1);
         if (move_stl::linked_table::contains<address, u128>(&acl.permissions, member_addr)) {
             let permission = move_stl::linked_table::borrow_mut<address, u128>(&mut acl.permissions, member_addr);
-            if (*permission & 1 << role > 0) {
+            if ((*permission & (1 << role)) > 0) {
                 *permission = *permission - (1 << role);
             };
         };
