@@ -2,8 +2,8 @@
 
 [move]
 version = 3
-manifest_digest = "C7459453884BB2B4FE8358428C1C26E932EF2CC500730DFD69B1A2BAA2881022"
-deps_digest = "CAFAD8A7CF51067FB4358215BECB86BD100DD64E57C2AC8A7AE7D74B688F5965"
+manifest_digest = "3B244807BFBDD0585E3C2352B59827864250FF4C69600FCAEA43F332D83A8D3F"
+deps_digest = "52B406A7A21811BEF51751CF88DA0E76DAEFFEAC888D4F4060B1A72BBE7D8D35"
 dependencies = [
   { id = "Sui", name = "Sui" },
   { id = "clmm_pool", name = "clmm_pool" },
@@ -91,8 +91,8 @@ flavor = "sui"
 
 [env.mainnet]
 chain-id = "35834a8a"
-original-published-id = "0xe33648be0c8b91cacd86fe6d40ab277ba2e1a0d80801b00368da675f0ce9fba7"
-latest-published-id = "0xe33648be0c8b91cacd86fe6d40ab277ba2e1a0d80801b00368da675f0ce9fba7"
+original-published-id = "0x60419b1cc364ee46b91dc26d7cb4d8e4ff69e06d9bffef513202cf8f9e71ca7e"
+latest-published-id = "0x60419b1cc364ee46b91dc26d7cb4d8e4ff69e06d9bffef513202cf8f9e71ca7e"
 published-version = "1"
 
 [env.testnet]
