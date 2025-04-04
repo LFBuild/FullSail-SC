@@ -1,5 +1,5 @@
-module sail_token::sail_token {
-    public struct SAIL_TOKEN has drop {}
+module distribution::sail_coin {
+    public struct SAIL_COIN has drop {}
 
     public struct MinterCap<phantom SailCoinType> has store, key {
         id: UID,
@@ -25,8 +25,10 @@ module sail_token::sail_token {
         minter_cap.cap.total_supply()
     }
 
-    fun init(otw: SAIL_TOKEN, ctx: &mut TxContext) {
-        let (treasury_cap, metadata) = sui::coin::create_currency<SAIL_TOKEN>(
+    fun init(otw: SAIL_COIN, ctx: &mut TxContext) {
+        // TODO: add logo url
+        // let logoUrl = sui::url::new_unsafe_from_bytes(b"https://link.to.logo");
+        let (treasury_cap, metadata) = sui::coin::create_currency<SAIL_COIN>(
             otw,
             6,
             b"SAIL",
@@ -35,12 +37,12 @@ module sail_token::sail_token {
             option::none<sui::url::Url>(),
             ctx
         );
-        let minter_cap = MinterCap<SAIL_TOKEN> {
+        let minter_cap = MinterCap<SAIL_COIN> {
             id: object::new(ctx),
             cap: treasury_cap,
         };
-        transfer::transfer<MinterCap<SAIL_TOKEN>>(minter_cap, tx_context::sender(ctx));
-        transfer::public_freeze_object<sui::coin::CoinMetadata<SAIL_TOKEN>>(metadata);
+        transfer::transfer<MinterCap<SAIL_COIN>>(minter_cap, tx_context::sender(ctx));
+        transfer::public_freeze_object<sui::coin::CoinMetadata<SAIL_COIN>>(metadata);
     }
 }
 
