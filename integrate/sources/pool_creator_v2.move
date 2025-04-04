@@ -44,6 +44,9 @@ module integrate::pool_creator_v2 {
         _metadata_a: &sui::coin::CoinMetadata<CoinTypeA>,
         _metadata_b: &sui::coin::CoinMetadata<CoinTypeB>,
         fix_amount_a: bool,
+        feed_id_coin_a: address,
+        feed_id_coin_b: address,
+        auto_calculation_volumes: bool,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
@@ -70,6 +73,9 @@ module integrate::pool_creator_v2 {
             liquidity_amount_a,
             liquidity_amount_b,
             fix_amount_a,
+            feed_id_coin_a,
+            feed_id_coin_b,
+            auto_calculation_volumes,
             clock,
             ctx
         );

@@ -11,6 +11,7 @@ dependencies = [
   { id = "gauge_cap", name = "gauge_cap" },
   { id = "integer_mate", name = "integer_mate" },
   { id = "move_stl", name = "move_stl" },
+  { id = "price_provider", name = "price_provider" },
 ]
 
 [[move.package]]
@@ -34,6 +35,7 @@ dependencies = [
   { id = "gauge_cap", name = "gauge_cap" },
   { id = "integer_mate", name = "integer_mate" },
   { id = "move_stl", name = "move_stl" },
+  { id = "price_provider", name = "price_provider" },
 ]
 
 [[move.package]]
@@ -45,6 +47,7 @@ dependencies = [
   { id = "clmm_pool", name = "clmm_pool" },
   { id = "gauge_cap", name = "gauge_cap" },
   { id = "integer_mate", name = "integer_mate" },
+  { id = "price_provider", name = "price_provider" },
 ]
 
 [[move.package]]
@@ -71,8 +74,16 @@ dependencies = [
   { id = "Sui", name = "Sui" },
 ]
 
+[[move.package]]
+id = "price_provider"
+source = { local = "../price_provider" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+]
+
 [move.toolchain-version]
-compiler-version = "1.46.0"
+compiler-version = "1.45.0"
 edition = "2024"
 flavor = "sui"
 
