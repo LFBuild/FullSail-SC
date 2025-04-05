@@ -12,6 +12,7 @@ Need to have knowledge in
 - Blockchain Fundamentals
 - SUI chain
 - Dex(Ve(3,3)) Flow and Logic
+- Ve(4,4) innovations
 - Move Smart Contract language
 
 ## Installation Instructions

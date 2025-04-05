@@ -1,4 +1,9 @@
 module integrate::router {
+    // Error constants
+    const EAmountMismatch: u64 = 1;
+    const EInsufficientFunds: u64 = 4;
+    const EUnusedCoinRemaining: u64 = 5;
+
     public struct CalculatedRouterSwapResult has copy, drop, store {
         amount_in: u64,
         amount_medium: u64,
@@ -55,12 +60,12 @@ module integrate::router {
             coin_a_out.value<CoinTypeA>()
         };
         if (by_amount_in) {
-            assert!(pay_amount == amount, 1);
+            assert!(pay_amount == amount, EAmountMismatch);
         } else {
-            assert!(coin_out_value == amount, 1);
+            assert!(coin_out_value == amount, EAmountMismatch);
         };
         let (repay_amount_a, repay_amount_b) = if (a2b) {
-            assert!(coin_a.value<CoinTypeA>() >= pay_amount, 4);
+            assert!(coin_a.value<CoinTypeA>() >= pay_amount, EInsufficientFunds);
             (sui::coin::into_balance<CoinTypeA>(coin_a.split<CoinTypeA>(pay_amount, ctx)), sui::balance::zero<CoinTypeB>())
         } else {
             (sui::balance::zero<CoinTypeA>(), sui::coin::into_balance<CoinTypeB>(coin_b.split<CoinTypeB>(pay_amount, ctx)))
@@ -198,7 +203,7 @@ module integrate::router {
     }
 
     public fun check_coin_threshold<CoinTypeA>(coin: &sui::coin::Coin<CoinTypeA>, threshold: u64) {
-        assert!(coin.value<CoinTypeA>() >= threshold, 4);
+        assert!(coin.value<CoinTypeA>() >= threshold, EInsufficientFunds);
     }
 
     public fun swap_ab_bc<CoinTypeA, CoinTypeB, CoinTypeC>(
@@ -249,7 +254,7 @@ module integrate::router {
                 clock,
                 ctx
             );
-            assert!(unused_coin_b.value<CoinTypeB>() == 0, 5);
+            assert!(unused_coin_b.value<CoinTypeB>() == 0, EUnusedCoinRemaining);
             sui::coin::destroy_zero<CoinTypeB>(unused_coin_b);
             (coin_a_out, coin_c_out)
         } else {
@@ -339,7 +344,7 @@ module integrate::router {
                 clock,
                 ctx
             );
-            assert!(unused_coin_b.value<CoinTypeB>() == 0, 5);
+            assert!(unused_coin_b.value<CoinTypeB>() == 0, EUnusedCoinRemaining);
             sui::coin::destroy_zero<CoinTypeB>(unused_coin_b);
             (coin_a_remaining, coin_c_out)
         } else {
@@ -429,7 +434,7 @@ module integrate::router {
                 clock,
                 ctx
             );
-            assert!(unused_coin_b.value<CoinTypeB>() == 0, 5);
+            assert!(unused_coin_b.value<CoinTypeB>() == 0, EUnusedCoinRemaining);
             sui::coin::destroy_zero<CoinTypeB>(unused_coin_b);
             (coin_a_out, coin_c_out)
         } else {
@@ -519,7 +524,7 @@ module integrate::router {
                 clock,
                 ctx
             );
-            assert!(unused_coin_b.value<CoinTypeB>() == 0, 5);
+            assert!(unused_coin_b.value<CoinTypeB>() == 0, EUnusedCoinRemaining);
             sui::coin::destroy_zero<CoinTypeB>(unused_coin_b);
             (coin_a_out, coin_c_out)
         } else {

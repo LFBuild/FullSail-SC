@@ -1,4 +1,9 @@
 module integrate::router_with_partner {
+    // Error constants
+    const EAmountMismatch: u64 = 1;
+    const EInsufficientFunds: u64 = 4;
+    const EUnusedCoinRemaining: u64 = 5;
+
     public fun swap_ab_bc_with_partner<CoinTypeA, CoinTypeB, CoinTypeC>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool_ab: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
@@ -50,7 +55,7 @@ module integrate::router_with_partner {
                 clock,
                 ctx
             );
-            assert!(unused_coin_b.value<CoinTypeB>() == 0, 5);
+            assert!(unused_coin_b.value<CoinTypeB>() == 0, EUnusedCoinRemaining);
             unused_coin_b.destroy_zero();
             (coin_a_out, final_coin_c)
         } else {
@@ -146,7 +151,7 @@ module integrate::router_with_partner {
                 clock,
                 ctx
             );
-            assert!(unused_coin_b.value<CoinTypeB>() == 0, 5);
+            assert!(unused_coin_b.value<CoinTypeB>() == 0, EUnusedCoinRemaining);
             unused_coin_b.destroy_zero();
             (coin_a_out, final_coin_c)
         } else {
@@ -243,7 +248,7 @@ module integrate::router_with_partner {
                 clock,
                 ctx
             );
-            assert!(unused_coin_b.value<CoinTypeB>() == 0, 5);
+            assert!(unused_coin_b.value<CoinTypeB>() == 0, EUnusedCoinRemaining);
             unused_coin_b.destroy_zero();
             (coin_a_out, final_coin_c)
         } else {
@@ -339,7 +344,7 @@ module integrate::router_with_partner {
                 clock,
                 ctx
             );
-            assert!(unused_coin_b.value<CoinTypeB>() == 0, 5);
+            assert!(unused_coin_b.value<CoinTypeB>() == 0, EUnusedCoinRemaining);
             unused_coin_b.destroy_zero();
             (coin_a_out, final_coin_c)
         } else {
@@ -427,12 +432,12 @@ module integrate::router_with_partner {
             coin_a_out.value<CoinTypeA>()
         };
         if (by_amount_in) {
-            assert!(pay_mount == amount, 1);
+            assert!(pay_mount == amount, EAmountMismatch);
         } else {
-            assert!(coin_out_value == amount, 1);
+            assert!(coin_out_value == amount, EAmountMismatch);
         };
         let (repay_amount_a, repay_amount_b) = if (a2b) {
-            assert!(coin_a.value<CoinTypeA>() >= pay_mount, 4);
+            assert!(coin_a.value<CoinTypeA>() >= pay_mount, EInsufficientFunds);
             (
                 coin_a.split<CoinTypeA>(pay_mount, ctx).into_balance(),
                 sui::balance::zero<CoinTypeB>()

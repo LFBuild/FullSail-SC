@@ -1,4 +1,8 @@
 module integrate::rewarder_script {
+    // Error constants
+    const EInsufficientReward: u64 = 1;
+    const EInsufficientVaultBalance: u64 = 2;
+
     public entry fun deposit_reward<RewardCoinType>(
         global_config: &clmm_pool::config::GlobalConfig,
         rewarder_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
@@ -7,7 +11,7 @@ module integrate::rewarder_script {
         ctx: &mut TxContext
     ) {
         let mut reward_coin = integrate::utils::merge_coins<RewardCoinType>(reward_input_coins, ctx);
-        assert!(reward_coin.value<RewardCoinType>() >= amount, 1);
+        assert!(reward_coin.value<RewardCoinType>() >= amount, EInsufficientReward);
         clmm_pool::rewarder::deposit_reward<RewardCoinType>(
             global_config,
             rewarder_vault,
@@ -24,7 +28,7 @@ module integrate::rewarder_script {
         recipient: address,
         ctx: &mut TxContext
     ) {
-        assert!(rewarder_vault.balance_of<RewardCoinType>() >= amount, 2);
+        assert!(rewarder_vault.balance_of<RewardCoinType>() >= amount, EInsufficientVaultBalance);
         integrate::utils::send_coin<RewardCoinType>(
             sui::coin::from_balance<RewardCoinType>(clmm_pool::rewarder::emergent_withdraw<RewardCoinType>(
                 admin_cap,

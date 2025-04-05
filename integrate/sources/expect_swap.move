@@ -1,4 +1,12 @@
 module integrate::expect_swap {
+    // Error constants
+    const EAmountInOverflow: u64 = 0;
+    const EAmountOutOverflow: u64 = 1;
+    const EFeeAmountOverflow: u64 = 2;
+    const EPriceDirectionMismatch: u64 = 3;
+    const EInsufficientRemainder: u64 = 4;
+    const ELiquidityError: u64 = 5;
+
     public struct ExpectSwapResult has copy, drop, store {
         amount_in: u256,
         amount_out: u256,
@@ -98,12 +106,12 @@ module integrate::expect_swap {
                 };
                 if (!v16.is_neg()) {
                     let v17 = v16.abs_u128();
-                    assert!(integer_mate::math_u128::add_check(v1, v17), 5);
+                    assert!(integer_mate::math_u128::add_check(v1, v17), ELiquidityError);
                     v1 = v1 + v17;
                     continue
                 };
                 let v18 = v16.abs_u128();
-                assert!(v1 >= v18, 5);
+                assert!(v1 >= v18, ELiquidityError);
                 v1 = v1 - v18;
                 continue
             };
@@ -117,7 +125,7 @@ module integrate::expect_swap {
     }
 
     fun check_remainer_amount_sub(arg0: u64, arg1: u64): u64 {
-        assert!(arg0 >= arg1, 4);
+        assert!(arg0 >= arg1, EInsufficientRemainder);
         arg0 - arg1
     }
 
@@ -134,9 +142,9 @@ module integrate::expect_swap {
             return (0, 0, arg1, 0)
         };
         if (arg5) {
-            assert!(arg0 >= arg1, 3);
+            assert!(arg0 >= arg1, EPriceDirectionMismatch);
         } else {
-            assert!(arg0 < arg1, 3);
+            assert!(arg0 < arg1, EPriceDirectionMismatch);
         };
         let (v0, v1, v2, v3) = if (arg6) {
             let v4 = integer_mate::full_math_u64::mul_div_floor(
@@ -261,9 +269,9 @@ module integrate::expect_swap {
     }
 
     fun update_swap_result(arg0: &mut SwapResult, arg1: u256, arg2: u256, arg3: u256) {
-        assert!(integer_mate::math_u256::add_check(arg0.amount_in, arg1), 0);
-        assert!(integer_mate::math_u256::add_check(arg0.amount_out, arg2), 1);
-        assert!(integer_mate::math_u256::add_check(arg0.fee_amount, arg3), 2);
+        assert!(integer_mate::math_u256::add_check(arg0.amount_in, arg1), EAmountInOverflow);
+        assert!(integer_mate::math_u256::add_check(arg0.amount_out, arg2), EAmountOutOverflow);
+        assert!(integer_mate::math_u256::add_check(arg0.fee_amount, arg3), EFeeAmountOverflow);
         arg0.amount_in = arg0.amount_in + arg1;
         arg0.amount_out = arg0.amount_out + arg2;
         arg0.fee_amount = arg0.fee_amount + arg3;
