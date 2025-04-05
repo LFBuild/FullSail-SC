@@ -2,8 +2,8 @@
 
 [move]
 version = 3
-manifest_digest = "0234C4F36A8FCF430C8BC485F532C70730FAEAAC0818C0360E6D6218E837EBF8"
-deps_digest = "F9B494B64F0615AED0E98FC12A85B85ECD2BC5185C22D30E7F67786BB52E507C"
+manifest_digest = "79962C6AD59DE949E6AD190F2D1CAA12691CF6348D4327EC5860CEF85E9CB8CB"
+deps_digest = "397E6A9F7A624706DBDFEE056CE88391A15876868FD18A88504DA74EB458D697"
 dependencies = [
   { id = "Sui", name = "Sui" },
   { id = "clmm_pool", name = "clmm_pool" },
@@ -69,7 +69,7 @@ dependencies = [
 ]
 
 [move.toolchain-version]
-compiler-version = "1.45.0"
+compiler-version = "1.46.0"
 edition = "2024"
 flavor = "sui"
 
