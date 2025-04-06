@@ -6,6 +6,9 @@ digraph Dependencies {
     "integrate";
 
     // Dependency relationships:
+    "clmm_pool"    -> "price_provider"
+    "integrate"    -> "price_provider"
+
     "distribution" -> "clmm_pool";
     "integrate"    -> "clmm_pool";
     "integrate"    -> "distribution";
