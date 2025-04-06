@@ -1,4 +1,8 @@
 module integrate::pool_script_v2 {
+    // Error constants
+    const EExceededLimit: u64 = 0;
+    const EInsufficientOutput: u64 = 1;
+    const EAmountMismatch: u64 = 2;
 
     fun swap<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
@@ -33,11 +37,11 @@ module integrate::pool_script_v2 {
             coin_a_out.value()
         };
         if (by_amount_in) {
-            assert!(pay_amout == amount, 2);
-            assert!(coin_out_value >= amount_limit, 1);
+            assert!(pay_amout == amount, EAmountMismatch);
+            assert!(coin_out_value >= amount_limit, EInsufficientOutput);
         } else {
-            assert!(coin_out_value == amount, 2);
-            assert!(pay_amout <= amount_limit, 0);
+            assert!(coin_out_value == amount, EAmountMismatch);
+            assert!(pay_amout <= amount_limit, EExceededLimit);
         };
         let (repay_amount_a, repay_amount_b) = if (a2b) {
             (coin_a.split(pay_amout, ctx).into_balance(), sui::balance::zero<CoinTypeB>())
@@ -287,8 +291,8 @@ module integrate::pool_script_v2 {
         );
         let mut mut_removed_b = removed_b;
         let mut mut_removed_a = removed_a;
-        assert!(mut_removed_a.value<CoinTypeA>() >= min_amount_a, 1);
-        assert!(mut_removed_b.value<CoinTypeB>() >= min_amount_b, 1);
+        assert!(mut_removed_a.value<CoinTypeA>() >= min_amount_a, EInsufficientOutput);
+        assert!(mut_removed_b.value<CoinTypeB>() >= min_amount_b, EInsufficientOutput);
         let (collected_fee_a, collected_fee_b) = clmm_pool::pool::collect_fee<CoinTypeA, CoinTypeB>(
             global_config,
             pool,
@@ -318,8 +322,8 @@ module integrate::pool_script_v2 {
         ctx: &mut TxContext
     ) {
         let (pay_amount_a, pay_amount_b) = receipt.add_liquidity_pay_amount();
-        assert!(pay_amount_a <= max_amount_a, 0);
-        assert!(pay_amount_b <= max_amount_b, 0);
+        assert!(pay_amount_a <= max_amount_a, EExceededLimit);
+        assert!(pay_amount_b <= max_amount_b, EExceededLimit);
         clmm_pool::pool::repay_add_liquidity<CoinTypeA, CoinTypeB>(
             global_config,
             pool,
@@ -672,11 +676,11 @@ module integrate::pool_script_v2 {
             coin_a_out.value()
         };
         if (by_amount_in) {
-            assert!(pay_amount == amount, 2);
-            assert!(coin_out_value >= amount_limit, 1);
+            assert!(pay_amount == amount, EAmountMismatch);
+            assert!(coin_out_value >= amount_limit, EInsufficientOutput);
         } else {
-            assert!(coin_out_value == amount, 2);
-            assert!(pay_amount <= amount_limit, 0);
+            assert!(coin_out_value == amount, EAmountMismatch);
+            assert!(pay_amount <= amount_limit, EExceededLimit);
         };
         let (repay_amount_a, repay_amount_b) = if (a2b) {
             (coin_a.split(pay_amount, ctx).into_balance(), sui::balance::zero<CoinTypeB>())
