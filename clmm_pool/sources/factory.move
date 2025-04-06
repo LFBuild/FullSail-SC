@@ -23,6 +23,11 @@
 /// * Pool ownership transfer events
 /// * Pool configuration change events
 module clmm_pool::factory {
+    use sui::test_scenario;
+    use sui::object;
+    use sui::package;
+    use move_stl::linked_table;
+
     /// Represents the factory state for pool management.
     /// This structure is used to maintain factory-level state and settings.
     /// 
@@ -475,7 +480,7 @@ module clmm_pool::factory {
     /// A unique ID for the pool
     /// 
     /// # Abort Conditions
-    /// * If the coin types are not in lexicographical order (error code: 6)
+    /// * If the coin types are in lexicographical order (error code: 6)
     public fun new_pool_key<CoinTypeA, CoinTypeB>(tick_spacing: u32): sui::object::ID {
         let type_name_a = std::type_name::into_string(std::type_name::get<CoinTypeA>());
         let mut bytes_a = *std::ascii::as_bytes(&type_name_a);
@@ -500,12 +505,12 @@ module clmm_pool::factory {
             std::vector::push_back<u8>(&mut bytes_a, byte_b);
             index = index + 1;
             continue;
-            error_code = 6;
+            error_code = 7;
             abort error_code
         };
         if (!swapped) {
             if (std::vector::length<u8>(&bytes_a) < std::vector::length<u8>(bytes_b)) {
-                abort 6
+                abort 8
             };
         };
         std::vector::append<u8>(&mut bytes_a, sui::bcs::to_bytes<u32>(&tick_spacing));
@@ -555,6 +560,65 @@ module clmm_pool::factory {
     /// The minimum distance between initialized ticks
     public fun tick_spacing(pool_info: &PoolSimpleInfo): u32 {
         pool_info.tick_spacing
+    }
+
+    #[test_only]
+    /// Test initialization of the position system
+    /// Replicates the init function logic for testing purposes
+    public fun test_init(ctx: &mut sui::tx_context::TxContext) {
+        let pools = Pools {
+            id: sui::object::new(ctx),
+            list: move_stl::linked_table::new<sui::object::ID, PoolSimpleInfo>(ctx),
+            index: 0,
+        };
+
+        sui::transfer::share_object<Pools>(pools);
+        sui::package::claim_and_keep<FACTORY>(FACTORY { dummy_field: false }, ctx);
+    }
+
+    #[test_only]
+    fun test_init_fun() {
+        let admin = @0x123;
+        let mut scenario = sui::test_scenario::begin(admin);
+        {
+            init(FACTORY { dummy_field: false }, scenario.ctx());
+        };
+
+        // Verify pools object and publisher
+        scenario.next_tx(admin);
+        {
+            let pools = scenario.take_from_sender<Pools>();
+            let publisher = scenario.take_from_sender<sui::package::Publisher>();
+            
+            // Verify that pools and publisher were created and transferred
+            assert!(sui::object::id(&pools) != sui::object::id(&publisher), 1);
+            
+            // Verify pools initial state
+            assert!(move_stl::linked_table::is_empty(&pools.list), 2);
+            assert!(pools.index == 0, 3);
+            
+            // Return objects to scenario
+            scenario.return_to_sender(pools);
+            scenario.return_to_sender(publisher);
+        };
+
+        scenario.end();
+    }
+
+    #[test_only]
+    public(package) fun create_pool_internal_test<CoinTypeA, CoinTypeB>(
+        pools: &mut Pools,
+        global_config: &clmm_pool::config::GlobalConfig,
+        tick_spacing: u32,
+        current_sqrt_price: u128,
+        url: std::string::String,
+        feed_id_coin_a: address,
+        feed_id_coin_b: address,
+        auto_calculation_volumes: bool,
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext
+    ): clmm_pool::pool::Pool<CoinTypeA, CoinTypeB> {
+        create_pool_internal<CoinTypeA, CoinTypeB>(pools, global_config, tick_spacing, current_sqrt_price, url, feed_id_coin_a, feed_id_coin_b, auto_calculation_volumes, clock, ctx)
     }
 }
 

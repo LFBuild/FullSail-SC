@@ -370,5 +370,76 @@ module clmm_pool::tick_math {
     public fun tick_bound(): u32 {
         443636
     }
-}
 
+    #[test]
+    fun test_get_sqrt_price_at_negative_tick() {
+        // Test with tick = -1
+        let tick_minus_one = integer_mate::i32::neg_from(1);
+        let sqrt_price = get_sqrt_price_at_negative_tick(tick_minus_one);
+        assert!(sqrt_price == 18445821805675392311, 1);
+
+        // Test with tick = -2
+        let tick_minus_two = integer_mate::i32::neg_from(2);
+        let sqrt_price = get_sqrt_price_at_negative_tick(tick_minus_two);
+        assert!(sqrt_price == 18444899583751176498, 2);
+
+        // Test with tick = -4
+        let tick_minus_four = integer_mate::i32::neg_from(4);
+        let sqrt_price = get_sqrt_price_at_negative_tick(tick_minus_four);
+        assert!(sqrt_price == 18443055278223354162, 3);
+    }
+
+    #[test]
+    fun test_get_sqrt_price_at_positive_tick() {
+        // Test with tick = 1
+        let tick_one = integer_mate::i32::from(1);
+        let sqrt_price = get_sqrt_price_at_positive_tick(tick_one);
+        assert!(sqrt_price == 79232123823359799118286999567 >> 32, 1);
+
+        // Test with tick = 2
+        let tick_two = integer_mate::i32::from(2);
+        let sqrt_price = get_sqrt_price_at_positive_tick(tick_two);
+        assert!(sqrt_price == 79236085330515764027303304731 >> 32, 2);
+
+        // Test with tick = 4
+        let tick_four = integer_mate::i32::from(4);
+            let sqrt_price = get_sqrt_price_at_positive_tick(tick_four);
+        assert!(sqrt_price == 79244008939048815603706035061 >> 32, 3);
+    }
+
+    #[test]
+    fun test_get_sqrt_price_at_positive_tick_powers_of_two() {
+        // Test with tick = 8 (2^3)
+        let tick_eight = integer_mate::i32::from(8);
+        let sqrt_price = get_sqrt_price_at_positive_tick(tick_eight);
+        assert!(sqrt_price == 79259858533276714757314932305 >> 32, 1);
+
+        // Test with tick = 16 (2^4)
+        let tick_sixteen = integer_mate::i32::from(16);
+        let sqrt_price = get_sqrt_price_at_positive_tick(tick_sixteen);
+        assert!(sqrt_price == 79291567232598584799939703904 >> 32, 2);
+
+        // Test with tick = 32 (2^5)
+        let tick_thirty_two = integer_mate::i32::from(32);
+        let sqrt_price = get_sqrt_price_at_positive_tick(tick_thirty_two);
+        assert!(sqrt_price == 79355022692464371645785046466 >> 32, 3);
+    }
+
+    #[test]
+    fun test_get_sqrt_price_at_negative_tick_powers_of_two() {
+        // Test with tick = -8 (2^3)
+        let tick_minus_eight = integer_mate::i32::neg_from(8);
+        let sqrt_price = get_sqrt_price_at_negative_tick(tick_minus_eight);
+        assert!(sqrt_price == 18439367220385604838, 1);
+
+        // Test with tick = -16 (2^4)
+        let tick_minus_sixteen = integer_mate::i32::neg_from(16);
+        let sqrt_price = get_sqrt_price_at_negative_tick(tick_minus_sixteen);
+        assert!(sqrt_price == 18431993317065449817, 2);
+
+        // Test with tick = -32 (2^5)
+        let tick_minus_thirty_two = integer_mate::i32::neg_from(32);
+        let sqrt_price = get_sqrt_price_at_negative_tick(tick_minus_thirty_two);
+        assert!(sqrt_price == 18417254355718160513, 3);
+    }
+}

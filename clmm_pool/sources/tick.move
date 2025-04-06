@@ -46,8 +46,8 @@ module clmm_pool::tick {
     /// * `fee_growth_outside_b` - Accumulated fees for token B outside this tick
     /// * `points_growth_outside` - Accumulated points outside this tick
     /// * `rewards_growth_outside` - Vector of accumulated rewards outside this tick
-    /// * `fullsale_distribution_staked_liquidity_net` - Net staked liquidity for FULLSALE distribution
-    /// * `fullsale_distribution_growth_outside` - Accumulated FULLSALE distribution outside this tick
+    /// * `fullsail_distribution_staked_liquidity_net` - Net staked liquidity for FULLSAIL distribution
+    /// * `fullsail_distribution_growth_outside` - Accumulated FULLSAIL distribution outside this tick
     public struct Tick has copy, drop, store {
         index: integer_mate::i32::I32,
         sqrt_price: u128,
@@ -57,8 +57,8 @@ module clmm_pool::tick {
         fee_growth_outside_b: u128,
         points_growth_outside: u128,
         rewards_growth_outside: vector<u128>,
-        fullsale_distribution_staked_liquidity_net: integer_mate::i128::I128,
-        fullsale_distribution_growth_outside: u128,
+        fullsail_distribution_staked_liquidity_net: integer_mate::i128::I128,
+        fullsail_distribution_growth_outside: u128,
     }
 
     /// Creates a new TickManager instance with specified parameters.
@@ -131,12 +131,12 @@ module clmm_pool::tick {
     /// * `tick_index` - Index of the tick being crossed
     /// * `is_a2b` - Whether the swap is from token A to B (true) or B to A (false)
     /// * `current_liquidity` - Current liquidity in the pool
-    /// * `staked_liquidity` - Current staked liquidity for FULLSALE distribution
+    /// * `staked_liquidity` - Current staked liquidity for FULLSAIL distribution
     /// * `fee_growth_global_a` - Global fee growth for token A
     /// * `fee_growth_global_b` - Global fee growth for token B
     /// * `points_growth_global` - Global points growth
     /// * `rewards_growth_global` - Vector of global rewards growth
-    /// * `fullsale_growth_global` - Global FULLSALE distribution growth
+    /// * `fullsail_growth_global` - Global FULLSAIL distribution growth
     /// 
     /// # Returns
     /// Tuple containing:
@@ -157,15 +157,15 @@ module clmm_pool::tick {
         fee_growth_global_b: u128,
         points_growth_global: u128,
         rewards_growth_global: vector<u128>,
-        fullsale_growth_global: u128
+        fullsail_growth_global: u128
     ): (u128, u128) {
         let tick = move_stl::skip_list::borrow_mut<Tick>(&mut tick_manager.ticks, tick_score(tick_index));
         let (liquidity_delta, staked_liquidity_delta) = if (is_a2b) {
             (integer_mate::i128::neg(tick.liquidity_net), integer_mate::i128::neg(
-                tick.fullsale_distribution_staked_liquidity_net
+                tick.fullsail_distribution_staked_liquidity_net
             ))
         } else {
-            (tick.liquidity_net, tick.fullsale_distribution_staked_liquidity_net)
+            (tick.liquidity_net, tick.fullsail_distribution_staked_liquidity_net)
         };
         let (new_liquidity, new_staked_liquidity) = if (!integer_mate::i128::is_neg(liquidity_delta)) {
             let liquidity_abs = integer_mate::i128::abs_u128(liquidity_delta);
@@ -194,9 +194,9 @@ module clmm_pool::tick {
             i = i + 1;
         };
         tick.points_growth_outside = integer_mate::math_u128::wrapping_sub(points_growth_global, tick.points_growth_outside);
-        tick.fullsale_distribution_growth_outside = integer_mate::math_u128::wrapping_sub(
-            fullsale_growth_global,
-            tick.fullsale_distribution_growth_outside
+        tick.fullsail_distribution_growth_outside = integer_mate::math_u128::wrapping_sub(
+            fullsail_growth_global,
+            tick.fullsail_distribution_growth_outside
         );
         (new_liquidity, new_staked_liquidity)
     }
@@ -214,7 +214,7 @@ module clmm_pool::tick {
     /// * `fee_growth_global_b` - Global fee growth for token B
     /// * `points_growth_global` - Global points growth
     /// * `rewards_growth_global` - Vector of global rewards growth
-    /// * `fullsale_growth_global` - Global FULLSALE distribution growth
+    /// * `fullsail_growth_global` - Global FULLSAIL distribution growth
     /// 
     /// # Abort Conditions
     /// * If lower tick does not exist (error code: 3)
@@ -232,7 +232,7 @@ module clmm_pool::tick {
         fee_growth_global_b: u128,
         points_growth_global: u128,
         rewards_growth_global: vector<u128>,
-        fullsale_growth_global: u128
+        fullsail_growth_global: u128
     ) {
         if (liquidity == 0) {
             return
@@ -252,7 +252,7 @@ module clmm_pool::tick {
             fee_growth_global_b,
             points_growth_global,
             rewards_growth_global,
-            fullsale_growth_global
+            fullsail_growth_global
         ) == 0) {
             move_stl::skip_list::remove<Tick>(&mut tick_manager.ticks, lower_score);
         };
@@ -267,7 +267,7 @@ module clmm_pool::tick {
             fee_growth_global_b,
             points_growth_global,
             rewards_growth_global,
-            fullsale_growth_global
+            fullsail_growth_global
         ) == 0) {
             move_stl::skip_list::remove<Tick>(&mut tick_manager.ticks, upper_score);
         };
@@ -287,7 +287,7 @@ module clmm_pool::tick {
     /// * Zero fee growth
     /// * Zero points growth
     /// * Empty rewards vector
-    /// * Zero FULLSALE distribution values
+    /// * Zero FULLSAIL distribution values
     fun default(tick_index: integer_mate::i32::I32): Tick {
         Tick {
             index: tick_index,
@@ -298,8 +298,8 @@ module clmm_pool::tick {
             fee_growth_outside_b: 0,
             points_growth_outside: 0,
             rewards_growth_outside: std::vector::empty<u128>(),
-            fullsale_distribution_staked_liquidity_net: integer_mate::i128::from(0),
-            fullsale_distribution_growth_outside: 0,
+            fullsail_distribution_staked_liquidity_net: integer_mate::i128::from(0),
+            fullsail_distribution_growth_outside: 0,
         }
     }
 
@@ -485,55 +485,55 @@ module clmm_pool::tick {
         ))
     }
 
-    /// Calculates the accumulated FULLSALE distribution growth within a specified tick range.
-    /// Takes into account FULLSALE growth both below and above the current tick.
+    /// Calculates the accumulated FULLSAIL distribution growth within a specified tick range.
+    /// Takes into account FULLSAIL growth both below and above the current tick.
     /// 
     /// # Arguments
     /// * `current_tick_index` - Current tick index in the pool
-    /// * `fullsale_growth_global` - Global FULLSALE distribution growth
+    /// * `fullsail_growth_global` - Global FULLSAIL distribution growth
     /// * `tick_lower` - Option containing the lower tick boundary
     /// * `tick_upper` - Option containing the upper tick boundary
     /// 
     /// # Returns
-    /// The accumulated FULLSALE distribution growth within the specified range
+    /// The accumulated FULLSAIL distribution growth within the specified range
     /// 
     /// # Implementation Details
     /// * For lower tick:
-    ///   - If current tick is below lower tick: uses global FULLSALE growth minus lower tick's outside growth
+    ///   - If current tick is below lower tick: uses global FULLSAIL growth minus lower tick's outside growth
     ///   - If current tick is above lower tick: uses lower tick's outside growth
     /// * For upper tick:
     ///   - If current tick is below upper tick: uses upper tick's outside growth
-    ///   - If current tick is above upper tick: uses global FULLSALE growth minus upper tick's outside growth
-    /// * Final calculation: global FULLSALE growth minus growth below minus growth above
-    public fun get_fullsale_distribution_growth_in_range(
+    ///   - If current tick is above upper tick: uses global FULLSAIL growth minus upper tick's outside growth
+    /// * Final calculation: global FULLSAIL growth minus growth below minus growth above
+    public fun get_fullsail_distribution_growth_in_range(
         current_tick_index: integer_mate::i32::I32,
-        fullsale_growth_global: u128,
+        fullsail_growth_global: u128,
         tick_lower: std::option::Option<Tick>,
         tick_upper: std::option::Option<Tick>
     ): u128 {
-        let fullsale_growth_below = if (std::option::is_none<Tick>(&tick_lower)) {
-            fullsale_growth_global
+        let fullsail_growth_below = if (std::option::is_none<Tick>(&tick_lower)) {
+            fullsail_growth_global
         } else {
             let tick_l = std::option::borrow<Tick>(&tick_lower);
-            let fullsale_below = if (integer_mate::i32::lt(current_tick_index, tick_l.index)) {
-                integer_mate::math_u128::wrapping_sub(fullsale_growth_global, tick_l.fullsale_distribution_growth_outside)
+            let fullsail_below = if (integer_mate::i32::lt(current_tick_index, tick_l.index)) {
+                integer_mate::math_u128::wrapping_sub(fullsail_growth_global, tick_l.fullsail_distribution_growth_outside)
             } else {
-                tick_l.fullsale_distribution_growth_outside
+                tick_l.fullsail_distribution_growth_outside
             };
-            fullsale_below
+            fullsail_below
         };
-        let fullsale_growth_above = if (std::option::is_none<Tick>(&tick_upper)) {
+        let fullsail_growth_above = if (std::option::is_none<Tick>(&tick_upper)) {
             0
         } else {
             let tick_u = std::option::borrow<Tick>(&tick_upper);
-            let fullsale_above = if (integer_mate::i32::lt(current_tick_index, tick_u.index)) {
-                tick_u.fullsale_distribution_growth_outside
+            let fullsail_above = if (integer_mate::i32::lt(current_tick_index, tick_u.index)) {
+                tick_u.fullsail_distribution_growth_outside
             } else {
-                integer_mate::math_u128::wrapping_sub(fullsale_growth_global, tick_u.fullsale_distribution_growth_outside)
+                integer_mate::math_u128::wrapping_sub(fullsail_growth_global, tick_u.fullsail_distribution_growth_outside)
             };
-            fullsale_above
+            fullsail_above
         };
-        integer_mate::math_u128::wrapping_sub(integer_mate::math_u128::wrapping_sub(fullsale_growth_global, fullsale_growth_below), fullsale_growth_above)
+        integer_mate::math_u128::wrapping_sub(integer_mate::math_u128::wrapping_sub(fullsail_growth_global, fullsail_growth_below), fullsail_growth_above)
     }
 
     /// Calculates the accumulated points within a specified tick range.
@@ -681,7 +681,7 @@ module clmm_pool::tick {
     /// * `fee_growth_global_b` - Global fee growth for token B
     /// * `points_growth_global` - Global points growth
     /// * `rewards_growth_global` - Vector of global rewards growth
-    /// * `fullsale_distribution_growth_global` - Global FULLSALE distribution growth
+    /// * `fullsail_distribution_growth_global` - Global FULLSAIL distribution growth
     /// 
     /// # Implementation Details
     /// * Early return if liquidity is 0
@@ -691,7 +691,7 @@ module clmm_pool::tick {
     ///   - Fee growth outside values
     ///   - Points growth outside values
     ///   - Rewards growth outside values
-    ///   - FULLSALE distribution growth outside values
+    ///   - FULLSAIL distribution growth outside values
     /// 
     /// # Abort Conditions
     /// * If adding liquidity would cause overflow (error code: 0)
@@ -706,7 +706,7 @@ module clmm_pool::tick {
         fee_growth_global_b: u128,
         points_growth_global: u128,
         rewards_growth_global: vector<u128>,
-        fullsale_distribution_growth_global: u128
+        fullsail_distribution_growth_global: u128
     ) {
         if (liquidity == 0) {
             return
@@ -734,7 +734,7 @@ module clmm_pool::tick {
             fee_growth_global_b,
             points_growth_global,
             rewards_growth_global,
-            fullsale_distribution_growth_global
+            fullsail_distribution_growth_global
         );
         update_by_liquidity(
             move_stl::skip_list::borrow_mut<Tick>(&mut tick_manager.ticks, tick_upper_score),
@@ -747,7 +747,7 @@ module clmm_pool::tick {
             fee_growth_global_b,
             points_growth_global,
             rewards_growth_global,
-            fullsale_distribution_growth_global
+            fullsail_distribution_growth_global
         );
     }
     
@@ -784,26 +784,26 @@ module clmm_pool::tick {
         tick.liquidity_net
     }
 
-    /// Returns the FULLSALE distribution growth outside the tick.
+    /// Returns the FULLSAIL distribution growth outside the tick.
     /// 
     /// # Arguments
     /// * `tick` - Reference to the tick
     /// 
     /// # Returns
-    /// The FULLSALE distribution growth outside as a u128 value
-    public fun fullsale_distribution_growth_outside(tick: &Tick): u128 {
-        tick.fullsale_distribution_growth_outside
+    /// The FULLSAIL distribution growth outside as a u128 value
+    public fun fullsail_distribution_growth_outside(tick: &Tick): u128 {
+        tick.fullsail_distribution_growth_outside
     }
 
-    /// Returns the net staked liquidity for FULLSALE distribution.
+    /// Returns the net staked liquidity for FULLSAIL distribution.
     /// 
     /// # Arguments
     /// * `tick` - Reference to the tick
     /// 
     /// # Returns
     /// The net staked liquidity as an I128 value
-    public fun fullsale_distribution_staked_liquidity_net(tick: &Tick): integer_mate::i128::I128 {
-        tick.fullsale_distribution_staked_liquidity_net
+    public fun fullsail_distribution_staked_liquidity_net(tick: &Tick): integer_mate::i128::I128 {
+        tick.fullsail_distribution_staked_liquidity_net
     }
 
     /// Returns the points growth outside the tick.
@@ -898,7 +898,7 @@ module clmm_pool::tick {
     /// * `fee_growth_global_b` - Global fee growth for token B
     /// * `points_growth_global` - Global points growth
     /// * `rewards_growth_global` - Vector of global rewards growth
-    /// * `fullsale_distribution_growth_global` - Global FULLSALE distribution growth
+    /// * `fullsail_distribution_growth_global` - Global FULLSAIL distribution growth
     /// 
     /// # Returns
     /// Updated gross liquidity value
@@ -917,7 +917,7 @@ module clmm_pool::tick {
         fee_growth_global_b: u128,
         points_growth_global: u128,
         rewards_growth_global: vector<u128>,
-        fullsale_distribution_growth_global: u128
+        fullsail_distribution_growth_global: u128
     ): u128 {
         let updated_liquidity_gross = if (is_add) {
             assert!(integer_mate::math_u128::add_check(tick.liquidity_gross, liquidity), 0);
@@ -929,15 +929,15 @@ module clmm_pool::tick {
         if (updated_liquidity_gross == 0) {
             return 0
         };
-        let (points_growth_outside, fullsale_growth_outside, fee_growth_outside_a, fee_growth_outside_b, rewards_growth_outside) = if (is_lower_initialized) {
-            let (fee_outside_a, fee_outside_b, rewards_outside, points_outside, fullsale_outside) = if (integer_mate::i32::lt(current_tick_index, tick.index)) {
+        let (points_growth_outside, fullsail_growth_outside, fee_growth_outside_a, fee_growth_outside_b, rewards_growth_outside) = if (is_lower_initialized) {
+            let (fee_outside_a, fee_outside_b, rewards_outside, points_outside, fullsail_outside) = if (integer_mate::i32::lt(current_tick_index, tick.index)) {
                 (0, 0, default_rewards_growth_outside(std::vector::length<u128>(&rewards_growth_global)), 0, 0)
             } else {
-                (fee_growth_global_a, fee_growth_global_b, rewards_growth_global, points_growth_global, fullsale_distribution_growth_global)
+                (fee_growth_global_a, fee_growth_global_b, rewards_growth_global, points_growth_global, fullsail_distribution_growth_global)
             };
-            (points_outside, fullsale_outside, fee_outside_a, fee_outside_b, rewards_outside)
+            (points_outside, fullsail_outside, fee_outside_a, fee_outside_b, rewards_outside)
         } else {
-            (tick.points_growth_outside, tick.fullsale_distribution_growth_outside, tick.fee_growth_outside_a, tick.fee_growth_outside_b, tick.rewards_growth_outside)
+            (tick.points_growth_outside, tick.fullsail_distribution_growth_outside, tick.fee_growth_outside_a, tick.fee_growth_outside_b, tick.rewards_growth_outside)
         };
         let (liquidity_delta_result, overflow_detected) = if (is_add) {
             let (delta_value_add, overflow_flag_add) = if (is_upper) {
@@ -979,11 +979,11 @@ module clmm_pool::tick {
         tick.fee_growth_outside_b = fee_growth_outside_b;
         tick.rewards_growth_outside = rewards_growth_outside;
         tick.points_growth_outside = points_growth_outside;
-        tick.fullsale_distribution_growth_outside = fullsale_growth_outside;
+        tick.fullsail_distribution_growth_outside = fullsail_growth_outside;
         updated_liquidity_gross
     }
 
-    /// Updates the FULLSALE stake for a tick.
+    /// Updates the FULLSAIL stake for a tick.
     /// 
     /// # Arguments
     /// * `tick_manager` - Mutable reference to the tick manager
@@ -994,7 +994,7 @@ module clmm_pool::tick {
     /// # Implementation Details
     /// * For decrease: subtracts liquidity_delta from staked liquidity
     /// * For increase: adds liquidity_delta to staked liquidity
-    public(package) fun update_fullsale_stake(
+    public(package) fun update_fullsail_stake(
         tick_manager: &mut TickManager,
         tick_index: integer_mate::i32::I32,
         liquidity_delta: integer_mate::i128::I128,
@@ -1002,16 +1002,45 @@ module clmm_pool::tick {
     ) {
         let tick = move_stl::skip_list::borrow_mut<Tick>(&mut tick_manager.ticks, tick_score(tick_index));
         if (is_decrease) {
-            tick.fullsale_distribution_staked_liquidity_net = integer_mate::i128::wrapping_sub(
-                tick.fullsale_distribution_staked_liquidity_net,
+            tick.fullsail_distribution_staked_liquidity_net = integer_mate::i128::wrapping_sub(
+                tick.fullsail_distribution_staked_liquidity_net,
                 liquidity_delta
             );
         } else {
-            tick.fullsale_distribution_staked_liquidity_net = integer_mate::i128::wrapping_add(
-                tick.fullsale_distribution_staked_liquidity_net,
+            tick.fullsail_distribution_staked_liquidity_net = integer_mate::i128::wrapping_add(
+                tick.fullsail_distribution_staked_liquidity_net,
                 liquidity_delta
             );
         };
+    }
+
+    #[test_only]
+    public(package) fun update_by_liquidity_test(
+        tick: &mut Tick,
+        current_tick_index: integer_mate::i32::I32,
+        liquidity: u128,
+        is_lower_initialized: bool,
+        is_add: bool,
+        is_upper: bool,
+        fee_growth_global_a: u128,
+        fee_growth_global_b: u128,
+        points_growth_global: u128,
+        rewards_growth_global: vector<u128>,
+        fullsail_distribution_growth_global: u128
+    ): u128 {
+        update_by_liquidity(
+            tick,
+            current_tick_index,
+            liquidity,
+            is_lower_initialized,
+            is_add,
+            is_upper,
+            fee_growth_global_a,
+            fee_growth_global_b,
+            points_growth_global,
+            rewards_growth_global,
+            fullsail_distribution_growth_global
+        )
     }
 }
 

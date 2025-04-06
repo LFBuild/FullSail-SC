@@ -31,7 +31,7 @@ module integrate::fetcher_script {
         points_owned: u128,
     }
 
-    public struct FetchPositionFullsaleDistributionEvent has copy, drop, store {
+    public struct FetchPositionFullsailDistributionEvent has copy, drop, store {
         position_id: ID,
         distribution: u64,
     }
@@ -94,22 +94,22 @@ module integrate::fetcher_script {
         sui::event::emit<FetchPositionFeesEvent>(fetch_position_fees_event);
     }
 
-    public entry fun fetch_position_fullsale_distribution<CoinTypeA, CoinTypeB>(
+    public entry fun fetch_position_fullsail_distribution<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         position_id: ID,
         clock: &sui::clock::Clock
     ) {
-        let distribution = clmm_pool::pool::calculate_and_update_fullsale_distribution<CoinTypeA, CoinTypeB>(
+        let distribution = clmm_pool::pool::calculate_and_update_fullsail_distribution<CoinTypeA, CoinTypeB>(
             global_config,
             pool,
             position_id
         );
-        let fetch_position_distribution_event = FetchPositionFullsaleDistributionEvent {
+        let fetch_position_distribution_event = FetchPositionFullsailDistributionEvent {
             position_id,
             distribution,
         };
-        sui::event::emit<FetchPositionFullsaleDistributionEvent>(fetch_position_distribution_event);
+        sui::event::emit<FetchPositionFullsailDistributionEvent>(fetch_position_distribution_event);
     }
 
     public entry fun fetch_position_points<CoinTypeA, CoinTypeB>(

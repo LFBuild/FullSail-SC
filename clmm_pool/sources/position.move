@@ -94,9 +94,9 @@ module clmm_pool::position {
     /// * `points_owned` - Unclaimed points rewards
     /// * `points_growth_inside` - Accumulated points within the position's range
     /// * `rewards` - Vector of additional rewards for the position
-    /// * `fullsale_distribution_staked` - Whether the position is staked for FULLSALE rewards
-    /// * `fullsale_distribution_growth_inside` - Accumulated FULLSALE rewards within the position's range
-    /// * `fullsale_distribution_owned` - Unclaimed FULLSALE rewards
+    /// * `fullsail_distribution_staked` - Whether the position is staked for FULLSAIL rewards
+    /// * `fullsail_distribution_growth_inside` - Accumulated FULLSAIL rewards within the position's range
+    /// * `fullsail_distribution_owned` - Unclaimed FULLSAIL rewards
     public struct PositionInfo has copy, drop, store {
         position_id: sui::object::ID,
         liquidity: u128,
@@ -109,9 +109,9 @@ module clmm_pool::position {
         points_owned: u128,
         points_growth_inside: u128,
         rewards: vector<PositionReward>,
-        fullsale_distribution_staked: bool,
-        fullsale_distribution_growth_inside: u128,
-        fullsale_distribution_owned: u64,
+        fullsail_distribution_staked: bool,
+        fullsail_distribution_growth_inside: u128,
+        fullsail_distribution_owned: u64,
     }
 
     /// Represents a reward for a position.
@@ -274,7 +274,7 @@ module clmm_pool::position {
     }
 
     /// Decreases the liquidity of a position by a specified amount.
-    /// This function updates all accumulated fees, points, rewards, and FULLSALE distribution before decreasing liquidity.
+    /// This function updates all accumulated fees, points, rewards, and FULLSAIL distribution before decreasing liquidity.
     /// 
     /// # Arguments
     /// * `position_manager` - Mutable reference to the position manager
@@ -284,7 +284,7 @@ module clmm_pool::position {
     /// * `fee_growth_b` - Updated fee growth for token B
     /// * `points_growth` - Updated points growth
     /// * `rewards_growth` - Vector of updated rewards growth
-    /// * `fullsale_growth` - Updated FULLSALE distribution growth
+    /// * `fullsail_growth` - Updated FULLSAIL distribution growth
     /// 
     /// # Returns
     /// The new liquidity amount after decrease
@@ -301,7 +301,7 @@ module clmm_pool::position {
         fee_growth_b: u128,
         points_growth: u128,
         rewards_growth: vector<u128>,
-        fullsale_growth: u128
+        fullsail_growth: u128
     ): u128 {
         let position_info = borrow_mut_position_info(position_manager, sui::object::id<Position>(position));
         if (liquidity == 0) {
@@ -310,7 +310,7 @@ module clmm_pool::position {
         update_fee_internal(position_info, fee_growth_a, fee_growth_b);
         update_points_internal(position_info, points_growth);
         update_rewards_internal(position_info, rewards_growth);
-        update_fullsale_distribution_internal(position_info, fullsale_growth);
+        update_fullsail_distribution_internal(position_info, fullsail_growth);
         assert!(position_info.liquidity >= liquidity, 9);
         position_info.liquidity = position_info.liquidity - liquidity;
         position.liquidity = position_info.liquidity;
@@ -404,7 +404,7 @@ module clmm_pool::position {
     }
     
     /// Increases the liquidity of a position by a specified amount.
-    /// This function updates all accumulated fees, points, rewards, and FULLSALE distribution before increasing liquidity.
+    /// This function updates all accumulated fees, points, rewards, and FULLSAIL distribution before increasing liquidity.
     /// 
     /// # Arguments
     /// * `position_manager` - Mutable reference to the position manager
@@ -414,7 +414,7 @@ module clmm_pool::position {
     /// * `fee_growth_b` - Updated fee growth for token B in Q64.64 format
     /// * `points_growth` - Updated points growth in Q64.64 format
     /// * `rewards_growth` - Vector of updated reward growth values in Q64.64 format
-    /// * `fullsale_growth` - Updated FULLSALE distribution growth in Q64.64 format
+    /// * `fullsail_growth` - Updated FULLSAIL distribution growth in Q64.64 format
     /// 
     /// # Returns
     /// The new liquidity amount after increase
@@ -431,13 +431,13 @@ module clmm_pool::position {
         fee_growth_b: u128,
         points_growth: u128,
         rewards_growth: vector<u128>,
-        fullsale_growth: u128
+        fullsail_growth: u128
     ): u128 {
         let position_info = borrow_mut_position_info(position_manager, sui::object::id<Position>(position));
         update_fee_internal(position_info, fee_growth_a, fee_growth_b);
         update_points_internal(position_info, points_growth);
         update_rewards_internal(position_info, rewards_growth);
-        update_fullsale_distribution_internal(position_info, fullsale_growth);
+        update_fullsail_distribution_internal(position_info, fullsail_growth);
         assert!(integer_mate::math_u128::add_check(position_info.liquidity, liquidity_delta), 8);
         position_info.liquidity = position_info.liquidity + liquidity_delta;
         position.liquidity = position_info.liquidity;
@@ -488,15 +488,15 @@ module clmm_pool::position {
         position_info.liquidity
     }
 
-    /// Returns the unclaimed FULLSALE distribution rewards.
+    /// Returns the unclaimed FULLSAIL distribution rewards.
     /// 
     /// # Arguments
     /// * `position_info` - Reference to the position information
     /// 
     /// # Returns
-    /// The amount of unclaimed FULLSALE rewards
-    public fun info_fullsale_distribution_owned(position_info: &PositionInfo): u64 {
-        position_info.fullsale_distribution_owned
+    /// The amount of unclaimed FULLSAIL rewards
+    public fun info_fullsail_distribution_owned(position_info: &PositionInfo): u64 {
+        position_info.fullsail_distribution_owned
     }
 
     /// Returns the accumulated points growth inside the position's range.
@@ -557,7 +557,7 @@ module clmm_pool::position {
     /// Initializes the position module by setting up display fields and transferring ownership.
     /// This function is called during module initialization to:
     /// * Set up display fields for position objects
-    /// * Configure metadata display for the Fullsale Finance interface
+    /// * Configure metadata display for the Fullsail Finance interface
     /// * Transfer display and publisher objects to the module owner
     /// 
     /// # Arguments
@@ -569,7 +569,7 @@ module clmm_pool::position {
     /// * name - Position name
     /// * coin_a - First token type
     /// * coin_b - Second token type
-    /// * link - Position link in Fullsale Finance app
+    /// * link - Position link in Fullsail Finance app
     /// * image_url - Position image URL
     /// * description - Position description
     /// * website - Project website
@@ -595,12 +595,12 @@ module clmm_pool::position {
         std::vector::push_back<std::string::String>(&mut display_values, std::string::utf8(b"{coin_type_b}"));
         std::vector::push_back<std::string::String>(
             &mut display_values,
-            std::string::utf8(b"https://app.fullsalefinance.io/position?chain=sui&id={id}")
+            std::string::utf8(b"https://app.fullsailfinance.io/position?chain=sui&id={id}")
         );
         std::vector::push_back<std::string::String>(&mut display_values, std::string::utf8(b"{url}"));
         std::vector::push_back<std::string::String>(&mut display_values, std::string::utf8(b"{description}"));
-        std::vector::push_back<std::string::String>(&mut display_values, std::string::utf8(b"https://fullsalefinance.io"));
-        std::vector::push_back<std::string::String>(&mut display_values, std::string::utf8(b"FULLSALE"));
+        std::vector::push_back<std::string::String>(&mut display_values, std::string::utf8(b"https://fullsailfinance.io"));
+        std::vector::push_back<std::string::String>(&mut display_values, std::string::utf8(b"FULLSAIL"));
 
         let publisher = sui::package::claim<POSITION>(position_witness, ctx);
         let mut display = sui::display::new_with_fields<Position>(&publisher, display_keys, display_values, ctx);
@@ -639,7 +639,7 @@ module clmm_pool::position {
         move_stl::linked_table::contains<sui::object::ID, PositionInfo>(&position_manager.positions, position_id)
     }
 
-    /// Checks if a position is currently staked for FULLSALE rewards.
+    /// Checks if a position is currently staked for FULLSAIL rewards.
     /// 
     /// # Arguments
     /// * `position_info` - Reference to the position information
@@ -648,7 +648,7 @@ module clmm_pool::position {
     /// * `true` if the position is staked
     /// * `false` otherwise
     public fun is_staked(position_info: &PositionInfo): bool {
-        position_info.fullsale_distribution_staked
+        position_info.fullsail_distribution_staked
     }
 
     /// Returns the current liquidity of a position.
@@ -662,7 +662,7 @@ module clmm_pool::position {
         position.liquidity
     }
 
-    /// Marks a position as staked or unstaked for FULLSALE rewards.
+    /// Marks a position as staked or unstaked for FULLSAIL rewards.
     /// This function emits a StakePositionEvent to track the staking status change.
     /// 
     /// # Arguments
@@ -676,8 +676,8 @@ module clmm_pool::position {
     /// * If the new staking status is the same as the current status (error code: 11)
     public(package) fun mark_position_staked(position_manager: &mut PositionManager, position_id: sui::object::ID, staked: bool) {
         let position_info = borrow_mut_position_info(position_manager, position_id);
-        assert!(position_info.fullsale_distribution_staked != staked, 11);
-        position_info.fullsale_distribution_staked = staked;
+        assert!(position_info.fullsail_distribution_staked != staked, 11);
+        position_info.fullsail_distribution_staked = staked;
         let stake_event = StakePositionEvent {
             position_id: position_info.position_id,
             staked: staked,
@@ -697,7 +697,7 @@ module clmm_pool::position {
     }
     
     /// Generates a new position name based on pool and position indices.
-    /// The format is "Fullsale position:{pool_index}-{position_index}".
+    /// The format is "Fullsail position:{pool_index}-{position_index}".
     /// 
     /// # Arguments
     /// * `pool_index` - Index of the pool
@@ -706,7 +706,7 @@ module clmm_pool::position {
     /// # Returns
     /// A formatted string containing the position name
     fun new_position_name(pool_index: u64, position_index: u64): std::string::String {
-        let mut position_name = std::string::utf8(b"Fullsale position:");
+        let mut position_name = std::string::utf8(b"Fullsail position:");
         std::string::append(&mut position_name, clmm_pool::utils::str(pool_index));
         std::string::append_utf8(&mut position_name, b"-");
         std::string::append(&mut position_name, clmm_pool::utils::str(position_index));
@@ -759,7 +759,7 @@ module clmm_pool::position {
             coin_type_a: std::type_name::get<CoinTypeA>(),
             coin_type_b: std::type_name::get<CoinTypeB>(),
             name: new_position_name(pool_index, next_position_index),
-            description: std::string::utf8(b"Fullsale Liquidity Position"),
+            description: std::string::utf8(b"Fullsail Liquidity Position"),
             url: pool_url,
             tick_lower_index: tick_lower,
             tick_upper_index: tick_upper,
@@ -778,9 +778,9 @@ module clmm_pool::position {
             points_owned: 0,
             points_growth_inside: 0,
             rewards: std::vector::empty<PositionReward>(),
-            fullsale_distribution_staked: false,
-            fullsale_distribution_growth_inside: 0,
-            fullsale_distribution_owned: 0,
+            fullsail_distribution_staked: false,
+            fullsail_distribution_growth_inside: 0,
+            fullsail_distribution_owned: 0,
         };
         move_stl::linked_table::push_back<sui::object::ID, PositionInfo>(&mut position_manager.positions, position_id, position_info);
         position_manager.position_index = next_position_index;
@@ -894,13 +894,13 @@ module clmm_pool::position {
     }
 
     /// Sets up display fields for a position with custom metadata.
-    /// This function configures how the position will be displayed in the Fullsale Finance interface.
+    /// This function configures how the position will be displayed in the Fullsail Finance interface.
     /// 
     /// # Arguments
     /// * `global_config` - Reference to the global configuration
     /// * `publisher` - Reference to the package publisher
     /// * `description` - Custom description for the position
-    /// * `link` - Custom link to the position in Fullsale Finance app
+    /// * `link` - Custom link to the position in Fullsail Finance app
     /// * `project_url` - URL of the project website
     /// * `creator` - Name of the position creator
     /// * `ctx` - Mutable reference to the transaction context
@@ -997,31 +997,31 @@ module clmm_pool::position {
         (position_info.fee_owned_a, position_info.fee_owned_b)
     }
 
-    /// Updates the FULLSALE distribution growth and resets the unclaimed amount to zero.
-    /// This function first updates the accumulated FULLSALE rewards based on the new growth value,
+    /// Updates the FULLSAIL distribution growth and resets the unclaimed amount to zero.
+    /// This function first updates the accumulated FULLSAIL rewards based on the new growth value,
     /// then resets the unclaimed amount to zero.
     /// 
     /// # Arguments
     /// * `position_manager` - Mutable reference to the position manager
     /// * `position_id` - ID of the position to update
-    /// * `fullsale_growth` - Updated FULLSALE distribution growth value
+    /// * `fullsail_growth` - Updated FULLSAIL distribution growth value
     /// 
     /// # Returns
-    /// The reset FULLSALE reward amount (will be 0)
+    /// The reset FULLSAIL reward amount (will be 0)
     /// 
     /// # Abort Conditions
     /// * If the position does not exist (error code: 6)
     /// * If the position ID does not match (error code: 6)
-    /// * If adding FULLSALE delta would cause overflow (error code: 9223374347547181055)
-    public(package) fun update_and_reset_fullsale_distribution(
+    /// * If adding FULLSAIL delta would cause overflow (error code: 9223374347547181055)
+    public(package) fun update_and_reset_fullsail_distribution(
         position_manager: &mut PositionManager,
         position_id: sui::object::ID,
-        fullsale_growth: u128
+        fullsail_growth: u128
     ): u64 {
         let position_info = borrow_mut_position_info(position_manager, position_id);
-        update_fullsale_distribution_internal(position_info, fullsale_growth);
-        position_info.fullsale_distribution_owned = 0;
-        position_info.fullsale_distribution_owned
+        update_fullsail_distribution_internal(position_info, fullsail_growth);
+        position_info.fullsail_distribution_owned = 0;
+        position_info.fullsail_distribution_owned
     }
 
     /// Updates the rewards growth and resets the unclaimed amount for a specific reward to zero.
@@ -1122,65 +1122,65 @@ module clmm_pool::position {
         position_info.fee_growth_inside_b = fee_growth_b;
     }
 
-    /// Updates the FULLSALE distribution growth for a position.
-    /// This function calculates and updates the accumulated FULLSALE rewards.
+    /// Updates the FULLSAIL distribution growth for a position.
+    /// This function calculates and updates the accumulated FULLSAIL rewards.
     /// 
     /// # Arguments
     /// * `position_manager` - Mutable reference to the position manager
     /// * `position_id` - ID of the position to update
-    /// * `fullsale_growth` - Updated FULLSALE distribution growth value
+    /// * `fullsail_growth` - Updated FULLSAIL distribution growth value
     /// 
     /// # Returns
-    /// The current unclaimed FULLSALE rewards amount
+    /// The current unclaimed FULLSAIL rewards amount
     /// 
     /// # Abort Conditions
     /// * If the position does not exist (error code: 6)
     /// * If the position ID does not match (error code: 6)
-    public(package) fun update_fullsale_distribution(
+    public(package) fun update_fullsail_distribution(
         position_manager: &mut PositionManager,
         position_id: sui::object::ID,
-        fullsale_growth: u128
+        fullsail_growth: u128
     ): u64 {
         let position_info = borrow_mut_position_info(position_manager, position_id);
-        update_fullsale_distribution_internal(position_info, fullsale_growth);
-        position_info.fullsale_distribution_owned
+        update_fullsail_distribution_internal(position_info, fullsail_growth);
+        position_info.fullsail_distribution_owned
     }
 
-    /// Updates the FULLSALE distribution growth and owned amounts for a position.
-    /// This internal function calculates the new FULLSALE rewards based on:
+    /// Updates the FULLSAIL distribution growth and owned amounts for a position.
+    /// This internal function calculates the new FULLSAIL rewards based on:
     /// * The position's current liquidity
-    /// * The difference between new and previous FULLSALE growth
+    /// * The difference between new and previous FULLSAIL growth
     /// 
     /// # Arguments
     /// * `position_info` - Mutable reference to the position information
-    /// * `fullsale_growth` - Updated FULLSALE distribution growth value
+    /// * `fullsail_growth` - Updated FULLSAIL distribution growth value
     /// 
     /// # Details
     /// The function:
-    /// 1. Calculates the FULLSALE delta based on liquidity and growth difference
-    /// 2. Updates the accumulated FULLSALE rewards
+    /// 1. Calculates the FULLSAIL delta based on liquidity and growth difference
+    /// 2. Updates the accumulated FULLSAIL rewards
     /// 3. Updates the internal growth tracking
     /// 
     /// # Abort Conditions
-    /// * If adding the FULLSALE delta would cause overflow (error code: 9223374347547181055)
-    fun update_fullsale_distribution_internal(position_info: &mut PositionInfo, fullsale_growth: u128) {
-        let fullsale_delta = integer_mate::full_math_u128::mul_shr(
+    /// * If adding the FULLSAIL delta would cause overflow (error code: 9223374347547181055)
+    fun update_fullsail_distribution_internal(position_info: &mut PositionInfo, fullsail_growth: u128) {
+        let fullsail_delta = integer_mate::full_math_u128::mul_shr(
             position_info.liquidity,
             integer_mate::math_u128::wrapping_sub(
-                fullsale_growth,
-                position_info.fullsale_distribution_growth_inside
+                fullsail_growth,
+                position_info.fullsail_distribution_growth_inside
             ),
             64
         ) as u64;
         assert!(
             integer_mate::math_u64::add_check(
-                position_info.fullsale_distribution_owned,
-                fullsale_delta
+                position_info.fullsail_distribution_owned,
+                fullsail_delta
             ),
             9223374347547181055
         );
-        position_info.fullsale_distribution_owned = position_info.fullsale_distribution_owned + fullsale_delta;
-        position_info.fullsale_distribution_growth_inside = fullsale_growth;
+        position_info.fullsail_distribution_owned = position_info.fullsail_distribution_owned + fullsail_delta;
+        position_info.fullsail_distribution_growth_inside = fullsail_growth;
     }
 
     /// Updates the points growth for a position.
@@ -1340,12 +1340,12 @@ module clmm_pool::position {
         std::vector::push_back<std::string::String>(&mut display_values, std::string::utf8(b"{coin_type_b}"));
         std::vector::push_back<std::string::String>(
             &mut display_values,
-            std::string::utf8(b"https://app.fullsalefinance.io/position?chain=sui&id={id}")
+            std::string::utf8(b"https://app.fullsailfinance.io/position?chain=sui&id={id}")
         );
         std::vector::push_back<std::string::String>(&mut display_values, std::string::utf8(b"{url}"));
         std::vector::push_back<std::string::String>(&mut display_values, std::string::utf8(b"{description}"));
-        std::vector::push_back<std::string::String>(&mut display_values, std::string::utf8(b"https://fullsalefinance.io"));
-        std::vector::push_back<std::string::String>(&mut display_values, std::string::utf8(b"FULLSALE"));
+        std::vector::push_back<std::string::String>(&mut display_values, std::string::utf8(b"https://fullsailfinance.io"));
+        std::vector::push_back<std::string::String>(&mut display_values, std::string::utf8(b"FULLSAIL"));
 
         let publisher = sui::package::claim<POSITION>(POSITION{}, ctx);
         let mut display = sui::display::new_with_fields<Position>(&publisher, display_keys, display_values, ctx);
@@ -1377,9 +1377,9 @@ module clmm_pool::position {
         points_owned: u128,
         points_growth_inside: u128,
         rewards: vector<PositionReward>,
-        fullsale_distribution_staked: bool,
-        fullsale_distribution_growth_inside: u128,
-        fullsale_distribution_owned: u64,
+        fullsail_distribution_staked: bool,
+        fullsail_distribution_growth_inside: u128,
+        fullsail_distribution_owned: u64,
     ): PositionInfo {
         PositionInfo {
             position_id,
@@ -1393,9 +1393,9 @@ module clmm_pool::position {
             points_owned,
             points_growth_inside,
             rewards,
-            fullsale_distribution_staked,
-            fullsale_distribution_growth_inside,
-            fullsale_distribution_owned,
+            fullsail_distribution_staked,
+            fullsail_distribution_growth_inside,
+            fullsail_distribution_owned,
         }
     }
 
@@ -1433,7 +1433,7 @@ module clmm_pool::position {
             assert!(std::string::utf8(b"{coin_type_b}") == *coin_b_field, 5);
 
             let link_field = sui::vec_map::get(display_fields, &std::string::utf8(b"link"));
-            assert!(std::string::utf8(b"https://app.fullsalefinance.io/position?chain=sui&id={id}") == *link_field, 6);
+            assert!(std::string::utf8(b"https://app.fullsailfinance.io/position?chain=sui&id={id}") == *link_field, 6);
 
             let image_url_field = sui::vec_map::get(display_fields, &std::string::utf8(b"image_url"));
             assert!(std::string::utf8(b"{url}") == *image_url_field, 7);
@@ -1442,10 +1442,10 @@ module clmm_pool::position {
             assert!(std::string::utf8(b"{description}") == *description_field, 8);
 
             let website_field = sui::vec_map::get(display_fields, &std::string::utf8(b"website"));
-            assert!(std::string::utf8(b"https://fullsalefinance.io") == *website_field, 9);
+            assert!(std::string::utf8(b"https://fullsailfinance.io") == *website_field, 9);
 
             let creator_field = sui::vec_map::get(display_fields, &std::string::utf8(b"creator"));
-            assert!(std::string::utf8(b"FULLSALE") == *creator_field, 10);
+            assert!(std::string::utf8(b"FULLSAIL") == *creator_field, 10);
 
             // Return objects to scenario
             scenario.return_to_sender(display);
@@ -1480,7 +1480,7 @@ module clmm_pool::position {
         // Create a pool ID for testing
         let pool_id = sui::object::id_from_address(admin);
         let pool_index = 1;
-        let pool_url = std::string::utf8(b"https://fullsalefinance.io/pool/1");
+        let pool_url = std::string::utf8(b"https://fullsailfinance.io/pool/1");
         
         // Define tick range
         let tick_lower = integer_mate::i32::from(0);
@@ -1532,9 +1532,9 @@ module clmm_pool::position {
         let rewards = info_rewards(position_info);
         assert!(std::vector::length(rewards) == 0, 12);
         
-        // Verify fullsale distribution is initialized
+        // Verify fullsail distribution is initialized
         assert!(!is_staked(position_info), 13);
-        assert!(info_fullsale_distribution_owned(position_info) == 0, 14);
+        assert!(info_fullsail_distribution_owned(position_info) == 0, 14);
         
         // Transfer objects
         sui::transfer::public_transfer(position, admin);
@@ -1589,7 +1589,7 @@ module clmm_pool::position {
         // Create a pool ID for testing
         let pool_id = sui::object::id_from_address(admin);
         let pool_index = 1;
-        let pool_url = std::string::utf8(b"https://fullsalefinance.io/pool/1");
+        let pool_url = std::string::utf8(b"https://fullsailfinance.io/pool/1");
         
         // Define tick range
         let tick_lower = integer_mate::i32::from(0);
@@ -1663,9 +1663,9 @@ module clmm_pool::position {
             0, // points_owned
             0, // points_growth_inside
             std::vector::empty<PositionReward>(), // rewards
-            false, // fullsale_distribution_staked
-            0, // fullsale_distribution_growth_inside
-            0 // fullsale_distribution_owned
+            false, // fullsail_distribution_staked
+            0, // fullsail_distribution_growth_inside
+            0 // fullsail_distribution_owned
         );
 
         // Test with non-zero growth
@@ -1704,9 +1704,9 @@ module clmm_pool::position {
             0, // points_owned
             0, // points_growth_inside
             std::vector::empty<PositionReward>(), // rewards
-            false, // fullsale_distribution_staked
-            0, // fullsale_distribution_growth_inside
-            0 // fullsale_distribution_owned
+            false, // fullsail_distribution_staked
+            0, // fullsail_distribution_growth_inside
+            0 // fullsail_distribution_owned
         );
 
         // Test with non-zero growth
@@ -1743,9 +1743,9 @@ module clmm_pool::position {
             0, // points_owned
             0, // points_growth_inside
             std::vector::empty<PositionReward>(), // rewards
-            false, // fullsale_distribution_staked
-            0, // fullsale_distribution_growth_inside
-            0 // fullsale_distribution_owned
+            false, // fullsail_distribution_staked
+            0, // fullsail_distribution_growth_inside
+            0 // fullsail_distribution_owned
         );
 
         // Test with two rewards
@@ -1774,11 +1774,11 @@ module clmm_pool::position {
     }
 
     #[test]
-    /// Test update_fullsale_distribution_internal function
+    /// Test update_fullsail_distribution_internal function
     /// Verifies that:
-    /// 1. FULLSALE growth is updated correctly
-    /// 2. FULLSALE owned amount is calculated correctly
-    fun test_update_fullsale_distribution_internal() {
+    /// 1. FULLSAIL growth is updated correctly
+    /// 2. FULLSAIL owned amount is calculated correctly
+    fun test_update_fullsail_distribution_internal() {
         let position_id = sui::object::id_from_address(@0x123);
         let mut position_info = new_position_info(
             position_id,
@@ -1792,20 +1792,20 @@ module clmm_pool::position {
             0, // points_owned
             0, // points_growth_inside
             std::vector::empty<PositionReward>(), // rewards
-            false, // fullsale_distribution_staked
-            0, // fullsale_distribution_growth_inside
-            0 // fullsale_distribution_owned
+            false, // fullsail_distribution_staked
+            0, // fullsail_distribution_growth_inside
+            0 // fullsail_distribution_owned
         );
 
         // Test with non-zero growth
-        let fullsale_growth = 1000 << 64; // Q64.64 format
+        let fullsail_growth = 1000 << 64; // Q64.64 format
 
-        update_fullsale_distribution_internal(&mut position_info, fullsale_growth);
+        update_fullsail_distribution_internal(&mut position_info, fullsail_growth);
 
-        // Verify FULLSALE growth was updated
-        assert!(position_info.fullsale_distribution_growth_inside == fullsale_growth, 1);
+        // Verify FULLSAIL growth was updated
+        assert!(position_info.fullsail_distribution_growth_inside == fullsail_growth, 1);
 
-        assert!(position_info.fullsale_distribution_owned == 1000*1000, 2);
+        assert!(position_info.fullsail_distribution_owned == 1000*1000, 2);
     }
 }
 

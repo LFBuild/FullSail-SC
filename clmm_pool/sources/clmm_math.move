@@ -313,6 +313,7 @@ module clmm_pool::clmm_math {
         amount_in: u64,
         is_fix_amount_a: bool
     ): (u128, u64, u64) {
+        assert!(amount_in > 0, 3019);
         if (is_fix_amount_a) {
             let (liquidity, amount_b) = if (integer_mate::i32::lt(current_tick, tick_lower)) {
                 (get_liquidity_from_a(
@@ -390,6 +391,7 @@ module clmm_pool::clmm_math {
         } else {
             sqrt_price_b - sqrt_price_a
         };
+        assert!(sqrt_price_diff > 0, 3020);
         integer_mate::math_u256::div_round((amount as u256) << 64, sqrt_price_diff as u256, round_up) as u128
     }
 
