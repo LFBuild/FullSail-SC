@@ -24,6 +24,10 @@
 /// to track, calculate, and distribute rewards to liquidity providers.
 module distribution::gauge {
 
+    use sui::object_table::{Self, ObjectTable};
+    use sui::table::{Self, Table};
+    use sui::balance::{Self, Balance};
+
     const EInvalidVoter: u64 = 9223373656058429456;
 
     const ENontifyRewardInvalidAmount: u64 = 9223373716188102674;
@@ -114,17 +118,17 @@ module distribution::gauge {
         pool_id: ID,
         gauge_cap: Option<gauge_cap::gauge_cap::GaugeCap>,
         distribution_config: ID,
-        staked_positions: sui::object_table::ObjectTable<ID, clmm_pool::position::Position>,
-        staked_position_infos: sui::table::Table<ID, PositionStakeInfo>,
-        reserves_balance: sui::balance::Balance<SailCoinType>,
-        fee_a: sui::balance::Balance<CoinTypeA>,
-        fee_b: sui::balance::Balance<CoinTypeB>,
+        staked_positions: ObjectTable<ID, clmm_pool::position::Position>,
+        staked_position_infos: Table<ID, PositionStakeInfo>,
+        reserves_balance: Balance<SailCoinType>,
+        fee_a: Balance<CoinTypeA>,
+        fee_b: Balance<CoinTypeB>,
         voter: Option<ID>,
         reward_rate: u128,
         period_finish: u64,
-        reward_rate_by_epoch: sui::table::Table<u64, u128>,
-        stakes: sui::table::Table<address, vector<ID>>,
-        rewards: sui::table::Table<ID, RewardProfile>,
+        reward_rate_by_epoch: Table<u64, u128>,
+        stakes: Table<address, vector<ID>>,
+        rewards: Table<ID, RewardProfile>,
     }
 
     public struct PositionStakeInfo has drop, store {
@@ -193,7 +197,7 @@ module distribution::gauge {
         gauge: &mut Gauge<CoinTypeA, CoinTypeB, SailCoinType>,
         _notify_reward_cap: &distribution::notify_reward_cap::NotifyRewardCap,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>
-    ): (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>) {
+    ): (Balance<CoinTypeA>, Balance<CoinTypeB>) {
         gauge.claim_fees_internal(pool)
     }
 
@@ -208,7 +212,7 @@ module distribution::gauge {
     fun claim_fees_internal<CoinTypeA, CoinTypeB, SailCoinType>(
         gauge: &mut Gauge<CoinTypeA, CoinTypeB, SailCoinType>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>
-    ): (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>) {
+    ): (Balance<CoinTypeA>, Balance<CoinTypeB>) {
         let weekCoinPerSecond = clmm_pool::config::week();
         let (fee_a, fee_b) = pool.collect_fullsale_distribution_gauger_fees(gauge.gauge_cap.borrow());
         if (fee_a.value<CoinTypeA>() > 0 || fee_b.value<CoinTypeB>() > 0) {
@@ -217,12 +221,12 @@ module distribution::gauge {
             let withdrawn_a = if (amount_a > weekCoinPerSecond) {
                 gauge.fee_a.withdraw_all<CoinTypeA>()
             } else {
-                sui::balance::zero<CoinTypeA>()
+                balance::zero<CoinTypeA>()
             };
             let withdraw_b = if (amount_b > weekCoinPerSecond) {
                 gauge.fee_b.withdraw_all<CoinTypeB>()
             } else {
-                sui::balance::zero<CoinTypeB>()
+                balance::zero<CoinTypeB>()
             };
             let claim_fees_event = EventClaimFees {
                 amount_a,
@@ -233,7 +237,7 @@ module distribution::gauge {
         };
         fee_a.destroy_zero();
         fee_b.destroy_zero();
-        (sui::balance::zero<CoinTypeA>(), sui::balance::zero<CoinTypeB>())
+        (balance::zero<CoinTypeA>(), balance::zero<CoinTypeB>())
     }
 
     /// Creates a new gauge for the specified pool.
@@ -263,17 +267,17 @@ module distribution::gauge {
             distribution_config: object::id<distribution::distribution_config::DistributionConfig>(
                 distribution_config
             ),
-            staked_positions: sui::object_table::new<ID, clmm_pool::position::Position>(ctx),
-            staked_position_infos: sui::table::new<ID, PositionStakeInfo>(ctx),
-            reserves_balance: sui::balance::zero<SailCoinType>(),
-            fee_a: sui::balance::zero<CoinTypeA>(),
-            fee_b: sui::balance::zero<CoinTypeB>(),
+            staked_positions: object_table::new<ID, clmm_pool::position::Position>(ctx),
+            staked_position_infos: table::new<ID, PositionStakeInfo>(ctx),
+            reserves_balance: balance::zero<SailCoinType>(),
+            fee_a: balance::zero<CoinTypeA>(),
+            fee_b: balance::zero<CoinTypeB>(),
             voter: option::none<ID>(),
             reward_rate: 0,
             period_finish: 0,
-            reward_rate_by_epoch: sui::table::new<u64, u128>(ctx),
-            stakes: sui::table::new<address, vector<ID>>(ctx),
-            rewards: sui::table::new<ID, RewardProfile>(ctx),
+            reward_rate_by_epoch: table::new<u64, u128>(ctx),
+            stakes: table::new<address, vector<ID>>(ctx),
+            rewards: table::new<ID, RewardProfile>(ctx),
         }
     }
 
@@ -662,10 +666,10 @@ module distribution::gauge {
         gauge: &mut Gauge<CoinTypeA, CoinTypeB, SailCoinType>,
         voter_cap: &distribution::voter_cap::VoterCap,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        balance: sui::balance::Balance<SailCoinType>,
+        balance: Balance<SailCoinType>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
-    ): (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>) {
+    ): (Balance<CoinTypeA>, Balance<CoinTypeB>) {
         gauge.check_voter_cap(voter_cap);
         let amount = balance.value<SailCoinType>();
         assert!(amount > 0, ENontifyRewardInvalidAmount);
@@ -682,6 +686,7 @@ module distribution::gauge {
 
     /// Internal function to calculate and update reward rates based on new rewards.
     /// This handles epoch-based reward distribution logic.
+    /// Supposed to be called at the begining of every epoch.
     ///
     /// # Arguments
     /// * `gauge` - The gauge instance
@@ -716,6 +721,7 @@ module distribution::gauge {
                 next_epoch_time
             );
         } else {
+            // we are adding rewards in a preiod that already has some rewards.
             let future_rewards = integer_mate::full_math_u128::mul_div_floor(
                 (time_until_next_epoch as u128),
                 gauge.reward_rate,
@@ -733,6 +739,8 @@ module distribution::gauge {
                 next_epoch_time
             );
         };
+        // TODO: check why double reward notification in a single epoch is prohibited by this table::add
+        // while it is explicitly handled by if else above
         gauge.reward_rate_by_epoch.add(clmm_pool::config::epoch_start(current_time), gauge.reward_rate);
         assert!(gauge.reward_rate != 0, ENotifyRewardAmountRewardRateZero);
         assert!(
@@ -769,7 +777,7 @@ module distribution::gauge {
         gauge: &mut Gauge<CoinTypeA, CoinTypeB, SailCoinType>,
         voter_cap: &distribution::voter_cap::VoterCap,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        balance: sui::balance::Balance<SailCoinType>,
+        balance: Balance<SailCoinType>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
@@ -913,20 +921,22 @@ module distribution::gauge {
         lower_tick: integer_mate::i32::I32,
         upper_tick: integer_mate::i32::I32,
         clock: &sui::clock::Clock
-    ): sui::balance::Balance<SailCoinType> {
+    ): Balance<SailCoinType> {
         let current_time = clock.timestamp_ms() / 1000;
         let amount_earned = gauge.earned_internal(pool, position_id, current_time);
         let reward_profile = gauge.rewards.borrow_mut(position_id);
         if (reward_profile.last_update_time >= current_time) {
+            let amount_to_return = reward_profile.amount;
             reward_profile.amount = 0;
-            return gauge.reserves_balance.split<SailCoinType>(reward_profile.amount)
+            return gauge.reserves_balance.split<SailCoinType>(amount_to_return)
         };
         pool.update_fullsale_distribution_growth_global(gauge.gauge_cap.borrow(), clock);
         reward_profile.last_update_time = current_time;
         reward_profile.amount = reward_profile.amount + amount_earned;
+        let amount_to_return = reward_profile.amount;
         reward_profile.growth_inside = pool.get_fullsale_distribution_growth_inside(lower_tick, upper_tick, 0);
         reward_profile.amount = 0;
-        gauge.reserves_balance.split<SailCoinType>(reward_profile.amount)
+        gauge.reserves_balance.split<SailCoinType>(amount_to_return)
     }
 
     /// Withdraws a staked position from the gauge and returns it to its owner.
