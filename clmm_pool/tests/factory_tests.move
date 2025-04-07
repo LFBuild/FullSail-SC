@@ -702,14 +702,6 @@ module clmm_pool::factory_tests {
             let remaining_a_value = sui::coin::value(&remaining_coin_a);
             let remaining_b_value = sui::coin::value(&remaining_coin_b);
             
-            // Debug output
-            std::debug::print(&b"remaining_a_value: ");
-            std::debug::print(&remaining_a_value);
-            std::debug::print(&b"\n");
-            std::debug::print(&b"remaining_b_value: ");
-            std::debug::print(&remaining_b_value);
-            std::debug::print(&b"\n");
-            
             // Calculate expected remaining values
             let expected_remaining_a = 1000000 - 100000; // Initial amount - used amount (only coin A is used)
             let expected_remaining_b = 1000000; // Initial amount (coin B is not used when fix_amount_a is true)
@@ -731,70 +723,70 @@ module clmm_pool::factory_tests {
         test_scenario::end(scenario);
     }
 
-    // #[test]
-    // #[expected_failure(abort_code = 4)]
-    // fun test_create_pool_with_liquidity_exceed_amount_b() {
-    //     let admin = @0x1;
-    //     let mut scenario = test_scenario::begin(admin);
+    #[test]
+    #[expected_failure(abort_code = 3020)]
+    fun test_create_pool_with_liquidity_exceed_amount_b() {
+        let admin = @0x1;
+        let mut scenario = test_scenario::begin(admin);
         
-    //     // Initialize factory and config
-    //     {
-    //         factory::test_init(scenario.ctx());
-    //         config::test_init(scenario.ctx());
-    //     };
+        // Initialize factory and config
+        {
+            factory::test_init(scenario.ctx());
+            config::test_init(scenario.ctx());
+        };
         
-    //     // Add fee tier
-    //     scenario.next_tx(admin);
-    //     {
-    //         let admin_cap = scenario.take_from_sender<config::AdminCap>();
-    //         let mut global_config = scenario.take_shared<config::GlobalConfig>();
-    //         config::add_fee_tier(&mut global_config, 1, 1000, scenario.ctx());
-    //         test_scenario::return_shared(global_config);
-    //         transfer::public_transfer(admin_cap, admin);
-    //     };
+        // Add fee tier
+        scenario.next_tx(admin);
+        {
+            let admin_cap = scenario.take_from_sender<config::AdminCap>();
+            let mut global_config = scenario.take_shared<config::GlobalConfig>();
+            config::add_fee_tier(&mut global_config, 1, 1000, scenario.ctx());
+            test_scenario::return_shared(global_config);
+            transfer::public_transfer(admin_cap, admin);
+        };
         
-    //     scenario.next_tx(admin);
-    //     {
-    //         let mut pools = scenario.take_shared<Pools>();
-    //         let global_config = scenario.take_shared<config::GlobalConfig>();
-    //         let clock = clock::create_for_testing(scenario.ctx());
+        scenario.next_tx(admin);
+        {
+            let mut pools = scenario.take_shared<Pools>();
+            let global_config = scenario.take_shared<config::GlobalConfig>();
+            let clock = clock::create_for_testing(scenario.ctx());
             
-    //         // Create test coins with insufficient amount of coin B
-    //         let coin_b = sui::coin::mint_for_testing<TestCoinA>(1, scenario.ctx()); // Minimal amount
-    //         let coin_a = sui::coin::mint_for_testing<TestCoinB>(1000000, scenario.ctx());
+            // Create test coins with insufficient amount of coin B
+            let coin_b = sui::coin::mint_for_testing<TestCoinA>(1, scenario.ctx()); // Minimal amount
+            let coin_a = sui::coin::mint_for_testing<TestCoinB>(1000000, scenario.ctx());
             
-    //         // Try to create pool with liquidity that exceeds available coin B
-    //         let (position, remaining_coin_a, remaining_coin_b) = factory::create_pool_with_liquidity<TestCoinB, TestCoinA>(
-    //             &mut pools,
-    //             &global_config,
-    //             1, // tick_spacing
-    //             79228162514264337593543950336 >> 32, // current_sqrt_price (1.0)
-    //             std::string::utf8(b""), // url
-    //             0, // tick_lower
-    //             100, // tick_upper
-    //             coin_a, // coin_a_input
-    //             coin_b, // coin_b_input
-    //             100000, // liquidity_amount_a
-    //             100000, // liquidity_amount_b
-    //             true, // fix_amount_a
-    //             @0x2, // feed_id_coin_a
-    //             @0x3, // feed_id_coin_b
-    //             true, // auto_calculation_volumes
-    //             &clock,
-    //             scenario.ctx()
-    //         );
+            // Try to create pool with liquidity that exceeds available coin B
+            let (position, remaining_coin_a, remaining_coin_b) = factory::create_pool_with_liquidity<TestCoinB, TestCoinA>(
+                &mut pools,
+                &global_config,
+                1, // tick_spacing
+                79228162514264337593543950336 >> 32, // current_sqrt_price (1.0)
+                std::string::utf8(b""), // url
+                0, // tick_lower
+                100, // tick_upper
+                coin_a, // coin_a_input
+                coin_b, // coin_b_input
+                100000, // liquidity_amount_a
+                100000, // liquidity_amount_b
+                false, // fix_amount_b
+                @0x2, // feed_id_coin_a
+                @0x3, // feed_id_coin_b
+                true, // auto_calculation_volumes
+                &clock,
+                scenario.ctx()
+            );
             
-    //         // Return objects to scenario
-    //         transfer::public_transfer(position, admin);
-    //         transfer::public_transfer(remaining_coin_a, admin);
-    //         transfer::public_transfer(remaining_coin_b, admin);
-    //         test_scenario::return_shared(pools);
-    //         test_scenario::return_shared(global_config);
-    //         clock::destroy_for_testing(clock);
-    //     };
+            // Return objects to scenario
+            transfer::public_transfer(position, admin);
+            transfer::public_transfer(remaining_coin_a, admin);
+            transfer::public_transfer(remaining_coin_b, admin);
+            test_scenario::return_shared(pools);
+            test_scenario::return_shared(global_config);
+            clock::destroy_for_testing(clock);
+        };
         
-    //     test_scenario::end(scenario);
-    // }
+        test_scenario::end(scenario);
+    }
 
     #[test]
     #[expected_failure(abort_code = 3020)]
@@ -951,136 +943,138 @@ module clmm_pool::factory_tests {
         test_scenario::end(scenario);
     }
 
-    // #[test]
-    // fun test_fetch_pools_with_limit() {
-    //     let admin = @0x1;
-    //     let mut scenario = test_scenario::begin(admin);
+    #[test]
+    fun test_fetch_pools_with_limit() {
+        let admin = @0x1;
+        let mut scenario = test_scenario::begin(admin);
         
-    //     // Initialize factory and config
-    //     {
-    //         factory::test_init(scenario.ctx());
-    //         config::test_init(scenario.ctx());
-    //     };
+        // Initialize factory and config
+        {
+            factory::test_init(scenario.ctx());
+            config::test_init(scenario.ctx());
+        };
         
-    //     // Add fee tiers
-    //     scenario.next_tx(admin);
-    //     {
-    //         let admin_cap = scenario.take_from_sender<config::AdminCap>();
-    //         let mut global_config = scenario.take_shared<config::GlobalConfig>();
-    //         config::add_fee_tier(&mut global_config, 1, 1000, scenario.ctx());
-    //         config::add_fee_tier(&mut global_config, 2, 2000, scenario.ctx());
-    //         test_scenario::return_shared(global_config);
-    //         transfer::public_transfer(admin_cap, admin);
-    //     };
+        // Add fee tiers and create pools in one transaction
+        scenario.next_tx(admin);
+        {
+            let admin_cap = scenario.take_from_sender<config::AdminCap>();
+            let mut global_config = scenario.take_shared<config::GlobalConfig>();
+            config::add_fee_tier(&mut global_config, 1, 1000, scenario.ctx());
+            config::add_fee_tier(&mut global_config, 2, 2000, scenario.ctx());
+            
+            let mut pools = scenario.take_shared<Pools>();
+            let clock = clock::create_for_testing(scenario.ctx());
+            
+            // Create first pool
+            let pool1 = factory::create_pool_<TestCoinB, TestCoinA>(
+                &mut pools,
+                &global_config,
+                1, // tick_spacing
+                79228162514264337593543950336 >> 32, // current_sqrt_price (1.0)
+                std::string::utf8(b""), // url
+                @0x2, // feed_id_coin_a
+                @0x3, // feed_id_coin_b
+                true, // auto_calculation_volumes
+                &clock,
+                scenario.ctx()
+            );
+            
+            // Create second pool
+            let pool2 = factory::create_pool_<TestCoinB, TestCoinA>(
+                &mut pools,
+                &global_config,
+                2, // different tick_spacing
+                79228162514264337593543950336 >> 32, // current_sqrt_price (1.0)
+                std::string::utf8(b""), // url
+                @0x2, // feed_id_coin_a
+                @0x3, // feed_id_coin_b
+                true, // auto_calculation_volumes
+                &clock,
+                scenario.ctx()
+            );
+            
+            transfer::public_transfer(pool2, admin);
+            transfer::public_transfer(pool1, admin);
+            transfer::public_transfer(admin_cap, admin);
+            clock::destroy_for_testing(clock);
+            test_scenario::return_shared(global_config);
+            test_scenario::return_shared(pools);
+        };
         
-    //     // Create first pool
-    //     scenario.next_tx(admin);
-    //     {
-    //         let mut pools = scenario.take_shared<Pools>();
-    //         let global_config = scenario.take_shared<config::GlobalConfig>();
-    //         let clock = clock::create_for_testing(scenario.ctx());
+        scenario.next_tx(admin);
+        {
+            let pools = scenario.take_shared<Pools>();
+            let global_config = scenario.take_shared<config::GlobalConfig>();
+            let admin_cap = scenario.take_from_sender<config::AdminCap>();
+            let clock = clock::create_for_testing(scenario.ctx());
             
-    //         let pool1 = factory::create_pool_<TestCoinB, TestCoinA>(
-    //             &mut pools,
-    //             &global_config,
-    //             1, // tick_spacing
-    //             79228162514264337593543950336 >> 32, // current_sqrt_price (1.0)
-    //             std::string::utf8(b""), // url
-    //             @0x2, // feed_id_coin_a
-    //             @0x3, // feed_id_coin_b
-    //             true, // auto_calculation_volumes
-    //             &clock,
-    //             scenario.ctx()
-    //         );
+            // Test fetching pools with limit
+            let result = factory::fetch_pools(&pools, std::vector::empty<sui::object::ID>(), 1);
+            assert!(std::vector::length(&result) == 1, 1);
             
-    //         let pool1_id = sui::object::id(&pool1);
-    //         transfer::public_transfer(pool1, admin);
-    //         test_scenario::return_shared(pools);
-    //         test_scenario::return_shared(global_config);
-    //         clock::destroy_for_testing(clock);
-    //     };
+            let result = factory::fetch_pools(&pools, std::vector::empty<sui::object::ID>(), 2);
+            assert!(std::vector::length(&result) == 2, 2);
+            
+            // Get pool keys from the table
+            let pool1_key = factory::new_pool_key<TestCoinB, TestCoinA>(1);
+            let pool2_key = factory::new_pool_key<TestCoinB, TestCoinA>(2);
+            
+            // Get pool1 info directly from the table
+            let pool1_info = pools.pool_simple_info(pool1_key);
+            
+            // Test fetching with specific pool key
+            let mut pool_keys = std::vector::empty<sui::object::ID>();
+            std::vector::push_back(&mut pool_keys, pool1_key);
+            
+            let result = factory::fetch_pools(&pools, pool_keys, 1);
+            assert!(std::vector::length(&result) == 1, 3);
+            
+            // Verify that returned info matches pool1 info
+            let returned_info = std::vector::borrow<PoolSimpleInfo>(&result, 0);
+            assert!(returned_info.pool_id() == pool1_info.pool_id(), 4);
+            assert!(returned_info.pool_key() == pool1_info.pool_key(), 5);
+            assert!(returned_info.tick_spacing() == pool1_info.tick_spacing(), 6);
+            let (returned_coin_a, returned_coin_b) = returned_info.coin_types();
+            let (pool1_coin_a, pool1_coin_b) = pool1_info.coin_types();
+            assert!(returned_coin_a == pool1_coin_a, 7);
+            assert!(returned_coin_b == pool1_coin_b, 8);
+            
+            test_scenario::return_shared(pools);
+            test_scenario::return_shared(global_config);
+            transfer::public_transfer(admin_cap, admin);
+            clock::destroy_for_testing(clock);
+        };
         
-    //     // Create second pool
-    //     scenario.next_tx(admin);
-    //     {
-    //         let mut pools = scenario.take_shared<Pools>();
-    //         let global_config = scenario.take_shared<config::GlobalConfig>();
-    //         let clock = clock::create_for_testing(scenario.ctx());
-            
-    //         let pool2 = factory::create_pool_<TestCoinB, TestCoinA>(
-    //             &mut pools,
-    //             &global_config,
-    //             2, // different tick_spacing
-    //             79228162514264337593543950336 >> 32, // current_sqrt_price (1.0)
-    //             std::string::utf8(b""), // url
-    //             @0x2, // feed_id_coin_a
-    //             @0x3, // feed_id_coin_b
-    //             true, // auto_calculation_volumes
-    //             &clock,
-    //             scenario.ctx()
-    //         );
-            
-    //         let pool2_id = sui::object::id(&pool2);
-    //         transfer::public_transfer(pool2, admin);
-    //         test_scenario::return_shared(pools);
-    //         test_scenario::return_shared(global_config);
-    //         clock::destroy_for_testing(clock);
-    //     };
-        
-    //     // Test fetching pools with limit
-    //     scenario.next_tx(admin);
-    //     {
-    //         let pools = scenario.take_shared<Pools>();
-            
-    //         // Test fetching pools with empty pool_ids and limit 1
-    //         let result = factory::fetch_pools(&pools, std::vector::empty<sui::object::ID>(), 1);
-    //         assert!(std::vector::length(&result) == 1, 1);
-            
-    //         // Test fetching pools with empty pool_ids and limit 2
-    //         let result = factory::fetch_pools(&pools, std::vector::empty<sui::object::ID>(), 2);
-    //         assert!(std::vector::length(&result) == 2, 2);
-            
-    //         // Test fetching pools with specific pool_id and limit 1
-    //         let mut pool_ids = std::vector::empty<sui::object::ID>();
-    //         let pool_key = factory::new_pool_key<TestCoinB, TestCoinA>(1);
-    //         let pool_info = pools.pool_simple_info(pool_key);
-    //         let pool_id = pool_info.pool_id();
-    //         std::vector::push_back(&mut pool_ids, pool_id);
-    //         let result = factory::fetch_pools(&pools, pool_ids, 1);
-    //         assert!(std::vector::length(&result) == 1, 3);
-            
-    //         test_scenario::return_shared(pools);
-    //     };
-        
-    //     test_scenario::end(scenario);
-    // }
+        test_scenario::end(scenario);
+    }
 
-    // #[test]
-    // fun test_fetch_pools_invalid_pool_id() {
-    //     let admin = @0x1;
-    //     let mut scenario = test_scenario::begin(admin);
+    #[test]
+    #[expected_failure(abort_code = 1)]
+    fun test_fetch_pools_invalid_pool_id() {
+        let admin = @0x1;
+        let mut scenario = test_scenario::begin(admin);
         
-    //     // Initialize factory and config
-    //     {
-    //         factory::test_init(scenario.ctx());
-    //         config::test_init(scenario.ctx());
-    //     };
+        // Initialize factory and config
+        {
+            factory::test_init(scenario.ctx());
+            config::test_init(scenario.ctx());
+        };
         
-    //     scenario.next_tx(admin);
-    //     {
-    //         let pools = scenario.take_shared<Pools>();
+        scenario.next_tx(admin);
+        {
+            let pools = scenario.take_shared<Pools>();
             
-    //         // Test fetching pools with invalid pool_id
-    //         let mut pool_ids = std::vector::empty<sui::object::ID>();
-    //         // Use a completely different ID that doesn't exist
-    //         let invalid_pool_id = sui::object::id_from_address(@0x1234567890abcdef);
-    //         std::vector::push_back(&mut pool_ids, invalid_pool_id);
-    //         let result = factory::fetch_pools(&pools, pool_ids, 1);
-    //         assert!(std::vector::length(&result) == 0, 1);
+            // Test fetching pools with invalid pool_id
+            let mut pool_ids = std::vector::empty<sui::object::ID>();
+            // Use a completely different ID that doesn't exist
+            let invalid_pool_id = sui::object::id_from_address(@0x1234567890abcdef);
+            std::vector::push_back(&mut pool_ids, invalid_pool_id);
+            let result = factory::fetch_pools(&pools, pool_ids, 1);
+            assert!(std::vector::length(&result) == 0, 1);
             
-    //         test_scenario::return_shared(pools);
-    //     };
+            test_scenario::return_shared(pools);
+        };
         
-    //     test_scenario::end(scenario);
-    // }
+        test_scenario::end(scenario);
+    }
 }

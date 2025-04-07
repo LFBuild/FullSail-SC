@@ -87,4 +87,13 @@ module clmm_pool::stats {
     public(package) fun add_total_volume_internal(stats: &mut Stats, amount: u64) {
         stats.total_volume = stats.total_volume + amount;
     }
+
+    #[test_only]
+    public fun init_test(ctx: &mut TxContext) {
+        let stats = Stats {
+            id: object::new(ctx),
+            total_volume: 0,
+        };
+        transfer::share_object<Stats>(stats);
+    }
 }

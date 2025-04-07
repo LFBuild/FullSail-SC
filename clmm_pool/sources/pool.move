@@ -890,6 +890,11 @@ module clmm_pool::pool {
             );
             (liquidity_calc, amount_a_calc, amount_b_calc)
         } else {
+            std::debug::print(&tick_lower);
+            std::debug::print(&tick_upper);
+            std::debug::print(&pool.current_tick_index);
+            std::debug::print(&pool.current_sqrt_price);
+            std::debug::print(&liquidity_delta);
             let (amount_a_calc, amount_b_calc) = clmm_pool::clmm_math::get_amount_by_liquidity(
                 tick_lower,
                 tick_upper,
@@ -2093,6 +2098,11 @@ module clmm_pool::pool {
         assert!(amount > 0, 0);
         clmm_pool::rewarder::settle(&mut pool.rewarder_manager, pool.liquidity, sui::clock::timestamp_ms(clock) / 1000);
         if (a2b) {
+            std::debug::print(&pool.current_sqrt_price);
+            std::debug::print(&sqrt_price_limit);
+            std::debug::print(&clmm_pool::tick_math::min_sqrt_price());
+            std::debug::print(&(pool.current_sqrt_price > sqrt_price_limit));
+            std::debug::print(&(sqrt_price_limit >= clmm_pool::tick_math::min_sqrt_price()));
             assert!(pool.current_sqrt_price > sqrt_price_limit && sqrt_price_limit >= clmm_pool::tick_math::min_sqrt_price(), 11);
         } else {
             assert!(pool.current_sqrt_price < sqrt_price_limit && sqrt_price_limit <= clmm_pool::tick_math::max_sqrt_price(), 11);
@@ -2114,10 +2124,15 @@ module clmm_pool::pool {
             ref_fee_rate,
             clock
         );
+        std::debug::print(&swap_result);
         assert!(swap_result.amount_out > 0, 18);
         let (balance_b, balance_a) = if (a2b) {
+             std::debug::print(&pool.coin_b);
+             std::debug::print(&swap_result.amount_out);
             (sui::balance::split<CoinTypeB>(&mut pool.coin_b, swap_result.amount_out), sui::balance::zero<CoinTypeA>())
         } else {
+            std::debug::print(&pool.coin_a);
+            std::debug::print(&swap_result.amount_out);
             (sui::balance::zero<CoinTypeB>(), sui::balance::split<CoinTypeA>(&mut pool.coin_a, swap_result.amount_out))
         };
 
@@ -3317,6 +3332,11 @@ module clmm_pool::pool {
         let mut remaining_amount = amount;
         let mut next_tick_score = clmm_pool::tick::first_score_for_swap(&pool.tick_manager, pool.current_tick_index, a2b);
         while (remaining_amount > 0 && pool.current_sqrt_price != sqrt_price_limit) {
+             std::debug::print(&remaining_amount);
+             std::debug::print(&pool.current_sqrt_price);
+             std::debug::print(&sqrt_price_limit);
+            std::debug::print(&next_tick_score);
+             std::debug::print(&move_stl::option_u64::is_none(&next_tick_score));
             if (move_stl::option_u64::is_none(&next_tick_score)) {
                 abort 20
             };
@@ -3333,6 +3353,13 @@ module clmm_pool::pool {
             } else {
                 integer_mate::math_u128::min(sqrt_price_limit, tick_sqrt_price)
             };
+            std::debug::print(&pool.current_sqrt_price);
+            std::debug::print(&target_sqrt_price);
+            std::debug::print(&pool.liquidity);
+            std::debug::print(&remaining_amount);
+            std::debug::print(&pool.fee_rate);
+            std::debug::print(&a2b);
+            std::debug::print(&by_amount_in);
             let (amount_in, amount_out, next_sqrt_price, fee_amount) = clmm_pool::clmm_math::compute_swap_step(
                 pool.current_sqrt_price,
                 target_sqrt_price,
@@ -3342,6 +3369,10 @@ module clmm_pool::pool {
                 a2b,
                 by_amount_in
             );
+            std::debug::print(&amount_in);
+            std::debug::print(&amount_out);
+            std::debug::print(&next_sqrt_price);
+            std::debug::print(&fee_amount);
             if (amount_in != 0 || fee_amount != 0) {
                 if (by_amount_in) {
                     let amount_after_in = check_remainer_amount_sub(remaining_amount, amount_in);
@@ -3856,6 +3887,137 @@ module clmm_pool::pool {
     /// * If the position's pool ID does not match this pool's ID (error code: 9223373806381301759)
     fun validate_pool_position<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>, position: &clmm_pool::position::Position) {
         assert!(sui::object::id<Pool<CoinTypeA, CoinTypeB>>(pool) == clmm_pool::position::pool_id(position), 9223373806381301759);
+    }
+
+    #[test_only]
+    public fun test_init(pool: POOL, ctx: &mut sui::tx_context::TxContext) {
+        sui::transfer::public_transfer<sui::package::Publisher>(
+            sui::package::claim<POOL>(pool, ctx),
+            sui::tx_context::sender(ctx)
+        );
+    }
+
+    #[test_only]
+    public fun flash_swap_internal_test<CoinTypeA, CoinTypeB>(
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        global_config: &clmm_pool::config::GlobalConfig,
+        partner_id: sui::object::ID,
+        ref_fee_rate: u64,
+        a2b: bool,
+        by_amount_in: bool,
+        amount: u64,
+        sqrt_price_limit: u128,
+        stats: &mut clmm_pool::stats::Stats,
+        price_provider: &price_provider::price_provider::PriceProvider,
+        clock: &sui::clock::Clock
+    ): (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>, FlashSwapReceipt<CoinTypeA, CoinTypeB>) {
+        flash_swap_internal(pool, global_config, partner_id, ref_fee_rate, a2b, by_amount_in, amount, sqrt_price_limit, stats, price_provider, clock)
+    }
+
+    #[test_only]
+    public fun swap_in_pool_test<CoinTypeA, CoinTypeB>(
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        a2b: bool,
+        by_amount_in: bool,
+        sqrt_price_limit: u128,
+        amount: u64,
+        unstaked_fee_rate: u64,
+        protocol_fee_rate: u64,
+        ref_fee_rate: u64,
+        clock: &sui::clock::Clock
+    ): SwapResult {
+        swap_in_pool(pool, a2b, by_amount_in, sqrt_price_limit, amount, unstaked_fee_rate, protocol_fee_rate, ref_fee_rate, clock)
+    }
+
+    #[test_only]
+    public fun update_fullsail_distribution_growth_global_internal_test<CoinTypeA, CoinTypeB>(
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        clock: &sui::clock::Clock
+    ): u64 {
+        update_fullsail_distribution_growth_global_internal(pool, clock)
+    }
+
+    #[test_only]
+    public fun update_fullsail_distribution_internal_test<CoinTypeA, CoinTypeB>(
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        liquidity_delta: integer_mate::i128::I128,
+        tick_lower: integer_mate::i32::I32,
+        tick_upper: integer_mate::i32::I32,
+        clock: &sui::clock::Clock
+    ) {
+        update_fullsail_distribution_internal(pool, liquidity_delta, tick_lower, tick_upper, clock)
+    }
+    
+    #[test_only]
+    public fun update_swap_result_test(
+        swap_result: &mut SwapResult,
+        amount_in_delta: u64,
+        amount_out_delta: u64,
+        fee_amount_delta: u64,
+        protocol_fee_delta: u64,
+        ref_fee_delta: u64,
+        gauge_fee_delta: u64
+    ) {
+        update_swap_result(swap_result, amount_in_delta, amount_out_delta, fee_amount_delta, protocol_fee_delta, ref_fee_delta, gauge_fee_delta)
+    }
+
+    #[test_only]
+    public fun add_liquidity_internal_test<CoinTypeA, CoinTypeB>(
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        position: &mut clmm_pool::position::Position,
+        is_fix_amount: bool,
+        liquidity_delta: u128,
+        amount_in: u64,
+        is_fix_amount_a: bool,
+        timestamp: u64
+    ): AddLiquidityReceipt<CoinTypeA, CoinTypeB> {
+        add_liquidity_internal(pool, position, is_fix_amount, liquidity_delta, amount_in, is_fix_amount_a, timestamp)
+    }
+
+    #[test_only]
+    public fun destroy_flash_swap_receipt<CoinTypeA, CoinTypeB>(receipt: FlashSwapReceipt<CoinTypeA, CoinTypeB>) {
+        let FlashSwapReceipt { pool_id, a2b, partner_id, pay_amount, fee_amount, protocol_fee_amount, ref_fee_amount, gauge_fee_amount } = receipt;
+    }
+
+    #[test_only]
+    public fun destroy_receipt<CoinTypeA, CoinTypeB>(receipt: AddLiquidityReceipt<CoinTypeA, CoinTypeB>) {
+        let AddLiquidityReceipt { pool_id, amount_a, amount_b } = receipt;
+    }
+
+    #[test_only]
+    public fun create_swap_result_test(
+        amount_in: u64,
+        amount_out: u64,
+        fee_amount: u64,
+        protocol_fee_amount: u64,
+        ref_fee_amount: u64,
+        gauge_fee_amount: u64,
+        steps: u64
+    ): SwapResult {
+        SwapResult {
+            amount_in: amount_in,
+            amount_out: amount_out,
+            fee_amount: fee_amount,
+            protocol_fee_amount: protocol_fee_amount,
+            ref_fee_amount: ref_fee_amount,
+            gauge_fee_amount: gauge_fee_amount,
+            steps: steps,
+        }
+    }
+
+    #[test_only]
+    public fun get_swap_result_test(
+        swap_result: &SwapResult
+    ): (u64, u64, u64, u64, u64, u64, u64) {
+        (
+            swap_result.amount_in,
+            swap_result.amount_out,
+            swap_result.fee_amount,
+            swap_result.protocol_fee_amount,
+            swap_result.ref_fee_amount,
+            swap_result.gauge_fee_amount,
+            swap_result.steps
+        )
     }
 }
 

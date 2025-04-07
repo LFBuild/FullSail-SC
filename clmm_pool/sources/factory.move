@@ -385,22 +385,21 @@ module clmm_pool::factory {
         (position, coin_a_input, coin_b_input)
     }
     
-    /// Retrieves a list of pool information based on provided pool IDs and a limit.
-    /// This function implements pagination for fetching pool information.
+    /// Fetches pool information from the pools table.
     /// 
-    /// # Arguments
-    /// * `pools` - Reference to the pools collection
-    /// * `pool_ids` - Vector of pool IDs to start fetching from. If empty, starts from the first pool
+    /// If `pool_ids` is empty, the method starts from the head of the linked table and returns
+    /// information about pools in the order they are stored in the table, up to the specified limit.
+    /// 
+    /// If `pool_ids` is not empty, the method starts from the first ID in the vector and returns
+    /// information about pools starting from that ID, up to the specified limit.
+    /// 
+    /// # Parameters
+    /// * `pools` - Reference to the Pools object containing the linked table of pools
+    /// * `pool_ids` - Vector of pool IDs to start fetching from. If empty, starts from the head of the table
     /// * `limit` - Maximum number of pools to return
     /// 
     /// # Returns
-    /// Vector of PoolSimpleInfo containing basic information about the requested pools
-    /// 
-    /// # Details
-    /// * If pool_ids is empty, starts fetching from the first pool in the collection
-    /// * If pool_ids is not empty, starts fetching from the specified pool ID
-    /// * Returns up to 'limit' number of pools
-    /// * Returns an empty vector if no pools are found or if the limit is reached
+    /// Vector of PoolSimpleInfo containing information about the requested pools
     public fun fetch_pools(pools: &Pools, pool_ids: vector<sui::object::ID>, limit: u64): vector<PoolSimpleInfo> {
         let mut result = std::vector::empty<PoolSimpleInfo>();
         let next_id = if (std::vector::is_empty<sui::object::ID>(&pool_ids)) {
