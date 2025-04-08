@@ -677,6 +677,7 @@ module distribution::gauge {
 
     /// Internal function to handle reward claiming for a specific position.
     /// Updates the reward accounting, calculates the earned amount, and transfers tokens.
+    /// Should be called in sequence, successfull only when previous coin rewards are claimed.
     ///
     /// # Arguments
     /// * `gauge` - The gauge instance
@@ -684,23 +685,23 @@ module distribution::gauge {
     /// * `position_id` - ID of the position
     /// * `clock` - The system clock
     /// * `ctx` - Transaction context
-    fun get_reward_internal<CoinTypeA, CoinTypeB, SailCoinType>(
+    fun get_reward_internal<CoinTypeA, CoinTypeB, RewardCoinType>(
         gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         position_id: ID,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        let reward = gauge.update_reward_internal<CoinTypeA, CoinTypeB, SailCoinType>(
+        let reward = gauge.update_reward_internal<CoinTypeA, CoinTypeB, RewardCoinType>(
             pool,
             position_id,
             clock
         );
-        if (reward.value<SailCoinType>() > 0) {
+        if (reward.value<RewardCoinType>() > 0) {
             let position_owner = gauge.staked_position_infos.borrow(position_id).from;
-            let amount = reward.value<SailCoinType>();
-            transfer::public_transfer<sui::coin::Coin<SailCoinType>>(
-                sui::coin::from_balance<SailCoinType>(reward, ctx),
+            let amount = reward.value<RewardCoinType>();
+            transfer::public_transfer<sui::coin::Coin<RewardCoinType>>(
+                sui::coin::from_balance<RewardCoinType>(reward, ctx),
                 position_owner
             );
             let claim_reward_event = EventClaimReward {
@@ -947,12 +948,13 @@ module distribution::gauge {
     }
 
     /// Returns the current balance of reward tokens in the gauge's reserves.
+    /// Returns only balance of one coin.
     ///
     /// # Arguments
     /// * `gauge` - The gauge instance
     ///
     /// # Returns
-    /// The balance of SailCoinType tokens in the reserves
+    /// The balance of RewardCoinType tokens in the reserves
     public fun reserves_balance<CoinTypeA, CoinTypeB, RewardCoinType>(
         gauge: &Gauge<CoinTypeA, CoinTypeB>
     ): u64 {
