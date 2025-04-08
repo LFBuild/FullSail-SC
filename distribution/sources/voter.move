@@ -731,7 +731,7 @@ module distribution::voter {
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
-    ): distribution::gauge::Gauge<CoinTypeA, CoinTypeB, SailCoinType> {
+    ): distribution::gauge::Gauge<CoinTypeA, CoinTypeB> {
         governor_cap.validate_governor_voter_id(object::id<Voter>(voter));
         assert!(
             voter.is_governor(object::id<distribution::voter_cap::GovernorCap>(governor_cap)),
@@ -743,16 +743,11 @@ module distribution::voter {
             ),
             ECreateGaugeDistributionConfigInvalid
         );
-        let mut gauge = return_new_gauge<CoinTypeA, CoinTypeB, SailCoinType>(
-            distribution_config,
-            create_cap,
-            pool,
-            ctx
-        );
+        let mut gauge = voter.return_new_gauge(distribution_config, create_cap, pool, ctx);
         let mut reward_coins = std::vector::empty<TypeName>();
         reward_coins.push_back(type_name::get<CoinTypeA>());
         reward_coins.push_back(type_name::get<CoinTypeB>());
-        let gauge_id = object::id<distribution::gauge::Gauge<CoinTypeA, CoinTypeB, SailCoinType>>(&gauge);
+        let gauge_id = object::id<distribution::gauge::Gauge<CoinTypeA, CoinTypeB>>(&gauge);
         let voter_id = object::id<Voter>(voter);
         let voting_escrow_id = object::id<distribution::voting_escrow::VotingEscrow<SailCoinType>>(voting_escrow);
         voter.gauge_to_fee.add(
@@ -793,7 +788,7 @@ module distribution::voter {
     public fun distribute_gauge<CoinTypeA, CoinTypeB, SailCoinType>(
         voter: &mut Voter,
         distribution_config: &distribution::distribution_config::DistributionConfig,
-        gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB, SailCoinType>,
+        gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
@@ -801,7 +796,7 @@ module distribution::voter {
         assert!(voter.is_valid_epoch_token<SailCoinType>(), EDistributeGaugeInvalidToken);
 
         let gauge_id = into_gauge_id(
-            object::id<distribution::gauge::Gauge<CoinTypeA, CoinTypeB, SailCoinType>>(gauge)
+            object::id<distribution::gauge::Gauge<CoinTypeA, CoinTypeB>>(gauge)
         );
         let gauge_represent = voter.gauge_represents.borrow(gauge_id);
         assert!(
@@ -1374,10 +1369,10 @@ module distribution::voter {
     /// * `gauge` - The gauge to be received
     /// * `clock` - The system clock
     /// * `ctx` - The transaction context
-    public fun receive_gauger<CoinTypeA, CoinTypeB, SailCoinType>(
+    public fun receive_gauger<CoinTypeA, CoinTypeB>(
         voter: &mut Voter,
         governor_cap: &distribution::voter_cap::GovernorCap,
-        gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB, SailCoinType>,
+        gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
@@ -1387,7 +1382,7 @@ module distribution::voter {
             EReceiveGaugeInvalidGovernor
         );
         let gauge_id = into_gauge_id(
-            object::id<distribution::gauge::Gauge<CoinTypeA, CoinTypeB, SailCoinType>>(gauge)
+            object::id<distribution::gauge::Gauge<CoinTypeA, CoinTypeB>>(gauge)
         );
         let pool_id = into_pool_id(gauge.pool_id());
         assert!(
@@ -1399,7 +1394,7 @@ module distribution::voter {
             EReceiveGaugePoolAreadyHasGauge
         );
         let gauge_represent = GaugeRepresent {
-            gauger_id: object::id<distribution::gauge::Gauge<CoinTypeA, CoinTypeB, SailCoinType>>(gauge),
+            gauger_id: object::id<distribution::gauge::Gauge<CoinTypeA, CoinTypeB>>(gauge),
             pool_id: gauge.pool_id(),
             weight: 0,
             last_reward_time: clock.timestamp_ms(),
@@ -1554,21 +1549,23 @@ module distribution::voter {
     /// 
     /// # Returns
     /// A new gauge for the specified pool
-    public(package) fun return_new_gauge<CoinTypeA, CoinTypeB, SailCoinType>(
+    public(package) fun return_new_gauge<CoinTypeA, CoinTypeB>(
+        voter: &Voter,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         gauge_create_cap: &gauge_cap::gauge_cap::CreateCap,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         ctx: &mut TxContext
-    ): distribution::gauge::Gauge<CoinTypeA, CoinTypeB, SailCoinType> {
+    ): distribution::gauge::Gauge<CoinTypeA, CoinTypeB> {
         let pool_id = object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool);
-        let mut gauge = distribution::gauge::create<CoinTypeA, CoinTypeB, SailCoinType>(
+        let mut gauge = distribution::gauge::create<CoinTypeA, CoinTypeB>(
             distribution_config,
             pool_id,
+            voter.current_epoch_token,
             ctx
         );
         let gauge_cap = gauge_create_cap.create_gauge_cap(
             pool_id,
-            object::id<distribution::gauge::Gauge<CoinTypeA, CoinTypeB, SailCoinType>>(&gauge),
+            object::id<distribution::gauge::Gauge<CoinTypeA, CoinTypeB>>(&gauge),
             ctx
         );
         pool.init_fullsale_distribution_gauge(&gauge_cap);

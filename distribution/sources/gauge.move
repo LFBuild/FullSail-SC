@@ -538,9 +538,8 @@ module distribution::gauge {
             *gauge.growth_global_by_token.borrow(coin_type)
         };
 
-        let prev_coin_opt: Option<TypeName> = gauge.growth_global_by_token.prev(coin_type);
-        let prev_coin_type: TypeName = prev_coin_opt.destroy_some();
-        let prev_coin_growth_global = *gauge.growth_global_by_token.borrow(prev_coin_type);
+        let prev_coin_type: &TypeName = gauge.growth_global_by_token.prev(coin_type).borrow();
+        let prev_coin_growth_global = gauge.growth_global_by_token.borrow(*prev_coin_type);
 
         let position = gauge.staked_positions.borrow(position_id);
         let (lower_tick, upper_tick) = position.tick_range();
@@ -554,7 +553,7 @@ module distribution::gauge {
         let prev_token_growth_inside = pool.get_fullsale_distribution_growth_inside(
             lower_tick,
             upper_tick,
-            prev_coin_growth_global
+            *prev_coin_growth_global
         );
         let claimed_growth_inside = gauge.rewards.borrow(position_id).growth_inside;
         assert!(claimed_growth_inside >= prev_token_growth_inside, EEarnedPrevTokenNotClaimed);
@@ -976,8 +975,9 @@ module distribution::gauge {
         balance: Balance<RewardCoinType>,
     ) {
         let coin_type = type_name::get<RewardCoinType>();
+        let amount_to_add = balance.value();
 
-        let existing_balance = if (gauge.reserves_balance.contains(coin_type)) {
+        let mut existing_balance = if (gauge.reserves_balance.contains(coin_type)) {
             gauge.reserves_balance.remove<TypeName, Balance<RewardCoinType>>(coin_type)
         } else {
             balance::zero<RewardCoinType>()
@@ -985,7 +985,7 @@ module distribution::gauge {
 
         existing_balance.join(balance);
         gauge.reserves_balance.add(coin_type, existing_balance);
-        gauge.reserves_all_tokens = gauge.reserves_all_tokens + balance.value();
+        gauge.reserves_all_tokens = gauge.reserves_all_tokens + amount_to_add;
     }
 
     fun reserves_split<CoinTypeA, CoinTypeB, RewardCoinType>(
