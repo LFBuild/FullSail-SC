@@ -2,10 +2,12 @@
 #these adresses should be updated after calling each of the scripts
 export ADDR=$(sui client active-address)
 
-export PACKAGE=0xfc42c50c11c4d6abfbb36d1d38e1023140d610e68c5ca1b8caff7cd6c0b405cb
+export PACKAGE=0xd80ee37bf2520ef907756ba80327c6f546bf1bdbe9d1e3c149f961591d0e5ef9
 export FULLSAIL_TOKEN_TYPE="$PACKAGE::sail_token::SAIL_TOKEN"
-export FULLSAIL_TOKEN_MITER_CAP=0x525caec1822c762caa53a43429a868fffd966be870437c128b0c58758e0ed63e
-export VOTING_ESCROW=0x6f4581cba4dc22357c6e033cf4d33b8b92c6fd9e4393716bbdf8fa8d490dd7d1
+export TREASURY_CAP=0x180e2e1a23136744292c81e399f6ff5928b7f059394f27469ff98aece1cedd4f
+export VOTING_ESCROW=0x88e44f1f2c5530c89f0c53eec82286e3d7f1851351fe817f4e8e695cbfc5f43f
 export MINTER=0x9fa097c01f910742d273830cca61c46323d2d6e4f309158fc15244f20ede0e3e
+
+export UPGRADE_CAP=0xb62bf64dd308920b83d46b9da40c5537385fb54b2354b8c3572b888f50cc177d
 
 # use setup_distribution.sh script in integrate directory to create minter, voter and voting_escrow.

@@ -1,5 +1,6 @@
 module distribution::common {
-    const WEEK: u64 = 604800;
+    // TODO: replace with actual week before deployment
+    const WEEK: u64 = 86400; // only a day for test purposes
     const DAY: u64 = 86400;
     const HOUR: u64 = 3600;
 
