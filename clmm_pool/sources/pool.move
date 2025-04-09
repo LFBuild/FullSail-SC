@@ -3373,23 +3373,23 @@ module clmm_pool::pool {
                 } else {
                     remaining_amount = check_remainer_amount_sub(remaining_amount, amount_out);
                 };
-                let protocol_fee = integer_mate::full_math_u64::mul_div_ceil(
+                let ref_fee = integer_mate::full_math_u64::mul_div_ceil(
                     fee_amount,
-                    protocol_fee_rate,
+                    ref_fee_rate,
                     clmm_pool::config::protocol_fee_rate_denom()
                 );
-                let remaining_fee = fee_amount - protocol_fee;
+                let remaining_fee = fee_amount - ref_fee;
                 let mut fee_after_protocol = remaining_fee;
                 let mut gauge_fee = 0;
-                let mut ref_fee = 0;
+                let mut protocol_fee = 0;
                 if (remaining_fee > 0) {
-                    let ref_fee_amount = integer_mate::full_math_u64::mul_div_ceil(
+                    let protocol_fee_amount = integer_mate::full_math_u64::mul_div_ceil(
                         remaining_fee,
-                        ref_fee_rate,
+                        protocol_fee_rate,
                         clmm_pool::config::protocol_fee_rate_denom()
                     );
-                    ref_fee = ref_fee_amount;
-                    let fee_after_ref = remaining_fee - ref_fee_amount;
+                    protocol_fee = protocol_fee_amount;
+                    let fee_after_ref = remaining_fee - protocol_fee_amount;
                     fee_after_protocol = fee_after_ref;
                     if (fee_after_ref > 0) {
                         let (_, gauge_fee_amount) = calculate_fees<CoinTypeA, CoinTypeB>(
@@ -3403,7 +3403,7 @@ module clmm_pool::pool {
                         fee_after_protocol = fee_after_ref - gauge_fee_amount;
                     };
                 };
-                update_swap_result(&mut swap_result, amount_in, amount_out, fee_amount, ref_fee, protocol_fee, gauge_fee);
+                update_swap_result(&mut swap_result, amount_in, amount_out, fee_amount, protocol_fee, ref_fee, gauge_fee);
                 if (fee_after_protocol > 0) {
                     update_fee_growth_global<CoinTypeA, CoinTypeB>(pool, fee_after_protocol, a2b);
                 };
