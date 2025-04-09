@@ -2049,7 +2049,7 @@ module clmm_pool::pool_tests {
     }
 
     #[test]
-    fun test_repay_flash_swap_with_partner_success() {
+    fun test_repay_flash_swap_success() {
         let admin = @0x1;
         let mut scenario = test_scenario::begin(admin);
         
@@ -2068,6 +2068,7 @@ module clmm_pool::pool_tests {
             let admin_cap = scenario.take_from_sender<config::AdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
             config::add_fee_tier(&mut global_config, 1, 1000, scenario.ctx());
+            config::add_fee_tier(&mut global_config, 2, 1000, scenario.ctx());
             test_scenario::return_shared(global_config);
             transfer::public_transfer(admin_cap, admin);
         };
@@ -2084,7 +2085,7 @@ module clmm_pool::pool_tests {
             // Create a pool with different initial price
             let mut pool = pool::new<TestCoinB, TestCoinA>(
                 1, // tick_spacing
-                79228162514264337593543950336 >> 32, // current_sqrt_price (1.0)
+                14142135623730951, // current_sqrt_price (2.0)
                 1000, // fee_rate
                 std::string::utf8(b""), // url
                 0, // pool_index
@@ -2099,8 +2100,8 @@ module clmm_pool::pool_tests {
             let mut position = pool::open_position<TestCoinB, TestCoinA>(
                 &global_config,
                 &mut pool,
-                0,  // tick_lower
-                10,  // tick_upper (сужаем диапазон)
+                4294813800,  // tick_lower = -153496
+                4294836290,  // tick_upper = -131006
                 scenario.ctx()
             );
 
@@ -2109,59 +2110,129 @@ module clmm_pool::pool_tests {
                 &global_config,
                 &mut pool,
                 &mut position,
-                10000000000 << 64,  // увеличиваем ликвидность
+                1000000000000000,  // увеличиваем ликвидность
                 &clock
             );
 
-            std::debug::print(&addLiquidityReceipt);
+            let (pay_amount_a, pay_amount_b) = addLiquidityReceipt.add_liquidity_pay_amount();
+            let coin_a = sui::coin::mint_for_testing<TestCoinB>(pay_amount_a, scenario.ctx());
+            let coin_b = sui::coin::mint_for_testing<TestCoinA>(pay_amount_b, scenario.ctx());
+            let balance_a = coin_a.into_balance<TestCoinB>();
+            let balance_b = coin_b.into_balance<TestCoinA>();
 
-            // Get partners from scenario
-            let partner1 = scenario.take_shared<partner::Partner>();
-            let mut partner2 = scenario.take_shared<partner::Partner>();
-
-            // Get current sqrt price before borrowing pool
-            let current_sqrt_price = pool::current_sqrt_price(&pool);
-            std::debug::print(&current_sqrt_price);
-
-            // Print pool liquidity
-            let liquidity = pool::liquidity(&pool);
-            std::debug::print(&liquidity);
-
-            // Perform flash swap with first partner
-            let (balance_a, balance_b, receipt) = pool::flash_swap_with_partner<TestCoinB, TestCoinA>(
+            pool::repay_add_liquidity<TestCoinB, TestCoinA>(
                 &global_config,
                 &mut pool,
-                &partner1,
-                true,  // a2b
-                true,  // by_amount_in
-                1,    // минимальный размер свопа
-                current_sqrt_price - 10000000000000000, // значительно увеличиваем разницу с текущей ценой
-                &mut stats,
-                &price_provider,
-                &clock
-            );
-
-            // Try to repay with wrong partner ID
-            pool::repay_flash_swap_with_partner<TestCoinB, TestCoinA>(
-                &global_config,
-                &mut pool,
-                &mut partner2, // Используем мутабельную ссылку на партнера
                 balance_a,
                 balance_b,
-                receipt
+                addLiquidityReceipt
             );
 
-            // Clean up
-            pool::destroy_receipt<TestCoinB, TestCoinA>(addLiquidityReceipt);
+            let mut position2 = pool::open_position<TestCoinB, TestCoinA>(
+                &global_config,
+                &mut pool,
+                4294813296,  // tick_lower
+                4294824000,  // tick_upper (сужаем диапазон)
+                scenario.ctx()
+            );
+
+            let addLiquidityReceipt2 = pool::add_liquidity<TestCoinB, TestCoinA>(
+                &global_config,
+                &mut pool,
+                &mut position2,
+                100000000000000000,  // увеличиваем ликвидность
+                &clock
+            );
+
+
+            let (pay_amount_a, pay_amount_b) = addLiquidityReceipt2.add_liquidity_pay_amount();
+            let coin_a = sui::coin::mint_for_testing<TestCoinB>(pay_amount_a, scenario.ctx());
+            let coin_b = sui::coin::mint_for_testing<TestCoinA>(pay_amount_b, scenario.ctx());
+            let balance_a = coin_a.into_balance<TestCoinB>();
+            let balance_b = coin_b.into_balance<TestCoinA>();
+
+            pool::repay_add_liquidity<TestCoinB, TestCoinA>(
+                &global_config,
+                &mut pool,
+                balance_a,
+                balance_b,
+                addLiquidityReceipt2
+            );
+
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(position, admin);
+            transfer::public_transfer(position2, admin);
             test_scenario::return_shared(pools);
             test_scenario::return_shared(global_config);
             test_scenario::return_shared(stats);
             test_scenario::return_shared(price_provider);
             test_scenario::return_shared(partners);
-            test_scenario::return_shared(partner1);
-            test_scenario::return_shared(partner2);
+            clock::destroy_for_testing(clock);
+        };
+
+        scenario.next_tx(admin);
+        {
+            let global_config = scenario.take_shared<config::GlobalConfig>();
+            let mut stats = scenario.take_shared<stats::Stats>();
+            let price_provider = scenario.take_shared<price_provider::PriceProvider>();
+            let clock = clock::create_for_testing(scenario.ctx());
+            let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
+
+            // Get current sqrt price before borrowing pool
+            let current_sqrt_price = pool::current_sqrt_price(&pool);
+            std::debug::print(&std::string::utf8(b"Before swap - current_sqrt_price: "));
+            std::debug::print(&current_sqrt_price);
+
+            // Print pool liquidity
+            let liquidity = pool::liquidity(&pool);
+            std::debug::print(&std::string::utf8(b"Before swap - liquidity: "));
+            std::debug::print(&liquidity);
+
+            // Print current tick
+            let current_tick = pool::current_tick_index(&pool);
+            std::debug::print(&std::string::utf8(b"Before swap - current_tick: "));
+            std::debug::print(&current_tick.abs());
+            // Perform flash swap with first partner
+            let (balance_a, balance_b, receipt) = pool::flash_swap<TestCoinB, TestCoinA>(
+                &global_config,
+                &mut pool,
+                false,  // a2b
+                true,  // by_amount_in
+                100000000,    // минимальный размер свопа
+                current_sqrt_price + 10000000,
+                &mut stats,
+                &price_provider,
+                &clock
+            );
+            std::debug::print(&std::string::utf8(b"!!!!!!!!!!!!!!!!!!receipt: "));
+            std::debug::print(&receipt);
+            std::debug::print(&std::string::utf8(b"!!!!!!!!!!!!!!!!!!balance_a: "));
+            std::debug::print(&balance_a);
+            std::debug::print(&std::string::utf8(b"!!!!!!!!!!!!!!!!!!balance_b: "));
+            std::debug::print(&balance_b);
+
+            let mut coin_a_repay = sui::coin::mint_for_testing<TestCoinB>(0, scenario.ctx());
+            let balance_a_repay = coin_a_repay.into_balance();
+            let mut coin_b_repay = sui::coin::mint_for_testing<TestCoinA>(54808, scenario.ctx());
+            let balance_b_repay = coin_b_repay.split(receipt.swap_pay_amount(), scenario.ctx()).into_balance();
+        
+            // Try to repay with wrong partner ID
+            pool::repay_flash_swap<TestCoinB, TestCoinA>(
+                &global_config,
+                &mut pool,
+                balance_a_repay,
+                balance_b_repay,
+                receipt
+            );
+
+            // Clean up 
+            sui::coin::destroy_zero(coin_b_repay);
+            sui::balance::destroy_zero(balance_b);
+            sui::coin::from_balance(balance_a, scenario.ctx()).burn_for_testing();
+            transfer::public_transfer(pool, admin);
+            test_scenario::return_shared(global_config);
+            test_scenario::return_shared(stats);
+            test_scenario::return_shared(price_provider);
             clock::destroy_for_testing(clock);
         };
         

@@ -23,7 +23,6 @@
 /// * Pool ownership transfer events
 /// * Pool configuration change events
 module clmm_pool::factory {
-    use sui::test_scenario;
     use sui::object;
     use sui::package;
     use move_stl::linked_table;

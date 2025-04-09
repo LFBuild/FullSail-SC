@@ -890,11 +890,6 @@ module clmm_pool::pool {
             );
             (liquidity_calc, amount_a_calc, amount_b_calc)
         } else {
-            std::debug::print(&tick_lower);
-            std::debug::print(&tick_upper);
-            std::debug::print(&pool.current_tick_index);
-            std::debug::print(&pool.current_sqrt_price);
-            std::debug::print(&liquidity_delta);
             let (amount_a_calc, amount_b_calc) = clmm_pool::clmm_math::get_amount_by_liquidity(
                 tick_lower,
                 tick_upper,
@@ -921,7 +916,6 @@ module clmm_pool::pool {
             clmm_pool::rewarder::rewards_growth_global(&pool.rewarder_manager),
             pool.fullsail_distribution_growth_global
         );
-
         if (integer_mate::i32::gte(pool.current_tick_index, tick_lower) && 
             integer_mate::i32::lt(pool.current_tick_index, tick_upper)) {
             assert!(integer_mate::math_u128::add_check(pool.liquidity, liquidity), 1);
@@ -2098,11 +2092,6 @@ module clmm_pool::pool {
         assert!(amount > 0, 0);
         clmm_pool::rewarder::settle(&mut pool.rewarder_manager, pool.liquidity, sui::clock::timestamp_ms(clock) / 1000);
         if (a2b) {
-            std::debug::print(&pool.current_sqrt_price);
-            std::debug::print(&sqrt_price_limit);
-            std::debug::print(&clmm_pool::tick_math::min_sqrt_price());
-            std::debug::print(&(pool.current_sqrt_price > sqrt_price_limit));
-            std::debug::print(&(sqrt_price_limit >= clmm_pool::tick_math::min_sqrt_price()));
             assert!(pool.current_sqrt_price > sqrt_price_limit && sqrt_price_limit >= clmm_pool::tick_math::min_sqrt_price(), 11);
         } else {
             assert!(pool.current_sqrt_price < sqrt_price_limit && sqrt_price_limit <= clmm_pool::tick_math::max_sqrt_price(), 11);
@@ -2124,15 +2113,10 @@ module clmm_pool::pool {
             ref_fee_rate,
             clock
         );
-        std::debug::print(&swap_result);
         assert!(swap_result.amount_out > 0, 18);
         let (balance_b, balance_a) = if (a2b) {
-             std::debug::print(&pool.coin_b);
-             std::debug::print(&swap_result.amount_out);
             (sui::balance::split<CoinTypeB>(&mut pool.coin_b, swap_result.amount_out), sui::balance::zero<CoinTypeA>())
         } else {
-            std::debug::print(&pool.coin_a);
-            std::debug::print(&swap_result.amount_out);
             (sui::balance::zero<CoinTypeB>(), sui::balance::split<CoinTypeA>(&mut pool.coin_a, swap_result.amount_out))
         };
 
@@ -3316,7 +3300,7 @@ module clmm_pool::pool {
     /// # Aborts
     /// * If the referral fee rate exceeds 10000 (error code: 16)
     /// * If there are no more ticks available for the swap (error code: 20)
-    fun swap_in_pool<CoinTypeA, CoinTypeB>(
+   fun swap_in_pool<CoinTypeA, CoinTypeB>(
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
         a2b: bool,
         by_amount_in: bool,
@@ -3330,19 +3314,18 @@ module clmm_pool::pool {
         assert!(ref_fee_rate <= 10000, 16);
         let mut swap_result = default_swap_result();
         let mut remaining_amount = amount;
-        let mut next_tick_score = clmm_pool::tick::first_score_for_swap(&pool.tick_manager, pool.current_tick_index, a2b);
+        let mut next_tick_score = clmm_pool::tick::first_score_for_swap(
+            &pool.tick_manager, 
+            pool.current_tick_index, 
+            a2b
+        );
         while (remaining_amount > 0 && pool.current_sqrt_price != sqrt_price_limit) {
-             std::debug::print(&remaining_amount);
-             std::debug::print(&pool.current_sqrt_price);
-             std::debug::print(&sqrt_price_limit);
-            std::debug::print(&next_tick_score);
-             std::debug::print(&move_stl::option_u64::is_none(&next_tick_score));
             if (move_stl::option_u64::is_none(&next_tick_score)) {
                 abort 20
             };
             let (tick_info, next_score) = clmm_pool::tick::borrow_tick_for_swap(
-                &pool.tick_manager,
-                move_stl::option_u64::borrow(&next_tick_score),
+                &pool.tick_manager, 
+                move_stl::option_u64::borrow(&next_tick_score), 
                 a2b
             );
             next_tick_score = next_score;
@@ -3353,26 +3336,15 @@ module clmm_pool::pool {
             } else {
                 integer_mate::math_u128::min(sqrt_price_limit, tick_sqrt_price)
             };
-            std::debug::print(&pool.current_sqrt_price);
-            std::debug::print(&target_sqrt_price);
-            std::debug::print(&pool.liquidity);
-            std::debug::print(&remaining_amount);
-            std::debug::print(&pool.fee_rate);
-            std::debug::print(&a2b);
-            std::debug::print(&by_amount_in);
             let (amount_in, amount_out, next_sqrt_price, fee_amount) = clmm_pool::clmm_math::compute_swap_step(
-                pool.current_sqrt_price,
-                target_sqrt_price,
-                pool.liquidity,
-                remaining_amount,
-                pool.fee_rate,
-                a2b,
+                pool.current_sqrt_price, 
+                target_sqrt_price, 
+                pool.liquidity, 
+                remaining_amount, 
+                pool.fee_rate, 
+                a2b, 
                 by_amount_in
             );
-            std::debug::print(&amount_in);
-            std::debug::print(&amount_out);
-            std::debug::print(&next_sqrt_price);
-            std::debug::print(&fee_amount);
             if (amount_in != 0 || fee_amount != 0) {
                 if (by_amount_in) {
                     let amount_after_in = check_remainer_amount_sub(remaining_amount, amount_in);
@@ -3380,37 +3352,45 @@ module clmm_pool::pool {
                 } else {
                     remaining_amount = check_remainer_amount_sub(remaining_amount, amount_out);
                 };
-                let protocol_fee = integer_mate::full_math_u64::mul_div_ceil(
-                    fee_amount,
-                    protocol_fee_rate,
+                let ref_fee_amount = integer_mate::full_math_u64::mul_div_ceil(
+                    fee_amount, 
+                    ref_fee_rate, 
                     clmm_pool::config::protocol_fee_rate_denom()
                 );
-                let remaining_fee = fee_amount - protocol_fee;
+                let remaining_fee = fee_amount - ref_fee_amount;
                 let mut fee_after_protocol = remaining_fee;
                 let mut gauge_fee = 0;
-                let mut ref_fee = 0;
+                let mut protocol_fee = 0;
                 if (remaining_fee > 0) {
-                    let ref_fee_amount = integer_mate::full_math_u64::mul_div_ceil(
-                        remaining_fee,
-                        ref_fee_rate,
+                    let protocol_fee_amount = integer_mate::full_math_u64::mul_div_ceil(
+                        remaining_fee, 
+                        protocol_fee_rate, 
                         clmm_pool::config::protocol_fee_rate_denom()
                     );
-                    ref_fee = ref_fee_amount;
-                    let fee_after_ref = remaining_fee - ref_fee_amount;
-                    fee_after_protocol = fee_after_ref;
-                    if (fee_after_ref > 0) {
+                    protocol_fee = protocol_fee_amount;
+                    let remaining_fee_after_protocol = remaining_fee - protocol_fee_amount;
+                    fee_after_protocol = remaining_fee_after_protocol;
+                    if (remaining_fee_after_protocol > 0) {
                         let (_, gauge_fee_amount) = calculate_fees<CoinTypeA, CoinTypeB>(
-                            pool,
-                            fee_after_ref,
-                            pool.liquidity,
-                            pool.fullsail_distribution_staked_liquidity,
+                            pool, 
+                            remaining_fee_after_protocol, 
+                            pool.liquidity, 
+                            pool.fullsail_distribution_staked_liquidity, 
                             unstaked_fee_rate
                         );
                         gauge_fee = gauge_fee_amount;
-                        fee_after_protocol = fee_after_ref - gauge_fee_amount;
-                    };
+                        fee_after_protocol = remaining_fee_after_protocol - gauge_fee_amount;
+                    }
                 };
-                update_swap_result(&mut swap_result, amount_in, amount_out, fee_amount, ref_fee, protocol_fee, gauge_fee);
+                update_swap_result(
+                    &mut swap_result, 
+                    amount_in, 
+                    amount_out, 
+                    fee_amount, 
+                    protocol_fee, 
+                    ref_fee_amount, 
+                    gauge_fee
+                );
                 if (fee_after_protocol > 0) {
                     update_fee_growth_global<CoinTypeA, CoinTypeB>(pool, fee_after_protocol, a2b);
                 };
@@ -3481,15 +3461,15 @@ module clmm_pool::pool {
     /// # Aborts
     /// * If the pool is paused (error code: 13)
     /// * If the gauge capability verification fails
-    public fun sync_fullsail_distribution_reward<T0, T1>(
-        pool: &mut Pool<T0, T1>,
+    public fun sync_fullsail_distribution_reward<CoinTypeA, CoinTypeB>(
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
         gauge_cap: &gauge_cap::gauge_cap::GaugeCap,
         distribution_rate: u128,
         distribution_reserve: u64,
         period_finish: u64
     ) {
         assert!(!pool.is_pause, 13);
-        check_gauge_cap<T0, T1>(pool, gauge_cap);
+        check_gauge_cap<CoinTypeA, CoinTypeB>(pool, gauge_cap);
         pool.fullsail_distribution_rate = distribution_rate;
         pool.fullsail_distribution_reserve = distribution_reserve;
         pool.fullsail_distribution_period_finish = period_finish;
