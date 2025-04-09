@@ -41,7 +41,7 @@ module clmm_pool::pool {
     /// * `index` - Pool index in the system
     /// * `url` - URL for pool metadata
     /// * `unstaked_liquidity_fee_rate` - Fee rate for unstaked liquidity
-    /// * `fullsale_distribution_*` fields - Various fields for fullsale distribution system
+    /// * `fullsail_distribution_*` fields - Various fields for fullsail distribution system
     /// * `volume_usd_*` fields - Volume tracking in USD
     /// * `feed_id_*` fields - Price feed IDs for tokens
     /// * `auto_calculation_volumes` - Whether volumes are calculated automatically
@@ -65,15 +65,15 @@ module clmm_pool::pool {
         index: u64,
         url: std::string::String,
         unstaked_liquidity_fee_rate: u64,
-        fullsale_distribution_gauger_id: std::option::Option<sui::object::ID>,
-        fullsale_distribution_growth_global: u128,
-        fullsale_distribution_rate: u128,
-        fullsale_distribution_reserve: u64,
-        fullsale_distribution_period_finish: u64,
-        fullsale_distribution_rollover: u64,
-        fullsale_distribution_last_updated: u64,
-        fullsale_distribution_staked_liquidity: u128,
-        fullsale_distribution_gauger_fee: PoolFee,
+        fullsail_distribution_gauger_id: std::option::Option<sui::object::ID>,
+        fullsail_distribution_growth_global: u128,
+        fullsail_distribution_rate: u128,
+        fullsail_distribution_reserve: u64,
+        fullsail_distribution_period_finish: u64,
+        fullsail_distribution_rollover: u64,
+        fullsail_distribution_last_updated: u64,
+        fullsail_distribution_staked_liquidity: u128,
+        fullsail_distribution_gauger_fee: PoolFee,
         volume: PoolVolume,
         feed_id: PoolFeedId,
         auto_calculation_volumes: bool,
@@ -285,7 +285,7 @@ module clmm_pool::pool {
     /// * `partner` - ID of the partner
     /// * `amount_in` - Amount of input token
     /// * `amount_out` - Amount of output token
-    /// * `fullsale_fee_amount` - Fullsale fee amount
+    /// * `fullsail_fee_amount` - Fullsail fee amount
     /// * `protocol_fee_amount` - Protocol fee amount
     /// * `ref_fee_amount` - Referral fee amount
     /// * `fee_amount` - Total fee amount
@@ -300,7 +300,7 @@ module clmm_pool::pool {
         partner: sui::object::ID,
         amount_in: u64,
         amount_out: u64,
-        fullsale_fee_amount: u64,
+        fullsail_fee_amount: u64,
         protocol_fee_amount: u64,
         ref_fee_amount: u64,
         fee_amount: u64,
@@ -469,15 +469,15 @@ module clmm_pool::pool {
             index: pool_index,
             url: pool_url,
             unstaked_liquidity_fee_rate: clmm_pool::config::default_unstaked_fee_rate(),
-            fullsale_distribution_gauger_id: std::option::none<sui::object::ID>(),
-            fullsale_distribution_growth_global: 0,
-            fullsale_distribution_rate: 0,
-            fullsale_distribution_reserve: 0,
-            fullsale_distribution_period_finish: 0,
-            fullsale_distribution_rollover: 0,
-            fullsale_distribution_last_updated: sui::clock::timestamp_ms(clock) / 1000,
-            fullsale_distribution_staked_liquidity: 0,
-            fullsale_distribution_gauger_fee: initial_pool_fee,
+            fullsail_distribution_gauger_id: std::option::none<sui::object::ID>(),
+            fullsail_distribution_growth_global: 0,
+            fullsail_distribution_rate: 0,
+            fullsail_distribution_reserve: 0,
+            fullsail_distribution_period_finish: 0,
+            fullsail_distribution_rollover: 0,
+            fullsail_distribution_last_updated: sui::clock::timestamp_ms(clock) / 1000,
+            fullsail_distribution_staked_liquidity: 0,
+            fullsail_distribution_gauger_fee: initial_pool_fee,
             volume: initial_pool_volume,
             feed_id: initial_pool_feed_id,
             auto_calculation_volumes,
@@ -925,7 +925,7 @@ module clmm_pool::pool {
             (liquidity_delta, amount_a_calc, amount_b_calc)
         };
 
-        let (fee_growth_a, fee_growth_b, rewards_growth, points_growth, fullsale_growth) = 
+        let (fee_growth_a, fee_growth_b, rewards_growth, points_growth, fullsail_growth) = 
             get_all_growths_in_tick_range<CoinTypeA, CoinTypeB>(pool, tick_lower, tick_upper);
 
         clmm_pool::tick::increase_liquidity(
@@ -938,9 +938,8 @@ module clmm_pool::pool {
             pool.fee_growth_global_b,
             clmm_pool::rewarder::points_growth_global(&pool.rewarder_manager),
             clmm_pool::rewarder::rewards_growth_global(&pool.rewarder_manager),
-            pool.fullsale_distribution_growth_global
+            pool.fullsail_distribution_growth_global
         );
-
         if (integer_mate::i32::gte(pool.current_tick_index, tick_lower) && 
             integer_mate::i32::lt(pool.current_tick_index, tick_upper)) {
             assert!(integer_mate::math_u128::add_check(pool.liquidity, liquidity), 1);
@@ -961,7 +960,7 @@ module clmm_pool::pool {
                 fee_growth_b,
                 points_growth,
                 rewards_growth,
-                fullsale_growth
+                fullsail_growth
             ),
             amount_a,
             amount_b,
@@ -1055,7 +1054,7 @@ module clmm_pool::pool {
         }
     }
 
-    /// Calculates and updates the fullsale distribution rewards for a position.
+    /// Calculates and updates the fullsail distribution rewards for a position.
     /// This function can only be called if the pool is not paused.
     ///
     /// # Arguments
@@ -1064,12 +1063,12 @@ module clmm_pool::pool {
     /// * `position_id` - The ID of the position to calculate rewards for
     ///
     /// # Returns
-    /// The amount of fullsale distribution rewards earned by the position
+    /// The amount of fullsail distribution rewards earned by the position
     ///
     /// # Aborts
     /// * If the pool is paused
     /// * If the position is not valid for this pool
-    public fun calculate_and_update_fullsale_distribution<CoinTypeA, CoinTypeB>(
+    public fun calculate_and_update_fullsail_distribution<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
         position_id: sui::object::ID
@@ -1079,18 +1078,18 @@ module clmm_pool::pool {
         let position_info = clmm_pool::position::borrow_position_info(&pool.position_manager, position_id);
         if (clmm_pool::position::info_liquidity(position_info) != 0) {
             let (tick_lower, tick_upper) = clmm_pool::position::info_tick_range(position_info);
-            clmm_pool::position::update_fullsale_distribution(
+            clmm_pool::position::update_fullsail_distribution(
                 &mut pool.position_manager,
                 position_id,
-                clmm_pool::tick::get_fullsale_distribution_growth_in_range(
+                clmm_pool::tick::get_fullsail_distribution_growth_in_range(
                     pool.current_tick_index,
-                    pool.fullsale_distribution_growth_global,
+                    pool.fullsail_distribution_growth_global,
                     clmm_pool::tick::try_borrow_tick(&pool.tick_manager, tick_lower),
                     clmm_pool::tick::try_borrow_tick(&pool.tick_manager, tick_upper)
                 )
             )
         } else {
-            clmm_pool::position::info_fullsale_distribution_owned(position_info)
+            clmm_pool::position::info_fullsail_distribution_owned(position_info)
         }
     }
 
@@ -1216,7 +1215,7 @@ module clmm_pool::pool {
         staked_liquidity: u128,
         unstaked_fee_rate: u64
     ): (u128, u64) {
-        if (total_liquidity == pool.fullsale_distribution_staked_liquidity) {
+        if (total_liquidity == pool.fullsail_distribution_staked_liquidity) {
             (0, fee_amount)
         } else {
             let (staked_fee, unstaked_fee) = if (staked_liquidity == 0) {
@@ -1269,7 +1268,7 @@ module clmm_pool::pool {
     ): CalculatedSwapResult {
         let mut current_sqrt_price = pool.current_sqrt_price;
         let mut current_liquidity = pool.liquidity;
-        let mut staked_liquidity = pool.fullsale_distribution_staked_liquidity;
+        let mut staked_liquidity = pool.fullsail_distribution_staked_liquidity;
         let mut swap_result = default_swap_result();
         let mut remaining_amount = amount;
         let mut next_tick = clmm_pool::tick::first_score_for_swap(&pool.tick_manager, pool.current_tick_index, a2b);
@@ -1328,7 +1327,7 @@ module clmm_pool::pool {
                     pool,
                     fee_amount - protocol_fee,
                     pool.liquidity,
-                    pool.fullsale_distribution_staked_liquidity,
+                    pool.fullsail_distribution_staked_liquidity,
                     unstaked_fee_rate
                 );
                 update_swap_result(&mut swap_result, amount_in, amount_out, fee_amount, protocol_fee, 0, gauge_fee);
@@ -1347,10 +1346,10 @@ module clmm_pool::pool {
                 current_sqrt_price = target_sqrt_price;
                 let (liquidity_delta, staked_liquidity_delta) = if (a2b) {
                     (integer_mate::i128::neg(clmm_pool::tick::liquidity_net(tick)), integer_mate::i128::neg(
-                        clmm_pool::tick::fullsale_distribution_staked_liquidity_net(tick)
+                        clmm_pool::tick::fullsail_distribution_staked_liquidity_net(tick)
                     ))
                 } else {
-                    (clmm_pool::tick::liquidity_net(tick), clmm_pool::tick::fullsale_distribution_staked_liquidity_net(tick))
+                    (clmm_pool::tick::liquidity_net(tick), clmm_pool::tick::fullsail_distribution_staked_liquidity_net(tick))
                 };
                 let liquidity_abs = integer_mate::i128::abs_u128(liquidity_delta);
                 let staked_liquidity_abs = integer_mate::i128::abs_u128(staked_liquidity_delta);
@@ -1428,7 +1427,7 @@ module clmm_pool::pool {
     ): CalculatedSwapResult {
         let mut current_sqrt_price = pool.current_sqrt_price;
         let mut current_liquidity = pool.liquidity;
-        let mut staked_liquidity = pool.fullsale_distribution_staked_liquidity;
+        let mut staked_liquidity = pool.fullsail_distribution_staked_liquidity;
         let mut swap_result = default_swap_result();
         let mut remaining_amount = amount;
         let mut next_tick = clmm_pool::tick::first_score_for_swap(&pool.tick_manager, pool.current_tick_index, a2b);
@@ -1499,7 +1498,7 @@ module clmm_pool::pool {
                             pool,
                             fee_after_protocol,
                             pool.liquidity,
-                            pool.fullsale_distribution_staked_liquidity,
+                            pool.fullsail_distribution_staked_liquidity,
                             unstaked_fee_rate
                         );
                         gauge_fee = gauge_fee_amount;
@@ -1521,10 +1520,10 @@ module clmm_pool::pool {
                 current_sqrt_price = target_sqrt_price;
                 let (liquidity_delta, staked_liquidity_delta) = if (a2b) {
                     (integer_mate::i128::neg(clmm_pool::tick::liquidity_net(tick)), integer_mate::i128::neg(
-                        clmm_pool::tick::fullsale_distribution_staked_liquidity_net(tick)
+                        clmm_pool::tick::fullsail_distribution_staked_liquidity_net(tick)
                     ))
                 } else {
-                    (clmm_pool::tick::liquidity_net(tick), clmm_pool::tick::fullsale_distribution_staked_liquidity_net(tick))
+                    (clmm_pool::tick::liquidity_net(tick), clmm_pool::tick::fullsail_distribution_staked_liquidity_net(tick))
                 };
                 let liquidity_abs = integer_mate::i128::abs_u128(liquidity_delta);
                 let staked_liquidity_abs = integer_mate::i128::abs_u128(staked_liquidity_delta);
@@ -1659,7 +1658,7 @@ module clmm_pool::pool {
         gauge_cap: &gauge_cap::gauge_cap::GaugeCap
     ) {
         let is_valid = if (gauge_cap::gauge_cap::get_pool_id(gauge_cap) == sui::object::id<Pool<CoinTypeA, CoinTypeB>>(pool)) {
-            let gauger_id = &pool.fullsale_distribution_gauger_id;
+            let gauger_id = &pool.fullsail_distribution_gauger_id;
             let has_valid_gauge = if (std::option::is_some<sui::object::ID>(gauger_id)) {
                 let cap_gauge_id = gauge_cap::gauge_cap::get_gauge_id(gauge_cap);
                 std::option::borrow<sui::object::ID>(gauger_id) == &cap_gauge_id
@@ -1792,7 +1791,7 @@ module clmm_pool::pool {
     /// # Aborts
     /// * If the pool is paused (error code: 13)
     /// * If the gauge cap is invalid for the pool
-    public fun collect_fullsale_distribution_gauger_fees<CoinTypeA, CoinTypeB>(
+    public fun collect_fullsail_distribution_gauger_fees<CoinTypeA, CoinTypeB>(
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
         gauge_cap: &gauge_cap::gauge_cap::GaugeCap
     ): (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>) {
@@ -1801,20 +1800,20 @@ module clmm_pool::pool {
         let mut balance_a = sui::balance::zero<CoinTypeA>();
         let mut balance_b = sui::balance::zero<CoinTypeB>();
         
-        if (pool.fullsale_distribution_gauger_fee.coin_a > 0) {
+        if (pool.fullsail_distribution_gauger_fee.coin_a > 0) {
             sui::balance::join<CoinTypeA>(
                 &mut balance_a,
-                sui::balance::split<CoinTypeA>(&mut pool.coin_a, pool.fullsale_distribution_gauger_fee.coin_a)
+                sui::balance::split<CoinTypeA>(&mut pool.coin_a, pool.fullsail_distribution_gauger_fee.coin_a)
             );
-            pool.fullsale_distribution_gauger_fee.coin_a = 0;
+            pool.fullsail_distribution_gauger_fee.coin_a = 0;
         };
 
-        if (pool.fullsale_distribution_gauger_fee.coin_b > 0) {
+        if (pool.fullsail_distribution_gauger_fee.coin_b > 0) {
             sui::balance::join<CoinTypeB>(
                 &mut balance_b,
-                sui::balance::split<CoinTypeB>(&mut pool.coin_b, pool.fullsale_distribution_gauger_fee.coin_b)
+                sui::balance::split<CoinTypeB>(&mut pool.coin_b, pool.fullsail_distribution_gauger_fee.coin_b)
             );
-            pool.fullsale_distribution_gauger_fee.coin_b = 0;
+            pool.fullsail_distribution_gauger_fee.coin_b = 0;
         };
 
         let event = CollectGaugeFeeEvent {
@@ -2162,7 +2161,7 @@ module clmm_pool::pool {
             partner: partner_id,
             amount_in: swap_result.amount_in + swap_result.fee_amount,
             amount_out: swap_result.amount_out,
-            fullsale_fee_amount: swap_result.gauge_fee_amount,
+            fullsail_fee_amount: swap_result.gauge_fee_amount,
             protocol_fee_amount: swap_result.protocol_fee_amount,
             ref_fee_amount: swap_result.ref_fee_amount,
             fee_amount: swap_result.fee_amount,
@@ -2244,7 +2243,7 @@ module clmm_pool::pool {
     }
 
     /// Returns all growth accumulators within a specified tick range.
-    /// This function calculates the accumulated values for fees, rewards, points, and fullsale distribution
+    /// This function calculates the accumulated values for fees, rewards, points, and fullsail distribution
     /// between the specified lower and upper ticks.
     ///
     /// # Arguments
@@ -2258,7 +2257,7 @@ module clmm_pool::pool {
     /// * Fee growth for token B
     /// * Vector of reward growths for each rewarder
     /// * Points growth
-    /// * Fullsale distribution growth
+    /// * Fullsail distribution growth
     public fun get_all_growths_in_tick_range<CoinTypeA, CoinTypeB>(
         pool: &Pool<CoinTypeA, CoinTypeB>,
         tick_lower: integer_mate::i32::I32,
@@ -2288,9 +2287,9 @@ module clmm_pool::pool {
                 tick_lower_info,
                 tick_upper_info
             ),
-            clmm_pool::tick::get_fullsale_distribution_growth_in_range(
+            clmm_pool::tick::get_fullsail_distribution_growth_in_range(
                 pool.current_tick_index,
-                pool.fullsale_distribution_growth_global,
+                pool.fullsail_distribution_growth_global,
                 tick_lower_info,
                 tick_upper_info
             )
@@ -2402,36 +2401,36 @@ module clmm_pool::pool {
         }
     }
 
-    /// Returns the ID of the fullsale distribution gauger.
-    /// This function retrieves the ID of the gauger responsible for fullsale distribution in the pool.
+    /// Returns the ID of the fullsail distribution gauger.
+    /// This function retrieves the ID of the gauger responsible for fullsail distribution in the pool.
     ///
     /// # Arguments
     /// * `pool` - Reference to the pool containing the gauger ID
     ///
     /// # Returns
-    /// The ID of the fullsale distribution gauger
+    /// The ID of the fullsail distribution gauger
     ///
     /// # Aborts
     /// * If the gauger ID is not set (error code: 9223379295349506047)
-    public fun get_fullsale_distribution_gauger_id<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): sui::object::ID {
-        assert!(std::option::is_some<sui::object::ID>(&pool.fullsale_distribution_gauger_id), 9223379295349506047);
-        *std::option::borrow<sui::object::ID>(&pool.fullsale_distribution_gauger_id)
+    public fun get_fullsail_distribution_gauger_id<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): sui::object::ID {
+        assert!(std::option::is_some<sui::object::ID>(&pool.fullsail_distribution_gauger_id), 9223379295349506047);
+        *std::option::borrow<sui::object::ID>(&pool.fullsail_distribution_gauger_id)
     }
 
-    /// Returns the global fullsale distribution growth accumulator.
-    /// This value represents the total fullsale distribution growth across all positions.
+    /// Returns the global fullsail distribution growth accumulator.
+    /// This value represents the total fullsail distribution growth across all positions.
     ///
     /// # Arguments
     /// * `pool` - Reference to the pool containing the growth accumulator
     ///
     /// # Returns
-    /// The global fullsale distribution growth value
-    public fun get_fullsale_distribution_growth_global<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): u128 {
-        pool.fullsale_distribution_growth_global
+    /// The global fullsail distribution growth value
+    public fun get_fullsail_distribution_growth_global<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): u128 {
+        pool.fullsail_distribution_growth_global
     }
 
-    /// Returns the fullsale distribution growth within a specified tick range.
-    /// This function calculates the accumulated fullsale distribution between the specified ticks.
+    /// Returns the fullsail distribution growth within a specified tick range.
+    /// This function calculates the accumulated fullsail distribution between the specified ticks.
     ///
     /// # Arguments
     /// * `pool` - Reference to the pool containing the growth accumulator
@@ -2440,11 +2439,11 @@ module clmm_pool::pool {
     /// * `growth_global` - Optional global growth value to use for calculation
     ///
     /// # Returns
-    /// The fullsale distribution growth within the specified range
+    /// The fullsail distribution growth within the specified range
     ///
     /// # Aborts
     /// * If the tick range is invalid (error code: 9223378947457155071)
-    public fun get_fullsale_distribution_growth_inside<CoinTypeA, CoinTypeB>(
+    public fun get_fullsail_distribution_growth_inside<CoinTypeA, CoinTypeB>(
         pool: &Pool<CoinTypeA, CoinTypeB>,
         tick_lower: integer_mate::i32::I32,
         tick_upper: integer_mate::i32::I32,
@@ -2452,9 +2451,9 @@ module clmm_pool::pool {
     ): u128 {
         assert!(check_tick_range(tick_lower, tick_upper), 9223378947457155071);
         if (growth_global == 0) {
-            growth_global = pool.fullsale_distribution_growth_global;
+            growth_global = pool.fullsail_distribution_growth_global;
         };
-        clmm_pool::tick::get_fullsale_distribution_growth_in_range(
+        clmm_pool::tick::get_fullsail_distribution_growth_in_range(
             pool.current_tick_index,
             growth_global,
             std::option::some<clmm_pool::tick::Tick>(*borrow_tick<CoinTypeA, CoinTypeB>(pool, tick_lower)),
@@ -2462,52 +2461,52 @@ module clmm_pool::pool {
         )
     }
 
-    /// Returns the timestamp of the last fullsale distribution update.
-    /// This value indicates when the fullsale distribution parameters were last modified.
+    /// Returns the timestamp of the last fullsail distribution update.
+    /// This value indicates when the fullsail distribution parameters were last modified.
     ///
     /// # Arguments
     /// * `pool` - Reference to the pool containing the last update timestamp
     ///
     /// # Returns
-    /// The timestamp of the last fullsale distribution update
-    public fun get_fullsale_distribution_last_updated<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): u64 {
-        pool.fullsale_distribution_last_updated
+    /// The timestamp of the last fullsail distribution update
+    public fun get_fullsail_distribution_last_updated<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): u64 {
+        pool.fullsail_distribution_last_updated
     }
 
-    /// Returns the fullsale distribution reserve amount.
+    /// Returns the fullsail distribution reserve amount.
     /// This value represents the amount of rewards reserved for distribution.
     ///
     /// # Arguments
     /// * `pool` - Reference to the pool containing the reserve amount
     ///
     /// # Returns
-    /// The fullsale distribution reserve amount
-    public fun get_fullsale_distribution_reserve<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): u64 {
-        pool.fullsale_distribution_reserve
+    /// The fullsail distribution reserve amount
+    public fun get_fullsail_distribution_reserve<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): u64 {
+        pool.fullsail_distribution_reserve
     }
 
-    /// Returns the fullsale distribution rollover amount.
+    /// Returns the fullsail distribution rollover amount.
     /// This value represents the amount of rewards that were not distributed in the previous period.
     ///
     /// # Arguments
     /// * `pool` - Reference to the pool containing the rollover amount
     ///
     /// # Returns
-    /// The fullsale distribution rollover amount
-    public fun get_fullsale_distribution_rollover<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): u64 {
-        pool.fullsale_distribution_rollover
+    /// The fullsail distribution rollover amount
+    public fun get_fullsail_distribution_rollover<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): u64 {
+        pool.fullsail_distribution_rollover
     }
 
-    /// Returns the total staked liquidity for fullsale distribution.
-    /// This value represents the total amount of liquidity that is currently staked in the fullsale distribution system.
+    /// Returns the total staked liquidity for fullsail distribution.
+    /// This value represents the total amount of liquidity that is currently staked in the fullsail distribution system.
     ///
     /// # Arguments
     /// * `pool` - Reference to the pool containing the staked liquidity
     ///
     /// # Returns
-    /// The total staked liquidity for fullsale distribution
-    public fun get_fullsale_distribution_staked_liquidity<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): u128 {
-        pool.fullsale_distribution_staked_liquidity
+    /// The total staked liquidity for fullsail distribution
+    public fun get_fullsail_distribution_staked_liquidity<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): u128 {
+        pool.fullsail_distribution_staked_liquidity
     }
 
     /// Returns the accumulated points within a specified tick range.
@@ -2671,8 +2670,8 @@ module clmm_pool::pool {
         );
     }
 
-    /// Initializes the fullsale distribution gauge for a pool.
-    /// This function sets up the gauge capability for fullsale distribution rewards.
+    /// Initializes the fullsail distribution gauge for a pool.
+    /// This function sets up the gauge capability for fullsail distribution rewards.
     ///
     /// # Arguments
     /// * `pool` - Reference to the pool to initialize the gauge for
@@ -2680,7 +2679,7 @@ module clmm_pool::pool {
     ///
     /// # Aborts
     /// * If the pool ID in the gauge capability does not match the pool's ID (error code: 9223379334004211711)
-    public fun init_fullsale_distribution_gauge<CoinTypeA, CoinTypeB>(
+    public fun init_fullsail_distribution_gauge<CoinTypeA, CoinTypeB>(
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
         gauge_cap: &gauge_cap::gauge_cap::GaugeCap
     ) {
@@ -2689,7 +2688,7 @@ module clmm_pool::pool {
             9223379334004211711
         );
         std::option::fill<sui::object::ID>(
-            &mut pool.fullsale_distribution_gauger_id,
+            &mut pool.fullsail_distribution_gauger_id,
             gauge_cap::gauge_cap::get_gauge_id(gauge_cap)
         );
     }
@@ -2731,21 +2730,21 @@ module clmm_pool::pool {
         pool.is_pause
     }
 
-    /// Returns the fullsale distribution gauger fee for the pool.
+    /// Returns the fullsail distribution gauger fee for the pool.
     ///
     /// # Arguments
     /// * `pool` - Reference to the pool containing the gauger fee
     ///
     /// # Returns
-    /// The fullsale distribution gauger fee structure containing fees for both tokens
-    public fun fullsale_distribution_gauger_fee<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): PoolFee {
+    /// The fullsail distribution gauger fee structure containing fees for both tokens
+    public fun fullsail_distribution_gauger_fee<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>): PoolFee {
         PoolFee {
-            coin_a: pool.fullsale_distribution_gauger_fee.coin_a,
-            coin_b: pool.fullsale_distribution_gauger_fee.coin_b,
+            coin_a: pool.fullsail_distribution_gauger_fee.coin_a,
+            coin_b: pool.fullsail_distribution_gauger_fee.coin_b,
         }
     }
 
-    /// Marks a position as unstaked in the fullsale distribution system.
+    /// Marks a position as unstaked in the fullsail distribution system.
     ///
     /// # Arguments
     /// * `pool` - Reference to the pool containing the position
@@ -2865,7 +2864,7 @@ module clmm_pool::pool {
             fee_growth_b,
             rewards_growth,
             points_growth,
-            fullsale_growth,
+            fullsail_growth,
         ) = get_all_growths_in_tick_range<CoinTypeA, CoinTypeB>(
             pool,
             tick_lower,
@@ -2882,7 +2881,7 @@ module clmm_pool::pool {
             pool.fee_growth_global_b,
             clmm_pool::rewarder::points_growth_global(&pool.rewarder_manager),
             clmm_pool::rewarder::rewards_growth_global(&pool.rewarder_manager),
-            pool.fullsale_distribution_growth_global
+            pool.fullsail_distribution_growth_global
         );
 
         if (integer_mate::i32::lte(tick_lower, pool.current_tick_index) && 
@@ -2913,7 +2912,7 @@ module clmm_pool::pool {
                 fee_growth_b,
                 points_growth,
                 rewards_growth,
-                fullsale_growth
+                fullsail_growth
             ),
             amount_a,
             amount_b,
@@ -3174,8 +3173,8 @@ module clmm_pool::pool {
         (staked_amount as u64, unstaked_amount as u64)
     }
 
-    /// Stakes liquidity in the fullsale distribution system for a given tick range.
-    /// This function allows users to participate in the fullsale distribution rewards program
+    /// Stakes liquidity in the fullsail distribution system for a given tick range.
+    /// This function allows users to participate in the fullsail distribution rewards program
     /// by staking their liquidity position within a specified tick range.
     ///
     /// # Arguments
@@ -3190,7 +3189,7 @@ module clmm_pool::pool {
     /// * If the pool is paused (error code: 13)
     /// * If the liquidity amount is zero (error code: 9223379140730683391)
     /// * If the gauge capability verification fails
-    public fun stake_in_fullsale_distribution<CoinTypeA, CoinTypeB>(
+    public fun stake_in_fullsail_distribution<CoinTypeA, CoinTypeB>(
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
         gauge_cap: &gauge_cap::gauge_cap::GaugeCap, 
         liquidity: u128,
@@ -3201,7 +3200,7 @@ module clmm_pool::pool {
         assert!(!pool.is_pause, 13);
         assert!(liquidity != 0, 9223379140730683391);
         check_gauge_cap<CoinTypeA, CoinTypeB>(pool, gauge_cap);
-        update_fullsale_distribution_internal<CoinTypeA, CoinTypeB>(
+        update_fullsail_distribution_internal<CoinTypeA, CoinTypeB>(
             pool,
             integer_mate::i128::from(liquidity),
             tick_lower,
@@ -3325,7 +3324,7 @@ module clmm_pool::pool {
     /// # Aborts
     /// * If the referral fee rate exceeds 10000 (error code: 16)
     /// * If there are no more ticks available for the swap (error code: 20)
-    fun swap_in_pool<CoinTypeA, CoinTypeB>(
+   fun swap_in_pool<CoinTypeA, CoinTypeB>(
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
         a2b: bool,
         by_amount_in: bool,
@@ -3339,14 +3338,18 @@ module clmm_pool::pool {
         assert!(ref_fee_rate <= 10000, 16);
         let mut swap_result = default_swap_result();
         let mut remaining_amount = amount;
-        let mut next_tick_score = clmm_pool::tick::first_score_for_swap(&pool.tick_manager, pool.current_tick_index, a2b);
+        let mut next_tick_score = clmm_pool::tick::first_score_for_swap(
+            &pool.tick_manager, 
+            pool.current_tick_index, 
+            a2b
+        );
         while (remaining_amount > 0 && pool.current_sqrt_price != sqrt_price_limit) {
             if (move_stl::option_u64::is_none(&next_tick_score)) {
                 abort 20
             };
             let (tick_info, next_score) = clmm_pool::tick::borrow_tick_for_swap(
-                &pool.tick_manager,
-                move_stl::option_u64::borrow(&next_tick_score),
+                &pool.tick_manager, 
+                move_stl::option_u64::borrow(&next_tick_score), 
                 a2b
             );
             next_tick_score = next_score;
@@ -3358,12 +3361,12 @@ module clmm_pool::pool {
                 integer_mate::math_u128::min(sqrt_price_limit, tick_sqrt_price)
             };
             let (amount_in, amount_out, next_sqrt_price, fee_amount) = clmm_pool::clmm_math::compute_swap_step(
-                pool.current_sqrt_price,
-                target_sqrt_price,
-                pool.liquidity,
-                remaining_amount,
-                pool.fee_rate,
-                a2b,
+                pool.current_sqrt_price, 
+                target_sqrt_price, 
+                pool.liquidity, 
+                remaining_amount, 
+                pool.fee_rate, 
+                a2b, 
                 by_amount_in
             );
             if (amount_in != 0 || fee_amount != 0) {
@@ -3373,37 +3376,45 @@ module clmm_pool::pool {
                 } else {
                     remaining_amount = check_remainer_amount_sub(remaining_amount, amount_out);
                 };
-                let ref_fee = integer_mate::full_math_u64::mul_div_ceil(
-                    fee_amount,
-                    ref_fee_rate,
+                let ref_fee_amount = integer_mate::full_math_u64::mul_div_ceil(
+                    fee_amount, 
+                    ref_fee_rate, 
                     clmm_pool::config::protocol_fee_rate_denom()
                 );
-                let remaining_fee = fee_amount - ref_fee;
+                let remaining_fee = fee_amount - ref_fee_amount;
                 let mut fee_after_protocol = remaining_fee;
                 let mut gauge_fee = 0;
                 let mut protocol_fee = 0;
                 if (remaining_fee > 0) {
                     let protocol_fee_amount = integer_mate::full_math_u64::mul_div_ceil(
-                        remaining_fee,
-                        protocol_fee_rate,
+                        remaining_fee, 
+                        protocol_fee_rate, 
                         clmm_pool::config::protocol_fee_rate_denom()
                     );
                     protocol_fee = protocol_fee_amount;
-                    let fee_after_ref = remaining_fee - protocol_fee_amount;
-                    fee_after_protocol = fee_after_ref;
-                    if (fee_after_ref > 0) {
+                    let remaining_fee_after_protocol = remaining_fee - protocol_fee_amount;
+                    fee_after_protocol = remaining_fee_after_protocol;
+                    if (remaining_fee_after_protocol > 0) {
                         let (_, gauge_fee_amount) = calculate_fees<CoinTypeA, CoinTypeB>(
-                            pool,
-                            fee_after_ref,
-                            pool.liquidity,
-                            pool.fullsale_distribution_staked_liquidity,
+                            pool, 
+                            remaining_fee_after_protocol, 
+                            pool.liquidity, 
+                            pool.fullsail_distribution_staked_liquidity, 
                             unstaked_fee_rate
                         );
                         gauge_fee = gauge_fee_amount;
-                        fee_after_protocol = fee_after_ref - gauge_fee_amount;
-                    };
+                        fee_after_protocol = remaining_fee_after_protocol - gauge_fee_amount;
+                    }
                 };
-                update_swap_result(&mut swap_result, amount_in, amount_out, fee_amount, protocol_fee, ref_fee, gauge_fee);
+                update_swap_result(
+                    &mut swap_result, 
+                    amount_in, 
+                    amount_out, 
+                    fee_amount, 
+                    protocol_fee, 
+                    ref_fee_amount, 
+                    gauge_fee
+                );
                 if (fee_after_protocol > 0) {
                     update_fee_growth_global<CoinTypeA, CoinTypeB>(pool, fee_after_protocol, a2b);
                 };
@@ -3416,21 +3427,21 @@ module clmm_pool::pool {
                     tick_index
                 };
                 pool.current_tick_index = next_tick_index;
-                update_fullsale_distribution_growth_global_internal<CoinTypeA, CoinTypeB>(pool, clock);
+                update_fullsail_distribution_growth_global_internal<CoinTypeA, CoinTypeB>(pool, clock);
                 let (new_liquidity, new_staked_liquidity) = clmm_pool::tick::cross_by_swap(
                     &mut pool.tick_manager,
                     tick_index,
                     a2b,
                     pool.liquidity,
-                    pool.fullsale_distribution_staked_liquidity,
+                    pool.fullsail_distribution_staked_liquidity,
                     pool.fee_growth_global_a,
                     pool.fee_growth_global_b,
                     clmm_pool::rewarder::points_growth_global(&pool.rewarder_manager),
                     clmm_pool::rewarder::rewards_growth_global(&pool.rewarder_manager),
-                    pool.fullsale_distribution_growth_global
+                    pool.fullsail_distribution_growth_global
                 );
                 pool.liquidity = new_liquidity;
-                pool.fullsale_distribution_staked_liquidity = new_staked_liquidity;
+                pool.fullsail_distribution_staked_liquidity = new_staked_liquidity;
                 continue
             };
             if (pool.current_sqrt_price != next_sqrt_price) {
@@ -3441,10 +3452,10 @@ module clmm_pool::pool {
         };
         if (a2b) {
             pool.fee_protocol_coin_a = pool.fee_protocol_coin_a + swap_result.protocol_fee_amount;
-            pool.fullsale_distribution_gauger_fee.coin_a = pool.fullsale_distribution_gauger_fee.coin_a + swap_result.gauge_fee_amount;
+            pool.fullsail_distribution_gauger_fee.coin_a = pool.fullsail_distribution_gauger_fee.coin_a + swap_result.gauge_fee_amount;
         } else {
             pool.fee_protocol_coin_b = pool.fee_protocol_coin_b + swap_result.protocol_fee_amount;
-            pool.fullsale_distribution_gauger_fee.coin_b = pool.fullsale_distribution_gauger_fee.coin_b + swap_result.gauge_fee_amount;
+            pool.fullsail_distribution_gauger_fee.coin_b = pool.fullsail_distribution_gauger_fee.coin_b + swap_result.gauge_fee_amount;
         };
         swap_result
     }
@@ -3461,7 +3472,7 @@ module clmm_pool::pool {
         receipt.pay_amount
     }
 
-    /// Synchronizes the fullsale distribution reward parameters for the pool.
+    /// Synchronizes the fullsail distribution reward parameters for the pool.
     /// Updates the distribution rate, reserve, period finish time, and resets the rollover amount.
     ///
     /// # Arguments
@@ -3474,19 +3485,19 @@ module clmm_pool::pool {
     /// # Aborts
     /// * If the pool is paused (error code: 13)
     /// * If the gauge capability verification fails
-    public fun sync_fullsale_distribution_reward<T0, T1>(
-        pool: &mut Pool<T0, T1>,
+    public fun sync_fullsail_distribution_reward<CoinTypeA, CoinTypeB>(
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
         gauge_cap: &gauge_cap::gauge_cap::GaugeCap,
         distribution_rate: u128,
         distribution_reserve: u64,
         period_finish: u64
     ) {
         assert!(!pool.is_pause, 13);
-        check_gauge_cap<T0, T1>(pool, gauge_cap);
-        pool.fullsale_distribution_rate = distribution_rate;
-        pool.fullsale_distribution_reserve = distribution_reserve;
-        pool.fullsale_distribution_period_finish = period_finish;
-        pool.fullsale_distribution_rollover = 0;
+        check_gauge_cap<CoinTypeA, CoinTypeB>(pool, gauge_cap);
+        pool.fullsail_distribution_rate = distribution_rate;
+        pool.fullsail_distribution_reserve = distribution_reserve;
+        pool.fullsail_distribution_period_finish = period_finish;
+        pool.fullsail_distribution_rollover = 0;
     }
 
     /// Returns a reference to the pool's tick manager.
@@ -3538,7 +3549,7 @@ module clmm_pool::pool {
         pool.is_pause = false;
     }
 
-    /// Removes liquidity from the fullsale distribution system, reducing the amount of liquidity participating in reward distribution.
+    /// Removes liquidity from the fullsail distribution system, reducing the amount of liquidity participating in reward distribution.
     /// 
     /// # Arguments
     /// * `pool` - Mutable reference to the pool
@@ -3552,7 +3563,7 @@ module clmm_pool::pool {
     /// * If the pool is paused (error code: 13)
     /// * If the liquidity amount is zero (error code: 9223379200860225535)
     /// * If gauge capability verification fails
-    public fun unstake_from_fullsale_distribution<CoinTypeA, CoinTypeB>(
+    public fun unstake_from_fullsail_distribution<CoinTypeA, CoinTypeB>(
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
         gauge_cap: &gauge_cap::gauge_cap::GaugeCap,
         liquidity: u128,
@@ -3563,7 +3574,7 @@ module clmm_pool::pool {
         assert!(!pool.is_pause, 13);
         assert!(liquidity != 0, 9223379200860225535);
         check_gauge_cap<CoinTypeA, CoinTypeB>(pool, gauge_cap);
-        update_fullsale_distribution_internal<CoinTypeA, CoinTypeB>(
+        update_fullsail_distribution_internal<CoinTypeA, CoinTypeB>(
             pool,
             integer_mate::i128::neg(integer_mate::i128::from(liquidity)),
             tick_lower,
@@ -3637,7 +3648,7 @@ module clmm_pool::pool {
         sui::event::emit<UpdateFeeRateEvent>(event);
     }
 
-    /// Updates the global growth of fullsale distribution rewards for the pool.
+    /// Updates the global growth of fullsail distribution rewards for the pool.
     /// This function can only be called by an account with gauge capability.
     /// 
     /// # Arguments
@@ -3648,17 +3659,17 @@ module clmm_pool::pool {
     /// # Aborts
     /// * If the pool is paused (error code: 13)
     /// * If gauge capability verification fails
-    public fun update_fullsale_distribution_growth_global<CoinTypeA, CoinTypeB>(
+    public fun update_fullsail_distribution_growth_global<CoinTypeA, CoinTypeB>(
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
         gauge_cap: &gauge_cap::gauge_cap::GaugeCap,
         clock: &sui::clock::Clock
     ) {
         assert!(!pool.is_pause, 13);
         check_gauge_cap<CoinTypeA, CoinTypeB>(pool, gauge_cap);
-        update_fullsale_distribution_growth_global_internal<CoinTypeA, CoinTypeB>(pool, clock);
+        update_fullsail_distribution_growth_global_internal<CoinTypeA, CoinTypeB>(pool, clock);
     }
 
-    /// Updates the global growth of fullsale distribution rewards based on the time elapsed since last update.
+    /// Updates the global growth of fullsail distribution rewards based on the time elapsed since last update.
     /// Calculates and distributes rewards to all staked positions.
     /// 
     /// # Arguments
@@ -3667,42 +3678,42 @@ module clmm_pool::pool {
     /// 
     /// # Returns
     /// The amount of rewards distributed in this update
-    fun update_fullsale_distribution_growth_global_internal<CoinTypeA, CoinTypeB>(
+    fun update_fullsail_distribution_growth_global_internal<CoinTypeA, CoinTypeB>(
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
         clock: &sui::clock::Clock
     ): u64 {
         let current_timestamp = sui::clock::timestamp_ms(clock) / 1000;
-        let time_delta = current_timestamp - pool.fullsale_distribution_last_updated;
+        let time_delta = current_timestamp - pool.fullsail_distribution_last_updated;
         let mut distributed_amount = 0;
         if (time_delta != 0) {
-            if (pool.fullsale_distribution_reserve > 0) {
+            if (pool.fullsail_distribution_reserve > 0) {
                 let calculated_distribution = integer_mate::full_math_u128::mul_div_floor(
-                    pool.fullsale_distribution_rate,
+                    pool.fullsail_distribution_rate,
                     time_delta as u128,
                     18446744073709551616
                 ) as u64;
                 let mut actual_distribution = calculated_distribution;
-                if (calculated_distribution > pool.fullsale_distribution_reserve) {
-                    actual_distribution = pool.fullsale_distribution_reserve;
+                if (calculated_distribution > pool.fullsail_distribution_reserve) {
+                    actual_distribution = pool.fullsail_distribution_reserve;
                 };
-                pool.fullsale_distribution_reserve = pool.fullsale_distribution_reserve - actual_distribution;
-                if (pool.fullsale_distribution_staked_liquidity > 0) {
-                    pool.fullsale_distribution_growth_global = pool.fullsale_distribution_growth_global + integer_mate::full_math_u128::mul_div_floor(
+                pool.fullsail_distribution_reserve = pool.fullsail_distribution_reserve - actual_distribution;
+                if (pool.fullsail_distribution_staked_liquidity > 0) {
+                    pool.fullsail_distribution_growth_global = pool.fullsail_distribution_growth_global + integer_mate::full_math_u128::mul_div_floor(
                         actual_distribution as u128,
                         18446744073709551616,
-                        pool.fullsale_distribution_staked_liquidity
+                        pool.fullsail_distribution_staked_liquidity
                     );
                 } else {
-                    pool.fullsale_distribution_rollover = pool.fullsale_distribution_rollover + actual_distribution;
+                    pool.fullsail_distribution_rollover = pool.fullsail_distribution_rollover + actual_distribution;
                 };
                 distributed_amount = actual_distribution;
             };
-            pool.fullsale_distribution_last_updated = current_timestamp;
+            pool.fullsail_distribution_last_updated = current_timestamp;
         };
         distributed_amount
     }
     
-    /// Updates the internal state of fullsale distribution for a position, including staked liquidity and growth tracking.
+    /// Updates the internal state of fullsail distribution for a position, including staked liquidity and growth tracking.
     /// This function is called when liquidity is added or removed from a position.
     /// 
     /// # Arguments
@@ -3714,7 +3725,7 @@ module clmm_pool::pool {
     /// 
     /// # Aborts
     /// * If attempting to remove more liquidity than is currently staked (error code: 9223379024766566399)
-    fun update_fullsale_distribution_internal<CoinTypeA, CoinTypeB>(
+    fun update_fullsail_distribution_internal<CoinTypeA, CoinTypeB>(
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
         liquidity_delta: integer_mate::i128::I128,
         tick_lower: integer_mate::i32::I32,
@@ -3725,30 +3736,30 @@ module clmm_pool::pool {
             pool.current_tick_index,
             tick_upper
         )) {
-            update_fullsale_distribution_growth_global_internal<CoinTypeA, CoinTypeB>(pool, clock);
+            update_fullsail_distribution_growth_global_internal<CoinTypeA, CoinTypeB>(pool, clock);
             if (integer_mate::i128::is_neg(liquidity_delta)) {
                 assert!(
-                    pool.fullsale_distribution_staked_liquidity >= integer_mate::i128::abs_u128(liquidity_delta),
+                    pool.fullsail_distribution_staked_liquidity >= integer_mate::i128::abs_u128(liquidity_delta),
                     9223379024766566399
                 );
             } else {
                 let (_, overflow) = integer_mate::i128::overflowing_add(
-                    integer_mate::i128::from(pool.fullsale_distribution_staked_liquidity),
+                    integer_mate::i128::from(pool.fullsail_distribution_staked_liquidity),
                     liquidity_delta
                 );
                 assert!(!overflow, 9223379033357877270);
             };
-            pool.fullsale_distribution_staked_liquidity = integer_mate::i128::as_u128(
-                integer_mate::i128::add(integer_mate::i128::from(pool.fullsale_distribution_staked_liquidity), liquidity_delta)
+            pool.fullsail_distribution_staked_liquidity = integer_mate::i128::as_u128(
+                integer_mate::i128::add(integer_mate::i128::from(pool.fullsail_distribution_staked_liquidity), liquidity_delta)
             );
         };
         let tick_lower_opt = clmm_pool::tick::try_borrow_tick(&pool.tick_manager, tick_lower);
         let tick_upper_opt = clmm_pool::tick::try_borrow_tick(&pool.tick_manager, tick_upper);
         if (std::option::is_some<clmm_pool::tick::Tick>(&tick_lower_opt)) {
-            clmm_pool::tick::update_fullsale_stake(&mut pool.tick_manager, tick_lower, liquidity_delta, false);
+            clmm_pool::tick::update_fullsail_stake(&mut pool.tick_manager, tick_lower, liquidity_delta, false);
         };
         if (std::option::is_some<clmm_pool::tick::Tick>(&tick_upper_opt)) {
-            clmm_pool::tick::update_fullsale_stake(&mut pool.tick_manager, tick_upper, liquidity_delta, true);
+            clmm_pool::tick::update_fullsail_stake(&mut pool.tick_manager, tick_upper, liquidity_delta, true);
         };
     }
 
@@ -3880,6 +3891,137 @@ module clmm_pool::pool {
     /// * If the position's pool ID does not match this pool's ID (error code: 9223373806381301759)
     fun validate_pool_position<CoinTypeA, CoinTypeB>(pool: &Pool<CoinTypeA, CoinTypeB>, position: &clmm_pool::position::Position) {
         assert!(sui::object::id<Pool<CoinTypeA, CoinTypeB>>(pool) == clmm_pool::position::pool_id(position), 9223373806381301759);
+    }
+
+    #[test_only]
+    public fun test_init(pool: POOL, ctx: &mut sui::tx_context::TxContext) {
+        sui::transfer::public_transfer<sui::package::Publisher>(
+            sui::package::claim<POOL>(pool, ctx),
+            sui::tx_context::sender(ctx)
+        );
+    }
+
+    #[test_only]
+    public fun flash_swap_internal_test<CoinTypeA, CoinTypeB>(
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        global_config: &clmm_pool::config::GlobalConfig,
+        partner_id: sui::object::ID,
+        ref_fee_rate: u64,
+        a2b: bool,
+        by_amount_in: bool,
+        amount: u64,
+        sqrt_price_limit: u128,
+        stats: &mut clmm_pool::stats::Stats,
+        price_provider: &price_provider::price_provider::PriceProvider,
+        clock: &sui::clock::Clock
+    ): (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>, FlashSwapReceipt<CoinTypeA, CoinTypeB>) {
+        flash_swap_internal(pool, global_config, partner_id, ref_fee_rate, a2b, by_amount_in, amount, sqrt_price_limit, stats, price_provider, clock)
+    }
+
+    #[test_only]
+    public fun swap_in_pool_test<CoinTypeA, CoinTypeB>(
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        a2b: bool,
+        by_amount_in: bool,
+        sqrt_price_limit: u128,
+        amount: u64,
+        unstaked_fee_rate: u64,
+        protocol_fee_rate: u64,
+        ref_fee_rate: u64,
+        clock: &sui::clock::Clock
+    ): SwapResult {
+        swap_in_pool(pool, a2b, by_amount_in, sqrt_price_limit, amount, unstaked_fee_rate, protocol_fee_rate, ref_fee_rate, clock)
+    }
+
+    #[test_only]
+    public fun update_fullsail_distribution_growth_global_internal_test<CoinTypeA, CoinTypeB>(
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        clock: &sui::clock::Clock
+    ): u64 {
+        update_fullsail_distribution_growth_global_internal(pool, clock)
+    }
+
+    #[test_only]
+    public fun update_fullsail_distribution_internal_test<CoinTypeA, CoinTypeB>(
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        liquidity_delta: integer_mate::i128::I128,
+        tick_lower: integer_mate::i32::I32,
+        tick_upper: integer_mate::i32::I32,
+        clock: &sui::clock::Clock
+    ) {
+        update_fullsail_distribution_internal(pool, liquidity_delta, tick_lower, tick_upper, clock)
+    }
+    
+    #[test_only]
+    public fun update_swap_result_test(
+        swap_result: &mut SwapResult,
+        amount_in_delta: u64,
+        amount_out_delta: u64,
+        fee_amount_delta: u64,
+        protocol_fee_delta: u64,
+        ref_fee_delta: u64,
+        gauge_fee_delta: u64
+    ) {
+        update_swap_result(swap_result, amount_in_delta, amount_out_delta, fee_amount_delta, protocol_fee_delta, ref_fee_delta, gauge_fee_delta)
+    }
+
+    #[test_only]
+    public fun add_liquidity_internal_test<CoinTypeA, CoinTypeB>(
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        position: &mut clmm_pool::position::Position,
+        is_fix_amount: bool,
+        liquidity_delta: u128,
+        amount_in: u64,
+        is_fix_amount_a: bool,
+        timestamp: u64
+    ): AddLiquidityReceipt<CoinTypeA, CoinTypeB> {
+        add_liquidity_internal(pool, position, is_fix_amount, liquidity_delta, amount_in, is_fix_amount_a, timestamp)
+    }
+
+    #[test_only]
+    public fun destroy_flash_swap_receipt<CoinTypeA, CoinTypeB>(receipt: FlashSwapReceipt<CoinTypeA, CoinTypeB>) {
+        let FlashSwapReceipt { pool_id, a2b, partner_id, pay_amount, fee_amount, protocol_fee_amount, ref_fee_amount, gauge_fee_amount } = receipt;
+    }
+
+    #[test_only]
+    public fun destroy_receipt<CoinTypeA, CoinTypeB>(receipt: AddLiquidityReceipt<CoinTypeA, CoinTypeB>) {
+        let AddLiquidityReceipt { pool_id, amount_a, amount_b } = receipt;
+    }
+
+    #[test_only]
+    public fun create_swap_result_test(
+        amount_in: u64,
+        amount_out: u64,
+        fee_amount: u64,
+        protocol_fee_amount: u64,
+        ref_fee_amount: u64,
+        gauge_fee_amount: u64,
+        steps: u64
+    ): SwapResult {
+        SwapResult {
+            amount_in: amount_in,
+            amount_out: amount_out,
+            fee_amount: fee_amount,
+            protocol_fee_amount: protocol_fee_amount,
+            ref_fee_amount: ref_fee_amount,
+            gauge_fee_amount: gauge_fee_amount,
+            steps: steps,
+        }
+    }
+
+    #[test_only]
+    public fun get_swap_result_test(
+        swap_result: &SwapResult
+    ): (u64, u64, u64, u64, u64, u64, u64) {
+        (
+            swap_result.amount_in,
+            swap_result.amount_out,
+            swap_result.fee_amount,
+            swap_result.protocol_fee_amount,
+            swap_result.ref_fee_amount,
+            swap_result.gauge_fee_amount,
+            swap_result.steps
+        )
     }
 }
 

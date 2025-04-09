@@ -1,6 +1,6 @@
 source ./export.sh
 
-# original fullsale has fee tiers 2-100, 10-500, 60-2500, 20-10000
+# original fullsail has fee tiers 2-100, 10-500, 60-2500, 20-10000
 
 sui client ptb \
 --move-call $PACKAGE::config::add_fee_tier @$GLOBAL_CONFIG 2 100 \

@@ -1528,7 +1528,7 @@ module distribution::voter {
             object::id<distribution::gauge::Gauge<CoinTypeA, CoinTypeB, SailCoinType>>(&gauge),
             ctx
         );
-        pool.init_fullsale_distribution_gauge(&gauge_cap);
+        pool.init_fullsail_distribution_gauge(&gauge_cap);
         gauge.receive_gauge_cap(gauge_cap);
         gauge
     }
