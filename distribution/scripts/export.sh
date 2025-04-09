@@ -2,17 +2,21 @@
 #these adresses should be updated after calling each of the scripts
 export ADDR=$(sui client active-address)
 
-export PACKAGE=0xd80ee37bf2520ef907756ba80327c6f546bf1bdbe9d1e3c149f961591d0e5ef9
-export FULLSAIL_TOKEN_TYPE="$PACKAGE::sail_token::SAIL_TOKEN"
+#id before upgrade
+export ORIGINAL_PACKAGE=0xd80ee37bf2520ef907756ba80327c6f546bf1bdbe9d1e3c149f961591d0e5ef9
+#id after upgrade
+export PACKAGE=0xe298a2ec0ad093756132a60dad6d0d7e001af0925dbd26b817c60d39ef9f9902
+export FULLSAIL_TOKEN_TYPE="$ORIGINAL_PACKAGE::sail_token::SAIL_TOKEN"
 export TREASURY_CAP=0x180e2e1a23136744292c81e399f6ff5928b7f059394f27469ff98aece1cedd4f
 export VOTING_ESCROW=0x88e44f1f2c5530c89f0c53eec82286e3d7f1851351fe817f4e8e695cbfc5f43f
 export MINTER=0x9fa097c01f910742d273830cca61c46323d2d6e4f309158fc15244f20ede0e3e
 export VOTER=0x99836edf23890be456a7eaaa5138694fbf2e194fe3c6c4913e2537734ae438d2
 export DISTRIBUTION_CONFIG=0xa6df8328050fd5db0783078a6b61d11fd86f3a8d5e28e8784db8ec51975f7bcf
-export VOTER_PUBLISHER=
-export CREATE_CAP=
-export GOVERNOR_CAP=
+export VOTER_PUBLISHER=0x29732ed166200fe49bf4132659821559d027650bc48ff082c11713769ebff751
+export CREATE_CAP=0xc8498f33b9f1cf507445a2e144f19178be114ba9e6eb23cec00a00261f196aa6
+export GOVERNOR_CAP=0xd63d1984f586f5040e6828ae9f4af27448ac6738e6925fb55507e0fe2ef565fb
 
 export UPGRADE_CAP=0xb62bf64dd308920b83d46b9da40c5537385fb54b2354b8c3572b888f50cc177d
 
+export CLOCK=0x6
 # use setup_distribution.sh script in integrate directory to create minter, voter and voting_escrow.

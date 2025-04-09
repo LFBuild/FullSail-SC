@@ -750,7 +750,10 @@ module distribution::voter {
             into_gauge_id(gauge_id),
             distribution::fee_voting_reward::create(voter_id, voting_escrow_id, gauge_id, reward_coins, ctx)
         );
-        reward_coins.push_back(std::type_name::get<SailCoinType>());
+        let sail_coin_type=std::type_name::get<SailCoinType>();
+        if (!reward_coins.contains(&sail_coin_type)) {
+            reward_coins.push_back(sail_coin_type);
+        };
         voter.gauge_to_bribe.add(
             into_gauge_id(gauge_id),
             distribution::bribe_voting_reward::create(voter_id, voting_escrow_id, gauge_id, reward_coins, ctx)
@@ -2004,7 +2007,7 @@ module distribution::voter {
     ) {
         governor_cap.validate_governor_voter_id(object::id<Voter<SailCoinType>>(voter));
         assert!(
-            voter.is_governor(governor_cap.who()),
+            voter.is_governor(object::id(governor_cap)),
             EWhitelistTokenGovernorInvalid
         );
         voter.whitelist_token_internal(
