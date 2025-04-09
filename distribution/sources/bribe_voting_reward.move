@@ -30,12 +30,17 @@ module distribution::bribe_voting_reward {
         reward: distribution::reward::Reward,
     }
 
+    public struct EventBribeVotingRewardCreated has copy, drop, store {
+        id: ID,
+        gauge_id: ID,
+    }
+
     /// Creates a new BribeVotingReward instance.
     /// 
     /// # Arguments
     /// * `voter` - The ID of the voter
     /// * `ve` - The ID of the voting escrow
-    /// * `authorized` - The ID of the authorized gauge
+    /// * `gauge_id` - The ID of the authorized gauge
     /// * `reward_coin_types` - Vector of coin types that can be used as rewards
     /// * `ctx` - The transaction context
     /// 
@@ -44,13 +49,19 @@ module distribution::bribe_voting_reward {
     public(package) fun create(
         voter: ID,
         ve: ID,
-        authorized: ID,
+        gauge_id: ID,
         reward_coin_types: vector<std::type_name::TypeName>,
         ctx: &mut TxContext
     ): BribeVotingReward {
+        let id = object::new(ctx);
+        let bribe_voting_reward_created_event = EventBribeVotingRewardCreated {
+            id: object::uid_to_inner(&id),
+            gauge_id,
+        };
+        sui::event::emit<EventBribeVotingRewardCreated>(bribe_voting_reward_created_event);
         BribeVotingReward {
-            id: object::new(ctx),
-            gauge: authorized,
+            id,
+            gauge: gauge_id,
             reward: distribution::reward::create(voter, ve, voter, reward_coin_types, ctx),
         }
     }
@@ -202,35 +213,35 @@ module distribution::bribe_voting_reward {
     /// 
     /// # Arguments
     /// * `reward` - The BribeVotingReward to update
-    /// * `witelisted_token` - Optional whitelisted token capability
-    /// * `arg2` - The coin to use as rewards
-    /// * `arg3` - The system clock
-    /// * `arg4` - The transaction context
+    /// * `whitelisted_token` - Optional whitelisted token capability
+    /// * `reward_coin` - The coin to use as rewards
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
     /// 
     /// # Aborts
     /// * If the token is not in the rewards list and not whitelisted
     public fun notify_reward_amount<CoinType>(
         reward: &mut BribeVotingReward,
-        mut witelisted_token: Option<distribution::whitelisted_tokens::WhitelistedToken>,
-        arg2: sui::coin::Coin<CoinType>,
-        arg3: &sui::clock::Clock,
-        arg4: &mut TxContext
+        mut whitelisted_token: Option<distribution::whitelisted_tokens::WhitelistedToken>,
+        reward_coin: sui::coin::Coin<CoinType>,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
     ) {
         let coin_type_name = std::type_name::get<CoinType>();
         if (!reward.reward.rewards_contains(coin_type_name)) {
             assert!(
-                witelisted_token.is_some(),
+                whitelisted_token.is_some(),
                 ENotifyRewardAmountTokenNotWhitelisted
             );
-            witelisted_token.extract().validate<CoinType>(reward.reward.voter());
+            whitelisted_token.extract().validate<CoinType>(reward.reward.voter());
             reward.reward.add_reward_token(coin_type_name);
         };
-        if (witelisted_token.is_some()) {
-            witelisted_token.destroy_some().validate<CoinType>(reward.reward.voter());
+        if (whitelisted_token.is_some()) {
+            whitelisted_token.destroy_some().validate<CoinType>(reward.reward.voter());
         } else {
-            witelisted_token.destroy_none();
+            whitelisted_token.destroy_none();
         };
-        reward.reward.notify_reward_amount_internal(arg2.into_balance(), arg3, arg4);
+        reward.reward.notify_reward_amount_internal(reward_coin.into_balance(), clock, ctx);
     }
 
     /// Allows a voter to claim rewards for a specific lock, returning the balance instead

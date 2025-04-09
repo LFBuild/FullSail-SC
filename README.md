@@ -68,11 +68,12 @@ This step is required to build the packages later.
 
 #### Publication transactions
 
-- [move_stl](https://suivision.xyz/txblock/DJSKVGhe4Zc27dbWHjq4QVyoXGxXePKTZJMahpxsKssf)
-- [integer_mate](https://suivision.xyz/txblock/7KCHahBXG6hfFMnRwNfnWg4Zy6QpWK5qK3cDgg7DcR8R)
-- [gauge_cap](https://suivision.xyz/txblock/EgSaGcfSMcqemH9QgcQrwquue4kbCWxEiHnfzTcnQwsP)
-- [clmm_pool](https://suivision.xyz/txblock/CuoZkRJNFEqZrA9oByC83BMdhxcHTeLpCaBPjQCyyUpA)
-- [distribution](https://suivision.xyz/txblock/CbKBgFnwjhEPemt7LCB9qmpXUEST5BUyyuUJVmapTMRe)
-- [integrate](https://suivision.xyz/txblock/Es3DqkbX1cibjToEmiWcd1awpAh763mb36amNAuAm3Xh)
+- [move_stl](https://suivision.xyz/txblock/D5d6rSAqCjEVm3v58sksyTRFMbDfUfHh6esgwsAivWTw)
+- [integer_mate](https://suivision.xyz/txblock/FPsTPKvEpKLB7huuvgxmDetSdUxUwUb6ZQTV6CwULHCp)
+- [gauge_cap](https://suivision.xyz/txblock/3zp6J98rVv9c6pDae4gHoRA1kyEeEg9c6w2X5Xqj9EK3)
+- [price_provider](https://suivision.xyz/txblock/J2hrKfrUhnmKJTAcWDrCF5B6VfHHaKZcDhXAnaXgEgiL)
+- [clmm_pool](https://suivision.xyz/txblock/4HB9dgxwqkPA6hpZQLdp8zABPt2zD1pGUnnkmGAqeHtE)
+- [distribution](https://suivision.xyz/txblock/Cd2q6aFXA2g3aEfUF9Mjopm7gynrYrfSPfeSN45khPSD)
+- [integrate](https://suivision.xyz/txblock/HjrjFAjHTS2hC8P9qqsFTKiU7nAEVEiCCzGcKh6Zk6CD)
 
-[Setup distribution tx](https://suivision.xyz/txblock/76dT6eHyzTiXR4fe14pzAASeEpq2FnX6DBkpcLATVBrQ)
+[Setup distribution tx](https://suivision.xyz/txblock/tWBKhGwhHEodzmHqQQ22V5ALi7erVqRF7zkLbqPkfsf)

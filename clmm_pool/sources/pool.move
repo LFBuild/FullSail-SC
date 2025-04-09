@@ -74,10 +74,8 @@ module clmm_pool::pool {
         fullsail_distribution_last_updated: u64,
         fullsail_distribution_staked_liquidity: u128,
         fullsail_distribution_gauger_fee: PoolFee,
-        volume_usd_coin_a: u128,
-        volume_usd_coin_b: u128,
-        feed_id_coin_a: address,
-        feed_id_coin_b: address,
+        volume: PoolVolume,
+        feed_id: PoolFeedId,
         auto_calculation_volumes: bool,
     }
 
@@ -89,6 +87,26 @@ module clmm_pool::pool {
     public struct PoolFee has drop, store {
         coin_a: u64,
         coin_b: u64,
+    }
+
+    /// Structure representing the volume of tokens in USD for the pool.
+    /// 
+    /// # Fields
+    /// * `volume_usd_coin_a` - Volume of token A in USD
+    /// * `volume_usd_coin_b` - Volume of token B in USD
+    public struct PoolVolume has drop, store {
+        volume_usd_coin_a: u128,
+        volume_usd_coin_b: u128,
+    }
+
+    /// Structure representing the price feed IDs for the tokens in the pool.
+    /// 
+    /// # Fields
+    /// * `feed_id_coin_a` - Price feed ID for token A
+    /// * `feed_id_coin_b` - Price feed ID for token B
+    public struct PoolFeedId has drop, store {
+        feed_id_coin_a: address,
+        feed_id_coin_b: address,
     }
 
     /// Structure representing the result of a swap operation.
@@ -423,6 +441,14 @@ module clmm_pool::pool {
             coin_a: 0,
             coin_b: 0,
         };
+        let initial_pool_volume = PoolVolume {
+            volume_usd_coin_a: 0,
+            volume_usd_coin_b: 0,
+        };
+        let initial_pool_feed_id = PoolFeedId {
+            feed_id_coin_a,
+            feed_id_coin_b,
+        };
         Pool<CoinTypeA, CoinTypeB> {
             id: sui::object::new(ctx),
             coin_a: sui::balance::zero<CoinTypeA>(),
@@ -452,10 +478,8 @@ module clmm_pool::pool {
             fullsail_distribution_last_updated: sui::clock::timestamp_ms(clock) / 1000,
             fullsail_distribution_staked_liquidity: 0,
             fullsail_distribution_gauger_fee: initial_pool_fee,
-            volume_usd_coin_a: 0,
-            volume_usd_coin_b: 0,
-            feed_id_coin_a,
-            feed_id_coin_b,
+            volume: initial_pool_volume,
+            feed_id: initial_pool_feed_id,
             auto_calculation_volumes,
         }
     }

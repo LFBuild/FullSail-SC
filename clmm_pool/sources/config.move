@@ -404,39 +404,6 @@ module clmm_pool::config {
         sui::event::emit<DeleteFeeTierEvent>(event);
     }
 
-    /// Calculates the current epoch based on a timestamp.
-    /// 
-    /// # Arguments
-    /// * `timestamp` - The timestamp to calculate the epoch for
-    /// 
-    /// # Returns
-    /// The current epoch number
-    public fun epoch(timestamp: u64): u64 {
-        timestamp / 604800
-    }
-
-    /// Calculates the start of the next epoch.
-    /// 
-    /// # Arguments
-    /// * `timestamp` - The current timestamp
-    /// 
-    /// # Returns
-    /// The timestamp of the start of the next epoch
-    public fun epoch_next(timestamp: u64): u64 {
-        timestamp - timestamp % 604800 + 604800
-    }
-
-    /// Calculates the start of the current epoch.
-    /// 
-    /// # Arguments
-    /// * `timestamp` - The current timestamp
-    /// 
-    /// # Returns
-    /// The timestamp of the start of the current epoch
-    public fun epoch_start(timestamp: u64): u64 {
-        timestamp - timestamp % 604800
-    }
-
     /// Returns the fee rate of a fee tier.
     /// 
     /// # Arguments
@@ -745,14 +712,6 @@ module clmm_pool::config {
             new_fee_rate,
         };
         sui::event::emit<UpdateUnstakedLiquidityFeeRateEvent>(event);
-    }
-
-    /// Returns the duration of a week in seconds.
-    /// 
-    /// # Returns
-    /// The duration of a week in seconds (604800)
-    public fun week(): u64 {
-        604800
     }
 
     #[test_only]

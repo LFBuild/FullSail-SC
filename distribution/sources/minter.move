@@ -22,7 +22,7 @@ module distribution::minter {
     * The minter interacts with several other components of the ecosystem:
     * - Voting/staking mechanisms (Voter, VotingEscrow)
     * - Reward distribution systems
-    * - Token management (via MinterCap)
+    * - Token management (via TreasuryCap)
     *
     * Epochs progress on a weekly basis, with each epoch potentially adjusting emission rates
     * according to the predefined schedule. This controlled emission approach ensures
@@ -69,7 +69,7 @@ module distribution::minter {
         total_emissions: u64,
         last_epoch_update_time: u64,
         epoch_emissions: u64,
-        minter_cap: Option<distribution::sail_token::MinterCap<SailCoinType>>,
+        sail_coin_cap: Option<sui::coin::TreasuryCap<SailCoinType>>,
         base_supply: u64,
         epoch_grow_rate: u64,
         epoch_decay_rate: u64,
@@ -91,7 +91,7 @@ module distribution::minter {
     /// # Returns
     /// Total supply of SailCoin
     public fun total_supply<SailCoinType>(minter: &Minter<SailCoinType>): u64 {
-        option::borrow<distribution::sail_token::MinterCap<SailCoinType>>(&minter.minter_cap).total_supply()
+        option::borrow<sui::coin::TreasuryCap<SailCoinType>>(&minter.sail_coin_cap).total_supply()
     }
 
     /// Activates the minter to begin token emissions according to the protocol schedule.
@@ -186,7 +186,7 @@ module distribution::minter {
             // weekly emissions after that stabilize at 0.67%
             (
                 integer_mate::full_math_u64::mul_div_ceil(
-                    option::borrow<distribution::sail_token::MinterCap<SailCoinType>>(&minter.minter_cap).total_supply(
+                    option::borrow<sui::coin::TreasuryCap<SailCoinType>>(&minter.sail_coin_cap).total_supply(
                     ),
                     minter.tail_emission_rate,
                     10000
@@ -264,14 +264,14 @@ module distribution::minter {
     ///
     /// # Arguments
     /// * `_publisher` - Publisher proving authorization
-    /// * `minter_cap` - Optional minter capability for SailCoin
+    /// * `treasury_cap` - Optional minter capability for SailCoin
     /// * `ctx` - Transaction context
     ///
     /// # Returns
     /// A tuple with (minter, admin_cap), where admin_cap grants administrative privileges
     public fun create<SailCoinType>(
         _publisher: &sui::package::Publisher,
-        minter_cap: Option<distribution::sail_token::MinterCap<SailCoinType>>,
+        treasury_cap: Option<sui::coin::TreasuryCap<SailCoinType>>,
         ctx: &mut TxContext
     ): (Minter<SailCoinType>, AdminCap) {
         let minter = Minter<SailCoinType> {
@@ -284,7 +284,7 @@ module distribution::minter {
             total_emissions: 0,
             last_epoch_update_time: 0,
             epoch_emissions: 0,
-            minter_cap,
+            sail_coin_cap: treasury_cap,
             base_supply: 10000000000000, // 10M coins
             epoch_grow_rate: 300,
             epoch_decay_rate: 100,
@@ -416,22 +416,22 @@ module distribution::minter {
     * # Arguments
     * * `minter` - The minter instance to modify
     * * `admin_cap` - Administrative capability proving authorization
-    * * `minter_cap` - The token minter capability to set
+    * * `treasury_cap` - The token treasury capability to set
     *
     * # Aborts
     * * If the minter already has a minter capability
     */
-    public fun set_minter_cap<SailCoinType>(
+    public fun set_treasury_cap<SailCoinType>(
         minter: &mut Minter<SailCoinType>,
         admin_cap: &AdminCap,
-        minter_cap: distribution::sail_token::MinterCap<SailCoinType>
+        treasury_cap: sui::coin::TreasuryCap<SailCoinType>
     ) {
         minter.check_admin(admin_cap);
         assert!(
-            option::is_none<distribution::sail_token::MinterCap<SailCoinType>>(&minter.minter_cap),
+            option::is_none<sui::coin::TreasuryCap<SailCoinType>>(&minter.sail_coin_cap),
             EMinterCapAlreadySet
         );
-        option::fill<distribution::sail_token::MinterCap<SailCoinType>>(&mut minter.minter_cap, minter_cap);
+        option::fill<sui::coin::TreasuryCap<SailCoinType>>(&mut minter.sail_coin_cap, treasury_cap);
     }
 
     /// Sets the notify reward capability for the minter.
@@ -608,19 +608,19 @@ module distribution::minter {
         let (current_epoch_emissions, next_epoch_emissions) = minter.calculate_epoch_emissions();
         let rebase_growth = calculate_rebase_growth(
             current_epoch_emissions,
-            option::borrow<distribution::sail_token::MinterCap<SailCoinType>>(&minter.minter_cap).total_supply(),
+            option::borrow<sui::coin::TreasuryCap<SailCoinType>>(&minter.sail_coin_cap).total_supply(),
             voting_escrow.total_locked()
         );
         let minter_address = object::id_address<Minter<SailCoinType>>(minter);
         if (minter.team_emission_rate > 0 && minter.team_wallet != @0x0) {
             transfer::public_transfer<sui::coin::Coin<SailCoinType>>(
-                option::borrow_mut<distribution::sail_token::MinterCap<SailCoinType>>(
-                    &mut minter.minter_cap
+                option::borrow_mut<sui::coin::TreasuryCap<SailCoinType>>(
+                    &mut minter.sail_coin_cap
                 ).mint(integer_mate::full_math_u64::mul_div_floor(
                     minter.team_emission_rate,
                     rebase_growth + current_epoch_emissions,
                     10000 - minter.team_emission_rate
-                ), minter_address, ctx),
+                ), ctx),
                 minter.team_wallet
             );
         };
@@ -628,21 +628,19 @@ module distribution::minter {
             option::borrow<distribution::reward_distributor_cap::RewardDistributorCap>(
                 &minter.reward_distributor_cap
             ),
-            option::borrow_mut<distribution::sail_token::MinterCap<SailCoinType>>(&mut minter.minter_cap).mint(
+            option::borrow_mut<sui::coin::TreasuryCap<SailCoinType>>(&mut minter.sail_coin_cap).mint(
                 rebase_growth,
-                minter_address,
                 ctx
             ),
             clock
         );
-        let id_address = object::id_address<Minter<SailCoinType>>(minter);
-        let minter_cap = option::borrow_mut<distribution::sail_token::MinterCap<SailCoinType>>(
-            &mut minter.minter_cap
+        let minter_cap = option::borrow_mut<sui::coin::TreasuryCap<SailCoinType>>(
+            &mut minter.sail_coin_cap
         );
         let notify_reward_cap = option::borrow<distribution::notify_reward_cap::NotifyRewardCap>(
             &minter.notify_reward_cap
         );
-        voter.notify_rewards(notify_reward_cap, minter_cap.mint(current_epoch_emissions, id_address, ctx));
+        voter.notify_rewards(notify_reward_cap, minter_cap.mint(current_epoch_emissions, ctx));
         minter.active_period = distribution::common::current_period(clock);
         minter.epoch_count = minter.epoch_count + 1;
         minter.epoch_emissions = next_epoch_emissions;
