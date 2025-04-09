@@ -22,7 +22,7 @@ price_provider = { local = "../price_provider" }
 # Override = { local = "../conflicting/version", override = true }
 
 [addresses]
-clmm_pool = "0x0"
+clmm_pool = "0x79b7f2019ff976cdd7830fbb3f3dedf569d027cd349977846bb6822aaaf03f7d"
 
 # Named addresses will be accessible in Move as `@name`. They're also exported:
 # for example, `std = "0x1"` is exported by the Standard Library.
