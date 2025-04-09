@@ -5,7 +5,7 @@ edition = "2024"
 # authors = ["..."]      # e.g., ["Joe Smith (joesmith@noemail.com)", "John Snow (johnsnow@noemail.com)"]
 
 [dependencies]
-Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet", override = true }
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/mainnet", override = true }
 # Local deps have name conflicts, the solution is here https://stackoverflow.com/questions/73958046/local-dependency-cannot-be-resolved
 # Long story short, we need to set the package address in the [addresses] section of each package to be equal to the published-at address
 move_stl = { local = "../move_stl" }
@@ -27,7 +27,7 @@ price_provider = { local = "../price_provider" }
 # Override = { local = "../conflicting/version", override = true }
 
 [addresses]
-integrate = "0x60419b1cc364ee46b91dc26d7cb4d8e4ff69e06d9bffef513202cf8f9e71ca7e"
+integrate = "0x0"
 
 # Named addresses will be accessible in Move as `@name`. They're also exported:
 # for example, `std = "0x1"` is exported by the Standard Library.

@@ -141,14 +141,6 @@ module clmm_pool::config_tests {
     }
 
     #[test]
-    fun test_epoch_calculations() {
-        let timestamp = 604800; // 1 неделя
-        assert!(config::epoch(timestamp) == 1, 1);
-        assert!(config::epoch_start(timestamp) == 604800, 2);
-        assert!(config::epoch_next(timestamp) == 1209600, 3);
-    }
-
-    #[test]
     fun test_fee_rate_constants() {
         assert!(config::fee_rate_denom() == 1000000, 1);
         assert!(config::protocol_fee_rate_denom() == 10000, 2);

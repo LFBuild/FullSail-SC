@@ -5,7 +5,7 @@ name = "integer_mate"
 edition = "2024"
 
 [dependencies]
-Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet", override = true }
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/mainnet", override = true }
 
 [addresses]
-integer_mate = "0x810344e626dbc98b93565b08cc435ead55513182604bae4f34b4228dfb2a680d"
+integer_mate = "0x0"
