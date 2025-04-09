@@ -282,7 +282,7 @@ module integrate::voter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        if (minter.active_period() + 604800 < distribution::common::current_timestamp(clock)) {
+        if (minter.active_period() + distribution::common::week() < distribution::common::current_timestamp(clock)) {
             minter.update_period(voter, voting_escrow, reward_distributor, clock, ctx);
         };
         assert!(

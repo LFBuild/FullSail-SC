@@ -1,4 +1,8 @@
 module distribution::common {
+    const WEEK: u64 = 604800;
+    const DAY: u64 = 86400;
+    const HOUR: u64 = 3600;
+
     /// Returns the current period based on the system time
     /// 
     /// # Arguments
@@ -26,7 +30,7 @@ module distribution::common {
     /// # Returns
     /// The number of seconds in a day (86400)
     public fun day(): u64 {
-        86400
+        DAY
     }
 
     /// Calculates the start timestamp of the next epoch (week)
@@ -37,7 +41,7 @@ module distribution::common {
     /// # Returns
     /// The timestamp of the start of the next epoch
     public fun epoch_next(timestamp: u64): u64 {
-        timestamp - timestamp % 604800 + 604800
+        timestamp - timestamp % WEEK + WEEK
     }
 
     /// Calculates the start timestamp of the current epoch (week)
@@ -48,7 +52,7 @@ module distribution::common {
     /// # Returns
     /// The timestamp of the start of the current epoch
     public fun epoch_start(timestamp: u64): u64 {
-        timestamp - timestamp % 604800
+        timestamp - timestamp % WEEK
     }
 
     /// Calculates the end timestamp of the voting period in the current epoch
@@ -60,7 +64,7 @@ module distribution::common {
     /// # Returns
     /// The timestamp when voting ends in the current epoch
     public fun epoch_vote_end(timestamp: u64): u64 {
-        timestamp - timestamp % 604800 + 604800 - 3600
+        timestamp - timestamp % WEEK + WEEK - HOUR
     }
 
     /// Calculates the start timestamp of the voting period in the current epoch
@@ -72,7 +76,7 @@ module distribution::common {
     /// # Returns
     /// The timestamp when voting starts in the current epoch
     public fun epoch_vote_start(timestamp: u64): u64 {
-        timestamp - timestamp % 604800 + 3600
+        timestamp - timestamp % WEEK + HOUR
     }
 
     /// Returns the time required for transaction finality
@@ -88,7 +92,7 @@ module distribution::common {
     /// # Returns
     /// The number of seconds in an hour (3600)
     public fun hour(): u64 {
-        3600
+        HOUR
     }
 
     /// Returns the maximum allowed lock time for token locking
@@ -104,7 +108,7 @@ module distribution::common {
     /// # Returns
     /// The minimum lock time in seconds (604800 - 1 week)
     public fun min_lock_time(): u64 {
-        604800
+        WEEK
     }
 
     /// Converts a timestamp to its corresponding period by rounding down to the start of the week
@@ -115,7 +119,7 @@ module distribution::common {
     /// # Returns
     /// The timestamp of the start of the week containing the input timestamp
     public fun to_period(timestamp: u64): u64 {
-        timestamp / 604800 * 604800
+        timestamp / WEEK * WEEK
     }
 
     /// Returns the number of seconds in a week
@@ -123,7 +127,7 @@ module distribution::common {
     /// # Returns
     /// The number of seconds in a week (604800)
     public fun week(): u64 {
-        604800
+        WEEK
     }
 }
 

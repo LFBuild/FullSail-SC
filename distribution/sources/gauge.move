@@ -209,7 +209,7 @@ module distribution::gauge {
         gauge: &mut Gauge<CoinTypeA, CoinTypeB, SailCoinType>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>
     ): (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>) {
-        let weekCoinPerSecond = clmm_pool::config::week();
+        let weekCoinPerSecond = distribution::common::week();
         let (fee_a, fee_b) = pool.collect_fullsale_distribution_gauger_fees(gauge.gauge_cap.borrow());
         if (fee_a.value<CoinTypeA>() > 0 || fee_b.value<CoinTypeB>() > 0) {
             let amount_a = gauge.fee_a.join<CoinTypeA>(fee_a);
@@ -699,7 +699,7 @@ module distribution::gauge {
         clock: &sui::clock::Clock
     ) {
         let current_time = clock.timestamp_ms() / 1000;
-        let time_until_next_epoch = clmm_pool::config::epoch_next(current_time) - current_time;
+        let time_until_next_epoch = distribution::common::epoch_next(current_time) - current_time;
         pool.update_fullsale_distribution_growth_global(gauge.gauge_cap.borrow(), clock);
         let next_epoch_time = current_time + time_until_next_epoch;
         let total_amount = amount + pool.get_fullsale_distribution_rollover();
@@ -733,7 +733,7 @@ module distribution::gauge {
                 next_epoch_time
             );
         };
-        gauge.reward_rate_by_epoch.add(clmm_pool::config::epoch_start(current_time), gauge.reward_rate);
+        gauge.reward_rate_by_epoch.add(distribution::common::epoch_start(current_time), gauge.reward_rate);
         assert!(gauge.reward_rate != 0, ENotifyRewardAmountRewardRateZero);
         assert!(
             gauge.reward_rate <= integer_mate::full_math_u128::mul_div_floor(
