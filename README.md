@@ -73,7 +73,8 @@ This step is required to build the packages later.
 - [gauge_cap](https://suivision.xyz/txblock/3zp6J98rVv9c6pDae4gHoRA1kyEeEg9c6w2X5Xqj9EK3)
 - [price_provider](https://suivision.xyz/txblock/J2hrKfrUhnmKJTAcWDrCF5B6VfHHaKZcDhXAnaXgEgiL)
 - [clmm_pool](https://suivision.xyz/txblock/4HB9dgxwqkPA6hpZQLdp8zABPt2zD1pGUnnkmGAqeHtE)
-- [distribution](https://suivision.xyz/txblock/Cd2q6aFXA2g3aEfUF9Mjopm7gynrYrfSPfeSN45khPSD)
+- [distribution](https://suivision.xyz/txblock/Cd2q6aFXA2g3aEfUF9Mjopm7gynrYrfSPfeSN45khPSD), [upgrade distribution](https://suivision.xyz/txblock/GrmhH9yavLLSuLwiWrg8UNdsnsQBXTk2FPjdM46vSWnm)
 - [integrate](https://suivision.xyz/txblock/HjrjFAjHTS2hC8P9qqsFTKiU7nAEVEiCCzGcKh6Zk6CD)
 
 [Setup distribution tx](https://suivision.xyz/txblock/tWBKhGwhHEodzmHqQQ22V5ALi7erVqRF7zkLbqPkfsf)
+[Create gauge tx](https://suivision.xyz/txblock/2cQRDkKPG3qr9puFgAWKsyXD6ximWLqjfJgbRgK1ULi5)
