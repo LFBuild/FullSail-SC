@@ -26,10 +26,10 @@ module clmm_pool::position_tests {
         rewards_amount_owned,
         url,
         update_and_reset_fee,
-        update_and_reset_fullsale_distribution,
+        update_and_reset_fullsail_distribution,
         update_and_reset_rewards,
         update_fee,
-        update_fullsale_distribution,
+        update_fullsail_distribution,
         update_points,
         update_rewards,
     };
@@ -91,7 +91,7 @@ module clmm_pool::position_tests {
         // Create a pool ID for testing
         let pool_id = object::id_from_address(admin);
         let pool_index = 1;
-        let pool_url = string::utf8(b"https://fullsalefinance.io/pool/1");
+        let pool_url = string::utf8(b"https://fullsailfinance.io/pool/1");
         
         // Define tick range
         let tick_lower = i32::from(0);
@@ -119,10 +119,10 @@ module clmm_pool::position_tests {
         assert!(position::liquidity(&position) == 0, 5);
         
         let pos_name = position::name(&position);
-        assert!(string::utf8(b"Fullsale position:1-1") == pos_name, 6);
+        assert!(string::utf8(b"Fullsail position:1-1") == pos_name, 6);
         
         let pos_desc = position::description(&position);
-        assert!(string::utf8(b"Fullsale Liquidity Position") == pos_desc, 7);
+        assert!(string::utf8(b"Fullsail Liquidity Position") == pos_desc, 7);
         
         let pos_url = position::url(&position);
         assert!(pool_url == pos_url, 8);
@@ -166,7 +166,7 @@ module clmm_pool::position_tests {
         // Create a pool ID for testing
         let pool_id = object::id_from_address(admin);
         let pool_index = 1;
-        let pool_url = string::utf8(b"https://fullsalefinance.io/pool/1");
+        let pool_url = string::utf8(b"https://fullsailfinance.io/pool/1");
         
         // Define different tick ranges
         let mut tick_lower_ranges = vector::empty<integer_mate::i32::I32>();
@@ -239,7 +239,7 @@ module clmm_pool::position_tests {
         // Create a pool ID for testing
         let pool_id = object::id_from_address(admin);
         let pool_index = 1;
-        let pool_url = string::utf8(b"https://fullsalefinance.io/pool/1");
+        let pool_url = string::utf8(b"https://fullsailfinance.io/pool/1");
         
         // Define tick ranges that are aligned with tick spacing of 2
         let mut tick_lower_ranges = vector::empty<integer_mate::i32::I32>();
@@ -306,7 +306,7 @@ module clmm_pool::position_tests {
         vector::push_back(&mut pool_ids, object::id_from_address(@0x2));
         vector::push_back(&mut pool_ids, object::id_from_address(@0x3));
         
-        let pool_url = string::utf8(b"https://fullsalefinance.io/pool/1");
+        let pool_url = string::utf8(b"https://fullsailfinance.io/pool/1");
         let tick_lower = i32::from(0);
         let tick_upper = i32::from(10);
                 
@@ -332,11 +332,11 @@ module clmm_pool::position_tests {
             // Verify position name reflects the correct pool index
             let pos_name = position::name(&position);
             let expected_name = if (pool_index == 1) {
-                string::utf8(b"Fullsale position:1-1")
+                string::utf8(b"Fullsail position:1-1")
             } else if (pool_index == 2) {
-                string::utf8(b"Fullsale position:2-2")
+                string::utf8(b"Fullsail position:2-2")
             } else {
-                string::utf8(b"Fullsale position:3-3")
+                string::utf8(b"Fullsail position:3-3")
             };
 
             assert!(pos_name == expected_name, 2);
@@ -369,7 +369,7 @@ module clmm_pool::position_tests {
         // Create a pool ID for testing
         let pool_id = object::id_from_address(admin);
         let pool_index = 1;
-        let pool_url = string::utf8(b"https://fullsalefinance.io/pool/1");
+        let pool_url = string::utf8(b"https://fullsailfinance.io/pool/1");
         
         // Define tick range
         let tick_lower = i32::from(0);
@@ -425,7 +425,7 @@ module clmm_pool::position_tests {
         // Create a pool ID for testing
         let pool_id = object::id_from_address(admin);
         let pool_index = 1;
-        let pool_url = string::utf8(b"https://fullsalefinance.io/pool/1");
+        let pool_url = string::utf8(b"https://fullsailfinance.io/pool/1");
         
         // Define tick range
         let tick_lower = i32::from(0);
@@ -453,10 +453,10 @@ module clmm_pool::position_tests {
         assert!(position::liquidity(&position) == 0, 5);
         
         let pos_name = position::name(&position);
-        assert!(string::utf8(b"Fullsale position:1-1") == pos_name, 6);
+        assert!(string::utf8(b"Fullsail position:1-1") == pos_name, 6);
         
         let pos_desc = position::description(&position);
-        assert!(string::utf8(b"Fullsale Liquidity Position") == pos_desc, 7);
+        assert!(string::utf8(b"Fullsail Liquidity Position") == pos_desc, 7);
         
         let pos_url = position::url(&position);
         assert!(pool_url == pos_url, 8);
@@ -485,7 +485,7 @@ module clmm_pool::position_tests {
         // Create a pool ID for testing
         let pool_id = object::id_from_address(admin);
         let pool_index = 1;
-        let pool_url = string::utf8(b"https://fullsalefinance.io/pool/1");
+        let pool_url = string::utf8(b"https://fullsailfinance.io/pool/1");
         
         // Define tick range
         let tick_lower = i32::from(0);
@@ -535,7 +535,7 @@ module clmm_pool::position_tests {
         // Create a pool ID for testing
         let pool_id = object::id_from_address(admin);
         let pool_index = 1;
-        let pool_url = string::utf8(b"https://fullsalefinance.io/pool/1");
+        let pool_url = string::utf8(b"https://fullsailfinance.io/pool/1");
         
         // Define tick range
         let tick_lower = i32::from(0);
@@ -586,7 +586,7 @@ module clmm_pool::position_tests {
         // Create a pool ID for testing
         let pool_id = object::id_from_address(admin);
         let pool_index = 1;
-        let pool_url = string::utf8(b"https://fullsalefinance.io/pool/1");
+        let pool_url = string::utf8(b"https://fullsailfinance.io/pool/1");
         
         // Define tick range
         let tick_lower = i32::from(0);
@@ -609,7 +609,7 @@ module clmm_pool::position_tests {
         let fee_growth_b = 0;
         let points_growth = 0;
         let mut rewards_growth = vector::empty<u128>();
-        let fullsale_growth = 0;
+        let fullsail_growth = 0;
         
         position::increase_liquidity(
             &mut test_manager.position_manager,
@@ -619,7 +619,7 @@ module clmm_pool::position_tests {
             fee_growth_b,
             points_growth,
             rewards_growth,
-            fullsale_growth
+            fullsail_growth
         );
 
         // Verify position exists in the manager
@@ -653,7 +653,7 @@ module clmm_pool::position_tests {
         // Create a pool ID for testing
         let pool_id = object::id_from_address(admin);
         let pool_index = 1;
-        let pool_url = string::utf8(b"https://fullsalefinance.io/pool/1");
+        let pool_url = string::utf8(b"https://fullsailfinance.io/pool/1");
         
         // Define tick range
         let tick_lower = i32::from(0);
@@ -694,8 +694,8 @@ module clmm_pool::position_tests {
         let rewards = position::info_rewards(position_info);
         assert!(vector::length(rewards) == 0, 6);
         
-        // Verify position has no fullsale distribution
-        assert!(position::info_fullsale_distribution_owned(position_info) == 0, 7);
+        // Verify position has no fullsail distribution
+        assert!(position::info_fullsail_distribution_owned(position_info) == 0, 7);
 
         // Transfer objects
         transfer::public_transfer(position, admin);
@@ -721,7 +721,7 @@ module clmm_pool::position_tests {
         // Create a pool ID for testing
         let pool_id = object::id_from_address(admin);
         let pool_index = 1;
-        let pool_url = string::utf8(b"https://fullsalefinance.io/pool/1");
+        let pool_url = string::utf8(b"https://fullsailfinance.io/pool/1");
         
         // Define tick range
         let tick_lower = i32::from(0);
@@ -744,7 +744,7 @@ module clmm_pool::position_tests {
         let fee_growth_b = 0;
         let points_growth = 0;
         let mut rewards_growth = vector::empty<u128>();
-        let fullsale_growth = 0;
+        let fullsail_growth = 0;
         
         position::increase_liquidity(
             &mut test_manager.position_manager,
@@ -754,7 +754,7 @@ module clmm_pool::position_tests {
             fee_growth_b,
             points_growth,
             rewards_growth,
-            fullsale_growth
+            fullsail_growth
         );
 
         // Get position ID
@@ -793,7 +793,7 @@ module clmm_pool::position_tests {
         // Create a pool ID for testing
         let pool_id = object::id_from_address(admin);
         let pool_index = 1;
-        let pool_url = string::utf8(b"https://fullsalefinance.io/pool/1");
+        let pool_url = string::utf8(b"https://fullsailfinance.io/pool/1");
         
         // Define tick range
         let tick_lower = i32::from(0);
@@ -816,7 +816,7 @@ module clmm_pool::position_tests {
         let fee_growth_b = 0;
         let points_growth = 0;
         let mut rewards_growth = vector::empty<u128>();
-        let fullsale_growth = 0;
+        let fullsail_growth = 0;
         
         position::increase_liquidity(
             &mut test_manager.position_manager,
@@ -826,7 +826,7 @@ module clmm_pool::position_tests {
             fee_growth_b,
             points_growth,
             rewards_growth,
-            fullsale_growth
+            fullsail_growth
         );
 
         // Get position ID
@@ -879,7 +879,7 @@ module clmm_pool::position_tests {
         // Create a pool ID for testing
         let pool_id = object::id_from_address(admin);
         let pool_index = 1;
-        let pool_url = string::utf8(b"https://fullsalefinance.io/pool/1");
+        let pool_url = string::utf8(b"https://fullsailfinance.io/pool/1");
         
         // Define tick range
         let tick_lower = i32::from(0);
@@ -902,7 +902,7 @@ module clmm_pool::position_tests {
         let fee_growth_b = 0;
         let points_growth = 0;
         let mut rewards_growth = vector::empty<u128>();
-        let fullsale_growth = 0;
+        let fullsail_growth = 0;
         
         position::increase_liquidity(
             &mut test_manager.position_manager,
@@ -912,7 +912,7 @@ module clmm_pool::position_tests {
             fee_growth_b,
             points_growth,
             rewards_growth,
-            fullsale_growth
+            fullsail_growth
         );
 
         // Get position ID
@@ -968,7 +968,7 @@ module clmm_pool::position_tests {
         // Create a pool ID for testing
         let pool_id = object::id_from_address(admin);
         let pool_index = 1;
-        let pool_url = string::utf8(b"https://fullsalefinance.io/pool/1");
+        let pool_url = string::utf8(b"https://fullsailfinance.io/pool/1");
         
         // Define tick range
         let tick_lower = i32::from(0);
@@ -994,7 +994,7 @@ module clmm_pool::position_tests {
         let fee_growth_b = 0;
         let points_growth = 0;
         let mut rewards_growth = vector::empty<u128>();
-        let fullsale_growth = 0;
+        let fullsail_growth = 0;
         
         let new_liquidity = position::increase_liquidity(
             &mut test_manager.position_manager,
@@ -1004,7 +1004,7 @@ module clmm_pool::position_tests {
             fee_growth_b,
             points_growth,
             rewards_growth,
-            fullsale_growth
+            fullsail_growth
         );
         
         // Verify liquidity was increased
@@ -1041,7 +1041,7 @@ module clmm_pool::position_tests {
         // Create a pool ID for testing
         let pool_id = object::id_from_address(admin);
         let pool_index = 1;
-        let pool_url = string::utf8(b"https://fullsalefinance.io/pool/1");
+        let pool_url = string::utf8(b"https://fullsailfinance.io/pool/1");
         
         // Define tick range
         let tick_lower = i32::from(0);
@@ -1067,7 +1067,7 @@ module clmm_pool::position_tests {
         let fee_growth_b = 0;
         let points_growth = 0;
         let mut rewards_growth = vector::empty<u128>();
-        let fullsale_growth = 0;
+        let fullsail_growth = 0;
         
         position::increase_liquidity(
             &mut test_manager.position_manager,
@@ -1077,7 +1077,7 @@ module clmm_pool::position_tests {
             fee_growth_b,
             points_growth,
             rewards_growth,
-            fullsale_growth
+            fullsail_growth
         );
         
         // Now decrease liquidity
@@ -1090,7 +1090,7 @@ module clmm_pool::position_tests {
             fee_growth_b,
             points_growth,
             rewards_growth,
-            fullsale_growth
+            fullsail_growth
         );
         
         // Verify liquidity was decreased
@@ -1127,7 +1127,7 @@ module clmm_pool::position_tests {
         // Create a pool ID for testing
         let pool_id = object::id_from_address(admin);
         let pool_index = 1;
-        let pool_url = string::utf8(b"https://fullsalefinance.io/pool/1");
+        let pool_url = string::utf8(b"https://fullsailfinance.io/pool/1");
         
         // Define tick range
         let tick_lower = i32::from(0);
@@ -1153,7 +1153,7 @@ module clmm_pool::position_tests {
         let fee_growth_b = 0;
         let points_growth = 0;
         let mut rewards_growth = vector::empty<u128>();
-        let fullsale_growth = 0;
+        let fullsail_growth = 0;
         
         position::increase_liquidity(
             &mut test_manager.position_manager,
@@ -1163,7 +1163,7 @@ module clmm_pool::position_tests {
             fee_growth_b,
             points_growth,
             rewards_growth,
-            fullsale_growth
+            fullsail_growth
         );
         
         // Now decrease liquidity by 0
@@ -1176,7 +1176,7 @@ module clmm_pool::position_tests {
             fee_growth_b,
             points_growth,
             rewards_growth,
-            fullsale_growth
+            fullsail_growth
         );
         
         // Verify liquidity remains the same
@@ -1213,7 +1213,7 @@ module clmm_pool::position_tests {
         // Create a pool ID for testing
         let pool_id = object::id_from_address(admin);
         let pool_index = 1;
-        let pool_url = string::utf8(b"https://fullsalefinance.io/pool/1");
+        let pool_url = string::utf8(b"https://fullsailfinance.io/pool/1");
         
         // Define tick range
         let tick_lower = i32::from(0);
@@ -1239,7 +1239,7 @@ module clmm_pool::position_tests {
         let fee_growth_b = 0;
         let points_growth = 0;
         let mut rewards_growth = vector::empty<u128>();
-        let fullsale_growth = 0;
+        let fullsail_growth = 0;
         
         position::increase_liquidity(
             &mut test_manager.position_manager,
@@ -1249,7 +1249,7 @@ module clmm_pool::position_tests {
             fee_growth_b,
             points_growth,
             rewards_growth,
-            fullsale_growth
+            fullsail_growth
         );
         
         // Now decrease liquidity by the full amount
@@ -1262,7 +1262,7 @@ module clmm_pool::position_tests {
             fee_growth_b,
             points_growth,
             rewards_growth,
-            fullsale_growth
+            fullsail_growth
         );
         
         // Verify liquidity is now 0
@@ -1299,7 +1299,7 @@ module clmm_pool::position_tests {
         // Create a pool ID for testing
         let pool_id = object::id_from_address(admin);
         let pool_index = 1;
-        let pool_url = string::utf8(b"https://fullsalefinance.io/pool/1");
+        let pool_url = string::utf8(b"https://fullsailfinance.io/pool/1");
         
         // Define tick range
         let tick_lower = i32::from(0);
@@ -1325,7 +1325,7 @@ module clmm_pool::position_tests {
         let fee_growth_b = 0;
         let points_growth = 0;
         let mut rewards_growth = vector::empty<u128>();
-        let fullsale_growth = 0;
+        let fullsail_growth = 0;
         
         position::increase_liquidity(
             &mut test_manager.position_manager,
@@ -1335,7 +1335,7 @@ module clmm_pool::position_tests {
             fee_growth_b,
             points_growth,
             rewards_growth,
-            fullsale_growth
+            fullsail_growth
         );
         
         // Update fees to simulate some fee growth
@@ -1361,7 +1361,7 @@ module clmm_pool::position_tests {
             fee_growth_b_updated,
             points_growth,
             rewards_growth,
-            fullsale_growth
+            fullsail_growth
         );
         
         // Verify liquidity was decreased
@@ -1407,7 +1407,7 @@ module clmm_pool::position_tests {
         // Create a pool ID for testing
         let pool_id = object::id_from_address(admin);
         let pool_index = 1;
-        let pool_url = string::utf8(b"https://fullsalefinance.io/pool/1");
+        let pool_url = string::utf8(b"https://fullsailfinance.io/pool/1");
         
         // Define tick range
         let tick_lower = i32::from(0);
@@ -1433,7 +1433,7 @@ module clmm_pool::position_tests {
         let fee_growth_b = 0;
         let points_growth = 0;
         let mut rewards_growth = vector::empty<u128>();
-        let fullsale_growth = 0;
+        let fullsail_growth = 0;
         
         position::increase_liquidity(
             &mut test_manager.position_manager,
@@ -1443,7 +1443,7 @@ module clmm_pool::position_tests {
             fee_growth_b,
             points_growth,
             rewards_growth,
-            fullsale_growth
+            fullsail_growth
         );
         
         // Update rewards to simulate some reward growth
@@ -1466,7 +1466,7 @@ module clmm_pool::position_tests {
             fee_growth_b,
             points_growth,
             rewards_growth_updated,
-            fullsale_growth
+            fullsail_growth
         );
         
         // Verify liquidity was decreased
@@ -1489,11 +1489,11 @@ module clmm_pool::position_tests {
     }
 
     #[test]
-    /// Test decrease_liquidity method with partial decrease and fullsale growth
+    /// Test decrease_liquidity method with partial decrease and fullsail growth
     /// Verifies that:
     /// 1. Decreasing liquidity by a partial amount updates liquidity correctly
-    /// 2. Fullsale growth is updated correctly during decrease
-    fun test_decrease_liquidity_with_fullsale() {
+    /// 2. Fullsail growth is updated correctly during decrease
+    fun test_decrease_liquidity_with_fullsail() {
         let mut scenario = test_scenario::begin(@0x1);
         let admin = @0x1;
         scenario.next_tx(admin);
@@ -1507,7 +1507,7 @@ module clmm_pool::position_tests {
         // Create a pool ID for testing
         let pool_id = object::id_from_address(admin);
         let pool_index = 1;
-        let pool_url = string::utf8(b"https://fullsalefinance.io/pool/1");
+        let pool_url = string::utf8(b"https://fullsailfinance.io/pool/1");
         
         // Define tick range
         let tick_lower = i32::from(0);
@@ -1533,7 +1533,7 @@ module clmm_pool::position_tests {
         let fee_growth_b = 0;
         let points_growth = 0;
         let mut rewards_growth = vector::empty<u128>();
-        let fullsale_growth = 0;
+        let fullsail_growth = 0;
         
         position::increase_liquidity(
             &mut test_manager.position_manager,
@@ -1543,11 +1543,11 @@ module clmm_pool::position_tests {
             fee_growth_b,
             points_growth,
             rewards_growth,
-            fullsale_growth
+            fullsail_growth
         );
         
-        // Update fullsale growth
-        let fullsale_growth_updated = 100;
+        // Update fullsail growth
+        let fullsail_growth_updated = 100;
         
         // Now decrease liquidity by a partial amount
         let liquidity_decrease = 500;
@@ -1559,7 +1559,7 @@ module clmm_pool::position_tests {
             fee_growth_b,
             points_growth,
             rewards_growth,
-            fullsale_growth_updated
+            fullsail_growth_updated
         );
         
         // Verify liquidity was decreased
@@ -1596,7 +1596,7 @@ module clmm_pool::position_tests {
         // Create a pool ID for testing
         let pool_id = object::id_from_address(admin);
         let pool_index = 1;
-        let pool_url = string::utf8(b"https://fullsalefinance.io/pool/1");
+        let pool_url = string::utf8(b"https://fullsailfinance.io/pool/1");
         
         // Define tick range
         let tick_lower = i32::from(0);
@@ -1622,7 +1622,7 @@ module clmm_pool::position_tests {
         let fee_growth_b = 0;
         let points_growth = 0;
         let mut rewards_growth = vector::empty<u128>();
-        let fullsale_growth = 0;
+        let fullsail_growth = 0;
         
         position::increase_liquidity(
             &mut test_manager.position_manager,
@@ -1632,7 +1632,7 @@ module clmm_pool::position_tests {
             fee_growth_b,
             points_growth,
             rewards_growth,
-            fullsale_growth
+            fullsail_growth
         );
         
         // Update points growth
@@ -1648,7 +1648,7 @@ module clmm_pool::position_tests {
             fee_growth_b,
             points_growth_updated,
             rewards_growth,
-            fullsale_growth
+            fullsail_growth
         );
         
         // Verify liquidity was decreased
@@ -1685,7 +1685,7 @@ module clmm_pool::position_tests {
         // Create a pool ID for testing
         let pool_id = object::id_from_address(admin);
         let pool_index = 1;
-        let pool_url = string::utf8(b"https://fullsalefinance.io/pool/1");
+        let pool_url = string::utf8(b"https://fullsailfinance.io/pool/1");
         
         // Define tick range
         let tick_lower = i32::from(0);
@@ -1715,7 +1715,7 @@ module clmm_pool::position_tests {
             0, // fee_growth_b
             0, // points_growth
             vector::empty<u128>(), // rewards_growth
-            0 // fullsale_growth
+            0 // fullsail_growth
         );
         
         // Try to decrease more liquidity than available
@@ -1730,7 +1730,7 @@ module clmm_pool::position_tests {
             0, // fee_growth_b
             0, // points_growth
             vector::empty<u128>(), // rewards_growth
-            0 // fullsale_growth
+            0 // fullsail_growth
         );
         
         // Transfer objects
@@ -1759,7 +1759,7 @@ module clmm_pool::position_tests {
         // Create a pool ID for testing
         let pool_id = object::id_from_address(admin);
         let pool_index = 1;
-        let pool_url = string::utf8(b"https://fullsalefinance.io/pool/1");
+        let pool_url = string::utf8(b"https://fullsailfinance.io/pool/1");
         
         // Define tick range
         let tick_lower = i32::from(0);
@@ -1811,9 +1811,9 @@ module clmm_pool::position_tests {
         let rewards = position::info_rewards(position_info);
         assert!(vector::length(rewards) == 0, 12);
         
-        // Verify fullsale distribution is initialized
+        // Verify fullsail distribution is initialized
         assert!(!position::is_staked(position_info), 13);
-        assert!(position::info_fullsale_distribution_owned(position_info) == 0, 14);
+        assert!(position::info_fullsail_distribution_owned(position_info) == 0, 14);
 
         // Transfer objects
         transfer::public_transfer(position, admin);
@@ -1990,7 +1990,7 @@ module clmm_pool::position_tests {
         // Create a pool ID for testing
         let pool_id = object::id_from_address(admin);
         let pool_index = 1;
-        let pool_url = string::utf8(b"https://fullsalefinance.io/pool/1");
+        let pool_url = string::utf8(b"https://fullsailfinance.io/pool/1");
         
         // Define tick range
         let tick_lower = i32::from(0);
@@ -2067,7 +2067,7 @@ module clmm_pool::position_tests {
         // Create a pool ID for testing
         let pool_id = object::id_from_address(admin);
         let pool_index = 1;
-        let pool_url = string::utf8(b"https://fullsalefinance.io/pool/1");
+        let pool_url = string::utf8(b"https://fullsailfinance.io/pool/1");
         
         // Define tick range
         let tick_lower = i32::from(0);
@@ -2176,7 +2176,7 @@ module clmm_pool::position_tests {
         // Create a pool ID for testing
         let pool_id = object::id_from_address(admin);
         let pool_index = 1;
-        let pool_url = string::utf8(b"https://fullsalefinance.io/pool/1");
+        let pool_url = string::utf8(b"https://fullsailfinance.io/pool/1");
         
         // Define tick range
         let tick_lower = i32::from(0);
@@ -2248,7 +2248,7 @@ module clmm_pool::position_tests {
         // Create a pool ID for testing
         let pool_id = object::id_from_address(admin);
         let pool_index = 1;
-        let pool_url = string::utf8(b"https://fullsalefinance.io/pool/1");
+        let pool_url = string::utf8(b"https://fullsailfinance.io/pool/1");
         
         // Define tick range
         let tick_lower = i32::from(0);
@@ -2326,7 +2326,7 @@ module clmm_pool::position_tests {
         // Create a pool ID for testing
         let pool_id = object::id_from_address(admin);
         let pool_index = 1;
-        let pool_url = string::utf8(b"https://fullsalefinance.io/pool/1");
+        let pool_url = string::utf8(b"https://fullsailfinance.io/pool/1");
         
         // Define tick range
         let tick_lower = i32::from(0);
@@ -2365,19 +2365,19 @@ module clmm_pool::position_tests {
     fun test_new_position_name() {
         // Test with pool_index = 1, position_index = 1
         let name1 = position::test_new_position_name(1, 1);
-        assert!(string::utf8(b"Fullsale position:1-1") == name1, 1);
+        assert!(string::utf8(b"Fullsail position:1-1") == name1, 1);
         
         // Test with pool_index = 2, position_index = 3
         let name2 = position::test_new_position_name(2, 3);
-        assert!(string::utf8(b"Fullsale position:2-3") == name2, 2);
+        assert!(string::utf8(b"Fullsail position:2-3") == name2, 2);
         
         // Test with pool_index = 0, position_index = 0
         let name3 = position::test_new_position_name(0, 0);
-        assert!(string::utf8(b"Fullsale position:0-0") == name3, 3);
+        assert!(string::utf8(b"Fullsail position:0-0") == name3, 3);
         
         // Test with large indices
         let name4 = position::test_new_position_name(1000, 5000);
-        assert!(string::utf8(b"Fullsale position:1000-5000") == name4, 4);
+        assert!(string::utf8(b"Fullsail position:1000-5000") == name4, 4);
         
         // Verify that different indices produce different names
         assert!(name1 != name2, 5);
@@ -2407,7 +2407,7 @@ module clmm_pool::position_tests {
         // Create a pool ID for testing
         let pool_id = object::id_from_address(admin);
         let pool_index = 1;
-        let pool_url = string::utf8(b"https://fullsalefinance.io/pool/1");
+        let pool_url = string::utf8(b"https://fullsailfinance.io/pool/1");
         
         // Define tick range
         let tick_lower = i32::from(0);
@@ -2480,7 +2480,7 @@ module clmm_pool::position_tests {
             &mut test_manager.position_manager,
             object::id_from_address(admin),
             1,
-            std::string::utf8(b"https://fullsalefinance.io/pool/1"),
+            std::string::utf8(b"https://fullsailfinance.io/pool/1"),
             integer_mate::i32::neg_from(10),
             i32::from(10),
             test_scenario::ctx(&mut scenario)
@@ -2530,7 +2530,7 @@ module clmm_pool::position_tests {
             &mut test_manager.position_manager,
             object::id_from_address(admin),
             1,
-            std::string::utf8(b"https://fullsalefinance.io/pool/1"),
+            std::string::utf8(b"https://fullsailfinance.io/pool/1"),
             integer_mate::i32::neg_from(10),
             i32::from(10),
             test_scenario::ctx(&mut scenario)
@@ -2582,7 +2582,7 @@ module clmm_pool::position_tests {
             &mut test_manager.position_manager,
              object::id_from_address(admin),
             1,
-            std::string::utf8(b"https://fullsalefinance.io/pool/1"),
+            std::string::utf8(b"https://fullsailfinance.io/pool/1"),
             integer_mate::i32::neg_from(10),
             i32::from(10),
             test_scenario::ctx(&mut scenario)
@@ -2590,7 +2590,7 @@ module clmm_pool::position_tests {
         
         // Test url function
         let url = url(&position);
-        assert!(string::utf8(b"https://fullsalefinance.io/pool/1") == url, 1);
+        assert!(string::utf8(b"https://fullsailfinance.io/pool/1") == url, 1);
 
         test_scenario::next_tx(&mut scenario, admin);
         transfer::public_transfer(test_manager, admin);
@@ -2619,7 +2619,7 @@ module clmm_pool::position_tests {
             &mut test_manager.position_manager,
              object::id_from_address(admin),
             1,
-            std::string::utf8(b"https://fullsalefinance.io/pool/1"),
+            std::string::utf8(b"https://fullsailfinance.io/pool/1"),
             integer_mate::i32::neg_from(10),
             i32::from(10),
             test_scenario::ctx(&mut scenario)
@@ -2657,11 +2657,11 @@ module clmm_pool::position_tests {
     }
 
     #[test]
-    /// Test update_and_reset_fullsale_distribution function
+    /// Test update_and_reset_fullsail_distribution function
     /// Verifies that:
-    /// 1. Updates fullsale distribution growth correctly using Q64.64 fixed-point format
-    /// 2. Resets fullsale distribution owned to zero
-    /// 3. Returns the reset fullsale distribution amount
+    /// 1. Updates fullsail distribution growth correctly using Q64.64 fixed-point format
+    /// 2. Resets fullsail distribution owned to zero
+    /// 3. Returns the reset fullsail distribution amount
     /// 
     /// The test uses the following Q64.64 values:
     /// - Initial growth: 1.0 (1 << 64)
@@ -2670,7 +2670,7 @@ module clmm_pool::position_tests {
     /// 
     /// The difference between growth values (1.0) is multiplied by the position's liquidity
     /// and right-shifted by 64 bits to calculate the accumulated rewards.
-    fun test_update_and_reset_fullsale_distribution() {
+    fun test_update_and_reset_fullsail_distribution() {
         let mut scenario = test_scenario::begin(@0x1);
         let admin = @0x1;
         scenario.next_tx(admin);
@@ -2686,7 +2686,7 @@ module clmm_pool::position_tests {
             &mut test_manager.position_manager,
             object::id_from_address(admin),
             1,
-            std::string::utf8(b"https://fullsalefinance.io/pool/1"),
+            std::string::utf8(b"https://fullsailfinance.io/pool/1"),
             integer_mate::i32::neg_from(10),
             i32::from(10),
             test_scenario::ctx(&mut scenario)
@@ -2706,24 +2706,24 @@ module clmm_pool::position_tests {
         );
 
         // First update to set initial growth
-        let _initial_fullsale = position::update_fullsale_distribution(&mut test_manager.position_manager, position_id, 1 << 64); // 1.0 in Q64.64
+        let _initial_fullsail = position::update_fullsail_distribution(&mut test_manager.position_manager, position_id, 1 << 64); // 1.0 in Q64.64
 
         // Second update to accumulate rewards
-        let _updated_fullsale = position::update_fullsale_distribution(&mut test_manager.position_manager, position_id, 2 << 64); // 2.0 in Q64.64
+        let _updated_fullsail = position::update_fullsail_distribution(&mut test_manager.position_manager, position_id, 2 << 64); // 2.0 in Q64.64
 
-        // Verify fullsale distribution is greater than zero
-        let fullsale_owned = position::info_fullsale_distribution_owned(position::borrow_position_info(&test_manager.position_manager, position_id));
-        assert!(fullsale_owned > 0, 1);
+        // Verify fullsail distribution is greater than zero
+        let fullsail_owned = position::info_fullsail_distribution_owned(position::borrow_position_info(&test_manager.position_manager, position_id));
+        assert!(fullsail_owned > 0, 1);
 
-        // Update and reset fullsale distribution
-        let reset_fullsale = position::update_and_reset_fullsale_distribution(&mut test_manager.position_manager, position_id, 3 << 64); // 3.0 in Q64.64
+        // Update and reset fullsail distribution
+        let reset_fullsail = position::update_and_reset_fullsail_distribution(&mut test_manager.position_manager, position_id, 3 << 64); // 3.0 in Q64.64
 
-        // Verify fullsale distribution is reset to zero
-        assert!(reset_fullsale == 0, 2);
+        // Verify fullsail distribution is reset to zero
+        assert!(reset_fullsail == 0, 2);
 
-        // Verify position fullsale distribution is reset to zero
-        let fullsale_owned = position::info_fullsale_distribution_owned(position::borrow_position_info(&test_manager.position_manager, position_id));
-        assert!(fullsale_owned == 0, 3);
+        // Verify position fullsail distribution is reset to zero
+        let fullsail_owned = position::info_fullsail_distribution_owned(position::borrow_position_info(&test_manager.position_manager, position_id));
+        assert!(fullsail_owned == 0, 3);
 
         transfer::public_transfer(position, admin);
         transfer::public_transfer(test_manager, admin);
@@ -2760,7 +2760,7 @@ module clmm_pool::position_tests {
             &mut test_manager.position_manager,
             object::id_from_address(admin),
             1,
-            std::string::utf8(b"https://fullsalefinance.io/pool/1"),
+            std::string::utf8(b"https://fullsailfinance.io/pool/1"),
             integer_mate::i32::neg_from(10),
             i32::from(10),
             test_scenario::ctx(&mut scenario)
@@ -2835,7 +2835,7 @@ module clmm_pool::position_tests {
         // Create a pool ID for testing
         let pool_id = object::id_from_address(admin);
         let pool_index = 1;
-        let pool_url = string::utf8(b"https://fullsalefinance.io/pool/1");
+        let pool_url = string::utf8(b"https://fullsailfinance.io/pool/1");
         
         // Define tick range
         let tick_lower = i32::from(0);
@@ -2865,7 +2865,7 @@ module clmm_pool::position_tests {
             0, // fee_growth_b
             0, // points_growth
             vector::empty<u128>(), // rewards_growth
-            0  // fullsale_growth
+            0  // fullsail_growth
         );
 
         // Update points with a non-zero growth value in Q64.64 format
@@ -2893,25 +2893,25 @@ module clmm_pool::position_tests {
         assert!(position::info_points_owned(position_info) == expected_points, 2);
         assert!(position::info_points_growth_inside(position_info) == points_growth, 3);
 
-        // Update and verify fullsale distribution with non-zero growth value in Q64.64 format
-        let fullsale_growth = 2000 << 64;
-        let fullsale_owned = position::update_fullsale_distribution(
+        // Update and verify fullsail distribution with non-zero growth value in Q64.64 format
+        let fullsail_growth = 2000 << 64;
+        let fullsail_owned = position::update_fullsail_distribution(
             &mut test_manager.position_manager,
             position_id,
-            fullsale_growth
+            fullsail_growth
         );
 
-        // Calculate expected fullsale value
-        let expected_fullsale = integer_mate::full_math_u128::mul_shr(
+        // Calculate expected fullsail value
+        let expected_fullsail = integer_mate::full_math_u128::mul_shr(
             initial_liquidity,
-            fullsale_growth,
+            fullsail_growth,
             64
         ) as u64;
 
-        // Verify fullsale distribution is updated correctly
+        // Verify fullsail distribution is updated correctly
         let position_info = position::borrow_position_info(&test_manager.position_manager, position_id);
-        assert!(position::info_fullsale_distribution_owned(position_info) == fullsale_owned, 4);
-        assert!(fullsale_owned == expected_fullsale, 5);
+        assert!(position::info_fullsail_distribution_owned(position_info) == fullsail_owned, 4);
+        assert!(fullsail_owned == expected_fullsail, 5);
 
         // Initialize some rewards
         let mut rewards_growth = vector::empty<u128>();
@@ -2961,7 +2961,7 @@ module clmm_pool::position_tests {
             // Create a pool ID for testing
             let pool_id = sui::object::id_from_address(admin);
             let pool_index = 1;
-            let pool_url = std::string::utf8(b"https://fullsalefinance.io/pool/1");
+            let pool_url = std::string::utf8(b"https://fullsailfinance.io/pool/1");
             
             // Define tick range
             let tick_lower = integer_mate::i32::from(0);
@@ -2983,7 +2983,7 @@ module clmm_pool::position_tests {
 
             // Set custom display values
             let custom_description = std::string::utf8(b"Custom position description");
-            let custom_link = std::string::utf8(b"https://app.fullsalefinance.io/custom-position");
+            let custom_link = std::string::utf8(b"https://app.fullsailfinance.io/custom-position");
             let custom_project_url = std::string::utf8(b"https://custom-project.io");
             let custom_creator = std::string::utf8(b"Custom Creator");
 
@@ -3025,7 +3025,7 @@ module clmm_pool::position_tests {
             };
 
             let custom_description = std::string::utf8(b"Custom position description");
-            let custom_link = std::string::utf8(b"https://app.fullsalefinance.io/custom-position");
+            let custom_link = std::string::utf8(b"https://app.fullsailfinance.io/custom-position");
             let custom_project_url = std::string::utf8(b"https://custom-project.io");
             let custom_creator = std::string::utf8(b"Custom Creator");
             

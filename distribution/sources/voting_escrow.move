@@ -2108,7 +2108,7 @@ module distribution::voting_escrow {
     /// * `ctx` - The transaction context, used to create the display and transfer it
     ///
     /// # Effects
-    /// Creates and initializes a Display object for Lock NFTs with Fullsale-specific branding
+    /// Creates and initializes a Display object for Lock NFTs with Fullsail-specific branding
     /// and transfers it to the transaction sender
     public fun set_display(publisher: &sui::package::Publisher, ctx: &mut TxContext) {
         let mut fields = std::vector::empty<std::string::String>();
@@ -2120,13 +2120,13 @@ module distribution::voting_escrow {
         fields.push_back(std::string::utf8(b"website"));
         fields.push_back(std::string::utf8(b"creator"));
         let mut values = std::vector::empty<std::string::String>();
-        values.push_back(std::string::utf8(b"Fullsale Lock"));
+        values.push_back(std::string::utf8(b"Fullsail Lock"));
         values.push_back(std::string::utf8(b"{amount}"));
         values.push_back(std::string::utf8(b"{end}"));
         values.push_back(std::string::utf8(b"{permanent}"));
         values.push_back(std::string::utf8(b""));
-        values.push_back(std::string::utf8(b"https://fullsalefinance.io"));
-        values.push_back(std::string::utf8(b"FULLSALE"));
+        values.push_back(std::string::utf8(b"https://fullsailfinance.io"));
+        values.push_back(std::string::utf8(b"FULLSAIL"));
         let mut display = sui::display::new_with_fields<Lock>(
             publisher,
             fields,
