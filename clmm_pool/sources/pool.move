@@ -3047,7 +3047,7 @@ module clmm_pool::pool {
             gauge_fee_amount: _,
         } = receipt;
         assert!(sui::object::id<Pool<CoinTypeA, CoinTypeB>>(pool) == pool_id, 14);
-        assert!(sui::object::id<clmm_pool::partner::Partner>(partner) == partner_id, 14);
+        assert!(sui::object::id<clmm_pool::partner::Partner>(partner) == partner_id, 15);
         if (a2b) {
             assert!(sui::balance::value<CoinTypeA>(&balance_a) == pay_amount, 0);
             if (ref_fee_amount > 0) {
