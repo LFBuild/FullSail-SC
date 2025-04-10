@@ -2,7 +2,7 @@
 
 [move]
 version = 3
-manifest_digest = "78E4FD134F101921D7E1C06C04992BA2BDCAD0AAB82BA745CCA7C34050CDC488"
+manifest_digest = "6DCAF3ABF34658CDF62E9BA9ED79FCCEF7ED7050D03282E83E758E63EDAF23A9"
 deps_digest = "CAFAD8A7CF51067FB4358215BECB86BD100DD64E57C2AC8A7AE7D74B688F5965"
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -52,7 +52,7 @@ dependencies = [
 
 [[move.package]]
 id = "gauge_cap"
-source = { git = "https://github.com/LFBuild/FullSail-SC.git", rev = "main", subdir = "gauge_cap" }
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "main", subdir = "gauge_cap" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -60,7 +60,7 @@ dependencies = [
 
 [[move.package]]
 id = "integer_mate"
-source = { git = "https://github.com/LFBuild/FullSail-SC.git", rev = "main", subdir = "integer_mate" }
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "main", subdir = "integer_mate" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
