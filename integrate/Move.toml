@@ -16,19 +16,37 @@ rev = "framework/mainnet"
 override = true
 
 [dependencies.move_stl]
-local = "../move_stl"
+git = "https://github.com/LFBuild/FullSail-SC.git"
+subdir = "move_stl"
+rev = "main"
+override = true
 
 [dependencies.clmm_pool]
-local = "../clmm_pool"
+git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
+subdir = "clmm_pool"
+rev = "main"
+override = true
 
 [dependencies.distribution]
-local = "../distribution"
+git = "https://github.com/LFBuild/FullSail-SC.git"
+subdir = "distribution"
+rev = "main"
+override = true
 
 [dependencies.integer_mate]
-local = "../integer_mate"
+git = "https://github.com/LFBuild/FullSail-SC.git"
+subdir = "integer_mate"
+rev = "main"
+override = true
 
 [dependencies.gauge_cap]
-local = "../gauge_cap"
+git = "https://github.com/LFBuild/FullSail-SC.git"
+subdir = "gauge_cap"
+rev = "main"
+override = true
 
 [dependencies.price_provider]
-local = "../price_provider"
+git = "https://github.com/LFBuild/FullSail-SC.git"
+subdir = "price_provider"
+rev = "main"
+override = true
