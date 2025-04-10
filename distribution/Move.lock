@@ -2,7 +2,7 @@
 
 [move]
 version = 3
-manifest_digest = "6E394AC023A2A7B053F3D8F0B8A26ECC7C00C03FB468E0E4F5F3D7E86114F035"
+manifest_digest = "C6DA9E56907B059830F83B5E680DB53C63F4CC21D359B26D7CD4EC1358B64E1E"
 deps_digest = "397E6A9F7A624706DBDFEE056CE88391A15876868FD18A88504DA74EB458D697"
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -62,7 +62,7 @@ dependencies = [
 
 [[move.package]]
 id = "price_provider"
-source = { git = "https://github.com/LFBuild/FullSail-SC.git", rev = "main", subdir = "price_provider" }
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "main", subdir = "price_provider" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },

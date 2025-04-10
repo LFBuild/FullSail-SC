@@ -16,7 +16,7 @@ rev = "framework/mainnet"
 override = true
 
 [dependencies.move_stl]
-git = "https://github.com/LFBuild/FullSail-SC.git"
+git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
 subdir = "move_stl"
 rev = "main"
 override = true
@@ -28,10 +28,7 @@ rev = "main"
 override = true
 
 [dependencies.distribution]
-git = "https://github.com/LFBuild/FullSail-SC.git"
-subdir = "distribution"
-rev = "main"
-override = true
+local = "../distribution"
 
 [dependencies.integer_mate]
 git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
@@ -46,7 +43,7 @@ rev = "main"
 override = true
 
 [dependencies.price_provider]
-git = "https://github.com/LFBuild/FullSail-SC.git"
+git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
 subdir = "price_provider"
 rev = "main"
 override = true

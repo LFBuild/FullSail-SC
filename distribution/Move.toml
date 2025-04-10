@@ -34,7 +34,7 @@ rev = "main"
 override = true
 
 [dependencies.price_provider]
-git = "https://github.com/LFBuild/FullSail-SC.git"
+git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
 subdir = "price_provider"
 rev = "main"
 override = true
