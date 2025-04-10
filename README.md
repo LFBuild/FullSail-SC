@@ -38,12 +38,10 @@ Notable dependencies:
 ### Initial deployment
 - Use the latest version of `sui` CLI.
 - Run the `build_all.sh` script to update the git deps of all the packages.
-- In each package set the `[addresses]` value for your package to `0x0` in the `Move.toml` file.
+- Run `reset_addresses.sh` to set the `[addresses]` value for each package to `0x0` in the `Move.toml` file.
 - Deploy all the packages in an order defined by dependency graph (see [Contract dependencies](#contract-dependencies)). 
 Use `sui client publish` command.
-- In each package restore the package address `[addresses]` section the `Move.toml` with the `original-published-id` after publishing.
-You can find the necessary address in the `Move.lock` in the section corresponding to the deployment environment. 
-This step is required to build the packages later.
+- Run `update_addresses.sh` to restore the package address `[addresses]` section in the `Move.toml` for each package with the `original-published-id` after publishing. WARNING the `update_addresses.sh` script supports only mainnet environment.
 
 ### Upgrading
 - When upgrading, you need to retrieve the UpgradeCap ID of your published package. Automated address management does not track your UpgradeCap.

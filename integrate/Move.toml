@@ -1,45 +1,34 @@
 [package]
 name = "integrate"
 edition = "2024"
-# license = ""           # e.g., "MIT", "GPL", "Apache 2.0"
-# authors = ["..."]      # e.g., ["Joe Smith (joesmith@noemail.com)", "John Snow (johnsnow@noemail.com)"]
-
-[dependencies]
-Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/mainnet", override = true }
-# Local deps have name conflicts, the solution is here https://stackoverflow.com/questions/73958046/local-dependency-cannot-be-resolved
-# Long story short, we need to set the package address in the [addresses] section of each package to be equal to the published-at address
-move_stl = { local = "../move_stl" }
-clmm_pool = { local = "../clmm_pool" }
-distribution = { local = "../distribution" }
-integer_mate = { local = "../integer_mate" }
-gauge_cap = { local = "../gauge_cap" }
-price_provider = { local = "../price_provider" }
-
-# For remote import, use the `{ git = "...", subdir = "...", rev = "..." }`.
-# Revision can be a branch, a tag, and a commit hash.
-# MyRemotePackage = { git = "https://some.remote/host.git", subdir = "remote/path", rev = "main" }
-
-# For local dependencies use `local = path`. Path is relative to the package root
-# Local = { local = "../path/to" }
-
-# To resolve a version conflict and force a specific version for dependency
-# override use `override = true`
-# Override = { local = "../conflicting/version", override = true }
 
 [addresses]
 integrate = "0xacc8732610118a1ffe900849190b3b33fb1f632855f4287f5e9fcbfa3f1ae43d"
 
-# Named addresses will be accessible in Move as `@name`. They're also exported:
-# for example, `std = "0x1"` is exported by the Standard Library.
-# alice = "0xA11CE"
-
 [dev-dependencies]
-# The dev-dependencies section allows overriding dependencies for `--test` and
-# `--dev` modes. You can introduce test-only dependencies here.
-# Local = { local = "../path/to/dev-build" }
 
 [dev-addresses]
-# The dev-addresses section allows overwriting named addresses for the `--test`
-# and `--dev` modes.
-# alice = "0xB0B"
 
+[dependencies.Sui]
+git = "https://github.com/MystenLabs/sui.git"
+subdir = "crates/sui-framework/packages/sui-framework"
+rev = "framework/mainnet"
+override = true
+
+[dependencies.move_stl]
+local = "../move_stl"
+
+[dependencies.clmm_pool]
+local = "../clmm_pool"
+
+[dependencies.distribution]
+local = "../distribution"
+
+[dependencies.integer_mate]
+local = "../integer_mate"
+
+[dependencies.gauge_cap]
+local = "../gauge_cap"
+
+[dependencies.price_provider]
+local = "../price_provider"
