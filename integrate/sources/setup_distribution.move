@@ -1,5 +1,5 @@
 module integrate::setup_distribution {
-    public entry fun create<FirstSailOptionCoinType>(
+    public entry fun create<FirstSailOptionCoinType, SailCoinType>(
         publisher: &sui::package::Publisher,
         global_config: &clmm_pool::config::GlobalConfig,
         distribtuion_config: &distribution::distribution_config::DistributionConfig,
@@ -8,7 +8,7 @@ module integrate::setup_distribution {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        let (minter_immut, admin_cap) = distribution::minter::create<FirstSailOptionCoinType>(
+        let (minter_immut, admin_cap) = distribution::minter::create<SailCoinType>(
             publisher,
             option::some(treasury_cap),
             ctx
@@ -46,7 +46,7 @@ module integrate::setup_distribution {
             )
         );
         transfer::public_share_object<distribution::voter::Voter>(voter);
-        transfer::public_share_object<distribution::minter::Minter<FirstSailOptionCoinType>>(minter);
+        transfer::public_share_object<distribution::minter::Minter<SailCoinType>>(minter);
     }
 }
 

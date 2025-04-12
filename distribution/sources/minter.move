@@ -611,7 +611,6 @@ module distribution::minter {
             option::borrow<sui::coin::TreasuryCap<SailCoinType>>(&minter.sail_coin_cap).total_supply(),
             voting_escrow.total_locked()
         );
-        let minter_address = object::id_address<Minter<SailCoinType>>(minter);
         if (minter.team_emission_rate > 0 && minter.team_wallet != @0x0) {
             transfer::public_transfer<sui::coin::Coin<SailCoinType>>(
                 option::borrow_mut<sui::coin::TreasuryCap<SailCoinType>>(

@@ -136,6 +136,8 @@ module distribution::voter {
         // the history of all coins that were distributed. In case we need to iterate over them to calculate rewards.
         // Linked table cos we probably need both to check if a sertain coin was used as reward and to iterate.
         reward_tokens: LinkedTable<TypeName, bool>,
+        // Coins that allowed to be used as bribe rewards or free managed rewards
+        is_whitelisted_token: Table<std::type_name::TypeName, bool>,
         is_whitelisted_nft: Table<LockID, bool>,
         max_voting_num: u64,
         last_voted: Table<LockID, u64>,
@@ -162,6 +164,13 @@ module distribution::voter {
     public struct EventExtractClaimable has copy, drop, store {
         gauger: ID,
         amount: u64,
+    }
+
+    /// Event emitted when a token is whitelisted or de-whitelisted
+    public struct EventWhitelistToken has copy, drop, store {
+        sender: address,
+        token: std::type_name::TypeName,
+        listed: bool,
     }
 
     /// Event emitted when an NFT is whitelisted or de-whitelisted
@@ -290,6 +299,7 @@ module distribution::voter {
             claimable: table::new<TypeName, Table<GaugeID, u64>>(ctx),
             current_epoch_token: start_epoch_coin,
             reward_tokens: linked_table::new<TypeName, bool>(ctx),
+            is_whitelisted_token: table::new<std::type_name::TypeName, bool>(ctx),
             is_whitelisted_nft: table::new<LockID, bool>(ctx),
             max_voting_num: 10,
             last_voted: table::new<LockID, u64>(ctx),
@@ -305,6 +315,9 @@ module distribution::voter {
             object::id<Voter>(&voter),
             ctx
         );
+        if (!voter.is_whitelisted_token.contains(start_epoch_coin)) {
+            voter.is_whitelisted_token.add(start_epoch_coin, true);
+        };
         (voter, notify_reward_cap)
     }
 
@@ -788,7 +801,7 @@ module distribution::voter {
     ///
     /// # Emits
     /// * `EventDistributeGauge` with information about distributed rewards
-    public fun distribute_gauge<CoinTypeA, CoinTypeB, SailCoinType>(
+    public fun distribute_gauge<CoinTypeA, CoinTypeB, RewardCoinType>(
         voter: &mut Voter,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
@@ -796,7 +809,7 @@ module distribution::voter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): u64 {
-        assert!(voter.is_valid_epoch_token<SailCoinType>(), EDistributeGaugeInvalidToken);
+        assert!(voter.is_valid_epoch_token<RewardCoinType>(), EDistributeGaugeInvalidToken);
 
         let gauge_id = into_gauge_id(
             object::id<distribution::gauge::Gauge<CoinTypeA, CoinTypeB>>(gauge)
@@ -808,7 +821,7 @@ module distribution::voter {
             ) && gauge_represent.gauger_id == gauge_id.id,
             EDistributeGaugeInvalidGaugeRepresent
         );
-        let claimable_balance = voter.extract_claimable_for<SailCoinType>(distribution_config, gauge_id.id);
+        let claimable_balance = voter.extract_claimable_for<RewardCoinType>(distribution_config, gauge_id.id);
         let balance_value = claimable_balance.value();
         let (fee_reward_a, fee_reward_b) = gauge.notify_reward(&voter.voter_cap, pool, claimable_balance, clock, ctx);
         let fee_a_amount = fee_reward_a.value<CoinTypeA>();
@@ -1044,6 +1057,23 @@ module distribution::voter {
             *voter.is_whitelisted_nft.borrow(lock_id_obj)
     }
 
+    /// Checks if a token type is whitelisted.
+    ///
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    ///
+    /// # Returns
+    /// True if the token type is whitelisted, false otherwise
+    public fun is_whitelisted_token<CoinToCheckType>(voter: &Voter): bool {
+        let coin_type_name = std::type_name::get<CoinToCheckType>();
+        if (voter.is_whitelisted_token.contains(coin_type_name)) {
+            let is_whitelisted_true = true;
+            &is_whitelisted_true == voter.is_whitelisted_token.borrow(coin_type_name)
+        } else {
+            false
+        }
+    }
+
     /// Kills (deactivates) a gauge in the system.
     /// This should be used in emergency situations when a gauge needs to be disabled.
     /// Only the emergency council can perform this operation.
@@ -1178,7 +1208,6 @@ module distribution::voter {
             notifier: notify_reward_cap.who(),
             token: coin_type,
         };
-
         sui::event::emit<EventNotifyEpochToken>(event);
     }
 
@@ -1360,6 +1389,38 @@ module distribution::voter {
             i = i + 1;
         };
         (pool_ids, gauge_ids)
+    }
+
+
+    /// Proves that a pair of tokens is whitelisted in the system.
+    /// Used to verify token pairs for pools and other operations.
+    ///
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    ///
+    /// # Returns
+    /// A capability proving that both tokens are whitelisted
+    public fun prove_pair_whitelisted<CoinTypeA, CoinTypeB>(
+        voter: &Voter
+    ): distribution::whitelisted_tokens::WhitelistedTokenPair {
+        assert!(voter.is_whitelisted_token<CoinTypeA>(), EFirstTokenNotWhitelisted);
+        assert!(voter.is_whitelisted_token<CoinTypeB>(), ESecondTokenNotWhitelisted);
+        distribution::whitelisted_tokens::create_pair<CoinTypeA, CoinTypeB>(object::id<Voter>(voter))
+    }
+
+    /// Proves that a specific token is whitelisted in the system.
+    /// Used to verify tokens for various operations.
+    ///
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    ///
+    /// # Returns
+    /// A capability proving that the token is whitelisted
+    public fun prove_token_whitelisted<CoinToCheckType>(
+        voter: &Voter
+    ): distribution::whitelisted_tokens::WhitelistedToken {
+        assert!(voter.is_whitelisted_token<CoinToCheckType>(), ETokenNotWhitelisted);
+        distribution::whitelisted_tokens::create<CoinToCheckType>(object::id<Voter>(voter))
     }
 
     /// Receives a gauge into the voter system, associating it with a pool.
@@ -2050,19 +2111,19 @@ module distribution::voter {
     ///
     /// # Emits
     /// * `EventWhitelistToken` with whitelist information
-    public fun whitelist_token<SailCoinType, CoinToWhitelistType>(
-        voter: &mut Voter<SailCoinType>,
+    public fun whitelist_token<CoinToWhitelistType>(
+        voter: &mut Voter,
         governor_cap: &distribution::voter_cap::GovernorCap,
         listed: bool,
         ctx: &mut TxContext
     ) {
-        governor_cap.validate_governor_voter_id(object::id<Voter<SailCoinType>>(voter));
+        governor_cap.validate_governor_voter_id(object::id<Voter>(voter));
         assert!(
             voter.is_governor(object::id(governor_cap)),
             EWhitelistTokenGovernorInvalid
         );
-        voter.whitelist_token_internal(
-            std::type_name::get<CoinToWhitelistType>(),
+        voter.whitelist_token_internal<CoinToWhitelistType>(
+            type_name::get<CoinToWhitelistType>(),
             listed,
             tx_context::sender(ctx)
         );
@@ -2080,7 +2141,7 @@ module distribution::voter {
     /// # Emits
     /// * `EventWhitelistToken` with whitelist information
     fun whitelist_token_internal<SailCoinType>(
-        voter: &mut Voter<SailCoinType>,
+        voter: &mut Voter,
         coinTypeName: std::type_name::TypeName,
         listed: bool,
         sender: address

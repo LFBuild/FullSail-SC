@@ -235,7 +235,7 @@ module distribution::gauge {
         gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>
     ): (Balance<CoinTypeA>, Balance<CoinTypeB>) {
-        let weekCoinPerSecond = clmm_pool::config::week();
+        let weekCoinPerSecond = distribution::common::week();
         let (fee_a, fee_b) = pool.collect_fullsail_distribution_gauger_fees(gauge.gauge_cap.borrow());
         if (fee_a.value<CoinTypeA>() > 0 || fee_b.value<CoinTypeB>() > 0) {
             let amount_a = gauge.fee_a.join<CoinTypeA>(fee_a);
@@ -548,8 +548,8 @@ module distribution::gauge {
             upper_tick,
             current_growth_global
         );
-        // TODO check that get_fullsale_distribution_growth_inside works correctly with
-        // global_growth passed lower than pool.fullsale_distribution_growth_global
+        // TODO check that get_fullsail_distribution_growth_inside works correctly with
+        // global_growth passed lower than pool.fullsail_distribution_growth_global
         let prev_token_growth_inside = pool.get_fullsail_distribution_growth_inside(
             lower_tick,
             upper_tick,
@@ -741,14 +741,14 @@ module distribution::gauge {
 
         // update distribution. All rewards from previous epoch should be already distributed
         let gauge_cap = gauge.gauge_cap.borrow();
-        pool.update_fullsale_distribution_growth_global(gauge_cap, clock);
-        assert!(pool.get_fullsale_distribution_reserve() == 0, ENotifyEpochTokenPrevRewardsNotFinished);
+        pool.update_fullsail_distribution_growth_global(gauge_cap, clock);
+        assert!(pool.get_fullsail_distribution_reserve() == 0, ENotifyEpochTokenPrevRewardsNotFinished);
 
         let coin_type = type_name::get<RewardCoinType>();
         let prev_epoch_token = gauge.current_epoch_token;
 
         // last growth_global that corresponds to the **previous** token.
-        gauge.growth_global_by_token.push_back(prev_epoch_token, pool.get_fullsale_distribution_growth_global());
+        gauge.growth_global_by_token.push_back(prev_epoch_token, pool.get_fullsail_distribution_growth_global());
         // Update TokenName state
         gauge.current_epoch_token = coin_type;
 
