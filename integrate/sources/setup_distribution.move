@@ -4,12 +4,13 @@ module integrate::setup_distribution {
         global_config: &clmm_pool::config::GlobalConfig,
         distribtuion_config: &distribution::distribution_config::DistributionConfig,
         team_wallet: address,
+        treasury_cap: sui::coin::TreasuryCap<SailCoinType>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
         let (minter_immut, admin_cap) = distribution::minter::create<FirstSailOptionCoinType>(
             publisher,
-            option::none<distribution::sail_coin::MinterCap<FirstSailOptionCoinType>>(),
+            option::some(treasury_cap),
             ctx
         );
         let mut minter = minter_immut;

@@ -86,7 +86,7 @@ module integrate::voter {
         voter.vote(voting_escrow, distribtuion_config, lock, pools, weights, clock, ctx);
     }
 
-    public fun vote_batch<SailCoinType> (
+    public fun batch_vote<SailCoinType> (
         voter: &mut distribution::voter::Voter,
         voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
         distribtuion_config: &distribution::distribution_config::DistributionConfig,
@@ -95,7 +95,7 @@ module integrate::voter {
         weights: vector<u64>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
-    ): vector<distribution::voting_escrow::Lock> {
+    ) {
         let mut i = 0;
         let len = locks.length();
         while (i < len) {
@@ -104,7 +104,7 @@ module integrate::voter {
             i = i + 1;
             public_transfer(lock, ctx.sender());
         };
-        locks
+        locks.destroy_empty()
     }
 
     public fun claim_voting_bribes<SailCoinType, BribeCoinType>(
@@ -281,7 +281,7 @@ module integrate::voter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        if (minter.active_period() + 604800 < distribution::common::current_timestamp(clock)) {
+        if (minter.active_period() + distribution::common::week() < distribution::common::current_timestamp(clock)) {
             minter.update_period(voter, voting_escrow, reward_distributor, clock, ctx);
         };
         assert!(

@@ -229,14 +229,14 @@ module distribution::reward {
         let mut next_epoch_time = latest_epoch_time;
         let epochs_until_now = (distribution::common::epoch_start(
             distribution::common::current_timestamp(clock)
-        ) - latest_epoch_time) / 604800;
+        ) - latest_epoch_time) / distribution::common::week();
         if (epochs_until_now > 0) {
             let mut i = 0;
             while (i < epochs_until_now) {
                 let next_checkpoint = reward.checkpoints.borrow(lock_id).borrow(
-                    reward.get_prior_balance_index(lock_id, next_epoch_time + 604800 - 1)
+                    reward.get_prior_balance_index(lock_id, next_epoch_time + distribution::common::week() - 1)
                 );
-                let supply_index = reward.get_prior_supply_index(next_epoch_time + 604800 - 1);
+                let supply_index = reward.get_prior_supply_index(next_epoch_time + distribution::common::week() - 1);
                 let supply = if (!reward.supply_checkpoints.contains(supply_index)) {
                     1
                 } else {
@@ -258,7 +258,7 @@ module distribution::reward {
                     0
                 };
                 earned_amount = earned_amount + next_checkpoint.balance_of * reward_in_epoch / supply;
-                next_epoch_time = next_epoch_time + 604800;
+                next_epoch_time = next_epoch_time + distribution::common::week();
                 i = i + 1;
             };
         };

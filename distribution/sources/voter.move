@@ -754,7 +754,10 @@ module distribution::voter {
             into_gauge_id(gauge_id),
             distribution::fee_voting_reward::create(voter_id, voting_escrow_id, gauge_id, reward_coins, ctx)
         );
-        reward_coins.push_back(type_name::get<SailCoinType>());
+        let sail_coin_type=type_name::get<SailCoinType>();
+        if (!reward_coins.contains(&sail_coin_type)) {
+            reward_coins.push_back(sail_coin_type);
+        };
         voter.gauge_to_bribe.add(
             into_gauge_id(gauge_id),
             distribution::bribe_voting_reward::create(voter_id, voting_escrow_id, gauge_id, reward_coins, ctx)
@@ -1568,7 +1571,7 @@ module distribution::voter {
             object::id<distribution::gauge::Gauge<CoinTypeA, CoinTypeB>>(&gauge),
             ctx
         );
-        pool.init_fullsale_distribution_gauge(&gauge_cap);
+        pool.init_fullsail_distribution_gauge(&gauge_cap);
         gauge.receive_gauge_cap(gauge_cap);
         gauge
     }
@@ -2031,6 +2034,67 @@ module distribution::voter {
             listed: listed,
         };
         sui::event::emit<EventWhitelistNFT>(whitelisted_nft_event);
+    }
+
+    /// Whitelists or de-whitelists a token type in the system.
+    /// Only whitelisted tokens can be used in the voting system.
+    ///
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `governor_cap` - The governor capability to authorize the operation
+    /// * `listed` - Whether to whitelist (true) or de-whitelist (false)
+    /// * `ctx` - The transaction context
+    ///
+    /// # Aborts
+    /// * If the caller is not a governor
+    ///
+    /// # Emits
+    /// * `EventWhitelistToken` with whitelist information
+    public fun whitelist_token<SailCoinType, CoinToWhitelistType>(
+        voter: &mut Voter<SailCoinType>,
+        governor_cap: &distribution::voter_cap::GovernorCap,
+        listed: bool,
+        ctx: &mut TxContext
+    ) {
+        governor_cap.validate_governor_voter_id(object::id<Voter<SailCoinType>>(voter));
+        assert!(
+            voter.is_governor(object::id(governor_cap)),
+            EWhitelistTokenGovernorInvalid
+        );
+        voter.whitelist_token_internal(
+            std::type_name::get<CoinToWhitelistType>(),
+            listed,
+            tx_context::sender(ctx)
+        );
+    }
+
+    /// Internal function to implement token whitelisting.
+    /// Handles the details of updating the whitelisting status and emitting events.
+    ///
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `coinTypeName` - The type name of the token to whitelist
+    /// * `listed` - Whether to whitelist (true) or de-whitelist (false)
+    /// * `sender` - The address of the sender for the event
+    ///
+    /// # Emits
+    /// * `EventWhitelistToken` with whitelist information
+    fun whitelist_token_internal<SailCoinType>(
+        voter: &mut Voter<SailCoinType>,
+        coinTypeName: std::type_name::TypeName,
+        listed: bool,
+        sender: address
+    ) {
+        if (voter.is_whitelisted_token.contains(coinTypeName)) {
+            voter.is_whitelisted_token.remove(coinTypeName);
+        };
+        voter.is_whitelisted_token.add(coinTypeName, listed);
+        let whitelist_token_event = EventWhitelistToken {
+            sender,
+            token: coinTypeName,
+            listed,
+        };
+        sui::event::emit<EventWhitelistToken>(whitelist_token_event);
     }
 }
 

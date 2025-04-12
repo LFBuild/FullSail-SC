@@ -13,6 +13,7 @@ module integrate::voting_escrow {
         voting_power: u64,
         reward_distributor_claimable: u64,
         fee_incentive_total: u64,
+        voted_pools: vector<ID>,
     }
 
     public entry fun transfer<SailCoinType>(
@@ -165,6 +166,7 @@ module integrate::voting_escrow {
             voting_power: voting_escrow.balance_of_nft_at(lock_id, clock.timestamp_ms() / 1000),
             reward_distributor_claimable: reward_distributor.claimable(voting_escrow, lock_id),
             fee_incentive_total: total_incentives,
+            voted_pools,
         }
     }
 

@@ -30,12 +30,17 @@ module distribution::bribe_voting_reward {
         reward: distribution::reward::Reward,
     }
 
+    public struct EventBribeVotingRewardCreated has copy, drop, store {
+        id: ID,
+        gauge_id: ID,
+    }
+
     /// Creates a new BribeVotingReward instance.
     /// 
     /// # Arguments
     /// * `voter` - The ID of the voter
     /// * `ve` - The ID of the voting escrow
-    /// * `authorized` - The ID of the authorized gauge
+    /// * `gauge_id` - The ID of the authorized gauge
     /// * `reward_coin_types` - Vector of coin types that can be used as rewards
     /// * `ctx` - The transaction context
     /// 
@@ -44,13 +49,19 @@ module distribution::bribe_voting_reward {
     public(package) fun create(
         voter: ID,
         ve: ID,
-        authorized: ID,
+        gauge_id: ID,
         reward_coin_types: vector<std::type_name::TypeName>,
         ctx: &mut TxContext
     ): BribeVotingReward {
+        let id = object::new(ctx);
+        let bribe_voting_reward_created_event = EventBribeVotingRewardCreated {
+            id: object::uid_to_inner(&id),
+            gauge_id,
+        };
+        sui::event::emit<EventBribeVotingRewardCreated>(bribe_voting_reward_created_event);
         BribeVotingReward {
-            id: object::new(ctx),
-            gauge: authorized,
+            id,
+            gauge: gauge_id,
             reward: distribution::reward::create(voter, ve, voter, reward_coin_types, ctx),
         }
     }
