@@ -132,8 +132,8 @@ module distribution::voter {
         claimable: Table<TypeName, Table<GaugeID, u64>>,
         // it is supposed that only one coin type is distributed per epoch.
         // This allows us to optimize calculations, as we don't need to iterate over old coins.
-        // TODO make option
-        current_epoch_token: TypeName,
+        // Is undefined if distribution has not started
+        current_epoch_token: Option<TypeName>,
         // the history of all coins that were distributed. In case we need to iterate over them to calculate rewards.
         // Linked table cos we probably need both to check if a sertain coin was used as reward and to iterate.
         reward_tokens: LinkedTable<TypeName, bool>,
@@ -273,7 +273,6 @@ module distribution::voter {
         _publisher: &sui::package::Publisher,
         global_config: ID,
         distribution_config: ID,
-        start_epoch_coin: TypeName,
         ctx: &mut TxContext
     ): (Voter, distribution::notify_reward_cap::NotifyRewardCap) {
         let uid = object::new(ctx);
@@ -298,7 +297,7 @@ module distribution::voter {
             index: table::new<TypeName, u128>(ctx),
             supply_index: table::new<TypeName, Table<GaugeID, u128>>(ctx),
             claimable: table::new<TypeName, Table<GaugeID, u64>>(ctx),
-            current_epoch_token: start_epoch_coin,
+            current_epoch_token: option::none<TypeName>(),
             reward_tokens: linked_table::new<TypeName, bool>(ctx),
             is_whitelisted_token: table::new<std::type_name::TypeName, bool>(ctx),
             is_whitelisted_nft: table::new<LockID, bool>(ctx),
@@ -310,15 +309,10 @@ module distribution::voter {
             gauge_to_bribe_authorized_cap: distribution::reward_authorized_cap::create(id, ctx),
             gauge_to_bribe: table::new<GaugeID, distribution::bribe_voting_reward::BribeVotingReward>(ctx),
         };
-        let mut i = 0;
-        voter.reward_tokens.push_back(start_epoch_coin, true);
         let notify_reward_cap = distribution::notify_reward_cap::create_internal(
             object::id<Voter>(&voter),
             ctx
         );
-        if (!voter.is_whitelisted_token.contains(start_epoch_coin)) {
-            voter.is_whitelisted_token.add(start_epoch_coin, true);
-        };
         (voter, notify_reward_cap)
     }
 
@@ -1197,7 +1191,7 @@ module distribution::voter {
         notify_reward_cap.validate_notify_reward_voter_id(object::id<Voter>(voter));
 
         let coin_type = type_name::get<RewardCoinType>();
-        voter.current_epoch_token = coin_type;
+        voter.current_epoch_token.swap_or_fill(coin_type);
 
         // All collections that use TypeName as key are initialized with default value.
         voter.index.add(coin_type, 0);
@@ -1222,12 +1216,12 @@ module distribution::voter {
     ): bool {
         let coin_type = type_name::get<RewardCoinType>();
 
-        voter.current_epoch_token == coin_type
+        voter.current_epoch_token.borrow() == coin_type
     }
 
     /// Getter for current_epoch_token
     public fun get_current_epoch_token(voter: &Voter): TypeName {
-        voter.current_epoch_token
+        *voter.current_epoch_token.borrow()
     }
 
     /// Notifies the voter contract of new rewards to be distributed.
@@ -1562,7 +1556,7 @@ module distribution::voter {
             let pool_votes = *voter.votes.borrow(lock_id).borrow(pool_id);
             let gauge_id = *voter.pool_to_gauger.borrow(pool_id);
             if (pool_votes != 0) {
-                let current_epoch_token = voter.current_epoch_token;
+                let current_epoch_token = voter.get_current_epoch_token();
                 voter.update_for_internal(distribution_config, gauge_id, current_epoch_token);
                 let weight = voter.weights.remove(gauge_id) - pool_votes;
                 voter.weights.add(gauge_id, weight);
@@ -1625,7 +1619,7 @@ module distribution::voter {
         let mut gauge = distribution::gauge::create<CoinTypeA, CoinTypeB>(
             distribution_config,
             pool_id,
-            voter.current_epoch_token,
+            voter.get_current_epoch_token(),
             ctx
         );
         let gauge_cap = gauge_create_cap.create_gauge_cap(
@@ -1972,7 +1966,7 @@ module distribution::voter {
                 abort EVoteInternalPoolAreadyVoted
             };
             assert!(votes_for_pool > 0, EVoteInternalWeightResultedInZeroVotes);
-            let current_epoch_token = voter.current_epoch_token;
+            let current_epoch_token = voter.get_current_epoch_token();
             voter.update_for_internal(distribution_config, gauge_id, current_epoch_token);
             if (!voter.pool_vote.contains(lock_id)) {
                 voter.pool_vote.add(lock_id, std::vector::empty<PoolID>());
