@@ -132,6 +132,7 @@ module distribution::voter {
         claimable: Table<TypeName, Table<GaugeID, u64>>,
         // it is supposed that only one coin type is distributed per epoch.
         // This allows us to optimize calculations, as we don't need to iterate over old coins.
+        // TODO make option
         current_epoch_token: TypeName,
         // the history of all coins that were distributed. In case we need to iterate over them to calculate rewards.
         // Linked table cos we probably need both to check if a sertain coin was used as reward and to iterate.

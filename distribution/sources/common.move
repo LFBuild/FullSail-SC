@@ -130,5 +130,11 @@ module distribution::common {
     public fun week(): u64 {
         WEEK
     }
+
+    /// The oSAIL option token should be exercisable for this number of seconds
+    /// after it is distributed.
+    public fun o_sail_duration(): u64 {
+        WEEK * 4
+    }
 }
 
