@@ -48,7 +48,7 @@ module distribution::minter {
 
     const ECheckAdminRevoked: u64 = 9223372809948889087;
 
-
+    const EExerciseOSailFreeTooBigPercent: u64 = 4108357525531418600;
     const EExercieOSailExpired: u64 = 7388437717433252000;
 
     const EExerciseTeamWalletNotConfigured: u64 = 823119998504602200;
@@ -780,6 +780,27 @@ module distribution::minter {
         cap.mint(amount, ctx)
     }
 
+    public(package) fun exercise_o_sail_free<SailCoinType, OSailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        o_sail: Coin<OSailCoinType>,
+        percent_to_receive: u64,
+        ctx: &mut TxContext,
+    ): Coin<SailCoinType> {
+        assert!(percent_to_receive <= distribution::common::persent_denominator(), EExerciseOSailFreeTooBigPercent);
+
+        let o_sail_amount = o_sail.value();
+
+        let sail_amount_to_receive = full_math_u64::mul_div_floor(
+            o_sail_amount,
+            percent_to_receive,
+            distribution::common::persent_denominator()
+        );
+
+        minter.burn_o_sail(o_sail);
+
+        minter.mint_sail(sail_amount_to_receive, ctx)
+    }
+
 
     /// Checks conditions, exercises oSAIL
     public fun exercise_o_sail_ab<SailCoinType, USDCoinType, OSailCoinType>(
@@ -791,7 +812,7 @@ module distribution::minter {
         usd_amount_limit: u64,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
-    ): (sui::coin::Coin<USDCoinType>, sui::coin::Coin<SailCoinType>) {
+    ): (Coin<USDCoinType>, Coin<SailCoinType>) {
         let o_sail_type = type_name::get<OSailCoinType>();
         let expiry_date: u64 = *minter.o_sail_expiry_dates.borrow(o_sail_type);
         let current_time = distribution::common::current_timestamp(clock);
@@ -812,7 +833,7 @@ module distribution::minter {
         usd_amount_limit: u64,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
-    ): (sui::coin::Coin<USDCoinType>, sui::coin::Coin<SailCoinType>) {
+    ): (Coin<USDCoinType>, Coin<SailCoinType>) {
         let o_sail_type = type_name::get<OSailCoinType>();
         let expiry_date: u64 = *minter.o_sail_expiry_dates.borrow(o_sail_type);
         let current_time = distribution::common::current_timestamp(clock);
@@ -827,10 +848,10 @@ module distribution::minter {
     fun exercise_o_sail_process_payment<SailCoinType, USDCoinType, OSailCoinType>(
         minter: &mut Minter<SailCoinType>,
         o_sail: Coin<OSailCoinType>,
-        mut usd_in: sui::coin::Coin<USDCoinType>,
+        mut usd_in: Coin<USDCoinType>,
         usd_amount_in: u64,
         ctx: &mut TxContext,
-    ): (sui::coin::Coin<USDCoinType>, sui::coin::Coin<SailCoinType>) {
+    ): (Coin<USDCoinType>, Coin<SailCoinType>) {
         let sail_amount_out = o_sail.value();
         let usd_to_pay = usd_in.split(usd_amount_in, ctx);
 
@@ -888,10 +909,10 @@ module distribution::minter {
         pool: &mut clmm_pool::pool::Pool<UsdCoinType, SailCoinType>,
         o_sail: Coin<OSailCoinType>,
         discount_percent: u64,
-        mut usd: sui::coin::Coin<UsdCoinType>,
+        mut usd: Coin<UsdCoinType>,
         usd_amount_limit: u64,
         ctx: &mut TxContext,
-    ): (sui::coin::Coin<UsdCoinType>, sui::coin::Coin<SailCoinType>) {
+    ): (Coin<UsdCoinType>, Coin<SailCoinType>) {
         let usd_amount_to_pay = exercise_o_sail_calc<SailCoinType, OSailCoinType, UsdCoinType, SailCoinType>(
             global_config,
             pool,
@@ -919,10 +940,10 @@ module distribution::minter {
         pool: &mut clmm_pool::pool::Pool<SailCoinType, UsdCoinType>,
         o_sail: Coin<OSailCoinType>,
         discount_percent: u64,
-        mut usd: sui::coin::Coin<UsdCoinType>,
+        mut usd: Coin<UsdCoinType>,
         usd_amount_limit: u64,
         ctx: &mut TxContext,
-    ): (sui::coin::Coin<UsdCoinType>, sui::coin::Coin<SailCoinType>) {
+    ): (Coin<UsdCoinType>, Coin<SailCoinType>) {
         let usd_amount_to_pay = exercise_o_sail_calc<SailCoinType, OSailCoinType, SailCoinType, UsdCoinType>(
             global_config,
             pool,
