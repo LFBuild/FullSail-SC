@@ -4,6 +4,12 @@ module distribution::common {
     const DAY: u64 = 86400;
     const HOUR: u64 = 3600;
 
+    // OSail params
+    const MAX_DISCOUNT: u64 = 100000000;
+    const MIN_DISCOUNT: u64 = MAX_DISCOUNT / 2;
+    const PERCENT_DECIMALS: u8 = 6;
+    const PERCENT_DENOMINATOR: u64 = 100000000;
+
     /// Returns the current period based on the system time
     /// 
     /// # Arguments
@@ -135,6 +141,22 @@ module distribution::common {
     /// after it is distributed.
     public fun o_sail_duration(): u64 {
         WEEK * 4
+    }
+
+    /// Discount that oSAIL grants. Currently it's the only option,
+    /// but there is a possibility that different percents will be implemented.
+    public fun o_sail_discount(): u64 {
+        return MIN_DISCOUNT
+    }
+
+    /// Decimals 6,  1% = 1_000_000
+    public fun percent_decimals(): u8 {
+        return PERCENT_DECIMALS
+    }
+
+    /// If you want to calculate 1% of X, multiply X by percent value and divide by persent_denominator
+    public fun persent_denominator(): u64 {
+        return PERCENT_DENOMINATOR
     }
 }
 
