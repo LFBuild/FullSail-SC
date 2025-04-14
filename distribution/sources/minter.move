@@ -805,6 +805,7 @@ module distribution::minter {
     /// Checks conditions, exercises oSAIL
     public fun exercise_o_sail_ab<SailCoinType, USDCoinType, OSailCoinType>(
         minter: &mut Minter<SailCoinType>,
+        voter: &mut distribution::voter::Voter,
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut clmm_pool::pool::Pool<USDCoinType, SailCoinType>,
         o_sail: Coin<OSailCoinType>,
@@ -820,12 +821,23 @@ module distribution::minter {
 
         // there is a possibility that different discount percents will be implemented
         let dicount_percent = distribution::common::o_sail_discount();
-        minter.exercise_o_sail_ab_internal(global_config, pool, o_sail, dicount_percent, fee, usd_amount_limit, ctx)
+        minter.exercise_o_sail_ab_internal(
+            voter,
+            global_config,
+            pool,
+            o_sail,
+            dicount_percent,
+            fee,
+            usd_amount_limit,
+            clock,
+            ctx
+        )
     }
 
     /// Checks conditions, exercises oSAIL
     public fun exercise_o_sail_ba<SailCoinType, USDCoinType, OSailCoinType>(
         minter: &mut Minter<SailCoinType>,
+        voter: &mut distribution::voter::Voter,
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut clmm_pool::pool::Pool<SailCoinType, USDCoinType>,
         o_sail: Coin<OSailCoinType>,
@@ -841,24 +853,35 @@ module distribution::minter {
 
         // there is a possibility that different discount percents will be implemented
         let dicount_percent = distribution::common::o_sail_discount();
-        minter.exercise_o_sail_ba_internal(global_config, pool, o_sail, dicount_percent, fee, usd_amount_limit, ctx)
+        minter.exercise_o_sail_ba_internal(
+            voter,
+            global_config,
+            pool,
+            o_sail,
+            dicount_percent,
+            fee,
+            usd_amount_limit,
+            clock,
+            ctx
+        )
     }
 
     /// withdraws SAIL from storage and burns oSAIL
     fun exercise_o_sail_process_payment<SailCoinType, USDCoinType, OSailCoinType>(
         minter: &mut Minter<SailCoinType>,
+        voter: &mut distribution::voter::Voter,
         o_sail: Coin<OSailCoinType>,
         mut usd_in: Coin<USDCoinType>,
         usd_amount_in: u64,
+        clock:  &sui::clock::Clock,
         ctx: &mut TxContext,
     ): (Coin<USDCoinType>, Coin<SailCoinType>) {
         let sail_amount_out = o_sail.value();
         let usd_to_pay = usd_in.split(usd_amount_in, ctx);
 
-        // TODO: payment should go into reward distributing contract!!
-        assert!(minter.team_wallet != @0x0, EExerciseTeamWalletNotConfigured);
-
-        transfer::public_transfer<sui::coin::Coin<USDCoinType>>(usd_to_pay, minter.team_wallet);
+        voter
+            .borrow_exercise_fee_reward_mut()
+            .notify_reward_amount(minter.notify_reward_cap.borrow(), usd_to_pay, clock, ctx);
 
         minter.burn_o_sail(o_sail);
         let sail_out = minter.mint_sail(sail_amount_out, ctx);
@@ -905,12 +928,14 @@ module distribution::minter {
     /// Function is internal, cos discount_percent should be calculated elswhere.
     fun exercise_o_sail_ab_internal<SailCoinType, UsdCoinType, OSailCoinType>(
         minter: &mut Minter<SailCoinType>,
+        voter: &mut distribution::voter::Voter,
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut clmm_pool::pool::Pool<UsdCoinType, SailCoinType>,
         o_sail: Coin<OSailCoinType>,
         discount_percent: u64,
         mut usd: Coin<UsdCoinType>,
         usd_amount_limit: u64,
+        clock:  &sui::clock::Clock,
         ctx: &mut TxContext,
     ): (Coin<UsdCoinType>, Coin<SailCoinType>) {
         let usd_amount_to_pay = exercise_o_sail_calc<SailCoinType, OSailCoinType, UsdCoinType, SailCoinType>(
@@ -925,9 +950,11 @@ module distribution::minter {
 
         exercise_o_sail_process_payment(
             minter,
+            voter,
             o_sail,
             usd,
             usd_amount_to_pay,
+            clock,
             ctx,
         )
     }
@@ -936,12 +963,14 @@ module distribution::minter {
     /// see `exercise_o_sail_ab_internal` for more information.
     fun exercise_o_sail_ba_internal<SailCoinType, UsdCoinType, OSailCoinType>(
         minter: &mut Minter<SailCoinType>,
+        voter: &mut distribution::voter::Voter,
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut clmm_pool::pool::Pool<SailCoinType, UsdCoinType>,
         o_sail: Coin<OSailCoinType>,
         discount_percent: u64,
         mut usd: Coin<UsdCoinType>,
         usd_amount_limit: u64,
+        clock:  &sui::clock::Clock,
         ctx: &mut TxContext,
     ): (Coin<UsdCoinType>, Coin<SailCoinType>) {
         let usd_amount_to_pay = exercise_o_sail_calc<SailCoinType, OSailCoinType, SailCoinType, UsdCoinType>(
@@ -956,9 +985,11 @@ module distribution::minter {
 
         exercise_o_sail_process_payment(
             minter,
+            voter,
             o_sail,
             usd,
             usd_amount_to_pay,
+            clock,
             ctx,
         )
     }

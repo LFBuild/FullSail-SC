@@ -12,11 +12,11 @@ module distribution::exercise_fee_reward {
         id: ID,
     }
 
-    /// Creates a new ExerciseFeeReward instance.
+    /// Creates a new ExerciseFeeReward instance. Supposed to be stored inside Voter,
+    /// so it is not linked to VotingEscrow.
     ///
     /// # Arguments
     /// * `voter` - The ID of the voter
-    /// * `ve` - The ID of the voting escrow
     /// * `gauge_id` - The ID of the authorized gauge
     /// * `reward_coin_types` - Vector of coin types that can be used as rewards
     /// * `ctx` - The transaction context
@@ -25,7 +25,6 @@ module distribution::exercise_fee_reward {
     /// A new ExerciseFeeReward instance
     public(package) fun create(
         voter: ID,
-        ve: ID,
         reward_coin_types: vector<std::type_name::TypeName>,
         ctx: &mut TxContext
     ): ExerciseFeeReward {
@@ -36,7 +35,7 @@ module distribution::exercise_fee_reward {
         sui::event::emit<EventExerciseFeeRewardCreated>(bribe_voting_reward_created_event);
         ExerciseFeeReward {
             id,
-            reward: distribution::reward::create(voter, ve, voter, reward_coin_types, ctx),
+            reward: distribution::reward::create(voter, option::none(), voter, reward_coin_types, ctx),
         }
     }
 
@@ -155,7 +154,7 @@ module distribution::exercise_fee_reward {
     ///
     /// # Returns
     /// The amount of rewards claimed
-    public fun get_reward<SailCoinType, BribeCoinType>(
+    public fun get_reward<SailCoinType, CoinType>(
         reward: &mut ExerciseFeeReward,
         voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
         lock: &distribution::voting_escrow::Lock,
@@ -164,12 +163,12 @@ module distribution::exercise_fee_reward {
     ): u64 {
         let lock_id = object::id<distribution::voting_escrow::Lock>(lock);
         let lock_owner = voting_escrow.owner_of(lock_id);
-        let mut reward_balance_opt = reward.reward.get_reward_internal<BribeCoinType>(lock_owner, lock_id, clock, ctx);
+        let mut reward_balance_opt = reward.reward.get_reward_internal<CoinType>(lock_owner, lock_id, clock, ctx);
         let reward_amount = if (reward_balance_opt.is_some()) {
             let reward_balance = reward_balance_opt.extract();
             let amount = reward_balance.value();
-            transfer::public_transfer<sui::coin::Coin<BribeCoinType>>(
-                sui::coin::from_balance<BribeCoinType>(
+            transfer::public_transfer<sui::coin::Coin<CoinType>>(
+                sui::coin::from_balance<CoinType>(
                     reward_balance,
                     ctx
                 ),
@@ -183,7 +182,8 @@ module distribution::exercise_fee_reward {
         reward_amount
     }
 
-    /// Adds new reward tokens to the reward pool and updates the reward rate
+    /// Adds new reward tokens to the reward pool and updates the reward rate.
+    /// Is supposed to be called by Minter when oSAIL is exercised.
     ///
     /// # Arguments
     /// * `reward` - The ExerciseFeeReward reward instance
@@ -191,21 +191,19 @@ module distribution::exercise_fee_reward {
     /// * `coin` - The coin to add as rewards
     /// * `clock` - The system clock
     /// * `ctx` - The transaction context
-    ///
-    /// # Aborts
-    /// * If the token type is not in the whitelist of accepted reward tokens
     public fun notify_reward_amount<CoinType>(
         reward: &mut ExerciseFeeReward,
-        reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
+        notify_reward_cap: &distribution::notify_reward_cap::NotifyRewardCap,
         coin: sui::coin::Coin<CoinType>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        reward_authorized_cap.validate(reward.reward.authorized());
-        assert!(
-            reward.reward.rewards_contains(std::type_name::get<CoinType>()),
-            ENotifyRewardAmountTokenNotWhitelisted
-        );
+        notify_reward_cap.validate_notify_reward_voter_id(reward.reward.authorized());
+        let coin_type = std::type_name::get<CoinType>();
+        // whitelist check is performend on the Minter level
+        if (!reward.reward.rewards_contains(coin_type)) {
+            reward.reward.add_reward_token(coin_type);
+        };
         reward.reward.notify_reward_amount_internal(coin.into_balance(), clock, ctx);
     }
 
