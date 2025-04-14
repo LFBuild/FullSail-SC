@@ -808,7 +808,7 @@ module distribution::minter {
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut clmm_pool::pool::Pool<USDCoinType, SailCoinType>,
         o_sail: Coin<OSailCoinType>,
-        usd: Coin<USDCoinType>,
+        fee: Coin<USDCoinType>,
         usd_amount_limit: u64,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
@@ -820,7 +820,7 @@ module distribution::minter {
 
         // there is a possibility that different discount percents will be implemented
         let dicount_percent = distribution::common::o_sail_discount();
-        minter.exercise_o_sail_ab_internal(global_config, pool, o_sail, dicount_percent, usd, usd_amount_limit, ctx)
+        minter.exercise_o_sail_ab_internal(global_config, pool, o_sail, dicount_percent, fee, usd_amount_limit, ctx)
     }
 
     /// Checks conditions, exercises oSAIL
@@ -829,7 +829,7 @@ module distribution::minter {
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut clmm_pool::pool::Pool<SailCoinType, USDCoinType>,
         o_sail: Coin<OSailCoinType>,
-        usd: Coin<USDCoinType>,
+        fee: Coin<USDCoinType>,
         usd_amount_limit: u64,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
@@ -841,7 +841,7 @@ module distribution::minter {
 
         // there is a possibility that different discount percents will be implemented
         let dicount_percent = distribution::common::o_sail_discount();
-        minter.exercise_o_sail_ba_internal(global_config, pool, o_sail, dicount_percent, usd, usd_amount_limit, ctx)
+        minter.exercise_o_sail_ba_internal(global_config, pool, o_sail, dicount_percent, fee, usd_amount_limit, ctx)
     }
 
     /// withdraws SAIL from storage and burns oSAIL
