@@ -203,8 +203,8 @@ module integrate::voting_escrow {
                 max_bps(),
                 integer_mate::full_math_u64::mul_div_floor(
                     epoch_emissions + rebase_growth,
-                    distribution::minter::max_bps(),
-                    distribution::minter::max_bps() - minter.team_emission_rate()
+                    distribution::minter::rate_denom(),
+                    distribution::minter::rate_denom() - minter.team_emission_rate()
                 )
             ),
             current_epoch_end: distribution::common::epoch_next(current_timestamp),

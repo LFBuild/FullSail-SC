@@ -40,6 +40,7 @@ module distribution::minter {
 
     const EMinterCapAlreadySet: u64 = 9223372831423725567;
     const ESetTeamEmissionRateTooBigRate: u64 = 9223372921618038783;
+    const ESetProtocolFeeRateTooBigRate: u64 = 8401716227362572000;
 
     const EUpdatePeriodMinterNotActive: u64 = 9223373394064900104;
     const EUpdatePeriodNotNotFinishedYet: u64 = 9223373406950588436;
@@ -64,6 +65,12 @@ module distribution::minter {
 
     /// After expiration oSAIL can only be locked for 4 years or permanently
     const VALID_EXPIRED_O_SAIL_DURATION_DAYS: u64 =  4 * 52 * 7;
+
+    /// Denominator in rate calculations (i.e. fee percent, team emission percent)
+    const RATE_DENOM: u64 = 10000;
+
+    const MAX_TEAM_EMISSIONS_RATE: u64 = 500;
+    const MAX_PROTOCOL_FEE_RATE: u64 = 3000;
 
     public struct AdminCap has store, key {
         id: UID,
@@ -109,6 +116,7 @@ module distribution::minter {
         decay_epochs: u64,
         tail_emission_rate: u64,
         team_emission_rate: u64,
+        protocol_fee_rate: u64,
         team_wallet: address,
         reward_distributor_cap: Option<distribution::reward_distributor_cap::RewardDistributorCap>,
         notify_reward_cap: Option<distribution::notify_reward_cap::NotifyRewardCap>,
@@ -227,7 +235,7 @@ module distribution::minter {
                 integer_mate::full_math_u64::mul_div_ceil(
                     minter.total_supply(),
                     minter.tail_emission_rate,
-                    10000
+                    RATE_DENOM
                 ),
                 minter.epoch_emissions
             )
@@ -244,7 +252,7 @@ module distribution::minter {
                     current_emissions + integer_mate::full_math_u64::mul_div_ceil(
                         current_emissions,
                         minter.epoch_grow_rate,
-                        10000
+                        RATE_DENOM
                     )
                 )
             } else {
@@ -255,7 +263,7 @@ module distribution::minter {
                     current_emissions - integer_mate::full_math_u64::mul_div_ceil(
                         current_emissions,
                         minter.epoch_decay_rate,
-                        10000
+                        RATE_DENOM
                     )
                 )
             };
@@ -333,6 +341,7 @@ module distribution::minter {
             decay_epochs: 67,
             tail_emission_rate: 67,
             team_emission_rate: 500,
+            protocol_fee_rate: 500,
             team_wallet: @0x0,
             reward_distributor_cap: option::none<distribution::reward_distributor_cap::RewardDistributorCap>(),
             notify_reward_cap: option::none<distribution::notify_reward_cap::NotifyRewardCap>(),
@@ -427,14 +436,11 @@ module distribution::minter {
         minter.last_epoch_update_time
     }
 
-    /// Returns the maximum basis points value (10000 = 100%).
+    /// Returns the rate denominator (RATE_DENOM = 100%).
     ///
     /// This is used for percentage-based calculations throughout the module.
-    ///
-    /// # Returns
-    /// The maximum basis points value (10000)
-    public fun max_bps(): u64 {
-        10000
+    public fun rate_denom(): u64 {
+        RATE_DENOM
     }
 
     /// Revokes administrative capabilities for a specific admin.
@@ -526,8 +532,18 @@ module distribution::minter {
         team_emission_rate: u64
     ) {
         minter.check_admin(admin_cap);
-        assert!(team_emission_rate <= 500, ESetTeamEmissionRateTooBigRate);
+        assert!(team_emission_rate <= MAX_TEAM_EMISSIONS_RATE, ESetTeamEmissionRateTooBigRate);
         minter.team_emission_rate = team_emission_rate;
+    }
+
+    public fun set_protocol_fee_rate<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        admin_cap: &AdminCap,
+        protocol_fee_rate: u64
+    ) {
+        minter.check_admin(admin_cap);
+        assert!(protocol_fee_rate <= MAX_PROTOCOL_FEE_RATE, ESetProtocolFeeRateTooBigRate);
+        minter.protocol_fee_rate = protocol_fee_rate;
     }
 
     /// Sets the team wallet address that will receive team emissions.
@@ -546,23 +562,16 @@ module distribution::minter {
     }
 
     /// Returns the current team emission rate.
-    ///
-    /// # Arguments
-    /// * `minter` - The minter instance to query
-    ///
-    /// # Returns
-    /// Current team emission rate in basis points
     public fun team_emission_rate<SailCoinType>(minter: &Minter<SailCoinType>): u64 {
         minter.team_emission_rate
     }
 
+    /// Returns the current protocol fee rate.
+    public fun protocol_fee_rate<SailCoinType>(minter: &Minter<SailCoinType>): u64 {
+        minter.protocol_fee_rate
+    }
+
     /// Returns the tail emission rate applied during the final phase of the emission schedule.
-    ///
-    /// # Arguments
-    /// * `minter` - The minter instance to query
-    ///
-    /// # Returns
-    /// Tail emission rate in basis points
     public fun tail_emission_rate<SailCoinType>(minter: &Minter<SailCoinType>): u64 {
         minter.tail_emission_rate
     }
@@ -690,7 +699,7 @@ module distribution::minter {
             let team_emissions = integer_mate::full_math_u64::mul_div_floor(
                 minter.team_emission_rate,
                 rebase_growth + current_epoch_emissions,
-                10000 - minter.team_emission_rate
+                RATE_DENOM - minter.team_emission_rate
             );
             transfer::public_transfer<Coin<SailCoinType>>(
                 minter.mint_sail(team_emissions, ctx),
@@ -960,7 +969,18 @@ module distribution::minter {
         ctx: &mut TxContext,
     ): (Coin<USDCoinType>, Coin<SailCoinType>) {
         let sail_amount_out = o_sail.value();
-        let usd_to_pay = usd_in.split(usd_amount_in, ctx);
+        let mut usd_to_pay = usd_in.split(usd_amount_in, ctx);
+
+        if (minter.protocol_fee_rate > 0 && minter.team_wallet != @0x0) {
+            let protocol_fee_amount = integer_mate::full_math_u64::mul_div_floor(
+                usd_to_pay.value(),
+                minter.protocol_fee_rate,
+                RATE_DENOM,
+            );
+            let protocol_fee = usd_to_pay.split(protocol_fee_amount, ctx);
+
+            sui::transfer::public_transfer(protocol_fee, minter.team_wallet);
+        };
 
         voter
             .borrow_exercise_fee_reward_mut()
