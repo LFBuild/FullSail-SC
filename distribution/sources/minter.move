@@ -52,10 +52,8 @@ module distribution::minter {
     const EExerciseOSailFreeTooBigPercent: u64 = 4108357525531418600;
     const EExercieOSailExpired: u64 = 7388437717433252000;
 
-    const EExerciseTeamWalletNotConfigured: u64 = 823119998504602200;
-    const EExerciseMinterBalanceInsufficient: u64 = 5584205353728053000;
-
     const EExerciseUsdLimitReached: u64 = 4905179424474806000;
+    const EExerciseOSailPoolNotWhitelisted: u64 = 2212524000647910700;
 
     /// Possible lock duration available be oSAIL expiry date
     const VALID_O_SAIL_DURATION_DAYS: vector<u64> = vector[
@@ -114,7 +112,10 @@ module distribution::minter {
         team_wallet: address,
         reward_distributor_cap: Option<distribution::reward_distributor_cap::RewardDistributorCap>,
         notify_reward_cap: Option<distribution::notify_reward_cap::NotifyRewardCap>,
-        // TODO token and pool whitelist
+        // pools that can be used to exercise oSAIL
+        // we don't need whitelisted tokens, cos
+        // pool whitelist also determines token whitelist composed of the pools tokens.
+        whitelisted_pools: VecSet<ID>,
     }
 
     /// Returns the total supply of SailCoin managed by this minter.
@@ -335,6 +336,7 @@ module distribution::minter {
             team_wallet: @0x0,
             reward_distributor_cap: option::none<distribution::reward_distributor_cap::RewardDistributorCap>(),
             notify_reward_cap: option::none<distribution::notify_reward_cap::NotifyRewardCap>(),
+            whitelisted_pools: vec_set::empty<ID>(),
         };
         let admin_cap = AdminCap { id: object::new(ctx) };
         (minter, admin_cap)
@@ -899,6 +901,7 @@ module distribution::minter {
         let expiry_date: u64 = *minter.o_sail_expiry_dates.borrow(o_sail_type);
         let current_time = distribution::common::current_timestamp(clock);
         assert!(current_time < expiry_date, EExercieOSailExpired);
+        assert!(minter.is_whitelisted_pool(pool), EExerciseOSailPoolNotWhitelisted);
 
         // there is a possibility that different discount percents will be implemented
         let dicount_percent = distribution::common::o_sail_discount();
@@ -930,6 +933,7 @@ module distribution::minter {
         let expiry_date: u64 = *minter.o_sail_expiry_dates.borrow(o_sail_type);
         let current_time = distribution::common::current_timestamp(clock);
         assert!(current_time < expiry_date, EExercieOSailExpired);
+        assert!(minter.is_whitelisted_pool(pool), EExerciseOSailPoolNotWhitelisted);
 
         // there is a possibility that different discount percents will be implemented
         let dicount_percent = distribution::common::o_sail_discount();
@@ -1063,6 +1067,40 @@ module distribution::minter {
             clock,
             ctx,
         )
+    }
+
+    public fun whitelist_pool<SailCoinType, CoinTypeA, CoinTypeB>(
+        minter: &mut Minter<SailCoinType>,
+        admin_cap: &AdminCap,
+        pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        list: bool,
+    ) {
+        minter.check_admin(admin_cap);
+
+        let pool_id = object::id(pool);
+        if (minter.whitelisted_pools.contains(&pool_id)) {
+            if (!list) {
+                minter.whitelisted_pools.remove(&pool_id)
+            }
+        } else {
+            if (list) {
+                minter.whitelisted_pools.insert(pool_id)
+            }
+        }
+    }
+
+    public fun is_whitelisted_pool<SailCoinType, CoinTypeA, CoinTypeB>(
+        minter: &Minter<SailCoinType>,
+        pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+    ): bool {
+        let pool_id = object::id(pool);
+        minter.whitelisted_pools.contains(&pool_id)
+    }
+
+    public fun borrow_whiteliste_pools<SailCoinType>(
+        minter: &Minter<SailCoinType>,
+    ): VecSet<ID> {
+        minter.whitelisted_pools
     }
 }
 
