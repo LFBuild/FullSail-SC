@@ -34,7 +34,6 @@ module distribution::minter {
     use sui::vec_set::{Self, VecSet};
     use sui::bag::{Self, Bag};
     use sui::table::{Self, Table};
-    use integer_mate::full_math_u64;
 
     const EActivateMinterAlreadyActive: u64 = 9223373106302222346;
     const EActivateMinterNoDistributorCap: u64 = 9223373110598238234;
@@ -48,6 +47,8 @@ module distribution::minter {
 
     const ECheckAdminRevoked: u64 = 9223372809948889087;
 
+    const ECreateLockFromOSailInvalidDuraton: u64 = 68567430268160480;
+
     const EExerciseOSailFreeTooBigPercent: u64 = 4108357525531418600;
     const EExercieOSailExpired: u64 = 7388437717433252000;
 
@@ -55,6 +56,13 @@ module distribution::minter {
     const EExerciseMinterBalanceInsufficient: u64 = 5584205353728053000;
 
     const EExerciseUsdLimitReached: u64 = 4905179424474806000;
+
+
+    const VALID_O_SAIL_DURATIONS: vector<u64> = vector[
+        6 * 30, // 6 months
+        24 * 30, // 2 years
+        48 * 30 // 4 years
+    ];
 
     public struct AdminCap has store, key {
         id: UID,
@@ -103,6 +111,7 @@ module distribution::minter {
         team_wallet: address,
         reward_distributor_cap: Option<distribution::reward_distributor_cap::RewardDistributorCap>,
         notify_reward_cap: Option<distribution::notify_reward_cap::NotifyRewardCap>,
+        // TODO token and pool whitelist
     }
 
     /// Returns the total supply of SailCoin managed by this minter.
@@ -778,7 +787,65 @@ module distribution::minter {
         cap.mint(amount, ctx)
     }
 
-    public(package) fun exercise_o_sail_free<SailCoinType, OSailCoinType>(
+    /// Creates a new lock by exercising oSAIL into SAIL and locking it.
+    /// Makes a call to create_lock internally.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `o_sail` - oSAIL coin to be exercised and locked
+    /// * `lock_duration_days` - The number of days to lock the tokens
+    /// * `permanent` - Whether this should be a permanent lock
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
+    ///
+    /// # Aborts
+    /// * If lock_duration is not one of allowed durations
+    public fun create_lock_from_o_sail<SailCoinType, OSailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        o_sail: sui::coin::Coin<OSailCoinType>,
+        lock_duration_days: u64,
+        permanent: bool,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        let mut valid_duration = permanent;
+        let mut i = 0;
+        let valid_durations_len = VALID_O_SAIL_DURATIONS.length();
+        while (!valid_duration && i < valid_durations_len) {
+            if (VALID_O_SAIL_DURATIONS[i] == lock_duration_days) {
+                valid_duration = true;
+            };
+            i = i + 1;
+        };
+        assert!(valid_duration, ECreateLockFromOSailInvalidDuraton);
+
+        let lock_duration_seconds = lock_duration_days * distribution::common::day();
+
+        // received SAIL percent changes from discount percent to 100%
+        let percent_to_receive = if (permanent) {
+            distribution::common::persent_denominator()
+        } else {
+            let max_extra_percents = distribution::common::persent_denominator() - distribution::common::o_sail_discount();
+            integer_mate::full_math_u64::mul_div_floor(
+                lock_duration_seconds,
+                max_extra_percents,
+                distribution::common::max_lock_time()
+            )
+        };
+
+        let sail_to_lock = minter.exercise_o_sail_free_internal(o_sail, percent_to_receive, ctx);
+
+        voting_escrow.create_lock<SailCoinType>(
+            sail_to_lock,
+            lock_duration_days,
+            permanent,
+            clock,
+            ctx
+        )
+    }
+
+    fun exercise_o_sail_free_internal<SailCoinType, OSailCoinType>(
         minter: &mut Minter<SailCoinType>,
         o_sail: Coin<OSailCoinType>,
         percent_to_receive: u64,
@@ -788,7 +855,7 @@ module distribution::minter {
 
         let o_sail_amount = o_sail.value();
 
-        let sail_amount_to_receive = full_math_u64::mul_div_floor(
+        let sail_amount_to_receive = integer_mate::full_math_u64::mul_div_floor(
             o_sail_amount,
             percent_to_receive,
             distribution::common::persent_denominator()
@@ -897,7 +964,7 @@ module distribution::minter {
     ): u64 {
         let o_sail_amount = o_sail.value();
         let pay_for_percent = distribution::common::persent_denominator() - discount_percent;
-        let sail_amount_to_pay_for = full_math_u64::mul_div_floor(
+        let sail_amount_to_pay_for = integer_mate::full_math_u64::mul_div_floor(
             pay_for_percent,
             o_sail_amount,
             distribution::common::persent_denominator()
