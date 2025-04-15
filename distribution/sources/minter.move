@@ -1122,5 +1122,10 @@ module distribution::minter {
     ): VecSet<ID> {
         minter.whitelisted_pools
     }
+
+    #[test_only]
+    public fun test_init(ctx: &mut sui::tx_context::TxContext): sui::package::Publisher {
+         sui::package::claim<MINTER>(MINTER {}, ctx)
+    }
 }
 

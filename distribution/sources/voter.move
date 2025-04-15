@@ -2213,6 +2213,11 @@ module distribution::voter {
         };
         sui::event::emit<EventWhitelistToken>(whitelist_token_event);
     }
+
+    #[test_only]
+    public fun test_init(ctx: &mut sui::tx_context::TxContext): sui::package::Publisher {
+        sui::package::claim<VOTER>(VOTER {}, ctx)
+    }
 }
 
 

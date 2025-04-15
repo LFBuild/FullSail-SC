@@ -2,6 +2,7 @@
 module distribution::exercise_o_sail_tests;
 
 use sui::test_scenario;
+use sui::test_utils;
 use sui::package;
 use sui::clock::{Self, Clock};
 use sui::tx_context::{Self, TxContext};
@@ -21,7 +22,13 @@ use clmm_pool::position;
 use clmm_pool::pool::{Self, Pool};
 use clmm_pool::factory::{Self as factory, Pools};
 use clmm_pool::config::{Self as config, GlobalConfig, AdminCap};
-    
+use distribution::minter::{Self, Minter, MINTER, AdminCap as MinterAdminCap};
+use distribution::voter::{Self, Voter, VOTER};
+use distribution::notify_reward_cap;
+use sui::coin::{Self, TreasuryCap};
+use std::option::{Self, Option};
+use sui::object;
+
 #[test_only]
 public struct USD1 has drop {}
 
@@ -106,6 +113,7 @@ public fun setup_pool_with_sqrt_price<CoinTypeA: drop, CoinTypeB: drop>(
 ): (Pool<CoinTypeA, CoinTypeB>, Clock) {
 
     // Tx 1: Init factory & config
+    scenario.next_tx(sender);
     {
         factory::test_init(scenario.ctx());
         config::test_init(scenario.ctx());
@@ -190,6 +198,71 @@ fun test_pool_creation_utility_example() {
         // Cleanup: Transfer pool and destroy clock
         transfer::public_transfer(pool, admin);
         clock::destroy_for_testing(clock);
+    };
+
+    test_scenario::end(scenario);
+}
+
+// Sets up the Minter module for testing.
+// Initializes the minter, creates TreasuryCap and Minter object.
+// Shares the Minter object and transfers the AdminCap to the sender.
+#[test_only]
+public fun setup_distribution<SailCoinType: drop>(
+    scenario: &mut test_scenario::Scenario,
+    sender: address
+) { 
+    let minter_publisher = minter::test_init(scenario.ctx());
+
+    // Create a test TreasuryCap
+    let treasury_cap = coin::create_treasury_cap_for_testing<SailCoinType>(scenario.ctx());
+
+    // Create Minter - Pass the publisher and test TreasuryCap
+    let (minter_obj, minter_admin_cap) = minter::create<SailCoinType>(
+        &minter_publisher,
+        option::some(treasury_cap),
+        scenario.ctx()
+    );
+
+    // Destroy the publisher obtained from test_init
+    test_utils::destroy(minter_publisher);
+
+    // Share the Minter object
+    transfer::public_share_object(minter_obj);
+
+    // Transfer the AdminCap to the sender
+    transfer::public_transfer(minter_admin_cap, sender);
+
+    // No need to return the cap, sender owns it after transfer.
+}
+
+#[test]
+// Rename test to reflect it uses the setup utility
+fun test_minter_setup_utility() {
+    let admin = @0xC1;
+    let mut scenario = test_scenario::begin(admin);
+
+    // Tx 1: Use the setup function
+    {
+        setup_distribution<SAIL>(&mut scenario, admin);
+        // Minter object is shared, AdminCap is now owned by 'admin'
+    };
+
+    // Tx 2: Verify objects exist
+    scenario.next_tx(admin);
+    {
+        // Take shared Minter
+        let minter_obj = scenario.take_shared<Minter<SAIL>>();
+        // Take AdminCap from sender (which received it in the setup function)
+        let minter_admin_cap_taken = scenario.take_from_sender<MinterAdminCap>();
+
+        // Basic assertion: Check initial state
+        assert!(minter::epoch(&minter_obj) == 0, 1);
+        assert!(minter::activated_at(&minter_obj) == 0, 2);
+
+        // Return shared Minter
+        test_scenario::return_shared(minter_obj);
+        // Return the cap taken
+        scenario.return_to_sender(minter_admin_cap_taken);
     };
 
     test_scenario::end(scenario);

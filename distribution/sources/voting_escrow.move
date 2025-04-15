@@ -2604,5 +2604,10 @@ module distribution::voting_escrow {
         let metadata_update_event = EventMetadataUpdate { lock_id };
         sui::event::emit<EventMetadataUpdate>(metadata_update_event);
     }
+
+    #[test_only]
+    public fun test_init(ctx: &mut sui::tx_context::TxContext): sui::package::Publisher {
+        sui::package::claim<VOTING_ESCROW>(VOTING_ESCROW {}, ctx)
+    }
 }
 
