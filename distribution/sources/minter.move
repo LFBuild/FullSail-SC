@@ -821,7 +821,6 @@ module distribution::minter {
         let dicount_percent = distribution::common::o_sail_discount();
         minter.exercise_o_sail_ab_internal(
             voter,
-            global_config,
             pool,
             o_sail,
             dicount_percent,
@@ -853,7 +852,6 @@ module distribution::minter {
         let dicount_percent = distribution::common::o_sail_discount();
         minter.exercise_o_sail_ba_internal(
             voter,
-            global_config,
             pool,
             o_sail,
             dicount_percent,
@@ -923,7 +921,6 @@ module distribution::minter {
     fun exercise_o_sail_ab_internal<SailCoinType, UsdCoinType, OSailCoinType>(
         minter: &mut Minter<SailCoinType>,
         voter: &mut distribution::voter::Voter,
-        global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut clmm_pool::pool::Pool<UsdCoinType, SailCoinType>,
         o_sail: Coin<OSailCoinType>,
         discount_percent: u64,
@@ -957,7 +954,6 @@ module distribution::minter {
     fun exercise_o_sail_ba_internal<SailCoinType, UsdCoinType, OSailCoinType>(
         minter: &mut Minter<SailCoinType>,
         voter: &mut distribution::voter::Voter,
-        global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut clmm_pool::pool::Pool<SailCoinType, UsdCoinType>,
         o_sail: Coin<OSailCoinType>,
         discount_percent: u64,
