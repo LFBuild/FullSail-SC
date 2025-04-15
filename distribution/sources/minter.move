@@ -54,8 +54,6 @@ module distribution::minter {
     const EExerciseTeamWalletNotConfigured: u64 = 823119998504602200;
     const EExerciseMinterBalanceInsufficient: u64 = 5584205353728053000;
 
-    const EExerciseNotEnoughLiquidity: u64 = 4342302764230574600;
-    const EExerciseSwapEsExceed: u64 = 3888758848648916500;
     const EExerciseUsdLimitReached: u64 = 4905179424474806000;
 
     public struct AdminCap has store, key {
@@ -894,14 +892,11 @@ module distribution::minter {
     /// Doesn't check pool for type safety, so use with caution
     /// Returns usd amount to be deducted from user
     fun exercise_o_sail_calc<SailCoinType, OSailCoinType, CoinTypeA, CoinTypeB>(
-        global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         o_sail: &Coin<OSailCoinType>,
         discount_percent: u64,
         a2b: bool, // true if pool is Pool<UsdCoinType, SailCoinType>
     ): u64 {
-
-        // TODO remove slippage
         let o_sail_amount = o_sail.value();
         let pay_for_percent = distribution::common::persent_denominator() - discount_percent;
         let sail_amount_to_pay_for = full_math_u64::mul_div_floor(
@@ -909,18 +904,17 @@ module distribution::minter {
             o_sail_amount,
             distribution::common::persent_denominator()
         );
+        // if Pool<CoinA, CoinB>:
+        // amount_b = sqrtPriceX64^2 * amount_a  / 2^128
+        // amount_a = amount_b * 2^128 / sqrtPriceX64^2
+        let sqrt_price: u256 = pool.current_sqrt_price() as u256;
+        let amount_to_pay = if (a2b) {
+            (((sail_amount_to_pay_for as u256) << 128) / (sqrt_price * sqrt_price)) as u64
+        } else {
+            ((sqrt_price * sqrt_price * (sail_amount_to_pay_for as u256)) >> 128) as u64
+        };
 
-        let swap_result = clmm_pool::pool::calculate_swap_result(
-            global_config,
-            pool,
-            a2b,
-            false, // by_amount_in = false, so by amount out
-            sail_amount_to_pay_for,
-        );
-        assert!(swap_result.calculated_swap_result_amount_out() == sail_amount_to_pay_for, EExerciseNotEnoughLiquidity);
-        assert!(!swap_result.calculated_swap_result_is_exceed(), EExerciseSwapEsExceed);
-
-        swap_result.calculated_swap_result_amount_in()
+        amount_to_pay
     }
 
     /// Exercises oSAIL token and gives you SAIL in return.
@@ -939,7 +933,6 @@ module distribution::minter {
         ctx: &mut TxContext,
     ): (Coin<UsdCoinType>, Coin<SailCoinType>) {
         let usd_amount_to_pay = exercise_o_sail_calc<SailCoinType, OSailCoinType, UsdCoinType, SailCoinType>(
-            global_config,
             pool,
             &o_sail,
             discount_percent,
@@ -974,7 +967,6 @@ module distribution::minter {
         ctx: &mut TxContext,
     ): (Coin<UsdCoinType>, Coin<SailCoinType>) {
         let usd_amount_to_pay = exercise_o_sail_calc<SailCoinType, OSailCoinType, SailCoinType, UsdCoinType>(
-            global_config,
             pool,
             &o_sail,
             discount_percent,
