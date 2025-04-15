@@ -57,12 +57,15 @@ module distribution::minter {
 
     const EExerciseUsdLimitReached: u64 = 4905179424474806000;
 
-
-    const VALID_O_SAIL_DURATIONS: vector<u64> = vector[
-        6 * 30, // 6 months
-        24 * 30, // 2 years
-        48 * 30 // 4 years
+    /// Possible lock duration available be oSAIL expiry date
+    const VALID_O_SAIL_DURATION_DAYS: vector<u64> = vector[
+        26 * 7, // 6 months
+        2 * 52 * 7, // 2 years
+        4 * 52 * 7 // 4 years
     ];
+
+    /// After expiration oSAIL can only be locked for 4 years or permanently
+    const VALID_EXPIRED_O_SAIL_DURATION_DAYS: u64 =  4 * 52 * 7;
 
     public struct AdminCap has store, key {
         id: UID,
@@ -809,18 +812,31 @@ module distribution::minter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        let mut valid_duration = permanent;
-        let mut i = 0;
-        let valid_durations_len = VALID_O_SAIL_DURATIONS.length();
-        while (!valid_duration && i < valid_durations_len) {
-            if (VALID_O_SAIL_DURATIONS[i] == lock_duration_days) {
-                valid_duration = true;
+        let lock_duration_seconds = lock_duration_days * distribution::common::day();
+        let mut valid_duration = false;
+        let o_sail_type = type_name::get<OSailCoinType>();
+        let expiry_date: u64 = *minter.o_sail_expiry_dates.borrow(o_sail_type);
+        let current_time = distribution::common::current_timestamp(clock);
+
+        // locking for any duration less than permanent
+        if (current_time >= expiry_date) {
+            valid_duration = permanent || lock_duration_days == VALID_EXPIRED_O_SAIL_DURATION_DAYS
+        } else {
+            if (permanent) {
+                valid_duration = true
+            } else {
+                let mut i = 0;
+                let valid_durations_len = VALID_O_SAIL_DURATION_DAYS.length();
+                while (i < valid_durations_len) {
+                    if (VALID_O_SAIL_DURATION_DAYS[i] == lock_duration_days) {
+                        valid_duration = true;
+                        break;
+                    };
+                    i = i + 1;
+                };
             };
-            i = i + 1;
         };
         assert!(valid_duration, ECreateLockFromOSailInvalidDuraton);
-
-        let lock_duration_seconds = lock_duration_days * distribution::common::day();
 
         // received SAIL percent changes from discount percent to 100%
         let percent_to_receive = if (permanent) {
@@ -871,7 +887,7 @@ module distribution::minter {
     public fun exercise_o_sail_ab<SailCoinType, USDCoinType, OSailCoinType>(
         minter: &mut Minter<SailCoinType>,
         voter: &mut distribution::voter::Voter,
-        global_config: &clmm_pool::config::GlobalConfig,
+        _: &clmm_pool::config::GlobalConfig, // in case we want to introduce slippage here in the future
         pool: &mut clmm_pool::pool::Pool<USDCoinType, SailCoinType>,
         o_sail: Coin<OSailCoinType>,
         fee: Coin<USDCoinType>,
@@ -902,7 +918,7 @@ module distribution::minter {
     public fun exercise_o_sail_ba<SailCoinType, USDCoinType, OSailCoinType>(
         minter: &mut Minter<SailCoinType>,
         voter: &mut distribution::voter::Voter,
-        global_config: &clmm_pool::config::GlobalConfig,
+        _: &clmm_pool::config::GlobalConfig, // in case we want to introduce slippage here in the future
         pool: &mut clmm_pool::pool::Pool<SailCoinType, USDCoinType>,
         o_sail: Coin<OSailCoinType>,
         fee: Coin<USDCoinType>,
