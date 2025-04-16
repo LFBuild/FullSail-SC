@@ -434,5 +434,10 @@ module distribution::reward_distributor {
         reward_distributor_cap.validate(object::id<RewardDistributor<SailCoinType>>(reward_distributor));
         reward_distributor.minter_active_period = new_active_period;
     }
+
+    #[test_only]
+    public fun test_init(ctx: &mut sui::tx_context::TxContext): sui::package::Publisher {
+        sui::package::claim<REWARD_DISTRIBUTOR>(REWARD_DISTRIBUTOR {}, ctx)
+    }
 }
 

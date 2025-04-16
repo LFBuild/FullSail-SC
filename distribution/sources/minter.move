@@ -162,9 +162,7 @@ module distribution::minter {
         minter.check_admin(admin_cap);
         assert!(!minter.is_active(clock), EActivateMinterAlreadyActive);
         assert!(
-            option::is_some<distribution::reward_distributor_cap::RewardDistributorCap>(
-                &minter.reward_distributor_cap
-            ),
+            option::is_some(&minter.reward_distributor_cap),
             EActivateMinterNoDistributorCap
         );
         let current_time = distribution::common::current_timestamp(clock);
@@ -172,7 +170,7 @@ module distribution::minter {
         minter.active_period = distribution::common::to_period(minter.activated_at);
         minter.last_epoch_update_time = current_time;
         minter.epoch_emissions = minter.base_supply;
-        minter.update_o_sail_coin(voter, o_sail_treasury_cap, ctx);
+        minter.update_o_sail_token(voter, o_sail_treasury_cap, ctx);
         reward_distributor.start(option::borrow<distribution::reward_distributor_cap::RewardDistributorCap>(
             &minter.reward_distributor_cap
         ), minter.active_period, clock);
@@ -623,7 +621,7 @@ module distribution::minter {
     /// #Effects
     /// * Updates current_epoch_o_sail
     /// * Update Voter fields related to oSAIL
-    fun update_o_sail_coin<SailCoinType, EpochOSailCoin>(
+    fun update_o_sail_token<SailCoinType, EpochOSailCoin>(
         minter: &mut Minter<SailCoinType>,
         voter: &mut distribution::voter::Voter,
         treasury_cap: TreasuryCap<EpochOSailCoin>,
@@ -724,7 +722,7 @@ module distribution::minter {
         minter.active_period = distribution::common::current_period(clock);
         minter.epoch_count = minter.epoch_count + 1;
         minter.epoch_emissions = next_epoch_emissions;
-        minter.update_o_sail_coin(voter, next_o_sail_treasury_cap, ctx);
+        minter.update_o_sail_token(voter, next_o_sail_treasury_cap, ctx);
         reward_distributor.update_active_period(
             option::borrow<distribution::reward_distributor_cap::RewardDistributorCap>(
                 &minter.reward_distributor_cap

@@ -2607,7 +2607,9 @@ module distribution::voting_escrow {
 
     #[test_only]
     public fun test_init(ctx: &mut sui::tx_context::TxContext): sui::package::Publisher {
-        sui::package::claim<VOTING_ESCROW>(VOTING_ESCROW {}, ctx)
+        let publisher = sui::package::claim<VOTING_ESCROW>(VOTING_ESCROW {}, ctx);
+        set_display(&publisher, ctx);
+        publisher
     }
 }
 
