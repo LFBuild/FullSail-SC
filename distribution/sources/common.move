@@ -1,8 +1,7 @@
 module distribution::common {
-    // TODO: replace with actual week before deployment
-    const WEEK: u64 = 86400; // only a day for test purposes
-    const DAY: u64 = 86400;
     const HOUR: u64 = 3600;
+    const DAY: u64 = 24 * HOUR;
+    const WEEK: u64 = 7 * DAY;
 
     // OSail params
     const MAX_DISCOUNT: u64 = 100000000;
