@@ -20,14 +20,15 @@ use clmm_pool::rewarder;
 
 use clmm_pool::position;
 use clmm_pool::pool::{Self, Pool};
-use clmm_pool::factory::{Self as factory, Pools};
-use clmm_pool::config::{Self as config, GlobalConfig, AdminCap};
+use clmm_pool::factory::{Self, Pools};
+use clmm_pool::config::{Self, GlobalConfig, AdminCap};
 use distribution::minter::{Self, Minter, MINTER, AdminCap as MinterAdminCap};
 use distribution::voter::{Self, Voter, VOTER};
-use distribution::notify_reward_cap;
+use distribution::notify_reward_cap::{Self, NotifyRewardCap};
 use sui::coin::{Self, TreasuryCap};
 use std::option::{Self, Option};
 use sui::object;
+use distribution::distribution_config;
 
 #[test_only]
 public struct USD1 has drop {}
@@ -110,7 +111,7 @@ public fun setup_pool_with_sqrt_price<CoinTypeA: drop, CoinTypeB: drop>(
     sqrt_price: u128,
     tick_spacing: u32,
     fee_rate: u64
-): (Pool<CoinTypeA, CoinTypeB>, Clock) {
+) {
 
     // Tx 1: Init factory & config
     scenario.next_tx(sender);
@@ -163,10 +164,10 @@ public fun setup_pool_with_sqrt_price<CoinTypeA: drop, CoinTypeB: drop>(
 
         test_scenario::return_shared(pools);
         test_scenario::return_shared(global_config);
+        transfer::public_share_object(pool);
+        clock::destroy_for_testing(clock);
         // Keep clock alive, return it
-    };
-
-    (pool, clock) // Return the pool and clock
+    }
 }
 
 #[test]
@@ -180,7 +181,7 @@ fun test_pool_creation_utility_example() {
 
     // Use the setup utility function
     // Ensure USD2 > USD1 lexicographically
-    let (pool, clock) = setup_pool_with_sqrt_price<USD2, USD1>(
+    setup_pool_with_sqrt_price<USD2, USD1>(
         &mut scenario,
         admin,
         sqrt_price,
@@ -191,79 +192,112 @@ fun test_pool_creation_utility_example() {
     // Assertions (performed in the next transaction context)
     scenario.next_tx(admin);
     {
+        let pool = scenario.take_shared<Pool<USD2, USD1>>();
         assert!(pool::current_sqrt_price(&pool) == sqrt_price, 1337);
         assert!(pool::tick_spacing(&pool) == tick_spacing, 1338);
         assert!(pool::fee_rate(&pool) == fee_rate, 1339);
 
         // Cleanup: Transfer pool and destroy clock
-        transfer::public_transfer(pool, admin);
-        clock::destroy_for_testing(clock);
+        test_scenario::return_shared(pool);
     };
 
-    test_scenario::end(scenario);
+    scenario.end();
 }
 
-// Sets up the Minter module for testing.
-// Initializes the minter, creates TreasuryCap and Minter object.
-// Shares the Minter object and transfers the AdminCap to the sender.
+// Sets up the Minter and Voter modules for testing.
+// Initializes modules, creates TreasuryCap, Minter, and Voter objects.
+// Shares Minter and Voter objects, transfers AdminCaps to the sender.
 #[test_only]
-public fun setup_distribution<SailCoinType: drop>(
+public fun setup_distribution(
     scenario: &mut test_scenario::Scenario,
     sender: address
-) { 
+) { // No return value
+
+    // --- Initialize Configs --- 
+    scenario.next_tx(sender);
+    {
+        distribution_config::test_init(scenario.ctx());
+    };
+    // --- Minter Setup --- 
+    scenario.next_tx(sender);
     let minter_publisher = minter::test_init(scenario.ctx());
-
-    // Create a test TreasuryCap
-    let treasury_cap = coin::create_treasury_cap_for_testing<SailCoinType>(scenario.ctx());
-
-    // Create Minter - Pass the publisher and test TreasuryCap
-    let (minter_obj, minter_admin_cap) = minter::create<SailCoinType>(
+    let treasury_cap = coin::create_treasury_cap_for_testing<SAIL>(scenario.ctx());
+    let (minter_obj, minter_admin_cap) = minter::create<SAIL>(
         &minter_publisher,
         option::some(treasury_cap),
         scenario.ctx()
     );
-
-    // Destroy the publisher obtained from test_init
     test_utils::destroy(minter_publisher);
-
-    // Share the Minter object
     transfer::public_share_object(minter_obj);
-
-    // Transfer the AdminCap to the sender
     transfer::public_transfer(minter_admin_cap, sender);
 
-    // No need to return the cap, sender owns it after transfer.
+    // --- Voter Setup --- 
+    let voter_publisher = voter::test_init(scenario.ctx()); 
+
+    // Get config IDs (assuming global_config was initialized earlier or is shared)
+    // NOTE: Ensure clmm_pool::config::test_init was called before this function if needed.
+    let global_config_obj = scenario.take_shared<config::GlobalConfig>();
+    let global_config_id = object::id(&global_config_obj);
+    test_scenario::return_shared(global_config_obj);
+
+    let distribution_config_obj = scenario.take_shared<distribution_config::DistributionConfig>();
+    let distribution_config_id = object::id(&distribution_config_obj);
+    test_scenario::return_shared(distribution_config_obj);
+
+    let (voter_obj, notify_cap) = voter::create(
+        &voter_publisher,
+        global_config_id,
+        distribution_config_id,
+        scenario.ctx()
+    );
+    test_utils::destroy(voter_publisher);
+    transfer::public_share_object(voter_obj);
+    transfer::public_transfer(notify_cap, sender);
 }
 
 #[test]
-// Rename test to reflect it uses the setup utility
-fun test_minter_setup_utility() {
+// Rename test to reflect broader setup
+fun test_distribution_setup_utility() {
     let admin = @0xC1;
     let mut scenario = test_scenario::begin(admin);
 
     // Tx 1: Use the setup function
     {
-        setup_distribution<SAIL>(&mut scenario, admin);
-        // Minter object is shared, AdminCap is now owned by 'admin'
+        // Initialize clmm_pool::config first as it's needed by setup_distribution
+        setup_pool_with_sqrt_price<USD1, SAIL>(&mut scenario, admin, 2 << 64, 1, 1000);
+        setup_distribution(&mut scenario, admin);
+        // Minter & Voter objects are shared, AdminCaps are now owned by 'admin'
     };
 
     // Tx 2: Verify objects exist
     scenario.next_tx(admin);
     {
-        // Take shared Minter
+        // Take shared objects
         let minter_obj = scenario.take_shared<Minter<SAIL>>();
-        // Take AdminCap from sender (which received it in the setup function)
-        let minter_admin_cap_taken = scenario.take_from_sender<MinterAdminCap>();
+        let voter_obj = scenario.take_shared<Voter>();
+        let global_config_obj = scenario.take_shared<config::GlobalConfig>();
+        let distribution_config_obj = scenario.take_shared<distribution_config::DistributionConfig>();
 
-        // Basic assertion: Check initial state
+        // Take AdminCaps from sender 
+        let minter_admin_cap_taken = scenario.take_from_sender<MinterAdminCap>();
+        let notify_cap_taken = scenario.take_from_sender<NotifyRewardCap>();
+
+        // Basic assertions
         assert!(minter::epoch(&minter_obj) == 0, 1);
         assert!(minter::activated_at(&minter_obj) == 0, 2);
+        // Remove voter::epoch check as function doesn't exist/isn't public
+        // assert!(voter::epoch(&voter_obj) == 0, 3); 
+        assert!(voter::total_weight(&voter_obj) == 0, 4); // Check voter total weight
 
-        // Return shared Minter
+        // Return shared objects
         test_scenario::return_shared(minter_obj);
-        // Return the cap taken
+        test_scenario::return_shared(voter_obj);
+        test_scenario::return_shared(global_config_obj);
+        test_scenario::return_shared(distribution_config_obj);
+        // Return the caps taken
         scenario.return_to_sender(minter_admin_cap_taken);
+        scenario.return_to_sender(notify_cap_taken);
     };
 
-    test_scenario::end(scenario);
+    scenario.end();
 }
