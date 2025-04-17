@@ -312,8 +312,8 @@ fun test_exercise_o_sail_fail_usd_limit_not_met() {
             &global_config,
             &mut pool,
             o_sail_to_exercise,
-            usd_fee,
-            usd_limit, // Pass the insufficient limit
+            usd_fee, // Pass the insufficient limit
+            usd_limit,
             &clock,
             scenario.ctx()
         );
@@ -593,6 +593,132 @@ fun test_exercise_o_sail_before_expiry() {
         test_scenario::return_shared(global_config);
         scenario.return_to_sender(o_sail1_coin);
     };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+#[expected_failure(abort_code = minter::EExerciseOSailPoolNotWhitelisted)] // Expect final exercise attempt to fail
+fun test_exercise_o_sail_whitelist_toggle() {
+    let admin = @0x131; // Use a different address
+    let user = @0x132;
+    let mut scenario = test_scenario::begin(admin);
+
+    // Create Clock before setup
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Tx 1: Setup CLMM Factory & Distribution
+    {
+        setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+        setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    };
+
+    // Tx 2: Setup Pool (USD1/SAIL) 
+    let pool_sqrt_price: u128 = 1 << 64; // Price = 1
+    let pool_tick_spacing = 1;
+    scenario.next_tx(admin);
+    {
+        setup::setup_pool_with_sqrt_price<USD1, SAIL>(
+            &mut scenario, 
+            pool_sqrt_price, 
+            pool_tick_spacing
+        );
+    };
+
+    // Tx 3: Whitelist pool (First time)
+    scenario.next_tx(admin);
+    {
+        whitelist_pool<SAIL, USD1, SAIL>(&mut scenario, admin);
+    };
+
+    // Tx 4: Activate Minter for Epoch 1 (OSAIL1)
+    scenario.next_tx(admin);
+    {
+        let o_sail1_initial_supply = activate_minter<OSAIL1>(&mut scenario, admin, 1_000_000, &clock);
+        transfer::public_transfer(o_sail1_initial_supply, user);
+    };
+
+    // Tx 5: First Exercise (Pool Whitelisted - Should Succeed)
+    scenario.next_tx(user);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let mut voter = scenario.take_shared<Voter>();
+        let mut pool = scenario.take_shared<Pool<USD1, SAIL>>();
+        let global_config = scenario.take_shared<GlobalConfig>();
+        let mut o_sail1_coin = scenario.take_from_sender<Coin<OSAIL1>>();
+
+        let o_sail_amount_to_exercise = 50_000; // Exercise smaller amount
+        let o_sail_to_exercise = o_sail1_coin.split(o_sail_amount_to_exercise, scenario.ctx());
+
+        let expected_usd_needed = o_sail_amount_to_exercise / 2; // Price=1, Discount=50%
+        let usd_fee = coin::mint_for_testing<USD1>(expected_usd_needed, scenario.ctx()); 
+        let usd_limit = expected_usd_needed;
+
+        let (usd_left, sail_received) = minter::exercise_o_sail_ab<SAIL, USD1, OSAIL1>(
+            &mut minter, &mut voter, &global_config, &mut pool, 
+            o_sail_to_exercise, usd_fee, usd_limit, &clock, scenario.ctx()
+        );
+
+        assert!(sail_received.value() == o_sail_amount_to_exercise, 1);
+        assert!(usd_left.value() == 0, 2);
+
+        coin::destroy_zero(usd_left);
+        transfer::public_transfer(sail_received, user); // Give SAIL to user
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(voter);
+        test_scenario::return_shared(pool);
+        test_scenario::return_shared(global_config);
+        scenario.return_to_sender(o_sail1_coin); // Return remaining OSAIL1
+    };
+
+    // Tx 6: De-Whitelist pool
+    scenario.next_tx(admin);
+    {
+        // Need MinterAdminCap to de-whitelist
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let minter_admin_cap = scenario.take_from_sender<MinterAdminCap>();
+        let pool = scenario.take_shared<Pool<USD1, SAIL>>(); // Need pool ref
+        
+        minter::whitelist_pool(&mut minter, &minter_admin_cap, &pool, false); // Set listed to false
+        
+        test_scenario::return_shared(minter);
+        scenario.return_to_sender(minter_admin_cap);
+        test_scenario::return_shared(pool);
+    };
+
+    // Tx 7: Second Exercise Attempt (Pool Not Whitelisted - Should Fail)
+    scenario.next_tx(user);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let mut voter = scenario.take_shared<Voter>();
+        let mut pool = scenario.take_shared<Pool<USD1, SAIL>>();
+        let global_config = scenario.take_shared<GlobalConfig>();
+        let mut o_sail1_coin = scenario.take_from_sender<Coin<OSAIL1>>();
+
+        let o_sail_to_exercise = o_sail1_coin.split(50_000, scenario.ctx());
+        let expected_usd_needed = 50000 / 2;
+        let usd_fee = coin::mint_for_testing<USD1>(expected_usd_needed, scenario.ctx()); 
+        let usd_limit = expected_usd_needed;
+
+        // This call is expected to fail with EExerciseOSailPoolNotWhitelisted
+        let (usd_left, sail_received) = minter::exercise_o_sail_ab<SAIL, USD1, OSAIL1>(
+            &mut minter, &mut voter, &global_config, &mut pool, 
+            o_sail_to_exercise, usd_fee, usd_limit, &clock, scenario.ctx()
+        );
+
+        // Cleanup
+        coin::destroy_zero(usd_left);
+        transfer::public_transfer(sail_received, user); // Give SAIL to user
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(voter);
+        test_scenario::return_shared(pool);
+        test_scenario::return_shared(global_config);
+        scenario.return_to_sender(o_sail1_coin); 
+    };
+
+    // Final cleanup transaction can be added if necessary 
+    // but not strictly needed as the test expects abort in Tx 7.
 
     clock::destroy_for_testing(clock);
     scenario.end();

@@ -103,7 +103,6 @@ module distribution::minter {
         // The oSAIL which will be distributed at the end of the current epoch
         // is not defined until distribution starts
         current_epoch_o_sail: Option<TypeName>,
-        total_emissions: u64,
         last_epoch_update_time: u64,
         epoch_emissions: u64,
         sail_cap: Option<TreasuryCap<SailCoinType>>,
@@ -112,8 +111,6 @@ module distribution::minter {
         base_supply: u64,
         epoch_grow_rate: u64,
         epoch_decay_rate: u64,
-        grow_epochs: u64,
-        decay_epochs: u64,
         tail_emission_rate: u64,
         team_emission_rate: u64,
         protocol_fee_rate: u64,
@@ -326,7 +323,6 @@ module distribution::minter {
             active_period: 0,
             epoch_count: 0,
             current_epoch_o_sail: option::none<TypeName>(),
-            total_emissions: 0,
             last_epoch_update_time: 0,
             epoch_emissions: 0,
             sail_cap: treasury_cap,
@@ -335,8 +331,6 @@ module distribution::minter {
             base_supply: 10000000000000, // 10M coins
             epoch_grow_rate: 300,
             epoch_decay_rate: 100,
-            grow_epochs: 14,
-            decay_epochs: 67,
             tail_emission_rate: 67,
             team_emission_rate: 500,
             protocol_fee_rate: 500,
