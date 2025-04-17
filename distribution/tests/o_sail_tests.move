@@ -723,3 +723,111 @@ fun test_exercise_o_sail_whitelist_toggle() {
     clock::destroy_for_testing(clock);
     scenario.end();
 }
+
+fun check_receive_rate(
+    scenario: &mut test_scenario::Scenario,
+    user: address,
+    percent_to_receive: u64,
+) {
+    let mut minter = scenario.take_shared<Minter<SAIL>>();
+    let mut o_sail1_coin = scenario.take_from_sender<Coin<OSAIL1>>();
+
+    let initial_o_sail_amount = 100_000;
+    let o_sail_to_exercise = o_sail1_coin.split(initial_o_sail_amount, scenario.ctx());
+  
+    let expected_sail_amount = initial_o_sail_amount * percent_to_receive / common::persent_denominator(); // 100000 * 7500 / 10000 = 75000
+
+    let sail_received = minter::test_exercise_o_sail_free_internal<SAIL, OSAIL1>(
+        &mut minter,
+        o_sail_to_exercise,
+        percent_to_receive,
+        scenario.ctx()
+    );
+
+    // Assertions
+    assert!(sail_received.value() == expected_sail_amount, 1); // Should receive 75% SAIL
+
+    // Cleanup
+    transfer::public_transfer(sail_received, user);
+    test_scenario::return_shared(minter);
+    scenario.return_to_sender(o_sail1_coin); // Return remaining OSAIL1
+}
+
+#[test]
+fun test_exercise_o_sail_free_internal() {
+    let admin = @0x141; // Use a different address
+    let user = @0x142;
+    let mut scenario = test_scenario::begin(admin);
+
+    // Create Clock before setup
+    let clock = clock::create_for_testing(scenario.ctx());
+
+    // Tx 1: Setup Distribution (Minter, Voter, VE, RD) - No pool needed for free exercise
+    {
+        // Initialize clmm_pool::config as it's needed by setup_distribution
+        config::test_init(scenario.ctx()); 
+        setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    };
+
+    // Tx 2: Activate Minter for Epoch 1 (OSAIL1)
+    scenario.next_tx(admin);
+    {
+        let o_sail1_initial_supply = activate_minter<OSAIL1>(&mut scenario, admin, 1_000_000, &clock);
+        transfer::public_transfer(o_sail1_initial_supply, user);
+    };
+
+    // Tx 3: Exercise OSAIL1 with 75% receive rate
+    scenario.next_tx(user);
+    {
+        check_receive_rate(&mut scenario, user, 75000000);
+    };
+
+    // Tx 4: Exercise OSAIL1 with 100% receive rate
+    scenario.next_tx(user);
+    {
+        check_receive_rate(&mut scenario, user, 100000000);
+    };
+
+    // Tx 5: Exercise OSAIL1 with 0% receive rate
+    scenario.next_tx(user);
+    {
+        check_receive_rate(&mut scenario, user, 0);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+#[expected_failure(abort_code = minter::EExerciseOSailFreeTooBigPercent)]
+fun test_exercise_o_sail_free_fail_over_100_percent() {
+    let admin = @0x151; // Use a different address
+    let user = @0x152;
+    let mut scenario = test_scenario::begin(admin);
+
+    // Create Clock before setup
+    let clock = clock::create_for_testing(scenario.ctx());
+
+    // Tx 1: Setup Distribution (Minter, Voter, VE, RD)
+    {
+        // Initialize clmm_pool::config as it's needed by setup_distribution
+        config::test_init(scenario.ctx()); 
+        setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    };
+
+    // Tx 2: Activate Minter for Epoch 1 (OSAIL1)
+    scenario.next_tx(admin);
+    {
+        let o_sail1_initial_supply = activate_minter<OSAIL1>(&mut scenario, admin, 1_000_000, &clock);
+        transfer::public_transfer(o_sail1_initial_supply, user);
+    };
+
+    // Tx 3: Attempt Exercise OSAIL1 with > 100% receive rate
+    scenario.next_tx(user);
+    { // This block is expected to abort
+        check_receive_rate(&mut scenario, user, common::persent_denominator() + 1);
+    };
+
+    clock::destroy_for_testing(clock); 
+    scenario.end(); 
+}

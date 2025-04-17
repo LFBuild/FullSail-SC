@@ -885,6 +885,18 @@ module distribution::minter {
         minter.mint_sail(sail_amount_to_receive, ctx)
     }
 
+    #[test_only]
+    public fun test_exercise_o_sail_free_internal<SailCoinType, OSailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        o_sail: Coin<OSailCoinType>,
+        percent_to_receive: u64,
+        ctx: &mut TxContext,
+    ): Coin<SailCoinType> {
+        exercise_o_sail_free_internal(minter, o_sail, percent_to_receive, ctx)
+    }
+
+    
+
 
     /// Checks conditions, exercises oSAIL
     public fun exercise_o_sail_ab<SailCoinType, USDCoinType, OSailCoinType>(
