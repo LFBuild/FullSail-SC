@@ -510,7 +510,7 @@ module distribution::gauge {
             let time_since_last_update = time - pool.get_fullsail_distribution_last_updated();
 
             let staked_liquidity = pool.get_fullsail_distribution_staked_liquidity();
-            let distribution_reseve_x64 = (pool.get_fullsail_distribution_reserve() as u128) * 1 << 64;
+            let distribution_reseve_x64 = (pool.get_fullsail_distribution_reserve() as u128) * (1 << 64);
             let should_update_growth = if (time_since_last_update >= 0) {
                 if (distribution_reseve_x64 > 0) {
                     staked_liquidity > 0
@@ -1152,7 +1152,7 @@ module distribution::gauge {
         };
         let position_stake_info = gauge.staked_position_infos.remove(position_id);
         assert!(position_stake_info.received, EWithdrawPositionNotReceivedPosition);
-        assert!(position_stake_info.from != tx_context::sender(ctx), EWithdrawPositionNotOwnerOfPosition);
+        assert!(position_stake_info.from == tx_context::sender(ctx), EWithdrawPositionNotOwnerOfPosition);
         if (position_stake_info.from != tx_context::sender(ctx)) {
             gauge.staked_position_infos.add(position_id, position_stake_info);
         } else {
