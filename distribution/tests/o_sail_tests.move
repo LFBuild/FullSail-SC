@@ -864,6 +864,38 @@ fun create_lock(
     scenario.return_to_sender(o_sail_coin);
 }
 
+fun check_single_non_permanent_lock(
+    scenario: &test_scenario::Scenario,
+    o_sail_to_lock: u64,
+    lock_duration_days: u64,
+) {
+        let ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let user_lock = scenario.take_from_sender<Lock>(); // Take the newly created Lock
+
+        // Calculate expected SAIL based on duration (assuming 50% discount, 4yr max lock)
+        // percent = 5000 + (5000 * 182*day_ms / (1460*day_ms)) = 5000 + 623 = 5623
+        // expected_sail = 100000 * 5623 / 10000 = 56230
+        let max_lock_time_sec = 4 * 52 * 7 * 24 * 60 * 60;
+        let lock_duration_sec = lock_duration_days * 24 * 60 * 60;
+        let base_discount_pcnt = 50000000; // 50%
+        let max_extra_pcnt = common::persent_denominator() - base_discount_pcnt;
+        let percent_to_receive = base_discount_pcnt + 
+            (max_extra_pcnt * lock_duration_sec / max_lock_time_sec);
+        let expected_sail_amount = o_sail_to_lock * percent_to_receive / common::persent_denominator();
+
+        let (locked_balance, lock_exists) = voting_escrow::locked(&ve, object::id(&user_lock));
+        // Assertions
+
+        assert!(locked_balance.amount() == expected_sail_amount, 1); // Check locked SAIL amount
+        assert!(lock_exists, 2);
+        assert!(!locked_balance.is_permanent(), 3);
+        assert!(voting_escrow::total_locked(&ve) == expected_sail_amount, 4); // Check VE total locked
+
+        // Cleanup
+        test_scenario::return_shared(ve);
+        scenario.return_to_sender(user_lock); // Return lock to user
+}
+
 #[test]
 fun test_create_lock_from_o_sail() {
     let admin = @0x161; // Use a different address
@@ -899,33 +931,237 @@ fun test_create_lock_from_o_sail() {
     // Tx 4: Verify Lock creation and Voting Escrow state
     scenario.next_tx(user); // User owns the new Lock
     {
+        check_single_non_permanent_lock(&scenario, o_sail_to_lock, lock_duration_days);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_create_lock_from_o_sail_2y() {
+    let admin = @0x171; // Use a different address
+    let user = @0x172;
+    let mut scenario = test_scenario::begin(admin);
+
+    // Create Clock before setup
+    let clock = clock::create_for_testing(scenario.ctx());
+
+    // Tx 1: Setup Distribution (Minter, Voter, VE, RD)
+    {
+        // Initialize clmm_pool::config as it's needed by setup_distribution
+        config::test_init(scenario.ctx()); 
+        setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    };
+
+    // Tx 2: Activate Minter for Epoch 1 (OSAIL1)
+    scenario.next_tx(admin);
+    {
+        let o_sail1_initial_supply = activate_minter<OSAIL1>(&mut scenario, admin, 1_000_000, &clock);
+        transfer::public_transfer(o_sail1_initial_supply, user);
+    };
+
+    // Tx 3: Create Lock from OSAIL1 for 9 months
+    let o_sail_to_lock = 100_000; // Amount of oSAIL to lock
+    let lock_duration_days = 2 * 52 * 7; // 2 years
+    let permanent_lock = false;
+    scenario.next_tx(user);
+    {
+        create_lock(&mut scenario, o_sail_to_lock, lock_duration_days, permanent_lock, &clock);
+    };
+
+    // Tx 4: Verify Lock creation and Voting Escrow state
+    scenario.next_tx(user); // User owns the new Lock
+    {
+        check_single_non_permanent_lock(&scenario, o_sail_to_lock, lock_duration_days);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_create_lock_from_o_sail_4y() {
+    let admin = @0x181; // Use a different address
+    let user = @0x182;
+    let mut scenario = test_scenario::begin(admin);
+
+    // Create Clock before setup
+    let clock = clock::create_for_testing(scenario.ctx());
+
+    // Tx 1: Setup Distribution (Minter, Voter, VE, RD)
+    {
+        // Initialize clmm_pool::config as it's needed by setup_distribution
+        config::test_init(scenario.ctx()); 
+        setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    };
+
+    // Tx 2: Activate Minter for Epoch 1 (OSAIL1)
+    scenario.next_tx(admin);
+    {
+        let o_sail1_initial_supply = activate_minter<OSAIL1>(&mut scenario, admin, 1_000_000, &clock);
+        transfer::public_transfer(o_sail1_initial_supply, user);
+    };
+
+    // Tx 3: Create Lock from OSAIL1 for 4 years
+    let o_sail_to_lock = 100_000; // Amount of oSAIL to lock
+    let lock_duration_days = 4 * 52 * 7; // 4 years
+    let permanent_lock = false;
+    scenario.next_tx(user);
+    {
+        create_lock(&mut scenario, o_sail_to_lock, lock_duration_days, permanent_lock, &clock);
+    };
+
+    // Tx 4: Verify Lock creation and Voting Escrow state
+    scenario.next_tx(user); // User owns the new Lock
+    {
+        check_single_non_permanent_lock(&scenario, o_sail_to_lock, lock_duration_days);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+#[expected_failure(abort_code = minter::ECreateLockFromOSailInvalidDuraton)]
+fun test_create_lock_from_o_sail_fail_less_than_6_months() {
+    let admin = @0x191; // Use a different address
+    let user = @0x192;
+    let mut scenario = test_scenario::begin(admin);
+
+    // Create Clock before setup
+    let clock = clock::create_for_testing(scenario.ctx());
+
+    // Tx 1: Setup Distribution (Minter, Voter, VE, RD)
+    {
+        // Initialize clmm_pool::config as it's needed by setup_distribution
+        config::test_init(scenario.ctx()); 
+        setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    };
+
+    // Tx 2: Activate Minter for Epoch 1 (OSAIL1)
+    scenario.next_tx(admin);
+    {
+        let o_sail1_initial_supply = activate_minter<OSAIL1>(&mut scenario, admin, 1_000_000, &clock);
+        transfer::public_transfer(o_sail1_initial_supply, user);
+    };
+
+    // Tx 3: Attempt to Create Lock from OSAIL1 for less than 6 months
+    let o_sail_to_lock = 100_000; // Amount of oSAIL to lock
+    let lock_duration_days = 25 * 7; // 25 weeks < 26 weeks (6 months)
+    let permanent_lock = false;
+    scenario.next_tx(user);
+    {
+        // This call is expected to abort
+        create_lock(&mut scenario, o_sail_to_lock, lock_duration_days, permanent_lock, &clock);
+    };
+
+    // Verification step is not needed as the previous tx aborts
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+#[expected_failure(abort_code = minter::ECreateLockFromOSailInvalidDuraton)]
+fun test_create_lock_from_o_sail_fail_more_than_4y() {
+    let admin = @0x1A1; // Use a different address
+    let user = @0x1A2;
+    let mut scenario = test_scenario::begin(admin);
+
+    // Create Clock before setup
+    let clock = clock::create_for_testing(scenario.ctx());
+
+    // Tx 1: Setup Distribution (Minter, Voter, VE, RD)
+    {
+        // Initialize clmm_pool::config as it's needed by setup_distribution
+        config::test_init(scenario.ctx()); 
+        setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    };
+
+    // Tx 2: Activate Minter for Epoch 1 (OSAIL1)
+    scenario.next_tx(admin);
+    {
+        let o_sail1_initial_supply = activate_minter<OSAIL1>(&mut scenario, admin, 1_000_000, &clock);
+        transfer::public_transfer(o_sail1_initial_supply, user);
+    };
+
+    // Tx 3: Attempt to Create Lock from OSAIL1 for more than 4 years
+    let o_sail_to_lock = 100_000; // Amount of oSAIL to lock
+    let lock_duration_days = 4 * 52 * 7 + 1; // 4 years + 1 day
+    let permanent_lock = false;
+    scenario.next_tx(user);
+    {
+        // This call is expected to abort
+        create_lock(&mut scenario, o_sail_to_lock, lock_duration_days, permanent_lock, &clock);
+    };
+
+    // Verification step is not needed as the previous tx aborts
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+// Helper function to check the state of a single permanent lock
+fun check_single_permanent_lock(
+    scenario: &test_scenario::Scenario,
+    o_sail_to_lock: u64,
+) {
         let ve = scenario.take_shared<VotingEscrow<SAIL>>();
         let user_lock = scenario.take_from_sender<Lock>(); // Take the newly created Lock
 
-        // Calculate expected SAIL based on duration (assuming 50% discount, 4yr max lock)
-        // percent = 5000 + (5000 * 182*day_ms / (1460*day_ms)) = 5000 + 623 = 5623
-        // expected_sail = 100000 * 5623 / 10000 = 56230
-        let max_lock_time_sec = 4 * 52 * 7 * 24 * 60 * 60;
-        let lock_duration_sec = lock_duration_days * 24 * 60 * 60;
-        let base_discount_pcnt = 50000000; // 50%
-        let max_extra_pcnt = common::persent_denominator() - base_discount_pcnt;
-        let percent_to_receive = base_discount_pcnt + 
-            (max_extra_pcnt * lock_duration_sec / max_lock_time_sec);
-        let expected_sail_amount = o_sail_to_lock * percent_to_receive / common::persent_denominator();
+        // Calculate expected SAIL (permanent lock gets 100%)
+        let expected_sail_amount = o_sail_to_lock; 
 
         let (locked_balance, lock_exists) = voting_escrow::locked(&ve, object::id(&user_lock));
+        
         // Assertions
-
-        debug::print(&locked_balance);
-        debug::print(&expected_sail_amount);
-        assert!(locked_balance.amount() == expected_sail_amount, 1); // Check locked SAIL amount
+        assert!(locked_balance.amount() == expected_sail_amount, 1); // Check locked SAIL amount (should be 100%)
         assert!(lock_exists, 2);
-        assert!(!locked_balance.is_permanent(), 3);
+        assert!(locked_balance.is_permanent(), 3); // Check that the lock IS permanent
         assert!(voting_escrow::total_locked(&ve) == expected_sail_amount, 4); // Check VE total locked
 
         // Cleanup
         test_scenario::return_shared(ve);
         scenario.return_to_sender(user_lock); // Return lock to user
+}
+
+#[test]
+fun test_create_lock_from_o_sail_permanent() {
+    let admin = @0x181; // Use a different address
+    let user = @0x182;
+    let mut scenario = test_scenario::begin(admin);
+
+    // Create Clock before setup
+    let clock = clock::create_for_testing(scenario.ctx());
+
+    // Tx 1: Setup Distribution (Minter, Voter, VE, RD)
+    {
+        // Initialize clmm_pool::config as it's needed by setup_distribution
+        config::test_init(scenario.ctx()); 
+        setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    };
+
+    // Tx 2: Activate Minter for Epoch 1 (OSAIL1)
+    scenario.next_tx(admin);
+    {
+        let o_sail1_initial_supply = activate_minter<OSAIL1>(&mut scenario, admin, 1_000_000, &clock);
+        transfer::public_transfer(o_sail1_initial_supply, user);
+    };
+
+    // Tx 3: Create permanent Lock from OSAIL1
+    let o_sail_to_lock = 100_000; // Amount of oSAIL to lock
+    let lock_duration_days = 100; // doesn't matter for permanent lock
+    let permanent_lock = true;
+    scenario.next_tx(user);
+    {
+        create_lock(&mut scenario, o_sail_to_lock, lock_duration_days, permanent_lock, &clock);
+    };
+
+    // Tx 4: Verify Lock creation and Voting Escrow state
+    scenario.next_tx(user); // User owns the new Lock
+    {
+        check_single_permanent_lock(&scenario, o_sail_to_lock);
     };
 
     clock::destroy_for_testing(clock);

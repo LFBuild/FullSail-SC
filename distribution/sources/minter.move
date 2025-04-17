@@ -829,9 +829,10 @@ module distribution::minter {
                 valid_duration = true
             } else {
                 let mut i = 0;
-                let valid_durations_len = VALID_O_SAIL_DURATION_DAYS.length();
+                let valid_durations = VALID_O_SAIL_DURATION_DAYS;
+                let valid_durations_len = valid_durations.length();
                 while (i < valid_durations_len) {
-                    if (VALID_O_SAIL_DURATION_DAYS[i] == lock_duration_days) {
+                    if (valid_durations[i] == lock_duration_days) {
                         valid_duration = true;
                         break;
                     };
