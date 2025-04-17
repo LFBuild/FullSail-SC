@@ -463,7 +463,7 @@ module distribution::gauge {
     ): u64 {
         let time_since_last_update = time - pool.get_fullsail_distribution_last_updated();
         let mut current_growth_global = pool.get_fullsail_distribution_growth_global();
-        let distribution_reseve_x64 = (pool.get_fullsail_distribution_reserve() as u128) * 1 << 64;
+        let distribution_reseve_x64 = (pool.get_fullsail_distribution_reserve() as u128) * (1 << 64);
         let staked_liquidity = pool.get_fullsail_distribution_staked_liquidity();
         let should_update_growth = if (time_since_last_update >= 0) {
             if (distribution_reseve_x64 > 0) {
@@ -917,16 +917,18 @@ module distribution::gauge {
         let current_time = clock.timestamp_ms() / 1000;
         let amount_earned = gauge.earned_internal(pool, position_id, current_time);
         let reward_profile = gauge.rewards.borrow_mut(position_id);
-        if (reward_profile.last_update_time >= current_time) {
+        if (reward_profile.last_update_time >= current_time && reward_profile.amount > 0) {
+            let reward_amount = reward_profile.amount;
             reward_profile.amount = 0;
-            return gauge.reserves_balance.split<SailCoinType>(reward_profile.amount)
+            return gauge.reserves_balance.split<SailCoinType>(reward_amount)
         };
         pool.update_fullsail_distribution_growth_global(gauge.gauge_cap.borrow(), clock);
         reward_profile.last_update_time = current_time;
         reward_profile.amount = reward_profile.amount + amount_earned;
         reward_profile.growth_inside = pool.get_fullsail_distribution_growth_inside(lower_tick, upper_tick, 0);
+        let reward_amount = reward_profile.amount;
         reward_profile.amount = 0;
-        gauge.reserves_balance.split<SailCoinType>(reward_profile.amount)
+        gauge.reserves_balance.split<SailCoinType>(reward_amount)
     }
 
     /// Withdraws a staked position from the gauge and returns it to its owner.
@@ -959,7 +961,7 @@ module distribution::gauge {
         };
         let position_stake_info = gauge.staked_position_infos.remove(position_id);
         assert!(position_stake_info.received, EWithdrawPositionNotReceivedPosition);
-        assert!(position_stake_info.from != tx_context::sender(ctx), EWithdrawPositionNotOwnerOfPosition);
+        assert!(position_stake_info.from == tx_context::sender(ctx), EWithdrawPositionNotOwnerOfPosition);
         if (position_stake_info.from != tx_context::sender(ctx)) {
             gauge.staked_position_infos.add(position_id, position_stake_info);
         } else {
