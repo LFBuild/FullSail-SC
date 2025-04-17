@@ -4,7 +4,7 @@ module distribution::o_sail_tests;
 use distribution::setup;
 use distribution::minter::{Self, Minter, AdminCap as MinterAdminCap};
 use distribution::voter::{Self, Voter};
-use distribution::voting_escrow::{Self, VotingEscrow};
+use distribution::voting_escrow::{Self, VotingEscrow, Lock};
 use distribution::reward_distributor::{Self, RewardDistributor};
 use distribution::notify_reward_cap::{Self, NotifyRewardCap};
 use distribution::distribution_config::{Self, DistributionConfig};
@@ -830,4 +830,94 @@ fun test_exercise_o_sail_free_fail_over_100_percent() {
 
     clock::destroy_for_testing(clock); 
     scenario.end(); 
+}
+
+#[test]
+fun test_create_lock_from_o_sail() {
+    let admin = @0x161; // Use a different address
+    let user = @0x162;
+    let mut scenario = test_scenario::begin(admin);
+
+    // Create Clock before setup
+    let clock = clock::create_for_testing(scenario.ctx());
+
+    // Tx 1: Setup Distribution (Minter, Voter, VE, RD)
+    {
+        // Initialize clmm_pool::config as it's needed by setup_distribution
+        config::test_init(scenario.ctx()); 
+        setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    };
+
+    // Tx 2: Activate Minter for Epoch 1 (OSAIL1)
+    scenario.next_tx(admin);
+    {
+        let o_sail1_initial_supply = activate_minter<OSAIL1>(&mut scenario, admin, 1_000_000, &clock);
+        transfer::public_transfer(o_sail1_initial_supply, user);
+    };
+
+    // Tx 3: Create Lock from OSAIL1
+    let o_sail_to_lock = 100_000; // Amount of oSAIL to lock
+    let lock_duration_days = 182; // ~6 months
+    let permanent_lock = false;
+    scenario.next_tx(user);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let mut o_sail_coin = scenario.take_from_sender<Coin<OSAIL1>>();
+
+        assert!(o_sail_coin.value() >= o_sail_to_lock, 0); // Ensure user has enough oSAIL
+        let o_sail_for_locking = o_sail_coin.split(o_sail_to_lock, scenario.ctx());
+
+        // Call the function to create the lock
+        minter::create_lock_from_o_sail<SAIL, OSAIL1>(
+            &mut minter,
+            &mut ve,
+            o_sail_for_locking, // This coin will be consumed
+            lock_duration_days,
+            permanent_lock,
+            &clock,
+            scenario.ctx()
+        );
+
+        // Return shared objects
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(ve);
+        // Return remaining oSAIL coin
+        scenario.return_to_sender(o_sail_coin);
+    };
+
+    // Tx 4: Verify Lock creation and Voting Escrow state
+    scenario.next_tx(user); // User owns the new Lock
+    {
+        let ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let user_lock = scenario.take_from_sender<Lock>(); // Take the newly created Lock
+
+        // Calculate expected SAIL based on duration (assuming 50% discount, 4yr max lock)
+        // percent = 5000 + (5000 * 182*day_ms / (1460*day_ms)) = 5000 + 623 = 5623
+        // expected_sail = 100000 * 5623 / 10000 = 56230
+        let max_lock_time_sec = 4 * 52 * 7 * 24 * 60 * 60;
+        let lock_duration_sec = lock_duration_days * 24 * 60 * 60;
+        let base_discount_pcnt = 50000000; // 50%
+        let max_extra_pcnt = common::persent_denominator() - base_discount_pcnt;
+        let percent_to_receive = base_discount_pcnt + 
+            (max_extra_pcnt * lock_duration_sec / max_lock_time_sec);
+        let expected_sail_amount = o_sail_to_lock * percent_to_receive / common::persent_denominator();
+
+        let (locked_balance, lock_exists) = voting_escrow::locked(&ve, object::id(&user_lock));
+        // Assertions
+
+        debug::print(&locked_balance);
+        debug::print(&expected_sail_amount);
+        assert!(locked_balance.amount() == expected_sail_amount, 1); // Check locked SAIL amount
+        assert!(lock_exists, 2);
+        assert!(!locked_balance.is_permanent(), 3);
+        assert!(voting_escrow::total_locked(&ve) == expected_sail_amount, 4); // Check VE total locked
+
+        // Cleanup
+        test_scenario::return_shared(ve);
+        scenario.return_to_sender(user_lock); // Return lock to user
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
 }

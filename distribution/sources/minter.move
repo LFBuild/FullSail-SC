@@ -846,7 +846,7 @@ module distribution::minter {
             distribution::common::persent_denominator()
         } else {
             let max_extra_percents = distribution::common::persent_denominator() - distribution::common::o_sail_discount();
-            integer_mate::full_math_u64::mul_div_floor(
+            distribution::common::o_sail_discount() + integer_mate::full_math_u64::mul_div_floor(
                 lock_duration_seconds,
                 max_extra_percents,
                 distribution::common::max_lock_time()
