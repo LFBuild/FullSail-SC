@@ -43,11 +43,12 @@ module distribution::minter {
     const ESetProtocolFeeRateTooBigRate: u64 = 8401716227362572000;
 
     const EUpdatePeriodMinterNotActive: u64 = 9223373394064900104;
-    const EUpdatePeriodNotNotFinishedYet: u64 = 9223373406950588436;
+    const EUpdatePeriodNotFinishedYet: u64 = 9223373406950588436;
     const EUpdatePeriodInvalidEpochOSail: u64 = 3062794443568719400;
 
     const ECheckAdminRevoked: u64 = 9223372809948889087;
 
+    const ECreateLockFromOSailInvalidToken: u64 = 9162843907639215000;
     const ECreateLockFromOSailInvalidDuraton: u64 = 68567430268160480;
 
     const EExerciseOSailFreeTooBigPercent: u64 = 4108357525531418600;
@@ -107,6 +108,8 @@ module distribution::minter {
         epoch_emissions: u64,
         sail_cap: Option<TreasuryCap<SailCoinType>>,
         o_sail_caps: Bag,
+        // sum of supplies of all o_sail tokens
+        o_sail_total_supply: u64,
         o_sail_expiry_dates: Table<TypeName, u64>,
         base_supply: u64,
         epoch_grow_rate: u64,
@@ -123,16 +126,21 @@ module distribution::minter {
         whitelisted_pools: VecSet<ID>,
     }
 
-    /// Returns the total supply of SailCoin managed by this minter.
-    ///
-    /// # Arguments
-    /// * `minter` - The minter instance to query
-    ///
-    /// # Returns
-    /// Total supply of SailCoin
-    public fun total_supply<SailCoinType>(minter: &Minter<SailCoinType>): u64 {
+    /// Returns the total supply only of SailCoin managed by this minter.
+    public fun sail_total_supply<SailCoinType>(minter: &Minter<SailCoinType>): u64 {
         option::borrow<TreasuryCap<SailCoinType>>(&minter.sail_cap).total_supply()
     }
+
+    /// Return the sum of total supplies of all oSAIL coins
+    public fun o_sail_total_supply<SailCoinType>(minter: &Minter<SailCoinType>): u64 {
+        minter.o_sail_total_supply
+    }
+
+    /// Return the total supply of both SAIL an all oSAIL coins
+    public fun total_supply<SailCoinType>(minter: &Minter<SailCoinType>): u64 {
+        minter.sail_total_supply() + minter.o_sail_total_supply
+    }
+
 
     /// Activates the minter to begin token emissions according to the protocol schedule.
     /// Initializes the active period and sets up the reward distributor. This must be
@@ -327,6 +335,7 @@ module distribution::minter {
             epoch_emissions: 0,
             sail_cap: treasury_cap,
             o_sail_caps: bag::new(ctx),
+            o_sail_total_supply: 0,
             o_sail_expiry_dates: table::new<TypeName, u64>(ctx),
             base_supply: 10000000000000, // 10M coins
             epoch_grow_rate: 300,
@@ -623,6 +632,7 @@ module distribution::minter {
     ) {
         let o_sail_type = type_name::get<EpochOSailCoin>();
         minter.current_epoch_o_sail.swap_or_fill(o_sail_type);
+        minter.o_sail_total_supply = minter.o_sail_total_supply + treasury_cap.total_supply();
         minter.o_sail_caps.add(o_sail_type, treasury_cap);
         // oSAIL is distributed at the end of the active period, so we add extra week to the duration
         // as in all normal cases users will not be able to claim oSAIL until the end of the week.
@@ -678,13 +688,13 @@ module distribution::minter {
         assert!(minter.is_active(clock), EUpdatePeriodMinterNotActive);
         assert!(
             minter.active_period + distribution::common::week() < distribution::common::current_timestamp(clock),
-            EUpdatePeriodNotNotFinishedYet
+            EUpdatePeriodNotFinishedYet
         );
         assert!(minter.is_valid_epoch_token<SailCoinType, CurrentEpochOSail>(), EUpdatePeriodInvalidEpochOSail);
         let (current_epoch_emissions, next_epoch_emissions) = minter.calculate_epoch_emissions();
         let rebase_growth = calculate_rebase_growth(
             current_epoch_emissions,
-            option::borrow<TreasuryCap<SailCoinType>>(&minter.sail_cap).total_supply(),
+            minter.total_supply(),
             voting_escrow.total_locked()
         );
         if (minter.team_emission_rate > 0 && minter.team_wallet != @0x0) {
@@ -769,6 +779,7 @@ module distribution::minter {
         amount: u64,
         ctx: &mut TxContext
     ): Coin<OSailCoinType> {
+        minter.o_sail_total_supply = minter.o_sail_total_supply + amount;
         let cap = minter.borrow_mut_o_sail_cap<SailCoinType, OSailCoinType>();
 
         cap.mint(amount, ctx)
@@ -779,8 +790,10 @@ module distribution::minter {
         coin: Coin<OSailCoinType>,
     ): u64 {
         let cap = minter.borrow_mut_o_sail_cap<SailCoinType, OSailCoinType>();
+        let burnt = cap.burn(coin);
+        minter.o_sail_total_supply = minter.o_sail_total_supply - burnt;
 
-        cap.burn(coin)
+        burnt
     }
 
     fun mint_sail<SailCoinType>(
@@ -816,12 +829,13 @@ module distribution::minter {
         ctx: &mut TxContext
     ) {
         let lock_duration_seconds = lock_duration_days * distribution::common::day();
-        let mut valid_duration = false;
         let o_sail_type = type_name::get<OSailCoinType>();
+        assert!(minter.o_sail_caps.contains(o_sail_type), ECreateLockFromOSailInvalidToken);
         let expiry_date: u64 = *minter.o_sail_expiry_dates.borrow(o_sail_type);
         let current_time = distribution::common::current_timestamp(clock);
 
         // locking for any duration less than permanent
+        let mut valid_duration = false;
         if (current_time >= expiry_date) {
             valid_duration = permanent || lock_duration_days == VALID_EXPIRED_O_SAIL_DURATION_DAYS
         } else {

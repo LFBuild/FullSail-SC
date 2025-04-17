@@ -191,7 +191,7 @@ module integrate::voting_escrow {
         let epoch_emissions = minter.epoch_emissions();
         let rebase_growth = distribution::minter::calculate_rebase_growth(
             epoch_emissions,
-            minter.total_supply(),
+            minter.sail_total_supply(),
             total_locked
         );
         let summary_event = Summary {
