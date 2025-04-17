@@ -832,6 +832,38 @@ fun test_exercise_o_sail_free_fail_over_100_percent() {
     scenario.end(); 
 }
 
+fun create_lock(
+    scenario: &mut test_scenario::Scenario,
+    o_sail_to_lock: u64,
+    lock_duration_days: u64,
+    permanent_lock: bool,
+    clock: &Clock,
+) {
+    let mut minter = scenario.take_shared<Minter<SAIL>>();
+    let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+    let mut o_sail_coin = scenario.take_from_sender<Coin<OSAIL1>>();
+
+    assert!(o_sail_coin.value() >= o_sail_to_lock, 0); // Ensure user has enough oSAIL
+    let o_sail_for_locking = o_sail_coin.split(o_sail_to_lock, scenario.ctx());
+
+    // Call the function to create the lock
+    minter::create_lock_from_o_sail<SAIL, OSAIL1>(
+        &mut minter,
+        &mut ve,
+        o_sail_for_locking, // This coin will be consumed
+        lock_duration_days,
+        permanent_lock,
+        clock,
+        scenario.ctx()
+    );
+
+    // Return shared objects
+    test_scenario::return_shared(minter);
+    test_scenario::return_shared(ve);
+    // Return remaining oSAIL coin
+    scenario.return_to_sender(o_sail_coin);
+}
+
 #[test]
 fun test_create_lock_from_o_sail() {
     let admin = @0x161; // Use a different address
@@ -861,29 +893,7 @@ fun test_create_lock_from_o_sail() {
     let permanent_lock = false;
     scenario.next_tx(user);
     {
-        let mut minter = scenario.take_shared<Minter<SAIL>>();
-        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
-        let mut o_sail_coin = scenario.take_from_sender<Coin<OSAIL1>>();
-
-        assert!(o_sail_coin.value() >= o_sail_to_lock, 0); // Ensure user has enough oSAIL
-        let o_sail_for_locking = o_sail_coin.split(o_sail_to_lock, scenario.ctx());
-
-        // Call the function to create the lock
-        minter::create_lock_from_o_sail<SAIL, OSAIL1>(
-            &mut minter,
-            &mut ve,
-            o_sail_for_locking, // This coin will be consumed
-            lock_duration_days,
-            permanent_lock,
-            &clock,
-            scenario.ctx()
-        );
-
-        // Return shared objects
-        test_scenario::return_shared(minter);
-        test_scenario::return_shared(ve);
-        // Return remaining oSAIL coin
-        scenario.return_to_sender(o_sail_coin);
+        create_lock(&mut scenario, o_sail_to_lock, lock_duration_days, permanent_lock, &clock);
     };
 
     // Tx 4: Verify Lock creation and Voting Escrow state
