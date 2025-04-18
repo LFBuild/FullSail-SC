@@ -32,12 +32,10 @@ module integrate::voter {
         distribution_config: ID,
         ctx: &mut TxContext
     ) {
-        let first_epoch_coin = std::type_name::get<SailCoinType>();
         let (voter, notify_reward_cap) = distribution::voter::create(
             publisher,
             global_config,
             distribution_config,
-            first_epoch_coin,
             ctx
         );
         transfer::public_share_object<distribution::voter::Voter>(voter);

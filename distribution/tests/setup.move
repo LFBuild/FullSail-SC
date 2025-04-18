@@ -359,3 +359,79 @@ public fun whitelist_pool<SailCoinType, CoinTypeA, CoinTypeB>( // Changed to pub
     scenario.return_to_sender(minter_admin_cap);
     test_scenario::return_shared(pool);
 }
+
+// Mints SAIL and creates a permanent lock in the Voting Escrow for the user.
+// Assumes the transaction is run by the user who will own the lock.
+#[test_only]
+public fun mint_and_create_permanent_lock<SailCoinType>(
+    scenario: &mut test_scenario::Scenario,
+    _user: address, // User who will own the lock (must be the sender of this tx block)
+    amount_to_lock: u64,
+    clock: &Clock,
+) {
+    let sail_coin = coin::mint_for_testing<SailCoinType>(amount_to_lock, scenario.ctx());
+
+    let mut ve = scenario.take_shared<VotingEscrow<SailCoinType>>();
+
+    // create_lock consumes the coin and transfers the lock to ctx.sender()
+    voting_escrow::create_lock<SailCoinType>(
+        &mut ve,
+        sail_coin,
+        182, // Duration doesn't matter for permanent lock
+        true, // permanent lock
+        clock,
+        scenario.ctx()
+    );
+
+    // Return shared objects
+    test_scenario::return_shared(ve);
+    // Lock is automatically transferred to the user (sender of this tx block)
+}
+
+#[test]
+fun test_mint_and_create_permanent_lock() {
+    let admin = @0xA1; // Use a different address
+    let user = @0xA2;
+    let mut scenario = test_scenario::begin(admin);
+
+    // Create Clock before setup
+    let clock = clock::create_for_testing(scenario.ctx());
+
+    // Tx 1: Setup Distribution
+    {
+        // Initialize clmm_pool::config as it's needed by setup_distribution
+        config::test_init(scenario.ctx()); 
+        setup_distribution<SAIL>(&mut scenario, admin, &clock);
+        // Minter, Voter, VE, RD shared; AdminCap owned by admin
+    };
+
+    // Tx 2: Mint SAIL and Create Permanent Lock for User
+    let amount_to_lock = 500_000;
+    scenario.next_tx(user); // User needs to be sender to receive the Lock
+    {
+        mint_and_create_permanent_lock<SAIL>(&mut scenario, user, amount_to_lock, &clock);
+    };
+
+    // Tx 3: Verify Lock Creation
+    scenario.next_tx(user); // User owns the Lock
+    {
+        let ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let user_lock = scenario.take_from_sender<voting_escrow::Lock>(); // Take the Lock from the user
+
+        let (locked_balance, lock_exists) = voting_escrow::locked(&ve, object::id(&user_lock));
+        
+        // Assertions
+        assert!(lock_exists, 1);
+        assert!(locked_balance.amount() == amount_to_lock, 2); // Check locked amount
+        assert!(locked_balance.is_permanent(), 3); // Check it's permanent
+        assert!(voting_escrow::total_locked(&ve) == amount_to_lock, 4); // Check VE total locked
+
+        // Cleanup
+        test_scenario::return_shared(ve);
+        scenario.return_to_sender(user_lock); // Return lock to user
+    };
+
+    // Final cleanup
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
