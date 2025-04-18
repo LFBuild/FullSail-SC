@@ -1953,3 +1953,181 @@ fun test_exercise_fee_reward_notify_limits() {
     clock::destroy_for_testing(clock);
     scenario.end();
 }
+
+#[test]
+fun test_exercise_o_sail_high_price() {
+    let admin = @0x241;
+    let user = @0x242;
+    let mut scenario = test_scenario::begin(admin);
+
+    // Create Clock 
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Tx 1: Setup CLMM Factory & Distribution
+    {
+        setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 100, 1000);
+        setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    };
+    let sqrt_price: u128 = clmm_pool::tick_math::max_sqrt_price();
+    let pool_tick_spacing = 100;
+    scenario.next_tx(admin);
+    {
+        setup::setup_pool_with_sqrt_price<USD1, SAIL>(
+            &mut scenario, 
+            sqrt_price, 
+            pool_tick_spacing
+        );
+    };
+
+    // Tx 3: Whitelist Pool for Exercising
+    scenario.next_tx(admin);
+    {
+        setup::whitelist_pool<SAIL, USD1, SAIL>(&mut scenario, true);
+    };
+
+    // Tx 4: Activate Minter for Epoch 1 (OSAIL1)
+    let o_sail_supply = 1_000_000_000_000_000; // Give user 1M oSAIL
+    scenario.next_tx(admin);
+    {
+        let o_sail1_initial_supply = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, o_sail_supply, &mut clock);
+        transfer::public_transfer(o_sail1_initial_supply, user);
+    };
+
+    // Tx 5: User exercises OSAIL1 with high price
+    let o_sail_to_exercise_amount = 1_000_000_000_000_000; // Exercise 1000 oSAIL
+    scenario.next_tx(user);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let mut voter = scenario.take_shared<Voter>();
+        let mut pool = scenario.take_shared<Pool<USD1, SAIL>>();
+        let global_config = scenario.take_shared<GlobalConfig>();
+        let mut o_sail1_coin = scenario.take_from_sender<Coin<OSAIL1>>();
+
+        let o_sail_to_exercise = o_sail1_coin.split(o_sail_to_exercise_amount, scenario.ctx());
+
+        let expected_usd_needed = ((o_sail_to_exercise_amount / 2 as u256) * (1 << 128) / ((sqrt_price as u256) * (sqrt_price as u256))) as u64;
+        let usd_fee = coin::mint_for_testing<USD1>(expected_usd_needed, scenario.ctx()); 
+        let usd_limit = expected_usd_needed;
+
+        // Exercise o_sail_ab because Pool is <USD1, SAIL>
+        let (usd_left, sail_received) = minter::exercise_o_sail_ab<SAIL, USD1, OSAIL1>(
+            &mut minter,
+            &mut voter,
+            &global_config,
+            &mut pool,
+            o_sail_to_exercise, 
+            usd_fee, 
+            usd_limit,
+            &clock,
+            scenario.ctx()
+        );
+
+        // --- Assertions --- 
+        assert!(sail_received.value() == o_sail_to_exercise_amount, 1); // Should receive full SAIL amount
+        // Due to potential precision loss with large sqrt_price, allow a tiny remainder
+        assert!(usd_left.value() == 0, 2); // Ideally 0, check calculation precision in exercise_o_sail_calc
+
+        // Cleanup
+        coin::destroy_zero(usd_left);
+        transfer::public_transfer(sail_received, user);
+
+        // Return shared objects & caps
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(voter);
+        test_scenario::return_shared(pool);
+        test_scenario::return_shared(global_config);
+        scenario.return_to_sender(o_sail1_coin); // Return remaining OSAIL1
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_exercise_o_sail_small_price() {
+    let admin = @0x241;
+    let user = @0x242;
+    let mut scenario = test_scenario::begin(admin);
+
+    // Create Clock 
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Tx 1: Setup CLMM Factory & Distribution
+    {
+        setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 100, 1000);
+        setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    };
+    let sqrt_price: u128 = clmm_pool::tick_math::min_sqrt_price() * 100;
+    let pool_tick_spacing = 100;
+    scenario.next_tx(admin);
+    {
+        setup::setup_pool_with_sqrt_price<USD1, SAIL>(
+            &mut scenario, 
+            sqrt_price, 
+            pool_tick_spacing
+        );
+    };
+
+    // Tx 3: Whitelist Pool for Exercising
+    scenario.next_tx(admin);
+    {
+        setup::whitelist_pool<SAIL, USD1, SAIL>(&mut scenario, true);
+    };
+
+    // Tx 4: Activate Minter for Epoch 1 (OSAIL1)
+    let o_sail_supply = 100; // Give user 1M oSAIL
+    scenario.next_tx(admin);
+    {
+        let o_sail1_initial_supply = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, o_sail_supply, &mut clock);
+        transfer::public_transfer(o_sail1_initial_supply, user);
+    };
+
+    // Tx 5: User exercises OSAIL1 with high price
+    let o_sail_to_exercise_amount = 100; // Exercise 4 oSAIL
+    scenario.next_tx(user);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let mut voter = scenario.take_shared<Voter>();
+        let mut pool = scenario.take_shared<Pool<USD1, SAIL>>();
+        let global_config = scenario.take_shared<GlobalConfig>();
+        let mut o_sail1_coin = scenario.take_from_sender<Coin<OSAIL1>>();
+
+        let o_sail_to_exercise = o_sail1_coin.split(o_sail_to_exercise_amount, scenario.ctx());
+
+        let expected_usd_needed = ((o_sail_to_exercise_amount / 2 as u256) * (1 << 128) / ((sqrt_price as u256) * (sqrt_price as u256))) as u64;
+        let usd_fee = coin::mint_for_testing<USD1>(expected_usd_needed, scenario.ctx()); 
+        let usd_limit = expected_usd_needed;
+
+        // Exercise o_sail_ab because Pool is <USD1, SAIL>
+        let (usd_left, sail_received) = minter::exercise_o_sail_ab<SAIL, USD1, OSAIL1>(
+            &mut minter,
+            &mut voter,
+            &global_config,
+            &mut pool,
+            o_sail_to_exercise, 
+            usd_fee, 
+            usd_limit,
+            &clock,
+            scenario.ctx()
+        );
+
+        // --- Assertions --- 
+        assert!(sail_received.value() == o_sail_to_exercise_amount, 1); // Should receive full SAIL amount
+        // Due to potential precision loss with large sqrt_price, allow a tiny remainder
+        assert!(usd_left.value() == 0, 2); // Ideally 0, check calculation precision in exercise_o_sail_calc
+
+        // Cleanup
+        coin::destroy_zero(usd_left);
+        transfer::public_transfer(sail_received, user);
+
+        // Return shared objects & caps
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(voter);
+        test_scenario::return_shared(pool);
+        test_scenario::return_shared(global_config);
+        scenario.return_to_sender(o_sail1_coin); // Return remaining OSAIL1
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
