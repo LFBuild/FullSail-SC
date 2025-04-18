@@ -1702,6 +1702,20 @@ fun test_exercise_fee_distribution() {
     let expected_team_fee = expected_usd_needed * protocol_fee_rate / minter::rate_denom();
     let expected_distributed_fee = expected_usd_needed - expected_team_fee;
 
+    // Calculate expected shares for user1 and user2
+    let total_voting_power = lock1_amount + lock2_amount;
+    let user1_expected_fee_share = integer_mate::full_math_u64::mul_div_floor(
+        expected_distributed_fee, 
+        lock1_amount, 
+        total_voting_power
+    );
+    
+    let user2_expected_fee_share = integer_mate::full_math_u64::mul_div_floor(
+        expected_distributed_fee, 
+        lock2_amount, 
+        total_voting_power
+    );
+
     // Tx: User3 Exercises OSAIL1 using the specific fee coin
     scenario.next_tx(user3);
     {
@@ -1755,6 +1769,65 @@ fun test_exercise_fee_distribution() {
 
         // Cleanup team fee coin (optional, could transfer elsewhere)
         coin::burn_for_testing(team_fee_coin); 
+    };
+
+    // advances time cos notified rewards are distributed in the next epoch
+    clock::increment_for_testing(&mut clock, 7 * 24 * 60 * 60 * 1000);
+
+    // --- Verify Fee Distribution to Voters ---
+
+    // Tx: User1 claims and verifies their share
+    scenario.next_tx(user1);
+    {
+        let mut voter = scenario.take_shared<Voter>();
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let lock1 = scenario.take_from_sender<Lock>();
+        let earned_fee = voter.earned_exercise_fee<USD1>(object::id(&lock1), &clock);
+
+        // Claim the reward - this transfers the coin to user1
+        voter::claim_exercise_fee_reward<SAIL, USD1>(&mut voter, &mut ve, &lock1, &clock, scenario.ctx());
+
+        assert!(earned_fee == user1_expected_fee_share, 5); // Verify earned fee
+        // Return objects
+        scenario.return_to_sender(lock1);
+        test_scenario::return_shared(voter);
+        test_scenario::return_shared(ve);
+    };
+
+    // Validate user1 earned fee
+    scenario.next_tx(user1);
+    {
+         // Take the received coin and verify amount
+        let received_fee_coin = scenario.take_from_sender<Coin<USD1>>();
+        assert!(received_fee_coin.value() == user1_expected_fee_share, 4); // Verify user1 share
+        coin::burn_for_testing(received_fee_coin); // Cleanup claimed fee
+    };
+
+    // Tx: User2 claims and verifies their share
+    scenario.next_tx(user2);
+    {
+        let mut voter = scenario.take_shared<Voter>();
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let lock2 = scenario.take_from_sender<Lock>();
+        let earned_fee = voter.earned_exercise_fee<USD1>(object::id(&lock2), &clock);
+
+        // Claim the reward - this transfers the coin to user2
+        voter::claim_exercise_fee_reward<SAIL, USD1>(&mut voter, &mut ve, &lock2, &clock, scenario.ctx());
+
+        assert!(earned_fee == user2_expected_fee_share, 6); // Verify earned fee
+        // Return objects
+        scenario.return_to_sender(lock2);
+        test_scenario::return_shared(voter);
+        test_scenario::return_shared(ve);
+    };
+
+    // Validate user2 earned fee
+    scenario.next_tx(user2);
+    {
+       // Take the received coin and verify amount
+        let received_fee_coin = scenario.take_from_sender<Coin<USD1>>();
+        assert!(received_fee_coin.value() == user2_expected_fee_share, 5); // Verify user2 share
+        coin::burn_for_testing(received_fee_coin); // Cleanup claimed fee
     };
 
     clock::destroy_for_testing(clock);
