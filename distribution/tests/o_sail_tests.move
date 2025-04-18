@@ -18,6 +18,8 @@ use sui::clock::{Self, Clock};
 use sui::coin::{Self, Coin};
 use distribution::common; // Import common for time constants
 
+use clmm_pool::tick_math;
+
 public struct SAIL has drop {}
 
 // Define oSAIL type for testing epoch 1
@@ -33,6 +35,273 @@ public struct USD1 has drop {}
 
 public struct AUSD has drop {}
 
+// ===================================================================================
+// exercise_o_sail_calc Tests
+// ===================================================================================
+
+// Helper to run the calculation test logic
+fun run_calc_test<CoinTypeA: drop, CoinTypeB: drop>(
+    scenario: &mut test_scenario::Scenario,
+    sqrt_price: u128,
+    o_sail_amount: u64,
+    discount_percent: u64,
+    a2b: bool,
+    expected_usd_to_pay: u64
+) {
+    let admin = @0xA0;
+    let user = @0xA1;
+    // Pool setup needs a unique TX block
+    let pool_tick_spacing = 1;
+    scenario.next_tx(admin); // Use arbitrary address for pool setup
+    {
+        setup::setup_pool_with_sqrt_price<CoinTypeA, CoinTypeB>(
+            scenario, 
+            sqrt_price, 
+            pool_tick_spacing
+        );
+    };
+
+    // Calculation doesn't need a new TX block if pool is shared
+    scenario.next_tx(user);
+    {
+        let pool = scenario.take_shared<Pool<CoinTypeA, CoinTypeB>>();
+        // Create a dummy oSAIL coin with the required value
+        let dummy_o_sail = coin::mint_for_testing<OSAIL1>(o_sail_amount, scenario.ctx());
+
+        let calculated_usd = minter::exercise_o_sail_calc<OSAIL1, CoinTypeA, CoinTypeB>(
+            &pool,
+            &dummy_o_sail,
+            discount_percent,
+            a2b
+        );
+
+        // Allow for minor rounding differences (e.g., off by 1)
+        let diff = if (calculated_usd > expected_usd_to_pay) { 
+            calculated_usd - expected_usd_to_pay 
+        } else { 
+            expected_usd_to_pay - calculated_usd 
+        };
+        assert!(diff <= 1, calculated_usd * 1000000 + expected_usd_to_pay); // Multiply to see both values in error
+
+        coin::burn_for_testing(dummy_o_sail);
+        test_scenario::return_shared(pool);
+    }
+}
+
+#[test]
+fun test_exercise_o_sail_calc_ab_price_1() {
+    let admin = @0xC1;
+    let mut scenario = test_scenario::begin(admin);
+    // Need CLMM setup for pool creation
+    setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+
+    let sqrt_price: u128 = 1 << 64;
+    let o_sail_amount = 100_000;
+    let discount_percent = 50000000; // 50%
+    let a2b = true;
+    // Pay for 50% = 50_000 SAIL. Price = 1 USD/SAIL.
+    // USD needed = 50_000 SAIL * (1 USD / 1 SAIL) = 50_000 USD
+    let expected_usd = 50_000;
+
+    run_calc_test<USD1, SAIL>(&mut scenario, sqrt_price, o_sail_amount, discount_percent, a2b, expected_usd);
+
+    scenario.end();
+}
+
+#[test]
+fun test_exercise_o_sail_calc_ba_price_1() {
+    let admin = @0xC2;
+    let mut scenario = test_scenario::begin(admin);
+    setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+
+    let sqrt_price: u128 = 1 << 64;
+    let o_sail_amount = 100_000;
+    let discount_percent = 50000000; // 50%
+    let a2b = false;
+    // Pay for 50% = 50_000 SAIL. Price = 1 USD/SAIL.
+    // USD needed = 50_000 SAIL * (1 USD / 1 SAIL) = 50_000 USD
+    let expected_usd = 50_000;
+
+    // NOTE: Assumes SAIL > USD1 lexicographically for pool creation
+    run_calc_test<SAIL, AUSD>(&mut scenario, sqrt_price, o_sail_amount, discount_percent, a2b, expected_usd);
+
+    scenario.end();
+}
+
+#[test]
+fun test_exercise_o_sail_calc_ab_price_4() {
+    let admin = @0xC3;
+    let mut scenario = test_scenario::begin(admin);
+    setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+
+    let sqrt_price: u128 = 2 << 64;
+    let o_sail_amount = 100_000;
+    let discount_percent = 50000000; // 50%
+    let a2b = true;
+    // Pay for 50% = 50_000 SAIL. Price = 4 USD/SAIL.
+    // USD needed = 50_000 SAIL / 4 = 12_500 USD
+    let expected_usd = 12_500;
+
+    run_calc_test<USD1, SAIL>(&mut scenario, sqrt_price, o_sail_amount, discount_percent, a2b, expected_usd);
+
+    scenario.end();
+}
+
+#[test]
+fun test_exercise_o_sail_calc_ba_price_point_25() {
+    let admin = @0xC4;
+    let mut scenario = test_scenario::begin(admin);
+    setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+
+    let sqrt_price: u128 = 1 << 63; // sqrt(1/4) = 1/2. sqrt_price = 0.5 * 2^64 = 1 << 63
+    let o_sail_amount = 100_000;
+    let discount_percent = 50000000; // 50%
+    let a2b = false;
+    // Pay for 50% = 50_000 SAIL. Price = 0.25 USD/SAIL.
+    // USD needed = 50_000 SAIL * (0.25 USD / 1 SAIL) = 12_500 USD
+    let expected_usd = 12_500;
+
+    run_calc_test<SAIL, AUSD>(&mut scenario, sqrt_price, o_sail_amount, discount_percent, a2b, expected_usd);
+
+    scenario.end();
+}
+
+#[test]
+fun test_exercise_o_sail_calc_ab_price_point_25() {
+    let admin = @0xC4;
+    let mut scenario = test_scenario::begin(admin);
+    setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+
+    let sqrt_price: u128 = 1 << 63; // sqrt(1/4) = 1/2. sqrt_price = 0.5 * 2^64 = 1 << 63
+    let o_sail_amount = 100_000;
+    let discount_percent = 50000000; // 50%
+    let a2b = true;
+    // Pay for 50% = 50_000 SAIL. Price = 0.25 SAIL/USD.
+    // USD needed = 50_000 SAIL / 0.25 = 200_000 USD
+    let expected_usd = 200_000;
+
+    run_calc_test<USD1, SAIL>(&mut scenario, sqrt_price, o_sail_amount, discount_percent, a2b, expected_usd);
+
+    scenario.end();
+}
+
+#[test]
+// Pool<USD1, SAIL> (a2b=true), Price USD/SAIL = 1, 75% discount
+fun test_exercise_o_sail_calc_ab_discount_75() {
+    let admin = @0xC5;
+    let mut scenario = test_scenario::begin(admin);
+    setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+
+    let sqrt_price: u128 = 1 << 64;
+    let o_sail_amount = 100_000;
+    let discount_percent = 75000000; // 75%
+    let a2b = true;
+    // Pay for 25% = 25_000 SAIL. Price = 1 USD/SAIL.
+    // USD needed = 25_000 SAIL * (1 USD / 1 SAIL) = 25_000 USD
+    let expected_usd = 25_000;
+
+    run_calc_test<USD1, SAIL>(&mut scenario, sqrt_price, o_sail_amount, discount_percent, a2b, expected_usd);
+
+    scenario.end();
+}
+
+
+#[test]
+fun test_exercise_o_sail_calc_ab_max_price() {
+    let admin = @0xD1;
+    let mut scenario = test_scenario::begin(admin);
+    setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+
+    let sqrt_price = tick_math::max_sqrt_price(); 
+    let o_sail_amount = 1_000_000;
+    let discount_percent = 50000000; // 50%
+    let a2b = true;
+    // sail_to_pay = 1M * 50% = 500_000
+    // usd = sail_to_pay * 2^128 / sqrt_price^2 
+    // Expect very small USD amount, likely 0 due to floor division
+    let price_u256 = (sqrt_price as u256);
+    let expected_usd = ((500_000 as u256) << 128) / (price_u256 * price_u256);
+    let expected_usd_u64 = (expected_usd as u64);
+    assert!(expected_usd_u64 < o_sail_amount / 2, 1); // check dumb errors
+
+    run_calc_test<USD1, SAIL>(&mut scenario, sqrt_price, o_sail_amount, discount_percent, a2b, expected_usd_u64);
+
+    scenario.end();
+}
+
+#[test]
+fun test_exercise_o_sail_calc_ba_max_price() {
+    let admin = @0xD2;
+    let mut scenario = test_scenario::begin(admin);
+    setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+
+    let sqrt_price = tick_math::max_sqrt_price() / 100; 
+    // Use smaller oSAIL amount to avoid potential u64 overflow in expected result
+    let o_sail_amount = 1000; // Pay for 500 SAIL
+    let discount_percent = 50000000; // 50%
+    let a2b = false;
+    // sail_to_pay = 500
+    // ausd = sail_to_pay * sqrt_price^2 / 2^128
+    let price_u256 = (sqrt_price as u256);
+    let expected_ausd = ((500 as u256) * price_u256 * price_u256) >> 128;
+    let expected_ausd_u64 = (expected_ausd as u64);
+    assert!(expected_ausd_u64 > o_sail_amount, 1); // check dumb errors
+
+    run_calc_test<SAIL, AUSD>(&mut scenario, sqrt_price, o_sail_amount, discount_percent, a2b, expected_ausd_u64);
+
+    scenario.end();
+}
+
+#[test]
+// Pool<USD1, SAIL> (a2b=true), sqrt_price = min, 50% discount
+// SAIL is extremely expensive relative to USD1
+fun test_exercise_o_sail_calc_ab_min_price() {
+    let admin = @0xD3;
+    let mut scenario = test_scenario::begin(admin);
+    setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+
+    let sqrt_price = tick_math::min_sqrt_price() * 100; 
+    // Use smaller oSAIL amount
+    let o_sail_amount = 1000; // Pay for 500 SAIL
+    let discount_percent = 50000000; // 50%
+    let a2b = true;
+    // sail_to_pay = 5000
+    // usd = sail_to_pay * 2^128 / sqrt_price^2
+    let price_u256 = (sqrt_price as u256);
+    let expected_usd = ((500 as u256) << 128) / (price_u256 * price_u256);
+    let expected_usd_u64 = (expected_usd as u64);
+    assert!(expected_usd_u64 > o_sail_amount, 1); // check dumb errors
+
+    run_calc_test<USD1, SAIL>(&mut scenario, sqrt_price, o_sail_amount, discount_percent, a2b, expected_usd_u64);
+
+    scenario.end();
+}
+
+#[test]
+fun test_exercise_o_sail_calc_ba_min_price() {
+    let admin = @0xD4;
+    let mut scenario = test_scenario::begin(admin);
+    setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+
+    let sqrt_price = tick_math::min_sqrt_price(); 
+    let o_sail_amount = 100_000_000;
+    let discount_percent = 50000000; // 50%
+    let a2b = false;
+    // sail_to_pay = 50_000_000
+    // ausd = sail_to_pay * sqrt_price^2 / 2^128
+    let price_u256 = (sqrt_price as u256);
+    let expected_ausd = ((50_000_000 as u256) * price_u256 * price_u256) >> 128;
+    let expected_ausd_u64 = (expected_ausd as u64);
+    assert!(expected_ausd_u64 < o_sail_amount / 2, 1); // check dumb errors
+    
+    run_calc_test<SAIL, AUSD>(&mut scenario, sqrt_price, o_sail_amount, discount_percent, a2b, expected_ausd_u64);
+
+    scenario.end();
+}
+
+// ================================================
+// Integration tests
+// ================================================
 
 #[test]
 fun test_exercise_o_sail_ab() {
@@ -2074,7 +2343,7 @@ fun test_exercise_o_sail_high_price() {
         setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 100, 1000);
         setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
     };
-    let sqrt_price: u128 = clmm_pool::tick_math::max_sqrt_price();
+    let sqrt_price: u128 = tick_math::max_sqrt_price();
     let pool_tick_spacing = 100;
     scenario.next_tx(admin);
     {
@@ -2163,7 +2432,7 @@ fun test_exercise_o_sail_small_price() {
         setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 100, 1000);
         setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
     };
-    let sqrt_price: u128 = clmm_pool::tick_math::min_sqrt_price() * 100;
+    let sqrt_price: u128 = tick_math::min_sqrt_price() * 100;
     let pool_tick_spacing = 100;
     scenario.next_tx(admin);
     {

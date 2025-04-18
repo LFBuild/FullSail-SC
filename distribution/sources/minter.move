@@ -1044,9 +1044,10 @@ module distribution::minter {
     }
 
     /// Function that calculates amount of usd to be deducted by calculating swap.
+    /// Is not changing any state, so it is public
     /// Doesn't check pool for type safety, so use with caution
     /// Returns usd amount to be deducted from user
-    fun exercise_o_sail_calc<OSailCoinType, CoinTypeA, CoinTypeB>(
+    public fun exercise_o_sail_calc<OSailCoinType, CoinTypeA, CoinTypeB>(
         pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         o_sail: &Coin<OSailCoinType>,
         discount_percent: u64,
