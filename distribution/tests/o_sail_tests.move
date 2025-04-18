@@ -1467,11 +1467,20 @@ fun test_exercise_and_lock_after_epoch_update() {
         transfer::public_transfer(user_o_sail1, user); 
     };
 
+    // Tx 5: check current epoch token
+    scenario.next_tx(user);
+    {
+        let minter = scenario.take_shared<Minter<SAIL>>();
+        let current_epoch_token = minter.borrow_current_epoch_o_sail();
+        assert!(current_epoch_token == std::type_name::get<OSAIL1>(), 1);
+        test_scenario::return_shared(minter);
+    };
+
     // Advance time by 1 week and 1 second to ensure next epoch starts
     let one_week_ms = 7 * 24 * 60 * 60 * 1000 + 1000;
     clock::increment_for_testing(&mut clock, one_week_ms);
 
-    // Tx 5: Update Minter Period with OSAIL2
+    // Tx 6: Update Minter Period with OSAIL2
     scenario.next_tx(admin);
     {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
@@ -1502,65 +1511,74 @@ fun test_exercise_and_lock_after_epoch_update() {
         scenario.return_to_sender(minter_admin_cap);
     };
 
-    // // Tx 6: Exercise OSAIL1 (from previous epoch)
-    // let o_sail1_to_exercise = 100_000;
-    // scenario.next_tx(user);
-    // {
-    //     let mut minter = scenario.take_shared<Minter<SAIL>>();
-    //     let mut voter = scenario.take_shared<Voter>();
-    //     let mut pool = scenario.take_shared<Pool<USD1, SAIL>>();
-    //     let global_config = scenario.take_shared<GlobalConfig>();
-    //     let mut o_sail1_coin = scenario.take_from_sender<Coin<OSAIL1>>();
+    // Tx 7: check current epoch token
+    scenario.next_tx(user);
+    {
+        let minter = scenario.take_shared<Minter<SAIL>>();
+        let current_epoch_token = minter.borrow_current_epoch_o_sail();
+        assert!(current_epoch_token == std::type_name::get<OSAIL2>(), 1);
+        test_scenario::return_shared(minter);
+    };
 
-    //     let o_sail_to_exercise = o_sail1_coin.split(o_sail1_to_exercise, scenario.ctx());
+    // Tx 8: Exercise OSAIL1 (from previous epoch)
+    let o_sail1_to_exercise = 100_000;
+    scenario.next_tx(user);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let mut voter = scenario.take_shared<Voter>();
+        let mut pool = scenario.take_shared<Pool<USD1, SAIL>>();
+        let global_config = scenario.take_shared<GlobalConfig>();
+        let mut o_sail1_coin = scenario.take_from_sender<Coin<OSAIL1>>();
 
-    //     // Calculate expected USD needed (Price=1, discount=50% -> pay 50%)
-    //     let expected_usd_needed = o_sail1_to_exercise / 2; 
-    //     let usd_fee = coin::mint_for_testing<USD1>(expected_usd_needed, scenario.ctx()); 
-    //     let usd_limit = expected_usd_needed;
+        let o_sail_to_exercise = o_sail1_coin.split(o_sail1_to_exercise, scenario.ctx());
 
-    //     // Exercise should succeed even though Minter is in Epoch 2
-    //     let (usd_left, sail_received) = minter::exercise_o_sail_ab<SAIL, USD1, OSAIL1>(
-    //         &mut minter,
-    //         &mut voter,
-    //         &global_config,
-    //         &mut pool,
-    //         o_sail_to_exercise,
-    //         usd_fee, 
-    //         usd_limit,
-    //         &clock,
-    //         scenario.ctx()
-    //     );
+        // Calculate expected USD needed (Price=1, discount=50% -> pay 50%)
+        let expected_usd_needed = o_sail1_to_exercise / 2; 
+        let usd_fee = coin::mint_for_testing<USD1>(expected_usd_needed, scenario.ctx()); 
+        let usd_limit = expected_usd_needed;
 
-    //     // Assertions
-    //     assert!(sail_received.value() == o_sail1_to_exercise, 1); 
-    //     assert!(usd_left.value() == 0, 2); 
+        // Exercise should succeed even though Minter is in Epoch 2
+        let (usd_left, sail_received) = minter::exercise_o_sail_ab<SAIL, USD1, OSAIL1>(
+            &mut minter,
+            &mut voter,
+            &global_config,
+            &mut pool,
+            o_sail_to_exercise,
+            usd_fee, 
+            usd_limit,
+            &clock,
+            scenario.ctx()
+        );
 
-    //     // Cleanup
-    //     coin::destroy_zero(usd_left);
-    //     transfer::public_transfer(sail_received, user);
-    //     test_scenario::return_shared(minter);
-    //     test_scenario::return_shared(voter);
-    //     test_scenario::return_shared(pool);
-    //     test_scenario::return_shared(global_config);
-    //     scenario.return_to_sender(o_sail1_coin); // Return remaining OSAIL1
-    // };
+        // Assertions
+        assert!(sail_received.value() == o_sail1_to_exercise, 1); 
+        assert!(usd_left.value() == 0, 2); 
 
-    // // Tx 7: Lock remaining OSAIL1 (from previous epoch)
-    // let o_sail1_to_lock = initial_o_sail_for_user - o_sail1_to_exercise;
-    // let lock_duration_days = 26 * 7; // 6 months
-    // let permanent_lock = false;
-    // scenario.next_tx(user);
-    // {
-    //     // Lock should succeed
-    //     create_lock(&mut scenario, o_sail1_to_lock, lock_duration_days, permanent_lock, &clock);
-    // };
+        // Cleanup
+        coin::destroy_zero(usd_left);
+        transfer::public_transfer(sail_received, user);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(voter);
+        test_scenario::return_shared(pool);
+        test_scenario::return_shared(global_config);
+        scenario.return_to_sender(o_sail1_coin); // Return remaining OSAIL1
+    };
 
-    // // Tx 8: Verify Lock creation 
-    // scenario.next_tx(user);
-    // {
-    //     check_single_non_permanent_lock(&scenario, o_sail1_to_lock, lock_duration_days);
-    // };
+    // Tx 9: Lock remaining OSAIL1 (from previous epoch)
+    let o_sail1_to_lock = initial_o_sail_for_user - o_sail1_to_exercise;
+    let lock_duration_days = 26 * 7; // 6 months
+    let permanent_lock = false;
+    scenario.next_tx(user);
+    {
+        // Lock should succeed
+        create_lock(&mut scenario, o_sail1_to_lock, lock_duration_days, permanent_lock, &clock);
+    };
+
+    // Tx 10: Verify Lock creation and Voting Escrow state
+    scenario.next_tx(user);
+    {
+        check_single_non_permanent_lock(&scenario, o_sail1_to_lock, lock_duration_days);
+    };
 
 
     clock::destroy_for_testing(clock);
