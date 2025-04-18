@@ -1588,13 +1588,15 @@ module distribution::voter {
     ) {
         let lock_id = into_lock_id(object::id(lock));
         let exercise_fee_deposited_balance = voter.exercise_fee_reward.borrow_reward().balance_of(object::id(lock));
-        voter.exercise_fee_reward.withdraw(
+        if (exercise_fee_deposited_balance > 0) {
+            voter.exercise_fee_reward.withdraw(
             &voter.exercise_fee_authorized_cap,
             exercise_fee_deposited_balance,
-            lock_id.id,
-            clock,
-            ctx
-        );
+                lock_id.id,
+                clock,
+                ctx
+            );
+        };
 
         let total_pools_count = if (voter.pool_vote.contains(lock_id)) {
             voter.pool_vote.borrow(lock_id).length()
@@ -1668,7 +1670,7 @@ module distribution::voter {
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         ctx: &mut TxContext
     ): distribution::gauge::Gauge<CoinTypeA, CoinTypeB> {
-        let pool_id = object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool);
+        let pool_id = object::id(pool);
         let mut gauge = distribution::gauge::create<CoinTypeA, CoinTypeB>(
             distribution_config,
             pool_id,

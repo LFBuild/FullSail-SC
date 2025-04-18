@@ -1534,3 +1534,146 @@ fun test_exercise_and_lock_after_epoch_update() {
     clock::destroy_for_testing(clock);
     scenario.end();
 }
+
+#[test]
+fun test_exercise_fee_distribution() {
+    let admin = @0x211;
+    let user1 = @0x212;
+    let user2 = @0x213;
+    let mut scenario = test_scenario::begin(admin);
+
+    // Create Clock 
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Tx 1: Setup CLMM Factory & Distribution
+    {
+        setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+        setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    };
+
+    // Tx 2: Setup Pool (USD1/SAIL) 
+    let pool_sqrt_price: u128 = 1 << 64; // Price = 1
+    let pool_tick_spacing = 1;
+    scenario.next_tx(admin);
+    {
+        setup::setup_pool_with_sqrt_price<USD1, SAIL>(
+            &mut scenario, 
+            pool_sqrt_price, 
+            pool_tick_spacing
+        );
+    };
+
+    // Tx 3: activate minter for Epoch 1 (OSAIL1)
+    scenario.next_tx(admin);
+    {
+        let o_sail1_initial_supply = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 0, &mut clock);
+        o_sail1_initial_supply.destroy_zero();
+    };
+
+    // Tx 4: Create Gauge
+    scenario.next_tx(admin);
+    {
+        setup::setup_gauge_for_pool<USD1, SAIL, SAIL>(
+            &mut scenario,
+            &clock
+        );
+    };
+
+    let lock1_amount = 10_000;
+    let lock2_amount = 20_000;
+    let lock_duration_days = 52 * 7; // 1 year
+
+    // create lock 1
+    scenario.next_tx(user1);
+    {
+        let sail_coin1 = coin::mint_for_testing<SAIL>(lock1_amount, scenario.ctx());
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        voting_escrow::create_lock<SAIL>(
+            &mut ve, 
+            sail_coin1, 
+            lock_duration_days, 
+            false, // non-permanent
+            &clock, 
+            scenario.ctx()
+        );
+        test_scenario::return_shared(ve);
+    };
+
+    // advance time to make sure that voting started
+    clock::increment_for_testing(&mut clock, 10 * 60 * 60 * 1000);
+
+    // use lock 1 to vote for pool 1
+    scenario.next_tx(user1);
+    {
+        let pool = scenario.take_shared<Pool<USD1, SAIL>>();
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let lock1 = scenario.take_from_sender<Lock>();
+        let mut voter = scenario.take_shared<Voter>();
+        let dist_config = scenario.take_shared<DistributionConfig>();
+        voter.vote<SAIL>(
+            &mut ve,
+            &dist_config,
+            &lock1,
+            vector[object::id(&pool)],
+            vector[100],
+            &clock,
+            scenario.ctx()
+        );
+
+        scenario.return_to_sender(lock1);
+        test_scenario::return_shared(pool);
+        test_scenario::return_shared(voter);
+        test_scenario::return_shared(dist_config);
+        test_scenario::return_shared(ve);
+    };
+
+    // create lock 2
+    scenario.next_tx(user2);
+    {
+        let sail_coin2 = coin::mint_for_testing<SAIL>(lock2_amount, scenario.ctx());
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        voting_escrow::create_lock<SAIL>(
+            &mut ve, 
+            sail_coin2, 
+            lock_duration_days, 
+            false, // non-permanent
+            &clock, 
+            scenario.ctx()
+        );
+        
+        test_scenario::return_shared(ve);
+    };
+
+    // advance by time to finality
+    clock::increment_for_testing(&mut clock, 500);
+
+    // use lock 2 to vote for pool 1
+    scenario.next_tx(user2);
+    {
+        let pool = scenario.take_shared<Pool<USD1, SAIL>>();
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let lock2 = scenario.take_from_sender<Lock>();
+        let mut voter = scenario.take_shared<Voter>();
+        let dist_config = scenario.take_shared<DistributionConfig>();
+        voter.vote<SAIL>(
+            &mut ve,
+            &dist_config,
+            &lock2,
+            vector[object::id(&pool)],
+            vector[100],
+            &clock,
+            scenario.ctx()
+        );
+
+
+        scenario.return_to_sender(lock2);
+        test_scenario::return_shared(pool);
+        test_scenario::return_shared(voter);
+        test_scenario::return_shared(dist_config);
+        test_scenario::return_shared(ve);   
+    };
+    
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}

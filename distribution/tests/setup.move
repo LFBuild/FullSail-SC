@@ -16,19 +16,15 @@ use distribution::voting_escrow::{Self, VotingEscrow};
 use distribution::reward_distributor::{Self, RewardDistributor};
 use distribution::reward_distributor_cap::{RewardDistributorCap};
 
-#[test_only]
 public struct USD1 has drop {}
 
-#[test_only]
 public struct USD2 has drop {}
     
-#[test_only]
 public struct SAIL has drop {}
 
 // Creates a pool with a specific sqrt price.
 // Assumes factory, config are initialized and fee tier (tick_spacing=1) exists.
 // Requires CoinTypeA > CoinTypeB lexicographically.
-#[test_only]
 public fun create_pool_with_sqrt_price<CoinTypeA: drop, CoinTypeB: drop>(
     pools: &mut Pools,
     global_config: &GlobalConfig, // Immutable borrow is sufficient
@@ -61,7 +57,6 @@ public fun create_pool_with_sqrt_price<CoinTypeA: drop, CoinTypeB: drop>(
 }
 
 // Utility function to initialize CLMM factory, config, and add a fee tier.
-#[test_only]
 public fun setup_clmm_factory_with_fee_tier(
     scenario: &mut test_scenario::Scenario,
     sender: address,
@@ -127,7 +122,6 @@ public fun setup_pool_with_sqrt_price<CoinTypeA: drop, CoinTypeB: drop>(
 }
 
 // Sets up the Minter, Voter, VotingEscrow, and RewardDistributor modules for testing.
-#[test_only]
 public fun setup_distribution<SailCoinType>(
     scenario: &mut test_scenario::Scenario,
     sender: address,
@@ -138,6 +132,7 @@ public fun setup_distribution<SailCoinType>(
     scenario.next_tx(sender);
     {
         distribution_config::test_init(scenario.ctx());
+        gauge_cap::gauge_cap::init_test(scenario.ctx());
     };
 
     // --- Minter Setup --- 
@@ -165,12 +160,14 @@ public fun setup_distribution<SailCoinType>(
         let distribution_config_obj = scenario.take_shared<distribution_config::DistributionConfig>();
         let distribution_config_id = object::id(&distribution_config_obj);
         test_scenario::return_shared(distribution_config_obj);
-        let (voter_obj, notify_cap) = voter::create(
+        let (mut voter_obj, notify_cap) = voter::create(
             &voter_publisher,
             global_config_id,
             distribution_config_id,
             scenario.ctx()
         );
+
+        voter_obj.add_governor(&voter_publisher, sender, scenario.ctx());
 
         test_utils::destroy(voter_publisher);
         transfer::public_share_object(voter_obj);
@@ -303,15 +300,14 @@ fun test_distribution_setup_utility() {
 
 // Activates the minter for a specific oSAIL epoch.
 // Requires the minter, voter, rd, and admin cap to be set up.
-#[test_only]
 public fun activate_minter<SailCoinType, OSailCoinType>( // Changed to public
     scenario: &mut test_scenario::Scenario,
     initial_o_sail_supply: u64,
     clock: &mut Clock
 ): Coin<OSailCoinType> { // Returns the minted oSAIL
 
-    // increment clock to make sure the activated_at field is not 0
-    clock.increment_for_testing(1000);
+    // increment clock to make sure the activated_at field is not and epoch start is not 0
+    clock.increment_for_testing(7 * 24 * 60 * 60 * 1000);
     let mut minter_obj = scenario.take_shared<Minter<SailCoinType>>();
     let mut voter = scenario.take_shared<Voter>();
     let mut rd = scenario.take_shared<RewardDistributor<SailCoinType>>();
@@ -339,7 +335,6 @@ public fun activate_minter<SailCoinType, OSailCoinType>( // Changed to public
 
 // Whitelists or de-whitelists a pool in the Minter for oSAIL exercising.
 // Requires the minter and admin cap to be set up.
-#[test_only]
 public fun whitelist_pool<SailCoinType, CoinTypeA, CoinTypeB>( // Changed to public
     scenario: &mut test_scenario::Scenario,
     list: bool // Added flag to whitelist/de-whitelist
@@ -362,7 +357,6 @@ public fun whitelist_pool<SailCoinType, CoinTypeA, CoinTypeB>( // Changed to pub
 
 // Mints SAIL and creates a permanent lock in the Voting Escrow for the user.
 // Assumes the transaction is run by the user who will own the lock.
-#[test_only]
 public fun mint_and_create_permanent_lock<SailCoinType>(
     scenario: &mut test_scenario::Scenario,
     _user: address, // User who will own the lock (must be the sender of this tx block)
@@ -434,4 +428,40 @@ fun test_mint_and_create_permanent_lock() {
     // Final cleanup
     clock::destroy_for_testing(clock);
     scenario.end();
+}
+
+// Creates a Gauge for an existing pool.
+// Assumes Voter, VE, DistributionConfig are set up, and the sender has the required caps.
+public fun setup_gauge_for_pool<CoinTypeA, CoinTypeB, SailCoinType>(
+    scenario: &mut test_scenario::Scenario,
+    clock: &Clock,
+) {
+    let mut voter = scenario.take_shared<Voter>();
+    let ve = scenario.take_shared<VotingEscrow<SailCoinType>>();
+    let mut dist_config = scenario.take_shared<distribution_config::DistributionConfig>();
+    let create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
+    let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
+    let mut pool = scenario.take_shared<Pool<CoinTypeA, CoinTypeB>>();
+
+    // Use the integrate::voter entry function to create the gauge
+    let gauge = voter.create_gauge<CoinTypeA, CoinTypeB, SailCoinType>(
+        &mut dist_config,
+        &create_cap,
+        &governor_cap,
+        &ve, // VotingEscrow is borrowed immutably here
+        &mut pool,
+        clock,
+        scenario.ctx()
+    );
+
+    transfer::public_share_object(gauge);
+
+    // Return shared objects
+    test_scenario::return_shared(voter);
+    test_scenario::return_shared(ve);
+    test_scenario::return_shared(dist_config);
+    test_scenario::return_shared(pool);
+    // Return capabilities to sender
+    scenario.return_to_sender(create_cap);
+    scenario.return_to_sender(governor_cap);
 }
