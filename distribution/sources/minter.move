@@ -30,7 +30,8 @@ module distribution::minter {
     */
 
     use std::type_name::{Self, TypeName};
-    use sui::coin::{TreasuryCap, Coin};
+    use sui::coin::{Self, TreasuryCap, Coin};
+    use sui::balance::{Self, Balance};
     use sui::vec_set::{Self, VecSet};
     use sui::bag::{Self, Bag};
     use sui::table::{Self, Table};
@@ -56,6 +57,8 @@ module distribution::minter {
 
     const EExerciseUsdLimitReached: u64 = 4905179424474806000;
     const EExerciseOSailPoolNotWhitelisted: u64 = 2212524000647910700;
+
+    const ETeamWalletNotSet: u64 = 7981414426077109000;
 
     /// Possible lock duration available be oSAIL expiry date
     const VALID_O_SAIL_DURATION_DAYS: vector<u64> = vector[
@@ -124,6 +127,9 @@ module distribution::minter {
         // we don't need whitelisted tokens, cos
         // pool whitelist also determines token whitelist composed of the pools tokens.
         whitelisted_pools: VecSet<ID>,
+        // tokens that were used to pay for oSAIL exercise fee
+        exercise_fee_tokens: VecSet<TypeName>,
+        exercise_fee_team_balances: Bag,
     }
 
     /// Returns the total supply only of SailCoin managed by this minter.
@@ -347,6 +353,8 @@ module distribution::minter {
             reward_distributor_cap: option::none<distribution::reward_distributor_cap::RewardDistributorCap>(),
             notify_reward_cap: option::none<distribution::notify_reward_cap::NotifyRewardCap>(),
             whitelisted_pools: vec_set::empty<ID>(),
+            exercise_fee_tokens: vec_set::empty<TypeName>(),
+            exercise_fee_team_balances: bag::new(ctx),
         };
         let admin_cap = AdminCap { id: object::new(ctx) };
         (minter, admin_cap)
@@ -562,6 +570,21 @@ module distribution::minter {
         minter.team_wallet = team_wallet;
     }
 
+    /// Distributes the protocol exercise oSAIL fee to the team wallet.
+    /// Is public cos team_wallet is predefined
+    public fun distribute_team<SailCoinType, ExerciseFeeCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        ctx: &mut TxContext,
+    ) {
+        assert!(minter.team_wallet != @0x0, ETeamWalletNotSet);
+        let coin_type = type_name::get<ExerciseFeeCoinType>();
+        let balance = minter.exercise_fee_team_balances.remove<TypeName, Balance<ExerciseFeeCoinType>>(coin_type);
+        transfer::public_transfer<Coin<ExerciseFeeCoinType>>(
+            coin::from_balance(balance, ctx), 
+            minter.team_wallet
+        );
+    }
+
     /// Returns the current team emission rate.
     public fun team_emission_rate<SailCoinType>(minter: &Minter<SailCoinType>): u64 {
         minter.team_emission_rate
@@ -765,7 +788,7 @@ module distribution::minter {
     }
 
     /// Borrows oSAIL TreasuryCap by type
-    fun borrow_o_sail_cap<SailCoinType, OSailCoinType>(
+    public fun borrow_o_sail_cap<SailCoinType, OSailCoinType>(
         minter: &Minter<SailCoinType>,
     ): &TreasuryCap<OSailCoinType> {
         let o_sail_type = type_name::get<OSailCoinType>();
@@ -997,8 +1020,16 @@ module distribution::minter {
                 RATE_DENOM,
             );
             let protocol_fee = usd_to_pay.split(protocol_fee_amount, ctx);
+            let usd_coin_type = type_name::get<USDCoinType>();
 
-            sui::transfer::public_transfer(protocol_fee, minter.team_wallet);
+            if (!minter.exercise_fee_team_balances.contains<TypeName>(usd_coin_type)) {
+                minter.exercise_fee_team_balances.add(usd_coin_type, balance::zero<USDCoinType>());
+            };
+            let team_fee_balance = minter
+                .exercise_fee_team_balances
+                .borrow_mut<TypeName, Balance<USDCoinType>>(usd_coin_type);
+
+            team_fee_balance.join(protocol_fee.into_balance());
         };
 
         voter
@@ -1015,8 +1046,8 @@ module distribution::minter {
     /// Function that calculates amount of usd to be deducted by calculating swap.
     /// Doesn't check pool for type safety, so use with caution
     /// Returns usd amount to be deducted from user
-    fun exercise_o_sail_calc<SailCoinType, OSailCoinType, CoinTypeA, CoinTypeB>(
-        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+    fun exercise_o_sail_calc<OSailCoinType, CoinTypeA, CoinTypeB>(
+        pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         o_sail: &Coin<OSailCoinType>,
         discount_percent: u64,
         a2b: bool, // true if pool is Pool<UsdCoinType, SailCoinType>
@@ -1047,15 +1078,15 @@ module distribution::minter {
     fun exercise_o_sail_ab_internal<SailCoinType, UsdCoinType, OSailCoinType>(
         minter: &mut Minter<SailCoinType>,
         voter: &mut distribution::voter::Voter,
-        pool: &mut clmm_pool::pool::Pool<UsdCoinType, SailCoinType>,
+        pool: &clmm_pool::pool::Pool<UsdCoinType, SailCoinType>,
         o_sail: Coin<OSailCoinType>,
         discount_percent: u64,
-        mut usd: Coin<UsdCoinType>,
+        usd: Coin<UsdCoinType>,
         usd_amount_limit: u64,
         clock:  &sui::clock::Clock,
         ctx: &mut TxContext,
     ): (Coin<UsdCoinType>, Coin<SailCoinType>) {
-        let usd_amount_to_pay = exercise_o_sail_calc<SailCoinType, OSailCoinType, UsdCoinType, SailCoinType>(
+        let usd_amount_to_pay = exercise_o_sail_calc<OSailCoinType, UsdCoinType, SailCoinType>(
             pool,
             &o_sail,
             discount_percent,
@@ -1080,15 +1111,15 @@ module distribution::minter {
     fun exercise_o_sail_ba_internal<SailCoinType, UsdCoinType, OSailCoinType>(
         minter: &mut Minter<SailCoinType>,
         voter: &mut distribution::voter::Voter,
-        pool: &mut clmm_pool::pool::Pool<SailCoinType, UsdCoinType>,
+        pool: &clmm_pool::pool::Pool<SailCoinType, UsdCoinType>,
         o_sail: Coin<OSailCoinType>,
         discount_percent: u64,
-        mut usd: Coin<UsdCoinType>,
+        usd: Coin<UsdCoinType>,
         usd_amount_limit: u64,
         clock:  &sui::clock::Clock,
         ctx: &mut TxContext,
     ): (Coin<UsdCoinType>, Coin<SailCoinType>) {
-        let usd_amount_to_pay = exercise_o_sail_calc<SailCoinType, OSailCoinType, SailCoinType, UsdCoinType>(
+        let usd_amount_to_pay = exercise_o_sail_calc<OSailCoinType, SailCoinType, UsdCoinType>(
             pool,
             &o_sail,
             discount_percent,
@@ -1121,11 +1152,26 @@ module distribution::minter {
             if (!list) {
                 minter.whitelisted_pools.remove(&pool_id)
             }
+            // never remove exercise fee token, cos they may  stored in the bag even if pool is removed
         } else {
             if (list) {
                 minter.whitelisted_pools.insert(pool_id)
-            }
+            };
+            let coin_type_a = type_name::get<CoinTypeA>();
+            if (!minter.exercise_fee_tokens.contains(&coin_type_a)) {
+                minter.exercise_fee_tokens.insert(coin_type_a);
+            };
+            let coin_type_b = type_name::get<CoinTypeB>();
+            if (!minter.exercise_fee_tokens.contains(&coin_type_b)) {
+                minter.exercise_fee_tokens.insert(coin_type_b);
+            };
         }
+    }
+
+    public fun borrow_exercise_fee_tokens<SailCoinType>(
+        minter: &Minter<SailCoinType>,
+    ): &VecSet<TypeName> {
+        &minter.exercise_fee_tokens
     }
 
     public fun is_whitelisted_pool<SailCoinType, CoinTypeA, CoinTypeB>(
@@ -1138,8 +1184,8 @@ module distribution::minter {
 
     public fun borrow_whiteliste_pools<SailCoinType>(
         minter: &Minter<SailCoinType>,
-    ): VecSet<ID> {
-        minter.whitelisted_pools
+    ): &VecSet<ID> {
+        &minter.whitelisted_pools
     }
 
     #[test_only]

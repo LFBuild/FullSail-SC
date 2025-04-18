@@ -1861,6 +1861,14 @@ fun test_exercise_fee_distribution() {
         scenario.return_to_sender(o_sail1_coin); // Return remaining OSAIL1
     };
 
+    // Tx: Distribute team fee
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        minter::distribute_team<SAIL, USD1>(&mut minter, scenario.ctx());
+        test_scenario::return_shared(minter);
+    };
+
     // Tx: Admin (Team Wallet) verifies received fee
     scenario.next_tx(team_wallet);
     {
