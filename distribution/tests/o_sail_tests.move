@@ -7,11 +7,13 @@ use distribution::voter::{Self, Voter};
 use distribution::voting_escrow::{Self, VotingEscrow, Lock};
 use distribution::reward_distributor::{Self, RewardDistributor};
 use distribution::distribution_config::{Self, DistributionConfig};
+use distribution::exercise_fee_reward;
 
 use clmm_pool::pool::{Self, Pool};
 use clmm_pool::config::{Self, GlobalConfig};
 
 use sui::test_scenario;
+use sui::test_utils;
 use sui::clock::{Self, Clock};
 use sui::coin::{Self, Coin};
 use distribution::common; // Import common for time constants
@@ -1828,6 +1830,124 @@ fun test_exercise_fee_distribution() {
         let received_fee_coin = scenario.take_from_sender<Coin<USD1>>();
         assert!(received_fee_coin.value() == user2_expected_fee_share, 5); // Verify user2 share
         coin::burn_for_testing(received_fee_coin); // Cleanup claimed fee
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_exercise_fee_reward_notify_limits() {
+    let admin = @0x231;
+    let user1 = @0x232;
+    let mut scenario = test_scenario::begin(admin);
+
+    // Create Clock 
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Tx 1: Setup Distribution - Admin receives NotifyRewardCap
+    {
+        config::test_init(scenario.ctx()); // Need CLMM config
+        setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    };
+
+    // Tx 2: Create a lock to account for cases when object size grows only with users
+    let lock_amount = 5000;
+    let lock_duration_days = 52 * 7; // 1 year
+    scenario.next_tx(user1);
+    {
+        let sail_coin = coin::mint_for_testing<SAIL>(lock_amount, scenario.ctx());
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        voting_escrow::create_lock<SAIL>(
+            &mut ve, 
+            sail_coin, 
+            lock_duration_days, 
+            false, 
+            &clock, 
+            scenario.ctx()
+        );
+        test_scenario::return_shared(ve);
+    };
+
+    // Tx 2: First notify 
+    let notify_amount = 1000;
+    let mut reward_collections_length_before = 0;
+    scenario.next_tx(admin);
+    {
+        let mut voter = scenario.take_shared<Voter>();
+        let notify_cap = distribution::notify_reward_cap::test_create(
+            object::id(&voter),
+            object::id_from_address(admin),
+            scenario.ctx()
+        );
+        // Get mutable reference to the ExerciseFeeReward inside Voter
+        let exercise_fee_reward = voter::borrow_exercise_fee_reward_mut(&mut voter);
+
+        let reward_coin = coin::mint_for_testing<USD1>(notify_amount, scenario.ctx());
+        clock::increment_for_testing(&mut clock, 10000);
+
+        // Call notify_reward_amount on the ExerciseFeeReward object
+        exercise_fee_reward::notify_reward_amount<USD1>(
+            exercise_fee_reward, 
+            &notify_cap, 
+            reward_coin, 
+            &clock, 
+            scenario.ctx()
+        );
+
+        reward_collections_length_before = exercise_fee_reward.borrow_reward().total_length();
+
+        // Return objects
+        test_scenario::return_shared(voter);
+        test_utils::destroy(notify_cap);
+    };
+
+    // Tx 3: Notify 500 times
+    let notify_iterations = 500;
+    scenario.next_tx(admin);
+    {
+        let mut voter = scenario.take_shared<Voter>();
+        let notify_cap = distribution::notify_reward_cap::test_create(
+            object::id(&voter),
+            object::id_from_address(admin),
+            scenario.ctx()
+        );
+        // Get mutable reference to the ExerciseFeeReward inside Voter
+        let exercise_fee_reward = voter::borrow_exercise_fee_reward_mut(&mut voter);
+
+        let mut i = 0;
+
+        while (i < notify_iterations) {
+            let reward_coin = coin::mint_for_testing<USD1>(notify_amount, scenario.ctx());
+            clock::increment_for_testing(&mut clock, 10000);
+
+            // Call notify_reward_amount on the ExerciseFeeReward object
+            exercise_fee_reward::notify_reward_amount<USD1>(
+                exercise_fee_reward, 
+                &notify_cap, 
+                reward_coin, 
+                &clock, 
+                scenario.ctx()
+            );
+            i = i + 1;
+        };
+
+        // Return objects
+        test_scenario::return_shared(voter);
+        test_utils::destroy(notify_cap);
+    };
+
+    // Check that the ExerciseFeeReward object size is not growing
+    scenario.next_tx(admin);
+    {
+        let mut voter = scenario.take_shared<Voter>();
+        let exercise_fee_reward = voter::borrow_exercise_fee_reward_mut(&mut voter);
+
+        // check object size is not affected by the number of notifications
+        let reward = exercise_fee_reward.borrow_reward();      
+        assert!(reward.total_length() == reward_collections_length_before, 1);
+
+        test_scenario::return_shared(voter);
     };
 
     clock::destroy_for_testing(clock);

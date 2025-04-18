@@ -661,5 +661,18 @@ module distribution::reward {
             reward.supply_num_checkpoints = num_of_checkpoints + 1;
         };
     }
+
+    #[test_only]
+    public fun total_length(reward: &Reward): u64 {
+        reward.balance_of.length() +
+        reward.token_rewards_per_epoch.length() + 
+        reward.rewards.size() +
+        reward.last_earn.length() +
+        reward.checkpoints.length() +
+        reward.num_checkpoints.length() +
+        reward.supply_checkpoints.length() +
+        reward.supply_num_checkpoints + 
+        reward.balances.length()
+    }
 }
 
