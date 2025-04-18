@@ -4,6 +4,7 @@ module distribution::voter {
     use sui::coin::{Self, Coin};
     use sui::balance::{Self, Balance};
     use sui::vec_set::{Self, VecSet};
+    use sui::vec_map::{Self, VecMap};
     use std::type_name::{Self, TypeName};
 
     // Error codes for contract operations
@@ -753,6 +754,67 @@ module distribution::voter {
             0
         }
     }
+
+    /// Calculates the amount of rewards earned for a specific coin type and lock by every voted pool.
+    /// 
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `lock_id` - The ID of the lock to check earnings for
+    /// * `clock` - The system clock
+    /// 
+    public fun earned_voting_bribe<BribeCoinType>(
+        voter: &Voter,
+        lock_id: ID,
+        clock: &sui::clock::Clock
+    ): VecMap<ID, u64> {
+        let voted_pools_ids = voter.voted_pools(lock_id);
+        let mut i = 0;
+        let mut reward_by_pool = vec_map::empty<ID, u64>();
+        while (i < voted_pools_ids.length()) {
+            let pool_id = voted_pools_ids[i];
+            reward_by_pool.insert<ID, u64>(
+                pool_id,
+                voter.borrow_bribe_voting_reward(voter.pool_to_gauge(pool_id))
+                .earned<BribeCoinType>(lock_id, clock)
+            );
+            i = i + 1;
+        };
+        reward_by_pool
+    }
+
+    /// Calculates the amount of rewards earned for a specific coin type for single pool.
+    /// It doesn't make sense to calculate it for all pools because all pools have different coin types
+    /// and function accepts only single coin type.
+    /// 
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `lock_id` - The ID of the lock to check earnings for
+    /// * `clock` - The system clock
+    public fun earned_voting_fee<FeeCoinType>(
+        voter: &Voter,
+        lock_id: ID,
+        pool_id: ID,
+        clock: &sui::clock::Clock
+    ): u64 {
+        voter
+        .borrow_fee_voting_reward(voter.pool_to_gauge(pool_id))
+        .earned<FeeCoinType>(lock_id, clock)
+    }
+
+    /// Calculates the amount of exercise oSAIL fee in the specified coin type earned by the lock.
+    /// 
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `lock_id` - The ID of the lock to check earnings for
+    /// * `clock` - The system clock
+    public fun earned_exercise_fee<ExerciseFeeCoinType>(
+        voter: &Voter,
+        lock_id: ID,
+        clock: &sui::clock::Clock
+    ): u64 {
+        voter.exercise_fee_reward.earned<ExerciseFeeCoinType>(lock_id, clock)
+    }
+
 
     /// Creates a new gauge for a liquidity pool.
     /// Gauges are mechanisms that direct rewards to liquidity pools based on votes.
