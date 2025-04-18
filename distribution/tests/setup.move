@@ -10,7 +10,7 @@ use clmm_pool::config::{Self, GlobalConfig};
 use distribution::minter::{Self, Minter};
 use distribution::voter::{Self, Voter};
 use distribution::notify_reward_cap::{NotifyRewardCap};
-use sui::coin;
+use sui::coin::{Self, Coin};
 use distribution::distribution_config;
 use distribution::voting_escrow::{Self, VotingEscrow};
 use distribution::reward_distributor::{Self, RewardDistributor};
@@ -299,4 +299,63 @@ fun test_distribution_setup_utility() {
     // Destroy clock at the end of the test
     clock::destroy_for_testing(clock);
     scenario.end();
+}
+
+// Activates the minter for a specific oSAIL epoch.
+// Requires the minter, voter, rd, and admin cap to be set up.
+#[test_only]
+public fun activate_minter<SailCoinType, OSailCoinType>( // Changed to public
+    scenario: &mut test_scenario::Scenario,
+    initial_o_sail_supply: u64,
+    clock: &mut Clock
+): Coin<OSailCoinType> { // Returns the minted oSAIL
+
+    // increment clock to make sure the activated_at field is not 0
+    clock.increment_for_testing(1000);
+    let mut minter_obj = scenario.take_shared<Minter<SailCoinType>>();
+    let mut voter = scenario.take_shared<Voter>();
+    let mut rd = scenario.take_shared<RewardDistributor<SailCoinType>>();
+    let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
+    // Create TreasuryCap for the specific OSailCoinType
+    let mut o_sail_cap = coin::create_treasury_cap_for_testing<OSailCoinType>(scenario.ctx());
+    let initial_supply = o_sail_cap.mint(initial_o_sail_supply, scenario.ctx());
+
+    minter_obj.activate<SailCoinType, OSailCoinType>(
+        &mut voter,
+        &minter_admin_cap,
+        &mut rd,
+        o_sail_cap,
+        clock,
+        scenario.ctx()
+    );
+
+    test_scenario::return_shared(minter_obj);
+    test_scenario::return_shared(voter);
+    test_scenario::return_shared(rd);
+    scenario.return_to_sender(minter_admin_cap);
+
+    initial_supply // Return the created oSAIL coin
+}
+
+// Whitelists or de-whitelists a pool in the Minter for oSAIL exercising.
+// Requires the minter and admin cap to be set up.
+#[test_only]
+public fun whitelist_pool<SailCoinType, CoinTypeA, CoinTypeB>( // Changed to public
+    scenario: &mut test_scenario::Scenario,
+    list: bool // Added flag to whitelist/de-whitelist
+) {
+    let pool = scenario.take_shared<Pool<CoinTypeA, CoinTypeB>>();
+    let mut minter = scenario.take_shared<Minter<SailCoinType>>();
+    let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
+    
+    minter::whitelist_pool<SailCoinType, CoinTypeA, CoinTypeB>(
+        &mut minter, 
+        &minter_admin_cap, 
+        &pool, 
+        list
+    );
+
+    test_scenario::return_shared(minter);
+    scenario.return_to_sender(minter_admin_cap);
+    test_scenario::return_shared(pool);
 }
