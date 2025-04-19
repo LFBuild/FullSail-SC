@@ -13,10 +13,12 @@ use clmm_pool::stats::{Self, Stats};
 use distribution::minter::{Self, Minter};
 use distribution::voter::{Self, Voter};
 use sui::coin::{Self, Coin};
-use distribution::distribution_config;
-use distribution::voting_escrow::{Self, VotingEscrow};
+use distribution::distribution_config::{Self, DistributionConfig};
+use distribution::voting_escrow::{Self, VotingEscrow, Lock};
 use distribution::reward_distributor::{Self, RewardDistributor};
 use clmm_pool::tick_math;
+use distribution::common;
+use distribution::gauge::{Self, Gauge};
 
 public struct USD1 has drop {}
 
@@ -736,4 +738,96 @@ fun test_swap_utility() {
     // Final Cleanup
     clock::destroy_for_testing(clock);
     scenario.end();
+}
+
+// Mints SAIL and creates a non-permanent lock in the Voting Escrow for the sender.
+public fun mint_and_create_lock<SailCoinType>(
+    scenario: &mut test_scenario::Scenario,
+    amount_to_lock: u64,
+    lock_duration_days: u64,
+    clock: &Clock,
+) {
+    let sail_coin = coin::mint_for_testing<SailCoinType>(amount_to_lock, scenario.ctx());
+
+    let mut ve = scenario.take_shared<VotingEscrow<SailCoinType>>();
+
+    // create_lock consumes the coin and transfers the lock to ctx.sender()
+    voting_escrow::create_lock<SailCoinType>(
+        &mut ve,
+        sail_coin,
+        lock_duration_days,
+        false, // permanent lock = false
+        clock,
+        scenario.ctx()
+    );
+
+    // Return shared objects
+    test_scenario::return_shared(ve);
+    // Lock is automatically transferred to the user (sender of this tx block)
+}
+
+public fun deposit_position<CoinTypeA, CoinTypeB>(
+    scenario: &mut test_scenario::Scenario,
+    clock: &Clock,
+): ID {
+ // 2. Stake the Position
+    // Take shared objects needed for deposit
+    let global_config = scenario.take_shared<GlobalConfig>();
+    let mut pool = scenario.take_shared<Pool<CoinTypeA, CoinTypeB>>();
+    let mut gauge = scenario.take_shared<Gauge<CoinTypeA, CoinTypeB>>();
+    let dist_config = scenario.take_shared<DistributionConfig>();
+    // Take the position back from the user who received it in the previous step
+    let position = scenario.take_from_sender<Position>();
+    let position_id = object::id(&position);
+
+    gauge::deposit_position<CoinTypeA, CoinTypeB>(
+        &global_config,
+        &dist_config,
+        &mut gauge,
+        &mut pool,
+        position, // Consumes position object
+        clock,
+        scenario.ctx()
+    );
+
+    // Return shared objects
+    test_scenario::return_shared(global_config);
+    test_scenario::return_shared(dist_config);
+    test_scenario::return_shared(pool);
+    test_scenario::return_shared(gauge);
+    // Position object is now held within the gauge
+    position_id
+}
+
+// Updates the minter period, sets the next period token to OSailCoinTypeNext
+public fun update_minter_period<SailCoinType, OSailCoinTypeCurrent, OSailCoinTypeNext>(
+    scenario: &mut test_scenario::Scenario,
+    clock: &Clock,
+) {
+        let mut minter = scenario.take_shared<Minter<SailCoinType>>();
+        let mut voter = scenario.take_shared<Voter>();
+        let voting_escrow = scenario.take_shared<VotingEscrow<SailCoinType>>();
+        let mut reward_distributor = scenario.take_shared<RewardDistributor<SailCoinType>>();
+        let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
+
+        // Create TreasuryCap for OSAIL2 for the next epoch
+        let o_sail2_cap = coin::create_treasury_cap_for_testing<OSailCoinTypeNext>(scenario.ctx());
+
+        minter::update_period<SailCoinType, OSailCoinTypeCurrent, OSailCoinTypeNext>(
+            &minter_admin_cap,
+            &mut minter,
+            &mut voter,
+            &voting_escrow,
+            &mut reward_distributor,
+            o_sail2_cap, 
+            clock,
+            scenario.ctx()
+        );
+
+        // Return shared objects & caps
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(voter);
+        test_scenario::return_shared(voting_escrow);
+        test_scenario::return_shared(reward_distributor);
+        scenario.return_to_sender(minter_admin_cap);    
 }
