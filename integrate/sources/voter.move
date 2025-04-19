@@ -17,6 +17,10 @@ module integrate::voter {
         data: sui::vec_map::VecMap<std::type_name::TypeName, sui::vec_map::VecMap<ID, u64>>,
     }
 
+    public struct ClaimableVotingFees has copy, drop, store {
+        data: sui::vec_map::VecMap<std::type_name::TypeName, u64>,
+    }
+
     public struct PoolWeight has copy, drop, store {
         id: ID,
         weight: u64,
@@ -344,6 +348,51 @@ module integrate::voter {
         sui::event::emit<EventRewardTokens>(reward_tokens_event);
     }
 
+    fun claimable_voting_fees_internal<SailCoinType, FeeCoinType>(
+        voter: &distribution::voter::Voter<SailCoinType>,
+        lock_id: ID,
+        pool_id: ID,
+        clock: &sui::clock::Clock
+    ): u64 {
+        voter
+            .borrow_fee_voting_reward(voter.pool_to_gauge(pool_id))
+            .earned<FeeCoinType>(lock_id, clock)
+    }
+
+    public fun claimable_voting_fees_1<SailCoinType, FeeCoinType1>(
+        voter: &distribution::voter::Voter<SailCoinType>,
+        lock_id: ID,
+        pool_id: ID,
+        clock: &sui::clock::Clock
+    ) {
+        let mut claimable_fees = sui::vec_map::empty<std::type_name::TypeName, u64>();
+        claimable_fees.insert<std::type_name::TypeName, u64>(
+            std::type_name::get<FeeCoinType1>(),
+            claimable_voting_fees_internal<SailCoinType, FeeCoinType1>(voter, lock_id, pool_id, clock)
+        );
+        let claimable_fees_event = ClaimableVotingFees { data: claimable_fees };
+        sui::event::emit<ClaimableVotingFees>(claimable_fees_event);
+    }
+
+    public fun claimable_voting_fees_2<SailCoinType, FeeCoinType1, FeeCoinType2>(
+        voter: &distribution::voter::Voter<SailCoinType>,
+        lock_id: ID,
+        pool_id: ID,
+        clock: &sui::clock::Clock
+    ) {
+        let mut claimable_fees = sui::vec_map::empty<std::type_name::TypeName, u64>();
+        claimable_fees.insert<std::type_name::TypeName, u64>(
+            std::type_name::get<FeeCoinType1>(),
+            claimable_voting_fees_internal<SailCoinType, FeeCoinType1>(voter, lock_id, pool_id, clock)
+        );
+        claimable_fees.insert<std::type_name::TypeName, u64>(
+            std::type_name::get<FeeCoinType2>(),
+            claimable_voting_fees_internal<SailCoinType, FeeCoinType2>(voter, lock_id, pool_id, clock)
+        );
+        let claimable_fees_event = ClaimableVotingFees { data: claimable_fees };
+        sui::event::emit<ClaimableVotingFees>(claimable_fees_event);
+    }
+    
     public entry fun notify_bribe_reward<SailCoinType, BribeCoinType>(
         voter: &mut distribution::voter::Voter<SailCoinType>,
         pool_id: ID,
