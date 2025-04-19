@@ -8,14 +8,15 @@ use clmm_pool::pool::{Self, Pool};
 use clmm_pool::factory::{Self, Pools};
 use clmm_pool::config::{Self, GlobalConfig};
 use clmm_pool::position::{Self, Position};
+use clmm_pool::price_provider::{Self, PriceProvider};
+use clmm_pool::stats::{Self, Stats};
 use distribution::minter::{Self, Minter};
 use distribution::voter::{Self, Voter};
-use distribution::notify_reward_cap::{NotifyRewardCap};
 use sui::coin::{Self, Coin};
 use distribution::distribution_config;
 use distribution::voting_escrow::{Self, VotingEscrow};
 use distribution::reward_distributor::{Self, RewardDistributor};
-use distribution::reward_distributor_cap::{RewardDistributorCap};
+use clmm_pool::tick_math;
 
 public struct USD1 has drop {}
 
@@ -69,6 +70,8 @@ public fun setup_clmm_factory_with_fee_tier(
     {
         factory::test_init(scenario.ctx());
         config::test_init(scenario.ctx());
+        stats::init_test(scenario.ctx());
+        price_provider::new(scenario.ctx());
     };
     
     // Tx 2: Add fee tier
@@ -587,6 +590,150 @@ fun test_create_position_with_liquidity() {
         test_scenario::return_shared(pool);
     };
 
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+    // Error constants
+const EExceededLimit: u64 = 765177259852085600;
+const EInsufficientOutput: u64 = 7357981668783265000;
+const EAmountMismatch: u64 = 698650768773923000;
+
+public fun swap<CoinTypeA, CoinTypeB>(
+    scenario: &mut test_scenario::Scenario,
+    mut coin_a: sui::coin::Coin<CoinTypeA>,
+    mut coin_b: sui::coin::Coin<CoinTypeB>,
+    a2b: bool,
+    by_amount_in: bool,
+    amount: u64,
+    amount_limit: u64,
+    sqrt_price_limit: u128,
+    clock: &sui::clock::Clock,
+): (Coin<CoinTypeA>, Coin<CoinTypeB>) {
+    let global_config = scenario.take_shared<GlobalConfig>();
+    let mut pool = scenario.take_shared<Pool<CoinTypeA, CoinTypeB>>();
+    let price_provider = scenario.take_shared<PriceProvider>();
+    let mut stats = scenario.take_shared<Stats>();
+
+    let (coin_a_out, coin_b_out, receipt) = clmm_pool::pool::flash_swap<CoinTypeA, CoinTypeB>(
+        &global_config,
+        &mut pool,
+        a2b,
+        by_amount_in,
+        amount,
+        sqrt_price_limit,
+        &mut stats,
+        &price_provider,
+        clock
+    );
+    let pay_amout = receipt.swap_pay_amount();
+    let coin_out_value = if (a2b) {
+        coin_b_out.value()
+    } else {
+        coin_a_out.value()
+    };
+    if (by_amount_in) {
+        assert!(pay_amout == amount, EAmountMismatch);
+        assert!(coin_out_value >= amount_limit, EInsufficientOutput);
+    } else {
+        assert!(coin_out_value == amount, EAmountMismatch);
+        assert!(pay_amout <= amount_limit, EExceededLimit);
+    };
+    let (repay_amount_a, repay_amount_b) = if (a2b) {
+        (coin_a.split(pay_amout, scenario.ctx()).into_balance(), sui::balance::zero<CoinTypeB>())
+    } else {
+        (sui::balance::zero<CoinTypeA>(), coin_b.split(pay_amout, scenario.ctx()).into_balance())
+    };
+    clmm_pool::pool::repay_flash_swap<CoinTypeA, CoinTypeB>(
+        &global_config,
+        &mut pool,
+        repay_amount_a,
+        repay_amount_b,
+        receipt
+    );
+    coin_a.join(sui::coin::from_balance<CoinTypeA>(coin_a_out, scenario.ctx()));
+    coin_b.join(sui::coin::from_balance<CoinTypeB>(coin_b_out, scenario.ctx()));
+
+    test_scenario::return_shared(global_config);
+    test_scenario::return_shared(pool);
+    test_scenario::return_shared(price_provider);
+    test_scenario::return_shared(stats);
+
+    (coin_a, coin_b)
+}
+
+#[test]
+fun test_swap_utility() {
+    let admin = @0xCC1;
+    let user = @0xDD1;
+    let mut scenario = test_scenario::begin(admin);
+    let clock = clock::create_for_testing(scenario.ctx());
+
+    // Tx 1: Setup CLMM, Pool, Stats, PriceProvider
+    {
+        setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+        stats::init_test(scenario.ctx());       // Init Stats
+        price_provider::new(scenario.ctx());  // Init PriceProvider
+    };
+
+    scenario.next_tx(admin);
+    let pool_sqrt_price: u128 = 1 << 64; // Price = 1
+    let pool_tick_spacing = 1;
+    {
+        setup_pool_with_sqrt_price<CoinStoreB, CoinStoreA>(
+            &mut scenario, 
+            pool_sqrt_price, 
+            pool_tick_spacing
+        );
+    };
+
+    // Tx 2: Create Position with Liquidity for the user
+    let tick_lower = clmm_pool::tick_math::min_tick().as_u32();
+    let tick_upper = clmm_pool::tick_math::max_tick().as_u32();
+    let liquidity_delta = 1_000_000_000u128;
+    scenario.next_tx(admin); // Admin creates the position for the user
+    {
+        create_position_with_liquidity<CoinStoreB, CoinStoreA>(
+            &mut scenario,
+            user, 
+            tick_lower,
+            tick_upper,
+            liquidity_delta,
+            &clock
+        );
+    };
+    // Tx 3: User executes swap using the utility
+    let swap_amount = 5000; 
+    let expected_output_min = 1; // Expect at least 1 unit out
+    scenario.next_tx(user);
+    {
+        let coin_in = coin::mint_for_testing<CoinStoreB>(swap_amount, scenario.ctx()); // User starts with 0 output coin
+        let coin_out = coin::zero<CoinStoreA>(scenario.ctx());
+
+        let (remaining_coin_in, received_coin_out) = swap<CoinStoreB, CoinStoreA>(
+            &mut scenario,
+            coin_in,
+            coin_out,
+            true,  // a2b = true (CoinStoreA -> CoinStoreB)
+            true,  // by_amount_in = true
+            swap_amount,
+            expected_output_min,
+            tick_math::min_sqrt_price(), // price limit - min price for A->B
+            &clock,
+        );
+
+        // --- Verification --- 
+        // User should have received some CoinB
+        assert!(received_coin_out.value() >= expected_output_min, 1);
+        // User should have less CoinA than they started with
+        assert!(remaining_coin_in.value() < swap_amount, 2);
+
+        // Cleanup remaining coins
+        remaining_coin_in.burn_for_testing();
+        received_coin_out.burn_for_testing();
+    };
+
+    // Final Cleanup
     clock::destroy_for_testing(clock);
     scenario.end();
 }
