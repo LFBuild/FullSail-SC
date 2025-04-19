@@ -7,6 +7,7 @@ use sui::clock::{Self, Clock};
 use clmm_pool::pool::{Self, Pool};
 use clmm_pool::factory::{Self, Pools};
 use clmm_pool::config::{Self, GlobalConfig};
+use clmm_pool::position::{Self, Position};
 use distribution::minter::{Self, Minter};
 use distribution::voter::{Self, Voter};
 use distribution::notify_reward_cap::{NotifyRewardCap};
@@ -464,4 +465,128 @@ public fun setup_gauge_for_pool<CoinTypeA, CoinTypeB, SailCoinType>(
     // Return capabilities to sender
     scenario.return_to_sender(create_cap);
     scenario.return_to_sender(governor_cap);
+}
+
+// Creates a new position in an existing pool and adds liquidity.
+// Assumes GlobalConfig and Pool<CoinTypeA, CoinTypeB> are shared.
+// Transfers the new Position object to the specified owner.
+public fun create_position_with_liquidity<CoinTypeA: store, CoinTypeB: store>(
+    scenario: &mut test_scenario::Scenario,
+    owner: address,
+    tick_lower: u32,
+    tick_upper: u32,
+    liquidity_delta: u128,
+    clock: &Clock,
+) {
+    let global_config = scenario.take_shared<GlobalConfig>();
+    let mut pool_obj = scenario.take_shared<Pool<CoinTypeA, CoinTypeB>>(); // Renamed to avoid conflict
+
+    // Open the position
+    let mut position = pool::open_position<CoinTypeA, CoinTypeB>(
+        &global_config,
+        &mut pool_obj,
+        tick_lower,
+        tick_upper,
+        scenario.ctx()
+    );
+
+    // Add liquidity
+    let receipt: pool::AddLiquidityReceipt<CoinTypeA, CoinTypeB> = pool::add_liquidity<CoinTypeA, CoinTypeB>(
+        &global_config,
+        &mut pool_obj,
+        &mut position,
+        liquidity_delta,
+        clock
+    );
+
+    // Repay liquidity
+    let (amount_a, amount_b) = pool::add_liquidity_pay_amount<CoinTypeA, CoinTypeB>(&receipt);
+    let coin_a = coin::mint_for_testing<CoinTypeA>(amount_a, scenario.ctx());
+    let coin_b = coin::mint_for_testing<CoinTypeB>(amount_b, scenario.ctx());
+
+    pool::repay_add_liquidity<CoinTypeA, CoinTypeB>(
+        &global_config,
+        &mut pool_obj,
+        coin_a.into_balance(),
+        coin_b.into_balance(),
+        receipt // receipt is consumed here
+    );
+
+    // Transfer position to the owner
+    transfer::public_transfer(position, owner);
+
+    // Return shared objects
+    test_scenario::return_shared(global_config);
+    test_scenario::return_shared(pool_obj);
+}
+
+// Define coin types with store for testing repay_add_liquidity
+#[test_only]
+public struct CoinStoreA has drop, store {}
+#[test_only]
+public struct CoinStoreB has drop, store {}
+
+#[test]
+fun test_create_position_with_liquidity() {
+    let admin = @0xAA1;
+    let user = @0xBB1;
+    let mut scenario = test_scenario::begin(admin);
+    let clock = clock::create_for_testing(scenario.ctx());
+
+    // Tx 1: Setup CLMM Factory & Fee Tier
+    {
+        setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+    };
+
+    // Tx 2: Setup Pool (CoinStoreB/CoinStoreA)
+    let pool_sqrt_price: u128 = 1 << 64; // Price = 1
+    let pool_tick_spacing = 1;
+    scenario.next_tx(admin);
+    {
+        setup_pool_with_sqrt_price<CoinStoreB, CoinStoreA>(
+            &mut scenario, 
+            pool_sqrt_price, 
+            pool_tick_spacing
+        );
+    };
+
+    // Tx 3: User calls the utility function
+    let tick_lower = 0u32;
+    let tick_upper = 10u32;
+    let liquidity_delta = 500_000_000u128;
+    scenario.next_tx(user);
+    {
+        create_position_with_liquidity<CoinStoreB, CoinStoreA>(
+            &mut scenario,
+            user, 
+            tick_lower,
+            tick_upper,
+            liquidity_delta,
+            &clock
+        );
+    };
+
+    // Tx 4: Verify position and pool state
+    scenario.next_tx(user); // User owns the position
+    {
+        let pool = scenario.take_shared<Pool<CoinStoreB, CoinStoreA>>();
+        let position = scenario.take_from_sender<Position>();
+        
+        // Verify Position
+        assert!(position.pool_id() == object::id(&pool), 1);
+        assert!(position.liquidity() == liquidity_delta, 2);
+        let (pos_tick_lower, pos_tick_upper) = position::tick_range(&position);
+        assert!(pos_tick_lower == integer_mate::i32::from_u32(tick_lower), 3);
+        assert!(pos_tick_upper == integer_mate::i32::from_u32(tick_upper), 4);
+
+        // Verify Pool liquidity
+        assert!(pool::liquidity(&pool) == liquidity_delta, 5); // Pool was empty before
+
+        // Cleanup
+        scenario.return_to_sender(position);
+        test_scenario::return_shared(pool);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
 }
