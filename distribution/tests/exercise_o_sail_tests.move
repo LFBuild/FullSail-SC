@@ -1,5 +1,5 @@
 #[test_only]
-module distribution::o_sail_tests;
+module distribution::exercise_o_sail_tests;
 
 use distribution::setup;
 use distribution::minter::{Self, Minter};
