@@ -104,8 +104,7 @@ module distribution::minter {
         activated_at: u64,
         active_period: u64,
         epoch_count: u64,
-        // The oSAIL which will be distributed at the end of the current epoch
-        // is not defined until distribution starts
+        // The oSAIL which will be distributed at the begining of new epoch and during the epoch
         current_epoch_o_sail: Option<TypeName>,
         last_epoch_update_time: u64,
         epoch_emissions: u64,
@@ -151,6 +150,7 @@ module distribution::minter {
     /// Activates the minter to begin token emissions according to the protocol schedule.
     /// Initializes the active period and sets up the reward distributor. This must be
     /// called before any token emissions can occur.
+    /// No tokens minted during zero epoch.
     ///
     /// # Arguments
     /// * `minter` - The minter instance to activate
@@ -161,12 +161,10 @@ module distribution::minter {
     /// # Aborts
     /// * If the minter is already active
     /// * If the reward distributor capability is not set
-    public fun activate<SailCoinType, EpochOSailCoin>(
+    public fun activate<SailCoinType>(
         minter: &mut Minter<SailCoinType>,
-        voter: &mut distribution::voter::Voter,
         admin_cap: &AdminCap,
         reward_distributor: &mut distribution::reward_distributor::RewardDistributor<SailCoinType>,
-        o_sail_treasury_cap: TreasuryCap<EpochOSailCoin>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
     ) {
@@ -181,7 +179,6 @@ module distribution::minter {
         minter.active_period = distribution::common::to_period(minter.activated_at);
         minter.last_epoch_update_time = current_time;
         minter.epoch_emissions = minter.base_supply;
-        minter.update_o_sail_token(voter, o_sail_treasury_cap, ctx);
         reward_distributor.start(option::borrow<distribution::reward_distributor_cap::RewardDistributorCap>(
             &minter.reward_distributor_cap
         ), minter.active_period, clock);
@@ -637,11 +634,10 @@ module distribution::minter {
         sui::event::emit<EventUnpauseEmission>(unpaused_event);
     }
 
-    /// Updates fields related to oSAIL coin. Notifies Voter about new oSAIL coin.
+    /// Updates fields related to oSAIL coin
     ///
     /// # Arguments
     /// * `minter` - The minter instance to update oSAIL fields
-    /// * `voter` - The voter instance to notify about new oSAIL
     /// * `treasury_cap` - oSAIL TreasuryCap that will be used at the end of epoch to mint new tokens
     ///
     /// #Effects
@@ -649,9 +645,7 @@ module distribution::minter {
     /// * Update Voter fields related to oSAIL
     fun update_o_sail_token<SailCoinType, EpochOSailCoin>(
         minter: &mut Minter<SailCoinType>,
-        voter: &mut distribution::voter::Voter,
         treasury_cap: TreasuryCap<EpochOSailCoin>,
-        ctx: &mut TxContext,
     ) {
         let o_sail_type = type_name::get<EpochOSailCoin>();
         minter.current_epoch_o_sail.swap_or_fill(o_sail_type);
@@ -663,18 +657,18 @@ module distribution::minter {
             distribution::common::o_sail_duration() +
             distribution::common::week();
         minter.o_sail_expiry_dates.add(o_sail_type, o_sail_expiry_date);
-        let notify_reward_cap= minter.notify_reward_cap.borrow();
-        voter.notify_epoch_token<EpochOSailCoin>(notify_reward_cap, ctx);
     }
 
     /// Updates the active period and processes token emissions for the current epoch.
     ///
     /// This is the core function that drives the tokenomics of the protocol. It:
-    /// 1. Calculates emissions for the current epoch
-    /// 2. Mints and distributes tokens to the team wallet (if configured)
-    /// 3. Handles rebase growth based on locked vs circulating supply
-    /// 4. Distributes rewards to voters/stakers
-    /// 5. Updates the epoch counters and emission rates for the next epoch
+    /// 1. Sets current epoch oSAIL token
+    /// 2. Calculates emissions for the current epoch
+    /// 3. Mints and distributes tokens to the team wallet (if configured)
+    /// 4. Distributes protocol fee
+    /// 5. Handles rebase growth based on locked vs circulating supply
+    /// 6. Distributes rewards to voters/stakers
+    /// 7. Updates the epoch counters and emission rates for the next epoch
     ///
     /// This function should be called once per week (per epoch) to maintain
     /// the emission schedule.
@@ -685,7 +679,7 @@ module distribution::minter {
     /// * `voter` - The voter module that manages gauges and voting
     /// * `voting_escrow` - The voting escrow that tracks locked tokens
     /// * `reward_distributor` - The reward distributor for distributing tokens
-    /// * `next_o_sail_treasury_cap` - The TreasuryCap which allows minting of new NextEpochOSail
+    /// * `epoch_o_sail_treasury_cap` - The TreasuryCap which allows minting of new EpochOSail
     /// * `clock` - The system clock
     /// * `ctx` - Transaction context
     ///
@@ -697,13 +691,13 @@ module distribution::minter {
     /// * Mints and distributes tokens according to the emission schedule
     /// * Updates epoch counters and emission rates
     /// * Emits a EventUpdateEpoch event
-    public fun update_period<SailCoinType, CurrentEpochOSail, NextEpochOSail>(
+    public fun update_period<SailCoinType, EpochOSail>(
         admin_cap: &AdminCap,
         minter: &mut Minter<SailCoinType>,
         voter: &mut distribution::voter::Voter,
         voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
         reward_distributor: &mut distribution::reward_distributor::RewardDistributor<SailCoinType>,
-        next_o_sail_treasury_cap: TreasuryCap<NextEpochOSail>,
+        epoch_o_sail_treasury_cap: TreasuryCap<EpochOSail>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
@@ -713,7 +707,7 @@ module distribution::minter {
             minter.active_period + distribution::common::week() < distribution::common::current_timestamp(clock),
             EUpdatePeriodNotFinishedYet
         );
-        assert!(minter.is_valid_epoch_token<SailCoinType, CurrentEpochOSail>(), EUpdatePeriodInvalidEpochOSail);
+        minter.update_o_sail_token(epoch_o_sail_treasury_cap);
         let (current_epoch_emissions, next_epoch_emissions) = minter.calculate_epoch_emissions();
         let rebase_growth = calculate_rebase_growth(
             current_epoch_emissions,
@@ -742,14 +736,13 @@ module distribution::minter {
             rebase_emissions,
             clock
         );
-        let o_sail_to_distribute = minter.mint_o_sail<SailCoinType, CurrentEpochOSail>(current_epoch_emissions, ctx);
-        let notify_reward_cap = minter.notify_reward_cap.extract();
-        voter.notify_rewards(&notify_reward_cap, o_sail_to_distribute);
-        minter.notify_reward_cap.fill(notify_reward_cap);
+        let o_sail_to_distribute = minter.mint_o_sail<SailCoinType, EpochOSail>(current_epoch_emissions, ctx);
+        let notify_reward_cap = minter.notify_reward_cap.borrow();
+        voter.notify_epoch_token<EpochOSail>(notify_reward_cap, ctx);
+        voter.notify_rewards(notify_reward_cap, o_sail_to_distribute);
         minter.active_period = distribution::common::current_period(clock);
         minter.epoch_count = minter.epoch_count + 1;
         minter.epoch_emissions = next_epoch_emissions;
-        minter.update_o_sail_token(voter, next_o_sail_treasury_cap, ctx);
         reward_distributor.update_active_period(
             option::borrow<distribution::reward_distributor_cap::RewardDistributorCap>(
                 &minter.reward_distributor_cap
