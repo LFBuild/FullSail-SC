@@ -193,6 +193,8 @@ fun test_o_sail_single_epoch_distribute() {
     let position_tick_lower = tick_math::min_tick().as_u32();
     let position_tick_upper = tick_math::max_tick().as_u32();
     let position_liquidity = 1_000_000_000u128; // Example liquidity
+    let expected_lp1_earned = epoch_emissions / 2;
+    let expected_lp2_earned = epoch_emissions / 2;
 
     // lp1 creates and stakes position
     scenario.next_tx(lp1);
@@ -246,14 +248,11 @@ fun test_o_sail_single_epoch_distribute() {
     clock.increment_for_testing(ms_in_week);
 
 
-    scenario.next_tx(lp1); // Any user can read shared state
+    scenario.next_tx(user); // Any user can read shared state
     {
         let pool = scenario.take_shared<Pool<USD1, SAIL>>();
         let gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
         let minter = scenario.take_shared<Minter<SAIL>>();
-        let expected_lp1_earned = epoch_emissions / 2;
-        let expected_lp2_earned = epoch_emissions / 2;
-        std::debug::print(&epoch_emissions);
 
         let earned_lp1 = gauge.earned_by_position<USD1, SAIL, OSAIL1>(
             &pool,
@@ -281,6 +280,56 @@ fun test_o_sail_single_epoch_distribute() {
         test_scenario::return_shared(minter);
     };
 
+    // lp1 claims reward
+    scenario.next_tx(lp1);
+    {
+        let mut gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
+        let mut pool = scenario.take_shared<Pool<USD1, SAIL>>();
+        gauge.get_position_reward<USD1, SAIL, OSAIL1>(
+            &mut pool,
+            lp1_position_id,
+            &clock,
+            scenario.ctx()
+        );
+        test_scenario::return_shared(pool);
+        test_scenario::return_shared(gauge);
+    };
+
+    // check claimed rewards
+    scenario.next_tx(lp1);
+    {
+        let reward = scenario.take_from_sender<Coin<OSAIL1>>();
+        assert!(expected_lp1_earned - reward.value() <= 1, 4);
+        
+        coin::burn_for_testing(reward);
+    };
+
+
+    // lp2 claims reward
+    scenario.next_tx(lp2);
+    {
+        let mut gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
+        let mut pool = scenario.take_shared<Pool<USD1, SAIL>>();
+        gauge.get_position_reward<USD1, SAIL, OSAIL1>(
+            &mut pool,
+            lp2_position_id,
+            &clock,
+            scenario.ctx()
+        );
+
+        test_scenario::return_shared(pool);
+        test_scenario::return_shared(gauge);
+    };
+
+    // check claimed rewards
+    scenario.next_tx(lp2);
+    {
+        let reward = scenario.take_from_sender<Coin<OSAIL1>>();
+        assert!(expected_lp2_earned - reward.value() <= 1, 5);
+        
+        coin::burn_for_testing(reward);
+    };
+    
     clock::destroy_for_testing(clock);
     scenario.end();
 }

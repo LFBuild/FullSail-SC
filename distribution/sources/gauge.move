@@ -560,11 +560,16 @@ module distribution::gauge {
         );
         // TODO check that get_fullsail_distribution_growth_inside works correctly with
         // global_growth passed lower than pool.fullsail_distribution_growth_global
-        let prev_token_growth_inside = pool.get_fullsail_distribution_growth_inside(
+        let prev_token_growth_inside = if (prev_coin_growth_global > 0) {
+            // get_fullsail_distribution_growth_inside replaces prev_coin_growth_global with 0 if prev_coin_growth_global is 0
+            pool.get_fullsail_distribution_growth_inside(
             lower_tick,
             upper_tick,
             prev_coin_growth_global
-        );
+            )
+        } else {
+            0_u128
+        };
         let claimed_growth_inside = gauge.rewards.borrow(position_id).growth_inside;
         assert!(claimed_growth_inside >= prev_token_growth_inside, EEarnedPrevTokenNotClaimed);
 
