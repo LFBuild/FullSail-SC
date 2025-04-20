@@ -20,6 +20,8 @@ use distribution::common; // Import common for time constants
 
 use clmm_pool::tick_math;
 
+const WEEK: u64 = 7 * 24 * 60 * 60 * 1000;
+
 public struct SAIL has drop {}
 
 // Define oSAIL type for testing epoch 1
@@ -340,11 +342,19 @@ fun test_exercise_o_sail_ab() {
     // Tx 4: Activate Minter for Epoch 1 (OSAIL1)
     scenario.next_tx(admin);
     {
-        let o_sail1_initial_supply = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
-        transfer::public_transfer(o_sail1_initial_supply, user);
+        setup::activate_minter<SAIL>(&mut scenario, &mut clock);
     };
 
-    // Tx 5: Exercise OSAIL1
+    clock.increment_for_testing(WEEK);
+
+    // Tx 5: Update Minter Period to OSAIL1
+    scenario.next_tx(admin);
+    {
+        let initial_o_sail_supply = setup::update_minter_period<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
+        transfer::public_transfer(initial_o_sail_supply, user);
+    };
+
+    // Tx 6: Exercise OSAIL1
     scenario.next_tx(user);
     {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
@@ -436,8 +446,16 @@ fun test_exercise_o_sail_ba() {
     // Tx 4: Activate Minter for Epoch 1 (OSAIL1)
     scenario.next_tx(admin);
     {
-        let o_sail1_initial_supply = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
-        transfer::public_transfer(o_sail1_initial_supply, user);
+        setup::activate_minter<SAIL>(&mut scenario, &mut clock);
+    };
+
+    clock.increment_for_testing(WEEK);
+
+    // Tx 5: Update Minter Period to OSAIL1
+    scenario.next_tx(admin);
+    {
+        let initial_o_sail_supply = setup::update_minter_period<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
+        transfer::public_transfer(initial_o_sail_supply, user);
     };
 
     // Tx 5: Exercise OSAIL1
@@ -527,11 +545,19 @@ fun test_exercise_o_sail_fail_not_whitelisted_pool() {
     // Tx 3: Activate Minter for Epoch 1 (OSAIL1)
     scenario.next_tx(admin);
     {
-        let o_sail1_initial_supply = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
-        transfer::public_transfer(o_sail1_initial_supply, user);
+        setup::activate_minter<SAIL>(&mut scenario, &mut clock);
     };
 
-    // Tx 4: Attempt Exercise OSAIL1 (Pool NOT whitelisted)
+    clock.increment_for_testing(WEEK);
+
+    // Tx 4: Update Minter Period to OSAIL1
+    scenario.next_tx(admin);
+    {
+        let initial_o_sail_supply = setup::update_minter_period<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
+        transfer::public_transfer(initial_o_sail_supply, user);
+    };
+
+    // Tx 5: Attempt Exercise OSAIL1 (Pool NOT whitelisted)
     scenario.next_tx(user);
     {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
@@ -608,11 +634,19 @@ fun test_exercise_o_sail_fail_usd_limit_not_met() {
     // Tx 4: Activate Minter for Epoch 1 (OSAIL1)
     scenario.next_tx(admin);
     {
-        let o_sail1_initial_supply = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
-        transfer::public_transfer(o_sail1_initial_supply, user);
+        setup::activate_minter<SAIL>(&mut scenario, &mut clock);
     };
 
-    // Tx 5: Attempt Exercise OSAIL1 with insufficient USD limit
+    clock.increment_for_testing(WEEK);
+
+    // Tx 5: Update Minter Period to OSAIL1
+    scenario.next_tx(admin);
+    {
+        let initial_o_sail_supply = setup::update_minter_period<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
+        transfer::public_transfer(initial_o_sail_supply, user);
+    };
+
+    // Tx 6: Attempt Exercise OSAIL1 with insufficient USD limit
     scenario.next_tx(user);
     {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
@@ -697,11 +731,19 @@ fun test_exercise_o_sail_fail_insufficient_usd_fee() {
     // Tx 4: Activate Minter for Epoch 1 (OSAIL1)
     scenario.next_tx(admin);
     {
-        let o_sail1_initial_supply = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
-        transfer::public_transfer(o_sail1_initial_supply, user);
+        setup::activate_minter<SAIL>(&mut scenario, &mut clock);
     };
 
-    // Tx 5: Attempt Exercise OSAIL1 with insufficient USD coin balance
+    clock.increment_for_testing(WEEK);
+
+    // Tx 5: Update Minter Period to OSAIL1
+    scenario.next_tx(admin);
+    {
+        let initial_o_sail_supply = setup::update_minter_period<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
+        transfer::public_transfer(initial_o_sail_supply, user);
+    };
+
+    // Tx 6: Attempt Exercise OSAIL1 with insufficient USD coin balance
     scenario.next_tx(user);
     {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
@@ -786,8 +828,16 @@ fun test_exercise_o_sail_fail_expired() {
     // Tx 4: Activate Minter for Epoch 1 (OSAIL1)
     scenario.next_tx(admin);
     {
-        let o_sail1_initial_supply = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
-        transfer::public_transfer(o_sail1_initial_supply, user);
+        setup::activate_minter<SAIL>(&mut scenario, &mut clock);
+    };
+
+    clock.increment_for_testing(WEEK);
+
+    // Tx 5: Update Minter Period to OSAIL1
+    scenario.next_tx(admin);
+    {
+        let initial_o_sail_supply = setup::update_minter_period<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
+        transfer::public_transfer(initial_o_sail_supply, user);
     };
 
     // Advance time by 5 weeks (more than oSAIL expiry)
@@ -870,8 +920,16 @@ fun test_exercise_o_sail_before_expiry() {
     // Tx 4: Activate Minter for Epoch 1 (OSAIL1)
     scenario.next_tx(admin);
     {
-        let o_sail1_initial_supply = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
-        transfer::public_transfer(o_sail1_initial_supply, user);
+        setup::activate_minter<SAIL>(&mut scenario, &mut clock);
+    };
+
+    clock.increment_for_testing(WEEK);
+
+    // Tx 5: Update Minter Period to OSAIL1
+    scenario.next_tx(admin);
+    {
+        let initial_o_sail_supply = setup::update_minter_period<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
+        transfer::public_transfer(initial_o_sail_supply, user);
     };
 
     // Advance time by 4 weeks (within typical expiry)
@@ -963,8 +1021,16 @@ fun test_exercise_o_sail_whitelist_toggle() {
     // Tx 4: Activate Minter for Epoch 1 (OSAIL1)
     scenario.next_tx(admin);
     {
-        let o_sail1_initial_supply = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
-        transfer::public_transfer(o_sail1_initial_supply, user);
+        setup::activate_minter<SAIL>(&mut scenario, &mut clock);
+    };
+
+    clock.increment_for_testing(WEEK);
+
+    // Tx 5: Update Minter Period to OSAIL1
+    scenario.next_tx(admin);
+    {
+        let initial_o_sail_supply = setup::update_minter_period<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
+        transfer::public_transfer(initial_o_sail_supply, user);
     };
 
     // Tx 5: First Exercise (Pool Whitelisted - Should Succeed)
@@ -1100,8 +1166,16 @@ fun test_exercise_o_sail_free_internal() {
     // Tx 2: Activate Minter for Epoch 1 (OSAIL1)
     scenario.next_tx(admin);
     {
-        let o_sail1_initial_supply = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
-        transfer::public_transfer(o_sail1_initial_supply, user);
+        setup::activate_minter<SAIL>(&mut scenario, &mut clock);
+    };
+
+    clock.increment_for_testing(WEEK);
+
+    // Tx 3: Update Minter Period to OSAIL1
+    scenario.next_tx(admin);
+    {
+        let initial_o_sail_supply = setup::update_minter_period<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
+        transfer::public_transfer(initial_o_sail_supply, user);
     };
 
     // Tx 3: Exercise OSAIL1 with 75% receive rate
@@ -1146,8 +1220,16 @@ fun test_exercise_o_sail_free_fail_over_100_percent() {
     // Tx 2: Activate Minter for Epoch 1 (OSAIL1)
     scenario.next_tx(admin);
     {
-        let o_sail1_initial_supply = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
-        transfer::public_transfer(o_sail1_initial_supply, user);
+        setup::activate_minter<SAIL>(&mut scenario, &mut clock);
+    };
+
+    clock.increment_for_testing(WEEK);
+
+    // Tx 3: Update Minter Period to OSAIL1
+    scenario.next_tx(admin);
+    {
+        let initial_o_sail_supply = setup::update_minter_period<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
+        transfer::public_transfer(initial_o_sail_supply, user);
     };
 
     // Tx 3: Attempt Exercise OSAIL1 with > 100% receive rate
@@ -1243,8 +1325,16 @@ fun test_create_lock_from_o_sail() {
     // Tx 2: Activate Minter for Epoch 1 (OSAIL1)
     scenario.next_tx(admin);
     {
-        let o_sail1_initial_supply = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
-        transfer::public_transfer(o_sail1_initial_supply, user);
+        setup::activate_minter<SAIL>(&mut scenario, &mut clock);
+    };
+
+    clock.increment_for_testing(WEEK);
+
+    // Tx 3: Update Minter Period to OSAIL1
+    scenario.next_tx(admin);
+    {
+        let initial_o_sail_supply = setup::update_minter_period<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
+        transfer::public_transfer(initial_o_sail_supply, user);
     };
 
     // Tx 3: Create Lock from OSAIL1
@@ -1285,7 +1375,15 @@ fun test_create_lock_from_o_sail_2y() {
     // Tx 2: Activate Minter for Epoch 1 (OSAIL1)
     scenario.next_tx(admin);
     {
-        let o_sail1_initial_supply = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
+        setup::activate_minter<SAIL>(&mut scenario, &mut clock);
+    };
+
+    clock.increment_for_testing(WEEK);
+
+    // Tx 3: Update Minter Period to OSAIL1
+    scenario.next_tx(admin);
+    {
+        let o_sail1_initial_supply = setup::update_minter_period<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
         transfer::public_transfer(o_sail1_initial_supply, user);
     };
 
@@ -1327,7 +1425,15 @@ fun test_create_lock_from_o_sail_4y() {
     // Tx 2: Activate Minter for Epoch 1 (OSAIL1)
     scenario.next_tx(admin);
     {
-        let o_sail1_initial_supply = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
+        setup::activate_minter<SAIL>(&mut scenario, &mut clock);
+    };
+
+    clock.increment_for_testing(WEEK);
+
+    // Tx 3: Update Minter Period to OSAIL1
+    scenario.next_tx(admin);
+    {
+        let o_sail1_initial_supply = setup::update_minter_period<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
         transfer::public_transfer(o_sail1_initial_supply, user);
     };
 
@@ -1370,7 +1476,15 @@ fun test_create_lock_from_o_sail_fail_less_than_6_months() {
     // Tx 2: Activate Minter for Epoch 1 (OSAIL1)
     scenario.next_tx(admin);
     {
-        let o_sail1_initial_supply = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
+        setup::activate_minter<SAIL>(&mut scenario, &mut clock);
+    };
+
+    clock.increment_for_testing(WEEK);
+
+    // Tx 3: Update Minter Period to OSAIL1
+    scenario.next_tx(admin);
+    {
+        let o_sail1_initial_supply = setup::update_minter_period<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
         transfer::public_transfer(o_sail1_initial_supply, user);
     };
 
@@ -1410,10 +1524,17 @@ fun test_create_lock_from_o_sail_fail_more_than_4y() {
     // Tx 2: Activate Minter for Epoch 1 (OSAIL1)
     scenario.next_tx(admin);
     {
-        let o_sail1_initial_supply = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
-        transfer::public_transfer(o_sail1_initial_supply, user);
+        setup::activate_minter<SAIL>(&mut scenario, &mut clock);
     };
 
+    clock.increment_for_testing(WEEK);
+
+    // Tx 3: Update Minter Period to OSAIL1
+    scenario.next_tx(admin);
+    {
+        let o_sail1_initial_supply = setup::update_minter_period<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
+        transfer::public_transfer(o_sail1_initial_supply, user);
+    };
     // Tx 3: Attempt to Create Lock from OSAIL1 for more than 4 years
     let o_sail_to_lock = 100_000; // Amount of oSAIL to lock
     let lock_duration_days = 4 * 52 * 7 + 1; // 4 years + 1 day
@@ -1473,10 +1594,17 @@ fun test_create_lock_from_o_sail_permanent() {
     // Tx 2: Activate Minter for Epoch 1 (OSAIL1)
     scenario.next_tx(admin);
     {
-        let o_sail1_initial_supply = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
-        transfer::public_transfer(o_sail1_initial_supply, user);
+        setup::activate_minter<SAIL>(&mut scenario, &mut clock);
     };
 
+    clock.increment_for_testing(WEEK);
+
+    // Tx 3: Update Minter Period to OSAIL1
+    scenario.next_tx(admin);
+    {
+        let o_sail1_initial_supply = setup::update_minter_period<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
+        transfer::public_transfer(o_sail1_initial_supply, user);
+    };
     // Tx 3: Create permanent Lock from OSAIL1
     let o_sail_to_lock = 100_000; // Amount of oSAIL to lock
     let lock_duration_days = 100; // doesn't matter for permanent lock
@@ -1515,10 +1643,17 @@ fun test_create_lock_from_o_sail_after_4_epochs() {
     // Tx 2: Activate Minter for Epoch 1 (OSAIL1)
     scenario.next_tx(admin);
     {
-        let o_sail1_initial_supply = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
-        transfer::public_transfer(o_sail1_initial_supply, user);
+        setup::activate_minter<SAIL>(&mut scenario, &mut clock);
     };
 
+    clock.increment_for_testing(WEEK);
+
+    // Tx 3: Update Minter Period to OSAIL1
+    scenario.next_tx(admin);
+    {
+        let o_sail1_initial_supply = setup::update_minter_period<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
+        transfer::public_transfer(o_sail1_initial_supply, user);
+    };
     // Advance time by 4 weeks (4 epochs)
     let four_weeks_ms = 4 * 7 * 24 * 60 * 60 * 1000;
     clock::increment_for_testing(&mut clock, four_weeks_ms);
@@ -1562,10 +1697,17 @@ fun test_create_lock_from_o_sail_fail_expired() {
     // Tx 2: Activate Minter for Epoch 1 (OSAIL1)
     scenario.next_tx(admin);
     {
-        let o_sail1_initial_supply = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
-        transfer::public_transfer(o_sail1_initial_supply, user);
+        setup::activate_minter<SAIL>(&mut scenario, &mut clock);
     };
 
+    clock.increment_for_testing(WEEK);
+
+    // Tx 3: Update Minter Period to OSAIL1
+    scenario.next_tx(admin);
+    {
+        let o_sail1_initial_supply = setup::update_minter_period<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
+        transfer::public_transfer(o_sail1_initial_supply, user);
+    };
     // Advance time by 5 weeks (past typical expiry)
     let five_weeks_ms = 5 * 7 * 24 * 60 * 60 * 1000;
     clock::increment_for_testing(&mut clock, five_weeks_ms);
@@ -1606,10 +1748,17 @@ fun test_create_lock_from_expired_o_sail_4y() {
     // Tx 2: Activate Minter for Epoch 1 (OSAIL1)
     scenario.next_tx(admin);
     {
-        let o_sail1_initial_supply = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
-        transfer::public_transfer(o_sail1_initial_supply, user);
+        setup::activate_minter<SAIL>(&mut scenario, &mut clock);
     };
 
+    clock.increment_for_testing(WEEK);
+
+    // Tx 3: Update Minter Period to OSAIL1
+    scenario.next_tx(admin);
+    {
+        let o_sail1_initial_supply = setup::update_minter_period<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
+        transfer::public_transfer(o_sail1_initial_supply, user);
+    };
     // Advance time by 5 weeks (past typical expiry)
     let five_weeks_ms = 5 * 7 * 24 * 60 * 60 * 1000;
     clock::increment_for_testing(&mut clock, five_weeks_ms);
@@ -1654,10 +1803,17 @@ fun test_create_lock_from_expired_o_sail_permanent() {
     // Tx 2: Activate Minter for Epoch 1 (OSAIL1)
     scenario.next_tx(admin);
     {
-        let o_sail1_initial_supply = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
-        transfer::public_transfer(o_sail1_initial_supply, user);
+        setup::activate_minter<SAIL>(&mut scenario, &mut clock);
     };
 
+    clock.increment_for_testing(WEEK);
+
+    // Tx 3: Update Minter Period to OSAIL1
+    scenario.next_tx(admin);
+    {
+        let o_sail1_initial_supply = setup::update_minter_period<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
+        transfer::public_transfer(o_sail1_initial_supply, user);
+    };
     // Advance time by 5 weeks (past typical expiry)
     let five_weeks_ms = 5 * 7 * 24 * 60 * 60 * 1000;
     clock::increment_for_testing(&mut clock, five_weeks_ms);
@@ -1703,8 +1859,15 @@ fun test_create_lock_from_invalid_token_fail() {
     // Tx 2: Activate Minter for Epoch 1 (OSAIL1) - Minter now knows about OSAIL1
     scenario.next_tx(admin);
     {
-        let o_sail1_initial_supply = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
-        // Burn the initial supply, user will use RANDOM_TOKEN
+        setup::activate_minter<SAIL>(&mut scenario, &mut clock);
+    };
+
+    clock.increment_for_testing(WEEK);
+
+    // Tx 3: Update Minter Period to OSAIL1
+    scenario.next_tx(admin);
+    {
+        let o_sail1_initial_supply = setup::update_minter_period<SAIL, OSAIL1>(&mut scenario, 1, &mut clock);
         coin::burn_for_testing(o_sail1_initial_supply);
     };
 
@@ -1778,12 +1941,20 @@ fun test_exercise_and_lock_after_epoch_update() {
         setup::whitelist_pool<SAIL, USD1, SAIL>(&mut scenario, true);
     };
 
-    // Tx 4: Activate Minter for Epoch 1 (OSAIL1)
+    // Tx 4: Activate Minter for Epoch 1
     let initial_o_sail_for_user = 200_000;
     scenario.next_tx(admin);
     {
-        let user_o_sail1 = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, initial_o_sail_for_user, &mut clock);
-        transfer::public_transfer(user_o_sail1, user); 
+        setup::activate_minter<SAIL>(&mut scenario, &mut clock);
+    };
+
+    clock.increment_for_testing(WEEK);
+
+    // Tx 5: Update Minter Period to OSAIL1
+    scenario.next_tx(admin);
+    {
+        let o_sail1_initial_supply = setup::update_minter_period<SAIL, OSAIL1>(&mut scenario, initial_o_sail_for_user, &mut clock);
+        transfer::public_transfer(o_sail1_initial_supply, user); 
     };
 
     // Tx 5: check current epoch token
@@ -1802,32 +1973,8 @@ fun test_exercise_and_lock_after_epoch_update() {
     // Tx 6: Update Minter Period with OSAIL2
     scenario.next_tx(admin);
     {
-        let mut minter = scenario.take_shared<Minter<SAIL>>();
-        let mut voter = scenario.take_shared<Voter>();
-        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
-        let mut reward_distributor = scenario.take_shared<RewardDistributor<SAIL>>();
-        let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-
-        // Create TreasuryCap for OSAIL2 for the next epoch
-        let o_sail2_cap = coin::create_treasury_cap_for_testing<OSAIL2>(scenario.ctx());
-
-        minter::update_period<SAIL, OSAIL1, OSAIL2>(
-            &minter_admin_cap,
-            &mut minter,
-            &mut voter,
-            &voting_escrow,
-            &mut reward_distributor,
-            o_sail2_cap, 
-            &clock,
-            scenario.ctx()
-        );
-
-        // Return shared objects & caps
-        test_scenario::return_shared(minter);
-        test_scenario::return_shared(voter);
-        test_scenario::return_shared(voting_escrow);
-        test_scenario::return_shared(reward_distributor);
-        scenario.return_to_sender(minter_admin_cap);
+        let o_sail2_initial_supply = setup::update_minter_period<SAIL, OSAIL2>(&mut scenario, 0, &mut clock);
+        coin::burn_for_testing(o_sail2_initial_supply);
     };
 
     // Tx 7: check current epoch token
@@ -1949,8 +2096,16 @@ fun test_exercise_fee_distribution() {
     scenario.next_tx(admin);
     {
         // Activate minter and mint oSAIL for user3
-        let o_sail1_initial_supply = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, o_sail_total_supply, &mut clock);
-        transfer::public_transfer(o_sail1_initial_supply, user3); // Give OSAIL1 to user3
+        setup::activate_minter<SAIL>(&mut scenario, &mut clock);
+    };
+
+    clock.increment_for_testing(WEEK);
+
+    // Tx 5: Update Minter Period to OSAIL1
+    scenario.next_tx(admin);
+    {
+        let o_sail1_initial_supply = setup::update_minter_period<SAIL, OSAIL1>(&mut scenario, o_sail_total_supply, &mut clock);
+        transfer::public_transfer(o_sail1_initial_supply, user3);
     };
 
     // Tx 4: Create Gauge
@@ -2364,7 +2519,14 @@ fun test_exercise_o_sail_high_price() {
     let o_sail_supply = 1_000_000_000_000_000; // Give user 1M oSAIL
     scenario.next_tx(admin);
     {
-        let o_sail1_initial_supply = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, o_sail_supply, &mut clock);
+        setup::activate_minter<SAIL>(&mut scenario, &mut clock);
+    };
+    clock.increment_for_testing(WEEK);
+
+    // Tx 5: Update Minter Period to OSAIL1
+    scenario.next_tx(admin);
+    {
+        let o_sail1_initial_supply = setup::update_minter_period<SAIL, OSAIL1>(&mut scenario, o_sail_supply, &mut clock);
         transfer::public_transfer(o_sail1_initial_supply, user);
     };
 
@@ -2453,7 +2615,14 @@ fun test_exercise_o_sail_small_price() {
     let o_sail_supply = 100; // Give user 1M oSAIL
     scenario.next_tx(admin);
     {
-        let o_sail1_initial_supply = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, o_sail_supply, &mut clock);
+        setup::activate_minter<SAIL>(&mut scenario, &mut clock);
+    };
+    clock.increment_for_testing(WEEK);
+
+    // Tx 5: Update Minter Period to OSAIL1
+    scenario.next_tx(admin);
+    {
+        let o_sail1_initial_supply = setup::update_minter_period<SAIL, OSAIL1>(&mut scenario, o_sail_supply, &mut clock);
         transfer::public_transfer(o_sail1_initial_supply, user);
     };
 

@@ -646,14 +646,15 @@ module distribution::minter {
     fun update_o_sail_token<SailCoinType, EpochOSailCoin>(
         minter: &mut Minter<SailCoinType>,
         treasury_cap: TreasuryCap<EpochOSailCoin>,
+        clock: &sui::clock::Clock,
     ) {
         let o_sail_type = type_name::get<EpochOSailCoin>();
         minter.current_epoch_o_sail.swap_or_fill(o_sail_type);
         minter.o_sail_total_supply = minter.o_sail_total_supply + treasury_cap.total_supply();
         minter.o_sail_caps.add(o_sail_type, treasury_cap);
-        // oSAIL is distributed at the end of the active period, so we add extra week to the duration
-        // as in all normal cases users will not be able to claim oSAIL until the end of the week.
-        let o_sail_expiry_date = minter.active_period +
+        // oSAIL is distributed until the end of the active period, so we add extra week to the duration
+        // as in some cases users will not be able to claim oSAIL until the end of the week.
+        let o_sail_expiry_date = distribution::common::current_period(clock) +
             distribution::common::o_sail_duration() +
             distribution::common::week();
         minter.o_sail_expiry_dates.add(o_sail_type, o_sail_expiry_date);
@@ -707,7 +708,7 @@ module distribution::minter {
             minter.active_period + distribution::common::week() < distribution::common::current_timestamp(clock),
             EUpdatePeriodNotFinishedYet
         );
-        minter.update_o_sail_token(epoch_o_sail_treasury_cap);
+        minter.update_o_sail_token(epoch_o_sail_treasury_cap, clock);
         let (current_epoch_emissions, next_epoch_emissions) = minter.calculate_epoch_emissions();
         let rebase_growth = calculate_rebase_growth(
             current_epoch_emissions,

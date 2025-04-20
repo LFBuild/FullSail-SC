@@ -902,7 +902,7 @@ module distribution::voter {
     ///
     /// # Emits
     /// * `EventDistributeGauge` with information about distributed rewards
-    public fun distribute_gauge<CoinTypeA, CoinTypeB, RewardCoinType>(
+    public fun distribute_gauge<CoinTypeA, CoinTypeB, EpochOSail>(
         voter: &mut Voter,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
@@ -910,7 +910,7 @@ module distribution::voter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): u64 {
-        assert!(voter.is_valid_epoch_token<RewardCoinType>(), EDistributeGaugeInvalidToken);
+        assert!(voter.is_valid_epoch_token<EpochOSail>(), EDistributeGaugeInvalidToken);
 
         let gauge_id = into_gauge_id(
             object::id<distribution::gauge::Gauge<CoinTypeA, CoinTypeB>>(gauge)
@@ -922,8 +922,9 @@ module distribution::voter {
             ) && gauge_represent.gauger_id == gauge_id.id,
             EDistributeGaugeInvalidGaugeRepresent
         );
-        let claimable_balance = voter.extract_claimable_for<RewardCoinType>(distribution_config, gauge_id.id);
+        let claimable_balance = voter.extract_claimable_for<EpochOSail>(distribution_config, gauge_id.id);
         let balance_value = claimable_balance.value();
+        gauge.notify_epoch_token<CoinTypeA, CoinTypeB, EpochOSail>(pool, &voter.voter_cap, clock, ctx);
         let (fee_reward_a, fee_reward_b) = gauge.notify_reward(&voter.voter_cap, pool, claimable_balance, clock, ctx);
         let fee_a_amount = fee_reward_a.value<CoinTypeA>();
         let fee_b_amount = fee_reward_b.value<CoinTypeB>();
@@ -1673,8 +1674,12 @@ module distribution::voter {
             let pool_votes = *voter.votes.borrow(lock_id).borrow(pool_id);
             let gauge_id = *voter.pool_to_gauger.borrow(pool_id);
             if (pool_votes != 0) {
-                let current_epoch_token = voter.get_current_epoch_token();
-                voter.update_for_internal(distribution_config, gauge_id, current_epoch_token);
+                if (voter.current_epoch_token.is_some()) {
+                    // it only makes sence to update indices if some rewards were distributed
+                    // i.e. current_epoch_token should be set
+                    let current_epoch_token = voter.get_current_epoch_token();
+                    voter.update_for_internal(distribution_config, gauge_id, current_epoch_token);
+                };
                 let weight = voter.weights.remove(gauge_id) - pool_votes;
                 voter.weights.add(gauge_id, weight);
                 voter.votes.borrow_mut(lock_id).remove(pool_id);
@@ -1736,7 +1741,6 @@ module distribution::voter {
         let mut gauge = distribution::gauge::create<CoinTypeA, CoinTypeB>(
             distribution_config,
             pool_id,
-            voter.get_current_epoch_token(),
             ctx
         );
         let gauge_cap = gauge_create_cap.create_gauge_cap(
@@ -2091,8 +2095,12 @@ module distribution::voter {
                 abort EVoteInternalPoolAreadyVoted
             };
             assert!(votes_for_pool > 0, EVoteInternalWeightResultedInZeroVotes);
-            let current_epoch_token = voter.get_current_epoch_token();
-            voter.update_for_internal(distribution_config, gauge_id, current_epoch_token);
+            if (voter.current_epoch_token.is_some()) {
+                // it only makes sence to update indices if some rewards were distributed
+                // i.e. current_epoch_token should be set
+                let current_epoch_token = voter.get_current_epoch_token();
+                voter.update_for_internal(distribution_config, gauge_id, current_epoch_token);
+            };
             if (!voter.pool_vote.contains(lock_id)) {
                 voter.pool_vote.add(lock_id, std::vector::empty<PoolID>());
             };

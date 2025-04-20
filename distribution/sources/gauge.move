@@ -140,7 +140,8 @@ module distribution::gauge {
         reserves_balance: Bag,
         reserves_all_tokens: u64,
         // distribution_growth is also calculated by all tokens
-        current_epoch_token: TypeName,
+        // current epoch token may not be set if gauge has not participated in any distributions
+        current_epoch_token: Option<TypeName>,
         fee_a: Balance<CoinTypeA>,
         fee_b: Balance<CoinTypeB>,
         voter: Option<ID>,
@@ -274,7 +275,6 @@ module distribution::gauge {
     public(package) fun create<CoinTypeA, CoinTypeB>(
         distribution_config: &distribution::distribution_config::DistributionConfig,
         pool_id: ID,
-        start_epoch_coin: TypeName,
         ctx: &mut TxContext
     ): Gauge<CoinTypeA, CoinTypeB> {
         let id = object::new(ctx);
@@ -294,7 +294,7 @@ module distribution::gauge {
             staked_position_infos: table::new<ID, PositionStakeInfo>(ctx),
             reserves_balance: bag::new(ctx),
             reserves_all_tokens: 0,
-            current_epoch_token: start_epoch_coin,
+            current_epoch_token: option::none(),
             fee_a: balance::zero<CoinTypeA>(),
             fee_b: balance::zero<CoinTypeB>(),
             voter: option::none<ID>(),
@@ -505,7 +505,7 @@ module distribution::gauge {
 
         let coin_type = type_name::get<RewardCoinType>();
 
-        let current_growth_global = if (coin_type == gauge.current_epoch_token) {
+        let current_growth_global = if (&coin_type == gauge.borrow_epoch_token()) {
             let mut growth_global = pool.get_fullsail_distribution_growth_global();
             let time_since_last_update = time - pool.get_fullsail_distribution_last_updated();
 
@@ -748,12 +748,14 @@ module distribution::gauge {
         assert!(pool.get_fullsail_distribution_reserve() == 0, ENotifyEpochTokenPrevRewardsNotFinished);
 
         let coin_type = type_name::get<RewardCoinType>();
-        let prev_epoch_token = gauge.current_epoch_token;
+        if (gauge.current_epoch_token.is_some()) {
+            let prev_epoch_token = gauge.current_epoch_token.extract();
 
-        // last growth_global that corresponds to the **previous** token.
-        gauge.growth_global_by_token.push_back(prev_epoch_token, pool.get_fullsail_distribution_growth_global());
+            // last growth_global that corresponds to the **previous** token.
+            gauge.growth_global_by_token.push_back(prev_epoch_token, pool.get_fullsail_distribution_growth_global());
+        };
         // Update TokenName state
-        gauge.current_epoch_token = coin_type;
+        gauge.current_epoch_token.fill(coin_type);
 
         let event = EventNotifyEpochToken {
             sender: object::id_from_address(tx_context::sender(ctx)),
@@ -1064,7 +1066,13 @@ module distribution::gauge {
     ): bool {
         let coin_type = type_name::get<RewardCoinType>();
 
-        gauge.current_epoch_token == coin_type
+        gauge.current_epoch_token.borrow() == &coin_type
+    }
+
+    public fun borrow_epoch_token<CoinTypeA, CoinTypeB>(
+        gauge: &Gauge<CoinTypeA, CoinTypeB>,
+    ): &TypeName {
+        gauge.current_epoch_token.borrow()
     }
 
 

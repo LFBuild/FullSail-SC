@@ -306,37 +306,27 @@ fun test_distribution_setup_utility() {
 
 // Activates the minter for a specific oSAIL epoch.
 // Requires the minter, voter, rd, and admin cap to be set up.
-public fun activate_minter<SailCoinType, OSailCoinType>( // Changed to public
+public fun activate_minter<SailCoinType>( // Changed to public
     scenario: &mut test_scenario::Scenario,
-    initial_o_sail_supply: u64,
     clock: &mut Clock
-): Coin<OSailCoinType> { // Returns the minted oSAIL
+) { // Returns the minted oSAIL
 
     // increment clock to make sure the activated_at field is not and epoch start is not 0
-    clock.increment_for_testing(7 * 24 * 60 * 60 * 1000);
+    clock.increment_for_testing(7 * 24 * 60 * 60 * 1000 + 1000);
     let mut minter_obj = scenario.take_shared<Minter<SailCoinType>>();
-    let mut voter = scenario.take_shared<Voter>();
     let mut rd = scenario.take_shared<RewardDistributor<SailCoinType>>();
     let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-    // Create TreasuryCap for the specific OSailCoinType
-    let mut o_sail_cap = coin::create_treasury_cap_for_testing<OSailCoinType>(scenario.ctx());
-    let initial_supply = o_sail_cap.mint(initial_o_sail_supply, scenario.ctx());
 
-    minter_obj.activate<SailCoinType, OSailCoinType>(
-        &mut voter,
+    minter_obj.activate<SailCoinType>(
         &minter_admin_cap,
         &mut rd,
-        o_sail_cap,
         clock,
         scenario.ctx()
     );
 
     test_scenario::return_shared(minter_obj);
-    test_scenario::return_shared(voter);
     test_scenario::return_shared(rd);
     scenario.return_to_sender(minter_admin_cap);
-
-    initial_supply // Return the created oSAIL coin
 }
 
 // Whitelists or de-whitelists a pool in the Minter for oSAIL exercising.
@@ -800,10 +790,11 @@ public fun deposit_position<CoinTypeA, CoinTypeB>(
 }
 
 // Updates the minter period, sets the next period token to OSailCoinTypeNext
-public fun update_minter_period<SailCoinType, OSailCoinTypeCurrent, OSailCoinTypeNext>(
+public fun update_minter_period<SailCoinType, OSailCoinType>(
     scenario: &mut test_scenario::Scenario,
+    initial_o_sail_supply: u64,
     clock: &Clock,
-) {
+): Coin<OSailCoinType> {
         let mut minter = scenario.take_shared<Minter<SailCoinType>>();
         let mut voter = scenario.take_shared<Voter>();
         let voting_escrow = scenario.take_shared<VotingEscrow<SailCoinType>>();
@@ -811,15 +802,16 @@ public fun update_minter_period<SailCoinType, OSailCoinTypeCurrent, OSailCoinTyp
         let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
 
         // Create TreasuryCap for OSAIL2 for the next epoch
-        let o_sail2_cap = coin::create_treasury_cap_for_testing<OSailCoinTypeNext>(scenario.ctx());
+        let mut o_sail_cap = coin::create_treasury_cap_for_testing<OSailCoinType>(scenario.ctx());
+        let initial_supply = o_sail_cap.mint(initial_o_sail_supply, scenario.ctx());
 
-        minter::update_period<SailCoinType, OSailCoinTypeCurrent, OSailCoinTypeNext>(
+        minter::update_period<SailCoinType, OSailCoinType>(
             &minter_admin_cap,
             &mut minter,
             &mut voter,
             &voting_escrow,
             &mut reward_distributor,
-            o_sail2_cap, 
+            o_sail_cap, 
             clock,
             scenario.ctx()
         );
@@ -830,4 +822,6 @@ public fun update_minter_period<SailCoinType, OSailCoinTypeCurrent, OSailCoinTyp
         test_scenario::return_shared(voting_escrow);
         test_scenario::return_shared(reward_distributor);
         scenario.return_to_sender(minter_admin_cap);    
+
+        initial_supply
 }
