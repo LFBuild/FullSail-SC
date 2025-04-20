@@ -760,6 +760,42 @@ fun test_multi_epoch_reward_distribution() {
         test_scenario::return_shared(gauge);
     };
 
+    // Claim all rewards
+    scenario.next_tx(lp);
+    {
+        let mut gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
+        let mut pool = scenario.take_shared<Pool<USD1, SAIL>>();
+
+        gauge.get_position_reward<USD1, SAIL, OSAIL1>(
+            &mut pool,
+            lp_position_id,
+            &clock,
+            scenario.ctx()
+        );
+
+        gauge.get_position_reward<USD1, SAIL, OSAIL2>(
+            &mut pool,
+            lp_position_id,
+            &clock,
+            scenario.ctx()
+        );
+
+        test_scenario::return_shared(pool);
+        test_scenario::return_shared(gauge);
+    };
+
+    // Verify all rewards were claimed
+    scenario.next_tx(lp);
+    {
+        let reward1 = scenario.take_from_sender<Coin<OSAIL1>>();
+        assert!(first_epoch_emissions - reward1.value() <= 2, 3);
+        coin::burn_for_testing(reward1);
+
+        let reward2 = scenario.take_from_sender<Coin<OSAIL2>>();
+        assert!(second_epoch_emissions - reward2.value() <= 2, 4);
+        coin::burn_for_testing(reward2);
+    };
+
     clock::destroy_for_testing(clock);
     scenario.end();
 }

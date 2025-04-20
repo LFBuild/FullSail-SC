@@ -1140,11 +1140,6 @@ module distribution::gauge {
         let current_time = clock.timestamp_ms() / 1000;
         let (amount_earned, growth_inside) = gauge.earned_internal<CoinTypeA, CoinTypeB, RewardCoinType>(pool, position_id, current_time);
         let reward_profile = gauge.rewards.borrow_mut(position_id);
-        if (reward_profile.last_update_time >= current_time) {
-            let amount_to_return = reward_profile.amount;
-            reward_profile.amount = 0;
-            return gauge.reserves_split<CoinTypeA, CoinTypeB, RewardCoinType>(amount_to_return)
-        };
         pool.update_fullsail_distribution_growth_global(gauge.gauge_cap.borrow(), clock);
         reward_profile.last_update_time = current_time;
         reward_profile.amount = reward_profile.amount + amount_earned;
