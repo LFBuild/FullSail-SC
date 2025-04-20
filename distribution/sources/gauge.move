@@ -52,13 +52,12 @@ module distribution::gauge {
     const EEarnedByPositionGaugeDoesNotMatchPool: u64 = 9223372693985230856;
     const EEarnedByPositionNotDepositedPosition: u64 = 9223372698279936004;
 
-    const EEarnedPrevTokenNotClaimed: u64 = 8639238881583238000;
-
     const EGetPositionRewardGaugeDoesNotMatchPool: u64 = 9223373428424638472;
     const EGetPositionRewardPositionNotStaked: u64 = 9223373432719343620;
 
     const EGetRewardGaugeDoesNotMatchPool: u64 = 9223373454194442248;
     const EGetRewardSenderHasNoDepositedPositions: u64 = 9223373462784638988;
+    const EGetRewardPrevTokenNotClaimed: u64 = 8639238881583238000;
 
     const EGetRewardForGaugeDoesNotMatchPool: u64 = 9223373510029017096;
     const EGetRewardForRecipientHasNoPositions: u64 = 9223373514324246540;
@@ -1137,6 +1136,8 @@ module distribution::gauge {
         position_id: ID,
         clock: &sui::clock::Clock
     ): Balance<RewardCoinType> {
+        assert!(gauge.prev_reward_claimed<CoinTypeA, CoinTypeB, RewardCoinType>(pool, position_id), EGetRewardPrevTokenNotClaimed);
+        
         let current_time = clock.timestamp_ms() / 1000;
         let (amount_earned, growth_inside) = gauge.earned_internal<CoinTypeA, CoinTypeB, RewardCoinType>(pool, position_id, current_time);
         let reward_profile = gauge.rewards.borrow_mut(position_id);
@@ -1147,6 +1148,37 @@ module distribution::gauge {
         reward_profile.growth_inside = growth_inside;
         reward_profile.amount = 0;
         gauge.reserves_split<CoinTypeA, CoinTypeB, RewardCoinType>(amount_to_return)
+    }
+
+
+    public fun prev_reward_claimed<CoinTypeA, CoinTypeB, RewardCoinType>(
+        gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        position_id: ID,
+    ): bool {
+        let coin_type = type_name::get<RewardCoinType>();
+        let position = gauge.staked_positions.borrow(position_id);
+        let (lower_tick, upper_tick) = position.tick_range();
+        let prev_coin_type_opt: &Option<TypeName> = gauge.growth_global_by_token.prev(coin_type);
+        let prev_coin_growth_global: u128 = if (prev_coin_type_opt.is_some()) {
+            *gauge.growth_global_by_token.borrow(*prev_coin_type_opt.borrow())
+        } else {
+            0_u128
+        };
+        let prev_token_growth_inside = if (prev_coin_growth_global > 0) {
+            // get_fullsail_distribution_growth_inside replaces prev_coin_growth_global with 0 if prev_coin_growth_global is 0
+            pool.get_fullsail_distribution_growth_inside(
+                lower_tick,
+                upper_tick,
+                prev_coin_growth_global
+            )
+        } else {
+            0_u128
+        };
+        let claimed_all_tokens_growth_inside = gauge.rewards.borrow(position_id).growth_inside;
+        let prev_claimed = claimed_all_tokens_growth_inside >= prev_token_growth_inside;
+
+        prev_claimed
     }
 
     /// Withdraws a staked position from the gauge and returns it to its owner.
