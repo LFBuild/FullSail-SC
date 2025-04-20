@@ -156,7 +156,7 @@ fun test_o_sail_single_epoch_distribute() {
         test_scenario::return_shared(minter);
     };
 
-    // Update Minter Period with OSAIL2
+    // Update Minter Period with OSAIL1
     scenario.next_tx(admin);
     {
         let o_sail1_initial_supply = setup::update_minter_period<SAIL, OSAIL1>(
@@ -329,7 +329,233 @@ fun test_o_sail_single_epoch_distribute() {
         
         coin::burn_for_testing(reward);
     };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_single_staker_reward_over_time() {
+    let admin = @0xB1;
+    let user = @0xB2; // User with the lock
+    let lp1 = @0xB3;  // Liquidity Provider
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    let lock_amount = 50_000;
+    let lock_duration = 182; // ~6 months
+
+    // --- Initial Setup --- 
+    full_setup_with_lock(
+        &mut scenario, 
+        admin, 
+        user, 
+        &mut clock, 
+        lock_amount, 
+        lock_duration
+    );
+
+    // advance time to make sure that voting started
+    clock::increment_for_testing(&mut clock, 10 * 60 * 60 * 1000);
+
+    // --- Tx: User votes for the pool ---
+    scenario.next_tx(user);
+    {
+        let mut voter = scenario.take_shared<Voter>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let pool = scenario.take_shared<Pool<USD1, SAIL>>();
+        let pool_id = object::id(&pool);
+        let lock = scenario.take_from_sender<Lock>();
+
+        voter.vote(
+            &mut ve,
+            &distribution_config,
+            &lock,
+            vector[pool_id],
+            vector[10000], // 100% weight
+            &clock,
+            scenario.ctx()
+        );
+
+        test_scenario::return_shared(voter);
+        test_scenario::return_shared(ve);
+        test_scenario::return_shared(distribution_config);
+        test_scenario::return_shared(pool);
+        scenario.return_to_sender(lock);
+    };
+
+    // --- Get Expected Emissions for Epoch 1 ---
+    let epoch1_emissions: u64;
+    scenario.next_tx(admin); // Read minter state before update
+    {
+        let minter = scenario.take_shared<Minter<SAIL>>();
+        let (current_emissions, _next_emissions) = minter::calculate_epoch_emissions(&minter);
+        epoch1_emissions = current_emissions; // Store the emissions for the upcoming epoch
+        test_scenario::return_shared(minter);
+    };
+
+    // --- Advance Time to Epoch 1 & Update Period ---
+    clock::increment_for_testing(&mut clock, WEEK - (10 * 60 * 60 * 1000)); // Advance to next epoch
+    scenario.next_tx(admin);
+    {
+        let initial_o_sail_supply = setup::update_minter_period<SAIL, OSAIL1>(
+            &mut scenario,
+            1_000_000,
+            &clock
+        );
+        coin::burn_for_testing(initial_o_sail_supply);
+    };
+
+    // --- Tx: Distribute Gauge Rewards (OSAIL1) ---
+    scenario.next_tx(admin); 
+    {
+        let mut voter = scenario.take_shared<Voter>();
+        let mut gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
+        let mut pool = scenario.take_shared<Pool<USD1, SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+
+        // Distribute OSAIL1 rewards to the gauge based on the user's vote
+        voter.distribute_gauge<USD1, SAIL, OSAIL1>(
+            &distribution_config,
+            &mut gauge,
+            &mut pool,
+            &clock,
+            scenario.ctx()
+        );
+
+        test_scenario::return_shared(voter);
+        test_scenario::return_shared(gauge);
+        test_scenario::return_shared(pool);
+        test_scenario::return_shared(distribution_config);
+    };
+
+    // --- Tx: lp1 Creates and Stakes Position ---
+    let position_tick_lower = tick_math::min_tick().as_u32();
+    let position_tick_upper = tick_math::max_tick().as_u32();
+    let position_liquidity = 1_000_000_000u128;
+    let lp1_position_id: ID;
     
+    // First create the position
+    scenario.next_tx(lp1);
+    {
+        setup::create_position_with_liquidity<USD1, SAIL>(
+            &mut scenario,
+            lp1, // Position owner
+            position_tick_lower,
+            position_tick_upper,
+            position_liquidity,
+            &clock
+        );
+    };
+    
+    // Then deposit/stake the position
+    scenario.next_tx(lp1);
+    {
+        lp1_position_id = setup::deposit_position<USD1, SAIL>(
+            &mut scenario,
+            &clock
+        );
+    };
+
+    // --- Advance time by HALF a week ---
+    // We have added extra 1000ms during minter activation, so now halv of the period is 500ms shorter
+    clock::increment_for_testing(&mut clock, WEEK / 2 - 500);
+    let expected_first_half_reward = epoch1_emissions / 2;
+    let expected_second_half_reward: u64;
+
+    // --- Verify Earned Rewards After Half Week ---
+    scenario.next_tx(lp1); // lp1 checks their rewards
+    {
+        let pool = scenario.take_shared<Pool<USD1, SAIL>>();
+        let gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
+
+        let earned_half = gauge.earned_by_position<USD1, SAIL, OSAIL1>(
+            &pool,
+            lp1_position_id,
+            &clock
+        );
+        
+        let diff_first_half = expected_first_half_reward - earned_half;
+        assert!(diff_first_half <= epoch1_emissions / 1_000_000, 1); // Allow rounding by 1/1000000
+
+        expected_second_half_reward = epoch1_emissions - earned_half;
+        
+        test_scenario::return_shared(pool);
+        test_scenario::return_shared(gauge);
+    };
+
+    // claim half reward
+    scenario.next_tx(lp1);
+    {
+        let mut gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
+        let mut pool = scenario.take_shared<Pool<USD1, SAIL>>();
+        gauge.get_position_reward<USD1, SAIL, OSAIL1>(
+            &mut pool,
+            lp1_position_id,
+            &clock,
+            scenario.ctx()
+        );
+
+        test_scenario::return_shared(pool);
+        test_scenario::return_shared(gauge);
+    };
+
+    // verify half reward was claimed
+    scenario.next_tx(lp1);
+    {
+        let reward = scenario.take_from_sender<Coin<OSAIL1>>();
+        assert!(expected_first_half_reward - reward.value() <= epoch1_emissions / 1_000_000, 2);
+        
+        coin::burn_for_testing(reward);
+    };
+
+    // --- Advance time by the OTHER HALF week ---
+    clock::increment_for_testing(&mut clock, WEEK);
+
+    // --- Verify Earned Rewards After Full Week ---
+    scenario.next_tx(lp1);
+    {
+        let pool = scenario.take_shared<Pool<USD1, SAIL>>();
+        let gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
+
+        let earned_full = gauge.earned_by_position<USD1, SAIL, OSAIL1>(
+            &pool,
+            lp1_position_id,
+            &clock
+        );
+        let diff_full = expected_second_half_reward - earned_full;
+        assert!(diff_full <= 2, 2); // Allow rounding by 1
+
+        test_scenario::return_shared(pool);
+        test_scenario::return_shared(gauge);
+    };
+
+    // claim second half reward
+    scenario.next_tx(lp1);
+    {
+        let mut gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
+        let mut pool = scenario.take_shared<Pool<USD1, SAIL>>();
+        gauge.get_position_reward<USD1, SAIL, OSAIL1>(
+            &mut pool,
+            lp1_position_id,
+            &clock,
+            scenario.ctx()
+        );
+
+        test_scenario::return_shared(pool);
+        test_scenario::return_shared(gauge);
+    };
+
+    // verify second half reward was claimed
+    scenario.next_tx(lp1);
+    {
+        let reward = scenario.take_from_sender<Coin<OSAIL1>>();
+        assert!(expected_second_half_reward - reward.value() <= 2, 3);
+        
+        coin::burn_for_testing(reward);
+    };
+
     clock::destroy_for_testing(clock);
     scenario.end();
 }
