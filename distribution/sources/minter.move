@@ -368,13 +368,13 @@ module distribution::minter {
         minter.epoch_count
     }
 
-    /// Returns the current epoch emissions amount.
+    /// Returns the next epoch emissions amount.
     ///
     /// # Arguments
     /// * `minter` - The minter instance to query
     ///
     /// # Returns
-    /// Current epoch emissions amount
+    /// Next epoch emissions amount
     public fun epoch_emissions<SailCoinType>(minter: &Minter<SailCoinType>): u64 {
         minter.epoch_emissions
     }

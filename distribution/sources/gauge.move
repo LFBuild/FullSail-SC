@@ -149,6 +149,7 @@ module distribution::gauge {
         period_finish: u64,
         reward_rate_by_epoch: Table<u64, u128>,
         // Token with TypeName is distributed in interval (growth_global_by_token.prev(token_type) || 0, growth_global_by_token.borrow(token_type)]
+        // growth_global_by_token.borrow(current_epoch_token) is always zero. This element is used to know order of tokens
         growth_global_by_token: LinkedTable<TypeName, u128>,
         stakes: Table<address, vector<ID>>,
         rewards: Table<ID, RewardProfile>,
@@ -439,6 +440,9 @@ module distribution::gauge {
             gauge.check_gauger_pool(pool),
             EEarnedByAccountGaugeDoesNotMatchPool
         );
+        if (!gauge.growth_global_by_token.contains(type_name::get<RewardCoinType>())) {
+            return 0
+        };
         let position_ids = gauge.stakes.borrow(account);
         let mut i = 0;
         let mut total_earned = 0;
@@ -478,6 +482,9 @@ module distribution::gauge {
             gauge.staked_positions.contains(position_id),
             EEarnedByPositionNotDepositedPosition
         );
+        if (!gauge.growth_global_by_token.contains(type_name::get<RewardCoinType>())) {
+            return 0
+        };
         let (earned, _) = gauge.earned_internal<CoinTypeA, CoinTypeB, RewardCoinType>(pool, position_id, clock.timestamp_ms() / 1000);
 
         earned
@@ -504,7 +511,7 @@ module distribution::gauge {
     ): (u64, u128) {
 
         let coin_type = type_name::get<RewardCoinType>();
-
+        
         let current_growth_global = if (&coin_type == gauge.borrow_epoch_token()) {
             let mut growth_global = pool.get_fullsail_distribution_growth_global();
             let time_since_last_update = time - pool.get_fullsail_distribution_last_updated();
@@ -750,12 +757,14 @@ module distribution::gauge {
         let coin_type = type_name::get<RewardCoinType>();
         if (gauge.current_epoch_token.is_some()) {
             let prev_epoch_token = gauge.current_epoch_token.extract();
+            gauge.growth_global_by_token.remove(prev_epoch_token); // remove zero from the end
 
             // last growth_global that corresponds to the **previous** token.
             gauge.growth_global_by_token.push_back(prev_epoch_token, pool.get_fullsail_distribution_growth_global());
         };
         // Update TokenName state
         gauge.current_epoch_token.fill(coin_type);
+        gauge.growth_global_by_token.push_back(coin_type, 0); // add zero to the end
 
         let event = EventNotifyEpochToken {
             sender: object::id_from_address(tx_context::sender(ctx)),

@@ -37,7 +37,6 @@ public fun full_setup_with_lock(
     admin: address,
     user: address,
     clock: &mut Clock, // Make clock mutable as activate_minter needs it
-    initial_o_sail_for_user: u64, 
     lock_amount: u64,
     lock_duration_days: u64,
 ) {
@@ -70,22 +69,6 @@ public fun full_setup_with_lock(
         setup::activate_minter<SAIL>(scenario, clock);
     };
 
-    clock.increment_for_testing(WEEK);
-
-    // Tx 5: Update Minter Period to OSAIL1
-    scenario.next_tx(admin);
-    {
-        let o_sail1_initial_supply = setup::update_minter_period<SAIL, OSAIL1>(
-            scenario,
-            initial_o_sail_for_user,
-            clock
-        );
-        if (initial_o_sail_for_user > 0) {
-            transfer::public_transfer(o_sail1_initial_supply, user);
-        } else {
-            o_sail1_initial_supply.destroy_zero();
-        }
-    };
     // Tx 5: Create Gauge for the USD1/SAIL pool
     scenario.next_tx(admin); // Admin needs caps to create gauge
     {
@@ -121,7 +104,6 @@ fun test_o_sail_single_epoch_distribute() {
     let ms_in_week = 7 * 24 * 60 * 60 * 1000;
     let gap_to_vote = 60 * 60 * 1000 + 1000;
 
-    let initial_o_sail = 100_000;
     let lock_amount = 50_000;
     let lock_duration = 182; // ~6 months
 
@@ -130,7 +112,6 @@ fun test_o_sail_single_epoch_distribute() {
         admin, 
         user, 
         &mut clock, 
-        initial_o_sail, 
         lock_amount, 
         lock_duration
     );
@@ -167,114 +148,138 @@ fun test_o_sail_single_epoch_distribute() {
 
     clock.increment_for_testing(ms_in_week - gap_to_vote + 1000);
 
+    let epoch_emissions: u64;
+    scenario.next_tx(admin);
+    {
+        let minter = scenario.take_shared<Minter<SAIL>>();
+        epoch_emissions = minter.epoch_emissions();
+        test_scenario::return_shared(minter);
+    };
+
     // Update Minter Period with OSAIL2
     scenario.next_tx(admin);
     {
-        let o_sail2_initial_supply = setup::update_minter_period<SAIL, OSAIL2>(
+        let o_sail1_initial_supply = setup::update_minter_period<SAIL, OSAIL1>(
             &mut scenario,
-            0,
+            lock_amount, // to make total supply = total locked, cos sail is minted outside of the minter
             &clock
         );
-        o_sail2_initial_supply.destroy_zero();
+        coin::burn_for_testing(o_sail1_initial_supply);
     };
 
-    // // distribute gauge
-    // scenario.next_tx(admin);
-    // {
-    //     let mut voter = scenario.take_shared<Voter>();
-    //     let mut gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
-    //     let mut pool = scenario.take_shared<Pool<USD1, SAIL>>();
-    //     let distribution_config = scenario.take_shared<DistributionConfig>();
+    // distribute gauge
+    scenario.next_tx(admin);
+    {
+        let mut voter = scenario.take_shared<Voter>();
+        let mut gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
+        let mut pool = scenario.take_shared<Pool<USD1, SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
 
-    //     voter.distribute_gauge<USD1, SAIL, OSAIL1>(
-    //         &distribution_config,
-    //         &mut gauge,
-    //         &mut pool,
-    //         &clock,
-    //         scenario.ctx()
-    //     );
+        voter.distribute_gauge<USD1, SAIL, OSAIL1>(
+            &distribution_config,
+            &mut gauge,
+            &mut pool,
+            &clock,
+            scenario.ctx()
+        );
 
-    //     test_scenario::return_shared(voter);
-    //     test_scenario::return_shared(gauge);
-    //     test_scenario::return_shared(pool);
-    //     test_scenario::return_shared(distribution_config);
-    // };
+        test_scenario::return_shared(voter);
+        test_scenario::return_shared(gauge);
+        test_scenario::return_shared(pool);
+        test_scenario::return_shared(distribution_config);
+    };
 
-    // // --- Add and Stake Positions ---
-    // let position_tick_lower = tick_math::min_tick().as_u32();
-    // let position_tick_upper = tick_math::max_tick().as_u32();
-    // let position_liquidity = 1_000_000_000u128; // Example liquidity
+    // --- Add and Stake Positions ---
+    let position_tick_lower = tick_math::min_tick().as_u32();
+    let position_tick_upper = tick_math::max_tick().as_u32();
+    let position_liquidity = 1_000_000_000u128; // Example liquidity
 
-    // // lp1 creates and stakes position
-    // scenario.next_tx(lp1);
-    // {
-    //     setup::create_position_with_liquidity<USD1, SAIL>(
-    //         &mut scenario,
-    //         lp1, // Staked record associated with lp1
-    //         position_tick_lower,
-    //         position_tick_upper,
-    //         position_liquidity,
-    //         &clock
-    //     );
-    // };
+    // lp1 creates and stakes position
+    scenario.next_tx(lp1);
+    {
+        setup::create_position_with_liquidity<USD1, SAIL>(
+            &mut scenario,
+            lp1, // Staked record associated with lp1
+            position_tick_lower,
+            position_tick_upper,
+            position_liquidity,
+            &clock
+        );
+    };
 
-    // let lp1_position_id: ID;
+    let lp1_position_id: ID;
 
-    // // lp1 deposits position into gauge
-    // scenario.next_tx(lp1);
-    // {
-    //     lp1_position_id = setup::deposit_position<USD1, SAIL>(
-    //         &mut scenario,
-    //         &clock
-    //     );
-    // };
+    // lp1 deposits position into gauge
+    scenario.next_tx(lp1);
+    {
+        lp1_position_id = setup::deposit_position<USD1, SAIL>(
+            &mut scenario,
+            &clock
+        );
+    };
 
-    // // lp2 creates and stakes position
-    // scenario.next_tx(lp2);
-    // {
-    //     setup::create_position_with_liquidity<USD1, SAIL>(
-    //         &mut scenario,
-    //         lp2, // Staked record associated with lp2
-    //         position_tick_lower,
-    //         position_tick_upper,
-    //         position_liquidity,
-    //         &clock
-    //     );
-    // };
+    // lp2 creates and stakes position
+    scenario.next_tx(lp2);
+    {
+        setup::create_position_with_liquidity<USD1, SAIL>(
+            &mut scenario,
+            lp2, // Staked record associated with lp2
+            position_tick_lower,
+            position_tick_upper,
+            position_liquidity,
+            &clock
+        );
+    };
 
-    // let lp2_position_id: ID;
+    let lp2_position_id: ID;
 
-    // // lp2 deposits position into gauge
-    // scenario.next_tx(lp2);
-    // {
-    //     lp2_position_id = setup::deposit_position<USD1, SAIL>(
-    //         &mut scenario,
-    //         &clock
-    //     );
-    // };
+    // lp2 deposits position into gauge
+    scenario.next_tx(lp2);
+    {
+        lp2_position_id = setup::deposit_position<USD1, SAIL>(
+            &mut scenario,
+            &clock
+        );
+    };
 
-    // // advance time to make lp's earn their rewards
-    // clock.increment_for_testing(ms_in_week);
+    // advance time to make lp's earn their rewards
+    clock.increment_for_testing(ms_in_week);
 
 
-    // // --- Optional Verification Steps ---
-    // // Verify pool has correct total staked liquidity
-    // scenario.next_tx(lp1); // Any user can read shared state
-    // {
-    //     let pool = scenario.take_shared<Pool<USD1, SAIL>>();
-    //     let gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
+    scenario.next_tx(lp1); // Any user can read shared state
+    {
+        let pool = scenario.take_shared<Pool<USD1, SAIL>>();
+        let gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
+        let minter = scenario.take_shared<Minter<SAIL>>();
+        let expected_lp1_earned = epoch_emissions / 2;
+        let expected_lp2_earned = epoch_emissions / 2;
+        std::debug::print(&epoch_emissions);
 
-    //     let earned = gauge.earned_by_position<USD1, SAIL, OSAIL1>(
-    //         &pool,
-    //         lp1_position_id,
-    //         &clock
-    //     );
+        let earned_lp1 = gauge.earned_by_position<USD1, SAIL, OSAIL1>(
+            &pool,
+            lp1_position_id,
+            &clock
+        );
+        let earned_lp2 = gauge.earned_by_position<USD1, SAIL, OSAIL1>(
+            &pool,
+            lp2_position_id,
+            &clock
+        );
 
-    //     std::debug::print(&earned);
+        let earned_lp2_nonepoch_coin = gauge.earned_by_position<USD1, SAIL, USD1>(
+            &pool,
+            lp2_position_id,
+            &clock
+        );
 
-    //     test_scenario::return_shared(pool);
-    //     test_scenario::return_shared(gauge);
-    // };
+        assert!(expected_lp1_earned - earned_lp1 <= 1, 1);
+        assert!(expected_lp2_earned - earned_lp2 <= 1, 2);
+        assert!(earned_lp2_nonepoch_coin == 0, 3);
+
+        test_scenario::return_shared(pool);
+        test_scenario::return_shared(gauge);
+        test_scenario::return_shared(minter);
+    };
 
     clock::destroy_for_testing(clock);
     scenario.end();
