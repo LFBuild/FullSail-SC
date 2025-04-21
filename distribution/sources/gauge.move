@@ -209,7 +209,7 @@ module distribution::gauge {
         gauge: &mut Gauge<CoinTypeA, CoinTypeB, SailCoinType>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>
     ): (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>) {
-        let weekCoinPerSecond = clmm_pool::config::week();
+        let weekCoinPerSecond = distribution::common::week();
         let (fee_a, fee_b) = pool.collect_fullsail_distribution_gauger_fees(gauge.gauge_cap.borrow());
         if (fee_a.value<CoinTypeA>() > 0 || fee_b.value<CoinTypeB>() > 0) {
             let amount_a = gauge.fee_a.join<CoinTypeA>(fee_a);
@@ -463,7 +463,7 @@ module distribution::gauge {
     ): u64 {
         let time_since_last_update = time - pool.get_fullsail_distribution_last_updated();
         let mut current_growth_global = pool.get_fullsail_distribution_growth_global();
-        let distribution_reseve_x64 = (pool.get_fullsail_distribution_reserve() as u128) * 1 << 64;
+        let distribution_reseve_x64 = (pool.get_fullsail_distribution_reserve() as u128) * (1 << 64);
         let staked_liquidity = pool.get_fullsail_distribution_staked_liquidity();
         let should_update_growth = if (time_since_last_update >= 0) {
             if (distribution_reseve_x64 > 0) {
@@ -699,7 +699,7 @@ module distribution::gauge {
         clock: &sui::clock::Clock
     ) {
         let current_time = clock.timestamp_ms() / 1000;
-        let time_until_next_epoch = clmm_pool::config::epoch_next(current_time) - current_time;
+        let time_until_next_epoch = distribution::common::epoch_next(current_time) - current_time;
         pool.update_fullsail_distribution_growth_global(gauge.gauge_cap.borrow(), clock);
         let next_epoch_time = current_time + time_until_next_epoch;
         let total_amount = amount + pool.get_fullsail_distribution_rollover();
@@ -733,7 +733,7 @@ module distribution::gauge {
                 next_epoch_time
             );
         };
-        gauge.reward_rate_by_epoch.add(clmm_pool::config::epoch_start(current_time), gauge.reward_rate);
+        gauge.reward_rate_by_epoch.add(distribution::common::epoch_start(current_time), gauge.reward_rate);
         assert!(gauge.reward_rate != 0, ENotifyRewardAmountRewardRateZero);
         assert!(
             gauge.reward_rate <= integer_mate::full_math_u128::mul_div_floor(
@@ -917,16 +917,18 @@ module distribution::gauge {
         let current_time = clock.timestamp_ms() / 1000;
         let amount_earned = gauge.earned_internal(pool, position_id, current_time);
         let reward_profile = gauge.rewards.borrow_mut(position_id);
-        if (reward_profile.last_update_time >= current_time) {
+        if (reward_profile.last_update_time >= current_time && reward_profile.amount > 0) {
+            let reward_amount = reward_profile.amount;
             reward_profile.amount = 0;
-            return gauge.reserves_balance.split<SailCoinType>(reward_profile.amount)
+            return gauge.reserves_balance.split<SailCoinType>(reward_amount)
         };
         pool.update_fullsail_distribution_growth_global(gauge.gauge_cap.borrow(), clock);
         reward_profile.last_update_time = current_time;
         reward_profile.amount = reward_profile.amount + amount_earned;
         reward_profile.growth_inside = pool.get_fullsail_distribution_growth_inside(lower_tick, upper_tick, 0);
+        let reward_amount = reward_profile.amount;
         reward_profile.amount = 0;
-        gauge.reserves_balance.split<SailCoinType>(reward_profile.amount)
+        gauge.reserves_balance.split<SailCoinType>(reward_amount)
     }
 
     /// Withdraws a staked position from the gauge and returns it to its owner.
@@ -959,7 +961,7 @@ module distribution::gauge {
         };
         let position_stake_info = gauge.staked_position_infos.remove(position_id);
         assert!(position_stake_info.received, EWithdrawPositionNotReceivedPosition);
-        assert!(position_stake_info.from != tx_context::sender(ctx), EWithdrawPositionNotOwnerOfPosition);
+        assert!(position_stake_info.from == tx_context::sender(ctx), EWithdrawPositionNotOwnerOfPosition);
         if (position_stake_info.from != tx_context::sender(ctx)) {
             gauge.staked_position_infos.add(position_id, position_stake_info);
         } else {

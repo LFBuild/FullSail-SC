@@ -38,12 +38,10 @@ Notable dependencies:
 ### Initial deployment
 - Use the latest version of `sui` CLI.
 - Run the `build_all.sh` script to update the git deps of all the packages.
-- In each package set the `[addresses]` value for your package to `0x0` in the `Move.toml` file.
+- Run `reset_addresses.sh` to set the `[addresses]` value for each package to `0x0` in the `Move.toml` file.
 - Deploy all the packages in an order defined by dependency graph (see [Contract dependencies](#contract-dependencies)). 
 Use `sui client publish` command.
-- In each package restore the package address `[addresses]` section the `Move.toml` with the `original-published-id` after publishing.
-You can find the necessary address in the `Move.lock` in the section corresponding to the deployment environment. 
-This step is required to build the packages later.
+- Run `update_addresses.sh` to restore the package address `[addresses]` section in the `Move.toml` for each package with the `original-published-id` after publishing. WARNING the `update_addresses.sh` script supports only mainnet environment.
 
 ### Upgrading
 - When upgrading, you need to retrieve the UpgradeCap ID of your published package. Automated address management does not track your UpgradeCap.
@@ -68,11 +66,15 @@ This step is required to build the packages later.
 
 #### Publication transactions
 
-- [move_stl](https://suivision.xyz/txblock/DJSKVGhe4Zc27dbWHjq4QVyoXGxXePKTZJMahpxsKssf)
-- [integer_mate](https://suivision.xyz/txblock/7KCHahBXG6hfFMnRwNfnWg4Zy6QpWK5qK3cDgg7DcR8R)
-- [gauge_cap](https://suivision.xyz/txblock/EgSaGcfSMcqemH9QgcQrwquue4kbCWxEiHnfzTcnQwsP)
-- [clmm_pool](https://suivision.xyz/txblock/CuoZkRJNFEqZrA9oByC83BMdhxcHTeLpCaBPjQCyyUpA)
-- [distribution](https://suivision.xyz/txblock/CbKBgFnwjhEPemt7LCB9qmpXUEST5BUyyuUJVmapTMRe)
-- [integrate](https://suivision.xyz/txblock/Es3DqkbX1cibjToEmiWcd1awpAh763mb36amNAuAm3Xh)
+- [move_stl](https://suivision.xyz/txblock/D5d6rSAqCjEVm3v58sksyTRFMbDfUfHh6esgwsAivWTw)
+- [integer_mate](https://suivision.xyz/txblock/FPsTPKvEpKLB7huuvgxmDetSdUxUwUb6ZQTV6CwULHCp)
+- [gauge_cap](https://suivision.xyz/txblock/3zp6J98rVv9c6pDae4gHoRA1kyEeEg9c6w2X5Xqj9EK3)
+- [price_provider](https://suivision.xyz/txblock/J2hrKfrUhnmKJTAcWDrCF5B6VfHHaKZcDhXAnaXgEgiL)
+- [clmm_pool](https://suivision.xyz/txblock/5WincqGA4JxVFrx4jZLi2pJAGcDNwVfdPxVkKkPgLf4e)
+- [distribution](https://suivision.xyz/txblock/AbURt8dazp7U7pd84froyMREqzyg1pzURcYQtzHuqcvC)
+- [integrate](https://suivision.xyz/txblock/5oGNpGb5CfM1wFnmaoLovNsMDFjhX5sMQtBG3wjABEjd), [upgrade integrate](https://suivision.xyz/txblock/8YboNNJfhMPVVDshfDmCL6hc4P7nS2YorrY9CzzKkvzU)
 
-[Setup distribution tx](https://suivision.xyz/txblock/76dT6eHyzTiXR4fe14pzAASeEpq2FnX6DBkpcLATVBrQ)
+[Setup distribution tx](https://suivision.xyz/txblock/31N5n7ZHB5X6K1ZPaAtJUny4eEZUYbZJGbFoEqbSnVas)
+[Create gauge tx](https://suivision.xyz/txblock/2uLEzLu2JYCM2qqCbCNMgqayVCiT43tNEvbK4pPc425U)
+[Create gauge tx2](https://suivision.xyz/txblock/D3vc98r73mvJ7mmsPE2ucsARs8QqA2v5A6aTiy6q4a2H)
+[Activate minter tx](https://suivision.xyz/txblock/A6BNVhv4GG7AkniPBinLtrDak7y4um3CcX6ejAe3z7NK)

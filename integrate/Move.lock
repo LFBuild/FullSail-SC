@@ -2,7 +2,7 @@
 
 [move]
 version = 3
-manifest_digest = "2A4AF329D5539481CE30ED7BB4594085A87E19835F4DF974C53989D2A7B960AF"
+manifest_digest = "2A2F91AAB3763B104CB31392F2C725D1522B5DD243CA22BAFCC91BBC244E6A3E"
 deps_digest = "CAFAD8A7CF51067FB4358215BECB86BD100DD64E57C2AC8A7AE7D74B688F5965"
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -16,11 +16,11 @@ dependencies = [
 
 [[move.package]]
 id = "MoveStdlib"
-source = { git = "https://github.com/MystenLabs/sui.git", rev = "framework/testnet", subdir = "crates/sui-framework/packages/move-stdlib" }
+source = { git = "https://github.com/MystenLabs/sui.git", rev = "framework/mainnet", subdir = "crates/sui-framework/packages/move-stdlib" }
 
 [[move.package]]
 id = "Sui"
-source = { git = "https://github.com/MystenLabs/sui.git", rev = "framework/testnet", subdir = "crates/sui-framework/packages/sui-framework" }
+source = { git = "https://github.com/MystenLabs/sui.git", rev = "framework/mainnet", subdir = "crates/sui-framework/packages/sui-framework" }
 
 dependencies = [
   { id = "MoveStdlib", name = "MoveStdlib" },
@@ -28,7 +28,7 @@ dependencies = [
 
 [[move.package]]
 id = "clmm_pool"
-source = { local = "../clmm_pool" }
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "main", subdir = "clmm_pool" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -52,7 +52,7 @@ dependencies = [
 
 [[move.package]]
 id = "gauge_cap"
-source = { local = "../gauge_cap" }
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "main", subdir = "gauge_cap" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -60,7 +60,7 @@ dependencies = [
 
 [[move.package]]
 id = "integer_mate"
-source = { local = "../integer_mate" }
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "main", subdir = "integer_mate" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -68,7 +68,7 @@ dependencies = [
 
 [[move.package]]
 id = "move_stl"
-source = { local = "../move_stl" }
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "main", subdir = "move_stl" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -76,14 +76,14 @@ dependencies = [
 
 [[move.package]]
 id = "price_provider"
-source = { local = "../price_provider" }
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "main", subdir = "price_provider" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
 ]
 
 [move.toolchain-version]
-compiler-version = "1.46.0"
+compiler-version = "1.47.0"
 edition = "2024"
 flavor = "sui"
 
@@ -91,9 +91,9 @@ flavor = "sui"
 
 [env.mainnet]
 chain-id = "35834a8a"
-original-published-id = "0x60419b1cc364ee46b91dc26d7cb4d8e4ff69e06d9bffef513202cf8f9e71ca7e"
-latest-published-id = "0x60419b1cc364ee46b91dc26d7cb4d8e4ff69e06d9bffef513202cf8f9e71ca7e"
-published-version = "1"
+original-published-id = "0x1fa75c73c1083ff7a1761ca232fee792d0598552eee1a8f9dcb75690ca89eace"
+latest-published-id = "0x59634fbdc9eb9a972ec97e736a6bfb3aba99d68378de92802bc76c3bd68b1c01"
+published-version = "2"
 
 [env.testnet]
 chain-id = "4c78adac"
