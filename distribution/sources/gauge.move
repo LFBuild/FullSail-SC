@@ -385,6 +385,8 @@ module distribution::gauge {
             gauge.stakes.borrow_mut(sender).push_back(position_id);
         };
         let position_liquidity = position.liquidity();
+        let gauge_cap = gauge.gauge_cap.borrow();
+        pool.update_fullsail_distribution_growth_global(gauge_cap, clock);
         gauge.staked_positions.add(position_id, position);
         if (!gauge.rewards.contains(position_id)) {
             let new_reward_profile = RewardProfile {
@@ -401,7 +403,7 @@ module distribution::gauge {
         pool.mark_position_staked(gauge.gauge_cap.borrow(), position_id);
         gauge.staked_position_infos.borrow_mut(position_id).received = true;
         pool.stake_in_fullsail_distribution(
-            gauge.gauge_cap.borrow(),
+            gauge_cap,
             position_liquidity,
             lower_tick,
             upper_tick,

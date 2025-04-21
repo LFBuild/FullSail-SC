@@ -1040,11 +1040,10 @@ fun test_half_epoch_staking_distribute() {
     let position_tick_lower = tick_math::min_tick().as_u32();
     let position_tick_upper = tick_math::max_tick().as_u32();
     let position_liquidity = 1_000_000_000u128;
-    // first position is staked for the whole epoch, while second
-    // is staked only for half of the epoch.
-    // First one should receive twice as much as second one
-    let expected_lp1_earned = epoch_emissions * 2 / 3;
-    let expected_lp2_earned = epoch_emissions / 3;
+    // during first half of the week the first position gets all the rewards
+    // during second part of the week these positions earn equal portions of the reward, so 1/2 of 1/2 of the reward for each.
+    let expected_lp1_earned = epoch_emissions / 2 + epoch_emissions / 4;
+    let expected_lp2_earned = epoch_emissions / 4;
 
     // lp1 creates and stakes position
     scenario.next_tx(lp1);
@@ -1073,7 +1072,7 @@ fun test_half_epoch_staking_distribute() {
     // advance half a week.
     // minus 500ms, cos we advanced 1000ms extra duting minter activation
     // so half of that is 500ms
-    clock.increment_for_testing(ms_in_week - 500);
+    clock.increment_for_testing(ms_in_week/2 - 500);
 
     // lp2 creates and stakes position
     scenario.next_tx(lp2);
@@ -1099,6 +1098,9 @@ fun test_half_epoch_staking_distribute() {
         );
     };
 
+    // advance to end of the week
+    clock.increment_for_testing(ms_in_week/2 - 500);
+
 
     scenario.next_tx(user); // Any user can read shared state
     {
@@ -1123,10 +1125,6 @@ fun test_half_epoch_staking_distribute() {
             &clock
         );
 
-        std::debug::print(&expected_lp1_earned);
-        std::debug::print(&expected_lp2_earned);
-        std::debug::print(&earned_lp1);
-        std::debug::print(&earned_lp2);
         assert!(expected_lp1_earned - earned_lp1 <= 2, 1);
         assert!(expected_lp2_earned - earned_lp2 <= 2, 2);
         assert!(earned_lp2_nonepoch_coin == 0, 3);
