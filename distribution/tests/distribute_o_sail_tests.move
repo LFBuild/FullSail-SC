@@ -782,7 +782,7 @@ fun test_multi_epoch_reward_distribute() {
 
 #[test]
 #[expected_failure(abort_code = gauge::EGetRewardPrevTokenNotClaimed)]
-fun test_half_epoch_deposit_half_reward_distribute() {
+fun test_multi_epoch_distribute_fails_when_claimed_wrong_order() {
     let admin = @0xC1;
     let user = @0xC2; // User with the lock
     let lp = @0xC3;  // Liquidity Provider
