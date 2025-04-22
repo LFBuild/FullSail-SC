@@ -789,6 +789,29 @@ public fun deposit_position<CoinTypeA, CoinTypeB>(
     position_id
 }
 
+public fun withdraw_position<CoinTypeA, CoinTypeB, LastRewardCoin>(
+    scenario: &mut test_scenario::Scenario,
+    position_id: ID,
+    clock: &Clock,
+) {
+    // 2. Stake the Position
+    // Take shared objects needed for deposit
+    let mut pool = scenario.take_shared<Pool<CoinTypeA, CoinTypeB>>();
+    let mut gauge = scenario.take_shared<Gauge<CoinTypeA, CoinTypeB>>();
+
+    gauge::withdraw_position<CoinTypeA, CoinTypeB, LastRewardCoin>(
+        &mut gauge,
+        &mut pool,
+        position_id, // Consumes position object
+        clock,
+        scenario.ctx()
+    );
+
+    // Return shared objects
+    test_scenario::return_shared(pool);
+    test_scenario::return_shared(gauge);
+}
+
 // Updates the minter period, sets the next period token to OSailCoinTypeNext
 public fun update_minter_period<SailCoinType, OSailCoinType>(
     scenario: &mut test_scenario::Scenario,
