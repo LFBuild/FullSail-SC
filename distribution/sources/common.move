@@ -130,5 +130,16 @@ module distribution::common {
     public fun week(): u64 {
         WEEK
     }
+
+    /// Converts an epoch to milliseconds
+    /// 
+    /// # Arguments
+    /// * `epoch` - The epoch to convert
+    /// 
+    /// # Returns
+    /// The epoch in milliseconds
+    public fun epoch_to_ms(epoch: u64): u64 {
+        epoch * WEEK * 1000
+    }
 }
 
