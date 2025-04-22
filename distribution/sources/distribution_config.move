@@ -78,5 +78,10 @@ module distribution::distribution_config {
             };
         };
     }
+
+    #[test_only]
+    public fun test_init(ctx: &mut TxContext) {
+        init(ctx);
+    }
 }
 

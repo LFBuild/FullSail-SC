@@ -1,8 +1,12 @@
 module distribution::common {
-    // TODO: replace with actual week before deployment
-    const WEEK: u64 = 86400; // only a day for test purposes
-    const DAY: u64 = 86400;
     const HOUR: u64 = 3600;
+    const DAY: u64 = 24 * HOUR;
+    const WEEK: u64 = 7 * DAY;
+
+    // OSail params
+    const MAX_DISCOUNT: u64 = 100000000;
+    const MIN_DISCOUNT: u64 = MAX_DISCOUNT / 2;
+    const PERCENT_DENOMINATOR: u64 = 100000000;
 
     /// Returns the current period based on the system time
     /// 
@@ -129,6 +133,23 @@ module distribution::common {
     /// The number of seconds in a week (604800)
     public fun week(): u64 {
         WEEK
+    }
+
+    /// The oSAIL option token should be exercisable for this number of seconds
+    /// after it is distributed.
+    public fun o_sail_duration(): u64 {
+        WEEK * 4
+    }
+
+    /// Discount that oSAIL grants. Currently it's the only option,
+    /// but there is a possibility that different percents will be implemented.
+    public fun o_sail_discount(): u64 {
+        return MIN_DISCOUNT
+    }
+
+    /// If you want to calculate 1% of X, multiply X by percent value and divide by persent_denominator
+    public fun persent_denominator(): u64 {
+        return PERCENT_DENOMINATOR
     }
 
     /// Converts an epoch to milliseconds

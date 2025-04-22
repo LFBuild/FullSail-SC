@@ -62,7 +62,7 @@ module distribution::bribe_voting_reward {
         BribeVotingReward {
             id,
             gauge: gauge_id,
-            reward: distribution::reward::create(voter, ve, voter, reward_coin_types, ctx),
+            reward: distribution::reward::create(voter, option::some(ve), voter, reward_coin_types, ctx),
         }
     }
 
