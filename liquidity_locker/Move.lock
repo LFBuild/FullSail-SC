@@ -2,14 +2,14 @@
 
 [move]
 version = 3
-manifest_digest = "189C07CE732C1F430B705D261C8AC3886F828117D118FF2725C6A7C0881D3195"
+manifest_digest = "D4EEB262EBD3B1B22EE4D71EDAC7E45B12965E08945858778A28917AB9CD3A00"
 deps_digest = "52B406A7A21811BEF51751CF88DA0E76DAEFFEAC888D4F4060B1A72BBE7D8D35"
 dependencies = [
   { id = "Sui", name = "Sui" },
   { id = "clmm_pool", name = "clmm_pool" },
+  { id = "distribution", name = "distribution" },
   { id = "gauge_cap", name = "gauge_cap" },
   { id = "integer_mate", name = "integer_mate" },
-  { id = "locker_cap", name = "locker_cap" },
   { id = "price_provider", name = "price_provider" },
 ]
 
@@ -38,6 +38,18 @@ dependencies = [
 ]
 
 [[move.package]]
+id = "distribution"
+source = { local = "../distribution" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+  { id = "clmm_pool", name = "clmm_pool" },
+  { id = "gauge_cap", name = "gauge_cap" },
+  { id = "integer_mate", name = "integer_mate" },
+  { id = "price_provider", name = "price_provider" },
+]
+
+[[move.package]]
 id = "gauge_cap"
 source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "main", subdir = "gauge_cap" }
 
@@ -48,14 +60,6 @@ dependencies = [
 [[move.package]]
 id = "integer_mate"
 source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "main", subdir = "integer_mate" }
-
-dependencies = [
-  { id = "Sui", name = "Sui" },
-]
-
-[[move.package]]
-id = "locker_cap"
-source = { local = "../locker_cap" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -79,19 +83,5 @@ dependencies = [
 
 [move.toolchain-version]
 compiler-version = "1.46.2"
-edition = "2024"
+edition = "2024.beta"
 flavor = "sui"
-
-[env]
-
-[env.mainnet]
-chain-id = "35834a8a"
-original-published-id = "0x4e57cf0fd73647d44d2191fbb3028176893c07388d9472df07124fe7f72c0a66"
-latest-published-id = "0x458a5b44a9995ff16c5187d3740a26dc86b669bdfc73ec2486b7a49181067a0c"
-published-version = "2"
-
-[env.testnet]
-chain-id = "4c78adac"
-original-published-id = "0x56e79fddd96ef2a0710f52edcb6025dbdf6d85b0029c8d599429da518bed0509"
-latest-published-id = "0x56e79fddd96ef2a0710f52edcb6025dbdf6d85b0029c8d599429da518bed0509"
-published-version = "1"

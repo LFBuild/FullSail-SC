@@ -32,6 +32,7 @@ module distribution::gauge {
     use std::type_name::{Self, TypeName};
 
     const EInvalidVoter: u64 = 9223373656058429456;
+    const ENotClaimedAllRewards: u64 = 9223370035032528531;
 
     const ENotifyEpochTokenInvalidPool: u64 = 4672810119034640000;
     const ENotifyEpochTokenEpochAlreadyStarted: u64 = 4159845750300726000;
@@ -46,6 +47,7 @@ module distribution::gauge {
     const EDepositPositionGaugeDoesNotMatchPool: u64 = 9223373162136666120;
     const EDepositPositionPositionDoesNotMatchPool: u64 = 9223373166431764490;
     const EDepositPositionPositionAlreadyStaked: u64 = 9223373175021174786;
+    const EDepositPositionHasNoLiquidity: u64 = 9223373172345436343;
 
     const EEarnedByAccountGaugeDoesNotMatchPool: u64 = 9223372724050001928;
 
@@ -73,6 +75,7 @@ module distribution::gauge {
     const EWithdrawPositionNotDepositedPosition: u64 = 9223373570158297092;
     const EWithdrawPositionNotReceivedPosition: u64 = 9223373578748887054;
     const EWithdrawPositionNotOwnerOfPosition: u64 = 9223373617403461644;
+    const EWithdrawPositionPositionIsLocked: u64 = 9223373734435345344;
 
     public struct TRANSFORMER has drop {}
 
@@ -136,6 +139,7 @@ module distribution::gauge {
         distribution_config: ID,
         staked_positions: ObjectTable<ID, clmm_pool::position::Position>,
         staked_position_infos: Table<ID, PositionStakeInfo>,
+        locked_positions: Table<ID, bool>,
         reserves_balance: Bag,
         reserves_all_tokens: u64,
         // distribution_growth is also calculated by all tokens
@@ -292,6 +296,7 @@ module distribution::gauge {
             ),
             staked_positions: object_table::new<ID, clmm_pool::position::Position>(ctx),
             staked_position_infos: table::new<ID, PositionStakeInfo>(ctx),
+            locked_positions: table::new<ID, bool>(ctx),
             reserves_balance: bag::new(ctx),
             reserves_all_tokens: 0,
             current_epoch_token: option::none(),
@@ -357,11 +362,6 @@ module distribution::gauge {
             !pool.position_manager().borrow_position_info(position_id).is_staked(),
             EDepositPositionPositionAlreadyStaked
         );
-        let position_stake = PositionStakeInfo {
-            from: sender,
-            received: false,
-        };
-        gauge.staked_position_infos.add(position_id, position_stake);
         let (fee_a, fee_b) = clmm_pool::pool::collect_fee<CoinTypeA, CoinTypeB>(
             global_config,
             pool,
@@ -376,6 +376,38 @@ module distribution::gauge {
             sui::coin::from_balance<CoinTypeB>(fee_b, ctx),
             sender
         );
+        
+        deposit_position_internal(
+            gauge, 
+            pool, 
+            position, 
+            clock, 
+            ctx,
+        );
+
+        let deposit_gauge_event = EventDepositGauge {
+            gauger_id: object::id<Gauge<CoinTypeA, CoinTypeB>>(gauge),
+            pool_id,
+            position_id,
+        };
+        sui::event::emit<EventDepositGauge>(deposit_gauge_event);
+    }
+
+    fun deposit_position_internal<CoinTypeA, CoinTypeB>(
+        gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        position: clmm_pool::position::Position,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        let sender = tx_context::sender(ctx);
+        let position_id = object::id<clmm_pool::position::Position>(&position);
+
+        let position_stake = PositionStakeInfo {
+            from: sender,
+            received: false,
+        };
+        gauge.staked_position_infos.add(position_id, position_stake);
         let (lower_tick, upper_tick) = position.tick_range();
         if (!gauge.stakes.contains(sender)) {
             let mut position_ids = std::vector::empty<ID>();
@@ -407,12 +439,6 @@ module distribution::gauge {
             upper_tick,
             clock
         );
-        let deposit_gauge_event = EventDepositGauge {
-            gauger_id: object::id<Gauge<CoinTypeA, CoinTypeB>>(gauge),
-            pool_id,
-            position_id,
-        };
-        sui::event::emit<EventDepositGauge>(deposit_gauge_event);
     }
 
     /// Calculates the rewards in RewardCoinType earned by all positions owned by an account.
@@ -512,34 +538,7 @@ module distribution::gauge {
         let coin_type = type_name::get<RewardCoinType>();
         
         let current_growth_global = if (&coin_type == gauge.borrow_epoch_token()) {
-            let mut growth_global = pool.get_fullsail_distribution_growth_global();
-            let time_since_last_update = time - pool.get_fullsail_distribution_last_updated();
-
-            let staked_liquidity = pool.get_fullsail_distribution_staked_liquidity();
-            let distribution_reseve_x64 = (pool.get_fullsail_distribution_reserve() as u128) * (1 << 64);
-            let should_update_growth = if (time_since_last_update >= 0) {
-                if (distribution_reseve_x64 > 0) {
-                    staked_liquidity > 0
-                } else {
-                    false
-                }
-            } else {
-                false
-            };
-
-            if (should_update_growth) {
-                let mut potential_reward_amount = gauge.reward_rate * (time_since_last_update as u128);
-                if (potential_reward_amount > distribution_reseve_x64) {
-                    potential_reward_amount = distribution_reseve_x64;
-                };
-                growth_global = growth_global + integer_mate::math_u128::checked_div_round(
-                    potential_reward_amount,
-                    staked_liquidity,
-                    false
-                );
-            };
-
-            growth_global
+            get_current_growth_global(gauge, pool, time)
         } else {
             *gauge.growth_global_by_token.borrow(coin_type)
         };
@@ -584,6 +583,125 @@ module distribution::gauge {
             1 << 64
         ) as u64;
         (amount_earned, new_growth_inside)
+    }
+
+    fun get_current_growth_global<CoinTypeA, CoinTypeB>(
+        gauge: &Gauge<CoinTypeA, CoinTypeB>,
+        pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        current_time: u64,
+    ): u128 {
+        let mut growth_global = pool.get_fullsail_distribution_growth_global();
+        let time_since_last_update = current_time - pool.get_fullsail_distribution_last_updated();
+
+        let staked_liquidity = pool.get_fullsail_distribution_staked_liquidity();
+        let distribution_reseve_x64 = (pool.get_fullsail_distribution_reserve() as u128) * (1 << 64);
+        let should_update_growth = if (time_since_last_update >= 0) {
+            if (distribution_reseve_x64 > 0) {
+                staked_liquidity > 0
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+
+        if (should_update_growth) {
+            let mut potential_reward_amount = gauge.reward_rate * (time_since_last_update as u128);
+            if (potential_reward_amount > distribution_reseve_x64) {
+                potential_reward_amount = distribution_reseve_x64;
+            };
+            growth_global = growth_global + integer_mate::math_u128::checked_div_round(
+                potential_reward_amount,
+                staked_liquidity,
+                false
+            );
+        };
+
+        growth_global
+    }
+
+    /// функция для расчета заработанных вознаграждений за позицию для определенного типа наградного токена с возможностью указать временной интервал.
+    fun full_earned_for_type<CoinTypeA, CoinTypeB, RewardCoinType>(
+        gauge: &Gauge<CoinTypeA, CoinTypeB>,
+        pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        position_id: ID,
+        last_growth_inside: u128,
+        start_time: u64,
+        end_time: u64
+    ): (u64, u128) {
+        // TODO
+        // let coin_type = type_name::get<RewardCoinType>();
+        
+        // let current_growth_global = if (&coin_type == gauge.borrow_epoch_token()) {
+        //     let mut growth_global = pool.get_fullsail_distribution_growth_global();
+        //     let time_since_last_update = time - pool.get_fullsail_distribution_last_updated();
+
+        //     let staked_liquidity = pool.get_fullsail_distribution_staked_liquidity();
+        //     let distribution_reseve_x64 = (pool.get_fullsail_distribution_reserve() as u128) * (1 << 64);
+        //     let should_update_growth = if (time_since_last_update >= 0) {
+        //         if (distribution_reseve_x64 > 0) {
+        //             staked_liquidity > 0
+        //         } else {
+        //             false
+        //         }
+        //     } else {
+        //         false
+        //     };
+
+        //     if (should_update_growth) {
+        //         let mut potential_reward_amount = gauge.reward_rate * (time_since_last_update as u128);
+        //         if (potential_reward_amount > distribution_reseve_x64) {
+        //             potential_reward_amount = distribution_reseve_x64;
+        //         };
+        //         growth_global = growth_global + integer_mate::math_u128::checked_div_round(
+        //             potential_reward_amount,
+        //             staked_liquidity,
+        //             false
+        //         );
+        //     };
+
+        //     growth_global
+        // } else {
+        //     *gauge.growth_global_by_token.borrow(coin_type)
+        // };
+        // let prev_coin_type_opt: &Option<TypeName> = gauge.growth_global_by_token.prev(coin_type);
+        // let prev_coin_growth_global: u128 = if (prev_coin_type_opt.is_some()) {
+        //     *gauge.growth_global_by_token.borrow(*prev_coin_type_opt.borrow())
+        // } else {
+        //     0_u128
+        // };
+
+        // let position = gauge.staked_positions.borrow(position_id);
+        // let (lower_tick, upper_tick) = position.tick_range();
+        // let new_growth_inside = pool.get_fullsail_distribution_growth_inside(
+        //     lower_tick,
+        //     upper_tick,
+        //     current_growth_global
+        // );
+        // // TODO check that get_fullsail_distribution_growth_inside works correctly with
+        // // global_growth passed lower than pool.fullsail_distribution_growth_global
+        // let prev_token_growth_inside = if (prev_coin_growth_global > 0) {
+        //     // get_fullsail_distribution_growth_inside replaces prev_coin_growth_global with 0 if prev_coin_growth_global is 0
+        //     pool.get_fullsail_distribution_growth_inside(
+        //         lower_tick,
+        //         upper_tick,
+        //         prev_coin_growth_global
+        //     )
+        // } else {
+        //     0_u128
+        // };
+        // let claimed_growth_inside = if (last_growth_inside >= prev_token_growth_inside) {
+        //     last_growth_inside
+        // } else {
+        //     prev_token_growth_inside
+        // };
+
+        // let amount_earned = integer_mate::full_math_u128::mul_div_floor(
+        //     new_growth_inside - claimed_growth_inside,
+        //     position.liquidity(),
+        //     1 << 64
+        // ) as u64;
+        (0, 0)
     }
 
     /// Claims rewards for a specific staked position and transfers them to the position owner.
@@ -1206,6 +1324,7 @@ module distribution::gauge {
             gauge.staked_positions.contains(position_id) && gauge.staked_position_infos.contains(position_id),
             EWithdrawPositionNotDepositedPosition
         );
+        assert!(!gauge.locked_positions.contains(position_id), EWithdrawPositionPositionIsLocked);
         if (gauge.earned_by_position<CoinTypeA, CoinTypeB, LastRewardCoin>(pool, position_id, clock) > 0) {
             gauge.get_position_reward<CoinTypeA, CoinTypeB, LastRewardCoin>(pool, position_id, clock, ctx)
         };
@@ -1236,5 +1355,106 @@ module distribution::gauge {
             sui::event::emit<EventWithdrawPosition>(withdraw_position_event);
         };
     }
-}
+    
+    /// Mark a position as locked in the gauge
+    /// 
+    /// # Arguments
+    /// * `_locker_cap` - The locker capability
+    /// * `gauge` - The gauge containing the position
+    /// * `position_id` - ID of the position to lock
+    public fun lock_position<CoinTypeA, CoinTypeB>(
+        gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
+        _locker_cap: &locker_cap::locker_cap::LockerCap,
+        position_id: ID,
+    ) {
+        gauge.locked_positions.add(position_id, true);
+    }
 
+    /// Remove the locked status from a position in the gauge
+    /// 
+    /// # Arguments
+    /// * `_locker_cap` - The locker capability
+    /// * `gauge` - The gauge containing the position
+    /// * `position_id` - ID of the position to unlock
+    public fun unlock_position<CoinTypeA, CoinTypeB>(
+        gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
+        _locker_cap: &locker_cap::locker_cap::LockerCap,
+        position_id: ID,
+    ) {
+        gauge.locked_positions.remove(position_id);
+    }
+    
+    public fun withdraw_position_by_locker<CoinTypeA, CoinTypeB>(
+        gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
+        _locker_cap: &locker_cap::locker_cap::LockerCap,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        position_id: ID,
+        clock: &sui::clock::Clock,
+    ): clmm_pool::position::Position {
+        assert!(
+            gauge.staked_positions.contains(position_id) && gauge.staked_position_infos.contains(position_id),
+            EWithdrawPositionNotDepositedPosition
+        );
+        let position = gauge.staked_positions.remove(position_id);
+        let position_stake_info = gauge.staked_position_infos.remove(position_id);
+        assert!(position_stake_info.received, EWithdrawPositionNotReceivedPosition);
+
+        // проверить, что все награды склеймлены
+        let current_growth_global = get_current_growth_global(gauge, pool, clock.timestamp_ms() / 1000);
+        let (lower_tick, upper_tick) = position.tick_range();
+        let new_growth_inside = pool.get_fullsail_distribution_growth_inside(
+            lower_tick,
+            upper_tick,
+            current_growth_global
+        );
+        // проверка, что все награды склеймлены
+        assert!(new_growth_inside == gauge.rewards.borrow(position_id).growth_inside, ENotClaimedAllRewards);
+
+        let position_liquidity = position.liquidity();
+        if (position_liquidity > 0) {
+            let (lower_tick, upper_tick) = position.tick_range();
+            // TODO нужно ли это делать? С тем учетом, что позиция изменится, то нужно
+            pool.unstake_from_fullsail_distribution(
+                gauge.gauge_cap.borrow(),
+                position_liquidity,
+                lower_tick,
+                upper_tick,
+                clock
+            );
+        };
+        pool.mark_position_unstaked(gauge.gauge_cap.borrow(), position_id);
+
+        position
+    }
+
+    public fun deposit_position_by_locker<CoinTypeA, CoinTypeB>(
+        gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
+        _locker_cap: &locker_cap::locker_cap::LockerCap,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        position: clmm_pool::position::Position,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        let pool_id = object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool);
+        if (position.liquidity() == 0) {
+            abort EDepositPositionHasNoLiquidity;
+        };
+        let position_id = object::id<clmm_pool::position::Position>(&position);
+        assert!(
+            gauge.check_gauger_pool(pool),
+            EDepositPositionGaugeDoesNotMatchPool
+        );
+        assert!(position.pool_id() == pool_id, EDepositPositionPositionDoesNotMatchPool);
+        assert!(
+            !pool.position_manager().borrow_position_info(position_id).is_staked(),
+            EDepositPositionPositionAlreadyStaked
+        );
+        deposit_position_internal(
+            gauge, 
+            pool, 
+            position, 
+            clock, 
+            ctx,
+        );
+    }
+}

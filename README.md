@@ -77,3 +77,8 @@ Use `sui client publish` command.
 [Setup distribution tx](https://suivision.xyz/txblock/31N5n7ZHB5X6K1ZPaAtJUny4eEZUYbZJGbFoEqbSnVas)
 [Create gauge tx](https://suivision.xyz/txblock/2uLEzLu2JYCM2qqCbCNMgqayVCiT43tNEvbK4pPc425U)
 [Activate minter tx](https://suivision.xyz/txblock/A6BNVhv4GG7AkniPBinLtrDak7y4um3CcX6ejAe3z7NK)
+
+
+Как деплоить контракты локера позиций:
+деплой liquidity_locker::liquidity_locker
+сразу после  init_locker, чтобы создать периоды блокировки и locker_cap

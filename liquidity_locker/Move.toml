@@ -66,3 +66,6 @@ override = true
 
 [dependencies.distribution]
 local = "../distribution"
+
+[dependencies.locker_cap]
+local = "../locker_cap"

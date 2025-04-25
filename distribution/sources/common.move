@@ -46,9 +46,19 @@ module distribution::common {
     /// # Returns
     /// The timestamp of the start of the next epoch
     public fun epoch_next(timestamp: u64): u64 {
-        timestamp - timestamp % WEEK + WEEK
+        timestamp - (timestamp % WEEK) + WEEK
     }
 
+    /// Calculates the start timestamp of the previous epoch (week)
+    /// 
+    /// # Arguments
+    /// * `timestamp` - The current timestamp in seconds
+    /// 
+    /// # Returns
+    /// The timestamp of the start of the previous epoch
+    public fun epoch_prev(timestamp: u64): u64 {
+        timestamp - (timestamp % WEEK) - WEEK
+    }
     /// Calculates the start timestamp of the current epoch (week)
     /// 
     /// # Arguments
@@ -57,7 +67,7 @@ module distribution::common {
     /// # Returns
     /// The timestamp of the start of the current epoch
     public fun epoch_start(timestamp: u64): u64 {
-        timestamp - timestamp % WEEK
+        timestamp - (timestamp % WEEK)
     }
 
     /// Calculates the end timestamp of the voting period in the current epoch
@@ -69,7 +79,7 @@ module distribution::common {
     /// # Returns
     /// The timestamp when voting ends in the current epoch
     public fun epoch_vote_end(timestamp: u64): u64 {
-        timestamp - timestamp % WEEK + WEEK - HOUR
+        timestamp - (timestamp % WEEK) + WEEK - HOUR
     }
 
     /// Calculates the start timestamp of the voting period in the current epoch
@@ -161,6 +171,17 @@ module distribution::common {
     /// The epoch in milliseconds
     public fun epoch_to_ms(epoch: u64): u64 {
         epoch * WEEK * 1000
+    }
+
+    /// Returns the number of complete epochs contained in the timestamp
+    /// 
+    /// # Arguments
+    /// * `timestamp` - The timestamp in seconds
+    /// 
+    /// # Returns
+    /// The number of complete epochs contained in the timestamp
+    public fun number_epochs_in_timestamp(timestamp: u64): u64 {
+        timestamp / WEEK
     }
 }
 

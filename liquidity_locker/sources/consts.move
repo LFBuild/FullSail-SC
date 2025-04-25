@@ -3,10 +3,12 @@ module liquidity_locker::consts {
         5000
     }
 
+    // множитель долей, то есть 10000 = 100% или 1
     public fun lock_liquidity_share_denom(): u64 {
-        10000
+        100000
     }
 
+    // множитель долей, то есть 10000 = 100% или 1
     public fun profitability_rate_denom(): u64 {
         10000
     }
