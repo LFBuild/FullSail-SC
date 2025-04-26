@@ -69,7 +69,6 @@ module liquidity_locker::liquidity_locker {
         full_unlocking_time: u64, // ms
         profitability: u64,
         last_reward_claim_time: u64, // ms
-        last_reward_claim_epoch: u64, // ms
         last_growth_inside: u64,
         lock_liquidity_info: LockLiquidityInfo,
     }
@@ -105,8 +104,11 @@ module liquidity_locker::liquidity_locker {
 
     public struct CollectRewardsEvent has copy, drop {
         lock_position_id: sui::object::ID,
-        earned_amount: u64,
+        reward_type: std::type_name::TypeName,
+        last_reward_claim_time: u64,
+        next_reward_claim_time: u64,
         income: u64,
+        reward_balance: u64,
     }
     
     fun init(ctx: &mut sui::tx_context::TxContext) {
@@ -275,7 +277,6 @@ module liquidity_locker::liquidity_locker {
                 profitability: profitability,
                 last_growth_inside: 0,
                 last_reward_claim_time: current_time,
-                last_reward_claim_epoch: distribution::common::epoch_prev(current_time),
                 lock_liquidity_info,
             };
             lock_positions.push_back(lock_position);
@@ -423,71 +424,122 @@ module liquidity_locker::liquidity_locker {
     }
 
     // метод сбора наград
-    // можно клеймить только в эпоху следующую за последней полученной наградой
+    // можно клеймить только в эпоху следующую за последней полученной наградой и не в текущую
     public fun collect_rewards<CoinTypeA, CoinTypeB, RewardCoinType>(
         pool_tranche_manager: &mut pool_tranche::PoolTrancheManager,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         locked_position: &mut LockedPosition,
-        claim_epoch: u64, // timestamp ms
+        claim_epoch: u64, // timestamp s
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext,
     ): sui::balance::Balance<RewardCoinType> {
-
+        assert!(distribution::gauge::check_gauger_pool(gauge, pool), EInvalidGaugePool);
         assert!(locked_position.last_reward_claim_time < locked_position.expiration_time, ENotClaimedRewards);
 
-        let pool_id = sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool);
+        // получаем баланс награды по доходности
+        let reward_balance = get_rewards<CoinTypeA, CoinTypeB, RewardCoinType>(
+            pool_tranche_manager,
+            gauge,
+            pool,
+            locked_position,
+            claim_epoch,
+            clock,
+        );
 
-        let current_time = clock.timestamp_ms();
+        reward_balance
+    }
+
+    // метод сбора наград в качестве токена SAIL
+    // SAIL токен награды сразу лочится на максимальный период
+    // можно клеймить только в эпоху следующую за последней полученной наградой
+    public fun collect_rewards_sail<CoinTypeA, CoinTypeB, SailCoinType>(
+        pool_tranche_manager: &mut pool_tranche::PoolTrancheManager,
+        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        locked_position: &mut LockedPosition,
+        claim_epoch: u64, // timestamp s
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext,
+    ) {
+        assert!(distribution::gauge::check_gauger_pool(gauge, pool), EInvalidGaugePool);
+        assert!(locked_position.last_reward_claim_time < locked_position.expiration_time, ENotClaimedRewards);
+
+        let reward_balance = get_rewards<CoinTypeA, CoinTypeB, SailCoinType>(
+            pool_tranche_manager,
+            gauge,
+            pool,
+            locked_position,
+            claim_epoch,
+            clock,
+        );
+
+        voting_escrow.create_lock(
+            sui::coin::from_balance(reward_balance, ctx),
+            distribution::common::max_lock_time(),
+            true,
+            clock,
+            ctx
+        );
+    }
+
+    fun get_rewards<CoinTypeA, CoinTypeB, RewardCoinType>(
+        pool_tranche_manager: &mut pool_tranche::PoolTrancheManager,
+        gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        locked_position: &mut LockedPosition,
+        claim_epoch: u64,
+        clock: &sui::clock::Clock,
+    ): sui::balance::Balance<RewardCoinType> {
         let current_epoch = distribution::common::current_period(clock);
-        let last_claim_epoch_next = distribution::common::epoch_next(locked_position.last_reward_claim_epoch);
-
-        assert!(claim_epoch == last_claim_epoch_next && current_epoch <= last_claim_epoch_next, EClaimEpochIncorrect); // нельзя клеймить в текущую эпоху, награды еще не занесены в транш
-
-        let (new_last_claim_time, new_last_claim_epoch) = if (current_epoch == last_claim_epoch_next) {
-            // если эпоха еще не закончилась, то не обновляем
-            (current_time, locked_position.last_reward_claim_epoch)
+        let next_reward_claim_time = if (distribution::common::epoch_next(locked_position.last_reward_claim_time) > locked_position.expiration_time) {
+            locked_position.expiration_time
         } else {
-            (last_claim_epoch_next, last_claim_epoch_next)
-        };
-        if (new_last_claim_time > locked_position.expiration_time) {
-            new_last_claim_time = locked_position.expiration_time;
+            distribution::common::epoch_next(locked_position.last_reward_claim_time)
         };
 
-        // проверяем, сколько награды получает пользователь
+        // нельзя клеймить в текущую эпоху, награды еще не занесены в транш
+        assert!(claim_epoch == distribution::common::epoch_start(locked_position.last_reward_claim_time) && current_epoch >= next_reward_claim_time, EClaimEpochIncorrect); 
+
+        // проверяем, сколько награды получает пользователь от locked_position.last_reward_claim_time до next_reward_claim_time
         let earned_amount = gauge.earned_by_position<CoinTypeA, CoinTypeB, RewardCoinType>(
             pool, 
             locked_position.position_id, 
-            clock,
+            locked_position.last_reward_claim_time,
+            next_reward_claim_time,
         );
         assert!(earned_amount > 0, ENoRewards);
 
         // досылаем награду с лока
-        // earned_amount взять процент доходности
+        // от earned_amount взять процент доходности
         let income = integer_mate::full_math_u64::mul_div_ceil(
             earned_amount,
             locked_position.profitability,
             consts::profitability_rate_denom()
         );
 
+        let pool_id = sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool);
         // получаем баланс награды по доходности
         let reward_balance = pool_tranche_manager.get_reward_balance<RewardCoinType>(
             pool_id,
             locked_position.tranche_id,
             income,
-            last_claim_epoch_next,
+            distribution::common::epoch_start(locked_position.last_reward_claim_time),
         );
 
         let lock_position_id = sui::object::id<LockedPosition>(locked_position);
+        let reward_type = std::type_name::get<RewardCoinType>();
         let event = CollectRewardsEvent { 
             lock_position_id,
-            earned_amount,
+            reward_type,
+            last_reward_claim_time: locked_position.last_reward_claim_time,
+            next_reward_claim_time,
             income,
+            reward_balance: reward_balance.value<RewardCoinType>(),
         };
         sui::event::emit<CollectRewardsEvent>(event);
 
-        locked_position.last_reward_claim_epoch = new_last_claim_epoch;
-        locked_position.last_reward_claim_time = new_last_claim_time;
+        locked_position.last_reward_claim_time = next_reward_claim_time;
         locked_position.last_growth_inside = last_growth_inside;
         reward_balance
     }
@@ -510,7 +562,6 @@ module liquidity_locker::liquidity_locker {
             profitability: _,
             last_reward_claim_time: _,
             last_growth_inside: _,
-            last_reward_claim_epoch: _,
             lock_liquidity_info: LockLiquidityInfo {
                 total_lock_liquidity: _,
                 current_lock_liquidity: _,
@@ -567,7 +618,6 @@ module liquidity_locker::liquidity_locker {
             profitability: lock_position.profitability,
             last_growth_inside: 0,
             last_reward_claim_time: lock_position.last_reward_claim_time,
-            last_reward_claim_epoch: lock_position.last_reward_claim_epoch,
             lock_liquidity_info: lock_liquidity_info1,
         };
 
@@ -585,7 +635,6 @@ module liquidity_locker::liquidity_locker {
             profitability: lock_position.profitability,
             last_growth_inside: 0,
             last_reward_claim_time: lock_position.last_reward_claim_time,
-            last_reward_claim_epoch: lock_position.last_reward_claim_epoch,
             lock_liquidity_info: lock_liquidity_info2,
         };
 
