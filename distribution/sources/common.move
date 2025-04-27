@@ -162,15 +162,15 @@ module distribution::common {
         return PERCENT_DENOMINATOR
     }
 
-    /// Converts an epoch to milliseconds
+    /// Converts an epoch to seconds
     /// 
     /// # Arguments
     /// * `epoch` - The epoch to convert
     /// 
     /// # Returns
-    /// The epoch in milliseconds
-    public fun epoch_to_ms(epoch: u64): u64 {
-        epoch * WEEK * 1000
+    /// The epoch in seconds
+    public fun epoch_to_seconds(epoch: u64): u64 {
+        epoch * WEEK
     }
 
     /// Returns the number of complete epochs contained in the timestamp

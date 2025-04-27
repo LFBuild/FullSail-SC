@@ -1,14 +1,11 @@
 module liquidity_locker::pool_tranche {
     
-    use liquidity_locker::consts;
     use std::type_name::{Self, TypeName};
 
     const ETrancheFilled: u64 = 92357345723427311;
-    const EInvalidShareLiquidityToFill: u64 = 90395023942953434;
     const ERewardAlreadyExists: u64 = 90324592349252616;
     const ERewardNotFound: u64 = 91235834582491043;
     const ETrancheNotFound: u64 = 9627374284723523965;
-    const ETrancheManagerPaused: u64 = 96283457328572935;
     const ERewardNotEnough: u64 = 91294503453406623;
     const EInvalidAddLiquidity: u64 = 923487825237423743;
 
@@ -24,7 +21,6 @@ module liquidity_locker::pool_tranche {
     public struct PoolTrancheManager has store, key {
         id: UID,
         pool_tranches: sui::table::Table<ID, vector<PoolTranche>>, // pool_id -> []tranches
-        pause: bool,
     }
 
     public struct PoolTranche has store, key {
@@ -80,7 +76,6 @@ module liquidity_locker::pool_tranche {
         let tranche_manager = PoolTrancheManager {
             id: sui::object::new(ctx),
             pool_tranches: sui::table::new(ctx),
-            pause: false,
         };
         let admin_cap = AdminCap { id: sui::object::new(ctx) };
         sui::transfer::transfer<AdminCap>(admin_cap, sui::tx_context::sender(ctx));
@@ -144,8 +139,8 @@ module liquidity_locker::pool_tranche {
         epoch_start: u64, // in seconds
         balance: sui::balance::Balance<RewardCoinType>,
         total_income: u64,
-    ) {
-        epoch_start = distribution::common::epoch_start(epoch_start);
+    ): u64 {
+        let epoch_start = distribution::common::epoch_start(epoch_start);
         let pool_tranches = manager.pool_tranches.borrow_mut(pool_id);
         let mut i = 0;
         while (i < pool_tranches.length()) {
@@ -157,7 +152,11 @@ module liquidity_locker::pool_tranche {
                 let reward_type = type_name::get<RewardCoinType>();
                 let balance_value = balance.value();
 
-                tranche.rewards_balance.add(epoch_start, balance);
+                tranche.rewards_balance.add(epoch_start, sui::balance::zero<RewardCoinType>());
+                let after_amount = sui::balance::join<RewardCoinType>(
+                    sui::bag::borrow_mut<u64, sui::balance::Balance<RewardCoinType>>(&mut tranche.rewards_balance, epoch_start),
+                    balance
+                );
                 tranche.total_balance_epoch.add(epoch_start, balance_value);
                 tranche.total_income_epoch.add(epoch_start, total_income);
 
@@ -169,29 +168,12 @@ module liquidity_locker::pool_tranche {
                     total_income,
                 };
                 sui::event::emit<AddRewardEvent>(event);
-                break;
+                return after_amount
             };
             i = i + 1;
         };
-        if (i == pool_tranches.length()) {
-            abort ETrancheNotFound
-        };
+        abort ETrancheNotFound
     }
-
-    public fun manager_pause(
-        _admin_cap: &AdminCap,
-        manager: &mut PoolTrancheManager,
-        pause: bool,
-    ) {
-        manager.pause = pause;
-    }
-
-    public fun pause(
-        manager: &PoolTrancheManager,
-    ): bool {
-        manager.pause
-    }
-    
 
     public(package) fun get_tranches(manager: &mut PoolTrancheManager, pool_id: ID): &mut vector<PoolTranche> {
         manager.pool_tranches.borrow_mut(pool_id)
@@ -239,7 +221,7 @@ module liquidity_locker::pool_tranche {
         income: u64,
         epoch_start: u64,
     ): sui::balance::Balance<RewardCoinType> {
-        epoch_start = distribution::common::epoch_start(epoch_start);
+        let epoch_start = distribution::common::epoch_start(epoch_start);
         let pool_tranches = manager.pool_tranches.borrow_mut(pool_id);
         let mut i = 0;
         while (i < pool_tranches.length()) {
@@ -248,16 +230,15 @@ module liquidity_locker::pool_tranche {
             if (tranche_id == current_tranche_id) {
                 assert!(tranche.rewards_balance.contains(epoch_start), ERewardNotFound);
 
+                // найти отношение income к total_income и применить к total_balance
+                let reward_amount = integer_mate::full_math_u64::mul_div_floor(
+                    *tranche.total_balance_epoch.borrow(epoch_start),
+                    income,
+                    *tranche.total_income_epoch.borrow(epoch_start)
+                );
+
                 // TODO а если в этой эпохе другой тип?
                 let current_balance = tranche.rewards_balance.borrow_mut<u64, sui::balance::Balance<RewardCoinType>>(epoch_start);
-                let total_balance = tranche.total_balance_epoch.borrow(epoch_start);
-                let total_income = tranche.total_income_epoch.borrow(epoch_start);
-                
-                // TODO рефактор расчетов
-                let rate = income / *total_income * 100 * 10000;
-
-                let reward_amount = *total_balance * rate / 10000 / 100;
-
                 assert!(reward_amount <= current_balance.value(), ERewardNotEnough);
 
                 let event = GetRewardEvent {

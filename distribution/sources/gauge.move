@@ -77,6 +77,9 @@ module distribution::gauge {
     const EWithdrawPositionNotOwnerOfPosition: u64 = 9223373617403461644;
     const EWithdrawPositionPositionIsLocked: u64 = 9223373734435345344;
 
+    const EFullEarnedForTypeEpochToken: u64 = 9329523453453453452;
+    const EFullEarnedForTypeEpochTokenNotSet: u64 = 9234839429402340345;
+
     public struct TRANSFORMER has drop {}
 
     public struct AdminCap has store, key {
@@ -149,6 +152,7 @@ module distribution::gauge {
         fee_b: Balance<CoinTypeB>,
         voter: Option<ID>,
         reward_rate: u128,
+        reward_rate_epoch: Table<u64, u128>, // epoch -> reward_rate
         period_finish: u64,
         reward_rate_by_epoch: Table<u64, u128>,
         // Token with TypeName is distributed in interval (growth_global_by_token.prev(token_type) || 0, growth_global_by_token.borrow(token_type)]
@@ -304,6 +308,7 @@ module distribution::gauge {
             fee_b: balance::zero<CoinTypeB>(),
             voter: option::none<ID>(),
             reward_rate: 0,
+            reward_rate_epoch: table::new<u64, u128>(ctx),
             period_finish: 0,
             reward_rate_by_epoch: table::new<u64, u128>(ctx),
             growth_global_by_token: linked_table::new<TypeName, u128>(ctx),
@@ -587,7 +592,7 @@ module distribution::gauge {
         (amount_earned, new_growth_inside)
     }
 
-    fun get_current_growth_global<CoinTypeA, CoinTypeB>(
+    public fun get_current_growth_global<CoinTypeA, CoinTypeB>(
         gauge: &Gauge<CoinTypeA, CoinTypeB>,
         pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         current_time: u64,
@@ -622,88 +627,84 @@ module distribution::gauge {
         growth_global
     }
 
-    /// функция для расчета заработанных вознаграждений за позицию для определенного типа наградного токена с возможностью указать временной интервал.
-    fun full_earned_for_type<CoinTypeA, CoinTypeB, RewardCoinType>(
+     public fun get_current_growth_inside<CoinTypeA, CoinTypeB>(
+        gauge: &Gauge<CoinTypeA, CoinTypeB>,
+        pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        position_id: ID,
+        time: u64,
+     ): u128 {
+        assert!(
+            gauge.check_gauger_pool(pool),
+            EEarnedByPositionGaugeDoesNotMatchPool
+        );
+        assert!(
+            gauge.staked_positions.contains(position_id),
+            EEarnedByPositionNotDepositedPosition
+        );
+
+        let current_growth_global = get_current_growth_global(gauge, pool, time);
+
+        let position = gauge.staked_positions.borrow(position_id);
+        let (lower_tick, upper_tick) = position.tick_range();
+        pool.get_fullsail_distribution_growth_inside(
+            lower_tick,
+            upper_tick,
+            current_growth_global
+        )
+     }
+
+    /// функция для расчета заработанных вознаграждений за позицию для определенного типа наградного токена.
+    /// вызывается только для прошедшей недели
+    public fun full_earned_for_type<CoinTypeA, CoinTypeB, RewardCoinType>(
         gauge: &Gauge<CoinTypeA, CoinTypeB>,
         pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         position_id: ID,
         last_growth_inside: u128,
-        start_time: u64,
-        end_time: u64
     ): (u64, u128) {
-        // TODO
-        // let coin_type = type_name::get<RewardCoinType>();
         
-        // let current_growth_global = if (&coin_type == gauge.borrow_epoch_token()) {
-        //     let mut growth_global = pool.get_fullsail_distribution_growth_global();
-        //     let time_since_last_update = time - pool.get_fullsail_distribution_last_updated();
+        let coin_type = type_name::get<RewardCoinType>();
+        assert!(&coin_type != gauge.borrow_epoch_token(), EFullEarnedForTypeEpochToken);
+        
+        let current_growth_global = *gauge.growth_global_by_token.borrow(coin_type);
 
-        //     let staked_liquidity = pool.get_fullsail_distribution_staked_liquidity();
-        //     let distribution_reseve_x64 = (pool.get_fullsail_distribution_reserve() as u128) * (1 << 64);
-        //     let should_update_growth = if (time_since_last_update >= 0) {
-        //         if (distribution_reseve_x64 > 0) {
-        //             staked_liquidity > 0
-        //         } else {
-        //             false
-        //         }
-        //     } else {
-        //         false
-        //     };
+        let prev_coin_type_opt: &Option<TypeName> = gauge.growth_global_by_token.prev(coin_type);
+        let prev_coin_growth_global: u128 = if (prev_coin_type_opt.is_some()) {
+            *gauge.growth_global_by_token.borrow(*prev_coin_type_opt.borrow())
+        } else {
+            0_u128
+        };
 
-        //     if (should_update_growth) {
-        //         let mut potential_reward_amount = gauge.reward_rate * (time_since_last_update as u128);
-        //         if (potential_reward_amount > distribution_reseve_x64) {
-        //             potential_reward_amount = distribution_reseve_x64;
-        //         };
-        //         growth_global = growth_global + integer_mate::math_u128::checked_div_round(
-        //             potential_reward_amount,
-        //             staked_liquidity,
-        //             false
-        //         );
-        //     };
+        let position = gauge.staked_positions.borrow(position_id);
+        let (lower_tick, upper_tick) = position.tick_range();
+        
+        let prev_token_growth_inside = if (prev_coin_growth_global > 0) {
+            // get_fullsail_distribution_growth_inside replaces prev_coin_growth_global with 0 if prev_coin_growth_global is 0
+            pool.get_fullsail_distribution_growth_inside(
+                lower_tick,
+                upper_tick,
+                prev_coin_growth_global
+            )
+        } else {
+            0_u128
+        };
+        let last_growth_inside_correct = if (last_growth_inside >= prev_token_growth_inside) {
+            last_growth_inside
+        } else {
+            prev_token_growth_inside
+        };
 
-        //     growth_global
-        // } else {
-        //     *gauge.growth_global_by_token.borrow(coin_type)
-        // };
-        // let prev_coin_type_opt: &Option<TypeName> = gauge.growth_global_by_token.prev(coin_type);
-        // let prev_coin_growth_global: u128 = if (prev_coin_type_opt.is_some()) {
-        //     *gauge.growth_global_by_token.borrow(*prev_coin_type_opt.borrow())
-        // } else {
-        //     0_u128
-        // };
+        let new_growth_inside = pool.get_fullsail_distribution_growth_inside(
+            lower_tick,
+            upper_tick,
+            current_growth_global
+        );
 
-        // let position = gauge.staked_positions.borrow(position_id);
-        // let (lower_tick, upper_tick) = position.tick_range();
-        // let new_growth_inside = pool.get_fullsail_distribution_growth_inside(
-        //     lower_tick,
-        //     upper_tick,
-        //     current_growth_global
-        // );
-        // // TODO check that get_fullsail_distribution_growth_inside works correctly with
-        // // global_growth passed lower than pool.fullsail_distribution_growth_global
-        // let prev_token_growth_inside = if (prev_coin_growth_global > 0) {
-        //     // get_fullsail_distribution_growth_inside replaces prev_coin_growth_global with 0 if prev_coin_growth_global is 0
-        //     pool.get_fullsail_distribution_growth_inside(
-        //         lower_tick,
-        //         upper_tick,
-        //         prev_coin_growth_global
-        //     )
-        // } else {
-        //     0_u128
-        // };
-        // let claimed_growth_inside = if (last_growth_inside >= prev_token_growth_inside) {
-        //     last_growth_inside
-        // } else {
-        //     prev_token_growth_inside
-        // };
-
-        // let amount_earned = integer_mate::full_math_u128::mul_div_floor(
-        //     new_growth_inside - claimed_growth_inside,
-        //     position.liquidity(),
-        //     1 << 64
-        // ) as u64;
-        (0, 0)
+        let amount_earned = integer_mate::full_math_u128::mul_div_floor(
+            new_growth_inside - last_growth_inside_correct,
+            position.liquidity(),
+            1 << 64
+        ) as u64;
+        (amount_earned, new_growth_inside)
     }
 
     /// Claims rewards for a specific staked position and transfers them to the position owner.
