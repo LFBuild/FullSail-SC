@@ -44,8 +44,8 @@ module distribution::minter {
     const ESetProtocolFeeRateTooBigRate: u64 = 8401716227362572000;
 
     const EUpdatePeriodMinterNotActive: u64 = 9223373394064900104;
-    const EUpdatePeriodNotFinishedYet: u64 = 9223373406950588436;
-    const EUpdatePeriodInvalidEpochOSail: u64 = 3062794443568719400;
+    const EUpdatePeriodNotFinishedYet: u64 = 922337340695058843;
+    const EUpdatePeriodOSailAlreadyUsed: u64 = 573264404146058900;
 
     const ECheckAdminRevoked: u64 = 9223372809948889087;
 
@@ -53,18 +53,22 @@ module distribution::minter {
     const ECreateLockFromOSailInvalidDuraton: u64 = 68567430268160480;
 
     const EExerciseOSailFreeTooBigPercent: u64 = 4108357525531418600;
-    const EExercieOSailExpired: u64 = 7388437717433252000;
+    const EExerciseOSailExpired: u64 = 7388437717433252000;
+    const EExerciseOSailInvalidOSail: u64 = 3209173623653640700;
 
     const EExerciseUsdLimitReached: u64 = 4905179424474806000;
     const EExerciseOSailPoolNotWhitelisted: u64 = 2212524000647910700;
 
     const ETeamWalletNotSet: u64 = 7981414426077109000;
+    const EDistributeTeamTokenNotFound: u64 = 9629256792821774000;
+
+    const DAYS_IN_WEEK: u64 = 7;
 
     /// Possible lock duration available be oSAIL expiry date
     const VALID_O_SAIL_DURATION_DAYS: vector<u64> = vector[
-        26 * 7, // 6 months
-        2 * 52 * 7, // 2 years
-        4 * 52 * 7 // 4 years
+        26 * DAYS_IN_WEEK, // 6 months
+        2 * 52 * DAYS_IN_WEEK, // 2 years
+        4 * 52 * DAYS_IN_WEEK // 4 years
     ];
 
     /// After expiration oSAIL can only be locked for 4 years or permanently
@@ -575,6 +579,7 @@ module distribution::minter {
     ) {
         assert!(minter.team_wallet != @0x0, ETeamWalletNotSet);
         let coin_type = type_name::get<ExerciseFeeCoinType>();
+        assert!(minter.exercise_fee_team_balances.contains(coin_type), EDistributeTeamTokenNotFound);
         let balance = minter.exercise_fee_team_balances.remove<TypeName, Balance<ExerciseFeeCoinType>>(coin_type);
         transfer::public_transfer<Coin<ExerciseFeeCoinType>>(
             coin::from_balance(balance, ctx), 
@@ -649,6 +654,7 @@ module distribution::minter {
         clock: &sui::clock::Clock,
     ) {
         let o_sail_type = type_name::get<EpochOSailCoin>();
+        assert!(!minter.o_sail_caps.contains(o_sail_type), EUpdatePeriodOSailAlreadyUsed);
         minter.current_epoch_o_sail.swap_or_fill(o_sail_type);
         minter.o_sail_total_supply = minter.o_sail_total_supply + treasury_cap.total_supply();
         minter.o_sail_caps.add(o_sail_type, treasury_cap);
@@ -943,9 +949,10 @@ module distribution::minter {
         ctx: &mut TxContext,
     ): (Coin<USDCoinType>, Coin<SailCoinType>) {
         let o_sail_type = type_name::get<OSailCoinType>();
+        assert!(minter.o_sail_expiry_dates.contains(o_sail_type), EExerciseOSailInvalidOSail);
         let expiry_date: u64 = *minter.o_sail_expiry_dates.borrow(o_sail_type);
         let current_time = distribution::common::current_timestamp(clock);
-        assert!(current_time < expiry_date, EExercieOSailExpired);
+        assert!(current_time < expiry_date, EExerciseOSailExpired);
         assert!(minter.is_whitelisted_pool(pool), EExerciseOSailPoolNotWhitelisted);
 
         // there is a possibility that different discount percents will be implemented
@@ -975,9 +982,10 @@ module distribution::minter {
         ctx: &mut TxContext,
     ): (Coin<USDCoinType>, Coin<SailCoinType>) {
         let o_sail_type = type_name::get<OSailCoinType>();
+        assert!(minter.o_sail_expiry_dates.contains(o_sail_type), EExerciseOSailInvalidOSail);
         let expiry_date: u64 = *minter.o_sail_expiry_dates.borrow(o_sail_type);
         let current_time = distribution::common::current_timestamp(clock);
-        assert!(current_time < expiry_date, EExercieOSailExpired);
+        assert!(current_time < expiry_date, EExerciseOSailExpired);
         assert!(minter.is_whitelisted_pool(pool), EExerciseOSailPoolNotWhitelisted);
 
         // there is a possibility that different discount percents will be implemented

@@ -73,7 +73,7 @@ public fun setup_clmm_factory_with_fee_tier(
         factory::test_init(scenario.ctx());
         config::test_init(scenario.ctx());
         stats::init_test(scenario.ctx());
-        price_provider::new(scenario.ctx());
+        price_provider::init_test(scenario.ctx());
     };
     
     // Tx 2: Add fee tier
@@ -665,7 +665,7 @@ fun test_swap_utility() {
     {
         setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
         stats::init_test(scenario.ctx());       // Init Stats
-        price_provider::new(scenario.ctx());  // Init PriceProvider
+        price_provider::init_test(scenario.ctx());  // Init PriceProvider
     };
 
     scenario.next_tx(admin);
