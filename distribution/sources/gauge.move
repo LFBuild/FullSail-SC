@@ -31,12 +31,14 @@ module distribution::gauge {
     use sui::bag::{Self, Bag};
     use std::type_name::{Self, TypeName};
 
-    const EInvalidVoter: u64 = 9223373656058429456;
+    const EInvalidVoter: u64 = 922337365605842945;
     const ENotClaimedAllRewards: u64 = 9223370035032528531;
 
     const ENotifyEpochTokenInvalidPool: u64 = 4672810119034640000;
     const ENotifyEpochTokenEpochAlreadyStarted: u64 = 4159845750300726000;
     const ENotifyEpochTokenPrevRewardsNotFinished: u64 = 3254849085073565700;
+    const ENotifyEpochTokenAlreadyNotifiedToken: u64 = 4041460742273430500;
+    const ENotifyEpochTokenAlreadyNotifiedThisEpoch: u64 = 776925370166021200;
 
     const ENotifyRewardInvalidPool: u64 = 5832633373805671000;
     const ENotifyRewardInvalidEpochToken: u64 = 2541860431191483000;
@@ -54,15 +56,18 @@ module distribution::gauge {
     const EEarnedByPositionGaugeDoesNotMatchPool: u64 = 9223372693985230856;
     const EEarnedByPositionNotDepositedPosition: u64 = 9223372698279936004;
 
-    const EGetPositionRewardGaugeDoesNotMatchPool: u64 = 9223373428424638472;
-    const EGetPositionRewardPositionNotStaked: u64 = 9223373432719343620;
+    const EGetPositionRewardGaugeDoesNotMatchPool: u64 = 922337342842463847;
+    const EGetPositionRewardPositionNotStaked: u64 = 922337343271934362;
+    const EGetPositionRewardInvalidRewardToken: u64 = 896435666705415200;
 
-    const EGetRewardGaugeDoesNotMatchPool: u64 = 9223373454194442248;
-    const EGetRewardSenderHasNoDepositedPositions: u64 = 9223373462784638988;
-    const EGetRewardPrevTokenNotClaimed: u64 = 8639238881583238000;
+    const EGetRewardGaugeDoesNotMatchPool: u64 = 922337345419444224;
+    const EGetRewardNoStakedPositions: u64 = 922337346278463898;
+    const EGetRewardInvalidRewardToken: u64 = 364572745470385970;
+    const EGetRewardPrevTokenNotClaimed: u64 = 863923888158323800;
 
-    const EGetRewardForGaugeDoesNotMatchPool: u64 = 9223373510029017096;
-    const EGetRewardForRecipientHasNoPositions: u64 = 9223373514324246540;
+    const EGetRewardForGaugeDoesNotMatchPool: u64 = 922337351002901709;
+    const EGetRewardForRecipientHasNoPositions: u64 = 922337351432424654;
+    const EGetRewardForInvalidRewardToken: u64 = 7809532341978671000;
 
     const ENotifyRewardAmountRewardRateZero: u64 = 9223373952411435028;
     const ENotifyRewardInsufficientReserves: u64 = 9223373956706533398;
@@ -148,6 +153,8 @@ module distribution::gauge {
         // distribution_growth is also calculated by all tokens
         // current epoch token may not be set if gauge has not participated in any distributions
         current_epoch_token: Option<TypeName>,
+        // timestamp of the last call of the notify_epoch_token function
+        epoch_token_last_notified: u64,
         fee_a: Balance<CoinTypeA>,
         fee_b: Balance<CoinTypeB>,
         voter: Option<ID>,
@@ -192,11 +199,7 @@ module distribution::gauge {
         gauge: &Gauge<CoinTypeA, CoinTypeB>,
         pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>
     ): bool {
-        (gauge.pool_id != object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(
-            pool
-        ) || pool.get_fullsail_distribution_gauger_id() != object::id<Gauge<CoinTypeA, CoinTypeB>>(
-            gauge
-        )) && false || true
+        gauge.pool_id == object::id(pool)
     }
 
     /// Verifies that the voter capability matches the voter ID stored in the gauge.
@@ -304,6 +307,7 @@ module distribution::gauge {
             reserves_balance: bag::new(ctx),
             reserves_all_tokens: 0,
             current_epoch_token: option::none(),
+            epoch_token_last_notified: 0,
             fee_a: balance::zero<CoinTypeA>(),
             fee_b: balance::zero<CoinTypeB>(),
             voter: option::none<ID>(),
@@ -735,6 +739,10 @@ module distribution::gauge {
             gauge.staked_positions.contains(position_id),
             EGetPositionRewardPositionNotStaked
         );
+        assert!(
+            gauge.is_valid_reward_token<CoinTypeA, CoinTypeB, RewardCoinType>(),
+            EGetPositionRewardInvalidRewardToken
+        );
         gauge.get_reward_internal<CoinTypeA, CoinTypeB, RewardCoinType>(pool, position_id, clock, ctx);
     }
 
@@ -760,7 +768,11 @@ module distribution::gauge {
         let sender = tx_context::sender(ctx);
         assert!(
             gauge.stakes.contains(sender),
-            EGetRewardSenderHasNoDepositedPositions
+            EGetRewardNoStakedPositions,
+        );
+        assert!(
+            gauge.is_valid_reward_token<CoinTypeA, CoinTypeB, RewardCoinType>(),
+            EGetRewardInvalidRewardToken
         );
         let position_ids = gauge.stakes.borrow(sender);
         let mut position_ids_copy = std::vector::empty<ID>();
@@ -801,6 +813,10 @@ module distribution::gauge {
         assert!(
             gauge.stakes.contains(recipient),
             EGetRewardForRecipientHasNoPositions
+        );
+        assert!(
+            gauge.is_valid_reward_token<CoinTypeA, CoinTypeB, RewardCoinType>(),
+            EGetRewardForInvalidRewardToken
         );
         let position_ids = gauge.stakes.borrow(recipient);
         let mut position_ids_copy = std::vector::empty<ID>();
@@ -873,12 +889,17 @@ module distribution::gauge {
         ctx: &mut TxContext,
     ) {
         gauge.check_voter_cap(voter_cap);
-        assert!(gauge.pool_id == object::id(pool), ENotifyEpochTokenInvalidPool);
+        assert!(gauge.check_gauger_pool(pool), ENotifyEpochTokenInvalidPool);
 
         // you can only change token in new epoch, before any rewards notified.
         // That's because growth_global cannot be mixed inside one epoch.
         let current_time = clock.timestamp_ms() / 1000;
         assert!(current_time >= gauge.period_finish, ENotifyEpochTokenEpochAlreadyStarted);
+        let last_notified_period = distribution::common::to_period(gauge.epoch_token_last_notified);
+        assert!(
+            current_time >= last_notified_period + distribution::common::week(),
+            ENotifyEpochTokenAlreadyNotifiedThisEpoch
+        );
 
         // update distribution. All rewards from previous epoch should be already distributed
         let gauge_cap = gauge.gauge_cap.borrow();
@@ -886,6 +907,10 @@ module distribution::gauge {
         assert!(pool.get_fullsail_distribution_reserve() == 0, ENotifyEpochTokenPrevRewardsNotFinished);
 
         let coin_type = type_name::get<RewardCoinType>();
+        assert!(
+            !gauge.is_valid_reward_token<CoinTypeA, CoinTypeB, RewardCoinType>(),
+            ENotifyEpochTokenAlreadyNotifiedToken
+        );
         if (gauge.current_epoch_token.is_some()) {
             let prev_epoch_token = gauge.current_epoch_token.extract();
             gauge.growth_global_by_token.remove(prev_epoch_token); // remove zero from the end
@@ -901,6 +926,7 @@ module distribution::gauge {
             sender: object::id_from_address(tx_context::sender(ctx)),
             token: coin_type,
         };
+        gauge.epoch_token_last_notified = current_time;
 
         sui::event::emit<EventNotifyEpochToken>(event);
     }
@@ -1201,13 +1227,26 @@ module distribution::gauge {
     ///
     /// # Arguments
     /// * `<RewardCoinType>` - The coin type to be checked.
-    /// * `voter` - The voter contract reference
+    /// * `gauge` - The gauge contract reference
     public fun is_valid_epoch_token<CoinTypeA, CoinTypeB, RewardCoinType>(
         gauge: &Gauge<CoinTypeA, CoinTypeB>,
     ): bool {
         let coin_type = type_name::get<RewardCoinType>();
 
         gauge.current_epoch_token.borrow() == &coin_type
+    }
+
+    /// Returns true if the token was ever notified
+    ///
+    /// # Arguments
+    /// * `<RewardCoinType>` - The coin type to be checked.
+    /// * `gauge` - The gauge contract reference
+    public fun is_valid_reward_token<CoinTypeA, CoinTypeB, RewardCoinType>(
+        gauge: &Gauge<CoinTypeA, CoinTypeB>,
+    ): bool {
+        let coin_type = type_name::get<RewardCoinType>();
+
+        gauge.growth_global_by_token.contains(coin_type)
     }
 
     public fun borrow_epoch_token<CoinTypeA, CoinTypeB>(

@@ -792,7 +792,7 @@ fun test_exercise_o_sail_fail_insufficient_usd_fee() {
 }
 
 #[test]
-#[expected_failure(abort_code = minter::EExercieOSailExpired)] // Expect failure due to expired oSAIL
+#[expected_failure(abort_code = minter::EExerciseOSailExpired)] // Expect failure due to expired oSAIL
 fun test_exercise_o_sail_fail_expired() {
     let admin = @0x111; // Use a different address
     let user = @0x112;
