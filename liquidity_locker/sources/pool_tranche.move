@@ -105,7 +105,6 @@ module liquidity_locker::pool_tranche {
         let pool_tranche = PoolTranche {
             id: sui::object::new(ctx),
             pool_id,
-            // locked_positions: sui::table::new(ctx),
             rewards_balance: sui::bag::new(ctx),
             total_balance_epoch: sui::table::new(ctx),
             total_income_epoch: sui::table::new(ctx),
@@ -118,6 +117,9 @@ module liquidity_locker::pool_tranche {
         };
 
         let tranche_id = sui::object::id<PoolTranche>(&pool_tranche);
+        if (!manager.pool_tranches.contains(pool_id)) {
+            manager.pool_tranches.add(pool_id, vector::empty());
+        };
         manager.pool_tranches.borrow_mut(pool_id).push_back(pool_tranche);
 
         let event = CreatePoolTrancheEvent {
@@ -253,5 +255,16 @@ module liquidity_locker::pool_tranche {
             i = i + 1;
         };
         abort ETrancheNotFound
+    }
+
+    #[test_only]
+    public fun test_init(ctx: &mut sui::tx_context::TxContext) {
+        let tranche_manager = PoolTrancheManager {
+            id: sui::object::new(ctx),
+            pool_tranches: sui::table::new(ctx),
+        };
+        let admin_cap = AdminCap { id: sui::object::new(ctx) };
+        sui::transfer::transfer<AdminCap>(admin_cap, sui::tx_context::sender(ctx));
+        sui::transfer::share_object<PoolTrancheManager>(tranche_manager);
     }
 }

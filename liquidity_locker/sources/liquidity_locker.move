@@ -220,8 +220,7 @@ module liquidity_locker::liquidity_locker {
 
         let duration_block = distribution::common::epoch_to_seconds(locker.periods_blocking[block_period_index]);
         let current_time = clock.timestamp_ms() / 1000;
-        // TODO срок округлить до эпохи
-        let expiration_time = current_time + duration_block;
+        let expiration_time = distribution::common::epoch_next(current_time + duration_block);
         let full_unlocking_time = expiration_time + distribution::common::epoch_to_seconds(locker.periods_post_lockdown[block_period_index]);
 
         let pool_id = sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool);
@@ -524,8 +523,8 @@ module liquidity_locker::liquidity_locker {
         clock: &sui::clock::Clock,
     ): sui::balance::Balance<LockRewardCoinType> {
         let current_epoch = distribution::common::current_period(clock);
-        // TODO next_reward_claim_time если expiration_time округляем до эпохи
         let next_reward_claim_time = if (distribution::common::epoch_next(locked_position.last_reward_claim_time) > locked_position.expiration_time) {
+            // такого исхода не будет, так как expiration_time округляется до эпохи
             locked_position.expiration_time
         } else {
             distribution::common::epoch_next(locked_position.last_reward_claim_time)
@@ -858,7 +857,6 @@ module liquidity_locker::liquidity_locker {
             periods_post_lockdown: std::vector::empty<u64>(),
             pause: false,
         };
-        let locker_id = sui::object::id<Locker>(&locker);
         sui::transfer::share_object<Locker>(locker);
     
         let admin_cap = AdminCap { id: sui::object::new(ctx) };
