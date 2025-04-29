@@ -17,7 +17,7 @@ use distribution::distribution_config::{Self, DistributionConfig};
 use distribution::voting_escrow::{Self, VotingEscrow, Lock};
 use distribution::reward_distributor::{Self, RewardDistributor};
 use clmm_pool::tick_math;
-use distribution::common;
+use clmm_pool::rewarder;
 use distribution::gauge::{Self, Gauge};
 
 public struct USD1 has drop {}
@@ -74,6 +74,7 @@ public fun setup_clmm_factory_with_fee_tier(
         config::test_init(scenario.ctx());
         stats::init_test(scenario.ctx());
         price_provider::init_test(scenario.ctx());
+        rewarder::test_init(scenario.ctx());
     };
     
     // Tx 2: Add fee tier
@@ -474,6 +475,7 @@ public fun create_position_with_liquidity<CoinTypeA: store, CoinTypeB: store>(
     clock: &Clock,
 ) {
     let global_config = scenario.take_shared<GlobalConfig>();
+    let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
     let mut pool_obj = scenario.take_shared<Pool<CoinTypeA, CoinTypeB>>(); // Renamed to avoid conflict
 
     // Open the position
@@ -488,6 +490,7 @@ public fun create_position_with_liquidity<CoinTypeA: store, CoinTypeB: store>(
     // Add liquidity
     let receipt: pool::AddLiquidityReceipt<CoinTypeA, CoinTypeB> = pool::add_liquidity<CoinTypeA, CoinTypeB>(
         &global_config,
+        &mut vault,
         &mut pool_obj,
         &mut position,
         liquidity_delta,
@@ -513,6 +516,7 @@ public fun create_position_with_liquidity<CoinTypeA: store, CoinTypeB: store>(
     // Return shared objects
     test_scenario::return_shared(global_config);
     test_scenario::return_shared(pool_obj);
+    test_scenario::return_shared(vault);
 }
 
 // Define coin types with store for testing repay_add_liquidity
@@ -603,12 +607,14 @@ public fun swap<CoinTypeA, CoinTypeB>(
     clock: &sui::clock::Clock,
 ): (Coin<CoinTypeA>, Coin<CoinTypeB>) {
     let global_config = scenario.take_shared<GlobalConfig>();
+    let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
     let mut pool = scenario.take_shared<Pool<CoinTypeA, CoinTypeB>>();
     let price_provider = scenario.take_shared<PriceProvider>();
     let mut stats = scenario.take_shared<Stats>();
 
     let (coin_a_out, coin_b_out, receipt) = clmm_pool::pool::flash_swap<CoinTypeA, CoinTypeB>(
         &global_config,
+        &mut vault,
         &mut pool,
         a2b,
         by_amount_in,
@@ -650,7 +656,7 @@ public fun swap<CoinTypeA, CoinTypeB>(
     test_scenario::return_shared(pool);
     test_scenario::return_shared(price_provider);
     test_scenario::return_shared(stats);
-
+    test_scenario::return_shared(vault);
     (coin_a, coin_b)
 }
 
