@@ -197,6 +197,7 @@ module liquidity_locker::liquidity_locker {
     
     public fun lock_position<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         locker: &mut Locker,
         pool_tranche_manager: &mut pool_tranche::PoolTrancheManager,
@@ -264,6 +265,7 @@ module liquidity_locker::liquidity_locker {
                 ));
                 let (split_position_result1, split_position_result2) = split_position_internal(
                     global_config,
+                    vault,
                     distribution_config,
                     locker,
                     gauge,
@@ -338,6 +340,7 @@ module liquidity_locker::liquidity_locker {
     // если выводится вся ликвидность, то позиция разлочена и снимается со стейка
     public fun remove_lock_liquidity<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         locker: &mut Locker,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
@@ -394,6 +397,7 @@ module liquidity_locker::liquidity_locker {
 
         let ( removed_a, removed_b) = clmm_pool::pool::remove_liquidity<CoinTypeA, CoinTypeB>(
             global_config,
+            vault,
             pool,
             &mut position,
             remove_liquidity_amount,
@@ -605,6 +609,7 @@ module liquidity_locker::liquidity_locker {
     // сплит позиции на две
     public fun split_position<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         locker: &mut Locker,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
@@ -625,6 +630,7 @@ module liquidity_locker::liquidity_locker {
 
         let (split_position_result1, split_position_result2) = split_position_internal(
             global_config,
+            vault,
             distribution_config,
             locker,
             gauge,
@@ -680,6 +686,7 @@ module liquidity_locker::liquidity_locker {
     
     fun split_position_internal<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         locker: &Locker,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
@@ -707,6 +714,7 @@ module liquidity_locker::liquidity_locker {
         // выводим ликву и закрываем позу
         let (mut removed_a, mut removed_b) = remove_liquidity_and_collect_fee<CoinTypeA, CoinTypeB>(
             global_config,
+            vault,
             pool,
             &mut position,
             total_liquidity,
@@ -736,6 +744,7 @@ module liquidity_locker::liquidity_locker {
 
         let receipt1 = clmm_pool::pool::add_liquidity<CoinTypeA, CoinTypeB>(
             global_config,
+            vault,
             pool,
             &mut position1,
             liquidity1,
@@ -743,6 +752,7 @@ module liquidity_locker::liquidity_locker {
         );
         let receipt2 = clmm_pool::pool::add_liquidity<CoinTypeA, CoinTypeB>(
             global_config,
+            vault,
             pool,
             &mut position2,
             liquidity2,
@@ -808,6 +818,7 @@ module liquidity_locker::liquidity_locker {
     // метод снятия ликвидности и сбора комиссии
     fun remove_liquidity_and_collect_fee<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         position: &mut clmm_pool::position::Position,
         liquidity: u128,
@@ -816,6 +827,7 @@ module liquidity_locker::liquidity_locker {
     ): ( sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>) {
         let ( removed_a,  removed_b) = clmm_pool::pool::remove_liquidity<CoinTypeA, CoinTypeB>(
             global_config,
+            vault,
             pool,
             position,
             liquidity,

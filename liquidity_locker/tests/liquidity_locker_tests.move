@@ -196,6 +196,15 @@ module liquidity_locker::liquidity_locker_tests {
             );
             assert!(after_reward == 10000000, 92348);
 
+            let reward_balance = pool_tranche::get_reward_balance<RewardCoinType1>(
+                &mut tranche_manager,
+                sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
+                sui::object::id<pool_tranche::PoolTranche>(tranches.borrow(0)),
+                10000000,
+                clock.timestamp_ms()/1000
+            );
+
+            assert!(reward_balance.value() == 10000000, 92349);
 
             transfer::public_transfer(pool, admin);
             test_scenario::return_shared(pools);
