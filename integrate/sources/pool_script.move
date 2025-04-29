@@ -6,6 +6,7 @@ module integrate::pool_script {
 
     fun swap<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         coin_a_input: vector<sui::coin::Coin<CoinTypeA>>,
         coin_b_input: vector<sui::coin::Coin<CoinTypeB>>,
@@ -23,6 +24,7 @@ module integrate::pool_script {
         let mut coin_b = integrate::utils::merge_coins<CoinTypeA>(coin_a_input, ctx);
         let (coin_a_out, coin_b_out, receipt) = clmm_pool::pool::flash_swap<CoinTypeA, CoinTypeB>(
             global_config,
+            vault,
             pool,
             a2b,
             by_amount_in,
@@ -90,6 +92,7 @@ module integrate::pool_script {
 
     public entry fun close_position<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         mut position: clmm_pool::position::Position,
         min_amount_a: u64,
@@ -101,6 +104,7 @@ module integrate::pool_script {
         if (liquidity > 0) {
             remove_liquidity<CoinTypeA, CoinTypeB>(
                 global_config,
+                vault,
                 pool,
                 &mut position,
                 liquidity,
@@ -208,6 +212,7 @@ module integrate::pool_script {
 
     public entry fun remove_liquidity<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         position: &mut clmm_pool::position::Position,
         liquidity: u128,
@@ -218,6 +223,7 @@ module integrate::pool_script {
     ) {
         let (removed_a, removed_b) = clmm_pool::pool::remove_liquidity<CoinTypeA, CoinTypeB>(
             global_config,
+            vault,
             pool,
             position,
             liquidity,
@@ -330,6 +336,7 @@ module integrate::pool_script {
 
     public entry fun add_liquidity_fix_coin_only_a<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         position: &mut clmm_pool::position::Position,
         coin_a_input: vector<sui::coin::Coin<CoinTypeA>>,
@@ -339,6 +346,7 @@ module integrate::pool_script {
     ) {
         let receipt = clmm_pool::pool::add_liquidity_fix_coin<CoinTypeA, CoinTypeB>(
             global_config,
+            vault,
             pool,
             position,
             amount_a,
@@ -359,6 +367,7 @@ module integrate::pool_script {
 
     public entry fun add_liquidity_fix_coin_only_b<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         position: &mut clmm_pool::position::Position,
         coin_b_input: vector<sui::coin::Coin<CoinTypeB>>,
@@ -368,6 +377,7 @@ module integrate::pool_script {
     ) {
         let receipt = clmm_pool::pool::add_liquidity_fix_coin<CoinTypeA, CoinTypeB>(
             global_config,
+            vault,
             pool,
             position,
             amount_b,
@@ -388,6 +398,7 @@ module integrate::pool_script {
 
     public entry fun add_liquidity_fix_coin_with_all<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         position: &mut clmm_pool::position::Position,
         coin_a_input: vector<sui::coin::Coin<CoinTypeA>>,
@@ -405,6 +416,7 @@ module integrate::pool_script {
         };
         let receipt = clmm_pool::pool::add_liquidity_fix_coin<CoinTypeA, CoinTypeB>(
             global_config,
+            vault,
             pool,
             position,
             amount_in,
@@ -425,6 +437,7 @@ module integrate::pool_script {
 
     public entry fun add_liquidity_only_a<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         position: &mut clmm_pool::position::Position,
         coin_a_input: vector<sui::coin::Coin<CoinTypeA>>,
@@ -435,6 +448,7 @@ module integrate::pool_script {
     ) {
         let receipt = clmm_pool::pool::add_liquidity<CoinTypeA, CoinTypeB>(
             global_config,
+            vault,
             pool,
             position,
             delta_liquidity,
@@ -454,6 +468,7 @@ module integrate::pool_script {
 
     public entry fun add_liquidity_only_b<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         position: &mut clmm_pool::position::Position,
         coin_b_input: vector<sui::coin::Coin<CoinTypeB>>,
@@ -464,6 +479,7 @@ module integrate::pool_script {
     ) {
         let receipt = clmm_pool::pool::add_liquidity<CoinTypeA, CoinTypeB>(
             global_config,
+            vault,
             pool,
             position,
             delta_liquidity,
@@ -483,6 +499,7 @@ module integrate::pool_script {
 
     public entry fun add_liquidity_with_all<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         position: &mut clmm_pool::position::Position,
         coin_a_input: vector<sui::coin::Coin<CoinTypeA>>,
@@ -495,6 +512,7 @@ module integrate::pool_script {
     ) {
         let receipt = clmm_pool::pool::add_liquidity<CoinTypeA, CoinTypeB>(
             global_config,
+            vault,
             pool,
             position,
             delta_liquidity,
@@ -514,6 +532,7 @@ module integrate::pool_script {
 
     public entry fun create_pool_with_liquidity_only_a<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pools: &mut clmm_pool::factory::Pools,
         tick_spacing: u32,
         initialize_sqrt_price: u128,
@@ -530,6 +549,7 @@ module integrate::pool_script {
     ) {
         let (v0, v1, v2) = pools.create_pool_with_liquidity(
             global_config,
+            vault,
             tick_spacing,
             initialize_sqrt_price,
             url,
@@ -553,6 +573,7 @@ module integrate::pool_script {
 
     public entry fun create_pool_with_liquidity_only_b<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pools: &mut clmm_pool::factory::Pools,
         tick_spacing: u32,
         initialize_sqrt_price: u128,
@@ -569,6 +590,7 @@ module integrate::pool_script {
     ) {
         let (v0, v1, v2) = pools.create_pool_with_liquidity(
             global_config,
+            vault,
             tick_spacing,
             initialize_sqrt_price,
             url,
@@ -592,6 +614,7 @@ module integrate::pool_script {
 
     public entry fun create_pool_with_liquidity_with_all<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pools: &mut clmm_pool::factory::Pools,
         tick_spacing: u32,
         initialize_sqrt_price: u128,
@@ -611,6 +634,7 @@ module integrate::pool_script {
     ) {
         let (v0, v1, v2) = pools.create_pool_with_liquidity(
             global_config,
+            vault,
             tick_spacing,
             initialize_sqrt_price,
             url,
@@ -634,6 +658,7 @@ module integrate::pool_script {
 
     public entry fun open_position_with_liquidity_only_a<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         tick_lower: u32,
         tick_upper: u32,
@@ -651,6 +676,7 @@ module integrate::pool_script {
         );
         let receipt = clmm_pool::pool::add_liquidity_fix_coin<CoinTypeA, CoinTypeB>(
             global_config,
+            vault,
             pool,
             &mut v0,
             max_amount_a,
@@ -672,6 +698,7 @@ module integrate::pool_script {
 
     public entry fun open_position_with_liquidity_only_b<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         tick_lower: u32,
         tick_upper: u32,
@@ -689,6 +716,7 @@ module integrate::pool_script {
         );
         let receipt = clmm_pool::pool::add_liquidity_fix_coin<CoinTypeA, CoinTypeB>(
             global_config,
+            vault,
             pool,
             &mut position,
             max_amount_b,
@@ -710,6 +738,7 @@ module integrate::pool_script {
 
     public entry fun open_position_with_liquidity_with_all<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         tick_lower: u32,
         tick_upper: u32,
@@ -735,6 +764,7 @@ module integrate::pool_script {
         };
         let receipt = clmm_pool::pool::add_liquidity_fix_coin<CoinTypeA, CoinTypeB>(
             global_config,
+            vault,
             pool,
             &mut v0,
             v1,
@@ -764,6 +794,7 @@ module integrate::pool_script {
 
     public entry fun swap_a2b<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         coin_a_input: vector<sui::coin::Coin<CoinTypeA>>,
         fix_amount_in: bool,
@@ -777,6 +808,7 @@ module integrate::pool_script {
     ) {
         swap<CoinTypeA, CoinTypeB>(
             global_config,
+            vault,
             pool,
             coin_a_input,
             std::vector::empty<sui::coin::Coin<CoinTypeB>>(),
@@ -794,6 +826,7 @@ module integrate::pool_script {
 
     public entry fun swap_a2b_with_partner<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         partner: &mut clmm_pool::partner::Partner,
         coin_a_input: vector<sui::coin::Coin<CoinTypeA>>,
@@ -808,6 +841,7 @@ module integrate::pool_script {
     ) {
         swap_with_partner<CoinTypeA, CoinTypeB>(
             global_config,
+            vault,
             pool,
             partner,
             coin_a_input,
@@ -826,6 +860,7 @@ module integrate::pool_script {
 
     public entry fun swap_b2a<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,   
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         coin_b_input: vector<sui::coin::Coin<CoinTypeB>>,
         by_amount_in: bool,
@@ -839,6 +874,7 @@ module integrate::pool_script {
     ) {
         swap<CoinTypeA, CoinTypeB>(
             global_config,
+            vault,
             pool,
             std::vector::empty<sui::coin::Coin<CoinTypeA>>(),
             coin_b_input,
@@ -856,6 +892,7 @@ module integrate::pool_script {
 
     public entry fun swap_b2a_with_partner<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         partner: &mut clmm_pool::partner::Partner,
         coin_b_input: vector<sui::coin::Coin<CoinTypeB>>,
@@ -870,6 +907,7 @@ module integrate::pool_script {
     ) {
         swap_with_partner<CoinTypeA, CoinTypeB>(
             global_config,
+            vault,
             pool,
             partner,
             std::vector::empty<sui::coin::Coin<CoinTypeA>>(),
@@ -888,6 +926,7 @@ module integrate::pool_script {
 
     fun swap_with_partner<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         swap_partner: &mut clmm_pool::partner::Partner,
         coin_a_input: vector<sui::coin::Coin<CoinTypeA>>,
@@ -906,6 +945,7 @@ module integrate::pool_script {
         let mut coin_b = integrate::utils::merge_coins<CoinTypeB>(coin_b_input, ctx);
         let (coin_a_out, coin_b_out, swap_receipt) = clmm_pool::pool::flash_swap_with_partner<CoinTypeA, CoinTypeB>(
             global_config,
+            vault,
             pool,
             swap_partner,
             a2b,
@@ -959,7 +999,7 @@ module integrate::pool_script {
     public entry fun update_rewarder_emission<CoinTypeA, CoinTypeB, RewardCoinType>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        rewarder_global_vault: &clmm_pool::rewarder::RewarderGlobalVault,
+        rewarder_global_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         emissions_per_second: u128,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
