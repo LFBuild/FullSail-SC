@@ -33,6 +33,7 @@ module integrate::pool_creator_v2 {
 
     public entry fun create_pool_v2<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pools: &mut clmm_pool::factory::Pools,
         tick_spacing: u32,
         initialize_sqrt_price: u128,
@@ -63,6 +64,7 @@ module integrate::pool_creator_v2 {
         let liquidity_amount_b = coin_b_for_pool.value<CoinTypeB>();
         let (position, remaining_coin_a, remaining_coin_b) = pools.create_pool_with_liquidity(
             global_config,
+            vault,
             tick_spacing,
             initialize_sqrt_price,
             url,

@@ -42,7 +42,7 @@ module integrate::pool_script_v3 {
     public entry fun update_rewarder_emission<CoinTypeA, CoinTypeB, RewardCoinType>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        rewarder_vault: &clmm_pool::rewarder::RewarderGlobalVault,
+        rewarder_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         fee_numerator: u64,
         fee_denominator: u64,
         clock: &sui::clock::Clock,
