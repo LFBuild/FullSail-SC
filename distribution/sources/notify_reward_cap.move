@@ -50,6 +50,19 @@ module distribution::notify_reward_cap {
         sui::package::claim_and_keep<NOTIFY_REWARD_CAP>(otw, ctx);
     }
 
+    #[test_only]
+    public fun test_create(
+        voter_id: ID,
+        who: ID,
+        ctx: &mut TxContext
+    ): NotifyRewardCap {
+        NotifyRewardCap {
+            id: object::new(ctx),
+            voter_id,
+            who,
+        }
+    }
+
     public fun validate_notify_reward_voter_id(notify_reward_cap: &NotifyRewardCap, voter_id: ID) {
         assert!(notify_reward_cap.voter_id == voter_id, EValidateNotifyRewardInvalidVoter);
     }

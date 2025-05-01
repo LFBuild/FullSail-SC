@@ -56,7 +56,7 @@ module distribution::fee_voting_reward {
         FeeVotingReward {
             id: object::new(ctx),
             gauge: authorized,
-            reward: distribution::reward::create(voter, ve, voter, reward_coin_types, ctx),
+            reward: distribution::reward::create(voter, option::some(ve), voter, reward_coin_types, ctx),
         }
     }
 

@@ -1,5 +1,5 @@
 module integrate::setup_distribution {
-    public entry fun create<SailCoinType>(
+    public entry fun create<FirstSailOptionCoinType, SailCoinType>(
         publisher: &sui::package::Publisher,
         global_config: &clmm_pool::config::GlobalConfig,
         distribtuion_config: &distribution::distribution_config::DistributionConfig,
@@ -14,16 +14,15 @@ module integrate::setup_distribution {
             ctx
         );
         let mut minter = minter_immut;
-        let mut supported_coins = std::vector::empty<std::type_name::TypeName>();
-        supported_coins.push_back(std::type_name::get<SailCoinType>());
-        let (voter, notify_reward_cap) = distribution::voter::create<SailCoinType>(
+        let first_option_coin = std::type_name::get<FirstSailOptionCoinType>();
+        let (voter, notify_reward_cap) = distribution::voter::create(
             publisher,
             object::id(global_config),
             object::id(distribtuion_config),
-            supported_coins,
+            first_option_coin,
             ctx
         );
-        let (reward_distributor, reward_distributor_cap) = distribution::reward_distributor::create<SailCoinType>(
+        let (reward_distributor, reward_distributor_cap) = distribution::reward_distributor::create<FirstSailOptionCoinType>(
             publisher,
             clock,
             ctx
@@ -35,18 +34,18 @@ module integrate::setup_distribution {
             admin_cap,
             tx_context::sender(ctx)
         );
-        transfer::public_share_object<distribution::reward_distributor::RewardDistributor<SailCoinType>>(
+        transfer::public_share_object<distribution::reward_distributor::RewardDistributor<FirstSailOptionCoinType>>(
             reward_distributor
         );
-        transfer::public_share_object<distribution::voting_escrow::VotingEscrow<SailCoinType>>(
-            distribution::voting_escrow::create<SailCoinType>(
+        transfer::public_share_object<distribution::voting_escrow::VotingEscrow<FirstSailOptionCoinType>>(
+            distribution::voting_escrow::create<FirstSailOptionCoinType>(
                 publisher,
-                object::id<distribution::voter::Voter<SailCoinType>>(&voter),
+                object::id<distribution::voter::Voter>(&voter),
                 clock,
                 ctx
             )
         );
-        transfer::public_share_object<distribution::voter::Voter<SailCoinType>>(voter);
+        transfer::public_share_object<distribution::voter::Voter>(voter);
         transfer::public_share_object<distribution::minter::Minter<SailCoinType>>(minter);
     }
 }

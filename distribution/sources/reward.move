@@ -37,7 +37,7 @@ module distribution::reward {
     public struct Reward has store, key {
         id: UID,
         voter: ID,
-        ve: ID,
+        ve: Option<ID>,
         authorized: ID,
         total_supply: u64,
         balance_of: sui::table::Table<ID, u64>,
@@ -113,7 +113,7 @@ module distribution::reward {
     /// A new Reward object with initialized data structures
     public(package) fun create(
         voter: ID,
-        ve: ID,
+        ve: Option<ID>,
         authorized: ID,
         reward_coin_types: vector<std::type_name::TypeName>,
         ctx: &mut TxContext
@@ -525,7 +525,7 @@ module distribution::reward {
     /// # Returns
     /// The ID of the ve (voting escrow) module
     public fun ve(reward: &Reward): ID {
-        reward.ve
+        *reward.ve.borrow()
     }
 
     /// Returns the ID of the voter module for this reward.
@@ -660,6 +660,19 @@ module distribution::reward {
             reward.supply_checkpoints.add(num_of_checkpoints, updated_checkpoint);
             reward.supply_num_checkpoints = num_of_checkpoints + 1;
         };
+    }
+
+    #[test_only]
+    public fun total_length(reward: &Reward): u64 {
+        reward.balance_of.length() +
+        reward.token_rewards_per_epoch.length() + 
+        reward.rewards.size() +
+        reward.last_earn.length() +
+        reward.checkpoints.length() +
+        reward.num_checkpoints.length() +
+        reward.supply_checkpoints.length() +
+        reward.supply_num_checkpoints + 
+        reward.balances.length()
     }
 }
 
