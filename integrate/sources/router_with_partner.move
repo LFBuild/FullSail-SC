@@ -6,6 +6,7 @@ module integrate::router_with_partner {
 
     public fun swap_ab_bc_with_partner<CoinTypeA, CoinTypeB, CoinTypeC>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool_ab: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         pool_bc: &mut clmm_pool::pool::Pool<CoinTypeB, CoinTypeC>,
         partner: &mut clmm_pool::partner::Partner,
@@ -24,6 +25,7 @@ module integrate::router_with_partner {
         if (by_amount_in) {
             let (coin_a_out, intermediate_coin_b) = swap_with_partner<CoinTypeA, CoinTypeB>(
                 global_config,
+                vault,
                 pool_ab,
                 partner,
                 coin_from,
@@ -41,6 +43,7 @@ module integrate::router_with_partner {
             let intermediate_amount = intermediate_coin_b.value<CoinTypeB>();
             let (unused_coin_b, final_coin_c) = swap_with_partner<CoinTypeB, CoinTypeC>(
                 global_config,
+                vault,
                 pool_bc,
                 partner,
                 intermediate_coin_b,
@@ -61,6 +64,7 @@ module integrate::router_with_partner {
         } else {
             let (b_balance, c_balance, receipt) = clmm_pool::pool::flash_swap_with_partner<CoinTypeB, CoinTypeC>(
                 global_config,
+                vault,
                 pool_bc,
                 partner,
                 true,
@@ -73,6 +77,7 @@ module integrate::router_with_partner {
             );
             let (final_coin_a, coin_b_for_repay) = swap_with_partner<CoinTypeA, CoinTypeB>(
                 global_config,
+                vault,
                 pool_ab,
                 partner,
                 coin_from,
@@ -102,6 +107,7 @@ module integrate::router_with_partner {
 
     public fun swap_ab_cb_with_partner<CoinTypeA, CoinTypeB, CoinTypeC>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool_ab: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         pool_cb: &mut clmm_pool::pool::Pool<CoinTypeC, CoinTypeB>,
         partner: &mut clmm_pool::partner::Partner,
@@ -120,6 +126,7 @@ module integrate::router_with_partner {
         if (by_amount_in) {
             let (coin_a_out, intermediate_coin_b) = swap_with_partner<CoinTypeA, CoinTypeB>(
                 global_config,
+                vault,
                 pool_ab,
                 partner,
                 coin_from,
@@ -137,6 +144,7 @@ module integrate::router_with_partner {
             let intermediate_amount = intermediate_coin_b.value();
             let (final_coin_c, unused_coin_b) = swap_with_partner<CoinTypeC, CoinTypeB>(
                 global_config,
+                vault,
                 pool_cb,
                 partner,
                 coin_to,
@@ -157,6 +165,7 @@ module integrate::router_with_partner {
         } else {
             let (c_balance, b_balance, receipt) = clmm_pool::pool::flash_swap_with_partner<CoinTypeC, CoinTypeB>(
                 global_config,
+                vault,
                 pool_cb,
                 partner,
                 false,
@@ -169,6 +178,7 @@ module integrate::router_with_partner {
             );
             let (final_coin_a, coin_b_for_repay) = swap_with_partner<CoinTypeA, CoinTypeB>(
                 global_config,
+                vault,
                 pool_ab,
                 partner,
                 coin_from,
@@ -198,6 +208,7 @@ module integrate::router_with_partner {
 
     public fun swap_ba_bc_with_partner<CoinTypeA, CoinTypeB, CoinTypeC>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool_ba: &mut clmm_pool::pool::Pool<CoinTypeB, CoinTypeA>,
         pool_bc: &mut clmm_pool::pool::Pool<CoinTypeB, CoinTypeC>,
         partner: &mut clmm_pool::partner::Partner,
@@ -216,6 +227,7 @@ module integrate::router_with_partner {
         if (by_amount_in) {
             let (intemediate_coin_b, coin_a_out) = swap_with_partner<CoinTypeB, CoinTypeA>(
                 global_config,
+                vault,
                 pool_ba,
                 partner,
                 sui::coin::zero<CoinTypeB>(ctx),
@@ -234,6 +246,7 @@ module integrate::router_with_partner {
             let intemediate_amount = intemediate_coin_b.value<CoinTypeB>();
             let (unused_coin_b, final_coin_c) = swap_with_partner<CoinTypeB, CoinTypeC>(
                 global_config,
+                vault,
                 pool_bc,
                 partner,
                 intemediate_coin_b,
@@ -254,6 +267,7 @@ module integrate::router_with_partner {
         } else {
             let (b_balance, c_balance, receipt) = clmm_pool::pool::flash_swap_with_partner<CoinTypeB, CoinTypeC>(
                 global_config,
+                vault,
                 pool_bc,
                 partner,
                 true,
@@ -266,6 +280,7 @@ module integrate::router_with_partner {
             );
             let (coin_b_for_repay, final_coin_a) = swap_with_partner<CoinTypeB, CoinTypeA>(
                 global_config,
+                vault,
                 pool_ba,
                 partner,
                 sui::coin::from_balance<CoinTypeB>(b_balance, ctx),
@@ -295,6 +310,7 @@ module integrate::router_with_partner {
 
     public fun swap_ba_cb_with_partner<CoinTypeA, CoinTypeB, CoinTypeC>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool_ba: &mut clmm_pool::pool::Pool<CoinTypeB, CoinTypeA>,
         pool_cb: &mut clmm_pool::pool::Pool<CoinTypeC, CoinTypeB>,
         partner: &mut clmm_pool::partner::Partner,
@@ -313,6 +329,7 @@ module integrate::router_with_partner {
         if (by_amount_in) {
             let (intermediate_coin_b, coin_a_out) = swap_with_partner<CoinTypeB, CoinTypeA>(
                 global_config,
+                vault,
                 pool_ba,
                 partner,
                 sui::coin::zero<CoinTypeB>(ctx),
@@ -330,6 +347,7 @@ module integrate::router_with_partner {
             let amount = intermediate_coin_b.value();
             let (final_coin_c, unused_coin_b) = swap_with_partner<CoinTypeC, CoinTypeB>(
                 global_config,
+                vault,
                 pool_cb,
                 partner,
                 coin_to,
@@ -350,6 +368,7 @@ module integrate::router_with_partner {
         } else {
             let (c_balance, b_balance, receipt) = clmm_pool::pool::flash_swap_with_partner<CoinTypeC, CoinTypeB>(
                 global_config,
+                vault,
                 pool_cb,
                 partner,
                 false,
@@ -362,6 +381,7 @@ module integrate::router_with_partner {
             );
             let (coin_b_for_repay, final_coin_a) = swap_with_partner<CoinTypeB, CoinTypeA>(
                 global_config,
+                vault,
                 pool_ba,
                 partner,
                 sui::coin::from_balance<CoinTypeB>(b_balance, ctx),
@@ -391,6 +411,7 @@ module integrate::router_with_partner {
 
     public fun swap_with_partner<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         partner: &mut clmm_pool::partner::Partner,
         mut coin_a: sui::coin::Coin<CoinTypeA>,
@@ -415,6 +436,7 @@ module integrate::router_with_partner {
         };
         let (coin_a_out, coin_b_out, receipt) = clmm_pool::pool::flash_swap_with_partner<CoinTypeA, CoinTypeB>(
             global_config,
+            vault,
             pool,
             partner,
             a2b,

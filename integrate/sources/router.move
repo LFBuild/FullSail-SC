@@ -21,6 +21,7 @@ module integrate::router {
 
     public fun swap<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         mut coin_a: sui::coin::Coin<CoinTypeA>,
         mut coin_b: sui::coin::Coin<CoinTypeB>,
@@ -44,6 +45,7 @@ module integrate::router {
         };
         let (coin_a_out, coin_b_out, receipt) = clmm_pool::pool::flash_swap<CoinTypeA, CoinTypeB>(
             global_config,
+            vault,
             pool,
             a2b,
             by_amount_in,
@@ -208,6 +210,7 @@ module integrate::router {
 
     public fun swap_ab_bc<CoinTypeA, CoinTypeB, CoinTypeC>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool_ab: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         pool_bc: &mut clmm_pool::pool::Pool<CoinTypeB, CoinTypeC>,
         coin_from: sui::coin::Coin<CoinTypeA>,
@@ -225,6 +228,7 @@ module integrate::router {
         if (by_amount_in) {
             let (coin_a_out, coin_b_out) = swap<CoinTypeA, CoinTypeB>(
                 global_config,
+                vault,
                 pool_ab,
                 coin_from,
                 sui::coin::zero<CoinTypeB>(ctx),
@@ -241,6 +245,7 @@ module integrate::router {
             let coin_b_amount = sui::coin::value<CoinTypeB>(&coin_b_out);
             let (unused_coin_b, coin_c_out) = swap<CoinTypeB, CoinTypeC>(
                 global_config,
+                vault,
                 pool_bc,
                 coin_b_out,
                 coin_to,
@@ -260,6 +265,7 @@ module integrate::router {
         } else {
             let (b_balance, c_balance, receipt) = clmm_pool::pool::flash_swap<CoinTypeB, CoinTypeC>(
                 global_config,
+                vault,
                 pool_bc,
                 true,
                 false,
@@ -271,6 +277,7 @@ module integrate::router {
             );
             let (final_coin_a, coin_b_for_repay) = swap<CoinTypeA, CoinTypeB>(
                 global_config,
+                vault,
                 pool_ab,
                 coin_from,
                 sui::coin::from_balance<CoinTypeB>(b_balance, ctx),
@@ -298,6 +305,7 @@ module integrate::router {
 
     public fun swap_ab_cb<CoinTypeA, CoinTypeB, CoinTypeC>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool_ab: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         pool_cb: &mut clmm_pool::pool::Pool<CoinTypeC, CoinTypeB>,
         coin_from: sui::coin::Coin<CoinTypeA>,
@@ -315,6 +323,7 @@ module integrate::router {
         if (by_amount_in) {
             let (coin_a_remaining, coin_b_out) = swap<CoinTypeA, CoinTypeB>(
                 global_config,
+                vault,
                 pool_ab,
                 coin_from,
                 sui::coin::zero<CoinTypeB>(ctx),
@@ -331,6 +340,7 @@ module integrate::router {
             let coin_b_amount = coin_b_out.value<CoinTypeB>();
             let (coin_c_out, unused_coin_b) = swap<CoinTypeC, CoinTypeB>(
                 global_config,
+                vault,
                 pool_cb,
                 coin_to,
                 coin_b_out,
@@ -350,6 +360,7 @@ module integrate::router {
         } else {
             let (c_balance, b_balance, receipt) = clmm_pool::pool::flash_swap<CoinTypeC, CoinTypeB>(
                 global_config,
+                vault,
                 pool_cb,
                 false,
                 false,
@@ -361,6 +372,7 @@ module integrate::router {
             );
             let (final_coin_a, coin_b_for_repay) = swap<CoinTypeA, CoinTypeB>(
                 global_config,
+                vault,
                 pool_ab,
                 coin_from,
                 sui::coin::from_balance<CoinTypeB>(b_balance, ctx),
@@ -388,6 +400,7 @@ module integrate::router {
 
     public fun swap_ba_bc<CoinTypeA, CoinTypeB, CoinTypeC>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool_ba: &mut clmm_pool::pool::Pool<CoinTypeB, CoinTypeA>,
         pool_bc: &mut clmm_pool::pool::Pool<CoinTypeB, CoinTypeC>,
         coin_from: sui::coin::Coin<CoinTypeA>,
@@ -405,6 +418,7 @@ module integrate::router {
         if (by_amount_in) {
             let (coin_b_out, coin_a_out) = swap<CoinTypeB, CoinTypeA>(
                 global_config,
+                vault,
                 pool_ba,
                 sui::coin::zero<CoinTypeB>(ctx),
                 coin_from,
@@ -421,6 +435,7 @@ module integrate::router {
             let amount = coin_b_out.value<CoinTypeB>();
             let (unused_coin_b, coin_c_out) = swap<CoinTypeB, CoinTypeC>(
                 global_config,
+                vault,
                 pool_bc,
                 coin_b_out,
                 coin_to,
@@ -440,6 +455,7 @@ module integrate::router {
         } else {
             let (b_balance, c_balance, receipt) = clmm_pool::pool::flash_swap<CoinTypeB, CoinTypeC>(
                 global_config,
+                vault,
                 pool_bc,
                 true,
                 false,
@@ -451,6 +467,7 @@ module integrate::router {
             );
             let (coin_b_for_repay, final_coin_a) = swap<CoinTypeB, CoinTypeA>(
                 global_config,
+                vault,
                 pool_ba,
                 sui::coin::from_balance<CoinTypeB>(b_balance, ctx),
                 coin_from,
@@ -478,6 +495,7 @@ module integrate::router {
 
     public fun swap_ba_cb<CoinTypeA, CoinTypeB, CoinTypeC>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool_ba: &mut clmm_pool::pool::Pool<CoinTypeB, CoinTypeA>,
         pool_cb: &mut clmm_pool::pool::Pool<CoinTypeC, CoinTypeB>,
         coin_from: sui::coin::Coin<CoinTypeA>,
@@ -495,6 +513,7 @@ module integrate::router {
         if (by_amount_in) {
             let (coin_b_out, coin_a_out) = swap<CoinTypeB, CoinTypeA>(
                 global_config,
+                vault,
                 pool_ba,
                 sui::coin::zero<CoinTypeB>(ctx),
                 coin_from,
@@ -511,6 +530,7 @@ module integrate::router {
             let coin_b_amount = coin_b_out.value<CoinTypeB>();
             let (coin_c_out, unused_coin_b) = swap<CoinTypeC, CoinTypeB>(
                 global_config,
+                vault,
                 pool_cb,
                 coin_to,
                 coin_b_out,
@@ -530,6 +550,7 @@ module integrate::router {
         } else {
             let (c_balance, b_balance, receipt) = clmm_pool::pool::flash_swap<CoinTypeC, CoinTypeB>(
                 global_config,
+                vault,
                 pool_cb,
                 false,
                 false,
@@ -541,6 +562,7 @@ module integrate::router {
             );
             let (coin_b_for_repay, final_coin_a) = swap<CoinTypeB, CoinTypeA>(
                 global_config,
+                vault,
                 pool_ba,
                 sui::coin::from_balance<CoinTypeB>(b_balance, ctx),
                 coin_from,
