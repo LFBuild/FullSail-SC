@@ -5,7 +5,7 @@ module liquidity_locker::pool_tranche {
     const ETrancheFilled: u64 = 92357345723427311;
     const ERewardAlreadyExists: u64 = 90324592349252616;
     const ERewardNotFound: u64 = 91235834582491043;
-    const ETrancheNotFound: u64 = 9627374284723523965;
+    const ETrancheNotFound: u64 = 923487825237452354;
     const ERewardNotEnough: u64 = 91294503453406623;
     const EInvalidAddLiquidity: u64 = 923487825237423743;
 
@@ -94,7 +94,7 @@ module liquidity_locker::pool_tranche {
         manager: &mut PoolTrancheManager,
         pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         volume_in_coin_a: bool,
-        total_volume: u128,
+        total_volume: u128, // Q64.64
         duration_profitabilities: vector<u64>,
         minimum_remaining_volume: u64,
         ctx: &mut sui::tx_context::TxContext
@@ -195,14 +195,18 @@ module liquidity_locker::pool_tranche {
 
     public(package) fun fill_tranches(
         tranche: &mut PoolTranche,
-        add_volume: u128,
+        add_volume: u128, // Q64.64
     ) {
         assert!(!tranche.filled, ETrancheFilled);
         assert!(tranche.current_volume + add_volume <= tranche.total_volume, EInvalidAddLiquidity);
         
         tranche.current_volume = tranche.current_volume + add_volume;
         if (tranche.current_volume == tranche.total_volume ||
-            integer_mate::full_math_u128::mul_div_round(tranche.total_volume, tranche.minimum_remaining_volume as u128, minimum_remaining_volume_denom() as u128) >= tranche.total_volume - tranche.current_volume) { 
+            integer_mate::full_math_u128::mul_div_round(
+                tranche.total_volume, 
+                tranche.minimum_remaining_volume as u128, 
+                minimum_remaining_volume_denom() as u128
+            ) >= (tranche.total_volume - tranche.current_volume)) { 
             // если свободного места осталось менее minimum_remaining_volume от общего объема
             // закрываем транш, чтобы не плодить мелких позиций
             tranche.filled = true;
@@ -239,7 +243,6 @@ module liquidity_locker::pool_tranche {
                     *tranche.total_income_epoch.borrow(epoch_start)
                 );
 
-                // TODO а если в этой эпохе другой тип?
                 let current_balance = tranche.rewards_balance.borrow_mut<u64, sui::balance::Balance<RewardCoinType>>(epoch_start);
                 assert!(reward_amount <= current_balance.value(), ERewardNotEnough);
 

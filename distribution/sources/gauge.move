@@ -140,6 +140,8 @@ module distribution::gauge {
         voter_id: ID,
     }
 
+    public struct Locked has copy, drop, store {}
+
     public struct Gauge<phantom CoinTypeA, phantom CoinTypeB> has store, key {
         id: UID,
         pool_id: ID,
@@ -147,7 +149,7 @@ module distribution::gauge {
         distribution_config: ID,
         staked_positions: ObjectTable<ID, clmm_pool::position::Position>,
         staked_position_infos: Table<ID, PositionStakeInfo>,
-        locked_positions: Table<ID, bool>,
+        locked_positions: Table<ID, Locked>,
         reserves_balance: Bag,
         reserves_all_tokens: u64,
         // distribution_growth is also calculated by all tokens
@@ -159,7 +161,6 @@ module distribution::gauge {
         fee_b: Balance<CoinTypeB>,
         voter: Option<ID>,
         reward_rate: u128,
-        reward_rate_epoch: Table<u64, u128>, // epoch -> reward_rate
         period_finish: u64,
         reward_rate_by_epoch: Table<u64, u128>,
         // Token with TypeName is distributed in interval (growth_global_by_token.prev(token_type) || 0, growth_global_by_token.borrow(token_type)]
@@ -303,7 +304,7 @@ module distribution::gauge {
             ),
             staked_positions: object_table::new<ID, clmm_pool::position::Position>(ctx),
             staked_position_infos: table::new<ID, PositionStakeInfo>(ctx),
-            locked_positions: table::new<ID, bool>(ctx),
+            locked_positions: table::new<ID, Locked>(ctx),
             reserves_balance: bag::new(ctx),
             reserves_all_tokens: 0,
             current_epoch_token: option::none(),
@@ -312,7 +313,6 @@ module distribution::gauge {
             fee_b: balance::zero<CoinTypeB>(),
             voter: option::none<ID>(),
             reward_rate: 0,
-            reward_rate_epoch: table::new<u64, u128>(ctx),
             period_finish: 0,
             reward_rate_by_epoch: table::new<u64, u128>(ctx),
             growth_global_by_token: linked_table::new<TypeName, u128>(ctx),
@@ -1362,11 +1362,18 @@ module distribution::gauge {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+         std::debug::print(&std::string::utf8(b"start withdraw"));
         assert!(
             gauge.staked_positions.contains(position_id) && gauge.staked_position_infos.contains(position_id),
             EWithdrawPositionNotDepositedPosition
         );
+         std::debug::print(&std::string::utf8(b"after check staked_positions"));
+         std::debug::print(&position_id);
+         std::debug::print(&std::bcs::to_bytes(&position_id));
+         std::debug::print(&table::length(&gauge.locked_positions));
+         // TODO ЧТО ТУТ БЛЯТЬ ПРОИСХОДИТ я не понимаю. index out of bounds: the len is 46 but the index is 16303 panic.
         assert!(!gauge.locked_positions.contains(position_id), EWithdrawPositionPositionIsLocked);
+         std::debug::print(&std::string::utf8(b"after check locked_positions"));
         if (gauge.earned_by_position<CoinTypeA, CoinTypeB, LastRewardCoin>(pool, position_id, clock) > 0) {
             gauge.get_position_reward<CoinTypeA, CoinTypeB, LastRewardCoin>(pool, position_id, clock, ctx)
         };
@@ -1409,7 +1416,10 @@ module distribution::gauge {
         _locker_cap: &locker_cap::locker_cap::LockerCap,
         position_id: ID,
     ) {
-        gauge.locked_positions.add(position_id, true);
+        std::debug::print(&std::string::utf8(b"start lock_position"));
+        std::debug::print(&position_id);
+        std::debug::print(&std::bcs::to_bytes(&position_id));
+        gauge.locked_positions.add(position_id, Locked {});
     }
 
     /// Remove the locked status from a position in the gauge
@@ -1423,6 +1433,7 @@ module distribution::gauge {
         _locker_cap: &locker_cap::locker_cap::LockerCap,
         position_id: ID,
     ) {
+        std::debug::print(&std::string::utf8(b"start unlock_position"));
         gauge.locked_positions.remove(position_id);
     }
     
@@ -1478,9 +1489,7 @@ module distribution::gauge {
         ctx: &mut TxContext
     ) {
         let pool_id = object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool);
-        if (position.liquidity() == 0) {
-            abort EDepositPositionHasNoLiquidity;
-        };
+        assert!(position.liquidity() > 0, EDepositPositionHasNoLiquidity);
         let position_id = object::id<clmm_pool::position::Position>(&position);
         assert!(
             gauge.check_gauger_pool(pool),
