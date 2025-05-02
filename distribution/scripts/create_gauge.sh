@@ -1,8 +1,8 @@
 source ./export.sh
 
-export COIN_A=0xda1f9eaf3d10cd6fa609d3061ac48d640c0aeb36fb031125a263736a0ae0be29::token_b::TOKEN_B
-export COIN_B=0x4e57cf0fd73647d44d2191fbb3028176893c07388d9472df07124fe7f72c0a66::sail_token::SAIL_TOKEN
-export POOL=0x163b704cccf75820c62b6b0d3a3f1b67e15b5c9c9a44d795a13b76b2bec609f3
+export COIN_A=0xe69a16dd83717f6f224314157af7b75283a297a61a1e5f20f373ecb9f8904a63::token_c::TOKEN_C
+export COIN_B=0x5c6d5739ac03c13d4986671f160dfed00ac9416f15cc9dbcfd30acff3fe1026e::token_d::TOKEN_D
+export POOL=0xbe6910c3f9d1c2f4b47c2fb2febc3b1ff20bdcbcfea85ac6c62baef866012e91
 
 sui client ptb \
 --move-call $PACKAGE::voter::create_gauge "<$COIN_A,$COIN_B,$FULLSAIL_TOKEN_TYPE>" @$VOTER @$DISTRIBUTION_CONFIG @$CREATE_CAP @$GOVERNOR_CAP @$VOTING_ESCROW @$POOL @$CLOCK \

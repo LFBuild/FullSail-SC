@@ -114,11 +114,12 @@ module integrate::fetcher_script {
 
     public entry fun fetch_position_points<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         position_id: ID,
         clock: &sui::clock::Clock
     ) {
-        let points_owned = clmm_pool::pool::calculate_and_update_points<CoinTypeA, CoinTypeB>(global_config, pool, position_id, clock);
+        let points_owned = clmm_pool::pool::calculate_and_update_points<CoinTypeA, CoinTypeB>(global_config, vault, pool, position_id, clock);
         let fetch_position_points_event = FetchPositionPointsEvent {
             position_id,
             points_owned,
@@ -128,11 +129,12 @@ module integrate::fetcher_script {
 
     public entry fun fetch_position_rewards<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         position_id: ID,
         clock: &sui::clock::Clock
     ) {
-        let data = clmm_pool::pool::calculate_and_update_rewards<CoinTypeA, CoinTypeB>(global_config, pool, position_id, clock);
+        let data = clmm_pool::pool::calculate_and_update_rewards<CoinTypeA, CoinTypeB>(global_config, vault, pool, position_id, clock);
         let fetch_position_rewards_event = FetchPositionRewardsEvent {
             data,
             position_id,

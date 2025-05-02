@@ -72,10 +72,11 @@ Use `sui client publish` command.
 - [price_provider](https://suivision.xyz/txblock/J2hrKfrUhnmKJTAcWDrCF5B6VfHHaKZcDhXAnaXgEgiL)
 - [clmm_pool](https://suivision.xyz/txblock/5WincqGA4JxVFrx4jZLi2pJAGcDNwVfdPxVkKkPgLf4e)
 - [distribution](https://suivision.xyz/txblock/AbURt8dazp7U7pd84froyMREqzyg1pzURcYQtzHuqcvC)
-- [integrate](https://suivision.xyz/txblock/5HDhhuzHHTTwj9QE9WJu6sNhVS922PPzVNZxxx6Dkdjv)
+- [integrate](https://suivision.xyz/txblock/5oGNpGb5CfM1wFnmaoLovNsMDFjhX5sMQtBG3wjABEjd), [upgrade integrate](https://suivision.xyz/txblock/8YboNNJfhMPVVDshfDmCL6hc4P7nS2YorrY9CzzKkvzU)
 
 [Setup distribution tx](https://suivision.xyz/txblock/31N5n7ZHB5X6K1ZPaAtJUny4eEZUYbZJGbFoEqbSnVas)
 [Create gauge tx](https://suivision.xyz/txblock/2uLEzLu2JYCM2qqCbCNMgqayVCiT43tNEvbK4pPc425U)
+[Create gauge tx2](https://suivision.xyz/txblock/D3vc98r73mvJ7mmsPE2ucsARs8QqA2v5A6aTiy6q4a2H)
 [Activate minter tx](https://suivision.xyz/txblock/A6BNVhv4GG7AkniPBinLtrDak7y4um3CcX6ejAe3z7NK)
 
 
