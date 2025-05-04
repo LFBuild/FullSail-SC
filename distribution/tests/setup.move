@@ -854,3 +854,29 @@ public fun update_minter_period<SailCoinType, OSailCoinType>(
 
         initial_supply
 }
+
+// Utility to call voter.distribute_gauge
+// Assumes Voter, Gauge, Pool, DistributionConfig are shared.
+public fun distribute_gauge<CoinTypeA, CoinTypeB, EpochOSail>(
+    scenario: &mut test_scenario::Scenario,
+    clock: &Clock,
+) {
+    let mut voter = scenario.take_shared<Voter>();
+    let mut gauge = scenario.take_shared<Gauge<CoinTypeA, CoinTypeB>>();
+    let mut pool = scenario.take_shared<Pool<CoinTypeA, CoinTypeB>>();
+    let distribution_config = scenario.take_shared<DistributionConfig>();
+
+    voter.distribute_gauge<CoinTypeA, CoinTypeB, EpochOSail>(
+        &distribution_config,
+        &mut gauge,
+        &mut pool,
+        clock,
+        scenario.ctx()
+    );
+
+    // Return shared objects
+    test_scenario::return_shared(voter);
+    test_scenario::return_shared(gauge);
+    test_scenario::return_shared(pool);
+    test_scenario::return_shared(distribution_config);
+}

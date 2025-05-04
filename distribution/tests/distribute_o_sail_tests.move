@@ -17,7 +17,6 @@ use clmm_pool::config::{Self, GlobalConfig};
 use clmm_pool::pool::{Pool};
 use clmm_pool::tick_math;
 use sui::test_utils;
-use distribution::minter::EUpdatePeriodOSailAlreadyUsed;
 
 const WEEK: u64 = 7 * 24 * 60 * 60 * 1000;
 
@@ -137,29 +136,6 @@ fun vote_for_pool<CoinTypeA, CoinTypeB>(
         clock,
     );
     test_scenario::return_shared(pool);
-}
-
-fun distribute_gauge<CoinTypeA, CoinTypeB, EpochOSail>(
-    scenario: &mut Scenario,
-    clock: &Clock,
-) {
-    let mut voter = scenario.take_shared<Voter>();
-    let mut gauge = scenario.take_shared<Gauge<CoinTypeA, CoinTypeB>>();
-    let mut pool = scenario.take_shared<Pool<CoinTypeA, CoinTypeB>>();
-    let distribution_config = scenario.take_shared<DistributionConfig>();
-
-    voter.distribute_gauge<CoinTypeA, CoinTypeB, EpochOSail>(
-        &distribution_config,
-        &mut gauge,
-        &mut pool,
-        clock,
-        scenario.ctx()
-    );
-
-    test_scenario::return_shared(voter);
-    test_scenario::return_shared(gauge);
-    test_scenario::return_shared(pool);
-    test_scenario::return_shared(distribution_config);
 }
 
 // used if you want to call some methods that are only supposed to be called by Voter
@@ -339,7 +315,7 @@ public fun test_gauge_notify_epoch_token_epoch_already_started() {
 
     scenario.next_tx(admin);
     {
-        distribute_gauge<USD1, SAIL, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge<USD1, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     clock::increment_for_testing(&mut clock, WEEK * 2 / 3);
@@ -1119,23 +1095,7 @@ fun check_two_positions_single_epoch(
     // distribute gauge
     scenario.next_tx(admin);
     {
-        let mut voter = scenario.take_shared<Voter>();
-        let mut gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
-        let mut pool = scenario.take_shared<Pool<USD1, SAIL>>();
-        let distribution_config = scenario.take_shared<DistributionConfig>();
-
-        voter.distribute_gauge<USD1, SAIL, OSAIL1>(
-            &distribution_config,
-            &mut gauge,
-            &mut pool,
-            clock,
-            scenario.ctx()
-        );
-
-        test_scenario::return_shared(voter);
-        test_scenario::return_shared(gauge);
-        test_scenario::return_shared(pool);
-        test_scenario::return_shared(distribution_config);
+        setup::distribute_gauge<USD1, SAIL, OSAIL1>(scenario, clock);
     };
 
     let total_liquidity = pos1_liquidity + pos2_liquidity;
@@ -1502,24 +1462,7 @@ fun test_single_position_reward_over_time_distribute() {
     // --- Tx: Distribute Gauge Rewards (OSAIL1) ---
     scenario.next_tx(admin);
     {
-        let mut voter = scenario.take_shared<Voter>();
-        let mut gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
-        let mut pool = scenario.take_shared<Pool<USD1, SAIL>>();
-        let distribution_config = scenario.take_shared<DistributionConfig>();
-
-        // Distribute OSAIL1 rewards to the gauge based on the user's vote
-        voter.distribute_gauge<USD1, SAIL, OSAIL1>(
-            &distribution_config,
-            &mut gauge,
-            &mut pool,
-            &clock,
-            scenario.ctx()
-        );
-
-        test_scenario::return_shared(voter);
-        test_scenario::return_shared(gauge);
-        test_scenario::return_shared(pool);
-        test_scenario::return_shared(distribution_config);
+        setup::distribute_gauge<USD1, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // --- Tx: lp1 Creates and Stakes Position ---
@@ -1707,24 +1650,7 @@ fun test_single_position_withdraw_distribute() {
     // --- Tx: Distribute Gauge Rewards (OSAIL1) ---
     scenario.next_tx(admin);
     {
-        let mut voter = scenario.take_shared<Voter>();
-        let mut gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
-        let mut pool = scenario.take_shared<Pool<USD1, SAIL>>();
-        let distribution_config = scenario.take_shared<DistributionConfig>();
-
-        // Distribute OSAIL1 rewards to the gauge based on the user's vote
-        voter.distribute_gauge<USD1, SAIL, OSAIL1>(
-            &distribution_config,
-            &mut gauge,
-            &mut pool,
-            &clock,
-            scenario.ctx()
-        );
-
-        test_scenario::return_shared(voter);
-        test_scenario::return_shared(gauge);
-        test_scenario::return_shared(pool);
-        test_scenario::return_shared(distribution_config);
+        setup::distribute_gauge<USD1, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // --- Tx: lp1 Creates and Stakes Position ---
@@ -1844,24 +1770,7 @@ fun test_single_position_deposit_for_1h() {
     // --- Tx: Distribute Gauge Rewards (OSAIL1) ---
     scenario.next_tx(admin);
     {
-        let mut voter = scenario.take_shared<Voter>();
-        let mut gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
-        let mut pool = scenario.take_shared<Pool<USD1, SAIL>>();
-        let distribution_config = scenario.take_shared<DistributionConfig>();
-
-        // Distribute OSAIL1 rewards to the gauge based on the user's vote
-        voter.distribute_gauge<USD1, SAIL, OSAIL1>(
-            &distribution_config,
-            &mut gauge,
-            &mut pool,
-            &clock,
-            scenario.ctx()
-        );
-
-        test_scenario::return_shared(voter);
-        test_scenario::return_shared(gauge);
-        test_scenario::return_shared(pool);
-        test_scenario::return_shared(distribution_config);
+        setup::distribute_gauge<USD1, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     clock.increment_for_testing(WEEK / 2);
@@ -1984,23 +1893,7 @@ fun multi_epoch_distribute_setup(
     // Distribute OSAIL1 rewards to the gauge
     scenario.next_tx(admin);
     {
-        let mut voter = scenario.take_shared<Voter>();
-        let mut gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
-        let mut pool = scenario.take_shared<Pool<USD1, SAIL>>();
-        let distribution_config = scenario.take_shared<DistributionConfig>();
-
-        voter.distribute_gauge<USD1, SAIL, OSAIL1>(
-            &distribution_config,
-            &mut gauge,
-            &mut pool,
-            clock,
-            scenario.ctx()
-        );
-
-        test_scenario::return_shared(voter);
-        test_scenario::return_shared(gauge);
-        test_scenario::return_shared(pool);
-        test_scenario::return_shared(distribution_config);
+        setup::distribute_gauge<USD1, SAIL, OSAIL1>(scenario, clock);
     };
 
     // --- 4. LP Creates and Stakes Position ---
@@ -2056,27 +1949,10 @@ fun multi_epoch_distribute_setup(
     // Distribute OSAIL2 rewards to the gauge
     scenario.next_tx(admin);
     {
-        let mut voter = scenario.take_shared<Voter>();
-        let mut gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
-        let mut pool = scenario.take_shared<Pool<USD1, SAIL>>();
-        let distribution_config = scenario.take_shared<DistributionConfig>();
-
-        // Distribute OSAIL2 rewards
-        voter.distribute_gauge<USD1, SAIL, OSAIL2>(
-            &distribution_config,
-            &mut gauge,
-            &mut pool,
-            clock,
-            scenario.ctx()
-        );
-
-        test_scenario::return_shared(voter);
-        test_scenario::return_shared(gauge);
-        test_scenario::return_shared(pool);
-        test_scenario::return_shared(distribution_config);
+        setup::distribute_gauge<USD1, SAIL, OSAIL2>(scenario, clock);
     };
 
-    // --- 6. Advance Time by 1 week ---
+    // --- 6. Advance Time by One More Week ---
     clock::increment_for_testing(clock, WEEK);
 
     (lp_position_id, first_epoch_emissions, second_epoch_emissions)
@@ -2583,23 +2459,7 @@ fun test_half_epoch_staking_distribute() {
     // distribute gauge
     scenario.next_tx(admin);
     {
-        let mut voter = scenario.take_shared<Voter>();
-        let mut gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
-        let mut pool = scenario.take_shared<Pool<USD1, SAIL>>();
-        let distribution_config = scenario.take_shared<DistributionConfig>();
-
-        voter.distribute_gauge<USD1, SAIL, OSAIL1>(
-            &distribution_config,
-            &mut gauge,
-            &mut pool,
-            &clock,
-            scenario.ctx()
-        );
-
-        test_scenario::return_shared(voter);
-        test_scenario::return_shared(gauge);
-        test_scenario::return_shared(pool);
-        test_scenario::return_shared(distribution_config);
+        setup::distribute_gauge<USD1, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // --- Add and Stake Positions ---
@@ -2811,23 +2671,7 @@ fun test_half_epoch_withdrawal_distribute() {
     // distribute gauge
     scenario.next_tx(admin);
     {
-        let mut voter = scenario.take_shared<Voter>();
-        let mut gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
-        let mut pool = scenario.take_shared<Pool<USD1, SAIL>>();
-        let distribution_config = scenario.take_shared<DistributionConfig>();
-
-        voter.distribute_gauge<USD1, SAIL, OSAIL1>(
-            &distribution_config,
-            &mut gauge,
-            &mut pool,
-            &clock,
-            scenario.ctx()
-        );
-
-        test_scenario::return_shared(voter);
-        test_scenario::return_shared(gauge);
-        test_scenario::return_shared(pool);
-        test_scenario::return_shared(distribution_config);
+        setup::distribute_gauge<USD1, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // --- Add and Stake Positions ---
