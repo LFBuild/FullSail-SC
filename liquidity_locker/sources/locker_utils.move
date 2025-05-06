@@ -1,6 +1,6 @@
 module liquidity_locker::locker_utils {
 
-    const EOverflow: u64 = 98774536485623832;
+    const EOverflow: u64 = 9877453648562383;
     const EZeroPrice: u64 = 9375892909283584;
 
     public fun calculate_position_liquidity_in_token_a<CoinTypeA, CoinTypeB>(

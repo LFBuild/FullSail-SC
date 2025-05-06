@@ -8,78 +8,78 @@ module distribution::voter {
     use std::type_name::{Self, TypeName};
 
     // Error codes for contract operations
-    const EDepositManagedLockNotOwned: u64 = 9223375275260116991;
-    const EDepositManagedLockDeactivated: u64 = 9223375275262279714;
-    const EDepositManagedInvalidManaged: u64 = 9223375292439986175;
-    const EDepositManagedEpochVoteEnded: u64 = 9223375301033263156;
+    const EDepositManagedLockNotOwned: u64 = 922337527526011699;
+    const EDepositManagedLockDeactivated: u64 = 922337527526227971;
+    const EDepositManagedInvalidManaged: u64 = 922337529243998617;
+    const EDepositManagedEpochVoteEnded: u64 = 922337530103326315;
 
-    const EWithdrawManagedInvlidManaged: u64 = 9223375378339332095;
+    const EWithdrawManagedInvlidManaged: u64 = 922337537833933209;
 
-    const EAddEpochGovernorInvalidGovernor: u64 = 9223373265216929816;
+    const EAddEpochGovernorInvalidGovernor: u64 = 922337326521692981;
 
-    const EAlreadyVotedInCurrentEpoch: u64 = 9223373329641701404;
-    const EVotingNotStarted: u64 = 9223373333936799774;
+    const EAlreadyVotedInCurrentEpoch: u64 = 922337332964170140;
+    const EVotingNotStarted: u64 = 922337333393679977;
 
-    const ECheckVoteSizesDoNotMatch: u64 = 9223374162864308236;
-    const ECheckVoteMaxVoteNumExceed: u64 = 9223374167160586272;
-    const ECheckVoteGaugeNotFound: u64 = 9223374184339275790;
-    const ECheckVoteWeightTooLarge: u64 = 9223374188634374160;
+    const ECheckVoteSizesDoNotMatch: u64 = 922337416286430823;
+    const ECheckVoteMaxVoteNumExceed: u64 = 922337416716058627;
+    const ECheckVoteGaugeNotFound: u64 = 922337418433927579;
+    const ECheckVoteWeightTooLarge: u64 = 922337418863437416;
 
-    const ECreateGaugeNotAGovernor: u64 = 9223373604519346200;
-    const ECreateGaugeDistributionConfigInvalid: u64 = 9223373887985680383;
+    const ECreateGaugeNotAGovernor: u64 = 922337360451934620;
+    const ECreateGaugeDistributionConfigInvalid: u64 = 922337388798568038;
 
-    const EGetVotesNotVoted: u64 = 9223375618857500671;
+    const EGetVotesNotVoted: u64 = 922337561885750067;
 
-    const EKillGaugeStatusUnknown: u64 = 9223374012540190728;
-    const EKillGaugeDistributionConfigInvalid: u64 = 9223374308896342076;
-    const EKillGaugeAlreadyKilled: u64 = 9223374016835944468;
+    const EKillGaugeStatusUnknown: u64 = 922337401254019072;
+    const EKillGaugeDistributionConfigInvalid: u64 = 922337430889634207;
+    const EKillGaugeAlreadyKilled: u64 = 922337401683594446;
 
-    const EClaimKilledGaugeDistConfigInvalid: u64 = 8652473583619964000;
-    const EClaimKilledGaugeNotKilled: u64 = 8665956241857468000;
+    const EClaimKilledGaugeDistConfigInvalid: u64 = 865247358361996400;
+    const EClaimKilledGaugeNotKilled: u64 = 866595624185746800;
 
-    const ENotifyRewardInvalidToken: u64 = 2674327214182648000;
+    const ENotifyRewardInvalidToken: u64 = 267432721418264800;
 
-    const EPokeVotingNotStartedYet: u64 = 9223374433448427550;
-    const EPokeLockNotVoted: u64 = 9223374510758756396;
-    const EPokePoolNotVoted: u64 = 9223374527938625580;
+    const EPokeVotingNotStartedYet: u64 = 922337443344842755;
+    const EPokeLockNotVoted: u64 = 922337451075875639;
+    const EPokePoolNotVoted: u64 = 922337452793862558;
 
-    const EFirstTokenNotWhitelisted: u64 = 9223373870805811199;
-    const ESecondTokenNotWhitelisted: u64 = 9223373875100778495;
+    const EFirstTokenNotWhitelisted: u64 = 922337387080581119;
+    const ESecondTokenNotWhitelisted: u64 = 922337387510077849;
 
-    const ETokenNotWhitelisted: u64 = 9223373853625942015;
+    const ETokenNotWhitelisted: u64 = 922337385362594201;
 
-    const EReceiveGaugeInvalidGovernor: u64 = 9223373991066402840;
-    const EReceiveGaugeAlreadyHasRepresent: u64 = 9223373720482283526;
-    const EReceiveGaugePoolAreadyHasGauge: u64 = 9223373724779872302;
+    const EReceiveGaugeInvalidGovernor: u64 = 922337399106640284;
+    const EReceiveGaugeAlreadyHasRepresent: u64 = 922337372048228352;
+    const EReceiveGaugePoolAreadyHasGauge: u64 = 922337372477987230;
 
-    const ERemoveEpochGovernorNotAGovernor: u64 = 9223373312461570072;
+    const ERemoveEpochGovernorNotAGovernor: u64 = 922337331246157007;
 
-    const EReviveGaugeInvalidDistributionConfig: u64 = 9223374403385622588;
-    const EReviveGaugeAlreadyAlive: u64 = 9223374124208881663;
+    const EReviveGaugeInvalidDistributionConfig: u64 = 922337440338562258;
+    const EReviveGaugeAlreadyAlive: u64 = 922337412420888166;
 
-    const ESetMaxVotingNumGovernorInvalid: u64 = 9223373183612551192;
-    const ESetMaxVotingNumAtLeast10: u64 = 9223373187907649562;
-    const ESetMaxVotingNumNotChanged: u64 = 9223373196495945727;
+    const ESetMaxVotingNumGovernorInvalid: u64 = 922337318361255119;
+    const ESetMaxVotingNumAtLeast10: u64 = 922337318790764956;
+    const ESetMaxVotingNumNotChanged: u64 = 922337319649594572;
 
-    const EUpdateForInternalGaugeNotAlive: u64 = 9223375717644828720;
+    const EUpdateForInternalGaugeNotAlive: u64 = 922337571764482872;
 
-    const EVoteVotingEscrowDeactivated: u64 = 9223374631017185314;
-    const EVoteNotWhitelistedNft: u64 = 9223374648197185572;
-    const EVoteNoVotingPower: u64 = 9223374686852022310;
+    const EVoteVotingEscrowDeactivated: u64 = 922337463101718531;
+    const EVoteNotWhitelistedNft: u64 = 922337464819718557;
+    const EVoteNoVotingPower: u64 = 922337468685202231;
 
-    const EVoteInternalGaugeDoesNotExist: u64 = 9223374798519205896;
-    const EVoteInternalGaugeNotAlive: u64 = 9223374807109926932;
-    const EVoteInternalPoolAreadyVoted: u64 = 9223374832881041448;
-    const EVoteInternalWeightResultedInZeroVotes: u64 = 9223374841471107114;
+    const EVoteInternalGaugeDoesNotExist: u64 = 922337479851920589;
+    const EVoteInternalGaugeNotAlive: u64 = 922337480710992693;
+    const EVoteInternalPoolAreadyVoted: u64 = 922337483288104144;
+    const EVoteInternalWeightResultedInZeroVotes: u64 = 922337484147110711;
 
-    const EDistributeGaugeInvalidToken: u64 = 7271149323991462000;
-    const EDistributeGaugeInvalidGaugeRepresent: u64 = 9223375983929720831;
+    const EDistributeGaugeInvalidToken: u64 = 727114932399146200;
+    const EDistributeGaugeInvalidGaugeRepresent: u64 = 922337598392972083;
 
-    const EExtractClaimableForLessThanMin: u64 = 9223375923800178687;
+    const EExtractClaimableForLessThanMin: u64 = 922337592380017868;
 
-    const EWhitelistNftGovernorInvalid: u64 = 9223373956706664472;
+    const EWhitelistNftGovernorInvalid: u64 = 922337395670666447;
 
-    const EWhitelistTokenGovernorInvalid: u64 = 9223373896577122328;
+    const EWhitelistTokenGovernorInvalid: u64 = 922337389657712232;
 
     /// Module identifier for the Voter module
     public struct VOTER has drop {}
@@ -502,6 +502,10 @@ module distribution::voter {
                 distribution::common::epoch_start(current_time) > *voter.last_voted.borrow(lock_id),
             EAlreadyVotedInCurrentEpoch
         );
+        std::debug::print(&std::string::utf8(b"current_time"));
+        std::debug::print(&current_time);
+        std::debug::print(&std::string::utf8(b"epoch_vote_start"));
+        std::debug::print(&distribution::common::epoch_vote_start(current_time));
         assert!(current_time > distribution::common::epoch_vote_start(current_time), EVotingNotStarted);
     }
 

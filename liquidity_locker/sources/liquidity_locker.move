@@ -26,6 +26,7 @@ module liquidity_locker::liquidity_locker {
     const EIncorrectDistributionOfLiquidityA: u64 = 95346237427834273;
     const EIncorrectDistributionOfLiquidityB: u64 = 95346237427834273;
     const EInvalidShareLiquidityToFill: u64 = 902354235823942382;
+    const EPositionNotLocked: u64 = 92035925692467234;
 
     /// Capability for administrative functions in the protocol.
     /// This capability is required for managing global settings and protocol parameters.
@@ -196,7 +197,7 @@ module liquidity_locker::liquidity_locker {
         locker.pause
     }
     
-    public fun lock_position<CoinTypeA, CoinTypeB>(
+    public fun lock_position<CoinTypeA, CoinTypeB, EpochOSail>(
         global_config: &clmm_pool::config::GlobalConfig,
         vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         distribution_config: &distribution::distribution_config::DistributionConfig,
@@ -236,7 +237,8 @@ module liquidity_locker::liquidity_locker {
         let mut position_id_copy = position_id;
         let mut i = 0;
         while (i < tranches.length()) {
-
+            std::debug::print(&std::string::utf8(b"**********************"));
+            std::debug::print(&i);
             let tranche = tranches.borrow_mut(i);
             if (tranche.is_filled()) {
                 i = i + 1;
@@ -256,6 +258,8 @@ module liquidity_locker::liquidity_locker {
             } else {
                 liquidity_locker::locker_utils::calculate_position_liquidity_in_token_b(pool, position_id_copy)
             };
+            std::debug::print(&std::string::utf8(b"tranche_id"));
+            std::debug::print(&(tranche_id));
             std::debug::print(&std::string::utf8(b"liquidity_in_token"));
             std::debug::print(&(liquidity_in_token>>64));
             std::debug::print(&std::string::utf8(b"delta_volume"));
@@ -268,7 +272,7 @@ module liquidity_locker::liquidity_locker {
                 ) as u64;
                 std::debug::print(&std::string::utf8(b"share_first_part"));
                 std::debug::print(&share_first_part);
-                let (split_position_result1, split_position_result2) = split_position_internal(
+                let (split_position_result1, split_position_result2) = split_position_internal<CoinTypeA, CoinTypeB, EpochOSail>(
                     global_config,
                     vault,
                     distribution_config,
@@ -333,6 +337,7 @@ module liquidity_locker::liquidity_locker {
             };
 
             i = i + 1;
+            assert!(i < tranches.length() || position_id_copy == _position_id, EPositionNotLocked);
         };
         // для позиции, которая не влезла в последний транш
         // будет сплит, но залочена будет только та позиция, которая влезла в последний транш
@@ -360,7 +365,7 @@ module liquidity_locker::liquidity_locker {
             
     // метод получения ликвидности
     // если выводится вся ликвидность, то позиция разлочена и снимается со стейка
-    public fun remove_lock_liquidity<CoinTypeA, CoinTypeB>(
+    public fun remove_lock_liquidity<CoinTypeA, CoinTypeB, EpochOSail>(
         global_config: &clmm_pool::config::GlobalConfig,
         vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         locker: &mut Locker,
@@ -413,11 +418,12 @@ module liquidity_locker::liquidity_locker {
         };
 
         // расстейкать позу
-        let mut position = gauge.withdraw_position_by_locker<CoinTypeA, CoinTypeB>(
+        let mut position = gauge.withdraw_position_by_locker<CoinTypeA, CoinTypeB, EpochOSail>(
             locker.locker_cap.borrow(),
             pool,
             lock_position.position_id,
             clock,
+            ctx,
         );
 
         let ( removed_a, removed_b) = clmm_pool::pool::remove_liquidity<CoinTypeA, CoinTypeB>(
@@ -436,7 +442,6 @@ module liquidity_locker::liquidity_locker {
                 gauge, 
                 clock,
             );
-            // TODO event
             transfer::public_transfer<clmm_pool::position::Position>(position, sui::tx_context::sender(ctx));
         } else {
             // застейкать позу
@@ -447,6 +452,7 @@ module liquidity_locker::liquidity_locker {
                 clock,
                 ctx,
             );
+            // TODO event
             lock_position.lock_liquidity_info.current_lock_liquidity = lock_position.lock_liquidity_info.current_lock_liquidity - remove_liquidity_amount;
             lock_position.lock_liquidity_info.last_remove_liquidity_time = distribution::common::epoch_start(current_time);
             transfer::public_transfer<LockedPosition>(lock_position, sui::tx_context::sender(ctx));
@@ -466,7 +472,7 @@ module liquidity_locker::liquidity_locker {
         // проверяем, что лок полностью закончен
         assert!(clock.timestamp_ms()/1000 >= lock_position.full_unlocking_time, EFullLockPeriodNotEnded);
 
-        assert!(lock_position.last_reward_claim_time > lock_position.expiration_time, ERewardsNotCollected);
+        assert!(lock_position.last_reward_claim_time >= lock_position.expiration_time, ERewardsNotCollected);
 
         gauge.unlock_position(locker.locker_cap.borrow(), lock_position.position_id);
 
@@ -534,9 +540,12 @@ module liquidity_locker::liquidity_locker {
             clock,
         );
 
+        std::debug::print(&std::string::utf8(b"reward_balance SAIL: "));
+        std::debug::print(&reward_balance);
+
         voting_escrow.create_lock(
             sui::coin::from_balance(reward_balance, ctx),
-            distribution::common::max_lock_time(),
+            distribution::common::max_lock_time() / distribution::common::day(),
             true,
             clock,
             ctx
@@ -573,7 +582,7 @@ module liquidity_locker::liquidity_locker {
 
         // досылаем награду с лока
         // от earned_amount взять процент доходности
-        let income = integer_mate::full_math_u64::mul_div_ceil(
+        let income = integer_mate::full_math_u64::mul_div_floor(
             earned_amount,
             locked_position.profitability,
             consts::profitability_rate_denom()
@@ -587,6 +596,8 @@ module liquidity_locker::liquidity_locker {
             income,
             distribution::common::epoch_start(locked_position.last_reward_claim_time),
         );
+        std::debug::print(&std::string::utf8(b"get_reward_balance"));
+        std::debug::print(&reward_balance);
 
         let lock_position_id = sui::object::id<LockedPosition>(locked_position);
         let reward_type = std::type_name::get<LockRewardCoinType>();
@@ -632,7 +643,7 @@ module liquidity_locker::liquidity_locker {
     }
 
     // сплит позиции на две
-    public fun split_position<CoinTypeA, CoinTypeB>(
+    public fun split_position<CoinTypeA, CoinTypeB, EpochOSail>(
         global_config: &clmm_pool::config::GlobalConfig,
         vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         distribution_config: &distribution::distribution_config::DistributionConfig,
@@ -653,7 +664,7 @@ module liquidity_locker::liquidity_locker {
         gauge.unlock_position(locker.locker_cap.borrow(), lock_position.position_id);
         locker.positions.remove(lock_position.position_id);
 
-        let (split_position_result1, split_position_result2) = split_position_internal(
+        let (split_position_result1, split_position_result2) = split_position_internal<CoinTypeA, CoinTypeB, EpochOSail>(
             global_config,
             vault,
             distribution_config,
@@ -709,7 +720,7 @@ module liquidity_locker::liquidity_locker {
         (lock_position1, lock_position2)
     }
     
-    fun split_position_internal<CoinTypeA, CoinTypeB>(
+    fun split_position_internal<CoinTypeA, CoinTypeB, EpochOSail>(
         global_config: &clmm_pool::config::GlobalConfig,
         vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         distribution_config: &distribution::distribution_config::DistributionConfig,
@@ -722,20 +733,27 @@ module liquidity_locker::liquidity_locker {
         ctx: &mut TxContext
     ): (SplitPositionResult, SplitPositionResult) {
         // расстейкать позу
-        let mut position = gauge.withdraw_position_by_locker<CoinTypeA, CoinTypeB>(
+        let mut position = gauge.withdraw_position_by_locker<CoinTypeA, CoinTypeB, EpochOSail>(
             locker.locker_cap.borrow(),
             pool,
             position_id,
             clock,
+            ctx,
         );
 
         let (lower_tick, upper_tick) = position.tick_range();
         let total_liquidity = position.liquidity();
-        let (liquidity1, mut liquidity2) = calculate_liquidity_split(
+        let (mut liquidity1, mut liquidity2) = calculate_liquidity_split(
             total_liquidity,
             share_first_part
         );
-         std::debug::print(&std::string::utf8(b"share_first_part"));
+        std::debug::print(&std::string::utf8(b"******total_liquidity******"));
+        std::debug::print(&total_liquidity);
+        std::debug::print(&std::string::utf8(b"******liquidity1******"));
+        std::debug::print(&liquidity1);
+        std::debug::print(&std::string::utf8(b"******liquidity2******"));
+        std::debug::print(&liquidity2);
+        std::debug::print(&std::string::utf8(b"share_first_part"));
         std::debug::print(&share_first_part);
 
         // выводим ликву и закрываем позу
@@ -744,24 +762,15 @@ module liquidity_locker::liquidity_locker {
             vault,
             pool,
             &mut position,
-            total_liquidity,
+            liquidity2,
             clock,
             ctx,
         );
-
+        liquidity1 = position.liquidity();
         let mut removed_amount_a = removed_a.value<CoinTypeA>();
         let mut removed_amount_b = removed_b.value<CoinTypeB>();
 
-        clmm_pool::pool::close_position<CoinTypeA, CoinTypeB>(global_config, pool, position);
-        
-        let mut position1 = clmm_pool::pool::open_position<CoinTypeA, CoinTypeB>(
-            global_config,
-            pool,
-            integer_mate::i32::as_u32(lower_tick),
-            integer_mate::i32::as_u32(upper_tick),
-            ctx
-        );
-        let position1_id = object::id<clmm_pool::position::Position>(&position1);
+        let (amount_a_position1, amount_b_position1) = clmm_pool::pool::get_position_amounts(pool, position_id);
         
         let mut position2 = clmm_pool::pool::open_position<CoinTypeA, CoinTypeB>(
             global_config,
@@ -772,15 +781,7 @@ module liquidity_locker::liquidity_locker {
         );
         let position2_id = object::id<clmm_pool::position::Position>(&position2);
 
-        let (amount_a_1_calc, amount_b_1_calc) = clmm_pool::clmm_math::get_amount_by_liquidity(
-            lower_tick,
-            upper_tick,
-            pool.current_tick_index(),
-            pool.current_sqrt_price(),
-            liquidity1,
-            true
-        );
-        let (mut amount_a_2_calc, mut amount_b_2_calc) = clmm_pool::clmm_math::get_amount_by_liquidity(
+        let (amount_a_2_calc, mut amount_b_2_calc) = clmm_pool::clmm_math::get_amount_by_liquidity(
             lower_tick,
             upper_tick,
             pool.current_tick_index(),
@@ -788,45 +789,50 @@ module liquidity_locker::liquidity_locker {
             liquidity2,
             true
         );
-        std::debug::print(&std::string::utf8(b"amount_a_1_calc"));
-        std::debug::print(&amount_a_1_calc);
-        std::debug::print(&std::string::utf8(b"amount_b_1_calc"));
-        std::debug::print(&amount_b_1_calc);
-        std::debug::print(&std::string::utf8(b"amount_a_2_calc"));
-        std::debug::print(&amount_a_2_calc);
-        std::debug::print(&std::string::utf8(b"amount_b_2_calc"));
-        std::debug::print(&amount_b_2_calc);
-        if (amount_a_1_calc + amount_a_2_calc > removed_amount_a) { // если сумма превышает из-за округлений, то придется снизить ликвидность второй позиции
-            (liquidity2, amount_a_2_calc, amount_b_2_calc) = clmm_pool::clmm_math::get_liquidity_by_amount(
+        // std::debug::print(&std::string::utf8(b"amount_a_position1"));
+        // std::debug::print(&amount_a_position1);
+        // std::debug::print(&std::string::utf8(b"amount_b_position1"));
+        // std::debug::print(&amount_b_position1);
+        // std::debug::print(&std::string::utf8(b"amount_a_2_calc"));
+        // std::debug::print(&amount_a_2_calc);
+        // std::debug::print(&std::string::utf8(b"amount_b_2_calc"));
+        // std::debug::print(&amount_b_2_calc);
+        // std::debug::print(&std::string::utf8(b"removed_amount_a"));
+        // std::debug::print(&removed_amount_a);
+        // std::debug::print(&std::string::utf8(b"removed_amount_b"));
+        // std::debug::print(&removed_amount_b);
+        if (amount_a_2_calc > removed_amount_a) { // если сумма превышает из-за округлений, то придется снизить ликвидность второй позиции
+            // std::debug::print(&std::string::utf8(b"before liquidity2"));
+            // std::debug::print(&liquidity2);
+            (liquidity2, _, amount_b_2_calc) = clmm_pool::clmm_math::get_liquidity_by_amount(
                 lower_tick,
                 upper_tick,
                 pool.current_tick_index(),
                 pool.current_sqrt_price(),
-                removed_amount_a - amount_a_1_calc,
+                removed_amount_a,
                 true
             );
+            // std::debug::print(&std::string::utf8(b"after liquidity2"));
+            // std::debug::print(&liquidity2);
+            // std::debug::print(&std::string::utf8(b"after amount_b_2_calc"));
+            // std::debug::print(&amount_b_2_calc);
         };
-        if (amount_b_1_calc + amount_b_2_calc > removed_amount_b) { // если сумма превышает из-за округлений, то придется снизить ликвидность второй позиции
-            (liquidity2, amount_a_2_calc, amount_b_2_calc) = clmm_pool::clmm_math::get_liquidity_by_amount(
+        if (amount_b_2_calc > removed_amount_b) { // если сумма превышает из-за округлений, то придется снизить ликвидность второй позиции
+            // std::debug::print(&std::string::utf8(b"before2 liquidity2"));
+            // std::debug::print(&liquidity2);
+            (liquidity2, _, _) = clmm_pool::clmm_math::get_liquidity_by_amount(
                 lower_tick,
                 upper_tick,
                 pool.current_tick_index(),
                 pool.current_sqrt_price(),
-                removed_amount_b - amount_b_1_calc,
+                removed_amount_b,
                 false
             );
+            // std::debug::print(&std::string::utf8(b"after2 liquidity2"));
+            // std::debug::print(&liquidity2);
         };
 
-        let receipt1 = clmm_pool::pool::add_liquidity<CoinTypeA, CoinTypeB>(
-            global_config,
-            vault,
-            pool,
-            &mut position1,
-            liquidity1,
-            clock
-        );
-        let (pay_amount_a1, pay_amount_b1) = receipt1.add_liquidity_pay_amount();
-        let receipt2 = clmm_pool::pool::add_liquidity<CoinTypeA, CoinTypeB>(
+        let receipt = clmm_pool::pool::add_liquidity<CoinTypeA, CoinTypeB>(
             global_config,
             vault,
             pool,
@@ -834,38 +840,34 @@ module liquidity_locker::liquidity_locker {
             liquidity2,
             clock
         );
-        let (pay_amount_a2, pay_amount_b2) = receipt2.add_liquidity_pay_amount();
-        std::debug::print(&std::string::utf8(b"pay_amount_a1"));
-        std::debug::print(&pay_amount_a1);
-        std::debug::print(&std::string::utf8(b"pay_amount_b1"));
-        std::debug::print(&pay_amount_b1);
-        std::debug::print(&std::string::utf8(b"pay_amount_a2"));
-        std::debug::print(&pay_amount_a2);
-        std::debug::print(&std::string::utf8(b"pay_amount_b2"));
-        std::debug::print(&pay_amount_b2);
-                std::debug::print(&std::string::utf8(b"SUM A"));
-        std::debug::print(&(pay_amount_a1 + pay_amount_a2));
-        std::debug::print(&std::string::utf8(b"removed_amount_a"));
-        std::debug::print(&(removed_amount_a));
-        std::debug::print(&std::string::utf8(b"SUM B"));
-        std::debug::print(&(pay_amount_b1 + pay_amount_b2));
-        std::debug::print(&std::string::utf8(b"removed_amount_b"));
-        std::debug::print(&(removed_amount_b));
+        let (pay_amount_a, pay_amount_b) = receipt.add_liquidity_pay_amount();
+        // std::debug::print(&std::string::utf8(b"pay_amount_a"));
+        // std::debug::print(&pay_amount_a);
+        // std::debug::print(&std::string::utf8(b"pay_amount_b"));
+        // std::debug::print(&pay_amount_b);
+        // std::debug::print(&std::string::utf8(b"removed_amount_a"));
+        // std::debug::print(&(removed_amount_a));
+        // std::debug::print(&std::string::utf8(b"removed_amount_b"));
+        // std::debug::print(&(removed_amount_b));
 
-        if (pay_amount_a1 + pay_amount_a2 < removed_amount_a) {
+        if (pay_amount_a < removed_amount_a) {
+            // std::debug::print(&std::string::utf8(b"removed_amount_a - pay_amount_a"));
+            // std::debug::print(&(removed_amount_a - pay_amount_a));
             transfer::public_transfer<sui::coin::Coin<CoinTypeA>>(
                 sui::coin::from_balance(
-                    removed_a.split(removed_amount_a - (pay_amount_a1 + pay_amount_a2)),
+                    removed_a.split(removed_amount_a - pay_amount_a),
                     ctx
                 ),
                 tx_context::sender(ctx)
             );
             removed_amount_a = removed_a.value<CoinTypeA>();
         };
-        if (pay_amount_b1 + pay_amount_b2 < removed_amount_b) {
+        if (pay_amount_b < removed_amount_b) {
+            // std::debug::print(&std::string::utf8(b"removed_amount_b - pay_amount_b"));
+            // std::debug::print(&(removed_amount_b - pay_amount_b));
             transfer::public_transfer<sui::coin::Coin<CoinTypeB>>(
                 sui::coin::from_balance(
-                    removed_b.split(removed_amount_b - (pay_amount_b1 + pay_amount_b2)),
+                    removed_b.split(removed_amount_b - pay_amount_b),
                     ctx
                 ),
                 tx_context::sender(ctx)
@@ -873,29 +875,24 @@ module liquidity_locker::liquidity_locker {
             removed_amount_b = removed_b.value<CoinTypeB>();
         };
 
-        assert!(pay_amount_a1 + pay_amount_a2 == removed_amount_a, EIncorrectDistributionOfLiquidityA);
-        assert!(pay_amount_b1 + pay_amount_b2 == removed_amount_b, EIncorrectDistributionOfLiquidityB);
+        assert!(pay_amount_a == removed_amount_a, EIncorrectDistributionOfLiquidityA);
+        assert!(pay_amount_b == removed_amount_b, EIncorrectDistributionOfLiquidityB);
 
-        clmm_pool::pool::repay_add_liquidity<CoinTypeA, CoinTypeB>(
-            global_config,
-            pool,
-            removed_a.split(pay_amount_a1),
-            removed_b.split(pay_amount_b1),
-            receipt1,
-        );
         clmm_pool::pool::repay_add_liquidity<CoinTypeA, CoinTypeB>(
             global_config,
             pool,
             removed_a,
             removed_b,
-            receipt2,
+            receipt,
         );
+        // std::debug::print(&std::string::utf8(b"RESULT LIQUIDITY2"));
+        // std::debug::print(&position2.liquidity());
         distribution::gauge::deposit_position<CoinTypeA, CoinTypeB>(
             global_config,
             distribution_config,
             gauge,
             pool,
-            position1,
+            position,
             clock,
             ctx,
         );
@@ -908,8 +905,9 @@ module liquidity_locker::liquidity_locker {
             clock,
             ctx,
         );
-        
-        (SplitPositionResult { position_id: position1_id, liquidity: liquidity1 }, 
+        // std::debug::print(&std::string::utf8(b"RESULT NEW LIQUIDITY2"));
+        // std::debug::print(&pool.position_manager().borrow_position_info(position2_id).info_liquidity());
+        (SplitPositionResult { position_id: position_id, liquidity: liquidity1 }, 
             SplitPositionResult { position_id: position2_id, liquidity: liquidity2 } )
     }
 

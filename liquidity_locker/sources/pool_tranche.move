@@ -149,6 +149,9 @@ module liquidity_locker::pool_tranche {
             let tranche = pool_tranches.borrow_mut(i);
             let current_tranche_id = sui::object::id<PoolTranche>(tranche);
             if (tranche_id == current_tranche_id) {
+                std::debug::print(&std::string::utf8(b"add_reward epoch: "));
+                std::debug::print(&epoch_start);
+                std::debug::print(&tranche_id);
                 assert!(!tranche.rewards_balance.contains(epoch_start), ERewardAlreadyExists);
 
                 let reward_type = type_name::get<RewardCoinType>();
@@ -190,7 +193,7 @@ module liquidity_locker::pool_tranche {
     }
 
     public fun get_free_volume(tranche: &PoolTranche): (u128, bool) {
-        (tranche.total_volume - tranche.current_volume, tranche.volume_in_coin_a)
+            (tranche.total_volume - tranche.current_volume, tranche.volume_in_coin_a)
     }
 
     public(package) fun fill_tranches(
@@ -234,6 +237,9 @@ module liquidity_locker::pool_tranche {
             let tranche = pool_tranches.borrow_mut(i);
             let current_tranche_id = sui::object::id<PoolTranche>(tranche);
             if (tranche_id == current_tranche_id) {
+                std::debug::print(&std::string::utf8(b"get_reward_balance: "));
+                std::debug::print(&epoch_start);
+                std::debug::print(&tranche_id);
                 assert!(tranche.rewards_balance.contains(epoch_start), ERewardNotFound);
 
                 // найти отношение income к total_income и применить к total_balance

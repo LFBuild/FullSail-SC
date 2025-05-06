@@ -36,31 +36,31 @@ module distribution::minter {
     use sui::bag::{Self, Bag};
     use sui::table::{Self, Table};
 
-    const EActivateMinterAlreadyActive: u64 = 9223373106302222346;
-    const EActivateMinterNoDistributorCap: u64 = 9223373110598238234;
+    const EActivateMinterAlreadyActive: u64 = 922337310630222234;
+    const EActivateMinterNoDistributorCap: u64 = 922337311059823823;
 
-    const EMinterCapAlreadySet: u64 = 9223372831423725567;
-    const ESetTeamEmissionRateTooBigRate: u64 = 9223372921618038783;
-    const ESetProtocolFeeRateTooBigRate: u64 = 8401716227362572000;
+    const EMinterCapAlreadySet: u64 = 922337283142372556;
+    const ESetTeamEmissionRateTooBigRate: u64 = 922337292161803878;
+    const ESetProtocolFeeRateTooBigRate: u64 = 840171622736257200;
 
-    const EUpdatePeriodMinterNotActive: u64 = 9223373394064900104;
+    const EUpdatePeriodMinterNotActive: u64 = 922337339406490010;
     const EUpdatePeriodNotFinishedYet: u64 = 922337340695058843;
     const EUpdatePeriodOSailAlreadyUsed: u64 = 573264404146058900;
 
-    const ECheckAdminRevoked: u64 = 9223372809948889087;
+    const ECheckAdminRevoked: u64 = 922337280994888908;
 
-    const ECreateLockFromOSailInvalidToken: u64 = 9162843907639215000;
+    const ECreateLockFromOSailInvalidToken: u64 = 916284390763921500;
     const ECreateLockFromOSailInvalidDuraton: u64 = 68567430268160480;
 
-    const EExerciseOSailFreeTooBigPercent: u64 = 4108357525531418600;
-    const EExerciseOSailExpired: u64 = 7388437717433252000;
-    const EExerciseOSailInvalidOSail: u64 = 3209173623653640700;
+    const EExerciseOSailFreeTooBigPercent: u64 = 410835752553141860;
+    const EExerciseOSailExpired: u64 = 738843771743325200;
+    const EExerciseOSailInvalidOSail: u64 = 320917362365364070;
 
-    const EExerciseUsdLimitReached: u64 = 4905179424474806000;
-    const EExerciseOSailPoolNotWhitelisted: u64 = 2212524000647910700;
+    const EExerciseUsdLimitReached: u64 = 490517942447480600;
+    const EExerciseOSailPoolNotWhitelisted: u64 = 221252400064791070;
 
-    const ETeamWalletNotSet: u64 = 7981414426077109000;
-    const EDistributeTeamTokenNotFound: u64 = 9629256792821774000;
+    const ETeamWalletNotSet: u64 = 798141442607710900;
+    const EDistributeTeamTokenNotFound: u64 = 962925679282177400;
 
     const DAYS_IN_WEEK: u64 = 7;
 
