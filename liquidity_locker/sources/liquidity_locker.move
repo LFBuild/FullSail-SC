@@ -490,7 +490,7 @@ module liquidity_locker::liquidity_locker {
         assert!(locked_position.last_reward_claim_time < locked_position.expiration_time, ENotClaimedRewards);
 
         // получаем баланс награды по доходности
-        let reward_balance = get_rewards<CoinTypeA, CoinTypeB, RewardCoinType, LockRewardCoinType>(
+        let reward_balance = get_rewards_internal<CoinTypeA, CoinTypeB, RewardCoinType, LockRewardCoinType>(
             pool_tranche_manager,
             gauge,
             pool,
@@ -518,7 +518,7 @@ module liquidity_locker::liquidity_locker {
         assert!(distribution::gauge::check_gauger_pool(gauge, pool), EInvalidGaugePool);
         assert!(locked_position.last_reward_claim_time < locked_position.expiration_time, ENotClaimedRewards);
 
-        let reward_balance = get_rewards<CoinTypeA, CoinTypeB, RewardCoinType, SailCoinType>(
+        let reward_balance = get_rewards_internal<CoinTypeA, CoinTypeB, RewardCoinType, SailCoinType>(
             pool_tranche_manager,
             gauge,
             pool,
@@ -536,7 +536,7 @@ module liquidity_locker::liquidity_locker {
         );
     }
 
-    fun get_rewards<CoinTypeA, CoinTypeB, RewardCoinType, LockRewardCoinType>(
+    fun get_rewards_internal<CoinTypeA, CoinTypeB, RewardCoinType, LockRewardCoinType>(
         pool_tranche_manager: &mut pool_tranche::PoolTrancheManager,
         gauge: &distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
@@ -637,8 +637,9 @@ module liquidity_locker::liquidity_locker {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): (LockedPosition, LockedPosition) {
-        assert!(!locker.pause, ELockManagerPaused);
+        
         let current_time = clock.timestamp_ms() / 1000;
+        assert!(!locker.pause, ELockManagerPaused);
         assert!(current_time < lock_position.expiration_time, ELockPeriodEnded);
         assert!(distribution::gauge::check_gauger_pool(gauge, pool), EInvalidGaugePool);
 
