@@ -675,22 +675,17 @@ module distribution::gauge {
         );
         
         let current_growth_global = *gauge.growth_global_by_token.borrow(coin_type);
-        std::debug::print(&std::string::utf8(b"current_growth_global"));
-        std::debug::print(&current_growth_global);
         let prev_coin_type_opt: &Option<TypeName> = gauge.growth_global_by_token.prev(coin_type);
         let prev_coin_growth_global: u128 = if (prev_coin_type_opt.is_some()) {
             *gauge.growth_global_by_token.borrow(*prev_coin_type_opt.borrow())
         } else {
             0_u128
         };
-        std::debug::print(&std::string::utf8(b"prev_coin_growth_global"));
-        std::debug::print(&prev_coin_growth_global);
         let position = gauge.staked_positions.borrow(position_id);
         let (lower_tick, upper_tick) = position.tick_range();
         
         let prev_token_growth_inside = if (prev_coin_growth_global > 0) {
             // get_fullsail_distribution_growth_inside replaces prev_coin_growth_global with 0 if prev_coin_growth_global is 0
-            std::debug::print(&std::string::utf8(b"get_fullsail_distribution_growth_inside"));
             pool.get_fullsail_distribution_growth_inside(
                 lower_tick,
                 upper_tick,
@@ -704,22 +699,17 @@ module distribution::gauge {
         } else {
             prev_token_growth_inside
         };
-        std::debug::print(&std::string::utf8(b"last_growth_inside_correct"));
-        std::debug::print(&last_growth_inside_correct);
         let new_growth_inside = pool.get_fullsail_distribution_growth_inside(
             lower_tick,
             upper_tick,
             current_growth_global
         );
-        std::debug::print(&std::string::utf8(b"new_growth_inside"));
-        std::debug::print(&new_growth_inside);
         let amount_earned = integer_mate::full_math_u128::mul_div_floor(
             new_growth_inside - last_growth_inside_correct,
             position.liquidity(),
             1 << 64
         ) as u64;
-        std::debug::print(&std::string::utf8(b"amount_earned"));
-        std::debug::print(&amount_earned);
+
         (amount_earned, new_growth_inside)
     }
 
@@ -929,8 +919,6 @@ module distribution::gauge {
 
             // last growth_global that corresponds to the **previous** token.
             gauge.growth_global_by_token.push_back(prev_epoch_token, pool.get_fullsail_distribution_growth_global());
-            std::debug::print(&std::string::utf8(b"_________________growth_global_by_token________________"));
-            std::debug::print(&pool.get_fullsail_distribution_growth_global());
         };
         // Update TokenName state
         gauge.current_epoch_token.fill(coin_type);
@@ -1393,23 +1381,21 @@ module distribution::gauge {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-         std::debug::print(&std::string::utf8(b"start withdraw"));
         assert!(
             gauge.staked_positions.contains(position_id) && gauge.staked_position_infos.contains(position_id),
             EWithdrawPositionNotDepositedPosition
         );
-         std::debug::print(&std::string::utf8(b"after check staked_positions"));
-         std::debug::print(&position_id);
-         std::debug::print(&std::bcs::to_bytes(&position_id));
-         std::debug::print(&table::length(&gauge.locked_positions));
         assert!(!gauge.locked_positions.contains(position_id), EWithdrawPositionPositionIsLocked);
-         std::debug::print(&std::string::utf8(b"after check locked_positions"));
+
         if (gauge.earned_by_position<CoinTypeA, CoinTypeB, LastRewardCoin>(pool, position_id, clock) > 0) {
             gauge.get_position_reward<CoinTypeA, CoinTypeB, LastRewardCoin>(pool, position_id, clock, ctx)
         };
+
         let position_stake_info = gauge.staked_position_infos.remove(position_id);
+        
         assert!(position_stake_info.received, EWithdrawPositionNotReceivedPosition);
         assert!(position_stake_info.from == tx_context::sender(ctx), EWithdrawPositionNotOwnerOfPosition);
+
         if (position_stake_info.from != tx_context::sender(ctx)) {
             gauge.staked_position_infos.add(position_id, position_stake_info);
         } else {
@@ -1447,9 +1433,6 @@ module distribution::gauge {
         _locker_cap: &locker_cap::locker_cap::LockerCap,
         position_id: ID,
     ) {
-        std::debug::print(&std::string::utf8(b"start lock_position"));
-        std::debug::print(&position_id);
-        std::debug::print(&std::bcs::to_bytes(&position_id));
         gauge.locked_positions.add(position_id, Locked {});
     }
 
@@ -1464,7 +1447,6 @@ module distribution::gauge {
         _locker_cap: &locker_cap::locker_cap::LockerCap,
         position_id: ID,
     ) {
-        std::debug::print(&std::string::utf8(b"start unlock_position"));
         gauge.locked_positions.remove(position_id);
     }
     

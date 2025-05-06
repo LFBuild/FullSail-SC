@@ -502,10 +502,6 @@ module distribution::voter {
                 distribution::common::epoch_start(current_time) > *voter.last_voted.borrow(lock_id),
             EAlreadyVotedInCurrentEpoch
         );
-        std::debug::print(&std::string::utf8(b"current_time"));
-        std::debug::print(&current_time);
-        std::debug::print(&std::string::utf8(b"epoch_vote_start"));
-        std::debug::print(&distribution::common::epoch_vote_start(current_time));
         assert!(current_time > distribution::common::epoch_vote_start(current_time), EVotingNotStarted);
     }
 
