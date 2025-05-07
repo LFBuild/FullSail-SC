@@ -776,6 +776,7 @@ module distribution::minter {
         ctx: &mut TxContext,
     ): u64 {
         let (claimable_amount, rollover_balance) = voter.distribute_gauge<CoinTypeA, CoinTypeB, PrevEpochOSail, EpochOSail>(
+            minter.notify_reward_cap.borrow(),
             distribution_config,
             gauge,
             pool,

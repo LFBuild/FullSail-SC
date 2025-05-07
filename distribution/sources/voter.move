@@ -904,12 +904,14 @@ module distribution::voter {
     /// * `EventDistributeGauge` with information about distributed rewards
     public fun distribute_gauge<CoinTypeA, CoinTypeB, PrevEpochOSail, EpochOSail>(
         voter: &mut Voter,
+        notify_reward_cap: &distribution::notify_reward_cap::NotifyRewardCap,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): (u64, Balance<PrevEpochOSail>) {
+        notify_reward_cap.validate_notify_reward_voter_id(object::id<Voter>(voter));
         assert!(voter.is_valid_epoch_token<EpochOSail>(), EDistributeGaugeInvalidToken);
 
         let gauge_id = into_gauge_id(
