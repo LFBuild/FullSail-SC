@@ -1,6 +1,7 @@
 module liquidity_locker::pool_tranche {
     
     use std::type_name::{Self, TypeName};
+    use liquidity_locker::consts;
 
     const ETrancheFilled: u64 = 92357345723427311;
     const ERewardAlreadyExists: u64 = 90324592349252616;
@@ -83,10 +84,6 @@ module liquidity_locker::pool_tranche {
         sui::transfer::share_object<PoolTrancheManager>(tranche_manager);
         let event = InitTrancheManagerEvent { tranche_manager_id };
         sui::event::emit<InitTrancheManagerEvent>(event);
-    }
-
-    public fun minimum_remaining_volume_denom(): u64 {
-        10000
     }
 
     public fun new<CoinTypeA, CoinTypeB>(
@@ -206,7 +203,7 @@ module liquidity_locker::pool_tranche {
             integer_mate::full_math_u128::mul_div_round(
                 tranche.total_volume, 
                 tranche.minimum_remaining_volume as u128, 
-                minimum_remaining_volume_denom() as u128
+                consts::minimum_remaining_volume_denom() as u128
             ) >= (tranche.total_volume - tranche.current_volume)) { 
             // если свободного места осталось менее minimum_remaining_volume от общего объема
             // закрываем транш, чтобы не плодить мелких позиций

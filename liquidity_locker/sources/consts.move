@@ -12,4 +12,8 @@ module liquidity_locker::consts {
     public fun profitability_rate_denom(): u64 {
         10000
     }
+
+    public fun minimum_remaining_volume_denom(): u64 {
+        10000
+    }
 }

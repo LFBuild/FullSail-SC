@@ -45,4 +45,16 @@ module liquidity_locker::locker_utils {
         // Total liquidity in tokenB
         result
     }
+
+    public fun calculate_token_a_in_token_b<CoinTypeA, CoinTypeB>(
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        amount_a: u64
+    ): u64 {
+        // Get current price
+        let sqrt_price = pool.current_sqrt_price();
+        let price = integer_mate::full_math_u128::full_mul(sqrt_price, sqrt_price); // Q128.128
+        assert!(price > 0, EZeroPrice);
+
+        ((((amount_a as u256) * price) >> 64) >> 64) as u64
+    }
 }
