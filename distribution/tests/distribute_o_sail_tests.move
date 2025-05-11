@@ -3482,10 +3482,48 @@ fun test_distribute_rollover_random_current_token_is_invalid() {
         coin::burn_for_testing(initial_o_sail3_supply); // Burn OSAIL3
     };
 
-    // Distribute OSAIL3 rewards to the gauge
+    // use wrong current epoch token
     scenario.next_tx(admin);
     {
         setup::distribute_gauge<USD1, SAIL, SAIL, OTHER, OSAIL3>(&mut scenario, &clock);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+#[expected_failure(abort_code = gauge::ENotifyEpochTokenInvalidCurrentToken)]
+fun test_distribute_rollover_wrong_epoch_current_token_is_invalid() {
+    let admin = @0xA1;
+    let user = @0xA2;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    let (_, _, _) = rollover_setup(
+        &mut scenario,
+        admin,
+        user,
+        &mut clock
+    );
+     //  Advance to Epoch 3 (OSAIL3) ---
+    clock.increment_for_testing(WEEK); // Advance clock by one week
+
+    // Update Minter Period to OSAIL2
+    scenario.next_tx(admin);
+    {
+        let initial_o_sail3_supply = setup::update_minter_period<SAIL, OSAIL3>(
+            &mut scenario,
+            500_000, // Arbitrary supply for OSAIL3
+            &clock
+        );
+        coin::burn_for_testing(initial_o_sail3_supply); // Burn OSAIL3
+    };
+
+    // use current epoch token from wrong epoch
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge<USD1, SAIL, SAIL, OSAIL1, OSAIL3>(&mut scenario, &clock);
     };
 
     clock::destroy_for_testing(clock);
