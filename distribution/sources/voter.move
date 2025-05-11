@@ -902,7 +902,7 @@ module distribution::voter {
     ///
     /// # Emits
     /// * `EventDistributeGauge` with information about distributed rewards
-    public fun distribute_gauge<CoinTypeA, CoinTypeB, PrevEpochOSail, EpochOSail>(
+    public fun distribute_gauge<CoinTypeA, CoinTypeB, CurrentEpochOSail, NextEpochOSail>(
         voter: &mut Voter,
         notify_reward_cap: &distribution::notify_reward_cap::NotifyRewardCap,
         distribution_config: &distribution::distribution_config::DistributionConfig,
@@ -910,9 +910,9 @@ module distribution::voter {
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
-    ): (u64, Balance<PrevEpochOSail>) {
+    ): (u64, Balance<CurrentEpochOSail>) {
         notify_reward_cap.validate_notify_reward_voter_id(object::id<Voter>(voter));
-        assert!(voter.is_valid_epoch_token<EpochOSail>(), EDistributeGaugeInvalidToken);
+        assert!(voter.is_valid_epoch_token<NextEpochOSail>(), EDistributeGaugeInvalidToken);
 
         let gauge_id = into_gauge_id(
             object::id<distribution::gauge::Gauge<CoinTypeA, CoinTypeB>>(gauge)
@@ -924,9 +924,9 @@ module distribution::voter {
             ) && gauge_represent.gauger_id == gauge_id.id,
             EDistributeGaugeInvalidGaugeRepresent
         );
-        let claimable_balance = voter.extract_claimable_for<EpochOSail>(distribution_config, gauge_id.id);
+        let claimable_balance = voter.extract_claimable_for<NextEpochOSail>(distribution_config, gauge_id.id);
         let claimable_amount = claimable_balance.value();
-        let rollover_balance = gauge.notify_epoch_token<CoinTypeA, CoinTypeB, PrevEpochOSail, EpochOSail>(pool, &voter.voter_cap, clock, ctx);
+        let rollover_balance = gauge.notify_epoch_token<CoinTypeA, CoinTypeB, CurrentEpochOSail, NextEpochOSail>(pool, &voter.voter_cap, clock, ctx);
         let (fee_reward_a, fee_reward_b) = gauge.notify_reward(&voter.voter_cap, pool, claimable_balance, clock, ctx);
         let fee_a_amount = fee_reward_a.value<CoinTypeA>();
         let fee_b_amount = fee_reward_b.value<CoinTypeB>();

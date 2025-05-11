@@ -766,7 +766,7 @@ module distribution::minter {
         sui::event::emit<EventUpdateEpoch>(update_epoch_event);
     }
 
-    public fun distribute_gauge<CoinTypeA, CoinTypeB, SailCoinType, PrevEpochOSail, EpochOSail>(
+    public fun distribute_gauge<CoinTypeA, CoinTypeB, SailCoinType, CurrentEpochOSail, NextEpochOSail>(
         minter: &mut Minter<SailCoinType>,
         voter: &mut distribution::voter::Voter,
         distribution_config: &distribution::distribution_config::DistributionConfig,
@@ -775,7 +775,7 @@ module distribution::minter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
     ): u64 {
-        let (claimable_amount, rollover_balance) = voter.distribute_gauge<CoinTypeA, CoinTypeB, PrevEpochOSail, EpochOSail>(
+        let (claimable_amount, rollover_balance) = voter.distribute_gauge<CoinTypeA, CoinTypeB, CurrentEpochOSail, NextEpochOSail>(
             minter.notify_reward_cap.borrow(),
             distribution_config,
             gauge,

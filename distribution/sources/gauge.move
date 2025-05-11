@@ -34,7 +34,7 @@ module distribution::gauge {
     const EInvalidVoter: u64 = 922337365605842945;
 
     const ENotifyEpochTokenInvalidPool: u64 = 4672810119034640000;
-    const ENotifyEpochTokenInvalidPrevToken: u64 = 710243820743766400;
+    const ENotifyEpochTokenInvalidCurrentToken: u64 = 710243820743766400;
     const ENotifyEpochTokenAlreadyNotifiedThisEpoch: u64 = 776925370166021200;
     const ENotifyEpochTokenEpochAlreadyStarted: u64 = 4159845750300726000;
     const ENotifyEpochTokenPrevRewardsNotFinished: u64 = 3254849085073565700;
@@ -765,23 +765,23 @@ module distribution::gauge {
     /// * `<RewardCoinType>` - The type to be used as current epoch coin.
     /// * `gauge` - The gauge instance
     /// * `voter_cap` - Capability to notify rewards
-    public fun notify_epoch_token<CoinTypeA, CoinTypeB, PrevRewardCoinType, RewardCoinType>(
+    public fun notify_epoch_token<CoinTypeA, CoinTypeB, CurrentRewardCoinType, NextRewardCoinType>(
         gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         voter_cap: &distribution::voter_cap::VoterCap,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
-    ): Balance<PrevRewardCoinType> {
+    ): Balance<CurrentRewardCoinType> {
         gauge.check_voter_cap(voter_cap);
         assert!(gauge.check_gauger_pool(pool), ENotifyEpochTokenInvalidPool);
 
         // if there is no previous token, we still should be able to call this functions
         assert!(
-            gauge.is_valid_reward_token<CoinTypeA, CoinTypeB, PrevRewardCoinType>() || gauge.current_epoch_token.is_none(), 
-            ENotifyEpochTokenInvalidPrevToken
+            gauge.current_epoch_token.is_none() || gauge.is_valid_epoch_token<CoinTypeA, CoinTypeB, CurrentRewardCoinType>(), 
+            ENotifyEpochTokenInvalidCurrentToken
         );
         assert!(
-            !gauge.is_valid_reward_token<CoinTypeA, CoinTypeB, RewardCoinType>(),
+            !gauge.is_valid_reward_token<CoinTypeA, CoinTypeB, NextRewardCoinType>(),
             ENotifyEpochTokenAlreadyNotifiedToken
         );
 
@@ -813,7 +813,7 @@ module distribution::gauge {
             );
         };
 
-        let coin_type = type_name::get<RewardCoinType>();
+        let coin_type = type_name::get<NextRewardCoinType>();
         if (gauge.current_epoch_token.is_some()) {
             let prev_epoch_token = gauge.current_epoch_token.extract();
             gauge.growth_global_by_token.remove(prev_epoch_token); // remove zero from the end
@@ -833,7 +833,7 @@ module distribution::gauge {
 
         sui::event::emit<EventNotifyEpochToken>(event);
 
-        gauge.reserves_split<CoinTypeA, CoinTypeB, PrevRewardCoinType>(rollover_amount)
+        gauge.reserves_split<CoinTypeA, CoinTypeB, CurrentRewardCoinType>(rollover_amount)
     }
 
     /// Adds new rewards to the gauge, claims accumulated fees, and updates reward rates.

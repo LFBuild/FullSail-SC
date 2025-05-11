@@ -17,6 +17,7 @@ use clmm_pool::config::{Self, GlobalConfig};
 use clmm_pool::pool::{Pool};
 use clmm_pool::tick_math;
 use sui::test_utils;
+use distribution::voter;
 
 const WEEK: u64 = 7 * 24 * 60 * 60 * 1000;
 
@@ -3453,4 +3454,78 @@ fun test_distribute_rollover_not_affecting_next_epoch() {
     scenario.end();
 }
 
-// test rollover. If there were no deposited positions, oSAIL1 rewards should be burned. oSAIL2 rewards should be distributed as normal.
+#[test]
+#[expected_failure(abort_code = gauge::ENotifyEpochTokenInvalidCurrentToken)]
+fun test_distribute_rollover_random_current_token_is_invalid() {
+    let admin = @0xA1;
+    let user = @0xA2;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    let (_, _, _) = rollover_setup(
+        &mut scenario,
+        admin,
+        user,
+        &mut clock
+    );
+     //  Advance to Epoch 3 (OSAIL3) ---
+    clock.increment_for_testing(WEEK); // Advance clock by one week
+
+    // Update Minter Period to OSAIL2
+    scenario.next_tx(admin);
+    {
+        let initial_o_sail3_supply = setup::update_minter_period<SAIL, OSAIL3>(
+            &mut scenario,
+            500_000, // Arbitrary supply for OSAIL3
+            &clock
+        );
+        coin::burn_for_testing(initial_o_sail3_supply); // Burn OSAIL3
+    };
+
+    // Distribute OSAIL3 rewards to the gauge
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge<USD1, SAIL, SAIL, OTHER, OSAIL3>(&mut scenario, &clock);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+#[expected_failure(abort_code = voter::EDistributeGaugeInvalidToken)]
+fun test_distribute_rollover_random_next_token_is_invalid() {
+    let admin = @0xA1;
+    let user = @0xA2;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    let (_, _, _) = rollover_setup(
+        &mut scenario,
+        admin,
+        user,
+        &mut clock
+    );
+     //  Advance to Epoch 3 (OSAIL3) ---
+    clock.increment_for_testing(WEEK); // Advance clock by one week
+
+    // Update Minter Period to OSAIL2
+    scenario.next_tx(admin);
+    {
+        let initial_o_sail3_supply = setup::update_minter_period<SAIL, OSAIL3>(
+            &mut scenario,
+            500_000, // Arbitrary supply for OSAIL3
+            &clock
+        );
+        coin::burn_for_testing(initial_o_sail3_supply); // Burn OSAIL3
+    };
+
+    // Distribute OSAIL3 rewards to the gauge
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge<USD1, SAIL, SAIL, OSAIL2, OTHER>(&mut scenario, &clock);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
