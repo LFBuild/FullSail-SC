@@ -703,6 +703,7 @@ module distribution::gauge {
         pool.update_fullsail_distribution_growth_global(gauge.gauge_cap.borrow(), clock);
         let next_epoch_time = current_time + time_until_next_epoch;
         let total_amount = amount + pool.get_fullsail_distribution_rollover();
+        let current_distribution_reserve = pool.get_fullsail_distribution_reserve();
         if (current_time >= gauge.period_finish) {
             gauge.reward_rate = integer_mate::full_math_u128::mul_div_floor(
                 total_amount as u128,
@@ -712,7 +713,7 @@ module distribution::gauge {
             pool.sync_fullsail_distribution_reward(
                 gauge.gauge_cap.borrow(),
                 gauge.reward_rate,
-                gauge.reserves_balance.value<SailCoinType>(),
+                current_distribution_reserve + total_amount,
                 next_epoch_time
             );
         } else {
@@ -729,7 +730,7 @@ module distribution::gauge {
             pool.sync_fullsail_distribution_reward(
                 gauge.gauge_cap.borrow(),
                 gauge.reward_rate,
-                gauge.reserves_balance.value<SailCoinType>() + ((future_rewards / 1 << 64) as u64),
+                current_distribution_reserve + total_amount + ((future_rewards / 1 << 64) as u64),
                 next_epoch_time
             );
         };
