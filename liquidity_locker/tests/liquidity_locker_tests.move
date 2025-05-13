@@ -2665,9 +2665,9 @@ module liquidity_locker::liquidity_locker_tests {
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
             let mut locker = scenario.take_shared<liquidity_locker::Locker>();
-            let mut locked_position_1 = scenario.take_from_sender<liquidity_locker::LockedPosition>();
+            let mut locked_position_1 = scenario.take_from_sender<liquidity_locker::LockedPosition<TestCoinB, TestCoinA>>();
             // locked_position_2 это первый лок из первого транша
-            let mut locked_position_2 = scenario.take_from_sender<liquidity_locker::LockedPosition>();
+            let mut locked_position_2 = scenario.take_from_sender<liquidity_locker::LockedPosition<TestCoinB, TestCoinA>>();
 
             // 66% от тотал реварда за 1 эпоху
             let reward1 = liquidity_locker::collect_reward<TestCoinB, TestCoinA, OSAIL1, RewardCoinType1>(
@@ -3099,9 +3099,9 @@ module liquidity_locker::liquidity_locker_tests {
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
             let mut locker = scenario.take_shared<liquidity_locker::Locker>();
-            let mut locked_position_1 = scenario.take_from_sender<liquidity_locker::LockedPosition>();
+            let mut locked_position_1 = scenario.take_from_sender<liquidity_locker::LockedPosition<TestCoinB, TestCoinA>>();
             // locked_position_2 это первый лок из первого транша
-            let mut locked_position_2 = scenario.take_from_sender<liquidity_locker::LockedPosition>();
+            let mut locked_position_2 = scenario.take_from_sender<liquidity_locker::LockedPosition<TestCoinB, TestCoinA>>();
 
             let reward1 = liquidity_locker::collect_reward<TestCoinB, TestCoinA, OSAIL1, RewardCoinType1>(
                 &mut tranche_manager,
@@ -3191,9 +3191,9 @@ module liquidity_locker::liquidity_locker_tests {
             let mut locker = scenario.take_shared<liquidity_locker::Locker>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
-            let locked_position_1 = scenario.take_from_sender<liquidity_locker::LockedPosition>();
+            let locked_position_1 = scenario.take_from_sender<liquidity_locker::LockedPosition<TestCoinB, TestCoinA>>();
             // locked_position_2 это первый лок из первого транша
-            let locked_position_2 = scenario.take_from_sender<liquidity_locker::LockedPosition>();
+            let locked_position_2 = scenario.take_from_sender<liquidity_locker::LockedPosition<TestCoinB, TestCoinA>>();
 
             // прошло две эпохи с даты экспирации
             // можно забрать 2/3
@@ -3229,9 +3229,9 @@ module liquidity_locker::liquidity_locker_tests {
             let mut locker = scenario.take_shared<liquidity_locker::Locker>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
-            let locked_position_1 = scenario.take_from_sender<liquidity_locker::LockedPosition>();
+            let locked_position_1 = scenario.take_from_sender<liquidity_locker::LockedPosition<TestCoinB, TestCoinA>>();
             // locked_position_2 это первый лок из первого транша
-            let locked_position_2 = scenario.take_from_sender<liquidity_locker::LockedPosition>();
+            let locked_position_2 = scenario.take_from_sender<liquidity_locker::LockedPosition<TestCoinB, TestCoinA>>();
 
             // full unlock
             let (remove_balance_a, remove_balance_b) = liquidity_locker::remove_lock_liquidity<TestCoinB, TestCoinA, OSAIL4>(
@@ -3515,7 +3515,7 @@ module liquidity_locker::liquidity_locker_tests {
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
             let mut locker = scenario.take_shared<liquidity_locker::Locker>();
-            let mut locked_position_1 = scenario.take_from_sender<liquidity_locker::LockedPosition>();
+            let mut locked_position_1 = scenario.take_from_sender<liquidity_locker::LockedPosition<TestCoinB, TestCoinA>>();
 
             let reward1 = liquidity_locker::collect_reward<TestCoinB, TestCoinA, OSAIL1, RewardCoinType1>(
                 &mut tranche_manager,
@@ -4178,7 +4178,7 @@ module liquidity_locker::liquidity_locker_tests {
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
             let mut locker = scenario.take_shared<liquidity_locker::Locker>();
-            let mut locked_position_1 = scenario.take_from_sender<liquidity_locker::LockedPosition>();
+            let mut locked_position_1 = scenario.take_from_sender<liquidity_locker::LockedPosition<TestCoinB, TestCoinA>>();
 
             let reward1 = liquidity_locker::collect_reward<TestCoinB, TestCoinA, OSAIL1, RewardCoinType1>(
                 &mut tranche_manager,
@@ -4818,7 +4818,7 @@ module liquidity_locker::liquidity_locker_tests {
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
             let mut locker = scenario.take_shared<liquidity_locker::Locker>();
-            let mut locked_position_1 = scenario.take_from_sender<liquidity_locker::LockedPosition>();
+            let mut locked_position_1 = scenario.take_from_sender<liquidity_locker::LockedPosition<TestCoinB, TestCoinA>>();
 
             let reward1 = liquidity_locker::collect_reward<TestCoinB, TestCoinA, OSAIL1, RewardCoinType1>(
                 &mut tranche_manager,
@@ -5056,7 +5056,7 @@ module liquidity_locker::liquidity_locker_tests {
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
             let mut locker = scenario.take_shared<liquidity_locker::Locker>();
-            let mut locked_position_1 = scenario.take_from_sender<liquidity_locker::LockedPosition>();
+            let mut locked_position_1 = scenario.take_from_sender<liquidity_locker::LockedPosition<TestCoinB, TestCoinA>>();
 
             liquidity_locker::locker_pause(&admin_cap, &mut locker, true);
 
@@ -5247,7 +5247,7 @@ module liquidity_locker::liquidity_locker_tests {
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
             let mut locker = scenario.take_shared<liquidity_locker::Locker>();
-            let mut locked_position_1 = scenario.take_from_sender<liquidity_locker::LockedPosition>();
+            let mut locked_position_1 = scenario.take_from_sender<liquidity_locker::LockedPosition<TestCoinB, TestCoinA>>();
 
             liquidity_locker::unlock_position<TestCoinB, TestCoinA>(
                 &mut locker,
@@ -5436,7 +5436,7 @@ module liquidity_locker::liquidity_locker_tests {
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
             let mut locker = scenario.take_shared<liquidity_locker::Locker>();
-            let mut locked_position_1 = scenario.take_from_sender<liquidity_locker::LockedPosition>();
+            let mut locked_position_1 = scenario.take_from_sender<liquidity_locker::LockedPosition<TestCoinB, TestCoinA>>();
 
             clock::increment_for_testing(&mut clock, common::epoch_to_seconds(4)*1000);
 
@@ -5627,7 +5627,7 @@ module liquidity_locker::liquidity_locker_tests {
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
             let mut locker = scenario.take_shared<liquidity_locker::Locker>();
-            let locked_position_1 = scenario.take_from_sender<liquidity_locker::LockedPosition>();
+            let locked_position_1 = scenario.take_from_sender<liquidity_locker::LockedPosition<TestCoinB, TestCoinA>>();
 
             liquidity_locker::locker_pause(&admin_cap, &mut locker, true);
 
@@ -5824,7 +5824,7 @@ module liquidity_locker::liquidity_locker_tests {
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
             let mut locker = scenario.take_shared<liquidity_locker::Locker>();
-            let locked_position_1 = scenario.take_from_sender<liquidity_locker::LockedPosition>();
+            let locked_position_1 = scenario.take_from_sender<liquidity_locker::LockedPosition<TestCoinB, TestCoinA>>();
 
             let (remove_balance_a, remove_balance_b) = liquidity_locker::remove_lock_liquidity<TestCoinB, TestCoinA, OSAIL1>(
                 &global_config,
@@ -6019,7 +6019,7 @@ module liquidity_locker::liquidity_locker_tests {
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
             let mut locker = scenario.take_shared<liquidity_locker::Locker>();
-            let locked_position_1 = scenario.take_from_sender<liquidity_locker::LockedPosition>();
+            let locked_position_1 = scenario.take_from_sender<liquidity_locker::LockedPosition<TestCoinB, TestCoinA>>();
             let mut pools = scenario.take_shared<Pools>();
 
             config::add_fee_tier(&mut global_config, 2, 1000, scenario.ctx());
@@ -6389,8 +6389,8 @@ module liquidity_locker::liquidity_locker_tests {
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
             let mut locker = scenario.take_shared<liquidity_locker::Locker>();
-            let mut locked_position_1 = scenario.take_from_sender<liquidity_locker::LockedPosition>();
-            let mut locked_position_2 = scenario.take_from_sender<liquidity_locker::LockedPosition>();
+            let mut locked_position_1 = scenario.take_from_sender<liquidity_locker::LockedPosition<TestCoinB, TestCoinA>>();
+            let mut locked_position_2 = scenario.take_from_sender<liquidity_locker::LockedPosition<TestCoinB, TestCoinA>>();
 
             let reward1 = liquidity_locker::collect_reward<TestCoinB, TestCoinA, OSAIL1, RewardCoinType1>(
                 &mut tranche_manager,
@@ -6765,8 +6765,8 @@ module liquidity_locker::liquidity_locker_tests {
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
             let mut locker = scenario.take_shared<liquidity_locker::Locker>();
-            let mut locked_position_1 = scenario.take_from_sender<liquidity_locker::LockedPosition>();
-            let mut locked_position_2 = scenario.take_from_sender<liquidity_locker::LockedPosition>();
+            let mut locked_position_1 = scenario.take_from_sender<liquidity_locker::LockedPosition<TestCoinB, TestCoinA>>();
+            let mut locked_position_2 = scenario.take_from_sender<liquidity_locker::LockedPosition<TestCoinB, TestCoinA>>();
 
             let reward1 = liquidity_locker::collect_reward<TestCoinB, TestCoinA, OSAIL1, RewardCoinType1>(
                 &mut tranche_manager,
