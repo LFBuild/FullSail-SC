@@ -1458,8 +1458,8 @@ module liquidity_locker::liquidity_locker_tests {
                 &clock
             );
 
-            // позиция не влезает в первый транш с объемом 4000000000000000000, делится на две 
-            // 4000000000000000000 и 7984584197103522
+            // position doesn't fit in the first tranche with volume 4000000000000000000, splits into two
+            // 4000000000000000000 and 7984584197103522
 
             let mut locked_positions = liquidity_locker::lock_position<TestCoinB, TestCoinA, OSAIL1>(
                 &global_config,
@@ -1877,7 +1877,7 @@ module liquidity_locker::liquidity_locker_tests {
 
     // TODO посмотреть на награду после сплита
 
-    // ELockManagerPaused при сплите
+    // ELockManagerPaused when split position
     #[test]
     #[expected_failure(abort_code = liquidity_locker::ELockManagerPaused)]
     fun test_split_position_pause(){
@@ -2030,7 +2030,7 @@ module liquidity_locker::liquidity_locker_tests {
         test_scenario::end(scenario);
     }
 
-    // ELockPeriodEnded при сплите
+    // ELockPeriodEnded when split position
     #[test]
     #[expected_failure(abort_code = liquidity_locker::ELockPeriodEnded)]
     fun test_split_position_period_ended(){
@@ -2183,7 +2183,7 @@ module liquidity_locker::liquidity_locker_tests {
         test_scenario::end(scenario);
     }
 
-    // EInvalidGaugePool при сплите
+    // EInvalidGaugePool when split position
     #[test]
     #[expected_failure(abort_code = liquidity_locker::EInvalidGaugePool)]
     fun test_split_position_invalid_gauge_pool(){
@@ -2532,7 +2532,7 @@ module liquidity_locker::liquidity_locker_tests {
             sui::coin::burn_for_testing(initial_o_sail2_supply); // Burn OSAIL2
         };
 
-        // добавление награды в 1 транш
+        // Add reward to the first tranche
         scenario.next_tx(admin);
         {
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
@@ -2666,10 +2666,10 @@ module liquidity_locker::liquidity_locker_tests {
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
             let mut locker = scenario.take_shared<liquidity_locker::Locker>();
             let mut locked_position_1 = scenario.take_from_sender<liquidity_locker::LockedPosition<TestCoinB, TestCoinA>>();
-            // locked_position_2 это первый лок из первого транша
+            // locked_position_2 is the first lock from the first tranche
             let mut locked_position_2 = scenario.take_from_sender<liquidity_locker::LockedPosition<TestCoinB, TestCoinA>>();
 
-            // 66% от тотал реварда за 1 эпоху
+            // 66% of total reward for epoch 1
             let reward1 = liquidity_locker::collect_reward<TestCoinB, TestCoinA, OSAIL1, RewardCoinType1>(
                 &mut tranche_manager,
                 &mut gauge,
@@ -2682,7 +2682,7 @@ module liquidity_locker::liquidity_locker_tests {
 
             transfer::public_transfer(sui::coin::from_balance(reward1, scenario.ctx()), admin);
 
-            // клейм награды за вторую эпоху лока
+            // Claim rewards for the second epoch lock
             liquidity_locker::collect_reward_sail<TestCoinB, TestCoinA, OSAIL2, SailCoinType>(
                 &mut tranche_manager,
                 &mut ve,
@@ -2694,7 +2694,7 @@ module liquidity_locker::liquidity_locker_tests {
                 scenario.ctx()
             );
 
-            // 66% от тотал реварда за 3 эпоху
+            // 66% of total reward for epoch 3
             let reward3 = liquidity_locker::collect_reward<TestCoinB, TestCoinA, OSAIL3, RewardCoinType2>(
                 &mut tranche_manager,
                 &mut gauge,
@@ -2709,7 +2709,7 @@ module liquidity_locker::liquidity_locker_tests {
 
             clock::increment_for_testing(&mut clock, common::epoch_to_seconds(1)*1000); // next epoch (5)
 
-            // Склеймить все награды
+            // Claim all rewards
             gauge.get_position_reward<TestCoinB, TestCoinA, OSAIL1>(
                 &mut pool,
                 locked_position_2.get_locked_position_id(),
@@ -2772,8 +2772,8 @@ module liquidity_locker::liquidity_locker_tests {
 
             transfer::public_transfer(position, admin);
 
-            // награда второй эпохи была в SAIL
-            // который автоматически залочился в VOTING_ESCROW
+            // reward from the second epoch was in SAIL
+            // which was automatically locked in VOTING_ESCROW
             let lock = scenario.take_from_sender<voting_escrow::Lock>();
             assert!(lock.get_amount() == 6804900, 926223626362);
             let voting_power = ve.get_voting_power(&lock, &clock);
@@ -2787,7 +2787,7 @@ module liquidity_locker::liquidity_locker_tests {
         test_scenario::end(scenario);
     }
 
-    // вывод ликвидности по эпохам
+    // liquidity withdrawal by epochs
     #[test]
     fun test_remove_lock_liquidity_by_epoch(){
         let admin = @0x1;
@@ -2966,7 +2966,7 @@ module liquidity_locker::liquidity_locker_tests {
             sui::coin::burn_for_testing(initial_o_sail2_supply); // Burn OSAIL2
         };
 
-        // добавление награды в 1 транш
+        // adding reward to tranche 1
         scenario.next_tx(admin);
         {
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
@@ -3100,7 +3100,7 @@ module liquidity_locker::liquidity_locker_tests {
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
             let mut locker = scenario.take_shared<liquidity_locker::Locker>();
             let mut locked_position_1 = scenario.take_from_sender<liquidity_locker::LockedPosition<TestCoinB, TestCoinA>>();
-            // locked_position_2 это первый лок из первого транша
+            // locked_position_2 is the first lock from the first tranche
             let mut locked_position_2 = scenario.take_from_sender<liquidity_locker::LockedPosition<TestCoinB, TestCoinA>>();
 
             let reward1 = liquidity_locker::collect_reward<TestCoinB, TestCoinA, OSAIL1, RewardCoinType1>(
@@ -3126,7 +3126,7 @@ module liquidity_locker::liquidity_locker_tests {
 
             transfer::public_transfer(sui::coin::from_balance(reward1, scenario.ctx()), admin);
 
-            // Склеймить все награды
+            // claim all rewards
             gauge.get_position_reward<TestCoinB, TestCoinA, OSAIL1>(
                 &mut pool,
                 locked_position_2.get_locked_position_id(),
@@ -3146,8 +3146,8 @@ module liquidity_locker::liquidity_locker_tests {
                 scenario.ctx()
             );
 
-            // прошла одна эпоха с даты экспирации
-            // можно забрать 1/3
+            // one epoch has passed since expiration date
+            // can withdraw 1/3
             let (remove_balance_a, remove_balance_b) = liquidity_locker::remove_lock_liquidity<TestCoinB, TestCoinA, OSAIL4>(
                 &global_config,
                 &mut vault,
@@ -3192,11 +3192,11 @@ module liquidity_locker::liquidity_locker_tests {
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let locked_position_1 = scenario.take_from_sender<liquidity_locker::LockedPosition<TestCoinB, TestCoinA>>();
-            // locked_position_2 это первый лок из первого транша
+            // locked_position_2 is the first lock from the first tranche
             let locked_position_2 = scenario.take_from_sender<liquidity_locker::LockedPosition<TestCoinB, TestCoinA>>();
 
-            // прошло две эпохи с даты экспирации
-            // можно забрать 2/3
+            // two epochs have passed since expiration date
+            // can withdraw 2/3
             let (remove_balance_a, remove_balance_b) = liquidity_locker::remove_lock_liquidity<TestCoinB, TestCoinA, OSAIL4>(
                 &global_config,
                 &mut vault,
@@ -3230,7 +3230,7 @@ module liquidity_locker::liquidity_locker_tests {
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let locked_position_1 = scenario.take_from_sender<liquidity_locker::LockedPosition<TestCoinB, TestCoinA>>();
-            // locked_position_2 это первый лок из первого транша
+            // locked_position_2 is the first lock from the first tranche
             let locked_position_2 = scenario.take_from_sender<liquidity_locker::LockedPosition<TestCoinB, TestCoinA>>();
 
             // full unlock
@@ -3271,7 +3271,7 @@ module liquidity_locker::liquidity_locker_tests {
         test_scenario::end(scenario);
     }
 
-    // разлок позиции, без вывода ликвидки
+    // unlock position without removing liquidity
     #[test]
     fun test_unlock_position_without_remove_liquidity(){
         let admin = @0x1;
@@ -3425,7 +3425,7 @@ module liquidity_locker::liquidity_locker_tests {
             sui::coin::burn_for_testing(initial_o_sail2_supply); // Burn OSAIL2
         };
 
-        // добавление награды в 1 транш
+        // adding reward to the first tranche
         scenario.next_tx(admin);
         {
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
@@ -3539,7 +3539,7 @@ module liquidity_locker::liquidity_locker_tests {
                 scenario.ctx()
             );
 
-            // Склеймить все награды
+            // claim all rewards
             gauge.get_position_reward<TestCoinB, TestCoinA, OSAIL1>(
                 &mut pool,
                 locked_position_1.get_locked_position_id(),
@@ -3934,7 +3934,7 @@ module liquidity_locker::liquidity_locker_tests {
         test_scenario::end(scenario);
     }
 
-    // NotClaimedRewards при клейме наград
+    // NotClaimedRewards when claiming rewards
     #[test]
     #[expected_failure(abort_code = liquidity_locker::ENotClaimedRewards)]
     fun test_not_claimed_rewards_when_collect_rewards(){
@@ -4089,7 +4089,7 @@ module liquidity_locker::liquidity_locker_tests {
             sui::coin::burn_for_testing(initial_o_sail2_supply); // Burn OSAIL2
         };
 
-        // добавление награды в 1 транш
+        // adding reward to tranche 1
         scenario.next_tx(admin);
         {
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
@@ -4203,7 +4203,7 @@ module liquidity_locker::liquidity_locker_tests {
                 scenario.ctx()
             );
 
-            // Склеймить все награды
+            // claim all rewards
             gauge.get_position_reward<TestCoinB, TestCoinA, OSAIL1>(
                 &mut pool,
                 locked_position_1.get_locked_position_id(),
@@ -4258,7 +4258,7 @@ module liquidity_locker::liquidity_locker_tests {
         test_scenario::end(scenario);
     }
 
-    // ClaimEpochIncorrect при клейме наград
+    // ClaimEpochIncorrect when claiming rewards
     #[test]
     #[expected_failure(abort_code = liquidity_locker::EClaimEpochIncorrect)]
     fun test_claim_epoch_incorrect_when_collect_rewards(){
@@ -4729,7 +4729,7 @@ module liquidity_locker::liquidity_locker_tests {
             sui::coin::burn_for_testing(initial_o_sail2_supply); // Burn OSAIL2
         };
 
-        // добавление награды в 1 транш
+        // adding reward to tranche 1
         scenario.next_tx(admin);
         {
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
@@ -4843,7 +4843,7 @@ module liquidity_locker::liquidity_locker_tests {
                 scenario.ctx()
             );
 
-            // Склеймить все награды
+            // claim all rewards
             gauge.get_position_reward<TestCoinB, TestCoinA, OSAIL1>(
                 &mut pool,
                 locked_position_1.get_locked_position_id(),
@@ -4899,7 +4899,7 @@ module liquidity_locker::liquidity_locker_tests {
         test_scenario::end(scenario);
     }
 
-    // ELockManagerPaused при разлоке
+    // ELockManagerPaused when unlocking
     #[test]
     #[expected_failure(abort_code = liquidity_locker::ELockManagerPaused)]
     fun test_pause_when_unlock_position(){
@@ -5091,7 +5091,7 @@ module liquidity_locker::liquidity_locker_tests {
         test_scenario::end(scenario);
     }
 
-    // EFullLockPeriodNotEnded при разлоке
+    // EFullLockPeriodNotEnded when unlocking
     #[test]
     #[expected_failure(abort_code = liquidity_locker::EFullLockPeriodNotEnded)]
     fun test_full_lock_period_not_ended_when_unlock_position(){
@@ -5281,7 +5281,7 @@ module liquidity_locker::liquidity_locker_tests {
         test_scenario::end(scenario);
     }
 
-    // ERewardsNotCollected при разлоке
+    // ERewardsNotCollected when unlocking
     #[test]
     #[expected_failure(abort_code = liquidity_locker::ERewardsNotCollected)]
     fun test_rewards_not_collected_when_unlock_position(){
@@ -5473,7 +5473,7 @@ module liquidity_locker::liquidity_locker_tests {
         test_scenario::end(scenario);
     }
 
-    // ELockManagerPaused при выводе ликвидности
+    // ELockManagerPaused when removing liquidity
     #[test]
     #[expected_failure(abort_code = liquidity_locker::ELockManagerPaused)]
     fun test_pause_when_remove_liquidity(){
@@ -5670,7 +5670,7 @@ module liquidity_locker::liquidity_locker_tests {
         test_scenario::end(scenario);
     }
 
-    // ELockPeriodNotEnded при выводе ликвидности
+    // ELockPeriodNotEnded when removing liquidity
     #[test]
     #[expected_failure(abort_code = liquidity_locker::ELockPeriodNotEnded)]
     fun test_lock_period_not_ended_when_remove_liquidity(){
@@ -5865,7 +5865,7 @@ module liquidity_locker::liquidity_locker_tests {
         test_scenario::end(scenario);
     }
 
-    // EInvalidGaugePool при выводе ликвидности
+    // EInvalidGaugePool when removing liquidity
     #[test]
     #[expected_failure(abort_code = liquidity_locker::EInvalidGaugePool)]
     fun test_invalid_gauge_pool_when_remove_liquidity(){
@@ -6080,7 +6080,7 @@ module liquidity_locker::liquidity_locker_tests {
         test_scenario::end(scenario);
     }
 
-    // ERewardsNotCollected при выводе ликвидности
+    // ERewardsNotCollected when removing liquidity
     #[test]
     #[expected_failure(abort_code = liquidity_locker::ERewardsNotCollected)]
     fun test_rewards_not_collected_when_remove_liquidity(){
@@ -6260,7 +6260,7 @@ module liquidity_locker::liquidity_locker_tests {
             sui::coin::burn_for_testing(initial_o_sail2_supply); // Burn OSAIL2
         };
 
-        // добавление награды в 1 транш
+        // adding reward to tranche 1
         scenario.next_tx(admin);
         {
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
@@ -6456,7 +6456,7 @@ module liquidity_locker::liquidity_locker_tests {
         test_scenario::end(scenario);
     }
 
-    // ENoLiquidityToRemove при выводе ликвидности
+    // ENoLiquidityToRemove when removing liquidity
     #[test]
     #[expected_failure(abort_code = liquidity_locker::ENoLiquidityToRemove)]
     fun test_no_liquidity_to_remove_when_remove_liquidity(){
@@ -6636,7 +6636,7 @@ module liquidity_locker::liquidity_locker_tests {
             sui::coin::burn_for_testing(initial_o_sail2_supply); // Burn OSAIL2
         };
 
-        // добавление награды в 1 транш
+        // adding reward to tranche 1
         scenario.next_tx(admin);
         {
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
@@ -6949,7 +6949,7 @@ module liquidity_locker::liquidity_locker_tests {
                 clock.timestamp_ms()/1000
             );
 
-            // обеспечим ликвидность в пуле
+            // ensure liquidity in the pool
             let position_admin = create_position_with_liquidity<TestCoinB, TestCoinA>(
                 &mut scenario,
                 &global_config,
@@ -7016,7 +7016,7 @@ module liquidity_locker::liquidity_locker_tests {
             assert!(new_position_id != position_id, 932605293560);
 
             let new_liquidity = pool.position_manager().borrow_position_info(locked_position.get_locked_position_id()).info_liquidity();
-            assert!(new_liquidity == 179538079592236621463, 923412491398739); // ликвидность должна быть пропорционально увеличена ~ в 4.87 раза
+            assert!(new_liquidity == 179538079592236621463, 923412491398739); // liquidity should be proportionally increased by ~4.87x
 
             let (new_tick_lower, new_tick_upper) = pool.position_manager().borrow_position_info(locked_position.get_locked_position_id()).info_tick_range();
             assert!(new_tick_lower.eq(integer_mate::i32::from_u32(100)), 96340634523452);
@@ -7133,7 +7133,7 @@ module liquidity_locker::liquidity_locker_tests {
                 clock.timestamp_ms()/1000
             );
 
-            // обеспечим ликвидность в пуле
+            // ensure liquidity in the pool
             let position_admin = create_position_with_liquidity<TestCoinB, TestCoinA>(
                 &mut scenario,
                 &global_config,
@@ -7200,7 +7200,7 @@ module liquidity_locker::liquidity_locker_tests {
             assert!(new_position_id != position_id, 932605293560);
 
             let new_liquidity = pool.position_manager().borrow_position_info(locked_position.get_locked_position_id()).info_liquidity();
-            assert!(new_liquidity == 4584779504003109389, 923412491398739); // ликвидность должна быть пропорционально уменьшена ~ в 4 раза
+            assert!(new_liquidity == 4584779504003109389, 923412491398739); // liquidity should be proportionally decreased by ~4x
 
             let (new_tick_lower, new_tick_upper) = pool.position_manager().borrow_position_info(locked_position.get_locked_position_id()).info_tick_range();
             assert!(new_tick_lower.eq(integer_mate::i32::from_u32(13)), 96340634523452);
@@ -7231,7 +7231,7 @@ module liquidity_locker::liquidity_locker_tests {
     }
     
     #[test]
-    fun test_change_tick_range_interval_above_current_tick() { // интервал выше текущего тика
+    fun test_change_tick_range_interval_above_current_tick() { // interval above current tick
         let admin = @0x1;
         let mut scenario = test_scenario::begin(admin);
         let mut clock = clock::create_for_testing(scenario.ctx());
@@ -7317,7 +7317,7 @@ module liquidity_locker::liquidity_locker_tests {
                 clock.timestamp_ms()/1000
             );
 
-            // обеспечим ликвидность в пуле
+            // ensure liquidity in the pool
             let position_admin = create_position_with_liquidity<TestCoinB, TestCoinA>(
                 &mut scenario,
                 &global_config,
@@ -7428,7 +7428,7 @@ module liquidity_locker::liquidity_locker_tests {
     }
 
     #[test]
-    fun test_change_tick_range_interval_below_current_tick() { // интервал ниже текущего тика
+    fun test_change_tick_range_interval_below_current_tick() { // interval below current tick
         let admin = @0x1;
         let mut scenario = test_scenario::begin(admin);
         let mut clock = clock::create_for_testing(scenario.ctx());
@@ -7514,7 +7514,7 @@ module liquidity_locker::liquidity_locker_tests {
                 clock.timestamp_ms()/1000
             );
 
-            // обеспечим ликвидность в пуле
+            // ensure liquidity in the pool
             let position_admin = create_position_with_liquidity<TestCoinB, TestCoinA>(
                 &mut scenario,
                 &global_config,
@@ -7625,7 +7625,7 @@ module liquidity_locker::liquidity_locker_tests {
     }
 
     #[test]
-    fun test_change_tick_range_with_return_remaining_to_position() { // изменение интервала с возвращением остатков в позу
+    fun test_change_tick_range_with_return_remaining_to_position() { // changing interval with returning remaining to position
         let admin = @0x1;
         let mut scenario = test_scenario::begin(admin);
         let mut clock = clock::create_for_testing(scenario.ctx());
@@ -7711,7 +7711,7 @@ module liquidity_locker::liquidity_locker_tests {
                 clock.timestamp_ms()/1000
             );
 
-            // обеспечим ликвидность в пуле
+            // ensure liquidity in the pool
             let position_admin = create_position_with_liquidity<TestCoinB, TestCoinA>(
                 &mut scenario,
                 &global_config,
