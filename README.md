@@ -75,6 +75,6 @@ Use `sui client publish` command.
 - [integrate](https://suivision.xyz/txblock/CTwCw2tfYhRftx473SMart3kxzRM7tw8RSBBZBkmURTv)
 
 [Setup distribution tx](https://suivision.xyz/txblock/5u2f5sqUdkQr8TjypAbUVqfHoN3Ww3Um2G8jkRaWMKsL)
-[Create gauge tx](https://suivision.xyz/txblock/2uLEzLu2JYCM2qqCbCNMgqayVCiT43tNEvbK4pPc425U)
-[Create gauge tx2](https://suivision.xyz/txblock/D3vc98r73mvJ7mmsPE2ucsARs8QqA2v5A6aTiy6q4a2H)
-[Activate minter tx](https://suivision.xyz/txblock/A6BNVhv4GG7AkniPBinLtrDak7y4um3CcX6ejAe3z7NK)
+[Create gauge tx](https://suivision.xyz/txblock/7Y4YzcmLKNboT7TMHcvWvDTtiMqwqLbYFLmFFbJyaMpK)
+[Create gauge tx2](https://suivision.xyz/txblock/Avu2yduAuhvzeURjy7SuHhj8s44wDQq6CRXMjnFDGWzD)
+[Activate minter tx](https://suivision.xyz/txblock/w5hTyjfsEUEqmJdMLrzKXSYUY7K96PWpVXUF3XrS95u)
