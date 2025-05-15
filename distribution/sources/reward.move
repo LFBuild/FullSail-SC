@@ -257,7 +257,11 @@ module distribution::reward {
                 } else {
                     0
                 };
-                earned_amount = earned_amount + next_checkpoint.balance_of * reward_in_epoch / supply;
+                earned_amount = earned_amount + integer_mate::full_math_u64::mul_div_floor(
+                    next_checkpoint.balance_of,
+                    reward_in_epoch, 
+                    supply
+                );
                 next_epoch_time = next_epoch_time + distribution::common::week();
                 i = i + 1;
             };
