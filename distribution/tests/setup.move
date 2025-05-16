@@ -519,6 +519,82 @@ public fun create_position_with_liquidity<CoinTypeA: store, CoinTypeB: store>(
     test_scenario::return_shared(vault);
 }
 
+// Adds liquidity to existing position.
+// Assumes GlobalConfig and Pool<CoinTypeA, CoinTypeB> are shared, Position is owned by the sender
+// Transfers the new Position object to the specified owner.
+public fun add_liquidity<CoinTypeA: store, CoinTypeB: store>(
+    scenario: &mut test_scenario::Scenario,
+    liquidity_delta: u128,
+    clock: &Clock,
+) {
+    let global_config = scenario.take_shared<GlobalConfig>();
+    let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
+    let mut pool_obj = scenario.take_shared<Pool<CoinTypeA, CoinTypeB>>(); // Renamed to avoid conflict
+    let mut position = scenario.take_from_sender<Position>();
+
+    // Add liquidity
+    let receipt: pool::AddLiquidityReceipt<CoinTypeA, CoinTypeB> = pool::add_liquidity<CoinTypeA, CoinTypeB>(
+        &global_config,
+        &mut vault,
+        &mut pool_obj,
+        &mut position,
+        liquidity_delta,
+        clock
+    );
+
+    // Repay liquidity
+    let (amount_a, amount_b) = pool::add_liquidity_pay_amount<CoinTypeA, CoinTypeB>(&receipt);
+    let coin_a = coin::mint_for_testing<CoinTypeA>(amount_a, scenario.ctx());
+    let coin_b = coin::mint_for_testing<CoinTypeB>(amount_b, scenario.ctx());
+
+    pool::repay_add_liquidity<CoinTypeA, CoinTypeB>(
+        &global_config,
+        &mut pool_obj,
+        coin_a.into_balance(),
+        coin_b.into_balance(),
+        receipt // receipt is consumed here
+    );
+
+    // Return shared objects
+    test_scenario::return_shared(global_config);
+    test_scenario::return_shared(pool_obj);
+    test_scenario::return_shared(vault);
+    scenario.return_to_sender(position);
+}
+
+// Removes liquidity from existing position.
+// Assumes GlobalConfig and Pool<CoinTypeA, CoinTypeB> are shared, Position is owned by the sender
+// Destroys removed liquidity assets.
+public fun remove_liquidity<CoinTypeA: store, CoinTypeB: store>(
+    scenario: &mut test_scenario::Scenario,
+    liquidity_delta: u128,
+    clock: &Clock,
+) {
+    let global_config = scenario.take_shared<GlobalConfig>();
+    let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
+    let mut pool_obj = scenario.take_shared<Pool<CoinTypeA, CoinTypeB>>(); // Renamed to avoid conflict
+    let mut position = scenario.take_from_sender<Position>();
+
+    // Add liquidity
+    let (amount_a, amount_b) = pool::remove_liquidity<CoinTypeA, CoinTypeB>(
+        &global_config,
+        &mut vault,
+        &mut pool_obj,
+        &mut position,
+        liquidity_delta,
+        clock
+    );
+
+    test_utils::destroy(amount_a);
+    test_utils::destroy(amount_b);
+
+    // Return shared objects
+    test_scenario::return_shared(global_config);
+    test_scenario::return_shared(pool_obj);
+    test_scenario::return_shared(vault);
+    scenario.return_to_sender(position);
+}
+
 // Define coin types with store for testing repay_add_liquidity
 #[test_only]
 public struct CoinStoreA has drop, store {}
@@ -853,4 +929,33 @@ public fun update_minter_period<SailCoinType, OSailCoinType>(
         scenario.return_to_sender(minter_admin_cap);    
 
         initial_supply
+}
+
+// Utility to call voter.distribute_gauge
+// Assumes Voter, Gauge, Pool, DistributionConfig are shared.
+public fun distribute_gauge<CoinTypeA, CoinTypeB, SailCoinType, PrevEpochOSail, EpochOSail>(
+    scenario: &mut test_scenario::Scenario,
+    clock: &Clock,
+) {
+    let mut voter = scenario.take_shared<Voter>();
+    let mut gauge = scenario.take_shared<Gauge<CoinTypeA, CoinTypeB>>();
+    let mut minter = scenario.take_shared<Minter<SailCoinType>>();
+    let mut pool = scenario.take_shared<Pool<CoinTypeA, CoinTypeB>>();
+    let distribution_config = scenario.take_shared<DistributionConfig>();
+
+    minter.distribute_gauge<CoinTypeA, CoinTypeB, SailCoinType, PrevEpochOSail, EpochOSail>(
+        &mut voter,
+        &distribution_config,
+        &mut gauge,
+        &mut pool,
+        clock,
+        scenario.ctx()
+    );
+
+    // Return shared objects
+    test_scenario::return_shared(voter);
+    test_scenario::return_shared(gauge);
+    test_scenario::return_shared(pool);
+    test_scenario::return_shared(minter);
+    test_scenario::return_shared(distribution_config);
 }

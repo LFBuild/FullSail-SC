@@ -895,22 +895,24 @@ module distribution::voter {
     /// * `ctx` - The transaction context
     ///
     /// # Returns
-    /// The amount of rewards distributed
+    /// (amount of distributed rewards, balance containing rewards from previous epoch that were not distributed)
     ///
     /// # Aborts
     /// * If the gauge representation is invalid
     ///
     /// # Emits
     /// * `EventDistributeGauge` with information about distributed rewards
-    public fun distribute_gauge<CoinTypeA, CoinTypeB, EpochOSail>(
+    public fun distribute_gauge<CoinTypeA, CoinTypeB, CurrentEpochOSail, NextEpochOSail>(
         voter: &mut Voter,
+        notify_reward_cap: &distribution::notify_reward_cap::NotifyRewardCap,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
-    ): u64 {
-        assert!(voter.is_valid_epoch_token<EpochOSail>(), EDistributeGaugeInvalidToken);
+    ): (u64, Balance<CurrentEpochOSail>) {
+        notify_reward_cap.validate_notify_reward_voter_id(object::id<Voter>(voter));
+        assert!(voter.is_valid_epoch_token<NextEpochOSail>(), EDistributeGaugeInvalidToken);
 
         let gauge_id = into_gauge_id(
             object::id<distribution::gauge::Gauge<CoinTypeA, CoinTypeB>>(gauge)
@@ -922,9 +924,9 @@ module distribution::voter {
             ) && gauge_represent.gauger_id == gauge_id.id,
             EDistributeGaugeInvalidGaugeRepresent
         );
-        let claimable_balance = voter.extract_claimable_for<EpochOSail>(distribution_config, gauge_id.id);
-        let balance_value = claimable_balance.value();
-        gauge.notify_epoch_token<CoinTypeA, CoinTypeB, EpochOSail>(pool, &voter.voter_cap, clock, ctx);
+        let claimable_balance = voter.extract_claimable_for<NextEpochOSail>(distribution_config, gauge_id.id);
+        let claimable_amount = claimable_balance.value();
+        let rollover_balance = gauge.notify_epoch_token<CoinTypeA, CoinTypeB, CurrentEpochOSail, NextEpochOSail>(pool, &voter.voter_cap, clock, ctx);
         let (fee_reward_a, fee_reward_b) = gauge.notify_reward(&voter.voter_cap, pool, claimable_balance, clock, ctx);
         let fee_a_amount = fee_reward_a.value<CoinTypeA>();
         let fee_b_amount = fee_reward_b.value<CoinTypeB>();
@@ -946,10 +948,10 @@ module distribution::voter {
             gauge: gauge_id.id,
             fee_a_amount,
             fee_b_amount,
-            amount: balance_value,
+            amount: claimable_amount,
         };
         sui::event::emit<EventDistributeGauge>(distribute_gauge_event);
-        balance_value
+        (claimable_amount, rollover_balance)
     }
 
     /// Internal function to extract the claimable amount for a gauge.

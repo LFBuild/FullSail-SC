@@ -35,10 +35,11 @@ module distribution::gauge {
     const ENotClaimedAllRewards: u64 = 9223370035032528531;
 
     const ENotifyEpochTokenInvalidPool: u64 = 4672810119034640000;
+    const ENotifyEpochTokenInvalidCurrentToken: u64 = 710243820743766400;
+    const ENotifyEpochTokenAlreadyNotifiedThisEpoch: u64 = 776925370166021200;
     const ENotifyEpochTokenEpochAlreadyStarted: u64 = 4159845750300726000;
     const ENotifyEpochTokenPrevRewardsNotFinished: u64 = 3254849085073565700;
     const ENotifyEpochTokenAlreadyNotifiedToken: u64 = 4041460742273430500;
-    const ENotifyEpochTokenAlreadyNotifiedThisEpoch: u64 = 776925370166021200;
 
     const ENotifyRewardInvalidPool: u64 = 5832633373805671000;
     const ENotifyRewardInvalidEpochToken: u64 = 2541860431191483000;
@@ -1028,21 +1029,33 @@ module distribution::gauge {
 
     /// Sets current_epoch_token. Only current_epoch_token can be distributed in current epoch via Gauge.
     /// After this function is called all notify_reward calls will check that coin is allowed to be distributed.
+    /// Returns undistributed reserves of previous epoch token.
     ///
     /// # Arguments
+    /// * `<PrevRewardCoinType> - The type that was used as previous epoch token. You can pass any type if there is no previous token.
     /// * `<RewardCoinType>` - The type to be used as current epoch coin.
     /// * `gauge` - The gauge instance
     /// * `voter_cap` - Capability to notify rewards
-    public fun notify_epoch_token<CoinTypeA, CoinTypeB, RewardCoinType>(
+    public fun notify_epoch_token<CoinTypeA, CoinTypeB, CurrentRewardCoinType, NextRewardCoinType>(
         gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         voter_cap: &distribution::voter_cap::VoterCap,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
-    ) {
+    ): Balance<CurrentRewardCoinType> {
         std::debug::print(&std::string::utf8(b"@@@@@@@@notify_epoch_token@@@@@@@@@"));
         gauge.check_voter_cap(voter_cap);
         assert!(gauge.check_gauger_pool(pool), ENotifyEpochTokenInvalidPool);
+
+        // if there is no previous token, we still should be able to call this functions
+        assert!(
+            gauge.current_epoch_token.is_none() || gauge.is_valid_epoch_token<CoinTypeA, CoinTypeB, CurrentRewardCoinType>(), 
+            ENotifyEpochTokenInvalidCurrentToken
+        );
+        assert!(
+            !gauge.is_valid_reward_token<CoinTypeA, CoinTypeB, NextRewardCoinType>(),
+            ENotifyEpochTokenAlreadyNotifiedToken
+        );
 
         // you can only change token in new epoch, before any rewards notified.
         // That's because growth_global cannot be mixed inside one epoch.
@@ -1054,16 +1067,25 @@ module distribution::gauge {
             ENotifyEpochTokenAlreadyNotifiedThisEpoch
         );
 
-        // update distribution. All rewards from previous epoch should be already distributed
+        // update distribution. All rewards from previous epoch should be either distributed or burnt
         let gauge_cap = gauge.gauge_cap.borrow();
         pool.update_fullsail_distribution_growth_global(gauge_cap, clock);
-        assert!(pool.get_fullsail_distribution_reserve() == 0, ENotifyEpochTokenPrevRewardsNotFinished);
+        let fullsail_distribution_reserves = pool.get_fullsail_distribution_reserve();
+        assert!(fullsail_distribution_reserves == 0, ENotifyEpochTokenPrevRewardsNotFinished);
 
-        let coin_type = type_name::get<RewardCoinType>();
-        assert!(
-            !gauge.is_valid_reward_token<CoinTypeA, CoinTypeB, RewardCoinType>(),
-            ENotifyEpochTokenAlreadyNotifiedToken
-        );
+        // we will return this amount to the caller
+        let rollover_amount = pool.get_fullsail_distribution_rollover();
+        if (rollover_amount > 0) {
+            // null rollover
+            pool.sync_fullsail_distribution_reward(
+                gauge_cap,
+                gauge.reward_rate,
+                fullsail_distribution_reserves,
+                gauge.period_finish
+            );
+        };
+
+        let coin_type = type_name::get<NextRewardCoinType>();
         if (gauge.current_epoch_token.is_some()) {
             let prev_epoch_token = gauge.current_epoch_token.extract();
             gauge.growth_global_by_token.remove(prev_epoch_token); // remove zero from the end
@@ -1086,6 +1108,8 @@ module distribution::gauge {
         gauge.epoch_token_last_notified = current_time;
 
         sui::event::emit<EventNotifyEpochToken>(event);
+
+        gauge.reserves_split<CoinTypeA, CoinTypeB, CurrentRewardCoinType>(rollover_amount)
     }
 
     /// Adds new rewards to the gauge, claims accumulated fees, and updates reward rates.
@@ -1122,7 +1146,7 @@ module distribution::gauge {
 
         gauge.reserves_join<CoinTypeA, CoinTypeB, RewardCoinType>(balance);
         let (fee_a, fee_b) = gauge.claim_fees_internal(pool);
-        gauge.notify_reward_amount_internal<CoinTypeA, CoinTypeB, RewardCoinType>(pool, amount, clock);
+        gauge.notify_reward_amount_internal<CoinTypeA, CoinTypeB>(pool, amount, clock);
         let event_notify_reward = EventNotifyReward {
             sender: object::id_from_address(tx_context::sender(ctx)),
             amount,
@@ -1144,7 +1168,7 @@ module distribution::gauge {
     /// # Aborts
     /// * If the calculated reward rate is zero
     /// * If there are insufficient reserves for the calculated reward rate
-    fun notify_reward_amount_internal<CoinTypeA, CoinTypeB, RewardCoinType>(
+    fun notify_reward_amount_internal<CoinTypeA, CoinTypeB>(
         gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         amount: u64,
@@ -1154,18 +1178,17 @@ module distribution::gauge {
         let time_until_next_epoch = distribution::common::epoch_next(current_time) - current_time;
         pool.update_fullsail_distribution_growth_global(gauge.gauge_cap.borrow(), clock);
         let next_epoch_time = current_time + time_until_next_epoch;
-        let total_amount = amount + pool.get_fullsail_distribution_rollover();
         let current_distribution_reserve = pool.get_fullsail_distribution_reserve();
         if (current_time >= gauge.period_finish) {
             gauge.reward_rate = integer_mate::full_math_u128::mul_div_floor(
-                total_amount as u128,
+                amount as u128,
                 1 << 64,
                 time_until_next_epoch as u128
             );
             pool.sync_fullsail_distribution_reward(
                 gauge.gauge_cap.borrow(),
                 gauge.reward_rate,
-                current_distribution_reserve + total_amount,
+                current_distribution_reserve + amount,
                 next_epoch_time
             );
         } else {
@@ -1176,14 +1199,14 @@ module distribution::gauge {
                 1 << 64
             );
             gauge.reward_rate = integer_mate::full_math_u128::mul_div_floor(
-                (total_amount as u128) + future_rewards,
+                (amount as u128) + future_rewards,
                 1 << 64,
                 time_until_next_epoch as u128
             );
             pool.sync_fullsail_distribution_reward(
                 gauge.gauge_cap.borrow(),
                 gauge.reward_rate,
-                current_distribution_reserve + total_amount + ((future_rewards / 1 << 64) as u64),
+                current_distribution_reserve + amount + ((future_rewards / 1 << 64) as u64),
                 next_epoch_time
             );
         };
@@ -1202,7 +1225,7 @@ module distribution::gauge {
         gauge.period_finish = next_epoch_time;
         let notify_reward_event = EventNotifyReward {
             sender: *gauge.voter.borrow(),
-            amount: total_amount,
+            amount,
         };
         sui::event::emit<EventNotifyReward>(notify_reward_event);
     }
@@ -1239,7 +1262,7 @@ module distribution::gauge {
         let amount = balance.value<RewardCoinType>();
         assert!(amount > 0, ENotifyRewardWithoutClaimInvalidAmount);
         gauge.reserves_join<CoinTypeA, CoinTypeB, RewardCoinType>(balance);
-        gauge.notify_reward_amount_internal<CoinTypeA, CoinTypeB, RewardCoinType>(pool, amount, clock);
+        gauge.notify_reward_amount_internal<CoinTypeA, CoinTypeB>(pool, amount, clock);
         let notify_reward_event = EventNotifyReward {
             sender: object::id_from_address(tx_context::sender(ctx)),
             amount,
