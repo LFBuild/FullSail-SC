@@ -78,7 +78,7 @@ module liquidity_locker::pool_tranche {
     /// * `current_volume` - Current volume in the tranche
     /// * `filled` - Flag indicating if tranche has reached capacity
     /// * `minimum_remaining_volume` - Minimum volume threshold for tranche closure (in shares with minimum_remaining_volume_denom)
-    /// * `duration_profitabilities` - Vector of profitability multipliers for different lock durations
+    /// * `duration_profitabilities` - Vector of profitability rates for different lock durations
     public struct PoolTranche has store, key {
         id: UID,
         pool_id: ID,
@@ -108,7 +108,7 @@ module liquidity_locker::pool_tranche {
     /// * `pool_id` - ID of the associated pool
     /// * `volume_in_coin_a` - Flag indicating if volume is measured in coin A (true) or coin B (false)
     /// * `total_volume` - Maximum volume capacity of the tranche (Q64.64 format)
-    /// * `duration_profitabilities` - Vector of profitability multipliers for different lock durations
+    /// * `duration_profitabilities` - Vector of profitability rates for different lock durations
     public struct CreatePoolTrancheEvent has copy, drop {
         tranche_id: ID,
         pool_id: ID,
@@ -271,7 +271,7 @@ module liquidity_locker::pool_tranche {
     ): u64 {
         let epoch_start = distribution::common::epoch_start(epoch_start);
         let pool_tranches = manager.pool_tranches.borrow_mut(pool_id);
-        
+
         let mut i = 0;
         while (i < pool_tranches.length()) {
             let tranche = pool_tranches.borrow_mut(i);

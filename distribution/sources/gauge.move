@@ -84,6 +84,8 @@ module distribution::gauge {
 
     const EFullEarnedForTypeEpochToken: u64 = 932952345345345345;
     const EFullEarnedForTypeNoGrowthGlobalByToken: u64 = 923483942940234034;
+    
+    const EIncorrectGrowthInside: u64 = 93532423442743643;
 
     public struct TRANSFORMER has drop {}
 
@@ -625,6 +627,9 @@ module distribution::gauge {
             upper_tick,
             current_growth_global
         );
+
+        std::debug::print(&std::string::utf8(b"prev_coin_growth_global"));
+        std::debug::print(&prev_coin_growth_global);
         // TODO check that get_fullsail_distribution_growth_inside works correctly with
         // global_growth passed lower than pool.fullsail_distribution_growth_global
         let prev_token_growth_inside = if (prev_coin_growth_global > 0) {
@@ -646,11 +651,15 @@ module distribution::gauge {
             prev_token_growth_inside
         };
 
+        let growth_inside_diff = integer_mate::math_u128::wrapping_sub(new_growth_inside, claimed_growth_inside);
+        assert!(!integer_mate::math_u128::is_neg(growth_inside_diff), EIncorrectGrowthInside);
+
         let amount_earned = integer_mate::full_math_u128::mul_div_floor(
-            new_growth_inside - claimed_growth_inside,
+            growth_inside_diff,
             position.liquidity(),
             1 << 64
         ) as u64;
+
         (amount_earned, new_growth_inside)
     }
 
@@ -788,14 +797,24 @@ module distribution::gauge {
         );
         
         let current_growth_global = *gauge.growth_global_by_token.borrow(coin_type);
+        std::debug::print(&std::string::utf8(b"current_growth_global"));
+        std::debug::print(&current_growth_global);
         let prev_coin_type_opt: &Option<TypeName> = gauge.growth_global_by_token.prev(coin_type);
         let prev_coin_growth_global: u128 = if (prev_coin_type_opt.is_some()) {
             *gauge.growth_global_by_token.borrow(*prev_coin_type_opt.borrow())
         } else {
             0_u128
         };
+
+        std::debug::print(&std::string::utf8(b"prev_coin_growth_global"));
+        std::debug::print(&prev_coin_growth_global);
+
         let position = gauge.staked_positions.borrow(position_id);
         let (lower_tick, upper_tick) = position.tick_range();
+        std::debug::print(&std::string::utf8(b"lower_tick"));
+        std::debug::print(&lower_tick);
+        std::debug::print(&std::string::utf8(b"upper_tick"));
+        std::debug::print(&upper_tick);
         
         let prev_token_growth_inside = if (prev_coin_growth_global > 0) {
             // get_fullsail_distribution_growth_inside replaces prev_coin_growth_global with 0 if prev_coin_growth_global is 0
@@ -807,21 +826,39 @@ module distribution::gauge {
         } else {
             0_u128
         };
-        let last_growth_inside_correct = if (last_growth_inside >= prev_token_growth_inside) {
+        std::debug::print(&std::string::utf8(b"prev_token_growth_inside"));
+        std::debug::print(&(prev_token_growth_inside));
+
+        std::debug::print(&std::string::utf8(b"last_growth_inside"));
+        std::debug::print(&last_growth_inside);
+        let mut last_growth_inside_correct = if (last_growth_inside >= prev_token_growth_inside){
             last_growth_inside
         } else {
             prev_token_growth_inside
         };
+
         let new_growth_inside = pool.get_fullsail_distribution_growth_inside(
             lower_tick,
             upper_tick,
             current_growth_global
         );
+        std::debug::print(&std::string::utf8(b"new_growth_inside"));
+        std::debug::print(&new_growth_inside);
+        std::debug::print(&std::string::utf8(b"last_growth_inside_correct"));
+        std::debug::print(&last_growth_inside_correct);
+        if (integer_mate::math_u128::is_neg(last_growth_inside_correct)) {
+            last_growth_inside_correct = 0;
+        };
+                std::debug::print(&std::string::utf8(b"SUB inside"));
+        std::debug::print(&(integer_mate::math_u128::wrapping_sub(new_growth_inside, last_growth_inside_correct)));
         let amount_earned = integer_mate::full_math_u128::mul_div_floor(
-            new_growth_inside - last_growth_inside_correct,
+            integer_mate::math_u128::wrapping_sub(new_growth_inside, last_growth_inside_correct),
             position.liquidity(),
             1 << 64
         ) as u64;
+
+        std::debug::print(&std::string::utf8(b"amount_earned"));
+        std::debug::print(&amount_earned);
 
         (amount_earned, new_growth_inside)
     }
@@ -1003,6 +1040,7 @@ module distribution::gauge {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
     ) {
+        std::debug::print(&std::string::utf8(b"@@@@@@@@notify_epoch_token@@@@@@@@@"));
         gauge.check_voter_cap(voter_cap);
         assert!(gauge.check_gauger_pool(pool), ENotifyEpochTokenInvalidPool);
 
@@ -1031,6 +1069,10 @@ module distribution::gauge {
             gauge.growth_global_by_token.remove(prev_epoch_token); // remove zero from the end
 
             // last growth_global that corresponds to the **previous** token.
+            std::debug::print(&std::string::utf8(b"prev_epoch_token"));
+            std::debug::print(&prev_epoch_token);
+            std::debug::print(&std::string::utf8(b"pool.get_fullsail_distribution_growth_global()"));
+            std::debug::print(&pool.get_fullsail_distribution_growth_global());
             gauge.growth_global_by_token.push_back(prev_epoch_token, pool.get_fullsail_distribution_growth_global());
         };
         // Update TokenName state
@@ -1286,7 +1328,16 @@ module distribution::gauge {
             return balance::zero<RewardCoinType>()
         };
         let coin_type = type_name::get<RewardCoinType>();
+        std::debug::print(&std::string::utf8(b"reserves_all_tokens"));
+        std::debug::print(&gauge.reserves_all_tokens);
         gauge.reserves_all_tokens = gauge.reserves_all_tokens - amount;
+        std::debug::print(&std::string::utf8(b"amount"));
+        std::debug::print(&amount);
+        std::debug::print(&std::string::utf8(b"reserves_balance"));
+        std::debug::print(&( gauge
+            .reserves_balance
+            .borrow<TypeName, Balance<RewardCoinType>>(coin_type).value()));
+            
         gauge
             .reserves_balance
             .borrow_mut<TypeName, Balance<RewardCoinType>>(coin_type)
@@ -1435,7 +1486,11 @@ module distribution::gauge {
         let reward_profile = gauge.rewards.borrow_mut(position_id);
         pool.update_fullsail_distribution_growth_global(gauge.gauge_cap.borrow(), clock);
         reward_profile.last_update_time = current_time;
+        std::debug::print(&std::string::utf8(b"reward_profile.amount START"));
+        std::debug::print(&reward_profile.amount);
         reward_profile.amount = reward_profile.amount + amount_earned;
+        std::debug::print(&std::string::utf8(b"reward_profile.amount END"));
+        std::debug::print(&reward_profile.amount);
         let amount_to_return = reward_profile.amount;
         reward_profile.growth_inside = growth_inside;
         reward_profile.amount = 0;
@@ -1468,7 +1523,7 @@ module distribution::gauge {
             0_u128
         };
         let claimed_all_tokens_growth_inside = gauge.rewards.borrow(position_id).growth_inside;
-        let prev_claimed = claimed_all_tokens_growth_inside >= prev_token_growth_inside;
+        let prev_claimed = integer_mate::math_u128::greater_or_equal_overflowing(claimed_all_tokens_growth_inside, prev_token_growth_inside);
 
         prev_claimed
     }
