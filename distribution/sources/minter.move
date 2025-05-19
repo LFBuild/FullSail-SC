@@ -56,6 +56,8 @@ module distribution::minter {
     const EExerciseOSailExpired: u64 = 7388437717433252000;
     const EExerciseOSailInvalidOSail: u64 = 3209173623653640700;
 
+    const EBurnOSailInvalidOSail: u64 = 665869556650983200;
+
     const EExerciseUsdLimitReached: u64 = 4905179424474806000;
     const EExerciseOSailPoolNotWhitelisted: u64 = 2212524000647910700;
 
@@ -764,6 +766,34 @@ module distribution::minter {
         sui::event::emit<EventUpdateEpoch>(update_epoch_event);
     }
 
+    public fun distribute_gauge<CoinTypeA, CoinTypeB, SailCoinType, CurrentEpochOSail, NextEpochOSail>(
+        minter: &mut Minter<SailCoinType>,
+        voter: &mut distribution::voter::Voter,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
+        gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext,
+    ): u64 {
+        let (claimable_amount, rollover_balance) = voter.distribute_gauge<CoinTypeA, CoinTypeB, CurrentEpochOSail, NextEpochOSail>(
+            minter.notify_reward_cap.borrow(),
+            distribution_config,
+            gauge,
+            pool,
+            clock,
+            ctx
+        );
+
+        // burning coins that were not distributed
+        if (rollover_balance.value() > 0) {
+            minter.burn_o_sail_balance(rollover_balance, ctx);
+        } else {
+            rollover_balance.destroy_zero();
+        };
+
+        claimable_amount
+    }
+
     /// Borrows current epoch oSAIL token
     public fun borrow_current_epoch_o_sail<SailCoinType>(minter: &Minter<SailCoinType>): &TypeName {
         minter.current_epoch_o_sail.borrow()
@@ -776,6 +806,13 @@ module distribution::minter {
         let o_sail_type = type_name::get<OSailCoinType>();
 
         *minter.borrow_current_epoch_o_sail() == o_sail_type
+    }
+
+    public fun is_valid_o_sail_type<SailCoinType, OSailCoinType>(
+        minter: &Minter<SailCoinType>,
+    ): bool {
+        let o_sail_type = type_name::get<OSailCoinType>();
+        minter.o_sail_expiry_dates.contains(o_sail_type)
     }
 
     /// Mutably borrows oSAIL TreasuryCap by type
@@ -808,15 +845,26 @@ module distribution::minter {
         cap.mint(amount, ctx)
     }
 
-    fun burn_o_sail<SailCoinType, OSailCoinType>(
+    /// Burning function. Is public because we don't mind if supply is decreased voluntarily
+    public fun burn_o_sail<SailCoinType, OSailCoinType>(
         minter: &mut Minter<SailCoinType>,
         coin: Coin<OSailCoinType>,
     ): u64 {
+        assert!(minter.is_valid_o_sail_type<SailCoinType, OSailCoinType>(), EBurnOSailInvalidOSail);
+
         let cap = minter.borrow_mut_o_sail_cap<SailCoinType, OSailCoinType>();
         let burnt = cap.burn(coin);
         minter.o_sail_total_supply = minter.o_sail_total_supply - burnt;
 
         burnt
+    }
+
+    public fun burn_o_sail_balance<SailCoinType, OSailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        balance: Balance<OSailCoinType>,
+        ctx: &mut TxContext,
+    ): u64 {
+        minter.burn_o_sail(coin::from_balance(balance, ctx))
     }
 
     fun mint_sail<SailCoinType>(
@@ -851,9 +899,9 @@ module distribution::minter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        assert!(minter.is_valid_o_sail_type<SailCoinType, OSailCoinType>(), ECreateLockFromOSailInvalidToken);
         let lock_duration_seconds = lock_duration_days * distribution::common::day();
         let o_sail_type = type_name::get<OSailCoinType>();
-        assert!(minter.o_sail_caps.contains(o_sail_type), ECreateLockFromOSailInvalidToken);
         let expiry_date: u64 = *minter.o_sail_expiry_dates.borrow(o_sail_type);
         let current_time = distribution::common::current_timestamp(clock);
 
@@ -949,7 +997,7 @@ module distribution::minter {
         ctx: &mut TxContext,
     ): (Coin<USDCoinType>, Coin<SailCoinType>) {
         let o_sail_type = type_name::get<OSailCoinType>();
-        assert!(minter.o_sail_expiry_dates.contains(o_sail_type), EExerciseOSailInvalidOSail);
+        assert!(minter.is_valid_o_sail_type<SailCoinType, OSailCoinType>(), EExerciseOSailInvalidOSail);
         let expiry_date: u64 = *minter.o_sail_expiry_dates.borrow(o_sail_type);
         let current_time = distribution::common::current_timestamp(clock);
         assert!(current_time < expiry_date, EExerciseOSailExpired);
@@ -981,8 +1029,8 @@ module distribution::minter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
     ): (Coin<USDCoinType>, Coin<SailCoinType>) {
+        assert!(minter.is_valid_o_sail_type<SailCoinType, OSailCoinType>(), EExerciseOSailInvalidOSail);
         let o_sail_type = type_name::get<OSailCoinType>();
-        assert!(minter.o_sail_expiry_dates.contains(o_sail_type), EExerciseOSailInvalidOSail);
         let expiry_date: u64 = *minter.o_sail_expiry_dates.borrow(o_sail_type);
         let current_time = distribution::common::current_timestamp(clock);
         assert!(current_time < expiry_date, EExerciseOSailExpired);
