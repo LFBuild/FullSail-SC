@@ -21,6 +21,7 @@ module distribution::voter {
     const EVotingNotStarted: u64 = 9223373333936799774;
 
     const ECheckVoteSizesDoNotMatch: u64 = 9223374162864308236;
+    const ECheckVoteVolumeSizeDoNotMatch: u64 = 379359304918467140;
     const ECheckVoteMaxVoteNumExceed: u64 = 9223374167160586272;
     const ECheckVoteGaugeNotFound: u64 = 9223374184339275790;
     const ECheckVoteWeightTooLarge: u64 = 9223374188634374160;
@@ -107,6 +108,12 @@ module distribution::voter {
         last_reward_time: u64,
     }
 
+    /// Hold lock's vote for a pool and it's volume
+    public struct VolumeVote has drop, store {
+        volume: u64, // us dollars, decimals 6
+        votes: u64, // according to the voting power of the lock and the weight of the pool
+    }
+
     /// The main Voter contract that handles voting for liquidity pools
     /// and distribution of rewards in a ve(3,3) system.
     /// SailCoinType is the governance token for the system.
@@ -122,7 +129,7 @@ module distribution::voter {
         pools: vector<PoolID>,
         pool_to_gauger: Table<PoolID, GaugeID>,
         gauge_represents: Table<GaugeID, GaugeRepresent>,
-        votes: Table<LockID, Table<PoolID, u64>>,
+        votes: Table<LockID, Table<PoolID, VolumeVote>>,
         weights: Table<GaugeID, u64>,
         epoch: u64,
         voter_cap: distribution::voter_cap::VoterCap,
@@ -299,7 +306,7 @@ module distribution::voter {
             pools: std::vector::empty<PoolID>(),
             pool_to_gauger: table::new<PoolID, GaugeID>(ctx),
             gauge_represents: table::new<GaugeID, GaugeRepresent>(ctx),
-            votes: table::new<LockID, Table<PoolID, u64>>(ctx),
+            votes: table::new<LockID, Table<PoolID, VolumeVote>>(ctx),
             weights: table::new<GaugeID, u64>(ctx),
             epoch: 0,
             voter_cap: distribution::voter_cap::create_voter_cap(id, ctx),
@@ -614,10 +621,12 @@ module distribution::voter {
     fun check_vote(
         voter: &Voter,
         pool_ids: &vector<ID>,
-        weights: &vector<u64>
+        weights: &vector<u64>,
+        volumes: &vector<u64>
     ) {
         let pools_length = pool_ids.length();
         assert!(pools_length == weights.length(), ECheckVoteSizesDoNotMatch);
+        assert!(pools_length == volumes.length(), ECheckVoteVolumeSizeDoNotMatch);
         assert!(pools_length <= voter.max_voting_num, ECheckVoteMaxVoteNumExceed);
         let mut i = 0;
         while (i < pools_length) {
@@ -1072,7 +1081,7 @@ module distribution::voter {
     public fun get_votes(
         voter: &Voter,
         lock_id: ID
-    ): &Table<PoolID, u64> {
+    ): &Table<PoolID, VolumeVote> {
         let lock_id_obj = into_lock_id(lock_id);
         assert!(
             voter.votes.contains(lock_id_obj),
@@ -1430,7 +1439,8 @@ module distribution::voter {
             0
         };
         if (pool_vote_count > 0) {
-            let mut vote_amounts = std::vector::empty<u64>();
+            let mut weights = std::vector::empty<u64>();
+            let mut volumes = std::vector::empty<u64>();
             let mut i = 0;
             let pools_voted = voter.pool_vote.borrow(lock_id);
             let mut pools_voted_ids = std::vector::empty<ID>();
@@ -1445,7 +1455,9 @@ module distribution::voter {
                     vote_amount_by_pool.contains(pools_voted[i]),
                     EPokePoolNotVoted
                 );
-                vote_amounts.push_back(*vote_amount_by_pool.borrow(pools_voted[i]));
+                let volume_vote = vote_amount_by_pool.borrow(pools_voted[i]);
+                weights.push_back(volume_vote.votes);
+                volumes.push_back(volume_vote.volume);
                 i = i + 1;
             };
             voter.vote_internal(
@@ -1454,7 +1466,8 @@ module distribution::voter {
                 lock,
                 voting_power,
                 pools_voted_ids,
-                vote_amounts,
+                weights,
+                volumes,
                 clock,
                 ctx
             );
@@ -1673,7 +1686,7 @@ module distribution::voter {
         while (pool_index < total_pools_count) {
             let voted_pools_vec = voter.pool_vote.borrow(lock_id);
             let pool_id = voted_pools_vec[pool_index];
-            let pool_votes = *voter.votes.borrow(lock_id).borrow(pool_id);
+            let pool_votes = voter.votes.borrow(lock_id).borrow(pool_id).votes;
             let gauge_id = *voter.pool_to_gauger.borrow(pool_id);
             if (pool_votes != 0) {
                 if (voter.current_epoch_token.is_some()) {
@@ -1978,12 +1991,13 @@ module distribution::voter {
         lock: &distribution::voting_escrow::Lock,
         pools: vector<ID>,
         weights: vector<u64>,
+        volumes: vector<u64>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
         let lock_id = into_lock_id(object::id<distribution::voting_escrow::Lock>(lock));
         voter.assert_only_new_epoch(lock_id, clock);
-        voter.check_vote(&pools, &weights);
+        voter.check_vote(&pools, &weights, &volumes);
         assert!(
             !voting_escrow.deactivated(lock_id.id),
             EVoteVotingEscrowDeactivated
@@ -1995,16 +2009,14 @@ module distribution::voter {
             !voter.is_whitelisted_nft.contains(lock_id) ||
                 *voter.is_whitelisted_nft.borrow(lock_id) == false
         );
-        if (epoch_vote_ended_and_nft_not_whitelisted) {
-            abort EVoteNotWhitelistedNft
-        };
+        assert!(!epoch_vote_ended_and_nft_not_whitelisted, EVoteNotWhitelistedNft);
         if (voter.last_voted.contains(lock_id)) {
             voter.last_voted.remove(lock_id);
         };
         voter.last_voted.add(lock_id, current_time);
         let voting_power = voting_escrow.get_voting_power(lock, clock);
         assert!(voting_power > 0, EVoteNoVotingPower);
-        voter.vote_internal(voting_escrow, distribution_config, lock, voting_power, pools, weights, clock, ctx);
+        voter.vote_internal(voting_escrow, distribution_config, lock, voting_power, pools, weights, volumes, clock, ctx);
     }
 
     /// Internal function to implement the voting logic.
@@ -2037,6 +2049,7 @@ module distribution::voter {
         voting_power: u64,
         pools: vector<ID>,
         weights: vector<u64>,
+        volumes: vector<u64>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
@@ -2082,20 +2095,11 @@ module distribution::voter {
                 )
             };
 
-            let pool_has_votes = if (voter.votes.contains(lock_id)) {
-                if (voter.votes.borrow(lock_id).contains(pool_id)) {
-                    let zero_votes = 0;
-                    voter.votes.borrow(lock_id).borrow(pool_id) != &zero_votes
-                } else {
-                    false
-                }
-            } else {
-                false
-            };
+            let pool_has_votes = voter.votes.contains(lock_id) &&
+                voter.votes.borrow(lock_id).contains(pool_id) &&
+                voter.votes.borrow(lock_id).borrow(pool_id).votes != 0;
 
-            if (pool_has_votes) {
-                abort EVoteInternalPoolAreadyVoted
-            };
+            assert!(!pool_has_votes, EVoteInternalPoolAreadyVoted);
             assert!(votes_for_pool > 0, EVoteInternalWeightResultedInZeroVotes);
             if (voter.current_epoch_token.is_some()) {
                 // it only makes sence to update indices if some rewards were distributed
@@ -2114,15 +2118,20 @@ module distribution::voter {
             };
             voter.weights.add(gauge_id, total_gauge_weight + votes_for_pool);
             if (!voter.votes.contains(lock_id)) {
-                voter.votes.add(lock_id, table::new<PoolID, u64>(ctx));
+                voter.votes.add(lock_id, table::new<PoolID, VolumeVote>(ctx));
             };
             let lock_votes = voter.votes.borrow_mut(lock_id);
             let lock_pool_votes = if (lock_votes.contains(pool_id)) {
-                lock_votes.remove(pool_id)
+                let VolumeVote { volume: _, votes: lock_pool_votes } = lock_votes.remove(pool_id);
+                lock_pool_votes
             } else {
                 0
             };
-            lock_votes.add(pool_id, lock_pool_votes + votes_for_pool);
+            let lock_volume_vote = VolumeVote {
+                votes: lock_pool_votes + votes_for_pool,
+                volume: volumes[i],
+            };
+            lock_votes.add(pool_id, lock_volume_vote);
             voter.gauge_to_fee.borrow_mut(gauge_id).deposit(
                 &voter.gauge_to_fee_authorized_cap,
                 votes_for_pool,
