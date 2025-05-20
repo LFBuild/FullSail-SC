@@ -1212,24 +1212,24 @@ fun check_two_positions_single_epoch(
         let gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
         let minter = scenario.take_shared<Minter<SAIL>>();
 
-        let earned_lp1 = gauge.earned_by_position<USD1, SAIL, OSAIL1>(
+        let (earned_lp1, _) = gauge.earned_by_position<USD1, SAIL, OSAIL1>(
             &pool,
             lp1_position_id,
             clock
         );
-        let earned_lp2 = gauge.earned_by_position<USD1, SAIL, OSAIL1>(
+        let (earned_lp2, _) = gauge.earned_by_position<USD1, SAIL, OSAIL1>(
             &pool,
             lp2_position_id,
             clock
         );
 
-        let earned_lp1_nonepoch_coin = gauge.earned_by_position<USD1, SAIL, USD1>(
+        let (earned_lp1_nonepoch_coin, _) = gauge.earned_by_position<USD1, SAIL, USD1>(
             &pool,
             lp1_position_id,
             clock
         );
 
-        let earned_lp2_nonepoch_coin = gauge.earned_by_position<USD1, SAIL, USD1>(
+        let (earned_lp2_nonepoch_coin, _) = gauge.earned_by_position<USD1, SAIL, USD1>(
             &pool,
             lp2_position_id,
             clock
@@ -1549,7 +1549,7 @@ fun test_single_position_reward_over_time_distribute() {
         let pool = scenario.take_shared<Pool<USD1, SAIL>>();
         let gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
 
-        let earned_half = gauge.earned_by_position<USD1, SAIL, OSAIL1>(
+        let (earned_half, _) = gauge.earned_by_position<USD1, SAIL, OSAIL1>(
             &pool,
             lp1_position_id,
             &clock
@@ -1598,7 +1598,7 @@ fun test_single_position_reward_over_time_distribute() {
         let pool = scenario.take_shared<Pool<USD1, SAIL>>();
         let gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
 
-        let earned_full = gauge.earned_by_position<USD1, SAIL, OSAIL1>(
+        let (earned_full, _) = gauge.earned_by_position<USD1, SAIL, OSAIL1>( 
             &pool,
             lp1_position_id,
             &clock
@@ -2168,8 +2168,8 @@ fun test_gauge_get_position_reward() {
     {
         let pool = scenario.take_shared<Pool<USD1, SAIL>>();
         let gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
-        let earned_osail1 = gauge.earned_by_position<USD1, SAIL, OSAIL1>(&pool, lp_position_id, &clock);
-        let earned_osail2 = gauge.earned_by_position<USD1, SAIL, OSAIL2>(&pool, lp_position_id, &clock);
+        let (earned_osail1, _) = gauge.earned_by_position<USD1, SAIL, OSAIL1>(&pool, lp_position_id, &clock); 
+        let (earned_osail2, _) = gauge.earned_by_position<USD1, SAIL, OSAIL2>(&pool, lp_position_id, &clock);
 
         assert!(first_epoch_emissions - earned_osail1 <= 2, 1);
         assert!(second_epoch_emissions - earned_osail2 <= 2, 2);
@@ -2241,8 +2241,8 @@ fun test_increase_time_after_distribute() {
     {
         let pool = scenario.take_shared<Pool<USD1, SAIL>>();
         let gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
-        let earned_osail1 = gauge.earned_by_position<USD1, SAIL, OSAIL1>(&pool, lp_position_id, &clock);
-        let earned_osail2 = gauge.earned_by_position<USD1, SAIL, OSAIL2>(&pool, lp_position_id, &clock);
+        let (earned_osail1, _) = gauge.earned_by_position<USD1, SAIL, OSAIL1>(&pool, lp_position_id, &clock); 
+        let (earned_osail2, _) = gauge.earned_by_position<USD1, SAIL, OSAIL2>(&pool, lp_position_id, &clock);
 
         assert!(first_epoch_emissions - earned_osail1 <= 2, 1);
         assert!(second_epoch_emissions - earned_osail2 <= 2, 2);
@@ -2257,8 +2257,8 @@ fun test_increase_time_after_distribute() {
     {
         let pool = scenario.take_shared<Pool<USD1, SAIL>>();
         let gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
-        let earned_osail1 = gauge.earned_by_position<USD1, SAIL, OSAIL1>(&pool, lp_position_id, &clock);
-        let earned_osail2 = gauge.earned_by_position<USD1, SAIL, OSAIL2>(&pool, lp_position_id, &clock);
+        let (earned_osail1, _) = gauge.earned_by_position<USD1, SAIL, OSAIL1>(&pool, lp_position_id, &clock); 
+        let (earned_osail2, _) = gauge.earned_by_position<USD1, SAIL, OSAIL2>(&pool, lp_position_id, &clock);
 
         assert!(first_epoch_emissions - earned_osail1 <= 2, 1);
         assert!(second_epoch_emissions - earned_osail2 <= 2, 2);
@@ -2720,18 +2720,18 @@ fun test_half_epoch_staking_distribute() {
         let gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
         let minter = scenario.take_shared<Minter<SAIL>>();
 
-        let earned_lp1 = gauge.earned_by_position<USD1, SAIL, OSAIL1>(
+        let (earned_lp1, _) = gauge.earned_by_position<USD1, SAIL, OSAIL1>( 
             &pool,
             lp1_position_id,
             &clock
         );
-        let earned_lp2 = gauge.earned_by_position<USD1, SAIL, OSAIL1>(
+        let (earned_lp2, _) = gauge.earned_by_position<USD1, SAIL, OSAIL1>(
             &pool,
             lp2_position_id,
             &clock
         );
 
-        let earned_lp2_nonepoch_coin = gauge.earned_by_position<USD1, SAIL, USD1>(
+        let (earned_lp2_nonepoch_coin, _) = gauge.earned_by_position<USD1, SAIL, USD1>(
             &pool,
             lp2_position_id,
             &clock
@@ -2845,12 +2845,12 @@ fun test_half_epoch_withdrawal_distribute() {
         let gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
         let minter = scenario.take_shared<Minter<SAIL>>();
 
-        let earned_lp1 = gauge.earned_by_position<USD1, SAIL, OSAIL1>(
+        let (earned_lp1, _) = gauge.earned_by_position<USD1, SAIL, OSAIL1>( 
             &pool,
             lp1_position_id,
             &clock
         );
-        let earned_lp2 = gauge.earned_by_position<USD1, SAIL, OSAIL1>(
+        let (earned_lp2, _) = gauge.earned_by_position<USD1, SAIL, OSAIL1>(
             &pool,
             lp2_position_id,
             &clock
@@ -2965,12 +2965,12 @@ fun test_distribute_position_increase_after_deposit() {
         let gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
         let minter = scenario.take_shared<Minter<SAIL>>();
 
-        let earned_lp1 = gauge.earned_by_position<USD1, SAIL, OSAIL1>(
+        let (earned_lp1, _) = gauge.earned_by_position<USD1, SAIL, OSAIL1>( 
             &pool,
             lp1_position_id,
             &clock
         );
-        let earned_lp2 = gauge.earned_by_position<USD1, SAIL, OSAIL1>(
+        let (earned_lp2, _) = gauge.earned_by_position<USD1, SAIL, OSAIL1>(
             &pool,
             lp2_position_id,
             &clock
@@ -3126,12 +3126,12 @@ fun test_distribute_position_decrease_after_deposit() {
         let gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
         let minter = scenario.take_shared<Minter<SAIL>>();
 
-        let earned_lp1 = gauge.earned_by_position<USD1, SAIL, OSAIL1>(
+        let (earned_lp1, _) = gauge.earned_by_position<USD1, SAIL, OSAIL1>( 
             &pool,
             lp1_position_id,
             &clock
         );
-        let earned_lp2 = gauge.earned_by_position<USD1, SAIL, OSAIL1>(
+        let (earned_lp2, _) = gauge.earned_by_position<USD1, SAIL, OSAIL1>(
             &pool,
             lp2_position_id,
             &clock
@@ -3407,12 +3407,12 @@ fun test_distribute_rollover_not_affecting_next_epoch() {
         let gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
         let minter = scenario.take_shared<Minter<SAIL>>();
 
-        let earned_first_epoch = gauge.earned_by_position<USD1, SAIL, OSAIL1>(
+        let (earned_first_epoch, _) = gauge.earned_by_position<USD1, SAIL, OSAIL1>( 
             &pool,
             position_id,
             &clock
         );
-        let earned_second_epoch = gauge.earned_by_position<USD1, SAIL, OSAIL2>(
+        let (earned_second_epoch, _) = gauge.earned_by_position<USD1, SAIL, OSAIL2>(
             &pool,
             position_id,
             &clock

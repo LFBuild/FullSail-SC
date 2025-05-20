@@ -975,6 +975,8 @@ module liquidity_locker::liquidity_locker {
             clock,
         );
 
+        std::debug::print(locked_position);
+
         voting_escrow.create_lock(
             sui::coin::from_balance(reward_balance, ctx),
             distribution::common::max_lock_time() / distribution::common::day(),
@@ -1150,13 +1152,17 @@ module liquidity_locker::liquidity_locker {
             lock_position.last_reward_claim_time >= lock_position.expiration_time, ERewardsNotCollected);
         assert!(share_first_part <= consts::lock_liquidity_share_denom() && share_first_part > 0, EInvalidShareLiquidityToFill);
 
+        std::debug::print(&std::string::utf8(b"--------split_position--------"));
         // Remove position from locker and gauge
         gauge.unlock_position(locker.locker_cap.borrow(), lock_position.position_id);
         locker.positions.remove(lock_position.position_id);
 
         // calculate current reward before split
-        let current_earned = gauge.earned_by_position<CoinTypeA, CoinTypeB, EpochOSail>(pool, lock_position.position_id, clock);
-
+        let (current_earned, growth_inside) = gauge.earned_by_position<CoinTypeA, CoinTypeB, EpochOSail>(pool, lock_position.position_id, clock);
+        std::debug::print(&std::string::utf8(b"current_earned"));
+        std::debug::print(&current_earned);
+        std::debug::print(&std::string::utf8(b"growth_inside"));
+        std::debug::print(&growth_inside);
         let (
             split_position_result1, 
             split_position_result2,
@@ -1179,7 +1185,7 @@ module liquidity_locker::liquidity_locker {
         lock_position.position_id = split_position_result1.position_id; // remains unchanged
         lock_position.lock_liquidity_info.total_lock_liquidity = split_position_result1.liquidity;
         lock_position.lock_liquidity_info.current_lock_liquidity = split_position_result1.liquidity;
-        lock_position.last_growth_inside = 0;
+        lock_position.last_growth_inside = growth_inside;
         lock_position.accumulated_amount_earned = lock_position.accumulated_amount_earned + current_earned;
 
         // Create new lock position with proportional split of remaining assets
@@ -1205,7 +1211,7 @@ module liquidity_locker::liquidity_locker {
             expiration_time: lock_position.expiration_time,
             full_unlocking_time: lock_position.full_unlocking_time,
             profitability: lock_position.profitability,
-            last_growth_inside: 0, // TODO lock_position.last_growth_inside
+            last_growth_inside: growth_inside,
             accumulated_amount_earned: 0,
             last_reward_claim_time: lock_position.last_reward_claim_time,
             lock_liquidity_info: new_lock_liquidity_info,
@@ -1221,7 +1227,7 @@ module liquidity_locker::liquidity_locker {
         gauge.lock_position(locker.locker_cap.borrow(), new_lock_position.position_id);
         locker.positions.add(lock_position.position_id, true);
         locker.positions.add(new_lock_position.position_id, true);
-        
+        std::debug::print(&std::string::utf8(b"--------split_position_end--------"));
         (lock_position, new_lock_position)
     }
     
@@ -1475,12 +1481,17 @@ module liquidity_locker::liquidity_locker {
         assert!(lock_position.last_reward_claim_time >= common::epoch_start(current_time) || 
             lock_position.last_reward_claim_time >= lock_position.expiration_time, ERewardsNotCollected);
 
+        std::debug::print(&std::string::utf8(b"______________change_tick_range______________"));
         // Unlock position from gauge and remove from locker
         gauge.unlock_position(locker.locker_cap.borrow(), lock_position.position_id);
         locker.positions.remove(lock_position.position_id);
 
         // calculate current reward before change tick range
-        let current_earned = gauge.earned_by_position<CoinTypeA, CoinTypeB, EpochOSail>(pool, lock_position.position_id, clock);
+        let (current_earned, growth_inside) = gauge.earned_by_position<CoinTypeA, CoinTypeB, EpochOSail>(pool, lock_position.position_id, clock);
+        std::debug::print(&std::string::utf8(b"current_earned"));
+        std::debug::print(&current_earned);
+        std::debug::print(&std::string::utf8(b"growth_inside"));
+        std::debug::print(&growth_inside);
 
         // Withdraw position from gauge
         let mut position = gauge.withdraw_position_by_locker<CoinTypeA, CoinTypeB, EpochOSail>(
@@ -1610,7 +1621,6 @@ module liquidity_locker::liquidity_locker {
         );
         let (pay_amount_a, pay_amount_b) = receipt.add_liquidity_pay_amount();
 
-        std::debug::print(&std::string::utf8(b"!SWAP"));
         if ((removed_b.value() > amount_b_calc) || (removed_a.value() > amount_a_calc)) {
             // Token balance adjustment through swap
             // If token balance decreases, swap that portion to get maximum value of second token as reference
@@ -1671,7 +1681,7 @@ module liquidity_locker::liquidity_locker {
                 receipt
             );
         };
-        std::debug::print(&std::string::utf8(b"!SWAP STOP"));
+
         if (removed_a.value() > pay_amount_a) {
             let removed_a_value = removed_a.value();
 
@@ -1720,7 +1730,7 @@ module liquidity_locker::liquidity_locker {
         lock_position.position_id = new_position_id;
         lock_position.lock_liquidity_info.total_lock_liquidity = new_position_liquidity;
         lock_position.lock_liquidity_info.current_lock_liquidity = new_position_liquidity;
-        lock_position.last_growth_inside = 0;
+        lock_position.last_growth_inside = growth_inside;
         lock_position.accumulated_amount_earned = lock_position.accumulated_amount_earned + current_earned;
        
         let event = ChangeRangePositionEvent {
@@ -1733,6 +1743,7 @@ module liquidity_locker::liquidity_locker {
 
         gauge.lock_position(locker.locker_cap.borrow(), new_position_id);
         locker.positions.add(new_position_id, true);
+        std::debug::print(&std::string::utf8(b"______________change_tick_range_end______________"));
 
         sui::event::emit<ChangeRangePositionEvent>(event);
     }
@@ -1771,7 +1782,7 @@ module liquidity_locker::liquidity_locker {
             global_config,
             pool,
             position,
-            false
+            true
         );
 
         if (collected_fee_a.value() > 0) {
@@ -1945,4 +1956,10 @@ module liquidity_locker::liquidity_locker {
         let admin_cap = AdminCap { id: sui::object::new(ctx) };
         sui::transfer::transfer<AdminCap>(admin_cap, sui::tx_context::sender(ctx));
     }
+
+    #[test_only]
+    public fun get_coins<CoinTypeA, CoinTypeB>(lock: &LockedPosition<CoinTypeA, CoinTypeB>): (u64, u64) {
+        (lock.coin_a.value(), lock.coin_b.value())
+    }
+    
 }

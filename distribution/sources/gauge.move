@@ -544,6 +544,7 @@ module distribution::gauge {
         let mut i = 0;
         let mut total_earned = 0;
         while (i < position_ids.length()) {
+            std::debug::print(&std::string::utf8(b"earned_by_account"));
             let (earned_i, _) = gauge.earned_internal<CoinTypeA, CoinTypeB, RewardCoinType>(pool, position_ids[i], clock.timestamp_ms() / 1000);
             total_earned = total_earned + earned_i;
             i = i + 1;
@@ -570,7 +571,7 @@ module distribution::gauge {
         pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         position_id: ID,
         clock: &sui::clock::Clock
-    ): u64 {
+    ): (u64, u128) {
         assert!(
             gauge.check_gauger_pool(pool),
             EEarnedByPositionGaugeDoesNotMatchPool
@@ -580,11 +581,10 @@ module distribution::gauge {
             EEarnedByPositionNotDepositedPosition
         );
         if (!gauge.growth_global_by_token.contains(type_name::get<RewardCoinType>())) {
-            return 0
+            return (0, 0)
         };
-        let (earned, _) = gauge.earned_internal<CoinTypeA, CoinTypeB, RewardCoinType>(pool, position_id, clock.timestamp_ms() / 1000);
-
-        earned
+        std::debug::print(&std::string::utf8(b"earned_by_position"));
+        gauge.earned_internal<CoinTypeA, CoinTypeB, RewardCoinType>(pool, position_id, clock.timestamp_ms() / 1000)
     }
 
     /// Internal function to calculate earned rewards for a position.
@@ -629,8 +629,6 @@ module distribution::gauge {
             current_growth_global
         );
 
-        std::debug::print(&std::string::utf8(b"prev_coin_growth_global"));
-        std::debug::print(&prev_coin_growth_global);
         // TODO check that get_fullsail_distribution_growth_inside works correctly with
         // global_growth passed lower than pool.fullsail_distribution_growth_global
         let prev_token_growth_inside = if (prev_coin_growth_global > 0) {
@@ -644,7 +642,7 @@ module distribution::gauge {
             0_u128
         };
         let claimed_all_tokens_growth_inside = gauge.rewards.borrow(position_id).growth_inside;
-        let claimed_growth_inside = if (claimed_all_tokens_growth_inside >= prev_token_growth_inside) {
+        let mut claimed_growth_inside = if (claimed_all_tokens_growth_inside >= prev_token_growth_inside) {
             // if user started claiming current token, then we continue from where he left off
             claimed_all_tokens_growth_inside
         } else {
@@ -652,8 +650,20 @@ module distribution::gauge {
             prev_token_growth_inside
         };
 
+        if (integer_mate::math_u128::is_neg(claimed_growth_inside)) {
+            claimed_growth_inside = 0;
+        };
+
+        std::debug::print(&std::string::utf8(b"new_growth_inside"));
+        std::debug::print(&new_growth_inside);
+        std::debug::print(&std::string::utf8(b"claimed_growth_inside"));
+        std::debug::print(&claimed_growth_inside);
+
         let growth_inside_diff = integer_mate::math_u128::wrapping_sub(new_growth_inside, claimed_growth_inside);
         assert!(!integer_mate::math_u128::is_neg(growth_inside_diff), EIncorrectGrowthInside);
+
+        std::debug::print(&std::string::utf8(b"growth_inside_diff"));
+        std::debug::print(&growth_inside_diff);
 
         let amount_earned = integer_mate::full_math_u128::mul_div_floor(
             growth_inside_diff,
@@ -812,10 +822,6 @@ module distribution::gauge {
 
         let position = gauge.staked_positions.borrow(position_id);
         let (lower_tick, upper_tick) = position.tick_range();
-        std::debug::print(&std::string::utf8(b"lower_tick"));
-        std::debug::print(&lower_tick);
-        std::debug::print(&std::string::utf8(b"upper_tick"));
-        std::debug::print(&upper_tick);
         
         let prev_token_growth_inside = if (prev_coin_growth_global > 0) {
             // get_fullsail_distribution_growth_inside replaces prev_coin_growth_global with 0 if prev_coin_growth_global is 0
@@ -850,10 +856,15 @@ module distribution::gauge {
         if (integer_mate::math_u128::is_neg(last_growth_inside_correct)) {
             last_growth_inside_correct = 0;
         };
-                std::debug::print(&std::string::utf8(b"SUB inside"));
-        std::debug::print(&(integer_mate::math_u128::wrapping_sub(new_growth_inside, last_growth_inside_correct)));
+
+        let growth_inside_diff = integer_mate::math_u128::wrapping_sub(new_growth_inside, last_growth_inside_correct);
+        assert!(!integer_mate::math_u128::is_neg(growth_inside_diff), EIncorrectGrowthInside);
+
+        std::debug::print(&std::string::utf8(b"growth_inside_diffe"));
+        std::debug::print(&(growth_inside_diff));
+
         let amount_earned = integer_mate::full_math_u128::mul_div_floor(
-            integer_mate::math_u128::wrapping_sub(new_growth_inside, last_growth_inside_correct),
+            growth_inside_diff,
             position.liquidity(),
             1 << 64
         ) as u64;
@@ -1351,16 +1362,9 @@ module distribution::gauge {
             return balance::zero<RewardCoinType>()
         };
         let coin_type = type_name::get<RewardCoinType>();
-        std::debug::print(&std::string::utf8(b"reserves_all_tokens"));
-        std::debug::print(&gauge.reserves_all_tokens);
+
         gauge.reserves_all_tokens = gauge.reserves_all_tokens - amount;
-        std::debug::print(&std::string::utf8(b"amount"));
-        std::debug::print(&amount);
-        std::debug::print(&std::string::utf8(b"reserves_balance"));
-        std::debug::print(&( gauge
-            .reserves_balance
-            .borrow<TypeName, Balance<RewardCoinType>>(coin_type).value()));
-            
+
         gauge
             .reserves_balance
             .borrow_mut<TypeName, Balance<RewardCoinType>>(coin_type)
@@ -1505,18 +1509,20 @@ module distribution::gauge {
         assert!(gauge.prev_reward_claimed<CoinTypeA, CoinTypeB, RewardCoinType>(pool, position_id), EGetRewardPrevTokenNotClaimed);
         
         let current_time = clock.timestamp_ms() / 1000;
+        std::debug::print(&std::string::utf8(b"update_reward_internal"));
         let (amount_earned, growth_inside) = gauge.earned_internal<CoinTypeA, CoinTypeB, RewardCoinType>(pool, position_id, current_time);
+        
         let reward_profile = gauge.rewards.borrow_mut(position_id);
+
         pool.update_fullsail_distribution_growth_global(gauge.gauge_cap.borrow(), clock);
+
         reward_profile.last_update_time = current_time;
-        std::debug::print(&std::string::utf8(b"reward_profile.amount START"));
-        std::debug::print(&reward_profile.amount);
         reward_profile.amount = reward_profile.amount + amount_earned;
-        std::debug::print(&std::string::utf8(b"reward_profile.amount END"));
-        std::debug::print(&reward_profile.amount);
+
         let amount_to_return = reward_profile.amount;
         reward_profile.growth_inside = growth_inside;
         reward_profile.amount = 0;
+
         gauge.reserves_split<CoinTypeA, CoinTypeB, RewardCoinType>(amount_to_return)
     }
 
@@ -1577,8 +1583,9 @@ module distribution::gauge {
             EWithdrawPositionNotDepositedPosition
         );
         assert!(!gauge.locked_positions.contains(position_id), EWithdrawPositionPositionIsLocked);
-
-        if (gauge.earned_by_position<CoinTypeA, CoinTypeB, LastRewardCoin>(pool, position_id, clock) > 0) {
+        std::debug::print(&std::string::utf8(b"withdraw_position"));
+        let (earned, _) = gauge.earned_by_position<CoinTypeA, CoinTypeB, LastRewardCoin>(pool, position_id, clock);
+        if (earned > 0) {
             gauge.get_position_reward<CoinTypeA, CoinTypeB, LastRewardCoin>(pool, position_id, clock, ctx)
         };
 
@@ -1646,12 +1653,10 @@ module distribution::gauge {
         );
         assert!(gauge.is_valid_epoch_token<CoinTypeA, CoinTypeB, RewardCoinType>(), ENotifyRewardInvalidEpochToken);
 
-        gauge.get_reward_internal<CoinTypeA, CoinTypeB, RewardCoinType>(
-            pool, 
-            position_id, 
-            clock, 
-            ctx
-        );
+        let (earned, _) = gauge.earned_by_position<CoinTypeA, CoinTypeB, RewardCoinType>(pool, position_id, clock);
+        if (earned > 0) {
+            gauge.get_position_reward<CoinTypeA, CoinTypeB, RewardCoinType>(pool, position_id, clock, ctx)
+        };
 
         let position = gauge.staked_positions.remove(position_id);
         let position_stake_info = gauge.staked_position_infos.remove(position_id);
