@@ -36,6 +36,7 @@ module liquidity_locker::pool_tranche {
     
     use std::type_name::{Self, TypeName};
     use liquidity_locker::consts;
+    use liquidity_locker::time_manager;
 
     const ETrancheFilled: u64 = 92357345723427311;
     const ERewardAlreadyExists: u64 = 90324592349252616;
@@ -269,7 +270,7 @@ module liquidity_locker::pool_tranche {
         balance: sui::balance::Balance<RewardCoinType>,
         total_income: u64,
     ): u64 {
-        let epoch_start = distribution::common::epoch_start(epoch_start);
+        let epoch_start = time_manager::epoch_start(epoch_start);
         let pool_tranches = manager.pool_tranches.borrow_mut(pool_id);
 
         let mut i = 0;
@@ -425,7 +426,7 @@ module liquidity_locker::pool_tranche {
         income: u64,
         epoch_start: u64,
     ): sui::balance::Balance<RewardCoinType> {
-        let epoch_start = distribution::common::epoch_start(epoch_start);
+        let epoch_start = time_manager::epoch_start(epoch_start);
         let pool_tranches = manager.pool_tranches.borrow_mut(pool_id);
         
         let mut i = 0;

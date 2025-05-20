@@ -25,7 +25,8 @@
 /// * CLMM Pool system for liquidity management
 /// * Distribution system for reward calculations
 /// * Pool Tranche system for determining lock profitability and reward distribution
-module liquidity_locker::liquidity_locker {
+module liquidity_locker::liquidity_lock_v2 {
+    /*
     use liquidity_locker::pool_tranche;
     use liquidity_locker::consts;
     use liquidity_locker::locker_utils;
@@ -1961,5 +1962,5 @@ module liquidity_locker::liquidity_locker {
     public fun get_coins<CoinTypeA, CoinTypeB>(lock: &LockedPosition<CoinTypeA, CoinTypeB>): (u64, u64) {
         (lock.coin_a.value(), lock.coin_b.value())
     }
-    
+    */
 }
