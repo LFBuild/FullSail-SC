@@ -774,3 +774,118 @@ fun test_multi_token_reward_same_epoch() {
 
     scenario.end();
 }
+
+#[test]
+fun test_reward_large_nums() {
+    let admin = @0xFF;
+    let authorized_id: ID = object::id_from_address(@0xEE); // ID for auth
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Create Reward object and Cap
+    let mut reward_obj = create_default_reward(&mut scenario, authorized_id);
+    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx()); 
+
+    // Define details
+    let lock_id1: ID = object::id_from_address(@0x103);
+    let lock_id2: ID = object::id_from_address(@0x104);
+    let deposit1 = (1<<60) * 6;  // 60% of total initial deposit
+    let deposit2 = (1<<60) * 4;  // 40% of total initial deposit
+    let total_deposit = deposit1 + deposit2;
+    let notify_amount = 1<<63; // nearly max amount
+    let one_week_ms = 7 * 24 * 60 * 60 * 1000;
+
+    // --- Epoch 1: Deposits ---
+    reward_obj.deposit(&reward_cap, deposit1, lock_id1, &clock, scenario.ctx());
+    reward_obj.deposit(&reward_cap, deposit2, lock_id2, &clock, scenario.ctx());
+    assert!(reward_obj.total_supply() == total_deposit, 1);
+    assert!(reward_obj.balance_of(lock_id1) == deposit1, 2);
+    assert!(reward_obj.balance_of(lock_id2) == deposit2, 3);
+
+    // advance half a week to check that the moment of reward notification does not matter
+    clock.increment_for_testing(one_week_ms / 2);
+
+    // --- Epoch 1: Notify Reward ---
+    let reward_coin = coin::mint_for_testing<USD1>(notify_amount, scenario.ctx());
+    // Use the internal notify function accessible within the package tests
+    reward::notify_reward_amount_internal<USD1>(
+        &mut reward_obj,
+        reward_coin.into_balance(),
+        &clock,
+        scenario.ctx()
+    );
+
+    clock.increment_for_testing( 10000);
+
+    // Verify earned is 0 immediately after notify (rewards apply to next epoch start)
+    assert!(reward_obj.earned<USD1>(lock_id1, &clock) == 0, 4);
+    assert!(reward_obj.earned<USD1>(lock_id2, &clock) == 0, 5);
+
+    // --- Advance to Epoch 2 ---
+    clock.increment_for_testing(one_week_ms/2);
+
+    // --- Epoch 2: Verify Earned Rewards ---
+    let lock1_expected_share = full_math_u64::mul_div_floor(
+        notify_amount, deposit1, total_deposit
+    );
+    let lock2_expected_share = full_math_u64::mul_div_floor(
+        notify_amount, deposit2, total_deposit
+    );
+
+    // Allow for rounding difference (total earned might be slightly less than notify_amount)
+    let earned1 = reward_obj.earned<USD1>(lock_id1, &clock);
+    let earned2 = reward_obj.earned<USD1>(lock_id2, &clock);
+    let diff1 = earned1 - lock1_expected_share; // should not distribute more than expected
+    let diff2 = earned2 - lock2_expected_share;
+
+    assert!(diff1 <= 1, 6); // Check lock1 share (allowing rounding by 1)
+    assert!(diff2 <= 1, 7); // Check lock2 share (allowing rounding by 1)
+    assert!(earned1 + earned2 <= notify_amount, 8); // Total earned should not exceed notified
+    assert!(earned1 + earned2 >= notify_amount - 1, 9); // Total earned should be very close to notified
+
+    // --- Claim Rewards using get_reward_internal ---
+
+    // Claim for lock1
+    let balance_opt1 = reward::get_reward_internal<USD1>(
+        &mut reward_obj, 
+        admin, // Recipient address (using admin for test)
+        lock_id1, 
+        &clock, 
+        scenario.ctx()
+    );
+    assert!(option::is_some(&balance_opt1), 10);
+    let balance1 = option::destroy_some(balance_opt1);
+    assert!(balance1.value() == earned1, 11); // Check claimed amount matches earned
+    sui::balance::destroy_for_testing(balance1);
+
+    // Claim for lock2
+    let balance_opt2 = reward::get_reward_internal<USD1>(
+        &mut reward_obj, 
+        admin, // Recipient address (using admin for test)
+        lock_id2, 
+        &clock, 
+        scenario.ctx()
+    );
+    assert!(option::is_some(&balance_opt2), 12);
+    let balance2 = option::destroy_some(balance_opt2);
+    assert!(balance2.value() == earned2, 13); // Check claimed amount matches earned
+    sui::balance::destroy_for_testing(balance2);
+
+    // Verify earned is now 0 after claiming
+    assert!(reward_obj.earned<USD1>(lock_id1, &clock) == 0, 14);
+    assert!(reward_obj.earned<USD1>(lock_id2, &clock) == 0, 15);
+
+    // Check that other tokens still have 0 earned
+    let earned1_other_token = reward_obj.earned<OTHER>(lock_id1, &clock);
+    let earned2_other_token = reward_obj.earned<OTHER>(lock_id2, &clock);
+    assert!(earned1_other_token == 0, 16);
+    assert!(earned2_other_token == 0, 17);
+
+
+    // Cleanup
+    test_utils::destroy(reward_cap);
+    test_utils::destroy(reward_obj);
+    clock::destroy_for_testing(clock);
+
+    scenario.end();
+}
