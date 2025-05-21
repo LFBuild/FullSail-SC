@@ -259,7 +259,7 @@ module distribution::reward {
                 };
                 earned_amount = earned_amount + integer_mate::full_math_u64::mul_div_floor(
                     next_checkpoint.balance_of,
-                    reward_in_epoch, 
+                    reward_in_epoch,
                     supply
                 );
                 next_epoch_time = next_epoch_time + distribution::common::week();

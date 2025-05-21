@@ -38,3 +38,6 @@ git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
 subdir = "price_provider"
 rev = "main"
 override = true
+
+[dependencies.locker_cap]
+local = "../locker_cap"
