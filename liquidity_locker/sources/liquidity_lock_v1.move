@@ -8,22 +8,18 @@
 /// * Lock liquidity positions for specified periods
 /// * Split and modify locked positions
 /// * Change tick ranges of locked positions
-/// * Claim rewards from locked positions
 /// 
-/// The module integrates with the CLMM pool system and uses a gauge-based reward distribution mechanism.
-/// It ensures that locked positions cannot be modified or withdrawn before the lock period ends, while still
-/// allowing users to earn rewards during the lock period.
+/// The module integrates with the CLMM pool system.
+/// It ensures that locked positions cannot be modified or withdrawn before the lock period ends.
 /// 
 /// # Security
 /// The module implements various security checks to ensure:
 /// * Positions cannot be modified before lock period ends
-/// * Rewards must be claimed before position modifications
 /// * Invalid operations are prevented through capability-based access control
 /// 
 /// # Integration
 /// This module works in conjunction with:
 /// * CLMM Pool system for liquidity management
-/// * Distribution system for reward calculations
 /// * Pool Tranche system for determining lock profitability and reward distribution
 module liquidity_locker::liquidity_lock_v1 {
     use liquidity_locker::pool_tranche;
@@ -685,10 +681,6 @@ module liquidity_locker::liquidity_lock_v1 {
                 lock_position.lock_liquidity_info.last_remove_liquidity_time = lock_position.expiration_time;
             };
             let number_epochs_after_expiration = time_manager::number_epochs_in_timestamp(current_time - lock_position.lock_liquidity_info.last_remove_liquidity_time);
-            std::debug::print(&std::string::utf8(b"number_epochs_after_expiration"));
-            std::debug::print(&number_epochs_after_expiration);
-            std::debug::print(&lock_position.lock_liquidity_info.last_remove_liquidity_time);
-            std::debug::print(&current_time);
             assert!(number_epochs_after_expiration > 0, ENoLiquidityToRemove);
 
             // Calculate portion of total liquidity that can be removed
@@ -865,7 +857,6 @@ module liquidity_locker::liquidity_lock_v1 {
 
         assert!(share_first_part <= consts::lock_liquidity_share_denom() && share_first_part > 0, EInvalidShareLiquidityToFill);
 
-        std::debug::print(&std::string::utf8(b"--------split_position--------"));
         // Remove position from locker
         let mut position = locker.positions.remove(lock_position.position_id);
 
@@ -929,7 +920,7 @@ module liquidity_locker::liquidity_lock_v1 {
         // Register both positions in locker
         locker.positions.add(lock_position.position_id, position);
         locker.positions.add(new_lock_position.position_id, new_position);
-        std::debug::print(&std::string::utf8(b"--------split_position_end--------"));
+
         (lock_position, new_lock_position)
     }
     
@@ -1138,10 +1129,7 @@ module liquidity_locker::liquidity_lock_v1 {
 
         let current_time = clock.timestamp_ms()/1000;
         assert!(!locker.pause, ELockManagerPaused);
-        assert!(current_time < lock_position.expiration_time, ELockPeriodEnded);
-
-        std::debug::print(&std::string::utf8(b"______________change_tick_range______________"));
-        
+        assert!(current_time < lock_position.expiration_time, ELockPeriodEnded);        
         
         let mut position =locker.positions.remove(lock_position.position_id);
 
@@ -1375,7 +1363,6 @@ module liquidity_locker::liquidity_lock_v1 {
         };
 
         locker.positions.add(new_position_id, new_position);
-        std::debug::print(&std::string::utf8(b"______________change_tick_range_end______________"));
 
         sui::event::emit<ChangeRangePositionEvent>(event);
     }

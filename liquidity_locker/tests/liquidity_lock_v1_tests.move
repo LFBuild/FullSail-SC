@@ -267,28 +267,16 @@ module liquidity_locker::liquidity_lock_v1_tests {
             let tranche_id = sui::object::id<pool_tranche::PoolTranche>(new_tranche);
             let reward = sui::coin::mint_for_testing<RewardCoinType>(reward_value, scenario.ctx());
 
-            pool_tranche::add_reward<RewardCoinType>(
+            pool_tranche::set_total_incomed_and_add_reward<RewardCoinType>(
                 tranche_admin_cap,
                 tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(pool),
                 tranche_id,
                 epoch,
                 reward.into_balance(),
-                total_income
+                total_income,
+                scenario.ctx()
             );
-    }
-
-    #[test_only]
-    fun get_tranche_by_index(
-        tranche_manager: &mut pool_tranche::PoolTrancheManager,
-        pool_id: sui::object::ID,
-        index: u64
-    ): &mut pool_tranche::PoolTranche {
-        let tranches = pool_tranche::get_tranches(
-            tranche_manager, 
-            pool_id
-        );
-        tranches.borrow_mut(index)
     }
 
     #[test_only]
@@ -3382,8 +3370,6 @@ module liquidity_locker::liquidity_lock_v1_tests {
             assert!(new_position_id != position_id, 932605293560);
 
             let new_liquidity = pool.position_manager().borrow_position_info(locked_position.get_locked_position_id()).info_liquidity();
-            std::debug::print(&std::string::utf8(b"new_liquidity"));
-            std::debug::print(&new_liquidity);
             assert!(new_liquidity == 562642917157293473889, 923412491398739);
 
             let (new_tick_lower, new_tick_upper) = pool.position_manager().borrow_position_info(locked_position.get_locked_position_id()).info_tick_range();
@@ -3557,8 +3543,6 @@ module liquidity_locker::liquidity_lock_v1_tests {
             assert!(new_position_id != position_id, 932605293560);
 
             let new_liquidity = pool.position_manager().borrow_position_info(locked_position.get_locked_position_id()).info_liquidity();
-            std::debug::print(&std::string::utf8(b"new_liquidity"));
-            std::debug::print(&new_liquidity);
             assert!(new_liquidity == 360008798430211682134, 923412491398739);
 
             let (new_tick_lower, new_tick_upper) = pool.position_manager().borrow_position_info(locked_position.get_locked_position_id()).info_tick_range();
