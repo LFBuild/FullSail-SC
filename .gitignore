@@ -1,4 +1,6 @@
 build/*
+.coverage_map.mvcov
+.trace
 
 .idea
 

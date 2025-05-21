@@ -1,67 +1,67 @@
 module distribution::voting_escrow {
     // Error constants
-    const ESplitOwnerNotFound: u64 = 9223375992521621535;
-    const ESplitNotAllowed: u64 = 9223376001110900757;
-    const ESplitNotNormalEscrow: u64 = 9223376005406130201; 
-    const ESplitPositionVoted: u64 = 9223376009701228571;
-    const ESplitAmountZero: u64 = 9223376031174623237;
-    const ESplitAmountExceedsLocked: u64 = 9223376035471163421;
-    const ETransferInvalidEscrow: u64 = 9223376864398016511;
-    const ETransferLockedPosition: u64 = 9223376885873770511;
-    const ETransferNotOwner: u64 = 9223376898757754879;
-    const EWithdrawPositionVoted: u64 = 9223376404838219803;
-    const EWithdrawPositionNotNormalEscrow: u64 = 9223376409133056025;
-    const EWithdrawPermanentPosition: u64 = 9223376422018613283;
-    const EWithdrawBeforeEndTime: u64 = 9223376430606843913;
-    const ECreateLockAmountZero: u64 = 9223374381907181573;
-    const ECreateLockAmountMismatch: u64 = 9223374416266657791;
-    const ECreateLockForAmountZero: u64 = 9223374257353129989;
-    const ECreateLockForAmountMismatch: u64 = 9223374287417638911;
-    const ECreateLockOwnerExists: u64 = 9223374171453521919;
-    const ECreateLockLockedExists: u64 = 9223374175748489215;
-    const ECreateManagedNotAllowedManager: u64 = 9223377736277688341;
-    const EDelegateNotPermanent: u64 = 9223375657513386003;
-    const EDelegateInvalidDelegatee: u64 = 9223375661808615447;
-    const EDelegateOwnershipChangeTooRecent: u64 = 9223375683284107297;
-    const EDepositManagedInvalidVoter: u64 = 9223377839355592703;
-    const EDepositManagedNotManagedType: u64 = 9223377847948279851;
-    const EDepositManagedDeactivated: u64 = 9223377852244295739;
-    const EDepositManagedNotNormalEscrow: u64 = 9223377856537034777;
-    const EDepositManagedNoBalance: u64 = 9223377865125658629;
-    const EIncreaseAmountZero: u64 = 9223374463511560197;
-    const EIncreaseAmountLockedEscrow: u64 = 9223374472102150159;
-    const EIncreaseAmountNotExists: u64 = 9223374484986134527;
-    const EIncreaseAmountNoBalance: u64 = 9223374484987183121;
-    const EIncreaseTimeNotNormalEscrow: u64 = 9223376301758873625;
-    const EIncreaseTimePermanent: u64 = 9223376314644430883;
-    const EIncreaseTimeExpired: u64 = 9223376331822465031;
-    const EIncreaseTimeNoBalance: u64 = 9223376336118087697;
-    const EIncreaseTimeNotLater: u64 = 9223376340414365733;
-    const EIncreaseTimeTooLong: u64 = 9223376344709464103;
-    const ELockPermanentNotNormalEscrow: u64 = 9223376525097173017;
-    const ELockPermanentAlreadyPermanent: u64 = 9223376537982730275;
-    const ELockPermanentExpired: u64 = 9223376542275862535;
-    const ELockPermanentNoBalance: u64 = 9223376546571485201;
-    const EMergePositionVoted: u64 = 9223376074125738011;
-    const EMergeSourceNotNormalEscrow: u64 = 9223376078420574233;
-    const EMergeTargetNotNormalEscrow: u64 = 9223376082715541529;
-    const EMergeSamePosition: u64 = 9223376087012474935;
-    const EMergeSourcePermanent: u64 = 9223376117075935267;
-    const ESetManagedLockNotManagedType: u64 = 9223378500783308843;
-    const ESetManagedLockAlreadySet: u64 = 9223378505078931509;
-    const EUnlockPermanentNotNormalEscrow: u64 = 9223376666831093785;
-    const EUnlockPermanentPositionVoted: u64 = 9223376671126192155;
-    const EUnlockPermanentNotPermanent: u64 = 9223376679715602451;
-    const EValidateLockInvalidEscrow: u64 = 9223376052649197567;
-    const EVotingInvalidVoter: u64 = 9223374076964241407;
-    const EWithdrawManagedInvalidVoter: u64 = 9223378084171612205;
-    const EWithdrawManagedNotManaged: u64 = 9223378088466710575;
-    const EWithdrawManagedNotLockedType: u64 = 9223378092761808945;
-    const EWithdrawManagedInvalidManagedLock: u64 = 9223378105646579759;
-    const EOwnerProofNotOwner: u64 = 9223373209380847615;
-    const EValidateLockDurationInvalid: u64 = 9223374111324635147;
-    const EGetPastPowerPointError: u64 = 9223377117801086975;
-    const EGetVotingPowerOwnershipChangeTooRecent: u64 = 9223376997544099873;
+    const ESplitOwnerNotFound: u64 = 922337599252162153;
+    const ESplitNotAllowed: u64 = 922337600111090075;
+    const ESplitNotNormalEscrow: u64 = 922337600540613020; 
+    const ESplitPositionVoted: u64 = 922337600970122857;
+    const ESplitAmountZero: u64 = 922337603117462323;
+    const ESplitAmountExceedsLocked: u64 = 922337603547116342;
+    const ETransferInvalidEscrow: u64 = 922337686439801651;
+    const ETransferLockedPosition: u64 = 922337688587377051;
+    const ETransferNotOwner: u64 = 922337689875775487;
+    const EWithdrawPositionVoted: u64 = 922337640483821980;
+    const EWithdrawPositionNotNormalEscrow: u64 = 922337640913305602;
+    const EWithdrawPermanentPosition: u64 = 922337642201861328;
+    const EWithdrawBeforeEndTime: u64 = 922337643060684391;
+    const ECreateLockAmountZero: u64 = 922337438190718157;
+    const ECreateLockAmountMismatch: u64 = 922337441626665779;
+    const ECreateLockForAmountZero: u64 = 922337425735312998;
+    const ECreateLockForAmountMismatch: u64 = 922337428741763891;
+    const ECreateLockOwnerExists: u64 = 922337417145352191;
+    const ECreateLockLockedExists: u64 = 922337417574848921;
+    const ECreateManagedNotAllowedManager: u64 = 922337773627768834;
+    const EDelegateNotPermanent: u64 = 922337565751338600;
+    const EDelegateInvalidDelegatee: u64 = 922337566180861544;
+    const EDelegateOwnershipChangeTooRecent: u64 = 922337568328410729;
+    const EDepositManagedInvalidVoter: u64 = 922337783935559270;
+    const EDepositManagedNotManagedType: u64 = 922337784794827985;
+    const EDepositManagedDeactivated: u64 = 922337785224429573;
+    const EDepositManagedNotNormalEscrow: u64 = 922337785653703477;
+    const EDepositManagedNoBalance: u64 = 922337786512565862;
+    const EIncreaseAmountZero: u64 = 922337446351156019;
+    const EIncreaseAmountLockedEscrow: u64 = 922337447210215015;
+    const EIncreaseAmountNotExists: u64 = 922337448498613452;
+    const EIncreaseAmountNoBalance: u64 = 922337448498718312;
+    const EIncreaseTimeNotNormalEscrow: u64 = 922337630175887362;
+    const EIncreaseTimePermanent: u64 = 922337631464443088;
+    const EIncreaseTimeExpired: u64 = 922337633182246503;
+    const EIncreaseTimeNoBalance: u64 = 922337633611808769;
+    const EIncreaseTimeNotLater: u64 = 922337634041436573;
+    const EIncreaseTimeTooLong: u64 = 922337634470946410;
+    const ELockPermanentNotNormalEscrow: u64 = 922337652509717301;
+    const ELockPermanentAlreadyPermanent: u64 = 922337653798273027;
+    const ELockPermanentExpired: u64 = 922337654227586253;
+    const ELockPermanentNoBalance: u64 = 922337654657148520;
+    const EMergePositionVoted: u64 = 922337607412573801;
+    const EMergeSourceNotNormalEscrow: u64 = 922337607842057423;
+    const EMergeTargetNotNormalEscrow: u64 = 922337608271554152;
+    const EMergeSamePosition: u64 = 922337608701247493;
+    const EMergeSourcePermanent: u64 = 922337611707593526;
+    const ESetManagedLockNotManagedType: u64 = 922337850078330884;
+    const ESetManagedLockAlreadySet: u64 = 922337850507893150;
+    const EUnlockPermanentNotNormalEscrow: u64 = 922337666683109378;
+    const EUnlockPermanentPositionVoted: u64 = 922337667112619215;
+    const EUnlockPermanentNotPermanent: u64 = 922337667971560245;
+    const EValidateLockInvalidEscrow: u64 = 922337605264919756;
+    const EVotingInvalidVoter: u64 = 922337407696424140;
+    const EWithdrawManagedInvalidVoter: u64 = 922337808417161220;
+    const EWithdrawManagedNotManaged: u64 = 922337808846671057;
+    const EWithdrawManagedNotLockedType: u64 = 922337809276180894;
+    const EWithdrawManagedInvalidManagedLock: u64 = 922337810564657975;
+    const EOwnerProofNotOwner: u64 = 922337320938084761;
+    const EValidateLockDurationInvalid: u64 = 922337411132463514;
+    const EGetPastPowerPointError: u64 = 922337711780108697;
+    const EGetVotingPowerOwnershipChangeTooRecent: u64 = 922337699754409987;
     const EPointHistoryInvalid: u64 = 999;
 
     public struct VOTING_ESCROW has drop {}
@@ -2610,6 +2610,11 @@ module distribution::voting_escrow {
         let publisher = sui::package::claim<VOTING_ESCROW>(VOTING_ESCROW {}, ctx);
         set_display(&publisher, ctx);
         publisher
+    }
+    
+    #[test_only]
+    public fun get_amount(lock: &Lock): u64 {
+        lock.amount
     }
 }
 
