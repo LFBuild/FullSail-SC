@@ -745,10 +745,8 @@ module distribution::minter {
             rebase_emissions,
             clock
         );
-        let o_sail_to_distribute = minter.mint_o_sail<SailCoinType, EpochOSail>(current_epoch_emissions, ctx);
         let notify_reward_cap = minter.notify_reward_cap.borrow();
         voter.notify_epoch_token<EpochOSail>(notify_reward_cap, ctx);
-        voter.notify_rewards(notify_reward_cap, o_sail_to_distribute);
         minter.active_period = distribution::common::current_period(clock);
         minter.epoch_count = minter.epoch_count + 1;
         minter.epoch_emissions = next_epoch_emissions;
@@ -775,11 +773,14 @@ module distribution::minter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
     ): u64 {
+        // TODO: calc amount to distribute
+        let o_sail_to_distribute = minter.mint_o_sail<SailCoinType, NextEpochOSail>(0, ctx);
         let (claimable_amount, rollover_balance) = voter.distribute_gauge<CoinTypeA, CoinTypeB, CurrentEpochOSail, NextEpochOSail>(
             minter.notify_reward_cap.borrow(),
             distribution_config,
             gauge,
             pool,
+            o_sail_to_distribute,
             clock,
             ctx
         );

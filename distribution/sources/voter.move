@@ -8,9 +8,6 @@ module distribution::voter {
     use std::type_name::{Self, TypeName};
 
     // Error codes for contract operations
-    const EDepositManagedLockNotOwned: u64 = 9223375275260116991;
-    const EDepositManagedLockDeactivated: u64 = 9223375275262279714;
-    const EDepositManagedInvalidManaged: u64 = 9223375292439986175;
     const EDepositManagedEpochVoteEnded: u64 = 9223375301033263156;
 
     const EWithdrawManagedInvlidManaged: u64 = 9223375378339332095;
@@ -31,14 +28,8 @@ module distribution::voter {
 
     const EGetVotesNotVoted: u64 = 9223375618857500671;
 
-    const EKillGaugeStatusUnknown: u64 = 9223374012540190728;
     const EKillGaugeDistributionConfigInvalid: u64 = 9223374308896342076;
     const EKillGaugeAlreadyKilled: u64 = 9223374016835944468;
-
-    const EClaimKilledGaugeDistConfigInvalid: u64 = 8652473583619964000;
-    const EClaimKilledGaugeNotKilled: u64 = 8665956241857468000;
-
-    const ENotifyRewardInvalidToken: u64 = 2674327214182648000;
 
     const EPokeVotingNotStartedYet: u64 = 9223374433448427550;
     const EPokeLockNotVoted: u64 = 9223374510758756396;
@@ -62,8 +53,6 @@ module distribution::voter {
     const ESetMaxVotingNumAtLeast10: u64 = 9223373187907649562;
     const ESetMaxVotingNumNotChanged: u64 = 9223373196495945727;
 
-    const EUpdateForInternalGaugeNotAlive: u64 = 9223375717644828720;
-
     const EVoteVotingEscrowDeactivated: u64 = 9223374631017185314;
     const EVoteNotWhitelistedNft: u64 = 9223374648197185572;
     const EVoteNoVotingPower: u64 = 9223374686852022310;
@@ -75,8 +64,6 @@ module distribution::voter {
 
     const EDistributeGaugeInvalidToken: u64 = 7271149323991462000;
     const EDistributeGaugeInvalidGaugeRepresent: u64 = 9223375983929720831;
-
-    const EExtractClaimableForLessThanMin: u64 = 9223375923800178687;
 
     const EWhitelistNftGovernorInvalid: u64 = 9223373956706664472;
 
@@ -124,7 +111,6 @@ module distribution::voter {
         governors: VecSet<ID>,
         epoch_governors: VecSet<ID>,
         emergency_council: ID,
-        total_weight: u64,
         used_weights: Table<LockID, u64>,
         pools: vector<PoolID>,
         pool_to_gauger: Table<PoolID, GaugeID>,
@@ -134,10 +120,6 @@ module distribution::voter {
         epoch: u64,
         voter_cap: distribution::voter_cap::VoterCap,
         balances: sui::bag::Bag,
-        index: Table<TypeName, u128>,
-        supply_index: Table<TypeName, Table<GaugeID, u128>>,
-        // claimable amount per gauge
-        claimable: Table<TypeName, Table<GaugeID, u64>>,
         // it is supposed that only one coin type is distributed per epoch.
         // This allows us to optimize calculations, as we don't need to iterate over old coins.
         // Is undefined if distribution has not started
@@ -159,22 +141,9 @@ module distribution::voter {
         exercise_fee_authorized_cap: distribution::reward_authorized_cap::RewardAuthorizedCap,
     }
 
-    /// Event emitted when rewards are notified to the voter contract
-    public struct EventNotifyReward has copy, drop, store {
-        notifier: ID,
-        token: TypeName,
-        amount: u64,
-    }
-
     public struct EventNotifyEpochToken has copy, drop, store {
         notifier: ID,
         token: TypeName,
-    }
-
-    /// Event emitted when claimable rewards are extracted from a gauge
-    public struct EventExtractClaimable has copy, drop, store {
-        gauger: ID,
-        amount: u64,
     }
 
     /// Event emitted when a token is whitelisted or de-whitelisted
@@ -294,14 +263,13 @@ module distribution::voter {
     ): (Voter, distribution::notify_reward_cap::NotifyRewardCap) {
         let uid = object::new(ctx);
         let id = *object::uid_as_inner(&uid);
-        let mut voter = Voter {
+        let voter = Voter {
             id: uid,
             global_config,
             distribution_config,
             governors: vec_set::empty<ID>(),
             epoch_governors: vec_set::empty<ID>(),
             emergency_council: object::id_from_address(@0x0),
-            total_weight: 0,
             used_weights: table::new<LockID, u64>(ctx),
             pools: std::vector::empty<PoolID>(),
             pool_to_gauger: table::new<PoolID, GaugeID>(ctx),
@@ -311,9 +279,6 @@ module distribution::voter {
             epoch: 0,
             voter_cap: distribution::voter_cap::create_voter_cap(id, ctx),
             balances: sui::bag::new(ctx),
-            index: table::new<TypeName, u128>(ctx),
-            supply_index: table::new<TypeName, Table<GaugeID, u128>>(ctx),
-            claimable: table::new<TypeName, Table<GaugeID, u64>>(ctx),
             current_epoch_token: option::none<TypeName>(),
             reward_tokens: linked_table::new<TypeName, bool>(ctx),
             is_whitelisted_token: table::new<std::type_name::TypeName, bool>(ctx),
@@ -746,24 +711,6 @@ module distribution::voter {
         sui::event::emit<EventClaimExerciseFeeReward>(claim_exercise_fee_reward_event);
     }
 
-    /// Returns the amount of rewards claimable for a specific gauge.
-    ///
-    /// # Arguments
-    /// * `voter` - The voter contract reference
-    /// * `gauge_id` - The ID of the gauge to check
-    ///
-    /// # Returns
-    /// The claimable amount for the specified gauge
-    public fun claimable<SailCoinType>(voter: &Voter, gauge_id: ID): u64 {
-        let gauge_id_obj = into_gauge_id(gauge_id);
-        let coin_type = type_name::get<SailCoinType>();
-        if (voter.claimable.contains(coin_type) && voter.claimable.borrow(coin_type).contains(gauge_id_obj)) {
-            *voter.claimable.borrow(coin_type).borrow(gauge_id_obj)
-        } else {
-            0
-        }
-    }
-
     /// Calculates the amount of rewards earned for a specific coin type and lock by every voted pool.
     /// 
     /// # Arguments
@@ -917,6 +864,7 @@ module distribution::voter {
         distribution_config: &distribution::distribution_config::DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        reward: Coin<NextEpochOSail>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): (u64, Balance<CurrentEpochOSail>) {
@@ -933,10 +881,9 @@ module distribution::voter {
             ) && gauge_represent.gauger_id == gauge_id.id,
             EDistributeGaugeInvalidGaugeRepresent
         );
-        let claimable_balance = voter.extract_claimable_for<NextEpochOSail>(distribution_config, gauge_id.id);
-        let claimable_amount = claimable_balance.value();
+        let reward_amount = reward.value();
         let rollover_balance = gauge.notify_epoch_token<CoinTypeA, CoinTypeB, CurrentEpochOSail, NextEpochOSail>(pool, &voter.voter_cap, clock, ctx);
-        let (fee_reward_a, fee_reward_b) = gauge.notify_reward(&voter.voter_cap, pool, claimable_balance, clock, ctx);
+        let (fee_reward_a, fee_reward_b) = gauge.notify_reward(&voter.voter_cap, pool, reward.into_balance(), clock, ctx);
         let fee_a_amount = fee_reward_a.value<CoinTypeA>();
         let fee_b_amount = fee_reward_b.value<CoinTypeB>();
         let fee_voting_reward = voter.gauge_to_fee.borrow_mut(gauge_id);
@@ -957,45 +904,10 @@ module distribution::voter {
             gauge: gauge_id.id,
             fee_a_amount,
             fee_b_amount,
-            amount: claimable_amount,
+            amount: reward_amount,
         };
         sui::event::emit<EventDistributeGauge>(distribute_gauge_event);
-        (claimable_amount, rollover_balance)
-    }
-
-    /// Internal function to extract the claimable amount for a gauge.
-    /// Updates the gauge's state and returns the claimable balance.
-    ///
-    /// # Arguments
-    /// * `voter` - The voter contract reference
-    /// * `distribution_config` - The distribution configuration
-    /// * `gauge_id` - The ID of the gauge
-    ///
-    /// # Returns
-    /// The balance that can be claimed
-    ///
-    /// # Emits
-    /// * `EventExtractClaimable` with the extracted amount
-    fun extract_claimable_for<RewardCoinType>(
-        voter: &mut Voter,
-        distribution_config: &distribution::distribution_config::DistributionConfig,
-        gauge_id: ID
-    ): Balance<RewardCoinType> {
-        let coin_type = type_name::get<RewardCoinType>();
-        let gauge_id = into_gauge_id(gauge_id);
-        voter.update_for_internal(distribution_config, gauge_id, coin_type);
-        let claimable_by_gauge = voter.claimable.borrow_mut(coin_type);
-        let amount = claimable_by_gauge.remove(gauge_id);
-        claimable_by_gauge.add(gauge_id, 0);
-        let extract_claimable_event = EventExtractClaimable {
-            gauger: gauge_id.id,
-            amount,
-        };
-        sui::event::emit<EventExtractClaimable>(extract_claimable_event);
-        voter
-            .balances
-            .borrow_mut<TypeName, Balance<RewardCoinType>>(coin_type)
-            .split<RewardCoinType>(amount)
+        (reward_amount, rollover_balance)
     }
 
     /// Returns the balance of a specific token type in the fee voting rewards for a gauge.
@@ -1054,17 +966,6 @@ module distribution::voter {
     public fun get_pool_weight(voter: &Voter, pool_id: ID): u64 {
         let gauge_id = *voter.pool_to_gauger.borrow(into_pool_id(pool_id));
         voter.get_gauge_weight(gauge_id.id)
-    }
-
-    /// Returns the total voting weight across all gauges in the system.
-    ///
-    /// # Arguments
-    /// * `voter` - The voter contract reference
-    ///
-    /// # Returns
-    /// The total voting weight
-    public fun get_total_weight(voter: &Voter): u64 {
-        voter.total_weight
     }
 
     /// Returns the votes cast by a specific lock.
@@ -1225,58 +1126,6 @@ module distribution::voter {
         sui::event::emit<EventKillGauge>(kill_gauge_event);
     }
 
-    /// Withdraws undistributed rewards that correspond to the killed gauge.
-    /// This should be used in emergency situations after gauge is killed.
-    ///
-    /// # Arguments
-    /// * `voter` - The voter contract reference
-    /// * `distribution_config` - The distribution configuration
-    /// * `emergency_council_cap` - The emergency council capability
-    /// * `gauge_id` - The ID of the gauge to kill
-    ///
-    /// # Returns
-    /// A balance containing undistributed rewards of type RewardCoinType
-    public fun claim_killed_gauge<RewardCoinType>(
-        voter: &mut Voter,
-        distribution_config: &mut distribution::distribution_config::DistributionConfig,
-        emergency_council_cap: &distribution::emergency_council::EmergencyCouncilCap,
-        gauge_id: ID,
-    ): Balance<RewardCoinType> {
-        emergency_council_cap.validate_emergency_council_voter_id(object::id<Voter>(
-            voter
-        ));
-        assert!(
-            object::id<distribution::distribution_config::DistributionConfig>(
-                distribution_config
-            ) == voter.distribution_config,
-            EClaimKilledGaugeDistConfigInvalid
-        );
-        assert!(
-            !distribution_config.is_gauge_alive(gauge_id),
-            EClaimKilledGaugeNotKilled,
-        );
-
-        let coin_type = type_name::get<RewardCoinType>();
-        let gauge_id_obj = into_gauge_id(gauge_id);
-        voter.update_for_internal(distribution_config, gauge_id_obj, coin_type);
-        let claimable_by_gauge = voter.claimable.borrow_mut(coin_type);
-        let remaining_claimable_amount = if (claimable_by_gauge.contains(gauge_id_obj)) {
-            claimable_by_gauge.remove(gauge_id_obj)
-        } else {
-            0
-        };
-        let cashback = if (remaining_claimable_amount > 0) {
-            voter
-                .balances
-                .borrow_mut<TypeName, Balance<RewardCoinType>>(type_name::get<RewardCoinType>())
-                .split<RewardCoinType>(remaining_claimable_amount)
-        } else {
-            balance::zero<RewardCoinType>()
-        };
-
-        cashback
-    }
-
     /// Returns the timestamp when a lock last voted.
     /// 
     /// # Arguments
@@ -1285,7 +1134,7 @@ module distribution::voter {
     /// 
     /// # Returns
     /// The timestamp when the lock last voted, or 0 if it never voted
-    public fun lock_last_voted_at<SailCoinType>(voter: &Voter, lock_id: ID): u64 {
+    public fun lock_last_voted_at(voter: &Voter, lock_id: ID): u64 {
         let lock_id_obj = into_lock_id(lock_id);
         if (!voter.last_voted.contains(lock_id_obj)) {
             0
@@ -1310,12 +1159,6 @@ module distribution::voter {
 
         let coin_type = type_name::get<RewardCoinType>();
         voter.current_epoch_token.swap_or_fill(coin_type);
-
-        // All collections that use TypeName as key are initialized with default value.
-        voter.index.add(coin_type, 0);
-        voter.supply_index.add(coin_type, table::new<GaugeID, u128>(ctx));
-        voter.claimable.add(coin_type, table::new<GaugeID, u64>(ctx));
-        voter.reward_tokens.push_back(coin_type, true);
 
         let event = EventNotifyEpochToken {
             notifier: notify_reward_cap.who(),
@@ -1342,52 +1185,6 @@ module distribution::voter {
         *voter.current_epoch_token.borrow()
     }
 
-    /// Notifies the voter contract of new rewards to be distributed.
-    /// These rewards will be allocated to gauges based on their voting weights.
-    /// 
-    /// # Arguments
-    /// * `voter` - The voter contract reference
-    /// * `notify_reward_cap` - The notify reward capability for authorization
-    /// * `reward` - The coin to add as a reward
-    public fun notify_rewards<RewardCoinType>(
-        voter: &mut Voter,
-        notify_reward_cap: &distribution::notify_reward_cap::NotifyRewardCap,
-        reward: Coin<RewardCoinType>
-    ) {
-        notify_reward_cap.validate_notify_reward_voter_id(object::id<Voter>(voter));
-        assert!(voter.is_valid_epoch_token<RewardCoinType>(), ENotifyRewardInvalidToken);
-
-        let reward_balance = reward.into_balance();
-        let reward_amount = reward_balance.value<RewardCoinType>();
-        let coin_type = type_name::get<RewardCoinType>();
-        let mut existing_balance = if (voter.balances.contains(coin_type)) {
-            voter.balances.remove<TypeName, Balance<RewardCoinType>>(coin_type)
-        } else {
-            balance::zero<RewardCoinType>()
-        };
-        existing_balance.join<RewardCoinType>(reward_balance);
-        voter.balances.add(coin_type, existing_balance);
-        let total_weight = if (voter.total_weight == 0) {
-            1
-        } else {
-            voter.total_weight
-        };
-        let reward_per_weight_unit = integer_mate::full_math_u128::mul_div_floor(
-            reward_amount as u128,
-            1 << 64,
-            total_weight as u128
-        );
-        if (reward_per_weight_unit > 0) {
-            let old_index = voter.index.remove(coin_type);
-            voter.index.add(coin_type, old_index + reward_per_weight_unit);
-        };
-        let notify_reward_event = EventNotifyReward {
-            notifier: notify_reward_cap.who(),
-            token: coin_type,
-            amount: reward_amount,
-        };
-        sui::event::emit<EventNotifyReward>(notify_reward_event);
-    }
 
     /// "Pokes" the voting system to update a lock's votes based on its current voting power.
     /// This is useful when a lock's voting power changes and votes need to be recalculated.
@@ -1689,12 +1486,6 @@ module distribution::voter {
             let pool_votes = voter.votes.borrow(lock_id).borrow(pool_id).votes;
             let gauge_id = *voter.pool_to_gauger.borrow(pool_id);
             if (pool_votes != 0) {
-                if (voter.current_epoch_token.is_some()) {
-                    // it only makes sence to update indices if some rewards were distributed
-                    // i.e. current_epoch_token should be set
-                    let current_epoch_token = voter.get_current_epoch_token();
-                    voter.update_for_internal(distribution_config, gauge_id, current_epoch_token);
-                };
                 let weight = voter.weights.remove(gauge_id) - pool_votes;
                 voter.weights.add(gauge_id, weight);
                 voter.votes.borrow_mut(lock_id).remove(pool_id);
@@ -1725,7 +1516,6 @@ module distribution::voter {
             pool_index = pool_index + 1;
         };
         voting_escrow.voting(&voter.voter_cap, lock_id.id, false);
-        voter.total_weight = voter.total_weight - total_removed_weight;
         if (voter.used_weights.contains(lock_id)) {
             voter.used_weights.remove(lock_id);
         };
@@ -1827,131 +1617,6 @@ module distribution::voter {
         assert!(new_max_voting_num >= 10, ESetMaxVotingNumAtLeast10);
         assert!(new_max_voting_num != voter.max_voting_num, ESetMaxVotingNumNotChanged);
         voter.max_voting_num = new_max_voting_num;
-    }
-
-    public fun total_weight(voter: &Voter): u64 {
-        voter.total_weight
-    }
-
-    /// Updates the accounting for a specific gauge for a specific coin.
-    /// This ensures the gauge's claimable rewards are current.
-    ///
-    /// # Arguments
-    /// * `voter` - The voter contract reference
-    /// * `distribution_config` - The distribution configuration
-    /// * `gauge_id` - The ID of the gauge to update
-    public fun update_for<RewardCoinType>(
-        voter: &mut Voter,
-        distribution_config: &distribution::distribution_config::DistributionConfig,
-        gauge_id: ID
-    ) {
-        let coin_type = type_name::get<RewardCoinType>();
-        voter.update_for_internal(distribution_config, into_gauge_id(gauge_id), coin_type);
-    }
-
-    /// Internal function to update the accounting for a gauge.
-    /// Calculates and updates claimable rewards based on gauge weight and index changes.
-    ///
-    /// # Arguments
-    /// * `voter` - The voter contract reference
-    /// * `distribution_config` - The distribution configuration
-    /// * `gauge_id` - The gauge ID to update
-    ///
-    /// # Aborts
-    /// * If the gauge is not alive but has weight
-    fun update_for_internal(
-        voter: &mut Voter,
-        distribution_config: &distribution::distribution_config::DistributionConfig,
-        gauge_id: GaugeID,
-        coin_type: TypeName,
-    ) {
-        let gauge_weight = if (voter.weights.contains(gauge_id)) {
-            *voter.weights.borrow(gauge_id)
-        } else {
-            0
-        };
-        let supply_index_by_gauge = voter.supply_index.borrow_mut(coin_type);
-        let voter_index = *voter.index.borrow(coin_type);
-        if (gauge_weight > 0) {
-            let gauge_supply_index = if (supply_index_by_gauge.contains(gauge_id)) {
-                supply_index_by_gauge.remove(gauge_id)
-            } else {
-                0
-            };
-            supply_index_by_gauge.add(gauge_id, voter_index);
-            let index_delta = voter_index - gauge_supply_index;
-            if (index_delta > 0) {
-                assert!(
-                    distribution_config.is_gauge_alive(gauge_id.id),
-                    EUpdateForInternalGaugeNotAlive
-                );
-                let claimable_by_gauge = voter.claimable.borrow_mut(coin_type);
-                let gauge_claimable = if (claimable_by_gauge.contains(gauge_id)) {
-                    claimable_by_gauge.remove(gauge_id)
-                } else {
-                    0
-                };
-                claimable_by_gauge.add(gauge_id, gauge_claimable + (integer_mate::full_math_u128::mul_div_floor(
-                    gauge_weight as u128,
-                    index_delta,
-                    1 << 64
-                ) as u64));
-            };
-        } else {
-            if (supply_index_by_gauge.contains(gauge_id)) {
-                supply_index_by_gauge.remove(gauge_id);
-            };
-            supply_index_by_gauge.add(gauge_id, voter_index);
-        };
-    }
-
-    /// Updates the accounting for multiple gauges at once.
-    ///
-    /// # Arguments
-    /// * `voter` - The voter contract reference
-    /// * `distribution_config` - The distribution configuration
-    /// * `gauge_ids` - A vector of gauge IDs to update
-    public fun update_for_many<RewardCoinType>(
-        voter: &mut Voter,
-        distribution_config: &distribution::distribution_config::DistributionConfig,
-        gauge_ids: vector<ID>
-    ) {
-        let coin_type = type_name::get<RewardCoinType>();
-
-        let mut i = 0;
-        while (i < gauge_ids.length()) {
-            voter.update_for_internal(distribution_config, into_gauge_id(gauge_ids[i]), coin_type);
-            i = i + 1;
-        };
-    }
-
-    /// Updates the accounting for a range of pools in the system.
-    /// This is useful for batch operations when there are many pools.
-    ///
-    /// # Arguments
-    /// * `voter` - The voter contract reference
-    /// * `distribution_config` - The distribution configuration
-    /// * `start_index` - The starting index in the pools array
-    /// * `end_index` - The ending index in the pools array
-    public fun update_for_range<RewardCoinType>(
-        voter: &mut Voter,
-        distribution_config: &distribution::distribution_config::DistributionConfig,
-        start_index: u64,
-        end_index: u64
-    ) {
-        let coin_type = type_name::get<RewardCoinType>();
-
-        let mut i = 0;
-        let pools_length = voter.pools.length();
-        let mut iteration_end = pools_length;
-        if (pools_length > end_index) {
-            iteration_end = end_index;
-        };
-        while (start_index + i < iteration_end) {
-            let gauge_id = *voter.pool_to_gauger.borrow(voter.pools[start_index + i]);
-            voter.update_for_internal(distribution_config, gauge_id, coin_type);
-            i = i + 1;
-        };
     }
 
     /// Returns the total voting weight used by a specific lock.
@@ -2065,7 +1730,6 @@ module distribution::voter {
         );
         let mut input_total_weight = 0;
         let mut lock_used_weights = 0;
-        let mut global_total_weight_delta = 0;
         let mut i = 0;
         let pools_length = pools.length();
         while (i < pools_length) {
@@ -2101,12 +1765,6 @@ module distribution::voter {
 
             assert!(!pool_has_votes, EVoteInternalPoolAreadyVoted);
             assert!(votes_for_pool > 0, EVoteInternalWeightResultedInZeroVotes);
-            if (voter.current_epoch_token.is_some()) {
-                // it only makes sence to update indices if some rewards were distributed
-                // i.e. current_epoch_token should be set
-                let current_epoch_token = voter.get_current_epoch_token();
-                voter.update_for_internal(distribution_config, gauge_id, current_epoch_token);
-            };
             if (!voter.pool_vote.contains(lock_id)) {
                 voter.pool_vote.add(lock_id, std::vector::empty<PoolID>());
             };
@@ -2147,7 +1805,6 @@ module distribution::voter {
                 ctx
             );
             lock_used_weights = lock_used_weights + votes_for_pool;
-            global_total_weight_delta = global_total_weight_delta + votes_for_pool;
             let voted_event = EventVoted {
                 sender: tx_context::sender(ctx),
                 pool: pool_id.id,
@@ -2161,7 +1818,6 @@ module distribution::voter {
         if (lock_used_weights > 0) {
             voting_escrow.voting(&voter.voter_cap, lock_id.id, true);
         };
-        voter.total_weight = voter.total_weight + global_total_weight_delta;
         if (voter.used_weights.contains(lock_id)) {
             voter.used_weights.remove(lock_id);
         };
