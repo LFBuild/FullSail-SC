@@ -17,8 +17,7 @@
 /// The module uses a tranche-based approach to organize liquidity and rewards.
 /// When a tranche is filled (reaches its maximum volume), no new positions can enter it.
 /// Each tranche maintains its own reward balance and tracks total volume and income.
-/// Additional rewards are added to each tranche at the start of every epoch and distributed
-/// proportionally to the staking rewards earned by positions in that tranche.
+/// Additional rewards are distributed proportionally to the staking rewards earned by positions in that tranche.
 /// 
 /// # Security
 /// The module implements various security checks:
@@ -36,13 +35,15 @@ module liquidity_locker::pool_tranche {
     
     use std::type_name::{Self, TypeName};
     use liquidity_locker::consts;
+    use liquidity_locker::time_manager;
 
     const ETrancheFilled: u64 = 92357345723427311;
-    const ERewardAlreadyExists: u64 = 90324592349252616;
     const ERewardNotFound: u64 = 91235834582491043;
     const ETrancheNotFound: u64 = 923487825237452354;
     const ERewardNotEnough: u64 = 91294503453406623;
     const EInvalidAddLiquidity: u64 = 923487825237423743;
+    const ETotalIncomeAlreadyExists: u64 = 932078340620346346;
+    const ERewardAlreadyClaimed: u64 = 930267340729430623;
 
     /// Capability for administrative functions in the protocol.
     /// This capability is required for managing global settings and protocol parameters.
@@ -66,13 +67,15 @@ module liquidity_locker::pool_tranche {
 
     /// Represents a tranche within a pool that defines profitability multipliers for positions.
     /// Each tranche determines reward multipliers and tracks its volume capacity.
+    /// Each tranche has its own token balances for rewards.
     /// 
     /// # Fields
     /// * `id` - Unique identifier for the tranche
     /// * `pool_id` - ID of the associated pool
-    /// * `rewards_balance` - Bag storing reward balances per epoch
-    /// * `total_balance_epoch` - Table tracking total balance per epoch
-    /// * `total_income_epoch` - Table tracking total income per epoch
+    /// * `rewards_balance` - Bag storing total reward balances (reward_type -> balance)
+    /// * `total_balance_epoch` - Table tracking total value balance of one type coin per epoch (epoch -> reward_type -> balance)
+    /// * `total_income_epoch` - Table tracking total income per epoch (epoch -> total_income)
+    /// * `claimed_rewards` - Table tracking claimed rewards per epoch  (lock id -> epoch -> reward_type -> claimed)
     /// * `volume_in_coin_a` - Flag indicating if volume is measured in coin A (true) or coin B (false)
     /// * `total_volume` - Maximum volume capacity of the tranche
     /// * `current_volume` - Current volume in the tranche
@@ -83,8 +86,9 @@ module liquidity_locker::pool_tranche {
         id: UID,
         pool_id: ID,
         rewards_balance: sui::bag::Bag,
-        total_balance_epoch: sui::table::Table<u64, u64>,
+        total_balance_epoch: sui::table::Table<u64, sui::table::Table<type_name::TypeName, u64>>,
         total_income_epoch: sui::table::Table<u64, u64>,
+        claimed_rewards: sui::table::Table<ID, sui::table::Table<u64, sui::table::Table<type_name::TypeName, bool>>>,
         volume_in_coin_a: bool,
         total_volume: u128,
         current_volume: u128,
@@ -136,13 +140,23 @@ module liquidity_locker::pool_tranche {
     /// * `epoch_start` - Start time of the epoch when rewards were added
     /// * `reward_type` - Type of reward token being added
     /// * `balance_value` - Amount of rewards added
-    /// * `total_income` - Total income accumulated in the tranche
     public struct AddRewardEvent has copy, drop {
         tranche_id: ID,
         epoch_start: u64,
         reward_type: TypeName,
         balance_value: u64,
         after_amount: u64,
+    }
+
+    /// Event emitted when total income is set for a tranche.
+    /// 
+    /// # Fields
+    /// * `tranche_id` - ID of the tranche
+    /// * `epoch_start` - Start time of the epoch
+    /// * `total_income` - Total income accumulated in the tranche
+    public struct SetIncomeEvent has copy, drop {
+        tranche_id: ID,
+        epoch_start: u64,
         total_income: u64,
     }
 
@@ -218,6 +232,7 @@ module liquidity_locker::pool_tranche {
             rewards_balance: sui::bag::new(ctx),
             total_balance_epoch: sui::table::new(ctx),
             total_income_epoch: sui::table::new(ctx),
+            claimed_rewards: sui::table::new(ctx),
             volume_in_coin_a,
             total_volume,
             current_volume: 0,
@@ -243,7 +258,7 @@ module liquidity_locker::pool_tranche {
         sui::event::emit<CreatePoolTrancheEvent>(event);
     }
 
-    /// Adds a reward to a specific tranche in the pool for the epoch.
+    /// Sets total_income_epoch and adds a reward for a specific tranche in the pool.
     /// 
     /// # Arguments
     /// * `_admin_cap` - Admin capability for authorization
@@ -253,12 +268,57 @@ module liquidity_locker::pool_tranche {
     /// * `epoch_start` - Start time of the epoch in seconds
     /// * `balance` - Balance of reward tokens to add
     /// * `total_income` - Total income for the epoch
+    /// * `ctx` - Transaction context
     /// 
     /// # Returns
     /// The total balance after adding the reward
     /// 
     /// # Aborts
-    /// * If reward for this epoch already exists
+    /// * If income for this epoch already exists
+    /// * If tranche is not found
+    public fun set_total_incomed_and_add_reward<RewardCoinType>(
+        _admin_cap: &AdminCap,
+        manager: &mut PoolTrancheManager,
+        pool_id: sui::object::ID,
+        tranche_id: sui::object::ID,
+        epoch_start: u64,
+        balance: sui::balance::Balance<RewardCoinType>,
+        total_income: u64,
+        ctx: &mut sui::tx_context::TxContext
+    ): u64 {
+
+        let tranche = get_tranche_by_id(manager, pool_id, tranche_id);
+
+        let epoch_start = time_manager::epoch_start(epoch_start);
+        assert!(!tranche.total_income_epoch.contains(epoch_start), ETotalIncomeAlreadyExists);
+
+        tranche.total_income_epoch.add(epoch_start, total_income);
+
+        let event = SetIncomeEvent {
+            tranche_id,
+            epoch_start,
+            total_income,
+        };
+        sui::event::emit<SetIncomeEvent>(event);
+
+        add_reward_internal(tranche, epoch_start, balance, ctx)
+    }
+
+    /// Adds a reward to a specific tranche in the pool for the epoch.
+    /// 
+    /// # Arguments
+    /// * `_admin_cap` - Admin capability for authorization
+    /// * `manager` - Reference to the pool tranche manager
+    /// * `pool_id` - ID of the pool containing the tranche
+    /// * `tranche_id` - ID of the tranche to add reward to
+    /// * `epoch_start` - Start time of the epoch in seconds
+    /// * `balance` - Balance of reward tokens to add
+    /// * `ctx` - Transaction context
+    /// 
+    /// # Returns
+    /// The total balance after adding the reward
+    ///
+    /// # Aborts
     /// * If tranche is not found
     public fun add_reward<RewardCoinType>(
         _admin_cap: &AdminCap,
@@ -267,49 +327,64 @@ module liquidity_locker::pool_tranche {
         tranche_id: sui::object::ID,
         epoch_start: u64,
         balance: sui::balance::Balance<RewardCoinType>,
-        total_income: u64,
+        ctx: &mut sui::tx_context::TxContext
     ): u64 {
-        let epoch_start = distribution::common::epoch_start(epoch_start);
-        let pool_tranches = manager.pool_tranches.borrow_mut(pool_id);
 
-        let mut i = 0;
-        while (i < pool_tranches.length()) {
-            let tranche = pool_tranches.borrow_mut(i);
-            let current_tranche_id = sui::object::id<PoolTranche>(tranche);
-            if (tranche_id == current_tranche_id) {
+        let tranche = get_tranche_by_id(manager, pool_id, tranche_id);
 
-                assert!(!tranche.rewards_balance.contains(epoch_start), ERewardAlreadyExists);
+        let epoch_start = time_manager::epoch_start(epoch_start);
+        add_reward_internal(tranche, epoch_start, balance, ctx)
+    }
+    
+    /// Internal function to add a reward to a specific tranche in the pool for the epoch.
+    /// 
+    /// # Arguments
+    /// * `tranche` - Mutable reference to the pool tranche
+    /// * `epoch_start` - Start time of the epoch in seconds
+    /// * `balance` - Balance of reward tokens to add
+    /// * `ctx` - Transaction context
+    /// 
+    /// # Returns
+    /// The total balance after adding the reward
+    fun add_reward_internal<RewardCoinType>(
+        tranche: &mut PoolTranche,
+        epoch_start: u64,
+        balance: sui::balance::Balance<RewardCoinType>,
+        ctx: &mut sui::tx_context::TxContext,
+    ): u64 {
+        let reward_type = type_name::get<RewardCoinType>();
 
-                let reward_type = type_name::get<RewardCoinType>();
-                let balance_value = balance.value();
+        let balance_value = balance.value();
 
-                tranche.rewards_balance.add(epoch_start, sui::balance::zero<RewardCoinType>());
-
-                let after_amount = sui::balance::join<RewardCoinType>(
-                    sui::bag::borrow_mut<u64, sui::balance::Balance<RewardCoinType>>(&mut tranche.rewards_balance, epoch_start),
-                    balance
-                );
-
-                tranche.total_balance_epoch.add(epoch_start, balance_value);
-                tranche.total_income_epoch.add(epoch_start, total_income);
-
-                let event = AddRewardEvent {
-                    tranche_id,
-                    epoch_start,
-                    reward_type,
-                    balance_value,
-                    after_amount,
-                    total_income,
-                };
-                sui::event::emit<AddRewardEvent>(event);
-
-                return after_amount
-            };
-
-            i = i + 1;
+        if (!tranche.rewards_balance.contains(reward_type)) {
+            tranche.rewards_balance.add(reward_type, sui::balance::zero<RewardCoinType>());
         };
 
-        abort ETrancheNotFound
+        let after_amount = sui::balance::join<RewardCoinType>(
+            sui::bag::borrow_mut<type_name::TypeName, sui::balance::Balance<RewardCoinType>>(&mut tranche.rewards_balance, reward_type),
+            balance
+        );
+
+        if (!tranche.total_balance_epoch.contains(epoch_start)) {
+            tranche.total_balance_epoch.add(epoch_start, sui::table::new(ctx));
+        };
+
+        if (!tranche.total_balance_epoch.borrow(epoch_start).contains(reward_type)) {
+            tranche.total_balance_epoch.borrow_mut(epoch_start).add(reward_type, 0);
+        };
+
+        *tranche.total_balance_epoch.borrow_mut(epoch_start).borrow_mut(reward_type) = *tranche.total_balance_epoch.borrow(epoch_start).borrow(reward_type) + balance_value;
+
+        let event = AddRewardEvent {
+            tranche_id: sui::object::id<PoolTranche>(tranche),
+            epoch_start,
+            reward_type,
+            balance_value,
+            after_amount
+        };
+        sui::event::emit<AddRewardEvent>(event);
+
+        after_amount
     }
 
     /// Returns a mutable reference to the vector of pool tranches for a given pool ID.
@@ -360,6 +435,29 @@ module liquidity_locker::pool_tranche {
             (tranche.total_volume - tranche.current_volume, tranche.volume_in_coin_a)
     }
 
+    /// Returns the balance of a specific tranche for a given reward type.
+    /// 
+    /// # Arguments
+    /// * `manager` - Mutable reference to the pool tranche manager
+    /// * `pool_id` - ID of the pool containing the tranche
+    /// * `tranche_id` - ID of the tranche to get balance from
+    ///
+    /// # Returns
+    /// Balance of the tranche for the given reward type
+    public fun get_balance_amount<RewardCoinType>(
+        manager: &mut PoolTrancheManager,
+        pool_id: ID,
+        tranche_id: ID
+    ): u64 {
+        let tranche = get_tranche_by_id(manager, pool_id, tranche_id);
+        let reward_type = type_name::get<RewardCoinType>();
+        if (!tranche.rewards_balance.contains(reward_type)) {
+            return 0
+        };
+
+        tranche.rewards_balance.borrow<type_name::TypeName, sui::balance::Balance<RewardCoinType>>(reward_type).value()
+    }
+
     /// Fills a tranche with additional volume and marks it as filled if necessary.
     /// This function adds liquidity to a tranche and checks if it should be marked as filled
     /// based on either reaching total volume or remaining volume being too small.
@@ -408,58 +506,106 @@ module liquidity_locker::pool_tranche {
     /// * `manager` - Mutable reference to the pool tranche manager
     /// * `pool_id` - ID of the pool containing the tranche
     /// * `tranche_id` - ID of the specific tranche to get rewards from
+    /// * `lock_id` - lock liquidity ID
     /// * `income` - Amount of income to calculate rewards for
     /// * `epoch_start` - Start time of the epoch
+    /// * `ctx` - Transaction context
     /// 
     /// # Returns
     /// Balance of reward tokens for the specified amount
     /// 
     /// # Aborts
     /// * If the tranche is not found
+    /// * If the lock id already claimed this reward type in this epoch
     /// * If no rewards exist for the specified epoch
     /// * If there are insufficient rewards for the calculated amount
     public(package) fun get_reward_balance<RewardCoinType>(
         manager: &mut PoolTrancheManager,
-        pool_id: sui::object::ID,
-        tranche_id: sui::object::ID,
+        pool_id: ID,
+        tranche_id: ID,
+        lock_id: ID,
         income: u64,
         epoch_start: u64,
+        ctx: &mut sui::tx_context::TxContext
     ): sui::balance::Balance<RewardCoinType> {
-        let epoch_start = distribution::common::epoch_start(epoch_start);
-        let pool_tranches = manager.pool_tranches.borrow_mut(pool_id);
         
+        let tranche = get_tranche_by_id(manager, pool_id, tranche_id);
+
+        let epoch_start = time_manager::epoch_start(epoch_start);
+        let reward_type = type_name::get<RewardCoinType>();
+
+        assert!(!tranche.claimed_rewards.contains(lock_id) ||
+            !tranche.claimed_rewards.borrow(lock_id).contains(epoch_start) ||
+            !tranche.claimed_rewards.borrow(lock_id).borrow(epoch_start).contains(reward_type), ERewardAlreadyClaimed);
+
+        assert!(tranche.total_balance_epoch.contains(epoch_start) &&
+            tranche.total_balance_epoch.borrow(epoch_start).contains(reward_type) &&
+            *tranche.total_balance_epoch.borrow(epoch_start).borrow(reward_type) > 0 &&
+            tranche.rewards_balance.borrow<type_name::TypeName, sui::balance::Balance<RewardCoinType>>(reward_type).value() > 0, ERewardNotFound);
+
+        // Calculate reward amount based on the ratio of income to total income
+        let reward_amount = integer_mate::full_math_u64::mul_div_floor(
+            *tranche.total_balance_epoch.borrow(epoch_start).borrow(reward_type),
+            income,
+            *tranche.total_income_epoch.borrow(epoch_start)
+        );
+
+        let current_balance = tranche.rewards_balance.borrow_mut<type_name::TypeName, sui::balance::Balance<RewardCoinType>>(reward_type);
+
+        assert!(reward_amount <= current_balance.value(), ERewardNotEnough);
+
+        if (!tranche.claimed_rewards.contains(lock_id)) {
+            tranche.claimed_rewards.add(lock_id, sui::table::new(ctx));
+        };
+
+        if (!tranche.claimed_rewards.borrow(lock_id).contains(epoch_start)) {
+            tranche.claimed_rewards.borrow_mut(lock_id).add(epoch_start, sui::table::new(ctx));
+        };
+
+        if (!tranche.claimed_rewards.borrow(lock_id).borrow(epoch_start).contains(reward_type)) {
+            tranche.claimed_rewards.borrow_mut(lock_id).borrow_mut(epoch_start).add(reward_type, true);
+        } else {
+            *tranche.claimed_rewards.borrow_mut(lock_id).borrow_mut(epoch_start).borrow_mut(reward_type) = true;
+        };
+
+        let event = GetRewardEvent {
+            tranche_id,
+            epoch_start,
+            reward_amount,
+        };
+        sui::event::emit<GetRewardEvent>(event);
+
+        current_balance.split(reward_amount)
+    }
+
+    /// Returns a mutable reference to the tranche with the specified ID.
+    /// 
+    /// # Arguments
+    /// * `manager` - Pool tranche manager
+    /// * `pool_id` - ID of the pool containing the tranche
+    /// * `tranche_id` - ID of the tranche to get
+    ///
+    /// # Returns
+    /// Mutable reference to the tranche with the specified ID
+    ///
+    /// # Aborts
+    /// * If the tranche is not found
+    fun get_tranche_by_id(
+        manager: &mut PoolTrancheManager, 
+        pool_id: ID, 
+        tranche_id: ID
+    ): &mut PoolTranche {
+        let pool_tranches = manager.pool_tranches.borrow_mut(pool_id);
         let mut i = 0;
         while (i < pool_tranches.length()) {
             let tranche = pool_tranches.borrow_mut(i);
-
-            let current_tranche_id = sui::object::id<PoolTranche>(tranche);
-            if (tranche_id == current_tranche_id) {
-                assert!(tranche.rewards_balance.contains(epoch_start), ERewardNotFound);
-
-                // Calculate reward amount based on the ratio of income to total income
-                let reward_amount = integer_mate::full_math_u64::mul_div_floor(
-                    *tranche.total_balance_epoch.borrow(epoch_start),
-                    income,
-                    *tranche.total_income_epoch.borrow(epoch_start)
-                );
-
-                let current_balance = tranche.rewards_balance.borrow_mut<u64, sui::balance::Balance<RewardCoinType>>(epoch_start);
-
-                assert!(reward_amount <= current_balance.value(), ERewardNotEnough);
-
-                let event = GetRewardEvent {
-                    tranche_id,
-                    epoch_start,
-                    reward_amount,
-                };
-                sui::event::emit<GetRewardEvent>(event);
-
-                return current_balance.split(reward_amount)
+            if (tranche_id == sui::object::id<PoolTranche>(tranche)) {
+                return tranche
             };
 
             i = i + 1;
         };
-        
+
         abort ETrancheNotFound
     }
 
