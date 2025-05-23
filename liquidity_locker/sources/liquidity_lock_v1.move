@@ -37,7 +37,6 @@ module liquidity_locker::liquidity_lock_v1 {
     const EFullLockPeriodNotEnded: u64 = 98923745837578344;
     const EPositionAlreadyLocked: u64 = 9387246576346433;
     const ENoTranches: u64 = 9823742374723842;
-    const ERewardsNotCollected: u64 = 912944864567454;
     const ELockPeriodNotEnded: u64 = 91204958347574966;
     const ELockManagerPaused: u64 = 916023534273428375;
     const ENoLiquidityToRemove: u64 = 91877547573637423;
@@ -55,15 +54,6 @@ module liquidity_locker::liquidity_lock_v1 {
     /// # Fields
     /// * `id` - Unique identifier for the capability
     public struct AdminCap has store, key {
-        id: sui::object::UID,
-    }
-
-    /// Capability for managing liquidity locker operations.
-    /// This capability is required for performing actions related to locking and unlocking liquidity positions.
-    /// 
-    /// # Fields
-    /// * `id` - Unique identifier for the capability
-    public struct LockerCap has store, key {
         id: sui::object::UID,
     }
 

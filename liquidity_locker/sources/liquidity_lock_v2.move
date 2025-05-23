@@ -67,15 +67,6 @@ module liquidity_locker::liquidity_lock_v2 {
         id: sui::object::UID,
     }
 
-    /// Capability for managing liquidity locker operations.
-    /// This capability is required for performing actions related to locking and unlocking liquidity positions.
-    /// 
-    /// # Fields
-    /// * `id` - Unique identifier for the capability
-    public struct LockerCap has store, key {
-        id: sui::object::UID,
-    }
-
     /// Main state structure for the liquidity locker protocol.
     /// This structure holds all the essential data for managing locked liquidity positions.
     /// 

@@ -45,6 +45,9 @@ module liquidity_locker::pool_tranche {
     const ETotalIncomeAlreadyExists: u64 = 932078340620346346;
     const ERewardAlreadyClaimed: u64 = 930267340729430623;
 
+    // `VERSION` of the package.
+    const VERSION: u64 = 1;
+
     /// Capability for administrative functions in the protocol.
     /// This capability is required for managing global settings and protocol parameters.
     /// 
@@ -62,6 +65,7 @@ module liquidity_locker::pool_tranche {
     /// * `pool_tranches` - Table mapping pool IDs to their tranche vectors
     public struct PoolTrancheManager has store, key {
         id: UID,
+        version: u64,
         pool_tranches: sui::table::Table<ID, vector<PoolTranche>>
     }
 
@@ -184,6 +188,7 @@ module liquidity_locker::pool_tranche {
     fun init(ctx: &mut sui::tx_context::TxContext) {
         let tranche_manager = PoolTrancheManager {
             id: sui::object::new(ctx),
+            version: VERSION,
             pool_tranches: sui::table::new(ctx),
         };
 
@@ -613,6 +618,7 @@ module liquidity_locker::pool_tranche {
     public fun test_init(ctx: &mut sui::tx_context::TxContext) {
         let tranche_manager = PoolTrancheManager {
             id: sui::object::new(ctx),
+            version: VERSION,
             pool_tranches: sui::table::new(ctx),
         };
         let admin_cap = AdminCap { id: sui::object::new(ctx) };
