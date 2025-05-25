@@ -16,10 +16,7 @@ rev = "framework/mainnet"
 override = true
 
 [dependencies.clmm_pool]
-git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
-subdir = "clmm_pool"
-rev = "main"
-override = true
+local = "../FullSail-CLMM-SC/clmm_pool"
 
 [dependencies.integer_mate]
 git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"

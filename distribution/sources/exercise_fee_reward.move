@@ -1,6 +1,5 @@
 module distribution::exercise_fee_reward {
 
-    const ENotifyRewardAmountTokenNotWhitelisted: u64 = 9223372410516930559;
     const EVoterGetRewardInvalidVoter: u64 = 9352227584057178000;
 
     public struct ExerciseFeeReward has store, key {
@@ -193,12 +192,12 @@ module distribution::exercise_fee_reward {
     /// * `ctx` - The transaction context
     public fun notify_reward_amount<CoinType>(
         reward: &mut ExerciseFeeReward,
-        notify_reward_cap: &distribution::notify_reward_cap::NotifyRewardCap,
+        reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
         coin: sui::coin::Coin<CoinType>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        notify_reward_cap.validate_notify_reward_voter_id(reward.reward.authorized());
+        reward_authorized_cap.validate(reward.reward.authorized());
         let coin_type = std::type_name::get<CoinType>();
         // whitelist check is performend on the Minter level
         if (!reward.reward.rewards_contains(coin_type)) {

@@ -260,7 +260,7 @@ module distribution::voter {
         global_config: ID,
         distribution_config: ID,
         ctx: &mut TxContext
-    ): (Voter, distribution::notify_reward_cap::NotifyRewardCap) {
+    ): (Voter, distribution::distribute_cap::DistributeCap) {
         let uid = object::new(ctx);
         let id = *object::uid_as_inner(&uid);
         let voter = Voter {
@@ -293,11 +293,8 @@ module distribution::voter {
             exercise_fee_reward: distribution::exercise_fee_reward::create(id, vector[], ctx),
             exercise_fee_authorized_cap: distribution::reward_authorized_cap::create(id, ctx),
         };
-        let notify_reward_cap = distribution::notify_reward_cap::create_internal(
-            object::id<Voter>(&voter),
-            ctx
-        );
-        (voter, notify_reward_cap)
+        let distribute_cap = distribution::distribute_cap::create_internal(id, ctx);
+        (voter, distribute_cap)
     }
 
     /// Deposits a managed lock into the voting escrow system.
@@ -537,22 +534,12 @@ module distribution::voter {
         voter.gauge_to_fee.borrow_mut(into_gauge_id(gauge_id))
     }
 
-    /// Borrow the voter capability after validating with the notify reward capability.
-    ///
-    /// # Arguments
-    /// * `voter` - The voter contract reference
-    /// * `notify_reward_cap` - The notify reward capability for authorization
-    ///
-    /// # Returns
-    /// A reference to the voter capability
-    ///
-    /// # Aborts
-    /// * If the notify reward capability doesn't match the voter ID
+    /// Borrow the voter capability after validating with the distribute capability.
     public fun borrow_voter_cap(
         voter: &Voter,
-        notify_reward_cap: &distribution::notify_reward_cap::NotifyRewardCap
+        distribute_cap: &distribution::distribute_cap::DistributeCap
     ): &distribution::voter_cap::VoterCap {
-        notify_reward_cap.validate_notify_reward_voter_id(object::id<Voter>(voter));
+        distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
         &voter.voter_cap
     }
 
@@ -566,6 +553,32 @@ module distribution::voter {
         voter: &mut Voter
     ): &mut distribution::exercise_fee_reward::ExerciseFeeReward {
         &mut voter.exercise_fee_reward
+    }
+
+    /// Notify the voter about the amount of exercise fee reward.
+    /// 
+    /// # Arguments
+    /// * `distribute_cap` - The distribute cap to validate the voter and permissions
+    /// * `voter` - The voter contract reference
+    /// * `reward` - The reward coin
+    /// * `clock` - The system clock
+    public fun notify_exercise_fee_reward_amount<RewardCoinType>(
+        voter: &mut Voter,
+        distribute_cap: &distribution::distribute_cap::DistributeCap,
+        reward: Coin<RewardCoinType>,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        distribute_cap.validate_distribute_voter_id(object::id(voter));
+        let exercise_fee_authorized_cap = &voter.exercise_fee_authorized_cap;
+        let exercise_fee_reward = &mut voter.exercise_fee_reward;
+        exercise_fee_reward
+            .notify_reward_amount(
+                exercise_fee_authorized_cap,
+                reward,
+                clock,
+                ctx
+            );
     }
 
     /// Internal function to validate vote parameters.
@@ -796,17 +809,13 @@ module distribution::voter {
         voter: &mut Voter,
         distribution_config: &mut distribution::distribution_config::DistributionConfig,
         create_cap: &gauge_cap::gauge_cap::CreateCap,
-        governor_cap: &distribution::voter_cap::GovernorCap,
+        distribute_cap: &distribution::distribute_cap::DistributeCap,
         voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): distribution::gauge::Gauge<CoinTypeA, CoinTypeB> {
-        governor_cap.validate_governor_voter_id(object::id<Voter>(voter));
-        assert!(
-            voter.is_governor(object::id<distribution::voter_cap::GovernorCap>(governor_cap)),
-            ECreateGaugeNotAGovernor
-        );
+        distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
         assert!(
             voter.distribution_config == object::id<distribution::distribution_config::DistributionConfig>(
                 distribution_config
@@ -832,7 +841,7 @@ module distribution::voter {
             into_gauge_id(gauge_id),
             distribution::bribe_voting_reward::create(voter_id, voting_escrow_id, gauge_id, reward_coins, ctx)
         );
-        voter.receive_gauger(governor_cap, &mut gauge, clock, ctx);
+        voter.receive_gauger(distribute_cap, &mut gauge, clock, ctx);
         let mut alive_gauges_vec = std::vector::empty<ID>();
         alive_gauges_vec.push_back(gauge_id);
         distribution_config.update_gauge_liveness(alive_gauges_vec, true);
@@ -860,7 +869,7 @@ module distribution::voter {
     /// * `EventDistributeGauge` with information about distributed rewards
     public fun distribute_gauge<CoinTypeA, CoinTypeB, CurrentEpochOSail, NextEpochOSail>(
         voter: &mut Voter,
-        notify_reward_cap: &distribution::notify_reward_cap::NotifyRewardCap,
+        distribute_cap: &distribution::distribute_cap::DistributeCap,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
@@ -868,7 +877,7 @@ module distribution::voter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): (u64, Balance<CurrentEpochOSail>) {
-        notify_reward_cap.validate_notify_reward_voter_id(object::id<Voter>(voter));
+        distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
         assert!(voter.is_valid_epoch_token<NextEpochOSail>(), EDistributeGaugeInvalidToken);
 
         let gauge_id = into_gauge_id(
@@ -1149,19 +1158,19 @@ module distribution::voter {
     /// # Arguments
     /// * `<RewardCoinType>` - The type to be used as current epoch coin.
     /// * `voter` - The voter contract reference
-    /// * `notify_reward_cap` - The notify reward capability for authorization
+    /// * `distribute_cap` - The distribute capability for authorization
     public fun notify_epoch_token<RewardCoinType>(
         voter: &mut Voter,
-        notify_reward_cap: &distribution::notify_reward_cap::NotifyRewardCap,
+        distribute_cap: &distribution::distribute_cap::DistributeCap,
         ctx: &mut TxContext,
     ) {
-        notify_reward_cap.validate_notify_reward_voter_id(object::id<Voter>(voter));
+        distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
 
         let coin_type = type_name::get<RewardCoinType>();
         voter.current_epoch_token.swap_or_fill(coin_type);
 
         let event = EventNotifyEpochToken {
-            notifier: notify_reward_cap.who(),
+            notifier: distribute_cap.who(),
             token: coin_type,
         };
         sui::event::emit<EventNotifyEpochToken>(event);
@@ -1349,16 +1358,12 @@ module distribution::voter {
     /// * `ctx` - The transaction context
     public fun receive_gauger<CoinTypeA, CoinTypeB>(
         voter: &mut Voter,
-        governor_cap: &distribution::voter_cap::GovernorCap,
+        distribute_cap: &distribution::distribute_cap::DistributeCap,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        governor_cap.validate_governor_voter_id(object::id<Voter>(voter));
-        assert!(
-            voter.is_governor(object::id<distribution::voter_cap::GovernorCap>(governor_cap)),
-            EReceiveGaugeInvalidGovernor
-        );
+        distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
         let gauge_id = into_gauge_id(
             object::id<distribution::gauge::Gauge<CoinTypeA, CoinTypeB>>(gauge)
         );
