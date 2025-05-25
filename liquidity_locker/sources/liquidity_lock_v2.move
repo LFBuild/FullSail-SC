@@ -1966,7 +1966,7 @@ module liquidity_locker::liquidity_lock_v2 {
     /// * If the locker is paused
     /// * If the gauge is invalid
     /// * If the position is already locked
-    public(package) fun lock_position_migrate<CoinTypeA, CoinTypeB>(
+    public fun lock_position_migrate<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         locker_v1: &mut liquidity_locker::liquidity_lock_v1::Locker,
