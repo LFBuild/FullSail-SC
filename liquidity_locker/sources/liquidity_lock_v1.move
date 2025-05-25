@@ -1,4 +1,4 @@
-/// Liquidity Locker Module
+/// Liquidity Locker Module V1 without reward
 /// 
 /// This module provides functionality for locking liquidity positions in a CLMM (Concentrated Liquidity Market Maker) pool.
 /// It allows users to lock their liquidity positions for a specified period and earn rewards based on their lock duration
@@ -20,7 +20,7 @@
 /// # Integration
 /// This module works in conjunction with:
 /// * CLMM Pool system for liquidity management
-/// * Pool Tranche system for determining lock profitability and reward distribution
+/// * Pool Tranche system for determining lock profitability
 module liquidity_locker::liquidity_lock_v1 {
     use liquidity_locker::pool_tranche;
     use liquidity_locker::consts;
@@ -40,13 +40,13 @@ module liquidity_locker::liquidity_lock_v1 {
     const ELockPeriodNotEnded: u64 = 91204958347574966;
     const ELockManagerPaused: u64 = 916023534273428375;
     const ENoLiquidityToRemove: u64 = 91877547573637423;
-    const EIncorrectDistributionOfLiquidityA: u64 = 95346237427834273;
-    const EIncorrectDistributionOfLiquidityB: u64 = 95346237427834273;
+    const EIncorrectLiquidityAmountA: u64 = 95346237427834273;
+    const EIncorrectLiquidityAmountB: u64 = 95346237427834273;
     const EInvalidShareLiquidityToFill: u64 = 902354235823942382;
     const EPositionNotLocked: u64 = 92035925692467234;
     const ENotChangedTickRange: u64 = 96203676234264517;
     const EIncorrectSwapResultA: u64 = 9259346230481212;
-    const EIncorrectSwapResultB: u64 = 9259346230481213;
+    const EIncorrectSwapResultB: u64 = 9387240376820348;
     
     /// Capability for administrative functions in the protocol.
     /// This capability is required for managing global settings and protocol parameters.
@@ -89,6 +89,7 @@ module liquidity_locker::liquidity_lock_v1 {
     /// * `id` - Unique identifier for the locked position
     /// * `position_id` - ID of the underlying liquidity position
     /// * `tranche_id` - ID of the tranche this position belongs to
+    /// * `start_lock_time` - Timestamp when the lock period starts
     /// * `expiration_time` - Timestamp when the lock period expires
     /// * `full_unlocking_time` - Timestamp when the position can be fully unlocked
     /// * `profitability` - Profitability rate in parts multiplied by profitability_rate_denom
@@ -103,6 +104,7 @@ module liquidity_locker::liquidity_lock_v1 {
         id: sui::object::UID,
         position_id: sui::object::ID,
         tranche_id: sui::object::ID,
+        start_lock_time: u64,
         expiration_time: u64, 
         full_unlocking_time: u64, 
         profitability: u64,
@@ -526,6 +528,7 @@ module liquidity_locker::liquidity_lock_v1 {
                 id: sui::object::new(ctx),
                 position_id: _position_id,
                 tranche_id: tranche_id,
+                start_lock_time: current_time,
                 expiration_time: expiration_time,
                 full_unlocking_time: full_unlocking_time,
                 profitability: profitability,
@@ -775,6 +778,7 @@ module liquidity_locker::liquidity_lock_v1 {
             id: lock_position_id,
             position_id: _,
             tranche_id: _,
+            start_lock_time: _,
             expiration_time: _,
             full_unlocking_time: _,
             profitability: _,
@@ -893,6 +897,7 @@ module liquidity_locker::liquidity_lock_v1 {
             id: sui::object::new(ctx),
             position_id: split_position_result2.position_id,
             tranche_id: lock_position.tranche_id,
+            start_lock_time: lock_position.start_lock_time,
             expiration_time: lock_position.expiration_time,
             full_unlocking_time: lock_position.full_unlocking_time,
             profitability: lock_position.profitability,
@@ -1315,8 +1320,8 @@ module liquidity_locker::liquidity_lock_v1 {
             lock_position.coin_b.join(removed_b.split(removed_b_value - pay_amount_b));
         };
         
-        assert!(pay_amount_a == removed_a.value(), EIncorrectDistributionOfLiquidityA);
-        assert!(pay_amount_b == removed_b.value(), EIncorrectDistributionOfLiquidityB);
+        assert!(pay_amount_a == removed_a.value(), EIncorrectLiquidityAmountA);
+        assert!(pay_amount_b == removed_b.value(), EIncorrectLiquidityAmountB);
 
         clmm_pool::pool::repay_add_liquidity<CoinTypeA, CoinTypeB>(
             global_config,
@@ -1535,8 +1540,8 @@ module liquidity_locker::liquidity_lock_v1 {
             balance_b = amount_b.value<CoinTypeB>();
         };
 
-        assert!(pay_amount_a == balance_a, EIncorrectDistributionOfLiquidityA);
-        assert!(pay_amount_b == balance_b, EIncorrectDistributionOfLiquidityB);
+        assert!(pay_amount_a == balance_a, EIncorrectLiquidityAmountA);
+        assert!(pay_amount_b == balance_b, EIncorrectLiquidityAmountB);
 
         clmm_pool::pool::repay_add_liquidity<CoinTypeA, CoinTypeB>(
             global_config,
@@ -1547,6 +1552,65 @@ module liquidity_locker::liquidity_lock_v1 {
         );
 
         (remainder_a, remainder_b)
+    }
+
+    /// Unlocks a locked position and returns the underlying liquidity position.
+    /// 
+    /// This function performs the following operations:
+    /// 1. Checks if the position is expired
+    /// 2. Destroys the LockedPosition
+    /// 3. Removes the position from the locker
+    /// 
+    /// # Arguments
+    /// * `locker` - Locker object
+    /// * `lock_position` - LockedPosition to destroy
+    /// * `clock` - Clock object
+    /// * `ctx` - Transaction context
+    /// 
+    /// # Returns
+    /// * Underlying liquidity position
+   public(package) fun lock_position_migrate<CoinTypeA, CoinTypeB>(
+        locker: &mut Locker,
+        lock_position: LockedPosition<CoinTypeA, CoinTypeB>,
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext
+    ): clmm_pool::position::Position {
+        let current_time = clock.timestamp_ms()/1000;
+        assert!(!locker.pause, ELockManagerPaused);
+        assert!(current_time < lock_position.expiration_time, ELockPeriodEnded);
+
+        let position_id = lock_position.position_id;
+        destroy(lock_position, ctx);
+
+        locker.positions.remove(position_id)
+    }
+
+    /// Returns information about a locked position for migration.
+    /// 
+    /// This function extracts the necessary information from a locked position to create a new LockedPosition.
+    /// 
+    /// # Arguments
+    /// * `lock_position` - LockedPosition to extract information from
+    /// 
+    /// # Returns
+    /// * Information about the locked position:
+    ///   * `tranche_id` - Tranche ID
+    ///   * `start_lock_time` - Start time of the lock
+    ///   * `expiration_time` - Expiration time of the lock
+    ///   * `full_unlocking_time` - Full unlocking time of the lock
+    ///   * `coin_a` - Balance of the first token type
+    ///   * `coin_b` - Balance of the second token type
+    public(package) fun get_lock_position_info_for_migrate<CoinTypeA, CoinTypeB>(
+        lock_position: &mut LockedPosition<CoinTypeA, CoinTypeB>,
+    ): (sui::object::ID, u64, u64, u64, sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>) {
+        (
+            lock_position.tranche_id, 
+            lock_position.start_lock_time, 
+            lock_position.expiration_time, 
+            lock_position.full_unlocking_time, 
+            lock_position.coin_a.withdraw_all(),
+            lock_position.coin_b.withdraw_all()
+        )
     }
 
     #[test_only]

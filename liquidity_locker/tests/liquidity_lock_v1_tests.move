@@ -9,7 +9,7 @@ module liquidity_locker::liquidity_lock_v1_tests {
     use clmm_pool::position;
     use clmm_pool::pool;
     use clmm_pool::factory::{Self as factory, Pools};
-    use clmm_pool::config::{Self as config, GlobalConfig, AdminCap};
+    use clmm_pool::config::{Self as config, GlobalConfig};
     use clmm_pool::stats;
     use clmm_pool::rewarder;
     use price_provider::price_provider;
