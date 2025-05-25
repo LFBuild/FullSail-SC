@@ -41,20 +41,46 @@ module liquidity_locker::liquidity_lock_v1 {
     const ELockManagerPaused: u64 = 916023534273428375;
     const ENoLiquidityToRemove: u64 = 91877547573637423;
     const EIncorrectLiquidityAmountA: u64 = 95346237427834273;
-    const EIncorrectLiquidityAmountB: u64 = 95346237427834273;
+    const EIncorrectLiquidityAmountB: u64 = 92368340637234706;
     const EInvalidShareLiquidityToFill: u64 = 902354235823942382;
     const EPositionNotLocked: u64 = 92035925692467234;
     const ENotChangedTickRange: u64 = 96203676234264517;
     const EIncorrectSwapResultA: u64 = 9259346230481212;
     const EIncorrectSwapResultB: u64 = 9387240376820348;
+    const EPackageVersionMismatch: u64 = 9346920730473042;
     
     /// Capability for administrative functions in the protocol.
     /// This capability is required for managing global settings and protocol parameters.
     /// 
     /// # Fields
     /// * `id` - Unique identifier for the capability
+    /// * `init_locker_v2` - Flag indicating if the locker v2 has been initialized
     public struct AdminCap has store, key {
         id: sui::object::UID,
+        init_locker_v2: bool
+    }
+
+    /// Returns the initialization state of the locker v2.
+    /// 
+    /// # Arguments
+    /// * `admin_cap` - The admin capability to check
+    /// 
+    /// # Returns
+    /// True if the locker v2 has been initialized, false otherwise
+    public fun get_init_locker_v2(
+        admin_cap: &AdminCap,
+    ): bool {
+        admin_cap.init_locker_v2
+    }
+
+    /// Updates the initialization state of the locker v2.
+    /// 
+    /// # Arguments
+    /// * `admin_cap` - The admin capability to initialize
+    public fun init_locker_v2(
+        admin_cap: &mut AdminCap,
+    ) {
+        admin_cap.init_locker_v2 = true;
     }
 
     /// Main state structure for the liquidity locker protocol.
@@ -251,7 +277,10 @@ module liquidity_locker::liquidity_lock_v1 {
         let locker_id = sui::object::id<Locker>(&locker);
         sui::transfer::share_object<Locker>(locker);
     
-        let admin_cap = AdminCap { id: sui::object::new(ctx) };
+        let admin_cap = AdminCap { 
+            id: sui::object::new(ctx), 
+            init_locker_v2: false,
+        };
         sui::transfer::transfer<AdminCap>(admin_cap, sui::tx_context::sender(ctx));
 
         let event = InitLockerEvent { locker_id };
@@ -348,7 +377,7 @@ module liquidity_locker::liquidity_lock_v1 {
     /// * First vector contains the blocking periods in epochs
     /// * Second vector contains the post-lockdown periods in epochs
     public fun get_lock_periods(
-        locker: &mut Locker,
+        locker: &Locker,
     ): (vector<u64>, vector<u64>) {
         (locker.periods_blocking, locker.periods_post_lockdown)
     }
@@ -383,6 +412,28 @@ module liquidity_locker::liquidity_lock_v1 {
         locker: &Locker,
     ): bool {
         locker.pause
+    }
+
+    /// Checks if the package version matches the expected version.
+    /// 
+    /// # Arguments
+    /// * `locker` - The locker object to check
+    /// 
+    /// # Abort Conditions
+    /// * If the package version is not a version of liquidity_locker_v1 (error code: EPackageVersionMismatch)
+    public fun checked_package_version(locker: &Locker) {
+        assert!(locker.version == VERSION, EPackageVersionMismatch);
+    }
+
+    /// Returns the version of the locker.
+    /// 
+    /// # Arguments
+    /// * `locker` - The locker object to get the version from
+    /// 
+    /// # Returns
+    /// The version of the locker
+    public fun get_locker_version(locker: &Locker): u64 {
+        locker.version
     }
     
     /// Locks a position in the locker by distributing it across available tranches.
@@ -644,7 +695,6 @@ module liquidity_locker::liquidity_lock_v1 {
     /// # Aborts
     /// * `ELockManagerPaused` - If the locker is paused
     /// * `ELockPeriodNotEnded` - If the lock period has not ended
-    /// * `ERewardsNotCollected` - If rewards have not been collected
     /// * `ENoLiquidityToRemove` - If there is no liquidity available to remove
     public fun remove_lock_liquidity<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
@@ -1626,7 +1676,10 @@ module liquidity_locker::liquidity_lock_v1 {
         };
         sui::transfer::share_object<Locker>(locker);
     
-        let admin_cap = AdminCap { id: sui::object::new(ctx) };
+        let admin_cap = AdminCap { 
+            id: sui::object::new(ctx), 
+            init_locker_v2: false,
+        };
         sui::transfer::transfer<AdminCap>(admin_cap, sui::tx_context::sender(ctx));
     }
 

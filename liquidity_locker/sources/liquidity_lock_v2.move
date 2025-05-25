@@ -56,7 +56,9 @@ module liquidity_locker::liquidity_lock_v2 {
     const EPositionNotLocked: u64 = 92035925692467234;
     const ENotChangedTickRange: u64 = 96203676234264517;
     const EIncorrectSwapResultA: u64 = 9259346230481212;
-    const EIncorrectSwapResultB: u64 = 9259346230481213;
+    const EIncorrectSwapResultB: u64 = 9387240376820348;
+    const EPackageVersionMismatch: u64 = 9346920730473042;
+    const ELockerInitialized: u64 = 9329703470234099;
     
     /// Capability for administrative functions in the protocol.
     /// This capability is required for managing global settings and protocol parameters.
@@ -282,64 +284,50 @@ module liquidity_locker::liquidity_lock_v2 {
         position_id: sui::object::ID,
         last_growth_inside: u128,
     }
-    
-    /// Initializes the liquidity locker module.
+
+    /// Creates a locker v2 with the specified parameters.
     /// 
-    /// This function creates and initializes the main Locker object with default values,
-    /// creates an AdminCap for administrative control, and emits an initialization event.
+    /// This function creates a new locker with the same parameters as the locker v1,
+    /// but with a different version number. It also initializes the locker v2 and
+    /// emits an initialization event.
+    /// 
+    /// It is necessary because when upgrading, the init function is not called.
     /// 
     /// # Arguments
+    /// * `_admin_cap` - Administrative capability for authorization
+    /// * `locker_v1` - The locker v1 object to create the locker v2 from
+    /// * `create_locker_cap` - Capability to create locker functionality
     /// * `ctx` - The transaction context
     /// 
-    /// # Events
-    /// Emits `InitLockerEvent` with the ID of the created locker
-    fun init(ctx: &mut sui::tx_context::TxContext) {
-        let locker = Locker {
+    /// # Aborts
+    /// * If the locker v2 has already been initialized (error code: ELockerInitialized)
+    public fun create_locker(
+        _admin_cap: &mut liquidity_locker::liquidity_lock_v1::AdminCap,
+        locker_v1: &liquidity_locker::liquidity_lock_v1::Locker,
+        create_locker_cap: &locker_cap::locker_cap::CreateCap,
+        ctx: &mut sui::tx_context::TxContext,
+    ) {
+        assert!(!_admin_cap.get_init_locker_v2(), ELockerInitialized);
+
+        _admin_cap.init_locker_v2();
+
+        let (periods_blocking, periods_post_lockdown) = locker_v1.get_lock_periods();
+        
+        let mut locker = Locker {
             id: sui::object::new(ctx),
             locker_cap: option::none<locker_cap::locker_cap::LockerCap>(),
             version: VERSION,
             positions: sui::table::new<ID, bool>(ctx),
-            periods_blocking: std::vector::empty<u64>(),
-            periods_post_lockdown: std::vector::empty<u64>(),
-            pause: false,
+            periods_blocking: periods_blocking,
+            periods_post_lockdown: periods_post_lockdown,
+            pause: locker_v1.pause(),
         };
+
         let locker_id = sui::object::id<Locker>(&locker);
-        sui::transfer::share_object<Locker>(locker);
-    
-        let admin_cap = AdminCap { id: sui::object::new(ctx) };
-        sui::transfer::transfer<AdminCap>(admin_cap, sui::tx_context::sender(ctx));
 
         let event = InitLockerEvent { locker_id };
         sui::event::emit<InitLockerEvent>(event);
-    }
-    
-    /// Initializes the locker with blocking and post-lockdown periods.
-    /// 
-    /// This function should be called after deployment to set up the locker with
-    /// specified blocking and post-lockdown periods. It creates a locker capability
-    /// and configures the time periods for position locking.
-    /// 
-    /// # Arguments
-    /// * `_admin_cap` - Administrative capability for authorization
-    /// * `create_locker_cap` - Capability to create locker functionality
-    /// * `locker` - The locker object to initialize
-    /// * `periods_blocking` - Vector of blocking periods in epochs
-    /// * `periods_post_lockdown` - Vector of post-lockdown periods in epochs
-    /// * `ctx` - The transaction context
-    /// 
-    /// # Aborts
-    /// * If periods_blocking is empty
-    /// * If periods_blocking and periods_post_lockdown have different lengths
-    public fun init_locker(
-        _admin_cap: &AdminCap,
-        create_locker_cap: &locker_cap::locker_cap::CreateCap,
-        locker: &mut Locker, 
-        periods_blocking: vector<u64>,
-        periods_post_lockdown: vector<u64>,
-        ctx: &mut sui::tx_context::TxContext,
-    ) {
-        assert!(periods_blocking.length() > 0 && 
-            periods_blocking.length() == periods_post_lockdown.length(), EInvalidPeriodsLength);
+
 
         let locker_cap = create_locker_cap.create_locker_cap(
             ctx
@@ -350,13 +338,17 @@ module liquidity_locker::liquidity_lock_v2 {
         locker.periods_post_lockdown = periods_post_lockdown;
 
         let event = UpdateLockPeriodsEvent {
-            locker_id: sui::object::id<Locker>(locker),
+            locker_id: locker_id,
             periods_blocking,
             periods_post_lockdown,
         };
         sui::event::emit<UpdateLockPeriodsEvent>(event);
-    }
 
+        sui::transfer::share_object<Locker>(locker);
+
+        let admin_cap = AdminCap { id: sui::object::new(ctx) };
+        sui::transfer::transfer<AdminCap>(admin_cap, sui::tx_context::sender(ctx));
+    }
     
     /// Updates the blocking and post-lockdown periods for the locker.
     /// 
@@ -438,6 +430,28 @@ module liquidity_locker::liquidity_lock_v2 {
         locker: &Locker,
     ): bool {
         locker.pause
+    }
+
+    /// Checks if the package version matches the expected version.
+    /// 
+    /// # Arguments
+    /// * `locker` - The locker object to check
+    /// 
+    /// # Abort Conditions
+    /// * If the package version is not a version of liquidity_locker_v1 (error code: EPackageVersionMismatch)
+    public fun checked_package_version(locker: &Locker) {
+        assert!(locker.version == VERSION, EPackageVersionMismatch);
+    }
+
+    /// Returns the version of the locker.
+    /// 
+    /// # Arguments
+    /// * `locker` - The locker object to get the version from
+    /// 
+    /// # Returns
+    /// The version of the locker
+    public fun get_locker_version(locker: &Locker): u64 {
+        locker.version
     }
     
     /// Locks a position in the locker by distributing it across available tranches.
@@ -2079,6 +2093,34 @@ module liquidity_locker::liquidity_lock_v2 {
     
         let admin_cap = AdminCap { id: sui::object::new(ctx) };
         sui::transfer::transfer<AdminCap>(admin_cap, sui::tx_context::sender(ctx));
+    }
+
+    #[test_only]
+    public fun init_locker(
+        _admin_cap: &AdminCap,
+        create_locker_cap: &locker_cap::locker_cap::CreateCap,
+        locker: &mut Locker, 
+        periods_blocking: vector<u64>,
+        periods_post_lockdown: vector<u64>,
+        ctx: &mut sui::tx_context::TxContext,
+    ) {
+        assert!(periods_blocking.length() > 0 && 
+            periods_blocking.length() == periods_post_lockdown.length(), EInvalidPeriodsLength);
+
+        let locker_cap = create_locker_cap.create_locker_cap(
+            ctx
+        );
+        locker.locker_cap.fill(locker_cap);
+
+        locker.periods_blocking = periods_blocking;
+        locker.periods_post_lockdown = periods_post_lockdown;
+
+        let event = UpdateLockPeriodsEvent {
+            locker_id: sui::object::id<Locker>(locker),
+            periods_blocking,
+            periods_post_lockdown,
+        };
+        sui::event::emit<UpdateLockPeriodsEvent>(event);
     }
 
     #[test_only]
