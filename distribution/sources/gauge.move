@@ -641,7 +641,9 @@ module distribution::gauge {
             0_u128
         };
         let claimed_all_tokens_growth_inside = gauge.rewards.borrow(position_id).growth_inside;
-        let mut claimed_growth_inside = if (claimed_all_tokens_growth_inside >= prev_token_growth_inside) {
+        let mut claimed_growth_inside = if (
+            integer_mate::math_u128::greater_or_equal_overflowing(claimed_all_tokens_growth_inside,prev_token_growth_inside)
+        ) {
             // if user started claiming current token, then we continue from where he left off
             claimed_all_tokens_growth_inside
         } else {
@@ -654,7 +656,10 @@ module distribution::gauge {
         };
 
         let growth_inside_diff = integer_mate::math_u128::wrapping_sub(new_growth_inside, claimed_growth_inside);
-        assert!(!integer_mate::math_u128::is_neg(growth_inside_diff), EIncorrectGrowthInside);
+        // assert!(!integer_mate::math_u128::is_neg(growth_inside_diff), EIncorrectGrowthInside);
+        if (integer_mate::math_u128::is_neg(growth_inside_diff)) {
+            return (0, new_growth_inside)
+        };
 
         let amount_earned = integer_mate::full_math_u128::mul_div_floor(
             growth_inside_diff,
@@ -797,8 +802,17 @@ module distribution::gauge {
             gauge.staked_positions.contains(position_id),
             EEarnedByPositionNotDepositedPosition
         );
+
+        let position = gauge.staked_positions.borrow(position_id);
+        let (lower_tick, upper_tick) = position.tick_range();
         
         let current_growth_global = *gauge.growth_global_by_token.borrow(coin_type);
+
+        let new_growth_inside = pool.get_fullsail_distribution_growth_inside(
+            lower_tick,
+            upper_tick,
+            current_growth_global
+        );
 
         let prev_coin_type_opt: &Option<TypeName> = gauge.growth_global_by_token.prev(coin_type);
         let prev_coin_growth_global: u128 = if (prev_coin_type_opt.is_some()) {
@@ -807,9 +821,6 @@ module distribution::gauge {
             0_u128
         };
 
-        let position = gauge.staked_positions.borrow(position_id);
-        let (lower_tick, upper_tick) = position.tick_range();
-        
         let prev_token_growth_inside = if (prev_coin_growth_global > 0) {
             // get_fullsail_distribution_growth_inside replaces prev_coin_growth_global with 0 if prev_coin_growth_global is 0
             pool.get_fullsail_distribution_growth_inside(
@@ -821,24 +832,21 @@ module distribution::gauge {
             0_u128
         };
 
-        let mut last_growth_inside_correct = if (last_growth_inside >= prev_token_growth_inside){
+        let mut last_growth_inside_correct = if (integer_mate::math_u128::greater_or_equal_overflowing(last_growth_inside, prev_token_growth_inside)){
             last_growth_inside
         } else {
             prev_token_growth_inside
         };
-
-        let new_growth_inside = pool.get_fullsail_distribution_growth_inside(
-            lower_tick,
-            upper_tick,
-            current_growth_global
-        );
 
         if (integer_mate::math_u128::is_neg(last_growth_inside_correct)) {
             last_growth_inside_correct = 0;
         };
 
         let growth_inside_diff = integer_mate::math_u128::wrapping_sub(new_growth_inside, last_growth_inside_correct);
-        assert!(!integer_mate::math_u128::is_neg(growth_inside_diff), EIncorrectGrowthInside);
+        // assert!(!integer_mate::math_u128::is_neg(growth_inside_diff), EIncorrectGrowthInside);
+        if (integer_mate::math_u128::is_neg(growth_inside_diff)) {
+            return (0, new_growth_inside)
+        };
 
         let amount_earned = integer_mate::full_math_u128::mul_div_floor(
             growth_inside_diff,

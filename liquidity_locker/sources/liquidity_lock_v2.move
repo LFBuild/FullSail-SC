@@ -1180,12 +1180,12 @@ module liquidity_locker::liquidity_lock_v2 {
             lock_position.last_reward_claim_epoch >= lock_position.expiration_time, ERewardsNotCollected);
         assert!(share_first_part <= consts::lock_liquidity_share_denom() && share_first_part > 0, EInvalidShareLiquidityToFill);
 
+        // calculate current reward before split
+        let (current_earned, growth_inside) = gauge.earned_by_position<CoinTypeA, CoinTypeB, EpochOSail>(pool, lock_position.position_id, clock);
+
         // Remove position from locker and gauge
         gauge.unlock_position(locker.locker_cap.borrow(), lock_position.position_id);
         locker.positions.remove(lock_position.position_id);
-
-        // calculate current reward before split
-        let (current_earned, growth_inside) = gauge.earned_by_position<CoinTypeA, CoinTypeB, EpochOSail>(pool, lock_position.position_id, clock);
 
         let (
             split_position_result1, 
@@ -1507,12 +1507,12 @@ module liquidity_locker::liquidity_lock_v2 {
         assert!(lock_position.last_reward_claim_epoch >= common::epoch_start(current_time) || 
             lock_position.last_reward_claim_epoch >= lock_position.expiration_time, ERewardsNotCollected);
 
+        // calculate current reward before change tick range
+        let (current_earned, _) = gauge.earned_by_position<CoinTypeA, CoinTypeB, EpochOSail>(pool, lock_position.position_id, clock);
+
         // Unlock position from gauge and remove from locker
         gauge.unlock_position(locker.locker_cap.borrow(), lock_position.position_id);
         locker.positions.remove(lock_position.position_id);
-
-        // calculate current reward before change tick range
-        let (current_earned, growth_inside) = gauge.earned_by_position<CoinTypeA, CoinTypeB, EpochOSail>(pool, lock_position.position_id, clock);
 
         // Withdraw position from gauge
         let mut position = gauge.withdraw_position_by_locker<CoinTypeA, CoinTypeB, EpochOSail>(
@@ -1526,6 +1526,8 @@ module liquidity_locker::liquidity_lock_v2 {
         assert!(!new_tick_lower.eq(tick_lower) || !new_tick_upper.eq(tick_upper), ENotChangedTickRange);
 
         let position_liquidity = position.liquidity();
+        let current_tick_range = tick_upper.sub(tick_lower).abs_u32();
+        let new_tick_range = new_tick_upper.sub(new_tick_lower).abs_u32();
 
         // Remove liquidity and collect fees
         let (mut removed_a, mut removed_b) = remove_liquidity_and_collect_fee<CoinTypeA, CoinTypeB>(
@@ -1539,7 +1541,7 @@ module liquidity_locker::liquidity_lock_v2 {
         );
 
         // Calculate total value in token B terms
-        let current_volume_coins_in_token_b = locker_utils::calculate_token_a_in_token_b(pool, removed_a.value()) + removed_b.value();
+        // let current_volume_coins_in_token_b = (locker_utils::calculate_token_a_in_token_b(pool, removed_a.value()) as u128) + (removed_b.value() as u128);
 
         // Close old position and create new one
         clmm_pool::pool::close_position<CoinTypeA, CoinTypeB>(global_config, pool, position);
@@ -1554,23 +1556,31 @@ module liquidity_locker::liquidity_lock_v2 {
         let new_position_id = object::id<clmm_pool::position::Position>(&new_position);
 
         // Calculate token amounts for new range with current liquidity
-        let (pre_amount_a_calc, pre_amount_b_calc) = clmm_pool::clmm_math::get_amount_by_liquidity(
-            new_tick_lower,
-            new_tick_upper,
-            pool.current_tick_index(),
-            pool.current_sqrt_price(),
-            position_liquidity,
-            true
-        );
+        // let (pre_amount_a_calc, pre_amount_b_calc) = clmm_pool::clmm_math::get_amount_by_liquidity(
+        //     new_tick_lower,
+        //     new_tick_upper,
+        //     pool.current_tick_index(),
+        //     pool.current_sqrt_price(),
+        //     position_liquidity,
+        //     true
+        // );
         
         // Calculate total value in token B terms for new range
-        let after_volume_coins_in_token_b = locker_utils::calculate_token_a_in_token_b(pool, pre_amount_a_calc) + pre_amount_b_calc;
+        // let after_volume_coins_in_token_b = (locker_utils::calculate_token_a_in_token_b(pool, pre_amount_a_calc) as u128) + (pre_amount_b_calc as u128);
 
         // Adjust liquidity based on value ratio between ranges
+        // let mut liquidity_calc = integer_mate::full_math_u128::mul_div_floor(
+        //     position_liquidity,
+        //     current_volume_coins_in_token_b,
+        //     after_volume_coins_in_token_b
+        // );
+
+        // P.S. calculation through volume ratio is more accurate,
+        // but prone to arithmetic errors in get_amount_by_liquidity when expanding the range and large position_liquidity
         let mut liquidity_calc = integer_mate::full_math_u128::mul_div_floor(
             position_liquidity,
-            current_volume_coins_in_token_b as u128,
-            after_volume_coins_in_token_b as u128
+            current_tick_range as u128,
+            new_tick_range as u128
         );
 
         // Calculate final token amounts with adjusted liquidity
@@ -1751,6 +1761,9 @@ module liquidity_locker::liquidity_lock_v2 {
         lock_position.position_id = new_position_id;
         lock_position.lock_liquidity_info.total_lock_liquidity = new_position_liquidity;
         lock_position.lock_liquidity_info.current_lock_liquidity = new_position_liquidity;
+
+        // get growth_inside for new range
+        let (_, growth_inside) = gauge.earned_by_position<CoinTypeA, CoinTypeB, EpochOSail>(pool, lock_position.position_id, clock);
         lock_position.last_growth_inside = growth_inside;
         lock_position.accumulated_amount_earned = lock_position.accumulated_amount_earned + current_earned;
        
@@ -1853,16 +1866,8 @@ module liquidity_locker::liquidity_lock_v2 {
     ) {
         if (lock_position.coin_a.value() > 0 && lock_position.coin_b.value() > 0) {
             let (tick_lower, tick_upper) = position.tick_range();
-            let (mut liquidity_calc, mut amount_a_calc, mut amount_b_calc) = clmm_pool::clmm_math::get_liquidity_by_amount(
-                tick_lower,
-                tick_upper,
-                pool.current_tick_index(),
-                pool.current_sqrt_price(),
-                lock_position.coin_a.value(),
-                true
-            );
-            if (amount_b_calc > lock_position.coin_b.value()) {
-                (liquidity_calc, amount_a_calc, amount_b_calc) = clmm_pool::clmm_math::get_liquidity_by_amount(
+            let (liquidity_calc, amount_a_calc, amount_b_calc) = if (integer_mate::i32::gte(pool.current_tick_index(), tick_upper)) {
+                let (_liquidity_calc, _amount_a_calc, _amount_b_calc) = clmm_pool::clmm_math::get_liquidity_by_amount(
                     tick_lower,
                     tick_upper,
                     pool.current_tick_index(),
@@ -1870,6 +1875,39 @@ module liquidity_locker::liquidity_lock_v2 {
                     lock_position.coin_b.value(),
                     false
                 );
+                if (_amount_a_calc > lock_position.coin_a.value()) {
+                    clmm_pool::clmm_math::get_liquidity_by_amount(
+                        tick_lower,
+                        tick_upper,
+                        pool.current_tick_index(),
+                        pool.current_sqrt_price(),
+                        lock_position.coin_a.value(),
+                        true
+                    )
+                } else {
+                    (_liquidity_calc, _amount_a_calc, _amount_b_calc)
+                }
+            } else {
+                let (_liquidity_calc, _amount_a_calc, _amount_b_calc) = clmm_pool::clmm_math::get_liquidity_by_amount(
+                    tick_lower,
+                    tick_upper,
+                    pool.current_tick_index(),
+                    pool.current_sqrt_price(),
+                    lock_position.coin_a.value(),
+                    true
+                );
+                if (_amount_b_calc > lock_position.coin_b.value()) {
+                    clmm_pool::clmm_math::get_liquidity_by_amount(
+                        tick_lower,
+                        tick_upper,
+                        pool.current_tick_index(),
+                        pool.current_sqrt_price(),
+                        lock_position.coin_b.value(),
+                        false
+                    )
+                } else {
+                    (_liquidity_calc, _amount_a_calc, _amount_b_calc)
+                }
             };
 
             let (remainder_a, remainder_b) = add_liquidity_internal<CoinTypeA, CoinTypeB>(
