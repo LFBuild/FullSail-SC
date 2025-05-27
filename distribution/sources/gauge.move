@@ -486,10 +486,9 @@ module distribution::gauge {
         } else {
             gauge.stakes.borrow_mut(sender).push_back(position_id);
         };
-        let position_liquidity = position.liquidity();
+
         let gauge_cap = gauge.gauge_cap.borrow();
         pool.update_fullsail_distribution_growth_global(gauge_cap, clock);
-        gauge.staked_positions.add(position_id, position);
         if (!gauge.rewards.contains(position_id)) {
             let new_reward_profile = RewardProfile {
                 growth_inside: pool.get_fullsail_distribution_growth_inside(lower_tick, upper_tick, 0),
@@ -502,15 +501,14 @@ module distribution::gauge {
             reward_profile.growth_inside = pool.get_fullsail_distribution_growth_inside(lower_tick, upper_tick, 0);
             reward_profile.last_update_time = clock.timestamp_ms() / 1000;
         };
-        pool.mark_position_staked(gauge.gauge_cap.borrow(), position_id);
         gauge.staked_position_infos.borrow_mut(position_id).received = true;
         pool.stake_in_fullsail_distribution(
             gauge_cap,
-            position_liquidity,
-            lower_tick,
-            upper_tick,
+            &position,
             clock
         );
+
+        gauge.staked_positions.add(position_id, position);
     }
 
     /// Calculates the rewards in RewardCoinType earned by all positions owned by an account.
@@ -1073,7 +1071,8 @@ module distribution::gauge {
                 gauge_cap,
                 gauge.reward_rate,
                 fullsail_distribution_reserves,
-                gauge.period_finish
+                gauge.period_finish,
+                clock
             );
         };
 
@@ -1177,7 +1176,8 @@ module distribution::gauge {
                 gauge.gauge_cap.borrow(),
                 gauge.reward_rate,
                 current_distribution_reserve + amount,
-                next_epoch_time
+                next_epoch_time,
+                clock
             );
         } else {
             // we are adding rewards in a preiod that already has some rewards.
@@ -1195,7 +1195,8 @@ module distribution::gauge {
                 gauge.gauge_cap.borrow(),
                 gauge.reward_rate,
                 current_distribution_reserve + amount + ((future_rewards / 1 << 64) as u64),
-                next_epoch_time
+                next_epoch_time,
+                clock
             );
         };
         // TODO: check why double reward notification in a single epoch is prohibited by this table::add
@@ -1573,18 +1574,11 @@ module distribution::gauge {
             gauge.staked_position_infos.add(position_id, position_stake_info);
         } else {
             let position = gauge.staked_positions.remove(position_id);
-            let position_liquidity = position.liquidity();
-            if (position_liquidity > 0) {
-                let (lower_tick, upper_tick) = position.tick_range();
-                pool.unstake_from_fullsail_distribution(
-                    gauge.gauge_cap.borrow(),
-                    position_liquidity,
-                    lower_tick,
-                    upper_tick,
-                    clock
-                );
-            };
-            pool.mark_position_unstaked(gauge.gauge_cap.borrow(), position_id);
+            pool.unstake_from_fullsail_distribution(
+                gauge.gauge_cap.borrow(),
+                &position,
+                clock
+            );
             gauge.unstakes(position_stake_info.from, position_id);
             transfer::public_transfer<clmm_pool::position::Position>(position, position_stake_info.from);
             let withdraw_position_event = EventWithdrawPosition {
@@ -1637,19 +1631,11 @@ module distribution::gauge {
         let position_stake_info = gauge.staked_position_infos.remove(position_id);
         assert!(position_stake_info.received, EWithdrawPositionNotReceivedPosition);
 
-        let position_liquidity = position.liquidity();
-        if (position_liquidity > 0) {
-            let (lower_tick, upper_tick) = position.tick_range();
-
-            pool.unstake_from_fullsail_distribution(
-                gauge.gauge_cap.borrow(),
-                position_liquidity,
-                lower_tick,
-                upper_tick,
-                clock
-            );
-        };
-        pool.mark_position_unstaked(gauge.gauge_cap.borrow(), position_id);
+        pool.unstake_from_fullsail_distribution(
+            gauge.gauge_cap.borrow(),
+            &position,
+            clock
+        );
         gauge.unstakes(position_stake_info.from, position_id);
 
         position

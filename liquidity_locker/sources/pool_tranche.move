@@ -44,6 +44,7 @@ module liquidity_locker::pool_tranche {
     const EInvalidAddLiquidity: u64 = 923487825237423743;
     const ETotalIncomeAlreadyExists: u64 = 932078340620346346;
     const ERewardAlreadyClaimed: u64 = 930267340729430623;
+    const ETokenNotWhitelisted: u64 = 932069230794534963;
 
     // `VERSION` of the package.
     const VERSION: u64 = 1;
@@ -63,10 +64,14 @@ module liquidity_locker::pool_tranche {
     /// # Fields
     /// * `id` - Unique identifier for the manager
     /// * `pool_tranches` - Table mapping pool IDs to their tranche vectors
+    /// * `whitelisted_tokens` - Vector of whitelisted token types that are allowed to be used as rewards in the tranches
+    /// * `ignore_whitelist` - Flag indicating if the whitelist should be ignored
     public struct PoolTrancheManager has store, key {
         id: UID,
         version: u64,
-        pool_tranches: sui::table::Table<ID, vector<PoolTranche>>
+        pool_tranches: sui::table::Table<ID, vector<PoolTranche>>,
+        whitelisted_tokens: sui::vec_set::VecSet<TypeName>,
+        ignore_whitelist: bool
     }
 
     /// Represents a tranche within a pool that defines profitability multipliers for positions.
@@ -107,6 +112,30 @@ module liquidity_locker::pool_tranche {
     /// * `tranche_manager_id` - Unique identifier of the created tranche manager
     public struct InitTrancheManagerEvent has copy, drop {
         tranche_manager_id: ID,
+    }
+
+    /// Event emitted when the ignore_whitelist flag is set.
+    /// 
+    /// # Fields
+    /// * `ignore_whitelist` - Boolean value indicating if the whitelist should be ignored
+    public struct SetIgnoreWhitelistEvent has copy, drop {
+        ignore_whitelist: bool,
+    }
+
+    /// Event emitted when a token type is added to the whitelist.
+
+    /// # Fields
+    /// * `token_type` - The token type that was added to the whitelist
+    public struct AddTokenTypeToWhitelistEvent has copy, drop {
+        token_type: TypeName,
+    }
+
+    /// Event emitted when a token type is removed from the whitelist.
+    /// 
+    /// # Fields
+    /// * `token_type` - The token type that was removed from the whitelist
+    public struct RemoveTokenTypeFromWhitelistEvent has copy, drop {
+        token_type: TypeName,
     }
 
     /// Event emitted when a new pool tranche is created.
@@ -190,6 +219,8 @@ module liquidity_locker::pool_tranche {
             id: sui::object::new(ctx),
             version: VERSION,
             pool_tranches: sui::table::new(ctx),
+            whitelisted_tokens: sui::vec_set::empty<TypeName>(),
+            ignore_whitelist: false
         };
 
         let admin_cap = AdminCap { id: sui::object::new(ctx) };
@@ -200,6 +231,101 @@ module liquidity_locker::pool_tranche {
         
         let event = InitTrancheManagerEvent { tranche_manager_id };
         sui::event::emit<InitTrancheManagerEvent>(event);
+    }
+
+    /// Sets the ignore_whitelist flag in the pool tranche manager.
+    /// This function allows administrators to control whether token whitelist checks should be ignored.
+    /// 
+    /// # Arguments
+    /// * `_admin_cap` - Administrative capability required for modifying manager settings
+    /// * `manager` - The pool tranche manager instance to modify
+    /// * `ignore` - Boolean value to set for the ignore_whitelist flag
+    public fun set_ignore_whitelist(
+        _admin_cap: &AdminCap,
+        manager: &mut PoolTrancheManager,
+        ignore: bool
+    ) {
+        manager.ignore_whitelist = ignore;
+
+        let event = SetIgnoreWhitelistEvent {
+            ignore_whitelist: ignore,
+        };
+        sui::event::emit<SetIgnoreWhitelistEvent>(event);
+    }
+
+    /// Returns the ignore_whitelist flag.
+    /// 
+    /// # Arguments
+    /// * `manager` - The pool tranche manager instance
+    /// 
+    /// # Returns
+    public fun get_ignore_whitelist_flag(manager: &PoolTrancheManager): bool {
+        manager.ignore_whitelist
+    }
+
+    /// Adds a token types to the whitelist of allowed reward tokens.
+    /// 
+    /// # Arguments
+    /// * `_admin_cap` - Administrative capability required for modifying manager settings
+    /// * `manager` - The pool tranche manager instance
+    /// * `token_types` - Vector of token types to add to the whitelist
+    public fun add_token_types_to_whitelist(
+        _admin_cap: &AdminCap,
+        manager: &mut PoolTrancheManager,
+        token_types: vector<TypeName>
+    ) {
+        let mut i = 0;
+        while (i < token_types.length()) {
+            let token_type = *token_types.borrow(i);
+            if (!manager.whitelisted_tokens.contains(&token_type)) {
+                manager.whitelisted_tokens.insert(token_type);
+
+                let event = AddTokenTypeToWhitelistEvent {
+                    token_type,
+                };
+                sui::event::emit<AddTokenTypeToWhitelistEvent>(event);
+            };
+
+            i = i + 1;
+        }
+    }
+
+    /// Removes a token types from the whitelist of allowed reward tokens.
+    /// 
+    /// # Arguments
+    /// * `_admin_cap` - Administrative capability required for modifying manager settings
+    /// * `manager` - The pool tranche manager instance
+    /// * `token_types` - Vector of token types to remove from the whitelist
+    public fun remove_token_types_from_whitelist(
+        _admin_cap: &AdminCap,
+        manager: &mut PoolTrancheManager,
+        token_types: vector<TypeName>
+    ) {
+        let mut i = 0;
+        while (i < token_types.length()) {
+            let token_type = *token_types.borrow(i);
+            if (manager.whitelisted_tokens.contains(&token_type)) {
+                manager.whitelisted_tokens.remove(&token_type);
+
+                let event = RemoveTokenTypeFromWhitelistEvent {
+                    token_type,
+                };
+                sui::event::emit<RemoveTokenTypeFromWhitelistEvent>(event);
+            };
+
+            i = i + 1;
+        }
+    }
+
+    /// Returns the vector of whitelisted token types.
+    /// 
+    /// # Arguments
+    /// * `manager` - The pool tranche manager instance
+    /// 
+    /// # Returns
+    /// Vector of whitelisted token types
+    public fun get_whitelisted_tokens(manager: &PoolTrancheManager): vector<TypeName> {
+        manager.whitelisted_tokens.into_keys()
     }
 
     /// Creates a new pool tranche.
@@ -279,6 +405,7 @@ module liquidity_locker::pool_tranche {
     /// The total balance after adding the reward
     /// 
     /// # Aborts
+    /// * If the reward token is not whitelisted and the ignore_whitelist flag is not set
     /// * If income for this epoch already exists
     /// * If tranche is not found
     public fun set_total_incomed_and_add_reward<RewardCoinType>(
@@ -291,6 +418,8 @@ module liquidity_locker::pool_tranche {
         total_income: u64,
         ctx: &mut sui::tx_context::TxContext
     ): u64 {
+        let reward_type = type_name::get<RewardCoinType>();
+        assert!(manager.ignore_whitelist || manager.whitelisted_tokens.contains(&reward_type), ETokenNotWhitelisted);
 
         let tranche = get_tranche_by_id(manager, pool_id, tranche_id);
 
@@ -324,6 +453,7 @@ module liquidity_locker::pool_tranche {
     /// The total balance after adding the reward
     ///
     /// # Aborts
+    /// * If the reward token is not whitelisted and the ignore_whitelist flag is not set
     /// * If tranche is not found
     public fun add_reward<RewardCoinType>(
         _admin_cap: &AdminCap,
@@ -334,6 +464,8 @@ module liquidity_locker::pool_tranche {
         balance: sui::balance::Balance<RewardCoinType>,
         ctx: &mut sui::tx_context::TxContext
     ): u64 {
+        let reward_type = type_name::get<RewardCoinType>();
+        assert!(manager.ignore_whitelist || manager.whitelisted_tokens.contains(&reward_type), ETokenNotWhitelisted);
 
         let tranche = get_tranche_by_id(manager, pool_id, tranche_id);
 
@@ -620,6 +752,8 @@ module liquidity_locker::pool_tranche {
             id: sui::object::new(ctx),
             version: VERSION,
             pool_tranches: sui::table::new(ctx),
+            whitelisted_tokens: sui::vec_set::empty<TypeName>(),
+            ignore_whitelist: false
         };
         let admin_cap = AdminCap { id: sui::object::new(ctx) };
         sui::transfer::transfer<AdminCap>(admin_cap, sui::tx_context::sender(ctx));

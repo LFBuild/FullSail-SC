@@ -2090,17 +2090,7 @@ module liquidity_locker::liquidity_lock_v2 {
             ctx
         );
 
-        let start_earn_time = if (lock_position_v2.start_lock_time <= start_epoch) {
-            if (start_epoch <= pool.get_fullsail_distribution_last_updated()) {
-                pool.get_fullsail_distribution_last_updated()
-            } else {
-                start_epoch
-            }
-        } else {
-            lock_position_v2.start_lock_time
-        };
-
-        lock_position_v2.last_growth_inside = gauge.get_current_growth_inside(pool, position_id, start_earn_time);
+        lock_position_v2.last_growth_inside = gauge.get_current_growth_inside(pool, position_id, current_time);
 
         locker_v2.positions.add(position_id, true);
         gauge.lock_position(locker_v2.locker_cap.borrow(), position_id);
