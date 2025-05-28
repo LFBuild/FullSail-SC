@@ -51,8 +51,8 @@ Use `sui client publish` command.
 
 ### Mainnet
 
-- [integrate](https://suivision.xyz/txblock/F44J3x1ARLaPmeN1NabxrzMb3NGCBs2Jy3tmGp2AXLmi)
-    - package: `0x04813578acf0385ebed1851f27e1afb413d41761b208de518a0be1a58d545438`
+- [integrate](https://suivision.xyz/txblock/6u5McVLD4EjrUMWPEm86PhSTDPS5CjeqbX9xe9YE1V9n)
+    - package: `0xe1b7d5fd116fea5a8f8e85c13754248d56626a8d0a614b7d916c2348d8323149`
 
 ### Testnet
 
