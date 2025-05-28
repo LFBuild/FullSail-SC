@@ -2,12 +2,11 @@
 
 [move]
 version = 3
-manifest_digest = "0E3A93DA54AE1E8A0078D7B25F4B1C8CD350BAD528802F39C029C74AE7B806FB"
-deps_digest = "CAFAD8A7CF51067FB4358215BECB86BD100DD64E57C2AC8A7AE7D74B688F5965"
+manifest_digest = "1F2A6235A9E2FC133212F2A497277A369794536E34AD1CDC71162ACA4FE8ECC2"
+deps_digest = "52B406A7A21811BEF51751CF88DA0E76DAEFFEAC888D4F4060B1A72BBE7D8D35"
 dependencies = [
   { id = "Sui", name = "Sui" },
   { id = "clmm_pool", name = "clmm_pool" },
-  { id = "distribution", name = "distribution" },
   { id = "gauge_cap", name = "gauge_cap" },
   { id = "integer_mate", name = "integer_mate" },
   { id = "locker_cap", name = "locker_cap" },
@@ -35,19 +34,6 @@ dependencies = [
   { id = "gauge_cap", name = "gauge_cap" },
   { id = "integer_mate", name = "integer_mate" },
   { id = "move_stl", name = "move_stl" },
-  { id = "price_provider", name = "price_provider" },
-]
-
-[[move.package]]
-id = "distribution"
-source = { local = "../distribution" }
-
-dependencies = [
-  { id = "Sui", name = "Sui" },
-  { id = "clmm_pool", name = "clmm_pool" },
-  { id = "gauge_cap", name = "gauge_cap" },
-  { id = "integer_mate", name = "integer_mate" },
-  { id = "locker_cap", name = "locker_cap" },
   { id = "price_provider", name = "price_provider" },
 ]
 

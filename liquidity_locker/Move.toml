@@ -64,8 +64,5 @@ subdir = "price_provider"
 rev = "main"
 override = true
 
-[dependencies.distribution]
-local = "../distribution"
-
 [dependencies.locker_cap]
 local = "../locker_cap"

@@ -2,12 +2,11 @@
 
 [move]
 version = 3
-manifest_digest = "32ABC2ADEF96B527677F21B53B54D9ED412D4CD205E3D72319C5655A39497822"
-deps_digest = "CAFAD8A7CF51067FB4358215BECB86BD100DD64E57C2AC8A7AE7D74B688F5965"
+manifest_digest = "BE60433912E9F0B4CB6900EE7C05545D3A1C59F2DDD25FD8D47023B802FF1C27"
+deps_digest = "52B406A7A21811BEF51751CF88DA0E76DAEFFEAC888D4F4060B1A72BBE7D8D35"
 dependencies = [
   { id = "Sui", name = "Sui" },
   { id = "clmm_pool", name = "clmm_pool" },
-  { id = "distribution", name = "distribution" },
   { id = "gauge_cap", name = "gauge_cap" },
   { id = "integer_mate", name = "integer_mate" },
   { id = "move_stl", name = "move_stl" },
@@ -35,18 +34,6 @@ dependencies = [
   { id = "gauge_cap", name = "gauge_cap" },
   { id = "integer_mate", name = "integer_mate" },
   { id = "move_stl", name = "move_stl" },
-  { id = "price_provider", name = "price_provider" },
-]
-
-[[move.package]]
-id = "distribution"
-source = { local = "../distribution" }
-
-dependencies = [
-  { id = "Sui", name = "Sui" },
-  { id = "clmm_pool", name = "clmm_pool" },
-  { id = "gauge_cap", name = "gauge_cap" },
-  { id = "integer_mate", name = "integer_mate" },
   { id = "price_provider", name = "price_provider" },
 ]
 
@@ -83,20 +70,6 @@ dependencies = [
 ]
 
 [move.toolchain-version]
-compiler-version = "1.46.2"
+compiler-version = "1.49.1"
 edition = "2024"
 flavor = "sui"
-
-[env]
-
-[env.mainnet]
-chain-id = "35834a8a"
-original-published-id = "0x1fa75c73c1083ff7a1761ca232fee792d0598552eee1a8f9dcb75690ca89eace"
-latest-published-id = "0x59634fbdc9eb9a972ec97e736a6bfb3aba99d68378de92802bc76c3bd68b1c01"
-published-version = "2"
-
-[env.testnet]
-chain-id = "4c78adac"
-original-published-id = "0xf0acfa4eb6717877f6882d32489049bf6f1c7050fd0977e318af390a34bd33ac"
-latest-published-id = "0xf0acfa4eb6717877f6882d32489049bf6f1c7050fd0977e318af390a34bd33ac"
-published-version = "1"

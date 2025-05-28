@@ -36,7 +36,7 @@ module integrate::fetcher_script {
         distribution: u64,
     }
 
-    public entry fun fetch_pools(pools: &clmm_pool::factory::Pools, pool_ids: vector<ID>, limit: u64) {
+    public entry fun fetch_pools(pools: &clmm_pool::factory::Pools, pool_ids: std::option::Option<ID>, limit: u64) {
         let fetched_pools = clmm_pool::factory::fetch_pools(pools, pool_ids, limit);
         let fetch_pools_event = FetchPoolsEvent { pools: fetched_pools, };
         sui::event::emit<FetchPoolsEvent>(fetch_pools_event);
@@ -62,7 +62,7 @@ module integrate::fetcher_script {
 
     public entry fun fetch_positions<CoinTypeA, CoinTypeB>(
         pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        position_ids: vector<ID>,
+        position_ids: std::option::Option<ID>,
         limit: u64
     ) {
         let positions = clmm_pool::pool::fetch_positions<CoinTypeA, CoinTypeB>(pool, position_ids, limit);
@@ -72,7 +72,7 @@ module integrate::fetcher_script {
 
     public entry fun fetch_ticks<CoinTypeA, CoinTypeB>(
         pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        tick_indices: vector<u32>,
+        tick_indices: std::option::Option<u32>,
         limit: u64
     ) {
         let ticks = clmm_pool::pool::fetch_ticks<CoinTypeA, CoinTypeB>(pool, tick_indices, limit);

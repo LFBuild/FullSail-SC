@@ -27,9 +27,6 @@ subdir = "clmm_pool"
 rev = "main"
 override = true
 
-[dependencies.distribution]
-local = "../distribution"
-
 [dependencies.integer_mate]
 git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
 subdir = "integer_mate"
