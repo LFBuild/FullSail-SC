@@ -48,6 +48,7 @@ module liquidity_locker::liquidity_lock_v1 {
     const EIncorrectSwapResultA: u64 = 9259346230481212;
     const EIncorrectSwapResultB: u64 = 9387240376820348;
     const EPackageVersionMismatch: u64 = 9346920730473042;
+    const EProviderNotWhitelisted: u64 = 9349734723203073;
     
     /// Capability for administrative functions in the protocol.
     /// This capability is required for managing global settings and protocol parameters.
@@ -94,6 +95,8 @@ module liquidity_locker::liquidity_lock_v1 {
     /// * `periods_blocking` - Vector of lock periods measured in epochs
     /// * `periods_post_lockdown` - Vector of post-lock periods in epochs (must match length of periods_blocking)
     /// * `pause` - Flag indicating if the locker is paused
+    /// * `whitelisted_providers` - Vector of provider addresses that are allowed to lock liquidity
+    /// * `ignore_whitelist_providers` - Flag indicating if the whitelist should be ignored for providers
     public struct Locker has store, key {
         id: sui::object::UID,
         locker_cap: Option<locker_cap::locker_cap::LockerCap>,
@@ -102,6 +105,8 @@ module liquidity_locker::liquidity_lock_v1 {
         periods_blocking: vector<u64>,
         periods_post_lockdown: vector<u64>,
         pause: bool,
+        whitelisted_providers: sui::vec_set::VecSet<address>,
+        ignore_whitelist_providers: bool
     }
 
     /// Structure representing a locked liquidity position that is returned to the user as proof of ownership.
@@ -198,6 +203,30 @@ module liquidity_locker::liquidity_lock_v1 {
         pause: bool,
     }
 
+    /// Event emitted when the ignore_whitelist_providers flag is set.
+    /// 
+    /// # Fields
+    /// * `ignore_whitelist_providers` - New ignore_whitelist_providers flag
+    public struct SetIgnoreWhitelistProvidersEvent has copy, drop {
+        ignore_whitelist_providers: bool,
+    }
+
+    /// Event emitted when a new address is added to the whitelist of allowed providers.
+    /// 
+    /// # Fields
+    /// * `address` - Address of the provider that was added to the whitelist
+    public struct AddAddressToWhitelistProvidersEvent has copy, drop {
+        address: address,
+    }
+
+    /// Event emitted when an address is removed from the whitelist of allowed providers.
+    /// 
+    /// # Fields
+    /// * `address` - Address of the provider that was removed from the whitelist
+    public struct RemoveAddressFromWhitelistProvidersEvent has copy, drop {
+        address: address,
+    }
+
     /// Event emitted when a new locked position is created.
     /// 
     /// # Fields
@@ -273,6 +302,8 @@ module liquidity_locker::liquidity_lock_v1 {
             periods_blocking: std::vector::empty<u64>(),
             periods_post_lockdown: std::vector::empty<u64>(),
             pause: false,
+            whitelisted_providers: sui::vec_set::empty<address>(),
+            ignore_whitelist_providers: false,
         };
         let locker_id = sui::object::id<Locker>(&locker);
         sui::transfer::share_object<Locker>(locker);
@@ -435,6 +466,103 @@ module liquidity_locker::liquidity_lock_v1 {
     public fun get_locker_version(locker: &Locker): u64 {
         locker.version
     }
+
+    /// Sets the ignore_whitelist_providers flag in the locker.
+    /// This function allows administrators to control whether provider whitelist checks should be ignored.
+    /// 
+    /// # Arguments
+    /// * `_admin_cap` - Administrative capability required for modifying locker settings
+    /// * `locker` - The locker object to modify
+    /// * `ignore` - Boolean value to set for the ignore_whitelist_providers flag
+    public fun set_ignore_whitelist(
+        _admin_cap: &AdminCap,
+        locker: &mut Locker,
+        ignore: bool
+    ) {
+        locker.ignore_whitelist_providers = ignore;
+
+        let event = SetIgnoreWhitelistProvidersEvent {
+            ignore_whitelist_providers: ignore,
+        };
+        sui::event::emit<SetIgnoreWhitelistProvidersEvent>(event);
+    }
+
+    /// Returns the ignore_whitelist_providers flag.
+    /// 
+    /// # Arguments
+    /// * `locker` - The locker object to query
+    /// 
+    /// # Returns
+    /// Boolean indicating if the whitelist should be ignored for providers (true) or not (false)
+    public fun get_ignore_whitelist_flag(locker: &Locker): bool {
+        locker.ignore_whitelist_providers
+    }
+
+
+    /// Adds a addresses to the whitelist of allowed providers.
+    /// 
+    /// # Arguments
+    /// * `_admin_cap` - Administrative capability required for modifying locker settings
+    /// * `locker` - The locker object to modify
+    /// * `addresses` - Vector of addresses to add to the whitelist
+    public fun add_addresses_to_whitelist(
+        _admin_cap: &AdminCap,
+        locker: &mut Locker,
+        addresses: vector<address>
+    ) {
+        let mut i = 0;
+        while (i < addresses.length()) {
+            let address = *addresses.borrow(i);
+            if (!locker.whitelisted_providers.contains(&address)) {
+                locker.whitelisted_providers.insert(address);
+
+                let event = AddAddressToWhitelistProvidersEvent {
+                    address,
+                };
+                sui::event::emit<AddAddressToWhitelistProvidersEvent>(event);
+            };
+
+            i = i + 1;
+        }
+    }
+
+    /// Removes a addresses from the whitelist of allowed providers.
+    /// 
+    /// # Arguments
+    /// * `_admin_cap` - Administrative capability required for modifying locker settings
+    /// * `locker` - The locker object to modify
+    /// * `addresses` - Vector of addresses to remove from the whitelist
+    public fun remove_addresses_from_whitelist(
+        _admin_cap: &AdminCap,
+        locker: &mut Locker,
+        addresses: vector<address>
+    ) {
+        let mut i = 0;
+        while (i < addresses.length()) {
+            let address = *addresses.borrow(i);
+            if (locker.whitelisted_providers.contains(&address)) {
+                locker.whitelisted_providers.remove(&address);
+
+                let event = RemoveAddressFromWhitelistProvidersEvent {
+                    address,
+                };
+                sui::event::emit<RemoveAddressFromWhitelistProvidersEvent>(event);
+            };
+
+            i = i + 1;
+        }
+    }
+
+    /// Returns the vector of whitelisted providers.
+    /// 
+    /// # Arguments
+    /// * `locker` - The locker object to query
+    /// 
+    /// # Returns
+    /// Vector of whitelisted providers
+    public fun get_whitelisted_providers(locker: &Locker): vector<address> {
+        locker.whitelisted_providers.into_keys()
+    }
     
     /// Locks a position in the locker by distributing it across available tranches.
     /// The position may be split if it doesn't fit entirely in a single tranche.
@@ -469,9 +597,10 @@ module liquidity_locker::liquidity_lock_v1 {
         mut position: clmm_pool::position::Position,
         block_period_index: u64,
         clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext,
+        ctx: &mut sui::tx_context::TxContext
     ): vector<LockedPosition<CoinTypeA, CoinTypeB>> {
         assert!(!locker.pause, ELockManagerPaused);
+        assert!(locker.ignore_whitelist_providers || locker.whitelisted_providers.contains(&sui::tx_context::sender(ctx)), EProviderNotWhitelisted);
         let position_id = sui::object::id<clmm_pool::position::Position>(&position);
         assert!(!locker.positions.contains(position_id), EPositionAlreadyLocked);
         assert!(block_period_index < locker.periods_blocking.length(), EInvalidBlockPeriodIndex);
@@ -1708,6 +1837,8 @@ module liquidity_locker::liquidity_lock_v1 {
             periods_blocking: std::vector::empty<u64>(),
             periods_post_lockdown: std::vector::empty<u64>(),
             pause: false,
+            whitelisted_providers: sui::vec_set::empty<address>(),
+            ignore_whitelist_providers: false,
         };
         sui::transfer::share_object<Locker>(locker);
     
