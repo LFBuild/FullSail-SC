@@ -49,6 +49,11 @@ Use `sui client publish` command.
 
 ## Latest publication artifacts
 
+### Mainnet
+
+- [integrate](https://suivision.xyz/txblock/F44J3x1ARLaPmeN1NabxrzMb3NGCBs2Jy3tmGp2AXLmi)
+    - package: `0x04813578acf0385ebed1851f27e1afb413d41761b208de518a0be1a58d545438`
+
 ### Testnet
 
 #### Publication transactions:
