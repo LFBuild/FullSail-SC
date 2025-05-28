@@ -1958,6 +1958,30 @@ module distribution::voter {
         sui::event::emit<EventWhitelistToken>(whitelist_token_event);
     }
 
+    public fun update_voted_weights(
+        voter: &mut Voter,
+        distribute_cap: &distribution::distribute_cap::DistributeCap,
+        gauge_id: ID,
+        weights: vector<u64>,
+        lock_ids: vector<ID>,
+        for_epoch_start: u64,
+        ctx: &mut TxContext
+    ) {
+        distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
+        let gauge_id_obj = into_gauge_id(gauge_id);
+
+        let fee_voting_reward = voter.gauge_to_fee.borrow_mut(gauge_id_obj);
+        fee_voting_reward.update_balances(
+            &voter.gauge_to_fee_authorized_cap,
+            weights,
+            lock_ids,
+            for_epoch_start,
+            ctx
+        );
+
+        let bribe_voting_reward = voter.gauge_to_bribe.borrow_mut(gauge_id_obj);
+    }
+
     #[test_only]
     public fun test_init(ctx: &mut sui::tx_context::TxContext): sui::package::Publisher {
         sui::package::claim<VOTER>(VOTER {}, ctx)

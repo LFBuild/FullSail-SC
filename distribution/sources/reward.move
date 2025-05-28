@@ -39,8 +39,6 @@ module distribution::reward {
         voter: ID,
         ve: Option<ID>,
         authorized: ID,
-        total_supply: u64,
-        balance_of: sui::table::Table<ID, u64>,
         token_rewards_per_epoch: sui::table::Table<std::type_name::TypeName, sui::table::Table<u64, u64>>,
         last_earn: sui::table::Table<std::type_name::TypeName, sui::table::Table<ID, u64>>,
         rewards: sui::vec_set::VecSet<std::type_name::TypeName>,
@@ -89,15 +87,33 @@ module distribution::reward {
     /// # Arguments
     /// * `reward` - The reward object
     /// * `lock_id` - The ID of the lock to check
-    /// 
+    /// * `clock` - Clock object for timestamp to get the current balance
+    ///
     /// # Returns
-    /// The amount of tokens locked for the specified lock_id
-    public fun balance_of(reward: &Reward, lock_id: ID): u64 {
-        if (!reward.balance_of.contains(lock_id)) {
-            0
+    /// The amount of tokens locked for the specified lock_id at the current time.
+    public fun balance_of(reward: &Reward, lock_id: ID, clock: &sui::clock::Clock): u64 {
+        let num_checkpoints = if (reward.num_checkpoints.contains(lock_id)) {
+            *reward.num_checkpoints.borrow(lock_id)
         } else {
-            *reward.balance_of.borrow(lock_id)
-        }
+            0
+        };
+        if (num_checkpoints == 0) {
+            return 0
+        };
+
+        let current_time = distribution::common::current_timestamp(clock);
+        let prior_idx = reward.get_prior_balance_index(lock_id, current_time);
+        let lock_checkpoints = reward.checkpoints.borrow(lock_id);
+
+        // If prior_idx is 0 and the checkpoint at 0 is for a time after current_time,
+        // it means there are no checkpoints at or before current_time, so balance is 0.
+        let first_checkpoint = lock_checkpoints.borrow(0);
+        if (prior_idx == 0 && first_checkpoint.timestamp > current_time) {
+            return 0
+        };
+
+        // Otherwise, the checkpoint at prior_idx is the relevant one.
+        lock_checkpoints.borrow(prior_idx).balance_of
     }
 
     /// Creates a new Reward object.
@@ -123,8 +139,6 @@ module distribution::reward {
             voter,
             ve,
             authorized,
-            total_supply: 0,
-            balance_of: sui::table::new<ID, u64>(ctx),
             token_rewards_per_epoch: sui::table::new<std::type_name::TypeName, sui::table::Table<u64, u64>>(ctx),
             last_earn: sui::table::new<std::type_name::TypeName, sui::table::Table<ID, u64>>(ctx),
             rewards: sui::vec_set::empty<std::type_name::TypeName>(),
@@ -166,23 +180,56 @@ module distribution::reward {
         ctx: &mut TxContext
     ) {
         reward_authorized_cap.validate(reward.authorized);
-        reward.total_supply = reward.total_supply + amount;
-        let lock_balance = if (reward.balance_of.contains(lock_id)) {
-            reward.balance_of.remove(lock_id)
-        } else {
-            0
-        };
-        let updated_lock_votes_balance = lock_balance + amount;
-        reward.balance_of.add(lock_id, updated_lock_votes_balance);
         let current_time = distribution::common::current_timestamp(clock);
-        reward.write_checkpoint_internal(lock_id, updated_lock_votes_balance, current_time, ctx);
-        reward.write_supply_checkpoint_internal(current_time);
+
+        // Update total supply
+        let current_total_supply = reward.supply_at_timestamp(current_time);
+        let new_total_supply = current_total_supply + amount;
+        // reward.write_supply_checkpoint_internal will update reward.supply_num_checkpoints if needed
+
+        // Update lock balance
+        let lock_balance = reward.balance_of(lock_id, clock); // Use the updated balance_of
+        let updated_lock_balance = lock_balance + amount;
+
+        reward.write_checkpoint_internal(lock_id, updated_lock_balance, current_time, ctx);
+
+        reward.write_supply_checkpoint_internal(current_time, new_total_supply);
+
         let deposit_event = EventDeposit {
             sender: tx_context::sender(ctx),
             lock_id,
             amount,
         };
         sui::event::emit<EventDeposit>(deposit_event);
+    }
+
+    public(package) fun update_balances(
+        reward: &mut Reward,
+        reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
+        balances: vector<u64>,
+        lock_ids: vector<ID>,
+        for_epoch_start: u64,
+        ctx: &mut TxContext
+    ) {
+        reward_authorized_cap.validate(reward.authorized);
+        let mut i = 0;
+        while (i < balances.length()) {
+            let lock_id = lock_ids[i];
+            let balance = balances[i];
+
+            reward.write_checkpoint_internal(lock_id, balance, for_epoch_start, ctx);
+            i = i + 1;
+        }
+    }
+
+    public(package) fun update_supply(
+        reward: &mut Reward,
+        reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
+        total_supply: u64,
+        for_epoch_start: u64,
+    ) {
+        reward_authorized_cap.validate(reward.authorized);
+        reward.write_supply_checkpoint_internal(for_epoch_start, total_supply);
     }
 
     /// Calculates how much reward a lock has earned for a specific coin type.
@@ -510,15 +557,46 @@ module distribution::reward {
         *rewards_per_epoch.borrow(epoch_start_time)
     }
 
-    /// Returns the total supply of tokens in the reward system.
-    /// 
+    /// Returns the total supply of tokens in the reward system based on the latest checkpoint relative to the clock.
+    ///
     /// # Arguments
     /// * `reward` - The reward object
-    /// 
+    /// * `clock` - Clock object for timestamp
+    ///
     /// # Returns
-    /// The total supply value
-    public fun total_supply(reward: &Reward): u64 {
-        reward.total_supply
+    /// The total supply value from the relevant checkpoint, or 0 if no history.
+    public fun total_supply(reward: &Reward, clock: &sui::clock::Clock): u64 {
+        let current_time = distribution::common::current_timestamp(clock);
+        reward.total_supply_at(current_time)
+    }
+
+    /// Returns the total supply recorded at or before a specific timestamp.
+    /// It refers to the supply checkpoints to find the appropriate historical value.
+    ///
+    /// # Arguments
+    /// * `reward` - The reward object.
+    /// * `time` - The timestamp for which to find the supply.
+    ///
+    /// # Returns
+    /// The supply value from the relevant checkpoint, or 0 if no applicable history.
+    public fun total_supply_at(reward: &Reward, time: u64): u64 {
+        let num_checkpoints = reward.supply_num_checkpoints;
+        if (num_checkpoints == 0) {
+            return 0
+        };
+        let supply_idx = reward.get_prior_supply_index(time);
+        // It's assumed get_prior_supply_index returns a valid index if num_checkpoints > 0.
+        // The checkpoint at supply_idx is the one whose timestamp is <= time,
+        // or it's index 0 if time is before the first checkpoint.
+        let checkpoint = reward.supply_checkpoints.borrow(supply_idx);
+
+        // If get_prior_supply_index returned 0 because time is before the very first checkpoint's timestamp,
+        // the effective supply before that first recorded history point is 0.
+        if (supply_idx == 0 && checkpoint.timestamp > time) {
+            return 0
+        };
+        // Otherwise, the checkpoint at supply_idx is the correct one to use.
+        checkpoint.supply
     }
 
     /// Returns the ID of the voting escrow module for this reward.
@@ -565,18 +643,26 @@ module distribution::reward {
         ctx: &mut TxContext
     ) {
         reward_authorized_cap.validate(reward.authorized);
-        reward.total_supply = reward.total_supply - amount;
-        let lock_balance = reward.balance_of.remove(lock_id);
-        reward.balance_of.add(lock_id, lock_balance - amount);
         let current_time = distribution::common::current_timestamp(clock);
-        reward.write_checkpoint_internal(lock_id, lock_balance - amount, current_time, ctx);
-        reward.write_supply_checkpoint_internal(current_time);
-        let v2 = EventWithdraw {
+
+        // Update total supply
+        let current_total_supply = reward.total_supply_at(current_time);
+        
+        let new_total_supply = current_total_supply - amount;
+
+        // Update lock balance
+        let lock_balance = reward.balance_of(lock_id, clock);
+        let updated_lock_balance = lock_balance - amount;
+
+        reward.write_checkpoint_internal(lock_id, updated_lock_balance, current_time, ctx);
+        reward.write_supply_checkpoint_internal(current_time, new_total_supply);
+
+        let withdraw_event = EventWithdraw {
             sender: tx_context::sender(ctx),
             lock_id,
             amount,
         };
-        sui::event::emit<EventWithdraw>(v2);
+        sui::event::emit<EventWithdraw>(withdraw_event);
     }
 
     /// Updates or creates a checkpoint for a lock's balance.
@@ -639,7 +725,7 @@ module distribution::reward {
     /// # Arguments
     /// * `reward` - The reward object
     /// * `current_time` - The timestamp for the checkpoint
-    fun write_supply_checkpoint_internal(reward: &mut Reward, current_time: u64) {
+    fun write_supply_checkpoint_internal(reward: &mut Reward, current_time: u64, total_supply: u64) {
         let num_of_checkpoints = reward.supply_num_checkpoints;
         // latest checkpoint timestam is equal to current epoch start
         if (num_of_checkpoints > 0 && distribution::common::epoch_start(
@@ -650,7 +736,7 @@ module distribution::reward {
             };
             let updated_checkpoint = SupplyCheckpoint {
                 timestamp: current_time,
-                supply: reward.total_supply,
+                supply: total_supply,
             };
             reward.supply_checkpoints.add(num_of_checkpoints - 1, updated_checkpoint);
         } else {
@@ -659,7 +745,7 @@ module distribution::reward {
             };
             let updated_checkpoint = SupplyCheckpoint {
                 timestamp: current_time,
-                supply: reward.total_supply,
+                supply: total_supply,
             };
             reward.supply_checkpoints.add(num_of_checkpoints, updated_checkpoint);
             reward.supply_num_checkpoints = num_of_checkpoints + 1;
@@ -668,14 +754,13 @@ module distribution::reward {
 
     #[test_only]
     public fun total_length(reward: &Reward): u64 {
-        reward.balance_of.length() +
-        reward.token_rewards_per_epoch.length() + 
+        reward.token_rewards_per_epoch.length() +
         reward.rewards.size() +
         reward.last_earn.length() +
         reward.checkpoints.length() +
         reward.num_checkpoints.length() +
         reward.supply_checkpoints.length() +
-        reward.supply_num_checkpoints + 
+        reward.supply_num_checkpoints +
         reward.balances.length()
     }
 }
