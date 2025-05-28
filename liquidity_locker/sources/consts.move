@@ -30,9 +30,9 @@ module liquidity_locker::consts {
         10000
     }
 
-    /// Returns the denominator used for calculating minimum remaining volume
+    /// Returns the denominator used for calculating minimum remaining volume percentage
     /// 10000 represents 100% or 1.0
-    public fun minimum_remaining_volume_denom(): u64 {
+    public fun minimum_remaining_volume_percentage_denom(): u64 {
         10000
     }
 }

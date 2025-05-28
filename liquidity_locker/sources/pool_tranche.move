@@ -89,7 +89,7 @@ module liquidity_locker::pool_tranche {
     /// * `total_volume` - Maximum volume capacity of the tranche
     /// * `current_volume` - Current volume in the tranche
     /// * `filled` - Flag indicating if tranche has reached capacity
-    /// * `minimum_remaining_volume` - Minimum volume threshold for tranche closure (in shares with minimum_remaining_volume_denom)
+    /// * `minimum_remaining_volume_percentage` - Minimum volume percentage threshold for tranche closure (in shares with minimum_remaining_volume_denom)
     /// * `duration_profitabilities` - Vector of profitability rates for different lock durations
     public struct PoolTranche has store, key {
         id: UID,
@@ -102,7 +102,7 @@ module liquidity_locker::pool_tranche {
         total_volume: u128,
         current_volume: u128,
         filled: bool,
-        minimum_remaining_volume: u64,
+        minimum_remaining_volume_percentage: u64,
         duration_profitabilities: vector<u64>,
     }
 
@@ -146,12 +146,15 @@ module liquidity_locker::pool_tranche {
     /// * `volume_in_coin_a` - Flag indicating if volume is measured in coin A (true) or coin B (false)
     /// * `total_volume` - Maximum volume capacity of the tranche (Q64.64 format)
     /// * `duration_profitabilities` - Vector of profitability rates for different lock durations
+    /// * `index` - Index of the tranche in the pool
     public struct CreatePoolTrancheEvent has copy, drop {
         tranche_id: ID,
         pool_id: ID,
         volume_in_coin_a: bool,
         total_volume: u128,
         duration_profitabilities: vector<u64>,
+        minimum_remaining_volume_percentage: u64,
+        index: u64
     }
 
     /// Event emitted when a tranche's volume is updated.
@@ -198,10 +201,12 @@ module liquidity_locker::pool_tranche {
     /// # Fields
     /// * `tranche_id` - ID of the tranche from which rewards are claimed
     /// * `epoch_start` - Start time of the epoch for which rewards are claimed
+    /// * `reward_type` - Type of reward token being claimed
     /// * `reward_amount` - Amount of rewards claimed
     public struct GetRewardEvent has copy, drop {
         tranche_id: ID,
         epoch_start: u64,
+        reward_type: TypeName,
         reward_amount: u64,
     }
 
@@ -339,7 +344,7 @@ module liquidity_locker::pool_tranche {
     /// * `volume_in_coin_a` - Flag indicating if volume is measured in terms of coin A
     /// * `total_volume` - Total volume capacity of the tranche (in Q64.64 fixed-point format)
     /// * `duration_profitabilities` - Vector of profitability rates for different lock durations. Length must match locker.periods_blocking length
-    /// * `minimum_remaining_volume` - Minimum volume that must remain in the tranche
+    /// * `minimum_remaining_volume_percentage` - Minimum volume percentage that must remain in the tranche
     /// * `ctx` - Transaction context for creating new objects
     /// 
     /// # Events
@@ -351,7 +356,7 @@ module liquidity_locker::pool_tranche {
         volume_in_coin_a: bool,
         total_volume: u128, // Q64.64
         duration_profitabilities: vector<u64>,
-        minimum_remaining_volume: u64,
+        minimum_remaining_volume_percentage: u64,
         ctx: &mut sui::tx_context::TxContext
     ) {
         // TODO assert!(duration_profitabilities.length() == locker.periods_blocking.length(), EInvalidProfitabilitiesLength);
@@ -369,7 +374,7 @@ module liquidity_locker::pool_tranche {
             current_volume: 0,
             filled: false,
             duration_profitabilities,
-            minimum_remaining_volume,
+            minimum_remaining_volume_percentage,
         };
 
         let tranche_id = sui::object::id<PoolTranche>(&pool_tranche);
@@ -377,7 +382,8 @@ module liquidity_locker::pool_tranche {
             manager.pool_tranches.add(pool_id, vector::empty());
         };
         
-        manager.pool_tranches.borrow_mut(pool_id).push_back(pool_tranche);
+        let pool_tranches = manager.pool_tranches.borrow_mut(pool_id);
+        pool_tranches.push_back(pool_tranche);
 
         let event = CreatePoolTrancheEvent {
             tranche_id,
@@ -385,6 +391,8 @@ module liquidity_locker::pool_tranche {
             volume_in_coin_a,
             total_volume,
             duration_profitabilities,
+            minimum_remaining_volume_percentage,
+            index: pool_tranches.length()-1
         };
         sui::event::emit<CreatePoolTrancheEvent>(event);
     }
@@ -618,11 +626,11 @@ module liquidity_locker::pool_tranche {
         if (tranche.current_volume == tranche.total_volume ||
             integer_mate::full_math_u128::mul_div_round(
                 tranche.total_volume, 
-                tranche.minimum_remaining_volume as u128, 
-                consts::minimum_remaining_volume_denom() as u128
+                tranche.minimum_remaining_volume_percentage as u128, 
+                consts::minimum_remaining_volume_percentage_denom() as u128
             ) >= (tranche.total_volume - tranche.current_volume)) { 
 
-            // If remaining volume is less than minimum_remaining_volume of total volume,
+            // If remaining volume is less than minimum_remaining_volume_percentage of total volume,
             // mark the tranche as filled to prevent creating small positions
             tranche.filled = true;
         };
@@ -708,6 +716,7 @@ module liquidity_locker::pool_tranche {
         let event = GetRewardEvent {
             tranche_id,
             epoch_start,
+            reward_type,
             reward_amount,
         };
         sui::event::emit<GetRewardEvent>(event);

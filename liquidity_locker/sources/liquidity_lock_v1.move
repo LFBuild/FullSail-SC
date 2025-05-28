@@ -131,7 +131,7 @@ module liquidity_locker::liquidity_lock_v1 {
     /// * `coin_b` - Accumulated balance of the second token from position rebalancing that will be returned to position liquidity
     /// * `accumulated_amount_earned` - Accumulated rewards from the last unclaimed epoch. 
     /// These rewards are stored during position rebalancing to account for liquidity changes. Reset after each reward claim.
-    public struct LockedPosition<phantom CoinTypeA, phantom CoinTypeB> has store, key {
+    public struct LockedPosition<phantom CoinTypeA, phantom CoinTypeB> has key {
         id: sui::object::UID,
         position_id: sui::object::ID,
         tranche_id: sui::object::ID,
@@ -234,17 +234,33 @@ module liquidity_locker::liquidity_lock_v1 {
     /// * `position_id` - Unique identifier of the underlying liquidity position
     /// * `tranche_id` - Unique identifier of the tranche this position belongs to
     /// * `total_lock_liquidity` - Total amount of liquidity locked in the position
+    /// * `start_lock_time` - Timestamp when the lock period starts
     /// * `expiration_time` - Timestamp when the lock period ends
     /// * `full_unlocking_time` - Timestamp when the position can be fully unlocked
     /// * `profitability` - Profitability rate for this locked position
+    /// * `last_reward_claim_time` - Timestamp of the last reward claim
+    /// * `last_growth_inside` - Last recorded growth inside the position's range
     public struct CreateLockPositionEvent has copy, drop {
         lock_position_id: sui::object::ID,
         position_id: sui::object::ID,
         tranche_id: sui::object::ID,
         total_lock_liquidity: u128,
+        start_lock_time: u64,
         expiration_time: u64,
         full_unlocking_time: u64,
         profitability: u64,
+        last_reward_claim_time: u64,
+        last_growth_inside: u128,
+    }
+
+    /// Event emitted when a locked position is transferred.
+    /// 
+    /// # Fields
+    /// * `lock_position_id` - Unique identifier of the locked position
+    /// * `to` - Address to which the locked position was transferred
+    public struct TransferLockPositionEvent has copy, drop {
+        lock_position_id: sui::object::ID,
+        to: address,
     }
 
     /// Event emitted when a locked position is unlocked.
@@ -267,6 +283,27 @@ module liquidity_locker::liquidity_lock_v1 {
         last_remove_liquidity_time: u64,
     }
 
+    /// Event emitted when a position is split.
+    /// 
+    /// # Fields
+    /// * `lock_position_id` - Unique identifier of the locked position
+    /// * `new_lock_position_id` - Unique identifier of the new locked position
+    /// * `share_first_part` - Share of the first part of the position
+    /// * `new_total_lock_liquidity` - Total amount of liquidity locked in the new position
+    /// * `new_current_lock_liquidity` - Current amount of locked liquidity in the new position
+    /// * `new_last_growth_inside` - Last recorded growth inside the new position's range
+    /// * `new_accumulated_amount_earned` - Accumulated rewards from the last unclaimed epoch. 
+    /// These rewards are stored during position rebalancing to account for liquidity changes. Reset after each reward claim.
+    public struct SplitPositionEvent has copy, drop {
+        lock_position_id: sui::object::ID,
+        new_lock_position_id: sui::object::ID,
+        share_first_part: u64,
+        new_total_lock_liquidity: u128,
+        new_current_lock_liquidity: u128,
+        new_last_growth_inside: u128,
+        new_accumulated_amount_earned: u64, 
+    }
+
     /// Event emitted when the tick range of a locked position is changed.
     /// 
     /// # Fields
@@ -275,12 +312,16 @@ module liquidity_locker::liquidity_lock_v1 {
     /// * `new_lock_liquidity` - Amount of liquidity in the new position
     /// * `new_tick_lower` - New lower tick boundary of the position
     /// * `new_tick_upper` - New upper tick boundary of the position
+    /// * `new_last_growth_inside` - New last recorded growth inside the position's range
+    /// * `new_accumulated_amount_earned` - New accumulated rewards from the last unclaimed epoch. 
     public struct ChangeRangePositionEvent has copy, drop {
         lock_position_id: sui::object::ID,
         new_position_id: sui::object::ID,
         new_lock_liquidity: u128,
         new_tick_lower: integer_mate::i32::I32,
         new_tick_upper: integer_mate::i32::I32,
+        new_last_growth_inside: u128,
+        new_accumulated_amount_earned: u64,
     }
     
     /// Initializes the liquidity locker module.
@@ -728,9 +769,12 @@ module liquidity_locker::liquidity_lock_v1 {
                 position_id: lock_position.position_id,
                 tranche_id: lock_position.tranche_id,
                 total_lock_liquidity: lock_position.lock_liquidity_info.total_lock_liquidity,
+                start_lock_time: lock_position.start_lock_time,
                 expiration_time: lock_position.expiration_time,
                 full_unlocking_time: lock_position.full_unlocking_time,
                 profitability: lock_position.profitability,
+                last_reward_claim_time: lock_position.last_reward_claim_time,
+                last_growth_inside: lock_position.last_growth_inside,
             };
             sui::event::emit<CreateLockPositionEvent>(event);
 
@@ -801,6 +845,24 @@ module liquidity_locker::liquidity_lock_v1 {
         position_id: sui::object::ID,
     ): bool {
         locker.positions.contains(position_id)
+    }
+
+    /// Transfers a locked position to a new address.
+    /// 
+    /// # Arguments
+    /// * `lock_position` - The locked position to transfer
+    /// * `to` - The address to transfer the locked position to
+    public fun transfer_to<CoinTypeA, CoinTypeB>(
+        lock_position: LockedPosition<CoinTypeA, CoinTypeB>,
+        to: address,
+    ) {
+        let event = TransferLockPositionEvent {
+            lock_position_id: sui::object::id<LockedPosition<CoinTypeA, CoinTypeB>>(&lock_position),
+            to: to,
+        };
+        sui::event::emit<TransferLockPositionEvent>(event);
+
+        transfer::transfer<LockedPosition<CoinTypeA, CoinTypeB>>(lock_position, to);
     }
             
     /// Removes liquidity from a locked position. 
@@ -901,7 +963,7 @@ module liquidity_locker::liquidity_lock_v1 {
             };
             sui::event::emit<UpdateLockLiquidityEvent>(event);
 
-            transfer::public_transfer<LockedPosition<CoinTypeA, CoinTypeB>>(lock_position, sui::tx_context::sender(ctx));
+            transfer::transfer<LockedPosition<CoinTypeA, CoinTypeB>>(lock_position, sui::tx_context::sender(ctx));
         };
 
         (removed_a, removed_b)
@@ -1094,6 +1156,32 @@ module liquidity_locker::liquidity_lock_v1 {
         // Register both positions in locker
         locker.positions.add(lock_position.position_id, position);
         locker.positions.add(new_lock_position.position_id, new_position);
+
+        let new_lock_position_id = sui::object::id<LockedPosition<CoinTypeA, CoinTypeB>>(&new_lock_position);
+        let split_event = SplitPositionEvent {
+            lock_position_id: sui::object::id<LockedPosition<CoinTypeA, CoinTypeB>>(&lock_position),
+            new_lock_position_id: new_lock_position_id,
+            share_first_part,
+            new_total_lock_liquidity: new_lock_position.lock_liquidity_info.total_lock_liquidity,
+            new_current_lock_liquidity: new_lock_position.lock_liquidity_info.current_lock_liquidity,
+            new_last_growth_inside: new_lock_position.last_growth_inside,
+            new_accumulated_amount_earned: new_lock_position.accumulated_amount_earned,
+        };
+        sui::event::emit<SplitPositionEvent>(split_event);
+
+        let event = CreateLockPositionEvent {
+            lock_position_id: new_lock_position_id,
+            position_id: new_lock_position.position_id,
+            tranche_id: new_lock_position.tranche_id,
+            total_lock_liquidity: new_lock_position.lock_liquidity_info.total_lock_liquidity,
+            start_lock_time: new_lock_position.start_lock_time,
+            expiration_time: new_lock_position.expiration_time,
+            full_unlocking_time: new_lock_position.full_unlocking_time,
+            profitability: new_lock_position.profitability,
+            last_reward_claim_time: new_lock_position.last_reward_claim_time,
+            last_growth_inside: new_lock_position.last_growth_inside,
+        };
+        sui::event::emit<CreateLockPositionEvent>(event);
 
         (lock_position, new_lock_position)
     }
@@ -1544,6 +1632,8 @@ module liquidity_locker::liquidity_lock_v1 {
             new_lock_liquidity: new_position_liquidity,
             new_tick_lower: new_tick_lower,
             new_tick_upper: new_tick_upper,
+            new_last_growth_inside: lock_position.last_growth_inside,
+            new_accumulated_amount_earned: lock_position.accumulated_amount_earned,
         };
 
         locker.positions.add(new_position_id, new_position);
