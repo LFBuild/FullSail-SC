@@ -1059,13 +1059,14 @@ module liquidity_locker::liquidity_lock_v1 {
 
         let mut position = locker.positions.remove(lock_position.position_id);
 
-        let ( removed_a, removed_b) = clmm_pool::pool::remove_liquidity<CoinTypeA, CoinTypeB>(
+        let (removed_a, removed_b) = remove_liquidity_and_collect_fee<CoinTypeA, CoinTypeB>(
             global_config,
             vault,
             pool,
             &mut position,
             remove_liquidity_amount,
             clock,
+            ctx
         );
 
         if (full_remove) {
