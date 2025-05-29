@@ -86,7 +86,8 @@ module distribution::gauge {
     const EFullEarnedForTypeEpochToken: u64 = 932952345345345345;
     const EFullEarnedForTypeNoGrowthGlobalByToken: u64 = 923483942940234034;
     
-    const EIncorrectGrowthInside: u64 = 93532423442743643;
+    // const EIncorrectGrowthInside: u64 = 93532423442743643;
+    const EChangeStakedPositionOwnerSenderHasNoStakedPositions: u64 = 939067260723067922;
 
     public struct TRANSFORMER has drop {}
 
@@ -1426,7 +1427,6 @@ module distribution::gauge {
         gauge.current_epoch_token.borrow()
     }
 
-
     /// Returns a list of position IDs staked by a specific owner in this gauge.
     ///
     /// # Arguments
@@ -1449,6 +1449,12 @@ module distribution::gauge {
         position_ids_copy
     }
 
+    /// Unstakes a position from the gauge.
+    /// 
+    /// # Arguments
+    /// * `gauge` - The gauge instance
+    /// * `owner` - The address of the position owner
+    /// * `position_id` - ID of the position to unstake
     fun unstakes<CoinTypeA, CoinTypeB>(
         gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
         owner: address,
@@ -1667,5 +1673,34 @@ module distribution::gauge {
         position_id: ID,
     ) {
         gauge.locked_positions.remove(position_id);
+    }
+
+    public fun change_staked_position_owner<CoinTypeA, CoinTypeB>(
+        gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
+        _locker_cap: &locker_cap::locker_cap::LockerCap,
+        position_id: ID,
+        new_owner: address,
+        ctx: &mut TxContext,
+    ) {
+        let sender = tx_context::sender(ctx);
+        assert!(
+            gauge.staked_positions.contains(position_id) && 
+            gauge.staked_position_infos.contains(position_id) &&
+            gauge.staked_position_infos.borrow(position_id).from == sender &&
+            gauge.stakes.contains(sender),
+            EChangeStakedPositionOwnerSenderHasNoStakedPositions
+        );
+
+        gauge.unstakes(sender, position_id);
+
+        if (!gauge.stakes.contains(new_owner)) {
+            let mut position_ids = std::vector::empty<ID>();
+            position_ids.push_back(position_id);
+            gauge.stakes.add(new_owner, position_ids);
+        } else {
+            gauge.stakes.borrow_mut(new_owner).push_back(position_id);
+        };
+
+        gauge.staked_position_infos.borrow_mut(position_id).from = new_owner;
     }
 }

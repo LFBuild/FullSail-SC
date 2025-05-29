@@ -169,7 +169,7 @@ module liquidity_locker::lock_position_migrate_test {
             let locked_position_1 = locked_positions.pop_back();
             locked_positions.destroy_empty();
 
-            transfer::public_transfer(locked_position_1, admin);
+            liquidity_lock_v1::public_transfer(locked_position_1, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
             transfer::public_transfer(tranche_admin_cap, admin);
@@ -211,7 +211,7 @@ module liquidity_locker::lock_position_migrate_test {
         };
 
         // migrate lock position from v1 to v2
-        scenario.next_tx(admin);
+               scenario.next_tx(admin);
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
@@ -250,12 +250,7 @@ module liquidity_locker::lock_position_migrate_test {
                 scenario.ctx()
             );
 
-            let (coin_a, coin_b) = locked_position_v1.get_coins();
-            let position_id = locked_position_v1.get_locked_position_id();
-            let profitability = locked_position_v1.get_profitability();
-            let (expiration_time, full_unlocking_time) = locked_position_v1.get_unlock_time();
-
-            let locked_position_v2 = liquidity_lock_v2::lock_position_migrate<TestCoinB, TestCoinA>(
+            liquidity_lock_v2::lock_position_migrate<TestCoinB, TestCoinA>(
                 &global_config,
                 &distribution_config,
                 &mut locker_v1,
@@ -267,16 +262,6 @@ module liquidity_locker::lock_position_migrate_test {
                 scenario.ctx()
             );
 
-            assert!(locked_position_v2.get_locked_position_id() == position_id, 9346827946);
-            assert!(locked_position_v2.get_profitability() == profitability, 9342745072243);
-            let (expiration_time_v2, full_unlocking_time_v2) = locked_position_v2.get_unlock_time();
-            assert!(expiration_time_v2 == expiration_time, 96250236232);
-            assert!(full_unlocking_time_v2 == full_unlocking_time, 9361394232);
-            let (coin_a_v2, coin_b_v2) = locked_position_v2.get_coins();
-            assert!(coin_a_v2 == coin_a, 993496943592);
-            assert!(coin_b_v2 == coin_b, 923692348638);
-            
-            transfer::public_transfer(locked_position_v2, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
             transfer::public_transfer(tranche_admin_cap, admin);
@@ -295,6 +280,22 @@ module liquidity_locker::lock_position_migrate_test {
             scenario.return_to_sender(minter_admin_cap);
             test_scenario::return_shared(distribution_config);
             test_scenario::return_shared(reward_distributor);
+        };
+
+        // ckeck new lock position v2
+        scenario.next_tx(admin);
+        {
+            let locked_position_v2 = scenario.take_from_sender<liquidity_lock_v2::LockedPosition<TestCoinB, TestCoinA>>();
+
+            assert!(locked_position_v2.get_profitability() == 1000, 9342745072243);
+            let (expiration_time_v2, full_unlocking_time_v2) = locked_position_v2.get_unlock_time();
+            assert!(expiration_time_v2 == 3628800, 96250236232);
+            assert!(full_unlocking_time_v2 == 4233600, 9361394232);
+            let (coin_a_v2, coin_b_v2) = locked_position_v2.get_coins();
+            assert!(coin_a_v2 == 0, 993496943592);
+            assert!(coin_b_v2 == 0, 923692348638);
+
+            liquidity_lock_v2::public_transfer(locked_position_v2, admin);
         };
         
         // Advance to Epoch 3 (OSAIL3)
@@ -375,7 +376,7 @@ module liquidity_locker::lock_position_migrate_test {
                 scenario.ctx()
             );
 
-            transfer::public_transfer(locked_position, admin);
+            liquidity_lock_v2::public_transfer(locked_position, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
             transfer::public_transfer(tranche_admin_cap, admin);
@@ -537,7 +538,7 @@ module liquidity_locker::lock_position_migrate_test {
             let locked_position_1 = locked_positions.pop_back();
             locked_positions.destroy_empty();
 
-            transfer::public_transfer(locked_position_1, admin);
+            liquidity_lock_v1::public_transfer(locked_position_1, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
             transfer::public_transfer(tranche_admin_cap, admin);
@@ -605,7 +606,7 @@ module liquidity_locker::lock_position_migrate_test {
 
             liquidity_lock_v2::locker_pause(&admin_cap, &mut locker_v2, true);
 
-            let locked_position_v2 = liquidity_lock_v2::lock_position_migrate<TestCoinB, TestCoinA>(
+            liquidity_lock_v2::lock_position_migrate<TestCoinB, TestCoinA>(
                 &global_config,
                 &distribution_config,
                 &mut locker_v1,
@@ -617,7 +618,6 @@ module liquidity_locker::lock_position_migrate_test {
                 scenario.ctx()
             );
             
-            transfer::public_transfer(locked_position_v2, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
             transfer::public_transfer(tranche_admin_cap, admin);
@@ -768,7 +768,7 @@ module liquidity_locker::lock_position_migrate_test {
             let locked_position_1 = locked_positions.pop_back();
             locked_positions.destroy_empty();
 
-            transfer::public_transfer(locked_position_1, admin);
+            liquidity_lock_v1::public_transfer(locked_position_1, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
             transfer::public_transfer(tranche_admin_cap, admin);
@@ -837,7 +837,7 @@ module liquidity_locker::lock_position_migrate_test {
 
             liquidity_lock_v1::locker_pause(&locker_v1_admin_cap, &mut locker_v1, true);
 
-            let locked_position_v2 = liquidity_lock_v2::lock_position_migrate<TestCoinB, TestCoinA>(
+            liquidity_lock_v2::lock_position_migrate<TestCoinB, TestCoinA>(
                 &global_config,
                 &distribution_config,
                 &mut locker_v1,
@@ -849,7 +849,6 @@ module liquidity_locker::lock_position_migrate_test {
                 scenario.ctx()
             );
             
-            transfer::public_transfer(locked_position_v2, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
             transfer::public_transfer(locker_v1_admin_cap, admin);
@@ -1001,7 +1000,7 @@ module liquidity_locker::lock_position_migrate_test {
             let locked_position_1 = locked_positions.pop_back();
             locked_positions.destroy_empty();
 
-            transfer::public_transfer(locked_position_1, admin);
+            liquidity_lock_v1::public_transfer(locked_position_1, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
             transfer::public_transfer(tranche_admin_cap, admin);
@@ -1083,7 +1082,7 @@ module liquidity_locker::lock_position_migrate_test {
                 scenario.ctx()
             );
 
-            let locked_position_v2 = liquidity_lock_v2::lock_position_migrate<TestCoinB, TestCoinA>(
+            liquidity_lock_v2::lock_position_migrate<TestCoinB, TestCoinA>(
                 &global_config,
                 &distribution_config,
                 &mut locker_v1,
@@ -1095,7 +1094,6 @@ module liquidity_locker::lock_position_migrate_test {
                 scenario.ctx()
             );
             
-            transfer::public_transfer(locked_position_v2, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(pool_2, admin);
             transfer::public_transfer(admin_cap, admin);
@@ -1248,7 +1246,7 @@ module liquidity_locker::lock_position_migrate_test {
             let locked_position_1 = locked_positions.pop_back();
             locked_positions.destroy_empty();
 
-            transfer::public_transfer(locked_position_1, admin);
+            liquidity_lock_v1::public_transfer(locked_position_1, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
             transfer::public_transfer(tranche_admin_cap, admin);
@@ -1316,7 +1314,7 @@ module liquidity_locker::lock_position_migrate_test {
 
             clock::increment_for_testing(&mut clock, common::epoch_to_seconds(4)*1000);
 
-            let locked_position_v2 = liquidity_lock_v2::lock_position_migrate<TestCoinB, TestCoinA>(
+            liquidity_lock_v2::lock_position_migrate<TestCoinB, TestCoinA>(
                 &global_config,
                 &distribution_config,
                 &mut locker_v1,
@@ -1328,7 +1326,6 @@ module liquidity_locker::lock_position_migrate_test {
                 scenario.ctx()
             );
             
-            transfer::public_transfer(locked_position_v2, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
             transfer::public_transfer(tranche_admin_cap, admin);
