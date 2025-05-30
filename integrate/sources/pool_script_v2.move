@@ -383,13 +383,13 @@ module integrate::pool_script_v2 {
         );
     }
 
-    public entry fun update_position_url<CoinTypeA, CoinTypeB>(
+    public entry fun update_pool_url<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         url: std::string::String,
         ctx: &mut TxContext
     ) {
-        clmm_pool::pool::update_position_url<CoinTypeA, CoinTypeB>(global_config, pool, url, ctx);
+        clmm_pool::pool::update_pool_url<CoinTypeA, CoinTypeB>(global_config, pool, url, ctx);
     }
 
     public entry fun add_liquidity_by_fix_coin<CoinTypeA, CoinTypeB>(

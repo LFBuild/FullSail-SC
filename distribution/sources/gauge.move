@@ -355,7 +355,6 @@ module distribution::gauge {
             gauge.stakes.borrow_mut(sender).push_back(position_id);
         };
         let position_liquidity = position.liquidity();
-        gauge.staked_positions.add(position_id, position);
         if (!gauge.rewards.contains(position_id)) {
             let new_reward_profile = RewardProfile {
                 growth_inside: pool.get_fullsail_distribution_growth_inside(lower_tick, upper_tick, 0),
@@ -368,9 +367,13 @@ module distribution::gauge {
             reward_profile.growth_inside = pool.get_fullsail_distribution_growth_inside(lower_tick, upper_tick, 0);
             reward_profile.last_update_time = clock.timestamp_ms() / 1000;
         };
-        pool.mark_position_staked(gauge.gauge_cap.borrow(), position_id);
         gauge.staked_position_infos.borrow_mut(position_id).received = true;
-        pool.stake_in_fullsail_distribution(gauge.gauge_cap.borrow(), position_liquidity, lower_tick, upper_tick, clock);
+        pool.stake_in_fullsail_distribution(
+            gauge.gauge_cap.borrow(),
+            &position,
+            clock
+        );
+        gauge.staked_positions.add(position_id, position);
         let deposit_gauge_event = EventDepositGauge {
             gauger_id: object::id<Gauge<CoinTypeA, CoinTypeB, SailCoinType>>(gauge),
             pool_id,
@@ -714,7 +717,8 @@ module distribution::gauge {
                 gauge.gauge_cap.borrow(),
                 gauge.reward_rate,
                 current_distribution_reserve + total_amount,
-                next_epoch_time
+                next_epoch_time,
+                clock
             );
         } else {
             let future_rewards = integer_mate::full_math_u128::mul_div_floor(
@@ -731,7 +735,8 @@ module distribution::gauge {
                 gauge.gauge_cap.borrow(),
                 gauge.reward_rate,
                 current_distribution_reserve + total_amount + ((future_rewards / 1 << 64) as u64),
-                next_epoch_time
+                next_epoch_time,
+                clock
             );
         };
         gauge.reward_rate_by_epoch.add(distribution::common::epoch_start(current_time), gauge.reward_rate);
@@ -967,18 +972,11 @@ module distribution::gauge {
             gauge.staked_position_infos.add(position_id, position_stake_info);
         } else {
             let position = gauge.staked_positions.remove(position_id);
-            let position_liquidity = position.liquidity();
-            if (position_liquidity > 0) {
-                let (lower_tick, upper_tick) = position.tick_range();
-                pool.unstake_from_fullsail_distribution(
+            pool.unstake_from_fullsail_distribution(
                     gauge.gauge_cap.borrow(),
-                    position_liquidity,
-                    lower_tick,
-                    upper_tick,
+                    &position,
                     clock
-                );
-            };
-            pool.mark_position_unstaked(gauge.gauge_cap.borrow(), position_id);
+            );
             transfer::public_transfer<clmm_pool::position::Position>(position, position_stake_info.from);
             let withdraw_position_event = EventWithdrawPosition {
                 position_id,
