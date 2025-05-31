@@ -116,7 +116,7 @@ module liquidity_locker::liquidity_lock_v2 {
     /// * `accumulated_amount_earned` - Accumulated rewards from the last unclaimed epoch.
     /// * `earned_epoch` - Table tracking earned rewards per epoch (epoch -> earned)
     /// These rewards are stored during position rebalancing to account for liquidity changes. Reset after each reward claim.
-    public struct LockedPosition<phantom CoinTypeA, phantom CoinTypeB> has key {
+    public struct LockedPosition<phantom CoinTypeA, phantom CoinTypeB> has store, key {
         id: sui::object::UID,
         position_id: sui::object::ID,
         tranche_id: sui::object::ID,
@@ -813,52 +813,6 @@ module liquidity_locker::liquidity_lock_v2 {
         position_id: sui::object::ID,
     ): bool {
         locker.positions.contains(position_id)
-    }
-
-    /// Transfers a locked position to a new address.
-    /// 
-    /// # Arguments
-    /// * `locker` - The locker instance
-    /// * `gauge` - The gauge associated with the position
-    /// * `lock_position` - The locked position to transfer
-    /// * `to` - The address to transfer the locked position to
-    /// * `clock` - The clock for time-based operations
-    /// * `ctx` - The transaction context
-    /// 
-    /// # Aborts
-    /// * `ELockManagerPaused` - If the locker is paused
-    /// * `ELockPeriodEnded` - If the lock period has ended
-    /// * `ERewardsNotCollected` - If rewards have not been collected
-    /// * `EInvalidRecipientAddress` - If the recipient address is invalid
-    public fun transfer_to<CoinTypeA, CoinTypeB>(
-        locker: &Locker,
-        gauge: &mut gauge::Gauge<CoinTypeA, CoinTypeB>,
-        lock_position: LockedPosition<CoinTypeA, CoinTypeB>,
-        to: address,
-        clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext,
-    ) {
-        assert!(!locker.pause(), ELockManagerPaused);
-        let current_time = clock.timestamp_ms() / 1000;
-        assert!(current_time < lock_position.expiration_time, ELockPeriodEnded);
-        assert!(lock_position.last_reward_claim_epoch >= common::epoch_start(current_time) || 
-            lock_position.last_reward_claim_epoch >= lock_position.expiration_time, ERewardsNotCollected);
-        assert!(sui::tx_context::sender(ctx) != to, EInvalidRecipientAddress);
-
-        gauge.change_staked_position_owner(
-            locker.locker_cap.borrow(),
-            lock_position.position_id,
-            to,
-            ctx
-        );
-
-        let event = TransferLockPositionEvent {
-            lock_position_id: sui::object::id<LockedPosition<CoinTypeA, CoinTypeB>>(&lock_position),
-            to: to,
-        };
-        sui::event::emit<TransferLockPositionEvent>(event);
-
-        transfer::transfer(lock_position, to);
     }
 
     /// Safely removes liquidity from a locked position and transfers it to the sender address.
