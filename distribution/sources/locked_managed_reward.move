@@ -14,7 +14,14 @@ module distribution::locked_managed_reward {
         coin_types_vec.push_back(reward_coin_type);
         LockedManagedReward {
             id: object::new(ctx),
-            reward: distribution::reward::create(voter, option::some(ve), ve, coin_types_vec, ctx),
+            reward: distribution::reward::create(
+                voter,
+                option::some(ve),
+                ve,
+                coin_types_vec,
+                false,
+                ctx
+            ),
         }
     }
 

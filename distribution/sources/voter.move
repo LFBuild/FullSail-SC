@@ -1467,7 +1467,9 @@ module distribution::voter {
         ctx: &mut TxContext
     ) {
         let lock_id = into_lock_id(object::id(lock));
-        let exercise_fee_deposited_balance = voter.exercise_fee_reward.borrow_reward().balance_of(object::id(lock));
+        let exercise_fee_deposited_balance = voter.exercise_fee_reward
+            .borrow_reward()
+            .balance_of(object::id(lock), clock);
         if (exercise_fee_deposited_balance > 0) {
             voter.exercise_fee_reward.withdraw(
             &voter.exercise_fee_authorized_cap,
