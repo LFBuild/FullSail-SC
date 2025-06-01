@@ -47,7 +47,14 @@ module distribution::free_managed_reward {
         type_name_vec.push_back(reward_coin_type);
         FreeManagedReward {
             id: object::new(ctx),
-            reward: distribution::reward::create(voter, option::some(ve), ve, type_name_vec, ctx),
+            reward: distribution::reward::create(
+                voter,
+                option::some(ve),
+                ve,
+                type_name_vec,
+                false,
+                ctx
+            ),
         }
     }
 

@@ -1,4 +1,13 @@
 module distribution::reward {
+
+    const EUpdateBalancesDisabled: u64 = 931921756019291001;
+    const EUpdateBalancesEpochStartInvalid: u64 = 17211664930268266;
+    const EUpdateBalancesInvalidLocksLength: u64 = 651147350837936100;
+    const EUpdateBalancesAlreadyFinal: u64 = 931921756019291000;
+
+    const ERewardPerEpochInvalidToken: u64 = 9223372492121309183;
+
+
     public struct EventDeposit has copy, drop, store {
         sender: address,
         lock_id: ID,
@@ -25,12 +34,12 @@ module distribution::reward {
     }
 
     public struct Checkpoint has drop, store {
-        timestamp: u64,
+        epoch_start: u64,
         balance_of: u64,
     }
 
     public struct SupplyCheckpoint has drop, store {
-        timestamp: u64,
+        epoch_start: u64,
         supply: u64,
     }
 
@@ -47,6 +56,10 @@ module distribution::reward {
         supply_checkpoints: sui::table::Table<u64, SupplyCheckpoint>,
         supply_num_checkpoints: u64,
         balances: sui::bag::Bag,
+        /// if true then users need to wait until balance update for epoch is done to claim rewards.
+        balance_update_enabled: bool,
+        /// true if balance update for epoch is done.
+        epoch_updates_finalized: sui::table::Table<u64, bool>,
     }
 
     /// Returns the balance of a specific coin type in the reward contract.
@@ -120,7 +133,7 @@ module distribution::reward {
         // If prior_idx is 0 and the checkpoint at 0 is for a time after current_time,
         // it means there are no checkpoints at or before current_time, so balance is 0.
         let first_checkpoint = lock_checkpoints.borrow(0);
-        if (prior_idx == 0 && first_checkpoint.timestamp > timestamp) {
+        if (prior_idx == 0 && first_checkpoint.epoch_start > timestamp) {
             return 0
         };
 
@@ -144,6 +157,7 @@ module distribution::reward {
         ve: Option<ID>,
         authorized: ID,
         reward_coin_types: vector<std::type_name::TypeName>,
+        balance_update_enabled: bool,
         ctx: &mut TxContext
     ): Reward {
         let mut reward = Reward {
@@ -159,6 +173,8 @@ module distribution::reward {
             supply_checkpoints: sui::table::new<u64, SupplyCheckpoint>(ctx),
             supply_num_checkpoints: 0,
             balances: sui::bag::new(ctx),
+            balance_update_enabled,
+            epoch_updates_finalized: sui::table::new<u64, bool>(ctx),
         };
         let mut i = 0;
         while (i < reward_coin_types.length()) {
@@ -223,7 +239,8 @@ module distribution::reward {
     /// * `reward_authorized_cap` - Capability object for authorization
     /// * `balances` - Vector of balances to update
     /// * `lock_ids` - Vector of lock IDs to update
-    /// * `for_timestamp` - The timestamp to update the balances at
+    /// * `for_epoch_start` - The epoch start to update the balances at. Balances are invariant inside epoch.
+    /// * `final` - true if thats the last update for the epoch
     /// * `ctx` - Transaction context
     /// 
     /// # Aborts
@@ -233,24 +250,36 @@ module distribution::reward {
         reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
         balances: vector<u64>,
         lock_ids: vector<ID>,
-        for_timestamp: u64,
+        for_epoch_start: u64,
+        final: bool,
         ctx: &mut TxContext
     ) {
         reward_authorized_cap.validate(reward.authorized);
+        assert!(reward.balance_update_enabled, EUpdateBalancesDisabled);
+        assert!(for_epoch_start % distribution::common::week() == 0, EUpdateBalancesEpochStartInvalid);
+        assert!(lock_ids.length() == balances.length(), EUpdateBalancesInvalidLocksLength);
+        assert!(
+            !reward.epoch_updates_finalized.contains(for_epoch_start) || 
+            !(*reward.epoch_updates_finalized.borrow(for_epoch_start)), 
+            EUpdateBalancesAlreadyFinal
+        );
         let mut i = 0;
-        let mut total_supply = reward.total_supply_at(for_timestamp);
+        let mut total_supply = reward.total_supply_at(for_epoch_start);
         while (i < balances.length()) {
             let lock_id = lock_ids[i];
             let balance = balances[i];
-            let old_balance = reward.balance_of_at(lock_id, for_timestamp);
+            let old_balance = reward.balance_of_at(lock_id, for_epoch_start);
             // change total supply by balance delta. Should never overflow cos old balance is always included in total supply
             total_supply = total_supply + balance - old_balance;
 
-            reward.write_checkpoint_internal(lock_id, balance, for_timestamp, ctx);
+            reward.write_checkpoint_internal(lock_id, balance, for_epoch_start, ctx);
             i = i + 1;
         };
 
-        reward.write_supply_checkpoint_internal(for_timestamp, total_supply);
+        reward.write_supply_checkpoint_internal(for_epoch_start, total_supply);
+        if (final) {
+            reward.epoch_updates_finalized.add(for_epoch_start, true);
+        };
     }
 
     /// Calculates how much reward a lock has earned for a specific coin type.
@@ -288,11 +317,11 @@ module distribution::reward {
             reward.get_prior_balance_index(lock_id, last_earn_epoch_time)
         );
         let latest_epoch_time = if (last_earn_epoch_time >= distribution::common::epoch_start(
-            prior_checkpoint.timestamp
+            prior_checkpoint.epoch_start
         )) {
             last_earn_epoch_time
         } else {
-            distribution::common::epoch_start(prior_checkpoint.timestamp)
+            distribution::common::epoch_start(prior_checkpoint.epoch_start)
         };
         let mut next_epoch_time = latest_epoch_time;
         let epochs_until_now = (distribution::common::epoch_start(
@@ -301,6 +330,15 @@ module distribution::reward {
         if (epochs_until_now > 0) {
             let mut i = 0;
             while (i < epochs_until_now) {
+                // stop when we encounter epoch that is not final and reward is configured to wait for balance update.
+                if (
+                    reward.balance_update_enabled && (
+                        !reward.epoch_updates_finalized.contains(next_epoch_time) || 
+                        !(*reward.epoch_updates_finalized.borrow(next_epoch_time))
+                    )
+                ) {
+                    break
+                };
                 let next_checkpoint = reward.checkpoints.borrow(lock_id).borrow(
                     reward.get_prior_balance_index(lock_id, next_epoch_time + distribution::common::week() - 1)
                 );
@@ -355,10 +393,10 @@ module distribution::reward {
         if (num_checkpoints == 0) {
             return 0
         };
-        if (reward.checkpoints.borrow(lock_id).borrow(num_checkpoints - 1).timestamp <= time) {
+        if (reward.checkpoints.borrow(lock_id).borrow(num_checkpoints - 1).epoch_start <= time) {
             return num_checkpoints - 1
         };
-        if (reward.checkpoints.borrow(lock_id).borrow(0).timestamp > time) {
+        if (reward.checkpoints.borrow(lock_id).borrow(0).epoch_start > time) {
             return 0
         };
         let mut lower_bound = 0;
@@ -366,10 +404,10 @@ module distribution::reward {
         while (upper_bound > lower_bound) {
             let middle = upper_bound - (upper_bound - lower_bound) / 2;
             let middle_checkpoint = reward.checkpoints.borrow(lock_id).borrow(middle);
-            if (middle_checkpoint.timestamp == time) {
+            if (middle_checkpoint.epoch_start == time) {
                 return middle
             };
-            if (middle_checkpoint.timestamp < time) {
+            if (middle_checkpoint.epoch_start < time) {
                 lower_bound = middle;
                 continue
             };
@@ -392,10 +430,10 @@ module distribution::reward {
         if (num_checkpoints == 0) {
             return 0
         };
-        if (reward.supply_checkpoints.borrow(num_checkpoints - 1).timestamp <= time) {
+        if (reward.supply_checkpoints.borrow(num_checkpoints - 1).epoch_start <= time) {
             return num_checkpoints - 1
         };
-        if (reward.supply_checkpoints.borrow(0).timestamp > time) {
+        if (reward.supply_checkpoints.borrow(0).epoch_start > time) {
             return 0
         };
         let mut lower_bound = 0;
@@ -403,10 +441,10 @@ module distribution::reward {
         while (upper_bound > lower_bound) {
             let middle = upper_bound - (upper_bound - lower_bound) / 2;
             let middle_checkpoint = reward.supply_checkpoints.borrow(middle);
-            if (middle_checkpoint.timestamp == time) {
+            if (middle_checkpoint.epoch_start == time) {
                 return middle
             };
-            if (middle_checkpoint.timestamp < time) {
+            if (middle_checkpoint.epoch_start < time) {
                 lower_bound = middle;
                 continue
             };
@@ -551,7 +589,7 @@ module distribution::reward {
         let coin_type_name = std::type_name::get<CoinType>();
         assert!(
             reward.token_rewards_per_epoch.contains(coin_type_name),
-            9223372492121309183
+            ERewardPerEpochInvalidToken,
         );
         reward.token_rewards_per_epoch.borrow(coin_type_name)
     }
@@ -612,7 +650,7 @@ module distribution::reward {
 
         // If get_prior_supply_index returned 0 because time is before the very first checkpoint's timestamp,
         // the effective supply before that first recorded history point is 0.
-        if (supply_idx == 0 && checkpoint.timestamp > time) {
+        if (supply_idx == 0 && checkpoint.epoch_start > time) {
             return 0
         };
         // Otherwise, the checkpoint at supply_idx is the correct one to use.
@@ -713,14 +751,14 @@ module distribution::reward {
         // latest checkpoint timestam is equal to current epoch start
         if (
             num_of_checkpoints > 0 && 
-            reward.checkpoints.borrow(lock_id).borrow(num_of_checkpoints - 1).timestamp == epoch_start 
+            reward.checkpoints.borrow(lock_id).borrow(num_of_checkpoints - 1).epoch_start == epoch_start 
         ) {
             let checkpoint = reward.checkpoints.borrow_mut(lock_id);
             if (checkpoint.contains(num_of_checkpoints - 1)) {
                 checkpoint.remove(num_of_checkpoints - 1);
             };
             let updated_checkpoint = Checkpoint {
-                timestamp: epoch_start,
+                epoch_start,
                 balance_of: balance,
             };
             checkpoint.add(num_of_checkpoints - 1, updated_checkpoint);
@@ -730,16 +768,16 @@ module distribution::reward {
             };
             let prior_idx = reward.get_prior_balance_index(lock_id, epoch_start);
             let lock_checkpoints = reward.checkpoints.borrow_mut(lock_id);
-            if (lock_checkpoints.contains(prior_idx) && lock_checkpoints.borrow(prior_idx).timestamp == epoch_start) {
+            if (lock_checkpoints.contains(prior_idx) && lock_checkpoints.borrow(prior_idx).epoch_start == epoch_start) {
                 lock_checkpoints.remove(prior_idx);
                 let updated_checkpoint = Checkpoint {
-                    timestamp: epoch_start,
+                    epoch_start,
                     balance_of: balance,
                 };
                 lock_checkpoints.add(prior_idx, updated_checkpoint);
             } else {
                 let new_checkpoint = Checkpoint {
-                    timestamp: epoch_start,
+                    epoch_start,
                     balance_of: balance,
                 };
                 if (num_of_checkpoints == 0) {
@@ -766,20 +804,21 @@ module distribution::reward {
     /// 
     /// # Arguments
     /// * `reward` - The reward object
-    /// * `current_time` - The timestamp for the checkpoint
+    /// * `time` - The timestamp for the checkpoint
+    /// * `total_supply` - The total supply to record
     fun write_supply_checkpoint_internal(reward: &mut Reward, time: u64, total_supply: u64) {
         let num_of_checkpoints = reward.supply_num_checkpoints;
         let epoch_start = distribution::common::epoch_start(time);
         // latest checkpoint timestam is equal to current epoch start
         if (
             num_of_checkpoints > 0 
-            && reward.supply_checkpoints.borrow(num_of_checkpoints - 1).timestamp == epoch_start
+            && reward.supply_checkpoints.borrow(num_of_checkpoints - 1).epoch_start == epoch_start
         ) {
             if (reward.supply_checkpoints.contains(num_of_checkpoints - 1)) {
                 reward.supply_checkpoints.remove(num_of_checkpoints - 1);
             };
             let updated_checkpoint = SupplyCheckpoint {
-                timestamp: epoch_start,
+                epoch_start,
                 supply: total_supply,
             };
             reward.supply_checkpoints.add(num_of_checkpoints - 1, updated_checkpoint);
@@ -788,16 +827,16 @@ module distribution::reward {
                 reward.supply_checkpoints.remove(num_of_checkpoints);
             };
             let prior_idx = reward.get_prior_supply_index(epoch_start);
-            if (reward.supply_checkpoints.contains(prior_idx) && reward.supply_checkpoints.borrow(prior_idx).timestamp == epoch_start) {
+            if (reward.supply_checkpoints.contains(prior_idx) && reward.supply_checkpoints.borrow(prior_idx).epoch_start == epoch_start) {
                 reward.supply_checkpoints.remove(prior_idx);
                 let updated_checkpoint = SupplyCheckpoint {
-                    timestamp: epoch_start,
+                    epoch_start,
                     supply: total_supply,
                 };
                 reward.supply_checkpoints.add(prior_idx, updated_checkpoint);
             } else {
                 let new_checkpoint = SupplyCheckpoint {
-                    timestamp: epoch_start,
+                    epoch_start,
                     supply: total_supply,
                 };
                 if (num_of_checkpoints == 0) {

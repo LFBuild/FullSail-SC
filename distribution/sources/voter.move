@@ -1965,6 +1965,7 @@ module distribution::voter {
         weights: vector<u64>,
         lock_ids: vector<ID>,
         for_epoch_start: u64,
+        final: bool,
         ctx: &mut TxContext
     ) {
         distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
@@ -1976,10 +1977,19 @@ module distribution::voter {
             weights,
             lock_ids,
             for_epoch_start,
+            final,
             ctx
         );
 
         let bribe_voting_reward = voter.gauge_to_bribe.borrow_mut(gauge_id_obj);
+        bribe_voting_reward.update_balances(
+            &voter.gauge_to_bribe_authorized_cap,
+            weights,
+            lock_ids,
+            for_epoch_start,
+            final,
+            ctx
+        );
     }
 
     #[test_only]

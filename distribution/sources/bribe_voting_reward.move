@@ -62,7 +62,14 @@ module distribution::bribe_voting_reward {
         BribeVotingReward {
             id,
             gauge: gauge_id,
-            reward: distribution::reward::create(voter, option::some(ve), voter, reward_coin_types, ctx),
+            reward: distribution::reward::create(
+                voter,
+                option::some(ve),
+                voter,
+                reward_coin_types,
+                true,
+                ctx
+            ),
         }
     }
 
@@ -170,6 +177,7 @@ module distribution::bribe_voting_reward {
     /// * `balances` - A vector of balance amounts corresponding to each `lock_id`.
     /// * `lock_ids` - A vector of `ID`s for the locks whose balances are being updated.
     /// * `for_epoch_start` - The timestamp marking the beginning of the epoch for which balances are being set.
+    /// * `final` - true if thats the last update for the epoch
     /// * `ctx` - The transaction context.
     public fun update_balances(
         reward: &mut BribeVotingReward,
@@ -177,28 +185,17 @@ module distribution::bribe_voting_reward {
         balances: vector<u64>,
         lock_ids: vector<ID>,
         for_epoch_start: u64,
+        final: bool,
         ctx: &mut TxContext
     ) {
-        reward.reward.update_balances(reward_authorized_cap, balances, lock_ids, for_epoch_start, ctx);
-    }
-
-    /// Updates the total supply of voting power or other relevant metric for a given epoch.
-    /// This is used in conjunction with `update_balances` to update total sum of the
-    /// balances of all locks. It is required due to voting power
-    /// calculation being too expensive to be done on-chain.
-    ///
-    /// # Arguments
-    /// * `reward` - The `BribeVotingReward` instance to update.
-    /// * `reward_authorized_cap` - Capability proving authorization to update the supply.
-    /// * `total_supply` - The total supply figure for the specified epoch.
-    /// * `for_epoch_start` - The timestamp marking the beginning of the epoch for which the supply is being set.
-    public fun update_supply(
-        reward: &mut BribeVotingReward,
-        reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
-        total_supply: u64,
-        for_epoch_start: u64,
-    ) {
-        reward.reward.update_supply(reward_authorized_cap, total_supply, for_epoch_start);
+        reward.reward.update_balances(
+            reward_authorized_cap,
+            balances,
+            lock_ids,
+            for_epoch_start,
+            final,
+            ctx
+        );
     }
 
     /// Borrows the reward field from the BribeVotingReward.

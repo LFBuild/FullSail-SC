@@ -34,7 +34,14 @@ module distribution::exercise_fee_reward {
         sui::event::emit<EventExerciseFeeRewardCreated>(bribe_voting_reward_created_event);
         ExerciseFeeReward {
             id,
-            reward: distribution::reward::create(voter, option::none(), voter, reward_coin_types, ctx),
+            reward: distribution::reward::create(
+                voter,
+                option::none(),
+                voter,
+                reward_coin_types,
+                false,
+                ctx
+            ),
         }
     }
 
