@@ -27,6 +27,15 @@ public struct USD2 has drop {}
     
 public struct SAIL has drop {}
 
+// Define dummy types used in setup
+public struct OSAIL1 has drop {}
+
+public struct OSAIL2 has drop {}
+
+public struct OSAIL3 has drop {}
+
+public struct OTHER has drop, store {}
+
 // Creates a pool with a specific sqrt price.
 // Assumes factory, config are initialized and fee tier (tick_spacing=1) exists.
 // Requires CoinTypeA > CoinTypeB lexicographically.
@@ -1087,4 +1096,115 @@ public fun distribute_gauge_emissions_controlled<CoinTypeA, CoinTypeB, SailCoinT
     test_scenario::return_shared(pool);
     test_scenario::return_shared(distribution_config);
     scenario.return_to_sender(distribute_governor_cap);
+}
+
+/// Sets up the entire environment: CLMM, Distribution, Pool, Gauge,
+/// activates Minter, and creates a lock for the user.
+/// Assumes standard tick spacing and price for the pool.
+/// The admin address receives MinterAdminCap, GovernorCap, CreateCap.
+/// The user address receives the specified oSAIL and the created Lock.
+public fun full_setup_with_lock<CoinTypeA: drop + store, CoinTypeB: drop + store, SailCoinType>(
+    scenario: &mut test_scenario::Scenario,
+    admin: address,
+    user: address,
+    clock: &mut Clock, // Make clock mutable as activate_minter needs it
+    lock_amount: u64,
+    lock_duration_days: u64,
+    gauge_base_emissions: u64,
+) {
+    // Tx 1: Setup CLMM Factory & Fee Tier (using tick_spacing=1)
+    {
+        setup_clmm_factory_with_fee_tier(scenario, admin, 1, 1000);
+    };
+
+    // Tx 2: Setup Distribution (admin gets caps)
+    {
+        // Needs CLMM config initialized
+        setup_distribution<SailCoinType>(scenario, admin, clock);
+    };
+
+    // Tx 3: Setup Pool (CoinTypeA/CoinTypeB, price=1)
+    let pool_sqrt_price: u128 = 1 << 64;
+    let pool_tick_spacing = 1;
+    scenario.next_tx(admin);
+    {
+        setup_pool_with_sqrt_price<CoinTypeA, CoinTypeB>(
+            scenario,
+            pool_sqrt_price,
+            pool_tick_spacing
+        );
+    };
+
+    // Tx 4: Activate Minter for Epoch 1 (OSAILCoinType)
+    scenario.next_tx(admin);
+    {
+        activate_minter<SailCoinType>(scenario, clock);
+    };
+
+    // Tx 5: Create Gauge for the CoinTypeA/CoinTypeB pool
+    scenario.next_tx(admin); // Admin needs caps to create gauge
+    {
+        setup_gauge_for_pool<CoinTypeA, CoinTypeB, SailCoinType>(
+            scenario,
+            gauge_base_emissions,
+            clock // Pass immutable clock ref here
+        );
+    };
+
+    // Tx 6: Create Lock for the user
+    scenario.next_tx(user); // User needs to be sender to receive the lock
+    {
+        mint_and_create_lock<SailCoinType>(
+            scenario,
+            lock_amount,
+            lock_duration_days,
+            clock
+        );
+        // Lock object is automatically transferred to user
+    };
+}
+
+public fun vote<SailCoinType>(
+    scenario: &mut test_scenario::Scenario,
+    pools: vector<ID>,
+    weights: vector<u64>,
+    volumes: vector<u64>,
+    clock: &mut Clock,
+) {
+    let mut voter = scenario.take_shared<Voter>();
+    let distribution_config = scenario.take_shared<DistributionConfig>();
+    let mut ve = scenario.take_shared<VotingEscrow<SailCoinType>>();
+    let lock = scenario.take_from_sender<Lock>();
+
+    voter.vote(
+        &mut ve,
+        &distribution_config,
+        &lock,
+        pools,
+        weights,
+        volumes, // Added volumes
+        clock,
+        scenario.ctx()
+    );
+
+    test_scenario::return_shared(voter);
+    test_scenario::return_shared(ve);
+    test_scenario::return_shared(distribution_config);
+    scenario.return_to_sender(lock);
+}
+
+public fun vote_for_pool<CoinTypeA, CoinTypeB, SailCoinType>(
+    scenario: &mut test_scenario::Scenario,
+    clock: &mut Clock,
+) {
+    let pool = scenario.take_shared<Pool<CoinTypeA, CoinTypeB>>();
+    let pool_id = object::id(&pool);
+    vote<SailCoinType>(
+        scenario,
+        vector[pool_id],
+        vector[10000], // 100% weight
+        vector[1_000_000], // Default volume: $1 USD with 6 decimals
+        clock,
+    );
+    test_scenario::return_shared(pool);
 }

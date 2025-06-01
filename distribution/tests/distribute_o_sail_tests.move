@@ -8,7 +8,6 @@ use std::type_name;
 
 use distribution::minter::{Self, Minter};
 use distribution::setup;
-use distribution::voting_escrow::{Lock, VotingEscrow};
 use distribution::voter::{Voter};
 use distribution::distribution_config::{DistributionConfig};
 use distribution::voter_cap::{VoterCap};
@@ -17,7 +16,7 @@ use clmm_pool::config::{Self, GlobalConfig};
 use clmm_pool::pool::{Pool};
 use clmm_pool::tick_math;
 use sui::test_utils;
-use distribution::voter;
+use distribution::voting_escrow::{Lock, VotingEscrow};
 
 const WEEK: u64 = 7 * 24 * 60 * 60 * 1000;
 
@@ -35,118 +34,6 @@ public struct OSAIL3 has drop {}
 public struct USD1 has drop, store {}
 
 public struct OTHER has drop, store {}
-
-/// Sets up the entire environment: CLMM, Distribution, Pool, Gauge, 
-/// activates Minter, and creates a lock for the user.
-/// Assumes standard tick spacing and price for the pool.
-/// The admin address receives MinterAdminCap, GovernorCap, CreateCap.
-/// The user address receives the specified oSAIL and the created Lock.
-fun full_setup_with_lock(
-    scenario: &mut Scenario,
-    admin: address,
-    user: address,
-    clock: &mut Clock, // Make clock mutable as activate_minter needs it
-    lock_amount: u64,
-    lock_duration_days: u64,
-    gauge_base_emissions: u64, // ADDED PARAMETER
-) {
-    // Tx 1: Setup CLMM Factory & Fee Tier (using tick_spacing=1)
-    {
-        setup::setup_clmm_factory_with_fee_tier(scenario, admin, 1, 1000);
-    };
-
-    // Tx 2: Setup Distribution (admin gets caps)
-    {
-        // Needs CLMM config initialized
-        setup::setup_distribution<SAIL>(scenario, admin, clock);
-    };
-
-    // Tx 3: Setup Pool (USD1/SAIL, price=1)
-    let pool_sqrt_price: u128 = 1 << 64;
-    let pool_tick_spacing = 1;
-    scenario.next_tx(admin);
-    {
-        setup::setup_pool_with_sqrt_price<USD1, SAIL>(
-            scenario,
-            pool_sqrt_price,
-            pool_tick_spacing
-        );
-    };
-
-    // Tx 4: Activate Minter for Epoch 1 (OSAIL1)
-    scenario.next_tx(admin);
-    {
-        setup::activate_minter<SAIL>(scenario, clock);
-    };
-
-    // Tx 5: Create Gauge for the USD1/SAIL pool
-    scenario.next_tx(admin); // Admin needs caps to create gauge
-    {
-        setup::setup_gauge_for_pool<USD1, SAIL, SAIL>(
-            scenario,
-            gauge_base_emissions, // PASSED PARAMETER
-            clock // Pass immutable clock ref here
-        );
-    };
-
-    // Tx 6: Create Lock for the user
-    scenario.next_tx(user); // User needs to be sender to receive the lock
-    {
-        setup::mint_and_create_lock<SAIL>(
-            scenario,
-            lock_amount,
-            lock_duration_days,
-            clock
-        );
-        // Lock object is automatically transferred to user
-    };
-}
-
-
-fun vote(
-    scenario: &mut Scenario,
-    pools: vector<ID>,
-    weights: vector<u64>,
-    volumes: vector<u64>,
-    clock: &mut Clock,
-) {
-    let mut voter = scenario.take_shared<Voter>();
-    let distribution_config = scenario.take_shared<DistributionConfig>();
-    let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
-    let lock = scenario.take_from_sender<Lock>();
-
-    voter.vote(
-        &mut ve,
-        &distribution_config,
-        &lock,
-        pools,
-        weights,
-        volumes, // Added volumes
-        clock,
-        scenario.ctx()
-    );
-
-    test_scenario::return_shared(voter);
-    test_scenario::return_shared(ve);
-    test_scenario::return_shared(distribution_config);
-    scenario.return_to_sender(lock);
-}
-
-fun vote_for_pool<CoinTypeA, CoinTypeB>(
-    scenario: &mut Scenario,
-    clock: &mut Clock,
-) {
-    let pool = scenario.take_shared<Pool<CoinTypeA, CoinTypeB>>();
-    let pool_id = object::id(&pool);
-    vote(
-        scenario,
-        vector[pool_id],
-        vector[10000], // 100% weight
-        vector[1_000_000], // Default volume: $1 USD with 6 decimals
-        clock,
-    );
-    test_scenario::return_shared(pool);
-}
 
 // used if you want to call some methods that are only supposed to be called by Voter
 fun create_voter_cap(
@@ -169,7 +56,7 @@ public fun test_gauge_notify_epoch_token() {
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    full_setup_with_lock(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
         &mut scenario, 
         admin,
         user,
@@ -228,7 +115,7 @@ public fun test_gauge_notify_epoch_token_twice_fail(
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    full_setup_with_lock(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
         &mut scenario, 
         admin,
         user,
@@ -292,7 +179,7 @@ public fun test_gauge_notify_epoch_token_epoch_already_started() {
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    full_setup_with_lock(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
         &mut scenario, 
         admin,
         user,
@@ -308,7 +195,7 @@ public fun test_gauge_notify_epoch_token_epoch_already_started() {
     // --- Tx: User votes for the pool ---
     scenario.next_tx(user);
     {
-        vote_for_pool<USD1, SAIL>(&mut scenario, &mut clock)
+        setup::vote_for_pool<USD1, SAIL, SAIL>(&mut scenario, &mut clock)
     };
 
 
@@ -365,7 +252,7 @@ public fun test_gauge_notify_epoch_token_invalid_pool() {
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    full_setup_with_lock(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
         &mut scenario, 
         admin,
         user,
@@ -429,7 +316,7 @@ public fun test_gauge_notify_epoch_token_invalid_voter() {
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    full_setup_with_lock(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
         &mut scenario, 
         admin,
         user,
@@ -479,7 +366,7 @@ public fun test_gauge_notify_epoch_token_already_notified(
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    full_setup_with_lock(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
         &mut scenario, 
         admin,
         user,
@@ -544,7 +431,7 @@ public fun test_gauge_get_position_reward_invalid_reward_token() {
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    full_setup_with_lock(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
         &mut scenario, 
         admin,
         user,
@@ -594,7 +481,7 @@ public fun test_gauge_get_position_reward_invalid_pool() {
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    full_setup_with_lock(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
         &mut scenario, 
         admin,
         user,
@@ -664,7 +551,7 @@ public fun test_gauge_get_reward_invalid_reward_token() {
     let mut clock = clock::create_for_testing(scenario.ctx());
     let default_gauge_base_emissions = 1_000_000;
 
-    full_setup_with_lock(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
         &mut scenario, 
         admin,
         user,
@@ -714,7 +601,7 @@ public fun test_gauge_get_reward_invalid_pool() {
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    full_setup_with_lock(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
         &mut scenario, 
         admin,
         user,
@@ -796,7 +683,7 @@ fun full_setup_with_two_positions(
 
     let epoch_emissions: u64 = DEFAULT_GAUGE_EMISSIONS;
 
-    full_setup_with_lock(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
         scenario,
         admin,
         user,
@@ -812,7 +699,7 @@ fun full_setup_with_two_positions(
     // Tx Vote for the pool
     scenario.next_tx(user);
     {
-        vote_for_pool<USD1, SAIL>(scenario, clock)
+        setup::vote_for_pool<USD1, SAIL, SAIL>(scenario, clock)
     };
 
     clock.increment_for_testing(ms_in_week - gap_to_vote + 1000);
@@ -1121,7 +1008,7 @@ fun test_update_minter_period_with_same_o_sail_fails() {
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    full_setup_with_lock(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
         &mut scenario, 
         admin,
         user,
@@ -1175,7 +1062,7 @@ fun test_single_position_reward_over_time_distribute() {
     let epoch1_emissions: u64 = DEFAULT_GAUGE_EMISSIONS;
 
     // --- Initial Setup --- 
-    full_setup_with_lock(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
         &mut scenario,
         admin,
         user,
@@ -1191,7 +1078,7 @@ fun test_single_position_reward_over_time_distribute() {
     // --- Tx: User votes for the pool ---
     scenario.next_tx(user);
     {
-        vote_for_pool<USD1, SAIL>(&mut scenario, &mut clock)
+        setup::vote_for_pool<USD1, SAIL, SAIL>(&mut scenario, &mut clock)
     };
 
     // --- Advance Time to Epoch 1 & Update Period ---
@@ -1335,7 +1222,7 @@ fun test_single_position_withdraw_distribute() {
     let epoch1_emissions: u64 = DEFAULT_GAUGE_EMISSIONS;
 
     // --- Initial Setup ---
-    full_setup_with_lock(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
         &mut scenario,
         admin,
         user,
@@ -1351,7 +1238,7 @@ fun test_single_position_withdraw_distribute() {
     // --- Tx: User votes for the pool ---
     scenario.next_tx(user);
     {
-        vote_for_pool<USD1, SAIL>(&mut scenario, &mut clock)
+        setup::vote_for_pool<USD1, SAIL, SAIL>(&mut scenario, &mut clock)
     };
 
     // --- Advance Time to Epoch 1 & Update Period ---
@@ -1446,7 +1333,7 @@ fun test_single_position_deposit_for_1h() {
     let epoch1_emissions: u64 = DEFAULT_GAUGE_EMISSIONS;
 
     // --- Initial Setup ---
-    full_setup_with_lock(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
         &mut scenario,
         admin,
         user,
@@ -1462,7 +1349,7 @@ fun test_single_position_deposit_for_1h() {
     // --- Tx: User votes for the pool ---
     scenario.next_tx(user);
     {
-        vote_for_pool<USD1, SAIL>(&mut scenario, &mut clock)
+        setup::vote_for_pool<USD1, SAIL, SAIL>(&mut scenario, &mut clock)
     };
 
     // --- Advance Time to Epoch 1 & Update Period ---
@@ -1552,7 +1439,7 @@ fun test_position_deposit_for_1h_widthrawal_and_deposit_again_for_1h() {
     let epoch1_emissions: u64 = DEFAULT_GAUGE_EMISSIONS;
 
     // --- Initial Setup ---
-    full_setup_with_lock(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
         &mut scenario,
         admin,
         user,
@@ -1568,7 +1455,7 @@ fun test_position_deposit_for_1h_widthrawal_and_deposit_again_for_1h() {
     // --- Tx: User votes for the pool ---
     scenario.next_tx(user);
     {
-        vote_for_pool<USD1, SAIL>(&mut scenario, &mut clock)
+        setup::vote_for_pool<USD1, SAIL, SAIL>(&mut scenario, &mut clock)
     };
 
     // --- Advance Time to Epoch 1 & Update Period ---
@@ -1693,7 +1580,7 @@ fun multi_epoch_distribute_setup(
     let second_epoch_emissions: u64 = DEFAULT_GAUGE_EMISSIONS;
 
     // --- 1. Full Setup ---
-    full_setup_with_lock(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
         scenario,
         admin,
         user,
@@ -1709,7 +1596,7 @@ fun multi_epoch_distribute_setup(
     // --- 2. User Votes for the Pool ---
     scenario.next_tx(user);
     {
-        vote_for_pool<USD1, SAIL>(scenario, clock)
+        setup::vote_for_pool<USD1, SAIL, SAIL>(scenario, clock)
     };
 
     // --- 3. Advance to Epoch 1 (OSAIL1) ---
@@ -2065,7 +1952,7 @@ fun test_half_epoch_staking_distribute() {
     let lock_duration = 182; // ~6 months
     let epoch_emissions: u64 = DEFAULT_GAUGE_EMISSIONS;
 
-    full_setup_with_lock(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
         &mut scenario,
         admin,
         user,
@@ -2081,7 +1968,7 @@ fun test_half_epoch_staking_distribute() {
     // Tx Vote for the pool
     scenario.next_tx(user);
     {
-        vote_for_pool<USD1, SAIL>(&mut scenario, &mut clock)
+        setup::vote_for_pool<USD1, SAIL, SAIL>(&mut scenario, &mut clock)
     };
 
     clock.increment_for_testing(ms_in_week - gap_to_vote + 1000);
@@ -2635,7 +2522,7 @@ fun rollover_setup(
     let second_epoch_emissions: u64 = DEFAULT_GAUGE_EMISSIONS;
 
     // --- 1. Full Setup ---
-    full_setup_with_lock(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
         scenario,
         admin,
         user,
@@ -2651,7 +2538,7 @@ fun rollover_setup(
     // --- 2. User Votes for the Pool ---
     scenario.next_tx(user);
     {
-        vote_for_pool<USD1, SAIL>(scenario, clock)
+        setup::vote_for_pool<USD1, SAIL, SAIL>(scenario, clock)
     };
 
     // --- 3. Advance to Epoch 1 (OSAIL1) ---
