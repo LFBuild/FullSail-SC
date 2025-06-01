@@ -23,6 +23,7 @@ public struct OTHER has drop {}
 fun test_create_reward() {
     let admin = @0xAA;
     let mut scenario = test_scenario::begin(admin);
+    let clock = clock::create_for_testing(scenario.ctx());
 
     // Define dummy IDs and reward types
     let voter_id: ID = object::id_from_address(@0x1);
@@ -40,11 +41,12 @@ fun test_create_reward() {
         ve_id_option,
         authorized_id,
         reward_types,
+        false,
         scenario.ctx()
     );
 
     // --- Assertions ---
-    assert!(reward::total_supply(&reward_obj) == 0, 1);
+    assert!(reward::total_supply(&reward_obj, &clock) == 0, 1);
     assert!(reward::voter(&reward_obj) == voter_id, 2);
     assert!(reward::ve(&reward_obj) == ve_id, 3);
     assert!(reward::authorized(&reward_obj) == authorized_id, 4);
@@ -54,18 +56,27 @@ fun test_create_reward() {
     assert!(!reward::rewards_contains(&reward_obj, type_name::get<OTHER>()), 8);
 
     test_utils::destroy(reward_obj);
-
+    
+    clock::destroy_for_testing(clock);
     scenario.end();
 }
-
-fun create_default_reward(scenario: &mut Scenario, authorized_id: ID): Reward {
-
+fun create_default_reward(
+    scenario: &mut Scenario,
+    authorized_id: ID
+): Reward {
     let voter_id: ID = object::id_from_address(@0x1);
     let ve_id: ID = object::id_from_address(@0x2);
     let ve_id_option: Option<ID> = option::some(ve_id);
     let reward_types = vector[type_name::get<USD1>()];
 
-    reward::create(voter_id, ve_id_option, authorized_id, reward_types, scenario.ctx())
+    reward::create(
+        voter_id,
+        ve_id_option,
+        authorized_id,
+        reward_types,
+        false,
+        scenario.ctx()
+    )
 }
 
 #[test]
@@ -85,8 +96,8 @@ fun test_deposit_reward() {
     let deposit_amount = 10000;
 
     // Initial state check
-    assert!(reward_obj.total_supply() == 0, 0);
-    assert!(reward_obj.balance_of(lock_id) == 0, 1);
+    assert!(reward_obj.total_supply(&clock) == 0, 0);
+    assert!(reward_obj.balance_of(lock_id, &clock) == 0, 1);
     assert!(reward_obj.earned<USD1>(lock_id, &clock) == 0, 2);
 
     // Call reward::deposit
@@ -99,8 +110,8 @@ fun test_deposit_reward() {
     );
 
     // --- Assertions ---
-    assert!(reward_obj.total_supply() == deposit_amount, 3);
-    assert!(reward_obj.balance_of(lock_id) == deposit_amount, 4);
+    assert!(reward_obj.total_supply(&clock) == deposit_amount, 3);
+    assert!(reward_obj.balance_of(lock_id, &clock) == deposit_amount, 4);
     assert!(reward_obj.earned<USD1>(lock_id, &clock) == 0, 5);
 
     // Cleanup
@@ -130,8 +141,8 @@ fun test_withdraw_reward() {
 
     // Deposit initial amount
     reward_obj.deposit(&reward_cap, initial_deposit, lock_id, &clock, scenario.ctx());
-    assert!(reward_obj.total_supply() == initial_deposit, 1);
-    assert!(reward_obj.balance_of(lock_id) == initial_deposit, 2);
+    assert!(reward_obj.total_supply(&clock) == initial_deposit, 1);
+    assert!(reward_obj.balance_of(lock_id, &clock) == initial_deposit, 2);
 
     clock::increment_for_testing(&mut clock, 1000); // Advance time for checkpointing
 
@@ -139,8 +150,8 @@ fun test_withdraw_reward() {
     reward_obj.withdraw(&reward_cap, first_withdraw, lock_id, &clock, scenario.ctx());
 
     // Assert state after first withdraw
-    assert!(reward_obj.total_supply() == second_withdraw, 3); // total supply decreased
-    assert!(reward_obj.balance_of(lock_id) == second_withdraw, 4); // lock balance decreased
+    assert!(reward_obj.total_supply(&clock) == second_withdraw, 3); // total supply decreased
+    assert!(reward_obj.balance_of(lock_id, &clock) == second_withdraw, 4); // lock balance decreased
 
     clock::increment_for_testing(&mut clock, 1000);
 
@@ -148,8 +159,8 @@ fun test_withdraw_reward() {
     reward_obj.withdraw(&reward_cap, second_withdraw, lock_id, &clock, scenario.ctx());
 
     // Assert state after second withdraw
-    assert!(reward_obj.total_supply() == 0, 5); // total supply is zero
-    assert!(reward_obj.balance_of(lock_id) == 0, 6); // lock balance is zero
+    assert!(reward_obj.total_supply(&clock) == 0, 5); // total supply is zero
+    assert!(reward_obj.balance_of(lock_id, &clock) == 0, 6); // lock balance is zero
 
     // Cleanup
     test_utils::destroy(reward_cap);
@@ -182,8 +193,8 @@ fun test_deposit_withdraw_reward_multi_epoch() {
 
     // --- Epoch 1: Initial Deposit ---
     reward_obj.deposit(&reward_cap, deposit1, lock_id, &clock, scenario.ctx());
-    assert!(reward_obj.total_supply() == deposit1, 1);
-    assert!(reward_obj.balance_of(lock_id) == deposit1, 2);
+    assert!(reward_obj.total_supply(&clock) == deposit1, 1);
+    assert!(reward_obj.balance_of(lock_id, &clock) == deposit1, 2);
     // the first checkpoint index is 0
     assert!(reward_obj.get_prior_balance_index(lock_id, clock.timestamp_ms() / 1000) == 0, 11);
 
@@ -192,8 +203,8 @@ fun test_deposit_withdraw_reward_multi_epoch() {
 
     // --- Epoch 2: Second Deposit ---
     reward_obj.deposit(&reward_cap, deposit2, lock_id, &clock, scenario.ctx());
-    assert!(reward_obj.total_supply() == deposit1 + deposit2, 3);
-    assert!(reward_obj.balance_of(lock_id) == deposit1 + deposit2, 4);
+    assert!(reward_obj.total_supply(&clock) == deposit1 + deposit2, 3);
+    assert!(reward_obj.balance_of(lock_id, &clock) == deposit1 + deposit2, 4);
     assert!(reward_obj.get_prior_balance_index(lock_id, clock.timestamp_ms() / 1000) == 1, 12);
 
 
@@ -202,8 +213,8 @@ fun test_deposit_withdraw_reward_multi_epoch() {
 
     // --- Epoch 3: First Withdraw ---
     reward_obj.withdraw(&reward_cap, withdraw1, lock_id, &clock, scenario.ctx());
-    assert!(reward_obj.total_supply() == withdraw2, 5); // withdraw2 is remaining balance
-    assert!(reward_obj.balance_of(lock_id) == withdraw2, 6);
+    assert!(reward_obj.total_supply(&clock) == withdraw2, 5); // withdraw2 is remaining balance
+    assert!(reward_obj.balance_of(lock_id, &clock) == withdraw2, 6);
     assert!(reward_obj.get_prior_balance_index(lock_id, clock.timestamp_ms() / 1000) == 2, 13);
 
     // --- Advance to Epoch 4 ---
@@ -211,8 +222,8 @@ fun test_deposit_withdraw_reward_multi_epoch() {
 
     // --- Epoch 4: Second (Final) Withdraw ---
     reward_obj.withdraw(&reward_cap, withdraw2, lock_id, &clock, scenario.ctx());
-    assert!(reward_obj.total_supply() == 0, 7);
-    assert!(reward_obj.balance_of(lock_id) == 0, 8);
+    assert!(reward_obj.total_supply(&clock) == 0, 7);
+    assert!(reward_obj.balance_of(lock_id, &clock) == 0, 8);
     assert!(reward_obj.get_prior_balance_index(lock_id, clock.timestamp_ms() / 1000) == 3, 14);
 
     // Cleanup
@@ -246,9 +257,9 @@ fun test_multi_lock_simple_reward_distribution() {
     // --- Epoch 1: Deposits ---
     reward_obj.deposit(&reward_cap, deposit1, lock_id1, &clock, scenario.ctx());
     reward_obj.deposit(&reward_cap, deposit2, lock_id2, &clock, scenario.ctx());
-    assert!(reward_obj.total_supply() == total_deposit, 1);
-    assert!(reward_obj.balance_of(lock_id1) == deposit1, 2);
-    assert!(reward_obj.balance_of(lock_id2) == deposit2, 3);
+    assert!(reward_obj.total_supply(&clock) == total_deposit, 1);
+    assert!(reward_obj.balance_of(lock_id1, &clock) == deposit1, 2);
+    assert!(reward_obj.balance_of(lock_id2, &clock) == deposit2, 3);
 
     // advance half a week to check that the moment of reward notification does not matter
     clock.increment_for_testing(one_week_ms / 2);
@@ -360,9 +371,9 @@ fun test_mid_epoch_deposit_reward() {
 
     // --- Epoch 1, Step 1: Deposit lock1 ---
     reward_obj.deposit(&reward_cap, deposit1, lock_id1, &clock, scenario.ctx());
-    assert!(reward_obj.total_supply() == deposit1, 1);
-    assert!(reward_obj.balance_of(lock_id1) == deposit1, 2);
-    assert!(reward_obj.balance_of(lock_id2) == 0, 3);
+    assert!(reward_obj.total_supply(&clock) == deposit1, 1);
+    assert!(reward_obj.balance_of(lock_id1, &clock) == deposit1, 2);
+    assert!(reward_obj.balance_of(lock_id2, &clock) == 0, 3);
 
     clock::increment_for_testing(&mut clock, 1000); // Small time increment
 
@@ -383,9 +394,9 @@ fun test_mid_epoch_deposit_reward() {
 
     // --- Epoch 1, Step 3: Deposit lock2 ---
     reward_obj.deposit(&reward_cap, deposit2, lock_id2, &clock, scenario.ctx());
-    assert!(reward_obj.total_supply() == total_deposit_end_epoch, 6);
-    assert!(reward_obj.balance_of(lock_id1) == deposit1, 7);
-    assert!(reward_obj.balance_of(lock_id2) == deposit2, 8);
+    assert!(reward_obj.total_supply(&clock) == total_deposit_end_epoch, 6);
+    assert!(reward_obj.balance_of(lock_id1, &clock) == deposit1, 7);
+    assert!(reward_obj.balance_of(lock_id2, &clock) == deposit2, 8);
     // Earned should *still* be 0 within the same epoch, even after second deposit
     assert!(reward_obj.earned<USD1>(lock_id1, &clock) == 0, 9);
     assert!(reward_obj.earned<USD1>(lock_id2, &clock) == 0, 10);
@@ -441,8 +452,8 @@ fun test_mid_epoch_deposit_withdraw_reward() {
 
     // --- Epoch 1, Step 1: Deposit lock1 ---
     reward_obj.deposit(&reward_cap, deposit1, lock_id1, &clock, scenario.ctx());
-    assert!(reward_obj.total_supply() == deposit1, 1);
-    assert!(reward_obj.balance_of(lock_id1) == deposit1, 2);
+    assert!(reward_obj.total_supply(&clock) == deposit1, 1);
+    assert!(reward_obj.balance_of(lock_id1, &clock) == deposit1, 2);
 
     clock::increment_for_testing(&mut clock, 1000);
 
@@ -460,8 +471,8 @@ fun test_mid_epoch_deposit_withdraw_reward() {
 
     // --- Epoch 1, Step 3: Deposit lock2 ---
     reward_obj.deposit(&reward_cap, deposit2, lock_id2, &clock, scenario.ctx());
-    assert!(reward_obj.total_supply() == deposit1 + deposit2, 4);
-    assert!(reward_obj.balance_of(lock_id2) == deposit2, 5);
+    assert!(reward_obj.total_supply(&clock) == deposit1 + deposit2, 4);
+    assert!(reward_obj.balance_of(lock_id2, &clock) == deposit2, 5);
     assert!(reward_obj.earned<USD1>(lock_id1, &clock) == 0, 6);
     assert!(reward_obj.earned<USD1>(lock_id2, &clock) == 0, 7);
 
@@ -469,9 +480,9 @@ fun test_mid_epoch_deposit_withdraw_reward() {
 
     // --- Epoch 1, Step 4: Withdraw lock1 ---
     reward_obj.withdraw(&reward_cap, deposit1, lock_id1, &clock, scenario.ctx());
-    assert!(reward_obj.total_supply() == deposit2, 8); // Only deposit2 remains
-    assert!(reward_obj.balance_of(lock_id1) == 0, 9);
-    assert!(reward_obj.balance_of(lock_id2) == deposit2, 10);
+    assert!(reward_obj.total_supply(&clock) == deposit2, 8); // Only deposit2 remains
+    assert!(reward_obj.balance_of(lock_id1, &clock) == 0, 9);
+    assert!(reward_obj.balance_of(lock_id2, &clock) == deposit2, 10);
     // Earned is still 0
     assert!(reward_obj.earned<USD1>(lock_id1, &clock) == 0, 11);
     assert!(reward_obj.earned<USD1>(lock_id2, &clock) == 0, 12);
@@ -529,7 +540,7 @@ fun test_withdraw_after_epoch_reward() {
     reward_obj.deposit(&reward_cap, deposit1, lock_id1, &clock, scenario.ctx());
     clock::increment_for_testing(&mut clock, 1000);
     reward_obj.deposit(&reward_cap, deposit2, lock_id2, &clock, scenario.ctx());
-    assert!(reward_obj.total_supply() == total_deposit_epoch1, 1);
+    assert!(reward_obj.total_supply(&clock) == total_deposit_epoch1, 1);
 
     clock::increment_for_testing(&mut clock, 1000);
     let reward_coin = coin::mint_for_testing<USD1>(notify_amount, scenario.ctx());
@@ -548,9 +559,9 @@ fun test_withdraw_after_epoch_reward() {
 
     // --- Epoch 2, Step 1: Withdraw lock1 ---
     reward_obj.withdraw(&reward_cap, deposit1, lock_id1, &clock, scenario.ctx());
-    assert!(reward_obj.total_supply() == deposit2, 4); // Only deposit2 remains
-    assert!(reward_obj.balance_of(lock_id1) == 0, 5);
-    assert!(reward_obj.balance_of(lock_id2) == deposit2, 6);
+    assert!(reward_obj.total_supply(&clock) == deposit2, 4); // Only deposit2 remains
+    assert!(reward_obj.balance_of(lock_id1, &clock) == 0, 5);
+    assert!(reward_obj.balance_of(lock_id2, &clock) == deposit2, 6);
 
     // --- Epoch 2, Step 2: Verify Earned Rewards ---
     // Both locks should have earned their share from Epoch 1, even though lock1 withdrew in Epoch 2.
@@ -613,8 +624,8 @@ fun test_rewards_across_multiple_epochs() {
 
     // --- Epoch 1: Deposit lock1 & Notify reward1 ---
     reward_obj.deposit(&reward_cap, deposit1, lock_id1, &clock, scenario.ctx());
-    assert!(reward_obj.total_supply() == total_deposit_e1, 1);
-    assert!(reward_obj.balance_of(lock_id1) == deposit1, 2);
+    assert!(reward_obj.total_supply(&clock) == total_deposit_e1, 1);
+    assert!(reward_obj.balance_of(lock_id1, &clock) == deposit1, 2);
 
     clock::increment_for_testing(&mut clock, 1000);
     let reward_coin1 = coin::mint_for_testing<USD1>(notify_amount1, scenario.ctx());
@@ -631,8 +642,8 @@ fun test_rewards_across_multiple_epochs() {
 
     // --- Epoch 2: Deposit lock2 & Notify reward2 ---
     reward_obj.deposit(&reward_cap, deposit2, lock_id2, &clock, scenario.ctx());
-    assert!(reward_obj.total_supply() == total_deposit_e2, 4);
-    assert!(reward_obj.balance_of(lock_id2) == deposit2, 5);
+    assert!(reward_obj.total_supply(&clock) == total_deposit_e2, 4);
+    assert!(reward_obj.balance_of(lock_id2, &clock) == deposit2, 5);
 
     clock::increment_for_testing(&mut clock, 1000);
     let reward_coin2 = coin::mint_for_testing<USD1>(notify_amount2, scenario.ctx());
@@ -694,9 +705,17 @@ fun test_multi_token_reward_same_epoch() {
     let voter_id: ID = object::id_from_address(@0x1);
     let ve_id: ID = object::id_from_address(@0x2);
     let ve_id_option: Option<ID> = option::some(ve_id);
-    let reward_types = vector[type_name::get<USD1>(), type_name::get<SAIL>()];
+    let reward_types = vector[
+        type_name::get<USD1>(),
+        type_name::get<SAIL>()
+    ];
     let mut reward_obj = reward::create(
-        voter_id, ve_id_option, authorized_id, reward_types, scenario.ctx()
+        voter_id,
+        ve_id_option,
+        authorized_id,
+        reward_types,
+        false,
+        scenario.ctx()
     );
     let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx()); 
 
@@ -713,7 +732,7 @@ fun test_multi_token_reward_same_epoch() {
     // --- Epoch 1: Deposits and Multi-Token Notify ---
     reward_obj.deposit(&reward_cap, deposit1, lock_id1, &clock, scenario.ctx());
     reward_obj.deposit(&reward_cap, deposit2, lock_id2, &clock, scenario.ctx());
-    assert!(reward_obj.total_supply() == total_deposit, 1);
+    assert!(reward_obj.total_supply(&clock) == total_deposit, 1);
 
     clock::increment_for_testing(&mut clock, 1000);
     // Notify USD1
@@ -798,9 +817,9 @@ fun test_reward_large_nums() {
     // --- Epoch 1: Deposits ---
     reward_obj.deposit(&reward_cap, deposit1, lock_id1, &clock, scenario.ctx());
     reward_obj.deposit(&reward_cap, deposit2, lock_id2, &clock, scenario.ctx());
-    assert!(reward_obj.total_supply() == total_deposit, 1);
-    assert!(reward_obj.balance_of(lock_id1) == deposit1, 2);
-    assert!(reward_obj.balance_of(lock_id2) == deposit2, 3);
+    assert!(reward_obj.total_supply(&clock) == total_deposit, 1);
+    assert!(reward_obj.balance_of(lock_id1, &clock) == deposit1, 2);
+    assert!(reward_obj.balance_of(lock_id2, &clock) == deposit2, 3);
 
     // advance half a week to check that the moment of reward notification does not matter
     clock.increment_for_testing(one_week_ms / 2);
@@ -915,9 +934,9 @@ fun test_reward_distribution_at_epoch_start() {
     // --- Epoch 1: Deposits ---
     reward_obj.deposit(&reward_cap, deposit1, lock_id1, &clock, scenario.ctx());
     reward_obj.deposit(&reward_cap, deposit2, lock_id2, &clock, scenario.ctx());
-    assert!(reward_obj.total_supply() == total_deposit_epoch1, 1);
-    assert!(reward_obj.balance_of(lock_id1) == deposit1, 2);
-    assert!(reward_obj.balance_of(lock_id2) == deposit2, 3);
+    assert!(reward_obj.total_supply(&clock) == total_deposit_epoch1, 1);
+    assert!(reward_obj.balance_of(lock_id1, &clock) == deposit1, 2);
+    assert!(reward_obj.balance_of(lock_id2, &clock) == deposit2, 3);
     // Earned should be 0 before any reward notification
     assert!(reward_obj.earned<USD1>(lock_id1, &clock) == 0, 4);
     assert!(reward_obj.earned<USD1>(lock_id2, &clock) == 0, 5);

@@ -48,6 +48,7 @@ module distribution::minter {
     const EUpdatePeriodNotFinishedYet: u64 = 922337340695058843;
     const EUpdatePeriodOSailAlreadyUsed: u64 = 573264404146058900;
 
+    const EDistributeGaugeInvalidToken: u64 = 802874746577660900;
     const EDistributeGaugeAlreadyDistributed: u64 = 259145126193785820;
     const EDistributeGaugePoolHasNoBaseSupply: u64 = 764215244078886900;
 
@@ -295,7 +296,7 @@ module distribution::minter {
                 prev_epoch_roe_x64
             )
         } else {
-            1
+            1<<64
         };
 
         let volume_change_x64 = full_math_u128::mul_div_floor(
@@ -763,6 +764,8 @@ module distribution::minter {
         ctx: &mut TxContext,
     ): u64 {
         minter.check_distribute_governor(distribute_governor_cap);
+        let next_epoch_o_sail_type = type_name::get<NextEpochOSail>();
+        assert!(minter.current_epoch_o_sail.borrow() == next_epoch_o_sail_type, EDistributeGaugeInvalidToken);
         
         let gauge_id = object::id(gauge);
         assert!(
@@ -838,7 +841,9 @@ module distribution::minter {
         };
 
         // update records related to gauge
-        minter.gauge_active_period.remove(gauge_id);
+        if (minter.gauge_active_period.contains(gauge_id)) {
+            minter.gauge_active_period.remove(gauge_id);
+        };
         minter.gauge_active_period.add(gauge_id, minter.active_period);
         minter.gauge_epoch_emissions.add(gauge_id, next_epoch_emissions);
         minter.gauge_epoch_count.add(gauge_id, gauge_epoch_count + 1);
