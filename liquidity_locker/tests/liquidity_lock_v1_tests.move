@@ -1717,6 +1717,14 @@ module liquidity_locker::liquidity_lock_v1_tests {
             // locked_position_2 is the first lock from the first tranche
             let locked_position_2 = scenario.take_from_sender<liquidity_lock_v1::LockedPosition<TestCoinB, TestCoinA>>();
 
+            liquidity_lock_v1::collect_fee<TestCoinB, TestCoinA>(
+                &mut locker,
+                &global_config,
+                &mut pool,
+                &locked_position_2,
+                scenario.ctx()
+            );
+
             // full unlock
             let (remove_balance_a, remove_balance_b) = liquidity_lock_v1::remove_lock_liquidity<TestCoinB, TestCoinA>(
                 &global_config,
