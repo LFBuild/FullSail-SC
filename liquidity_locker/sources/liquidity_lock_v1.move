@@ -51,7 +51,6 @@ module liquidity_locker::liquidity_lock_v1 {
     const EProviderNotWhitelisted: u64 = 9349734723203073;
     const EInsufficientBalanceAOutput: u64 = 9367234807236103;
     const EInsufficientBalanceBOutput: u64 = 9247240362830633;
-    const EInvalidRecipientAddress: u64 = 9939070924793297;
     
     /// Capability for administrative functions in the protocol.
     /// This capability is required for managing global settings and protocol parameters.
@@ -134,7 +133,7 @@ module liquidity_locker::liquidity_lock_v1 {
     /// * `coin_b` - Accumulated balance of the second token from position rebalancing that will be returned to position liquidity
     /// * `accumulated_amount_earned` - Accumulated rewards from the last unclaimed epoch. 
     /// These rewards are stored during position rebalancing to account for liquidity changes. Reset after each reward claim.
-    public struct LockedPosition<phantom CoinTypeA, phantom CoinTypeB> has key {
+    public struct LockedPosition<phantom CoinTypeA, phantom CoinTypeB> has store, key {
         id: sui::object::UID,
         position_id: sui::object::ID,
         tranche_id: sui::object::ID,
@@ -350,13 +349,13 @@ module liquidity_locker::liquidity_lock_v1 {
             ignore_whitelist_providers: false,
         };
         let locker_id = sui::object::id<Locker>(&locker);
-        sui::transfer::share_object<Locker>(locker);
+        transfer::share_object<Locker>(locker);
     
         let admin_cap = AdminCap { 
             id: sui::object::new(ctx), 
             init_locker_v2: false,
         };
-        sui::transfer::transfer<AdminCap>(admin_cap, sui::tx_context::sender(ctx));
+        transfer::transfer<AdminCap>(admin_cap, sui::tx_context::sender(ctx));
 
         let event = InitLockerEvent { locker_id };
         sui::event::emit<InitLockerEvent>(event);
@@ -607,60 +606,6 @@ module liquidity_locker::liquidity_lock_v1 {
     public fun get_whitelisted_providers(locker: &Locker): vector<address> {
         locker.whitelisted_providers.into_keys()
     }
-
-    /// Locks a position in the locker and transfers it to a sender address.
-    /// 
-    /// # Arguments
-    /// * `global_config` - Global configuration for the CLMM pool
-    /// * `vault` - Global reward vault
-    /// * `locker` - The locker object to use
-    /// * `pool_tranche_manager` - Manager for pool tranches
-    /// * `pool` - The pool containing the position
-    /// * `position` - Position liquidity to lock
-    /// * `block_period_index` - Index of the blocking period to use from the periods_blocking vector to determine the lock duration
-    /// * `clock` - Clock for time-based operations
-    /// * `ctx` - Transaction context
-    /// 
-    /// # Aborts
-    /// * `ELockManagerPaused` - If the locker is paused
-    /// * `EPositionAlreadyLocked` - If the position is already locked
-    /// * `EInvalidBlockPeriodIndex` - If the block period index is invalid
-    /// * `ENoTranches` - If there are no tranches available
-    /// * `EInvalidProfitabilitiesLength` - If the profitabilities length is invalid
-    public entry fun lock_position_and_transfer<CoinTypeA, CoinTypeB>(
-        global_config: &clmm_pool::config::GlobalConfig,
-        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
-        locker: &mut Locker,
-        pool_tranche_manager: &mut pool_tranche::PoolTrancheManager,
-        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        position: clmm_pool::position::Position,
-        block_period_index: u64,
-        clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext
-    ) {
-        let mut lock_positions = lock_position<CoinTypeA, CoinTypeB>(
-            global_config,
-            vault,
-            locker,
-            pool_tranche_manager,
-            pool,
-            position,
-            block_period_index,
-            clock,
-            ctx,
-        );
-
-        let mut i = 0;
-        while (i < lock_positions.length()) {
-            let lock_position = lock_positions.pop_back();
-
-            transfer::transfer(lock_position, sui::tx_context::sender(ctx));
-
-            i = i + 1;
-        };
-
-        lock_positions.destroy_empty();
-    }
     
     /// Locks a position in the locker by distributing it across available tranches.
     /// The position may be split if it doesn't fit entirely in a single tranche.
@@ -904,42 +849,6 @@ module liquidity_locker::liquidity_lock_v1 {
         locker.positions.contains(position_id)
     }
 
-    /// Transfers a locked position to a new address.
-    /// 
-    /// # Arguments
-    /// * `locker` - The locker instance
-    /// * `gauge` - The gauge associated with the position
-    /// * `lock_position` - The locked position to transfer
-    /// * `to` - The address to transfer the locked position to
-    /// * `clock` - The clock for time-based operations
-    /// * `ctx` - The transaction context
-    /// 
-    /// # Aborts
-    /// * `ELockManagerPaused` - If the locker is paused
-    /// * `ELockPeriodEnded` - If the lock period has ended
-    /// * `ERewardsNotCollected` - If rewards have not been collected
-    /// * `EInvalidRecipientAddress` - If the recipient address is invalid
-    public fun transfer_to<CoinTypeA, CoinTypeB>(
-        locker: &Locker,
-        lock_position: LockedPosition<CoinTypeA, CoinTypeB>,
-        to: address,
-        clock: &sui::clock::Clock,
-        ctx: &mut sui::tx_context::TxContext,
-    ) {
-        assert!(!locker.pause(), ELockManagerPaused);
-        let current_time = clock.timestamp_ms() / 1000;
-        assert!(current_time < lock_position.expiration_time, ELockPeriodEnded);
-        assert!(sui::tx_context::sender(ctx) != to, EInvalidRecipientAddress);
-
-        let event = TransferLockPositionEvent {
-            lock_position_id: sui::object::id<LockedPosition<CoinTypeA, CoinTypeB>>(&lock_position),
-            to: to,
-        };
-        sui::event::emit<TransferLockPositionEvent>(event);
-
-        transfer::transfer(lock_position, to);
-    }
-
     /// Safely removes liquidity from a locked position and transfers it to the sender address.
     /// 
     /// # Arguments
@@ -1092,7 +1001,7 @@ module liquidity_locker::liquidity_lock_v1 {
             };
             sui::event::emit<UpdateLockLiquidityEvent>(event);
 
-            transfer::transfer<LockedPosition<CoinTypeA, CoinTypeB>>(lock_position, sui::tx_context::sender(ctx));
+            transfer::public_transfer<LockedPosition<CoinTypeA, CoinTypeB>>(lock_position, sui::tx_context::sender(ctx));
         };
 
         (removed_a, removed_b)
@@ -1177,47 +1086,6 @@ module liquidity_locker::liquidity_lock_v1 {
         };
 
         sui::object::delete(lock_position_id);
-    }
-
-    /// Splits a locked position into two positions with specified liquidity share and transfers them to the sender address.
-    /// 
-    /// # Arguments
-    /// * `global_config` - Global configuration for the pool
-    /// * `vault` - Global vault for rewards
-    /// * `locker` - The locker containing the position
-    /// * `pool` - The pool containing the position
-    /// * `lock_position` - The locked position to split
-    /// * `share_first_part` - Share of liquidity for the first position (0..1.0 in lock_liquidity_share_denom)
-    /// * `clock` - Clock object for timestamp verification
-    /// * `ctx` - Transaction context
-    /// 
-    /// # Aborts
-    /// * If the locker is paused
-    /// * If the lock period has ended
-    /// * If share_first_part is invalid
-    public entry fun split_position_and_transfer<CoinTypeA, CoinTypeB>(
-        global_config: &clmm_pool::config::GlobalConfig,
-        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
-        locker: &mut Locker,
-        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        lock_position: LockedPosition<CoinTypeA, CoinTypeB>,
-        share_first_part: u64,
-        clock: &sui::clock::Clock,
-        ctx: &mut TxContext
-    ) {
-        let (lock_position_1, lock_position_2) = split_position<CoinTypeA, CoinTypeB>(
-            global_config,
-            vault,
-            locker,
-            pool,
-            lock_position,
-            share_first_part,
-            clock,
-            ctx,
-        );
-
-        transfer::transfer(lock_position_1, sui::tx_context::sender(ctx));
-        transfer::transfer(lock_position_2, sui::tx_context::sender(ctx));
     }
 
     /// Splits a locked position into two positions with specified liquidity share.
@@ -1870,6 +1738,51 @@ module liquidity_locker::liquidity_lock_v1 {
         (removed_a, removed_b)
     }
 
+    /// Collects trading fees for a locked position.
+    /// 
+    /// # Arguments
+    /// * `locker` - Locker object
+    /// * `global_config` - Global configuration for the pool
+    /// * `pool` - The pool containing the position
+    /// * `lock_position` - Locked position to collect fees from
+    /// * `ctx` - Transaction context
+    public fun collect_fee<CoinTypeA, CoinTypeB>(
+        locker: &mut Locker,
+        global_config: &clmm_pool::config::GlobalConfig,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        lock_position: &LockedPosition<CoinTypeA, CoinTypeB>,
+        ctx: &mut TxContext
+    ) {
+        let mut position = locker.positions.remove(lock_position.position_id);
+
+        let (collected_fee_a, collected_fee_b) = clmm_pool::pool::collect_fee<CoinTypeA, CoinTypeB>(
+            global_config,
+            pool,
+            &position,
+            true
+        );
+
+        locker.positions.add(sui::object::id<clmm_pool::position::Position>(&position), position);
+
+        if (collected_fee_a.value() > 0) {
+            transfer::public_transfer<sui::coin::Coin<CoinTypeA>>(
+                sui::coin::from_balance<CoinTypeA>(collected_fee_a, ctx), 
+                tx_context::sender(ctx)
+            );
+        } else {
+            collected_fee_a.destroy_zero();
+        };
+        
+        if (collected_fee_b.value() > 0) {
+            transfer::public_transfer<sui::coin::Coin<CoinTypeB>>(
+                sui::coin::from_balance<CoinTypeB>(collected_fee_b, ctx), 
+                tx_context::sender(ctx),
+            );
+        } else {
+            collected_fee_b.destroy_zero();
+        };
+    }
+
     /// Attempts to add remaining token balances from a locked position back as liquidity.
     /// 
     /// This function checks if there are any remaining token balances in the LockedPosition
@@ -2098,13 +2011,13 @@ module liquidity_locker::liquidity_lock_v1 {
             whitelisted_providers: sui::vec_set::empty<address>(),
             ignore_whitelist_providers: false,
         };
-        sui::transfer::share_object<Locker>(locker);
+        transfer::share_object<Locker>(locker);
     
         let admin_cap = AdminCap { 
             id: sui::object::new(ctx), 
             init_locker_v2: false,
         };
-        sui::transfer::transfer<AdminCap>(admin_cap, sui::tx_context::sender(ctx));
+        transfer::public_transfer<AdminCap>(admin_cap, sui::tx_context::sender(ctx));
     }
 
     #[test_only]
@@ -2117,6 +2030,6 @@ module liquidity_locker::liquidity_lock_v1 {
         lock: LockedPosition<CoinTypeA, CoinTypeB>,
         to: address
     ) {
-        transfer::transfer(lock, to);
+        transfer::public_transfer(lock, to);
     }
 }

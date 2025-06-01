@@ -169,7 +169,7 @@ module liquidity_locker::lock_position_migrate_test {
             let locked_position_1 = locked_positions.pop_back();
             locked_positions.destroy_empty();
 
-            liquidity_lock_v1::public_transfer(locked_position_1, admin);
+            transfer::public_transfer(locked_position_1, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
             transfer::public_transfer(tranche_admin_cap, admin);
@@ -295,7 +295,7 @@ module liquidity_locker::lock_position_migrate_test {
             assert!(coin_a_v2 == 0, 993496943592);
             assert!(coin_b_v2 == 0, 923692348638);
 
-            liquidity_lock_v2::public_transfer(locked_position_v2, admin);
+            transfer::public_transfer(locked_position_v2, admin);
         };
         
         // Advance to Epoch 3 (OSAIL3)
@@ -376,7 +376,7 @@ module liquidity_locker::lock_position_migrate_test {
                 scenario.ctx()
             );
 
-            liquidity_lock_v2::public_transfer(locked_position, admin);
+            transfer::public_transfer(locked_position, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
             transfer::public_transfer(tranche_admin_cap, admin);
@@ -538,7 +538,7 @@ module liquidity_locker::lock_position_migrate_test {
             let locked_position_1 = locked_positions.pop_back();
             locked_positions.destroy_empty();
 
-            liquidity_lock_v1::public_transfer(locked_position_1, admin);
+            transfer::public_transfer(locked_position_1, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
             transfer::public_transfer(tranche_admin_cap, admin);
@@ -768,7 +768,7 @@ module liquidity_locker::lock_position_migrate_test {
             let locked_position_1 = locked_positions.pop_back();
             locked_positions.destroy_empty();
 
-            liquidity_lock_v1::public_transfer(locked_position_1, admin);
+            transfer::public_transfer(locked_position_1, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
             transfer::public_transfer(tranche_admin_cap, admin);
@@ -1000,7 +1000,7 @@ module liquidity_locker::lock_position_migrate_test {
             let locked_position_1 = locked_positions.pop_back();
             locked_positions.destroy_empty();
 
-            liquidity_lock_v1::public_transfer(locked_position_1, admin);
+            transfer::public_transfer(locked_position_1, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
             transfer::public_transfer(tranche_admin_cap, admin);
@@ -1246,7 +1246,7 @@ module liquidity_locker::lock_position_migrate_test {
             let locked_position_1 = locked_positions.pop_back();
             locked_positions.destroy_empty();
 
-            liquidity_lock_v1::public_transfer(locked_position_1, admin);
+            transfer::public_transfer(locked_position_1, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
             transfer::public_transfer(tranche_admin_cap, admin);
@@ -1687,44 +1687,6 @@ module liquidity_locker::lock_position_migrate_test {
         test_scenario::return_shared(rd);
         scenario.return_to_sender(minter_admin_cap);
         clock::destroy_for_testing(clock);
-    }
-
-    #[test_only]
-    fun create_and_deposit_position<TestCoinB, TestCoinA>(
-        scenario: &mut test_scenario::Scenario,
-        global_config: &GlobalConfig,
-        distribution_config: &distribution_config::DistributionConfig,
-        gauge: &mut gauge::Gauge<TestCoinB, TestCoinA>,
-        vault: &mut rewarder::RewarderGlobalVault,
-        pool: &mut pool::Pool<TestCoinB, TestCoinA>,
-        tick_lower: u32,
-        tick_upper: u32,
-        liquidity_delta: u128,
-        clock: &sui::clock::Clock,
-    ):  (sui::object::ID) {
-        let position = create_position_with_liquidity<TestCoinB, TestCoinA>(
-            scenario,
-            global_config,
-            vault,
-            pool,
-            tick_lower,
-            tick_upper,
-            liquidity_delta,
-            clock
-        );
-        let position_id = sui::object::id<position::Position>(&position);
-
-        distribution::gauge::deposit_position<TestCoinB, TestCoinA>(
-            global_config,
-            distribution_config,
-            gauge,
-            pool,
-            position,
-            clock,
-            scenario.ctx(),
-        );
-
-        (position_id)
     }
 
     #[test_only]

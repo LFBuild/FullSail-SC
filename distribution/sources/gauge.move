@@ -317,6 +317,18 @@ module distribution::gauge {
         }
     }
 
+    /// Returns the position ID for a staked position
+    /// 
+    /// # Arguments
+    /// * `staked_position` - The staked position to get ID for
+    /// 
+    /// # Returns
+    public fun position_id(
+        staked_position: &StakedPosition,
+    ): sui::object::ID {
+        staked_position.position_id
+    }
+
     /// Deposits a position into the gauge for staking and reward accrual.
     /// This function is called by liquidity providers to stake their positions
     /// and start earning rewards based on voting weight.
@@ -498,13 +510,13 @@ module distribution::gauge {
         staked_position
     }
 
-    /// Calculates the rewards in RewardCoinType earned by all positions owned by an account.
+    /// Calculates the rewards in RewardCoinType earned by all staked positions.
     /// Successfull only when previous coin rewards are claimed.
     ///
     /// # Arguments
     /// * `gauge` - The gauge instance
     /// * `pool` - The associated pool
-    /// * `account` - The account to check rewards for
+    /// * `staked_positions` - The staked positions to check rewards for
     /// * `clock` - The system clock
     ///
     /// # Returns
@@ -512,7 +524,7 @@ module distribution::gauge {
     ///
     /// # Aborts
     /// * If the gauge does not match the pool
-    public fun earned_by_account<CoinTypeA, CoinTypeB, RewardCoinType>(
+    public fun earned_by_staked_position<CoinTypeA, CoinTypeB, RewardCoinType>(
         gauge: &Gauge<CoinTypeA, CoinTypeB>,
         pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         staked_positions: &vector<StakedPosition>,
@@ -531,6 +543,47 @@ module distribution::gauge {
             let (earned_i, _) = gauge.earned_internal<CoinTypeA, CoinTypeB, RewardCoinType>(
                 pool, 
                 staked_positions[i].position_id, 
+                clock.timestamp_ms() / 1000
+            );
+            total_earned = total_earned + earned_i;
+
+            i = i + 1;
+        };
+        total_earned
+    }
+
+    /// Calculates the rewards in RewardCoinType earned by all positions with given IDs.
+    ///
+    /// # Arguments
+    /// * `gauge` - The gauge instance
+    /// * `pool` - The associated pool
+    /// * `position_ids` - The IDs of the positions to check
+    /// * `clock` - The system clock
+    /// 
+    /// # Returns
+    /// The total amount of rewards earned by the account
+    ///
+    /// # Aborts
+    /// * If the gauge does not match the pool
+    public fun earned_by_position_ids<CoinTypeA, CoinTypeB, RewardCoinType>(
+        gauge: &Gauge<CoinTypeA, CoinTypeB>,
+        pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        position_ids: &vector<ID>,
+        clock: &sui::clock::Clock
+    ): u64 {
+        assert!(
+            gauge.check_gauger_pool(pool),
+            EEarnedByAccountGaugeDoesNotMatchPool
+        );
+        if (!gauge.growth_global_by_token.contains(type_name::get<RewardCoinType>())) {
+            return 0
+        };
+        let mut i = 0;
+        let mut total_earned = 0;
+        while (i < position_ids.length()) {
+            let (earned_i, _) = gauge.earned_internal<CoinTypeA, CoinTypeB, RewardCoinType>(
+                pool, 
+                position_ids[i], 
                 clock.timestamp_ms() / 1000
             );
             total_earned = total_earned + earned_i;
@@ -888,12 +941,13 @@ module distribution::gauge {
         );
     }
 
-    /// Claims rewards in RewardCoinType for all positions owned by the transaction sender.
+    /// Claims rewards in RewardCoinType for all staked positions.
     /// Should be called in sequence, successfull only when previous coin rewards are claimed.
     ///
     /// # Arguments
     /// * `gauge` - The gauge instance
     /// * `pool` - The associated pool
+    /// * `staked_positions` - The staked positions to claim rewards for
     /// * `clock` - The system clock
     /// * `ctx` - Transaction context
     ///
@@ -933,51 +987,6 @@ module distribution::gauge {
         );
     }
 
-    /*
-    /// Claims rewards for all positions owned by a specific address.
-    /// This allows a third party to trigger reward claiming on behalf of another user.
-    /// Should be called in sequence, successfull only when previous coin rewards are claimed.
-    ///
-    /// # Arguments
-    /// * `gauge` - The gauge instance
-    /// * `pool` - The associated pool
-    /// * `recipient` - The address to claim rewards for
-    /// * `clock` - The system clock
-    /// * `ctx` - Transaction context
-    ///
-    /// # Aborts
-    /// * If the gauge does not match the pool
-    /// * If the recipient has no deposited positions
-    public fun get_reward_for<CoinTypeA, CoinTypeB, RewardCoinType>(
-        gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
-        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        recipient: address,
-        clock: &sui::clock::Clock,
-        ctx: &mut TxContext
-    ) {
-        assert!(gauge.check_gauger_pool(pool), EGetRewardForGaugeDoesNotMatchPool);
-        assert!(
-            gauge.stakes.contains(recipient),
-            EGetRewardForRecipientHasNoPositions
-        );
-        assert!(
-            gauge.is_valid_reward_token<CoinTypeA, CoinTypeB, RewardCoinType>(),
-            EGetRewardForInvalidRewardToken
-        );
-        let position_ids = gauge.stakes.borrow(recipient);
-        let mut position_ids_copy = std::vector::empty<ID>();
-        let mut i = 0;
-        while (i < position_ids.length()) {
-            position_ids_copy.push_back(position_ids[i]);
-            i = i + 1;
-        };
-        let mut j = 0;
-        while (j < position_ids_copy.length()) {
-            gauge.get_reward_internal<CoinTypeA, CoinTypeB, RewardCoinType>(pool, position_ids_copy[j], clock, ctx);
-            j = j + 1;
-        };
-    }*/
-
     /// Internal function to handle reward claiming for a specific position.
     /// Updates the reward accounting, calculates the earned amount, and transfers tokens.
     /// Should be called in sequence, successfull only when previous coin rewards are claimed.
@@ -995,7 +1004,7 @@ module distribution::gauge {
         position_id: ID,
         position_owner: address,
         clock: &sui::clock::Clock,
-        ctx: &mut TxContext
+        ctx: &TxContext
     ): sui::balance::Balance<RewardCoinType> {
         let reward = gauge.update_reward_internal<CoinTypeA, CoinTypeB, RewardCoinType>(
             pool,
@@ -1424,6 +1433,10 @@ module distribution::gauge {
         gauge.current_epoch_token.borrow()
     }
 
+    /// Destroys a staked position.
+    ///
+    /// # Arguments
+    /// * `staked_positions` - The staked position to destroy
     fun destroy_staked_positions(
         staked_positions: StakedPosition
     ) {
@@ -1554,7 +1567,7 @@ module distribution::gauge {
     /// * `gauge` - Mutable reference to the gauge contract managing rewards
     /// * `_locker_cap` - Capability proving locker authorization
     /// * `pool` - Mutable reference to the CLMM pool where the position exists
-    /// * `position_id` - ID of the position to withdraw
+    /// * `staked_position` - The staked position to withdraw
     /// * `clock` - System clock for time-based operations
     /// * `ctx` - Transaction context
     /// 
@@ -1587,6 +1600,22 @@ module distribution::gauge {
         )
     }
 
+    /// Internal function to withdraw a staked position from the gauge.
+    ///
+    /// # Arguments
+    /// * `gauge` - The gauge instance
+    /// * `pool` - The associated pool
+    /// * `staked_position` - The staked position to withdraw
+    /// * `clock` - The system clock
+    /// * `ctx` - Transaction context
+    ///
+    /// # Returns
+    /// The withdrawn position
+    ///
+    /// # Aborts
+    /// * If the position is not staked in the gauge
+    /// * If the reward token type is not valid for the current epoch
+    /// * If the position has not been properly received by the gauge
    fun withdraw_position_internal<CoinTypeA, CoinTypeB, LastRewardCoin>(
         gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
