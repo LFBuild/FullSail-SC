@@ -118,9 +118,9 @@ module liquidity_locker::lock_position_migrate_test {
             );
 
             liquidity_lock_v1::set_ignore_whitelist(
-                &admin_cap,
                 &mut locker,
-                true
+                true,
+                scenario.ctx()
             );
 
             let mut duration_profitabilities = std::vector::empty();
@@ -487,9 +487,9 @@ module liquidity_locker::lock_position_migrate_test {
             );
 
             liquidity_lock_v1::set_ignore_whitelist(
-                &admin_cap,
                 &mut locker,
-                true
+                true,
+                scenario.ctx()
             );
 
             let mut duration_profitabilities = std::vector::empty();
@@ -604,7 +604,7 @@ module liquidity_locker::lock_position_migrate_test {
                 scenario.ctx()
             );
 
-            liquidity_lock_v2::locker_pause(&admin_cap, &mut locker_v2, true);
+            liquidity_lock_v2::locker_pause(&mut locker_v2, true, scenario.ctx());
 
             liquidity_lock_v2::lock_position_migrate<TestCoinB, TestCoinA>(
                 &global_config,
@@ -717,9 +717,9 @@ module liquidity_locker::lock_position_migrate_test {
             );
 
             liquidity_lock_v1::set_ignore_whitelist(
-                &admin_cap,
                 &mut locker,
-                true
+                true,
+                scenario.ctx()
             );
 
             let mut duration_profitabilities = std::vector::empty();
@@ -835,7 +835,7 @@ module liquidity_locker::lock_position_migrate_test {
                 scenario.ctx()
             );
 
-            liquidity_lock_v1::locker_pause(&locker_v1_admin_cap, &mut locker_v1, true);
+            liquidity_lock_v1::locker_pause(&mut locker_v1, true, scenario.ctx());
 
             liquidity_lock_v2::lock_position_migrate<TestCoinB, TestCoinA>(
                 &global_config,
@@ -949,9 +949,9 @@ module liquidity_locker::lock_position_migrate_test {
             );
 
             liquidity_lock_v1::set_ignore_whitelist(
-                &admin_cap,
                 &mut locker,
-                true
+                true,
+                scenario.ctx()
             );
 
             let mut duration_profitabilities = std::vector::empty();
@@ -1195,9 +1195,9 @@ module liquidity_locker::lock_position_migrate_test {
             );
 
             liquidity_lock_v1::set_ignore_whitelist(
-                &admin_cap,
                 &mut locker,
-                true
+                true,
+                scenario.ctx()
             );
 
             let mut duration_profitabilities = std::vector::empty();

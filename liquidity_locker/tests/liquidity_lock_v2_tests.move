@@ -337,7 +337,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &clock
             );
 
-            liquidity_lock_v2::locker_pause(&admin_cap, &mut locker, true);
+            liquidity_lock_v2::locker_pause(&mut locker, true, scenario.ctx());
 
             let mut locked_positions = liquidity_lock_v2::lock_position<TestCoinB, TestCoinA, OSAIL1>(
                 &global_config,
@@ -3956,7 +3956,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let locked_position_1 = locked_positions.pop_back();
             locked_positions.destroy_empty();
 
-            liquidity_lock_v2::locker_pause(&admin_cap, &mut locker, true);
+            liquidity_lock_v2::locker_pause(&mut locker, true, scenario.ctx());
 
             let (locked_position_11, locked_position_12) = liquidity_lock_v2::split_position<TestCoinB, TestCoinA, OSAIL1>(
                 &global_config,
@@ -6897,7 +6897,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut locked_position_1 = scenario.take_from_sender<liquidity_lock_v2::LockedPosition<TestCoinB, TestCoinA>>();
 
-            liquidity_lock_v2::locker_pause(&admin_cap, &mut locker, true);
+            liquidity_lock_v2::locker_pause(&mut locker, true, scenario.ctx());
 
             let staked_position = liquidity_lock_v2::unlock_position<TestCoinB, TestCoinA>(
                 &mut locker,
@@ -7474,7 +7474,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let locked_position_1 = scenario.take_from_sender<liquidity_lock_v2::LockedPosition<TestCoinB, TestCoinA>>();
 
-            liquidity_lock_v2::locker_pause(&admin_cap, &mut locker, true);
+            liquidity_lock_v2::locker_pause(&mut locker, true, scenario.ctx());
 
             let (remove_balance_a, remove_balance_b) = liquidity_lock_v2::remove_lock_liquidity<TestCoinB, TestCoinA, OSAIL1>(
                 &global_config,
@@ -10420,7 +10420,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             clock::increment_for_testing(&mut clock, 3600*5*24*1000);
 
-            liquidity_lock_v2::locker_pause(&admin_cap, &mut locker, true);
+            liquidity_lock_v2::locker_pause(&mut locker, true, scenario.ctx());
 
             liquidity_lock_v2::change_tick_range<TestCoinB, TestCoinA, OSAIL1>(
                 &global_config,
@@ -13625,4 +13625,212 @@ module liquidity_locker::liquidity_lock_v2_tests {
         test_scenario::return_shared(voter);
         test_scenario::return_shared(ve);
     }
+
+
+    #[test]
+    fun test_admins() {
+        let admin = @0x1;
+        let admin2 = @0x5;
+        let mut scenario = test_scenario::begin(admin);
+        let clock = clock::create_for_testing(scenario.ctx());
+        
+        // Initialize
+        {
+            liquidity_lock_v2::test_init(scenario.ctx());
+            pool_tranche::test_init(scenario.ctx());
+            locker_cap::init_test(scenario.ctx());
+            config::test_init(scenario.ctx());
+            factory::test_init(scenario.ctx());
+            stats::init_test(scenario.ctx());
+            price_provider::init_test(scenario.ctx());
+            rewarder::test_init(scenario.ctx());
+        };
+
+        scenario.next_tx(admin);
+        {
+            let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
+            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
+            let global_config = scenario.take_shared<config::GlobalConfig>();
+
+            let mut periods_blocking = std::vector::empty();
+            std::vector::push_back(&mut periods_blocking, 4);
+            std::vector::push_back(&mut periods_blocking, 5);
+            std::vector::push_back(&mut periods_blocking, 6);
+            let mut periods_post_lockdown = std::vector::empty();
+            std::vector::push_back(&mut periods_post_lockdown, 1);
+            std::vector::push_back(&mut periods_post_lockdown, 2);
+            std::vector::push_back(&mut periods_post_lockdown, 3);
+            liquidity_lock_v2::init_locker(
+                &admin_cap,
+                &locker_create_cap,
+                &mut locker,
+                periods_blocking,
+                periods_post_lockdown,
+                scenario.ctx()
+            );
+
+            liquidity_lock_v2::add_admin(
+                &mut locker,
+                admin2,
+                scenario.ctx()
+            );
+
+            liquidity_lock_v2::check_admin(&locker, admin2);
+
+            liquidity_lock_v2::revoke_admin(
+                &mut locker,
+                admin2,
+                scenario.ctx()
+            );
+
+            transfer::public_transfer(admin_cap, admin);
+            transfer::public_transfer(tranche_admin_cap, admin);
+            transfer::public_transfer(locker_create_cap, admin);
+            test_scenario::return_shared(global_config);
+            test_scenario::return_shared(locker);
+        };
+
+        clock::destroy_for_testing(clock);
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = liquidity_lock_v2::EAddressNotAdmin)]
+    fun test_revoke_not_admin() {
+        let admin = @0x1;
+        let admin2 = @0x5;
+        let mut scenario = test_scenario::begin(admin);
+        let clock = clock::create_for_testing(scenario.ctx());
+        
+        // Initialize
+        {
+            liquidity_lock_v2::test_init(scenario.ctx());
+            pool_tranche::test_init(scenario.ctx());
+            locker_cap::init_test(scenario.ctx());
+            config::test_init(scenario.ctx());
+            factory::test_init(scenario.ctx());
+            stats::init_test(scenario.ctx());
+            price_provider::init_test(scenario.ctx());
+            rewarder::test_init(scenario.ctx());
+        };
+
+        scenario.next_tx(admin);
+        {
+            let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
+            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
+            let global_config = scenario.take_shared<config::GlobalConfig>();
+
+            let mut periods_blocking = std::vector::empty();
+            std::vector::push_back(&mut periods_blocking, 4);
+            std::vector::push_back(&mut periods_blocking, 5);
+            std::vector::push_back(&mut periods_blocking, 6);
+            let mut periods_post_lockdown = std::vector::empty();
+            std::vector::push_back(&mut periods_post_lockdown, 1);
+            std::vector::push_back(&mut periods_post_lockdown, 2);
+            std::vector::push_back(&mut periods_post_lockdown, 3);
+            liquidity_lock_v2::init_locker(
+                &admin_cap,
+                &locker_create_cap,
+                &mut locker,
+                periods_blocking,
+                periods_post_lockdown,
+                scenario.ctx()
+            );
+
+            liquidity_lock_v2::revoke_admin(
+                &mut locker,
+                admin2,
+                scenario.ctx()
+            );
+
+            transfer::public_transfer(admin_cap, admin);
+            transfer::public_transfer(tranche_admin_cap, admin);
+            transfer::public_transfer(locker_create_cap, admin);
+            test_scenario::return_shared(global_config);
+            test_scenario::return_shared(locker);
+        };
+
+        clock::destroy_for_testing(clock);
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = liquidity_lock_v2::EAdminNotWhitelisted)]
+    fun test_not_admin_locker_pause() {
+        let admin = @0x1;
+        let admin2 = @0x5;
+        let mut scenario = test_scenario::begin(admin);
+        let clock = clock::create_for_testing(scenario.ctx());
+        
+        // Initialize
+        {
+            liquidity_lock_v2::test_init(scenario.ctx());
+            pool_tranche::test_init(scenario.ctx());
+            locker_cap::init_test(scenario.ctx());
+            config::test_init(scenario.ctx());
+            factory::test_init(scenario.ctx());
+            stats::init_test(scenario.ctx());
+            price_provider::init_test(scenario.ctx());
+            rewarder::test_init(scenario.ctx());
+        };
+
+        scenario.next_tx(admin);
+        {
+            let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
+            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
+            let global_config = scenario.take_shared<config::GlobalConfig>();
+
+            let mut periods_blocking = std::vector::empty();
+            std::vector::push_back(&mut periods_blocking, 4);
+            std::vector::push_back(&mut periods_blocking, 5);
+            std::vector::push_back(&mut periods_blocking, 6);
+            let mut periods_post_lockdown = std::vector::empty();
+            std::vector::push_back(&mut periods_post_lockdown, 1);
+            std::vector::push_back(&mut periods_post_lockdown, 2);
+            std::vector::push_back(&mut periods_post_lockdown, 3);
+            liquidity_lock_v2::init_locker(
+                &admin_cap,
+                &locker_create_cap,
+                &mut locker,
+                periods_blocking,
+                periods_post_lockdown,
+                scenario.ctx()
+            );
+
+            liquidity_lock_v2::locker_pause(
+                &mut locker,
+                true,
+                scenario.ctx()
+            );
+
+            transfer::public_transfer(admin_cap, admin);
+            transfer::public_transfer(tranche_admin_cap, admin);
+            transfer::public_transfer(locker_create_cap, admin);
+            test_scenario::return_shared(global_config);
+            test_scenario::return_shared(locker);
+        };
+
+        scenario.next_tx(admin2);
+        {
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
+
+            liquidity_lock_v2::locker_pause(
+                &mut locker,
+                true,
+                scenario.ctx()
+            );
+
+            test_scenario::return_shared(locker);
+        };
+
+        clock::destroy_for_testing(clock);
+        test_scenario::end(scenario);
+    }
+
 }
