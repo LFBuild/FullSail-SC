@@ -350,9 +350,9 @@ public fun activate_minter<SailCoinType>( // Changed to public
 
 // Whitelists or de-whitelists a pool in the Minter for oSAIL exercising.
 // Requires the minter and admin cap to be set up.
-public fun whitelist_pool<SailCoinType, CoinTypeA, CoinTypeB>( // Changed to public
+public fun whitelist_pool<SailCoinType, CoinTypeA, CoinTypeB>(
     scenario: &mut test_scenario::Scenario,
-    list: bool // Added flag to whitelist/de-whitelist
+    list: bool, 
 ) {
     let pool = scenario.take_shared<Pool<CoinTypeA, CoinTypeB>>();
     let mut minter = scenario.take_shared<Minter<SailCoinType>>();
@@ -362,7 +362,7 @@ public fun whitelist_pool<SailCoinType, CoinTypeA, CoinTypeB>( // Changed to pub
         &mut minter, 
         &minter_admin_cap, 
         &pool, 
-        list
+        list,
     );
 
     test_scenario::return_shared(minter);

@@ -1124,6 +1124,7 @@ fun check_receive_rate(
     scenario: &mut test_scenario::Scenario,
     user: address,
     percent_to_receive: u64,
+    clock: &Clock,
 ) {
     let mut minter = scenario.take_shared<Minter<SAIL>>();
     let mut o_sail1_coin = scenario.take_from_sender<Coin<OSAIL1>>();
@@ -1137,6 +1138,7 @@ fun check_receive_rate(
         &mut minter,
         o_sail_to_exercise,
         percent_to_receive,
+        clock,
         scenario.ctx()
     );
 
@@ -1183,19 +1185,19 @@ fun test_exercise_o_sail_free_internal() {
     // Tx 3: Exercise OSAIL1 with 75% receive rate
     scenario.next_tx(user);
     {
-        check_receive_rate(&mut scenario, user, 75000000);
+        check_receive_rate(&mut scenario, user, 75000000, &clock);
     };
 
     // Tx 4: Exercise OSAIL1 with 100% receive rate
     scenario.next_tx(user);
     {
-        check_receive_rate(&mut scenario, user, 100000000);
+        check_receive_rate(&mut scenario, user, 100000000, &clock);
     };
 
     // Tx 5: Exercise OSAIL1 with 0% receive rate
     scenario.next_tx(user);
     {
-        check_receive_rate(&mut scenario, user, 0);
+        check_receive_rate(&mut scenario, user, 0, &clock);
     };
 
     clock::destroy_for_testing(clock);
@@ -1237,7 +1239,7 @@ fun test_exercise_o_sail_free_fail_over_100_percent() {
     // Tx 3: Attempt Exercise OSAIL1 with > 100% receive rate
     scenario.next_tx(user);
     { // This block is expected to abort
-        check_receive_rate(&mut scenario, user, common::persent_denominator() + 1);
+        check_receive_rate(&mut scenario, user, common::persent_denominator() + 1, &clock);
     };
 
     clock::destroy_for_testing(clock); 
@@ -2294,7 +2296,7 @@ fun test_exercise_fee_distribution() {
     scenario.next_tx(admin);
     {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
-        minter::distribute_team<SAIL, USD1>(&mut minter, scenario.ctx());
+        minter::distribute_team<SAIL, USD1>(&mut minter, &clock, scenario.ctx());
         test_scenario::return_shared(minter);
     };
 
