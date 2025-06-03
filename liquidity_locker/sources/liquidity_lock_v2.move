@@ -61,6 +61,8 @@ module liquidity_locker::liquidity_lock_v2 {
     const ELockerInitialized: u64 = 9329703470234099;
     const EInsufficientBalanceAOutput: u64 = 9367234807236103;
     const EInsufficientBalanceBOutput: u64 = 9247240362830633;
+    const EAdminNotWhitelisted: u64 = 9389469239702349;
+    const EAddressNotAdmin: u64 = 9630793046376343;
 
     /// Capability for administrative functions in the protocol.
     /// This capability is required for managing global settings and protocol parameters.
@@ -78,6 +80,7 @@ module liquidity_locker::liquidity_lock_v2 {
     /// * `id` - Unique identifier for the locker instance
     /// * `locker_cap` - Optional capability for managing locker operations
     /// * `version` - Protocol version number
+    /// * `admins` - Vector of admin addresses that are allowed to manage the locker
     /// * `staked_positions` - Table mapping position IDs to their staked position
     /// * `periods_blocking` - Vector of lock periods measured in epochs
     /// * `periods_post_lockdown` - Vector of post-lock periods in epochs (must match length of periods_blocking)
@@ -86,6 +89,7 @@ module liquidity_locker::liquidity_lock_v2 {
         id: sui::object::UID,
         locker_cap: Option<locker_cap::locker_cap::LockerCap>,
         version: u64,
+        admins: sui::vec_set::VecSet<address>,
         staked_positions: sui::object_table::ObjectTable<ID, distribution::gauge::StakedPosition>, // key - position ID
         periods_blocking: vector<u64>,
         periods_post_lockdown: vector<u64>,
@@ -346,6 +350,7 @@ module liquidity_locker::liquidity_lock_v2 {
             id: sui::object::new(ctx),
             locker_cap: option::none<locker_cap::locker_cap::LockerCap>(),
             version: VERSION,
+            admins: sui::vec_set::from_keys<address>(*locker_v1.admins().keys<address>()),
             staked_positions: sui::object_table::new<ID, distribution::gauge::StakedPosition>(ctx),
             periods_blocking: periods_blocking,
             periods_post_lockdown: periods_post_lockdown,
@@ -386,20 +391,22 @@ module liquidity_locker::liquidity_lock_v2 {
     /// New periods will only be applied to new position locks, existing locked positions will keep their original periods.
     /// 
     /// # Arguments
-    /// * `_admin_cap` - Administrative capability for authorization
     /// * `locker` - The locker object to update
     /// * `periods_blocking` - Vector of blocking periods in epochs
     /// * `periods_post_lockdown` - Vector of post-lockdown periods in epochs
+    /// * `ctx` - The transaction context
     /// 
     /// # Aborts
+    /// * If the sender is not an admin (error code: EAdminNotWhitelisted)
     /// * If periods_blocking is empty
     /// * If periods_blocking and periods_post_lockdown have different lengths
     public fun update_lock_periods(
-        _admin_cap: &AdminCap,
         locker: &mut Locker, 
         periods_blocking: vector<u64>,
         periods_post_lockdown: vector<u64>,
+        ctx: &mut sui::tx_context::TxContext,
     ) {
+        check_admin(locker, sui::tx_context::sender(ctx));
         assert!(periods_blocking.length() > 0 && 
             periods_blocking.length() == periods_post_lockdown.length(), EInvalidPeriodsLength);
             
@@ -432,14 +439,18 @@ module liquidity_locker::liquidity_lock_v2 {
     /// Updates the pause state of the locker and emits an event.
     /// 
     /// # Arguments
-    /// * `_admin_cap` - Administrative capability for authorization
     /// * `locker` - The locker object to update
     /// * `pause` - New pause state (true to pause, false to unpause)
+    /// * `ctx` - The transaction context
+    /// 
+    /// # Aborts
+    /// * If the sender is not an admin (error code: EAdminNotWhitelisted)
     public fun locker_pause(
-        _admin_cap: &AdminCap,
         locker: &mut Locker,
         pause: bool,
+        ctx: &mut sui::tx_context::TxContext,
     ) {
+        check_admin(locker, sui::tx_context::sender(ctx));
         locker.pause = pause;
         let event = LockerPauseEvent {
             locker_id: sui::object::id<Locker>(locker),
@@ -470,6 +481,56 @@ module liquidity_locker::liquidity_lock_v2 {
     /// * If the package version is not a version of liquidity_locker_v1 (error code: EPackageVersionMismatch)
     public fun checked_package_version(locker: &Locker) {
         assert!(locker.version == VERSION, EPackageVersionMismatch);
+    }
+
+    /// Checks if the provided admin is whitelisted in the locker.
+    /// 
+    /// # Arguments
+    /// * `locker` - The locker object to check
+    /// * `admin` - The address of the admin to check
+    /// 
+    /// # Abort Conditions
+    /// * If the admin is not whitelisted (error code: EAdminNotWhitelisted)
+    public fun check_admin(locker: &Locker, admin: address) {
+        assert!(locker.admins.contains<address>(&admin), EAdminNotWhitelisted);
+    }
+
+    /// Adds an admin to the locker.
+    /// 
+    /// # Arguments
+    /// * `locker` - The locker object to add the admin to
+    /// * `new_admin` - The address of the admin to add
+    /// * `ctx` - The transaction context
+    /// 
+    /// # Aborts
+    /// * If the admin is not whitelisted (error code: EAdminNotWhitelisted)
+    /// * If the new_admin address is already an admin (error code: EAddressNotAdmin)
+    public fun add_admin(locker: &mut Locker, new_admin: address, ctx: &mut sui::tx_context::TxContext) {
+        check_admin(locker, sui::tx_context::sender(ctx));
+
+        assert!(!locker.admins.contains(&new_admin), EAddressNotAdmin);
+        locker.admins.insert(new_admin);
+    }
+
+    /// Revokes an admin from the locker.
+    /// 
+    /// # Arguments
+    /// * `locker` - The locker object to revoke the admin from
+    /// * `who` - The address of the admin to revoke
+    /// * `ctx` - The transaction context
+    /// 
+    /// # Aborts
+    /// * If the admin is not whitelisted (error code: EAdminNotWhitelisted)
+    /// * If the who address is not an admin (error code: EAddressNotAdmin)
+    public fun revoke_admin(
+        locker: &mut Locker,
+        who: address,
+        ctx: &mut sui::tx_context::TxContext,
+    ) {
+        check_admin(locker, sui::tx_context::sender(ctx));
+
+        assert!(locker.admins.contains(&who), EAddressNotAdmin);
+        locker.admins.remove(&who); 
     }
 
     /// Returns the version of the locker.
@@ -2302,15 +2363,18 @@ module liquidity_locker::liquidity_lock_v2 {
 
     #[test_only]
     public fun test_init(ctx: &mut sui::tx_context::TxContext) {
-        let locker = Locker {
+        let mut locker = Locker {
             id: sui::object::new(ctx),
             locker_cap: option::none<locker_cap::locker_cap::LockerCap>(),
             version: VERSION,
+            admins: sui::vec_set::empty<address>(),
             staked_positions: sui::object_table::new<ID, distribution::gauge::StakedPosition>(ctx),
             periods_blocking: std::vector::empty<u64>(),
             periods_post_lockdown: std::vector::empty<u64>(),
             pause: false,
         };
+        locker.admins.insert(sui::tx_context::sender(ctx));
+
         sui::transfer::share_object<Locker>(locker);
     
         let admin_cap = AdminCap { id: sui::object::new(ctx) };
