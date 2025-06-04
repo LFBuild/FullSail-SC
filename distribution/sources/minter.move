@@ -154,8 +154,6 @@ module distribution::minter {
         // we don't need whitelisted tokens, cos
         // pool whitelist also determines token whitelist composed of the pools tokens.
         whitelisted_pools: VecSet<ID>,
-        // tokens that were used to pay for oSAIL exercise fee
-        exercise_fee_tokens: VecSet<TypeName>,
         exercise_fee_team_balances: Bag,
         // Gauge Id -> oSAil Emissions
         gauge_epoch_emissions: Table<ID, u64>,
@@ -378,7 +376,6 @@ module distribution::minter {
             reward_distributor_cap: option::none<distribution::reward_distributor_cap::RewardDistributorCap>(),
             distribute_cap: option::none<distribution::distribute_cap::DistributeCap>(),
             whitelisted_pools: vec_set::empty<ID>(),
-            exercise_fee_tokens: vec_set::empty<TypeName>(),
             exercise_fee_team_balances: bag::new(ctx),
             gauge_epoch_emissions: table::new<ID, u64>(ctx),
             gauge_active_period: table::new<ID, u64>(ctx),
@@ -1363,24 +1360,7 @@ module distribution::minter {
             if (list) {
                 minter.whitelisted_pools.insert(pool_id)
             };
-            let coin_type_a = type_name::get<CoinTypeA>();
-            if (!minter.exercise_fee_tokens.contains(&coin_type_a)) {
-                minter.exercise_fee_tokens.insert(coin_type_a);
-            };
-            let coin_type_b = type_name::get<CoinTypeB>();
-            if (!minter.exercise_fee_tokens.contains(&coin_type_b)) {
-                minter.exercise_fee_tokens.insert(coin_type_b);
-            };
         }
-    }
-
-    /// Returns the exercise fee tokens
-    /// IMPORTANT: it is not guaranteed that the tokens are whitelisted
-    /// It might happen that tokens were whitelisted in the past, but
-    public fun borrow_exercise_fee_tokens<SailCoinType>(
-        minter: &Minter<SailCoinType>,
-    ): &VecSet<TypeName> {
-        &minter.exercise_fee_tokens
     }
 
     public fun is_whitelisted_pool<SailCoinType, CoinTypeA, CoinTypeB>(
