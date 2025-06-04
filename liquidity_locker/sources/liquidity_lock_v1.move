@@ -60,7 +60,7 @@ module liquidity_locker::liquidity_lock_v1 {
     /// # Fields
     /// * `id` - Unique identifier for the capability
     /// * `init_locker_v2` - Flag indicating if the locker v2 has been initialized
-    public struct AdminCap has store, key {
+    public struct SuperAdminCap has store, key {
         id: sui::object::UID,
         init_locker_v2: bool
     }
@@ -73,7 +73,7 @@ module liquidity_locker::liquidity_lock_v1 {
     /// # Returns
     /// True if the locker v2 has been initialized, false otherwise
     public fun get_init_locker_v2(
-        admin_cap: &AdminCap,
+        admin_cap: &SuperAdminCap,
     ): bool {
         admin_cap.init_locker_v2
     }
@@ -83,7 +83,7 @@ module liquidity_locker::liquidity_lock_v1 {
     /// # Arguments
     /// * `admin_cap` - The admin capability to initialize
     public fun init_locker_v2(
-        admin_cap: &mut AdminCap,
+        admin_cap: &mut SuperAdminCap,
     ) {
         admin_cap.init_locker_v2 = true;
     }
@@ -259,16 +259,6 @@ module liquidity_locker::liquidity_lock_v1 {
         last_growth_inside: u128,
     }
 
-    /// Event emitted when a locked position is transferred.
-    /// 
-    /// # Fields
-    /// * `lock_position_id` - Unique identifier of the locked position
-    /// * `to` - Address to which the locked position was transferred
-    public struct TransferLockPositionEvent has copy, drop {
-        lock_position_id: sui::object::ID,
-        to: address,
-    }
-
     /// Event emitted when a locked position is unlocked.
     /// 
     /// # Fields
@@ -333,7 +323,7 @@ module liquidity_locker::liquidity_lock_v1 {
     /// Initializes the liquidity locker module.
     /// 
     /// This function creates and initializes the main Locker object with default values,
-    /// creates an AdminCap for administrative control, and emits an initialization event.
+    /// creates an SuperAdminCap for administrative control, and emits an initialization event.
     /// 
     /// # Arguments
     /// * `ctx` - The transaction context
@@ -358,11 +348,11 @@ module liquidity_locker::liquidity_lock_v1 {
         let locker_id = sui::object::id<Locker>(&locker);
         transfer::share_object<Locker>(locker);
     
-        let admin_cap = AdminCap { 
+        let admin_cap = SuperAdminCap { 
             id: sui::object::new(ctx), 
             init_locker_v2: false,
         };
-        transfer::transfer<AdminCap>(admin_cap, sui::tx_context::sender(ctx));
+        transfer::transfer<SuperAdminCap>(admin_cap, sui::tx_context::sender(ctx));
 
         let event = InitLockerEvent { locker_id };
         sui::event::emit<InitLockerEvent>(event);
@@ -386,7 +376,7 @@ module liquidity_locker::liquidity_lock_v1 {
     /// * If periods_blocking is empty
     /// * If periods_blocking and periods_post_lockdown have different lengths
     public fun init_locker(
-        _admin_cap: &AdminCap,
+        _admin_cap: &SuperAdminCap,
         create_locker_cap: &locker_cap::locker_cap::CreateCap,
         locker: &mut Locker, 
         periods_blocking: vector<u64>,
@@ -539,6 +529,18 @@ module liquidity_locker::liquidity_lock_v1 {
 
         assert!(!locker.admins.contains(&new_admin), EAddressNotAdmin);
         locker.admins.insert(new_admin);
+    }
+
+    /// Checks if the provided admin is whitelisted in the locker.
+    /// 
+    /// # Arguments
+    /// * `locker` - The locker object to check
+    /// * `admin` - The address of the admin to check
+    /// 
+    /// # Returns
+    /// Boolean indicating if the admin is whitelisted (true) or not (false)
+    public fun is_admin(locker: &Locker, admin: address): bool {
+        locker.admins.contains(&admin)
     }
 
     /// Revokes an admin from the locker.
@@ -2095,11 +2097,11 @@ module liquidity_locker::liquidity_lock_v1 {
 
         transfer::share_object<Locker>(locker);
     
-        let admin_cap = AdminCap { 
+        let admin_cap = SuperAdminCap { 
             id: sui::object::new(ctx), 
             init_locker_v2: false,
         };
-        transfer::public_transfer<AdminCap>(admin_cap, sui::tx_context::sender(ctx));
+        transfer::public_transfer<SuperAdminCap>(admin_cap, sui::tx_context::sender(ctx));
     }
 
     #[test_only]

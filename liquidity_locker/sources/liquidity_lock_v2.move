@@ -69,7 +69,7 @@ module liquidity_locker::liquidity_lock_v2 {
     /// 
     /// # Fields
     /// * `id` - Unique identifier for the capability
-    public struct AdminCap has store, key {
+    public struct SuperAdminCap has store, key {
         id: sui::object::UID,
     }
 
@@ -204,16 +204,6 @@ module liquidity_locker::liquidity_lock_v2 {
         last_growth_inside: u128,
     }
 
-    /// Event emitted when a locked position is transferred.
-    /// 
-    /// # Fields
-    /// * `lock_position_id` - Unique identifier of the locked position
-    /// * `to` - Address to which the locked position was transferred
-    public struct TransferLockPositionEvent has copy, drop {
-        lock_position_id: sui::object::ID,
-        to: address,
-    }
-
     /// Event emitted when a locked position is unlocked.
     /// 
     /// # Fields
@@ -335,7 +325,7 @@ module liquidity_locker::liquidity_lock_v2 {
     /// # Aborts
     /// * If the locker v2 has already been initialized (error code: ELockerInitialized)
     public fun create_locker(
-        _admin_cap: &mut liquidity_locker::liquidity_lock_v1::AdminCap,
+        _admin_cap: &mut liquidity_locker::liquidity_lock_v1::SuperAdminCap,
         locker_v1: &liquidity_locker::liquidity_lock_v1::Locker,
         create_locker_cap: &locker_cap::locker_cap::CreateCap,
         ctx: &mut sui::tx_context::TxContext,
@@ -380,8 +370,8 @@ module liquidity_locker::liquidity_lock_v2 {
 
         sui::transfer::share_object<Locker>(locker);
 
-        let admin_cap = AdminCap { id: sui::object::new(ctx) };
-        sui::transfer::transfer<AdminCap>(admin_cap, sui::tx_context::sender(ctx));
+        let admin_cap = SuperAdminCap { id: sui::object::new(ctx) };
+        sui::transfer::transfer<SuperAdminCap>(admin_cap, sui::tx_context::sender(ctx));
     }
     
     /// Updates the blocking and post-lockdown periods for the locker.
@@ -510,6 +500,18 @@ module liquidity_locker::liquidity_lock_v2 {
 
         assert!(!locker.admins.contains(&new_admin), EAddressNotAdmin);
         locker.admins.insert(new_admin);
+    }
+
+    /// Checks if the provided admin is whitelisted in the locker.
+    /// 
+    /// # Arguments
+    /// * `locker` - The locker object to check
+    /// * `admin` - The address of the admin to check
+    /// 
+    /// # Returns
+    /// Boolean indicating if the admin is whitelisted (true) or not (false)
+    public fun is_admin(locker: &Locker, admin: address): bool {
+        locker.admins.contains(&admin)
     }
 
     /// Revokes an admin from the locker.
@@ -2377,13 +2379,13 @@ module liquidity_locker::liquidity_lock_v2 {
 
         sui::transfer::share_object<Locker>(locker);
     
-        let admin_cap = AdminCap { id: sui::object::new(ctx) };
-        sui::transfer::transfer<AdminCap>(admin_cap, sui::tx_context::sender(ctx));
+        let admin_cap = SuperAdminCap { id: sui::object::new(ctx) };
+        sui::transfer::transfer<SuperAdminCap>(admin_cap, sui::tx_context::sender(ctx));
     }
 
     #[test_only]
     public fun init_locker(
-        _admin_cap: &AdminCap,
+        _admin_cap: &SuperAdminCap,
         create_locker_cap: &locker_cap::locker_cap::CreateCap,
         locker: &mut Locker, 
         periods_blocking: vector<u64>,

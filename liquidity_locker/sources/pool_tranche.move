@@ -57,7 +57,7 @@ module liquidity_locker::pool_tranche {
     /// 
     /// # Fields
     /// * `id` - Unique identifier for the capability
-    public struct AdminCap has store, key {
+    public struct SuperAdminCap has store, key {
         id: sui::object::UID,
     }
 
@@ -251,8 +251,8 @@ module liquidity_locker::pool_tranche {
         };
         tranche_manager.admins.insert(sui::tx_context::sender(ctx));
 
-        let admin_cap = AdminCap { id: sui::object::new(ctx) };
-        sui::transfer::transfer<AdminCap>(admin_cap, sui::tx_context::sender(ctx));
+        let admin_cap = SuperAdminCap { id: sui::object::new(ctx) };
+        sui::transfer::transfer<SuperAdminCap>(admin_cap, sui::tx_context::sender(ctx));
 
         let tranche_manager_id = sui::object::id<PoolTrancheManager>(&tranche_manager);
         sui::transfer::share_object<PoolTrancheManager>(tranche_manager);
@@ -288,6 +288,18 @@ module liquidity_locker::pool_tranche {
 
         assert!(!tranche_manager.admins.contains(&new_admin), EAddressNotAdmin);
         tranche_manager.admins.insert(new_admin);
+    }
+
+    /// Checks if the provided admin is whitelisted in the tranche manager.
+    /// 
+    /// # Arguments
+    /// * `tranche_manager` - The tranche manager object to check
+    /// * `admin` - The address of the admin to check
+    /// 
+    /// # Returns
+    /// Boolean indicating if the admin is whitelisted (true) or not (false)
+    public fun is_admin(tranche_manager: &PoolTrancheManager, admin: address): bool {
+        tranche_manager.admins.contains(&admin)
     }
 
     /// Revokes an admin from the tranche manager.
@@ -901,8 +913,8 @@ module liquidity_locker::pool_tranche {
         };
         tranche_manager.admins.insert(sui::tx_context::sender(ctx));
 
-        let admin_cap = AdminCap { id: sui::object::new(ctx) };
-        sui::transfer::transfer<AdminCap>(admin_cap, sui::tx_context::sender(ctx));
+        let admin_cap = SuperAdminCap { id: sui::object::new(ctx) };
+        sui::transfer::transfer<SuperAdminCap>(admin_cap, sui::tx_context::sender(ctx));
         sui::transfer::share_object<PoolTrancheManager>(tranche_manager);
     }
 }

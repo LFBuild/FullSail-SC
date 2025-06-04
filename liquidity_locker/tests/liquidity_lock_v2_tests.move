@@ -9,7 +9,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
     use clmm_pool::position;
     use clmm_pool::pool;
     use clmm_pool::factory::{Self as factory, Pools};
-    use clmm_pool::config::{Self as config, GlobalConfig, AdminCap};
+    use clmm_pool::config::{Self as config, GlobalConfig};
     use clmm_pool::stats;
     use clmm_pool::rewarder;
     use price_provider::price_provider;
@@ -64,7 +64,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             // let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
 
@@ -130,7 +130,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -272,7 +272,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -405,7 +405,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -554,7 +554,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -685,7 +685,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>(); 
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -798,7 +798,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -925,7 +925,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -1094,7 +1094,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -1261,7 +1261,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -1445,7 +1445,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -1633,7 +1633,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -1824,7 +1824,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -1944,7 +1944,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
@@ -2037,7 +2037,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
@@ -2142,7 +2142,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>(); 
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
@@ -2229,7 +2229,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -2303,7 +2303,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -2387,7 +2387,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
@@ -2477,7 +2477,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>(); 
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -2626,7 +2626,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
@@ -2741,7 +2741,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -2861,7 +2861,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
@@ -2954,7 +2954,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
@@ -3059,7 +3059,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
@@ -3109,7 +3109,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
@@ -3175,7 +3175,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
@@ -3280,7 +3280,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -3400,7 +3400,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
@@ -3452,7 +3452,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -3551,7 +3551,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
@@ -3675,7 +3675,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
@@ -3777,7 +3777,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -3927,7 +3927,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -4077,7 +4077,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -4243,7 +4243,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -4494,7 +4494,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
@@ -4671,7 +4671,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -4922,7 +4922,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
@@ -5149,7 +5149,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -5335,7 +5335,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
@@ -5473,7 +5473,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -5641,7 +5641,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -5803,7 +5803,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -5965,7 +5965,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -6068,7 +6068,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
@@ -6153,7 +6153,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -6301,7 +6301,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -6487,7 +6487,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
@@ -6595,7 +6595,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -6698,7 +6698,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
@@ -6783,7 +6783,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -6886,7 +6886,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
@@ -6969,7 +6969,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -7072,7 +7072,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
@@ -7157,7 +7157,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -7260,7 +7260,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
@@ -7349,7 +7349,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -7452,7 +7452,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
@@ -7539,7 +7539,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -7642,7 +7642,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
@@ -7749,7 +7749,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -8000,7 +8000,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
@@ -8113,7 +8113,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -8364,7 +8364,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
@@ -8484,7 +8484,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -8667,7 +8667,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -8848,7 +8848,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -9074,7 +9074,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -9312,7 +9312,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -9507,7 +9507,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -9652,7 +9652,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
@@ -9704,7 +9704,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -9809,7 +9809,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
@@ -9873,7 +9873,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -9978,7 +9978,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
@@ -10063,7 +10063,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -10221,7 +10221,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -10395,7 +10395,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -10551,7 +10551,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -10707,7 +10707,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -10864,7 +10864,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         scenario.next_tx(admin);
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -11643,7 +11643,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -11800,7 +11800,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
@@ -11852,7 +11852,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -11916,7 +11916,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -11971,7 +11971,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -12028,7 +12028,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -12085,7 +12085,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -12144,7 +12144,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -12243,7 +12243,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
@@ -12398,7 +12398,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -12555,7 +12555,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
@@ -12618,7 +12618,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
@@ -12733,7 +12733,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
@@ -13317,7 +13317,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         scenario.next_tx(admin);
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
 
@@ -13385,7 +13385,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         scenario.next_tx(admin);
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
 
@@ -13445,7 +13445,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         scenario.next_tx(admin);
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
 
