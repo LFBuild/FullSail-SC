@@ -186,6 +186,7 @@ module distribution::bribe_voting_reward {
         lock_ids: vector<ID>,
         for_epoch_start: u64,
         final: bool,
+        clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
         reward.reward.update_balances(
@@ -194,6 +195,7 @@ module distribution::bribe_voting_reward {
             lock_ids,
             for_epoch_start,
             final,
+            clock,
             ctx
         );
     }

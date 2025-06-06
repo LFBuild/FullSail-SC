@@ -4,6 +4,8 @@ module distribution::reward {
     const EUpdateBalancesEpochStartInvalid: u64 = 17211664930268266;
     const EUpdateBalancesInvalidLocksLength: u64 = 651147350837936100;
     const EUpdateBalancesAlreadyFinal: u64 = 931921756019291000;
+    const EUpdateBalancesLockWasNotDeposited: u64 = 540228096373927230;
+    const EUpdateBalancesOnlyFinishedEpochAllowed: u64 = 787934305039328400;
 
     const ERewardPerEpochInvalidToken: u64 = 9223372492121309183;
 
@@ -245,6 +247,9 @@ module distribution::reward {
     /// 
     /// # Aborts
     /// * If the authorization is invalid
+    /// * If the lock was not deposited in the epoch start
+    /// * If the epoch start is not a multiple of the week
+    /// * If the epoch is already finalized
     public(package) fun update_balances(
         reward: &mut Reward,
         reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
@@ -252,6 +257,7 @@ module distribution::reward {
         lock_ids: vector<ID>,
         for_epoch_start: u64,
         final: bool,
+        clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
         reward_authorized_cap.validate(reward.authorized);
@@ -263,12 +269,17 @@ module distribution::reward {
             !(*reward.epoch_updates_finalized.borrow(for_epoch_start)), 
             EUpdateBalancesAlreadyFinal
         );
+        let current_time = distribution::common::current_timestamp(clock);
+        let current_epoch_start = distribution::common::epoch_start(current_time);
+        // balance update is only allowed for finished epochs
+        assert!(for_epoch_start < current_epoch_start, EUpdateBalancesOnlyFinishedEpochAllowed);
         let mut i = 0;
         let mut total_supply = reward.total_supply_at(for_epoch_start);
         while (i < balances.length()) {
             let lock_id = lock_ids[i];
             let balance = balances[i];
             let old_balance = reward.balance_of_at(lock_id, for_epoch_start);
+            assert!(old_balance > 0, EUpdateBalancesLockWasNotDeposited);
             // change total supply by balance delta. Should never overflow cos old balance is always included in total supply
             total_supply = total_supply + balance - old_balance;
 

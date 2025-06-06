@@ -1968,6 +1968,7 @@ module distribution::voter {
         lock_ids: vector<ID>,
         for_epoch_start: u64,
         final: bool,
+        clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
         distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
@@ -1980,6 +1981,7 @@ module distribution::voter {
             lock_ids,
             for_epoch_start,
             final,
+            clock,
             ctx
         );
 
@@ -1990,6 +1992,7 @@ module distribution::voter {
             lock_ids,
             for_epoch_start,
             final,
+            clock,
             ctx
         );
     }
