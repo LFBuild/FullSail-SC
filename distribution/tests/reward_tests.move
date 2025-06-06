@@ -2856,3 +2856,173 @@ fun test_reward_double_claim_impossible() {
 
     scenario.end();
 }
+
+#[test]
+fun test_reward_multi_token_notify_and_claim() {
+    let admin = @0xFE;
+    let authorized_id: ID = object::id_from_address(@0xFF);
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Create reward with balance_update_enabled = true and support for multiple tokens
+    let voter_id: ID = object::id_from_address(@0x1);
+    let ve_id: ID = object::id_from_address(@0x2);
+    let ve_id_option: Option<ID> = option::some(ve_id);
+    let reward_types = vector[
+        type_name::get<USD1>(),
+        type_name::get<OTHER>()
+    ];
+    let mut reward_obj = reward::create(
+        voter_id,
+        ve_id_option,
+        authorized_id,
+        reward_types,
+        true, // balance_update_enabled = true
+        scenario.ctx()
+    );
+    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx());
+
+    let one_week_ms = 7 * 24 * 60 * 60 * 1000;
+    let notify_amount_usd1 = 5000; // USD1 reward amount
+    let notify_amount_other = 3000; // OTHER reward amount
+
+    // --- Notify reward with USD1 ---
+    let reward_coin_usd1 = coin::mint_for_testing<USD1>(notify_amount_usd1, scenario.ctx());
+    reward::notify_reward_amount_internal<USD1>(
+        &mut reward_obj,
+        reward_coin_usd1.into_balance(),
+        &clock,
+        scenario.ctx()
+    );
+
+    // --- Notify reward with OTHER ---
+    let reward_coin_other = coin::mint_for_testing<OTHER>(notify_amount_other, scenario.ctx());
+    reward::notify_reward_amount_internal<OTHER>(
+        &mut reward_obj,
+        reward_coin_other.into_balance(),
+        &clock,
+        scenario.ctx()
+    );
+
+    // Store epoch start for reference
+    let epoch1_start = distribution::common::epoch_start(distribution::common::current_timestamp(&clock));
+
+    // Verify both tokens are supported
+    assert!(reward_obj.rewards_contains(type_name::get<USD1>()), 1);
+    assert!(reward_obj.rewards_contains(type_name::get<OTHER>()), 2);
+
+    // --- Deposit a lock ---
+    let lock_id1: ID = object::id_from_address(@0xF09);
+    let deposit_amount = 8000;
+
+    reward_obj.deposit(&reward_cap, deposit_amount, lock_id1, &clock, scenario.ctx());
+    assert!(reward_obj.total_supply(&clock) == deposit_amount, 3);
+    assert!(reward_obj.balance_of(lock_id1, &clock) == deposit_amount, 4);
+
+    // No earned rewards within the same epoch for either token
+    assert!(reward_obj.earned<USD1>(lock_id1, &clock) == 0, 5);
+    assert!(reward_obj.earned<OTHER>(lock_id1, &clock) == 0, 6);
+
+    // --- Advance to the next epoch ---
+    clock::increment_for_testing(&mut clock, one_week_ms);
+
+    // Still no earned rewards because balance updates are required
+    assert!(reward_obj.earned<USD1>(lock_id1, &clock) == 0, 7);
+    assert!(reward_obj.earned<OTHER>(lock_id1, &clock) == 0, 8);
+
+    // --- Update balances for the previous epoch ---
+    let updated_balance = 10000; // Custom balance for the lock
+    let lock_ids = vector[lock_id1];
+    let balances = vector[updated_balance];
+    
+    reward_obj.update_balances(
+        &reward_cap,
+        balances,
+        lock_ids,
+        epoch1_start, // Update balances for Epoch 1
+        true, // final = true (finalize epoch 1)
+        &clock,
+        scenario.ctx()
+    );
+
+    // Verify balance was updated
+    assert!(reward_obj.balance_of_at(lock_id1, epoch1_start) == updated_balance, 9);
+    assert!(reward_obj.total_supply_at(epoch1_start) == updated_balance, 10);
+
+    // --- Get rewards for both token types ---
+    
+    // Expected rewards: 100% of each notify amount since only one lock exists
+    let expected_reward_usd1 = notify_amount_usd1; // 5000
+    let expected_reward_other = notify_amount_other; // 3000
+
+    // Check earned amounts for both tokens
+    let earned_usd1 = reward_obj.earned<USD1>(lock_id1, &clock);
+    let earned_other = reward_obj.earned<OTHER>(lock_id1, &clock);
+    
+    assert!(earned_usd1 == expected_reward_usd1, 11);
+    assert!(earned_other == expected_reward_other, 12);
+
+    // --- Claim USD1 rewards ---
+    let balance_opt_usd1 = reward::get_reward_internal<USD1>(
+        &mut reward_obj, 
+        admin, // Recipient address
+        lock_id1, 
+        &clock, 
+        scenario.ctx()
+    );
+    assert!(option::is_some(&balance_opt_usd1), 13);
+    let claimed_balance_usd1 = option::destroy_some(balance_opt_usd1);
+    assert!(claimed_balance_usd1.value() == expected_reward_usd1, 14);
+    sui::balance::destroy_for_testing(claimed_balance_usd1);
+
+    // Verify USD1 earned is now 0 after claiming
+    assert!(reward_obj.earned<USD1>(lock_id1, &clock) == 0, 15);
+
+    // --- Claim OTHER rewards ---
+    let balance_opt_other = reward::get_reward_internal<OTHER>(
+        &mut reward_obj, 
+        admin, // Recipient address
+        lock_id1, 
+        &clock, 
+        scenario.ctx()
+    );
+    assert!(option::is_some(&balance_opt_other), 16);
+    let claimed_balance_other = option::destroy_some(balance_opt_other);
+    assert!(claimed_balance_other.value() == expected_reward_other, 17);
+    sui::balance::destroy_for_testing(claimed_balance_other);
+
+    // Verify OTHER earned is now 0 after claiming
+    assert!(reward_obj.earned<OTHER>(lock_id1, &clock) == 0, 18);
+
+    // --- Verify both tokens are completely claimed ---
+    assert!(reward_obj.earned<USD1>(lock_id1, &clock) == 0, 19);
+    assert!(reward_obj.earned<OTHER>(lock_id1, &clock) == 0, 20);
+
+    // --- Verify double claim protection for both tokens ---
+    let balance_opt_usd1_double = reward::get_reward_internal<USD1>(
+        &mut reward_obj, 
+        admin,
+        lock_id1, 
+        &clock, 
+        scenario.ctx()
+    );
+    assert!(option::is_none(&balance_opt_usd1_double), 21);
+    option::destroy_none(balance_opt_usd1_double);
+
+    let balance_opt_other_double = reward::get_reward_internal<OTHER>(
+        &mut reward_obj, 
+        admin,
+        lock_id1, 
+        &clock, 
+        scenario.ctx()
+    );
+    assert!(option::is_none(&balance_opt_other_double), 22);
+    option::destroy_none(balance_opt_other_double);
+
+    // Cleanup
+    test_utils::destroy(reward_cap);
+    test_utils::destroy(reward_obj);
+    clock::destroy_for_testing(clock);
+
+    scenario.end();
+}
