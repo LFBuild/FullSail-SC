@@ -2296,7 +2296,7 @@ fun test_exercise_fee_distribution() {
     scenario.next_tx(admin);
     {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
-        minter::distribute_team<SAIL, USD1>(&mut minter, &clock, scenario.ctx());
+        minter::distribute_team<SAIL, USD1>(&mut minter, scenario.ctx());
         test_scenario::return_shared(minter);
     };
 
