@@ -47,3 +47,9 @@ git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
 subdir = "price_provider"
 rev = "dev"
 override = true
+
+[dependencies.liquidity_locker]
+git = "https://github.com/LFBuild/FullSail-LL-SC.git"
+subdir = "liquidity_locker"
+rev = "dev"
+override = true

@@ -2,14 +2,15 @@
 
 [move]
 version = 3
-manifest_digest = "74EF2FEED285AFD3A124D30F237CD74A86F9A2F3046D591BAEA7A2E85DF09E06"
-deps_digest = "CAFAD8A7CF51067FB4358215BECB86BD100DD64E57C2AC8A7AE7D74B688F5965"
+manifest_digest = "E81E88274FF628DA96987A204A7EA4AA152D73BE254D08687DE023A5C1CD2CFF"
+deps_digest = "04732BFEF428F74DE262001DC455D76B909EBC394B034A9A15CC095E4BDD9CEF"
 dependencies = [
   { id = "Sui", name = "Sui" },
   { id = "clmm_pool", name = "clmm_pool" },
   { id = "distribution", name = "distribution" },
   { id = "gauge_cap", name = "gauge_cap" },
   { id = "integer_mate", name = "integer_mate" },
+  { id = "liquidity_locker", name = "liquidity_locker" },
   { id = "move_stl", name = "move_stl" },
   { id = "price_provider", name = "price_provider" },
 ]
@@ -67,6 +68,27 @@ dependencies = [
 ]
 
 [[move.package]]
+id = "liquidity_locker"
+source = { git = "https://github.com/LFBuild/FullSail-LL-SC.git", rev = "dev", subdir = "liquidity_locker" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+  { id = "clmm_pool", name = "clmm_pool" },
+  { id = "gauge_cap", name = "gauge_cap" },
+  { id = "integer_mate", name = "integer_mate" },
+  { id = "locker_cap", name = "locker_cap" },
+  { id = "price_provider", name = "price_provider" },
+]
+
+[[move.package]]
+id = "locker_cap"
+source = { git = "https://github.com/LFBuild/FullSail-LL-SC.git", rev = "dev", subdir = "locker_cap" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+]
+
+[[move.package]]
 id = "move_stl"
 source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "dev", subdir = "move_stl" }
 
@@ -91,8 +113,8 @@ flavor = "sui"
 
 [env.mainnet]
 chain-id = "35834a8a"
-original-published-id = "0x33099e34713487116f34c2beb736517e23f568101386f5dc82f7400eead2b442"
-latest-published-id = "0x33099e34713487116f34c2beb736517e23f568101386f5dc82f7400eead2b442"
+original-published-id = "0x4d355503cc1413f93f1e6c860b68454c4f8ab1486f16bd992d929224cf515de4"
+latest-published-id = "0x2cd1248b1adc3926e7df6a481179e3c32e07e5ea40183f9160082a3a8a49d9de"
 published-version = "1"
 
 [env.testnet]
