@@ -3,6 +3,7 @@ module integrate::pool_script_v2 {
     const EExceededLimit: u64 = 0;
     const EInsufficientOutput: u64 = 1;
     const EAmountMismatch: u64 = 2;
+    const EFailedLockPosition: u64 = 939267347223;
 
     fun swap<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
@@ -581,6 +582,44 @@ module integrate::pool_script_v2 {
             clock,
             ctx
         );
+
+        let len = lock_positions.length();
+        let mut i = 0;
+        while (i < len) {
+            transfer::public_transfer<liquidity_locker::liquidity_lock_v1::LockedPosition<CoinTypeA, CoinTypeB>>(
+                lock_positions.pop_back(), 
+                tx_context::sender(ctx)
+            );
+            i = i + 1;
+        };
+        lock_positions.destroy_empty();
+    }
+
+    public entry fun lock_position<CoinTypeA, CoinTypeB>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        locker: &mut liquidity_locker::liquidity_lock_v1::Locker,
+        pool_tranche_manager: &mut liquidity_locker::pool_tranche::PoolTrancheManager,
+        position: clmm_pool::position::Position,
+        block_period_index: u64,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        
+        let mut lock_positions = liquidity_locker::liquidity_lock_v1::lock_position<CoinTypeA, CoinTypeB>(
+            global_config,
+            vault,
+            locker,
+            pool_tranche_manager,
+            pool,
+            position,
+            block_period_index,
+            clock,
+            ctx
+        );
+
+        assert!(lock_positions.length() > 0, EFailedLockPosition);
 
         let len = lock_positions.length();
         let mut i = 0;
