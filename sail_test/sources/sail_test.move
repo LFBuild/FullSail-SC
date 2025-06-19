@@ -29,7 +29,7 @@ module sail_test::sail_test {
         let url = sui::url::new_unsafe(std::ascii::string(b"https://app.fullsail.finance/static_files/sail_test_coin.png"));
         let (treasury_cap, metadata) = sui::coin::create_currency<SAIL_TEST>(
             otw,
-            9,
+            6,
             b"SAIL-TEST",
             b"SAIL-TEST",
             b"",
