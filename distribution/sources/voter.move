@@ -14,6 +14,8 @@ module distribution::voter {
 
     const EAddEpochGovernorInvalidGovernor: u64 = 922337326521692981;
 
+    const ERevokeGaugeCreateCapAlreadyRevoked: u64 = 525186290931396700;
+
     const EAlreadyVotedInCurrentEpoch: u64 = 922337332964170140;
     const EVotingNotStarted: u64 = 922337333393679977;
 
@@ -23,8 +25,10 @@ module distribution::voter {
     const ECheckVoteGaugeNotFound: u64 = 922337418433927579;
     const ECheckVoteWeightTooLarge: u64 = 922337418863437416;
 
-    const ECreateGaugeNotAGovernor: u64 = 922337360451934620;
+    const ECreateGaugeInvalidCreateCap: u64 = 951701448926939500;
     const ECreateGaugeDistributionConfigInvalid: u64 = 922337388798568038;
+    const ECreateGaugeVotingEscrowInvalidVoter: u64 = 247841512148847520;
+    const ECreateGaugePoolAlreadyHasGauge: u64 = 379600280551732200;
 
     const EGetVotesNotVoted: u64 = 922337561885750067;
 
@@ -40,7 +44,6 @@ module distribution::voter {
 
     const ETokenNotWhitelisted: u64 = 922337385362594201;
 
-    const EReceiveGaugeInvalidGovernor: u64 = 922337399106640284;
     const EReceiveGaugeAlreadyHasRepresent: u64 = 922337372048228352;
     const EReceiveGaugePoolAreadyHasGauge: u64 = 922337372477987230;
 
@@ -108,6 +111,7 @@ module distribution::voter {
         id: UID,
         global_config: ID,
         distribution_config: ID,
+        revoked_gauge_create_caps: VecSet<ID>,
         governors: VecSet<ID>,
         epoch_governors: VecSet<ID>,
         emergency_council: ID,
@@ -267,6 +271,7 @@ module distribution::voter {
             id: uid,
             global_config,
             distribution_config,
+            revoked_gauge_create_caps: vec_set::empty<ID>(),
             governors: vec_set::empty<ID>(),
             epoch_governors: vec_set::empty<ID>(),
             emergency_council: object::id_from_address(@0x0),
@@ -418,6 +423,29 @@ module distribution::voter {
             cap: epoch_governor_cap_id,
         };
         sui::event::emit<EventAddEpochGovernor>(add_epoch_governor_event);
+    }
+
+    /// Revokes a gauge create cap.
+    /// Supposed to be used in emergency case when the gauge create cap is compromised.
+    public fun revoke_gauge_create_cap(
+        voter: &mut Voter,
+        _publisher: &sui::package::Publisher,
+        create_cap_id: ID
+    ) {
+        assert!(
+            !voter.revoked_gauge_create_caps.contains(&create_cap_id),
+            ERevokeGaugeCreateCapAlreadyRevoked
+        );
+
+        voter.revoked_gauge_create_caps.insert<ID>(create_cap_id);
+    }
+
+    public fun is_valid_gauge_create_cap(
+        voter: &Voter,
+        create_cap: &gauge_cap::gauge_cap::CreateCap
+    ): bool {
+        let cap_id = object::id<gauge_cap::gauge_cap::CreateCap>(create_cap);
+        !voter.revoked_gauge_create_caps.contains(&cap_id)
     }
 
     /// Adds a governor to the system. Governors have the highest level of 
@@ -817,12 +845,25 @@ module distribution::voter {
     ): distribution::gauge::Gauge<CoinTypeA, CoinTypeB> {
         distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
         assert!(
+            voter.is_valid_gauge_create_cap(create_cap),
+            ECreateGaugeInvalidCreateCap
+        );
+        assert!(
             voter.distribution_config == object::id<distribution::distribution_config::DistributionConfig>(
                 distribution_config
             ),
             ECreateGaugeDistributionConfigInvalid
         );
-        let mut gauge = voter.return_new_gauge(distribution_config, create_cap, pool, ctx);
+        assert!(
+            voting_escrow.get_voter_id() == object::id<Voter>(voter),
+            ECreateGaugeVotingEscrowInvalidVoter
+        );
+        let pool_id = into_pool_id(object::id(pool));
+        assert!(
+            !voter.pool_to_gauger.contains(pool_id),
+            ECreateGaugePoolAlreadyHasGauge
+        );
+        let mut gauge = return_new_gauge(distribution_config, create_cap, pool, ctx);
         let mut reward_coins = std::vector::empty<TypeName>();
         reward_coins.push_back(type_name::get<CoinTypeA>());
         reward_coins.push_back(type_name::get<CoinTypeB>());
@@ -1542,8 +1583,7 @@ module distribution::voter {
     /// 
     /// # Returns
     /// A new gauge for the specified pool
-    public(package) fun return_new_gauge<CoinTypeA, CoinTypeB>(
-        voter: &Voter,
+    fun return_new_gauge<CoinTypeA, CoinTypeB>(
         distribution_config: &distribution::distribution_config::DistributionConfig,
         gauge_create_cap: &gauge_cap::gauge_cap::CreateCap,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
@@ -2000,6 +2040,14 @@ module distribution::voter {
     #[test_only]
     public fun test_init(ctx: &mut sui::tx_context::TxContext): sui::package::Publisher {
         sui::package::claim<VOTER>(VOTER {}, ctx)
+    }
+
+    #[test_only]
+    public fun test_init_emergency_council(
+        voter: &Voter,
+        ctx: &mut sui::tx_context::TxContext
+    ): distribution::emergency_council::EmergencyCouncilCap {
+        distribution::emergency_council::create_for_testing(object::id(voter), ctx)
     }
 }
 

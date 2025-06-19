@@ -39,5 +39,16 @@ module distribution::emergency_council {
     public fun validate_emergency_council_voter_id(emergency_council_cap: &EmergencyCouncilCap, voter_id: ID) {
         assert!(emergency_council_cap.voter == voter_id, EEmergencyCouncilDoesNotMatchVoter);
     }
+
+    #[test_only]
+    public fun create_for_testing(
+        voter_id: ID,
+        ctx: &mut sui::tx_context::TxContext
+    ): EmergencyCouncilCap {
+        EmergencyCouncilCap {
+            id: object::new(ctx),
+            voter: voter_id,
+        }
+    }
 }
 

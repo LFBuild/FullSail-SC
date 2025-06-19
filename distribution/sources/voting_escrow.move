@@ -2605,6 +2605,11 @@ module distribution::voting_escrow {
         sui::event::emit<EventMetadataUpdate>(metadata_update_event);
     }
 
+    // Returns the voter ID of the voting escrow.
+    public fun get_voter_id<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>): ID {
+        voting_escrow.voter
+    }
+
     #[test_only]
     public fun test_init(ctx: &mut sui::tx_context::TxContext): sui::package::Publisher {
         let publisher = sui::package::claim<VOTING_ESCROW>(VOTING_ESCROW {}, ctx);

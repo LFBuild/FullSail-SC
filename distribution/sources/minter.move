@@ -90,6 +90,7 @@ module distribution::minter {
 
     const ECreateGaugeMinterPaused: u64 = 173400731963214500;
     const ECreateGaugeMinterNotActive: u64 = 506817394857201639;
+    const ECreateGaugeZeroBaseEmissions: u64 = 676230237726862100;
 
     const EWhitelistPoolMinterPaused: u64 = 316161888154524900;
 
@@ -917,6 +918,7 @@ module distribution::minter {
         assert!(!minter.is_paused(), ECreateGaugeMinterPaused);
         minter.check_admin(admin_cap);
         assert!(minter.is_active(clock), ECreateGaugeMinterNotActive);
+        assert!(gauge_base_emissions > 0, ECreateGaugeZeroBaseEmissions);
 
         let distribute_cap = minter.distribute_cap.borrow();
         let gauge = voter.create_gauge(
