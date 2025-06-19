@@ -2594,8 +2594,10 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
+            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
 
             pool_tranche::add_admin(
+                &tranche_admin_cap,
                 &mut tranche_manager,
                 admin2,
                 scenario.ctx()
@@ -2604,12 +2606,14 @@ module liquidity_locker::pool_tranche_tests {
             pool_tranche::check_admin(&tranche_manager, admin2);
 
             pool_tranche::revoke_admin(
+                &tranche_admin_cap,
                 &mut tranche_manager,
                 admin2,
                 scenario.ctx()
             );
 
             test_scenario::return_shared(tranche_manager);
+            transfer::public_transfer(tranche_admin_cap, admin);
         };
 
         clock::destroy_for_testing(clock);
@@ -2639,14 +2643,17 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
+            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
 
             pool_tranche::revoke_admin(
+                &tranche_admin_cap,
                 &mut tranche_manager,
                 admin2,
                 scenario.ctx()
             );
 
             test_scenario::return_shared(tranche_manager);
+            test_scenario::return_shared(tranche_admin_cap);
         };
 
         clock::destroy_for_testing(clock);

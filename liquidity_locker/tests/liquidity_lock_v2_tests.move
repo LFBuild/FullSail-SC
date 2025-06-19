@@ -4588,7 +4588,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &clock,
                 scenario.ctx()
             );
-            assert!(remove_balance_a.value() == 3794126173307114777, 92348768657674);
+            assert!(remove_balance_a.value() == 3794126173307114780, 92348768657674);
             assert!(remove_balance_b.value() == 534405474921791512, 92348768657674);
             transfer::public_transfer(sui::coin::from_balance(remove_balance_a, scenario.ctx()), admin);
             transfer::public_transfer(sui::coin::from_balance(remove_balance_b, scenario.ctx()), admin);
@@ -5085,7 +5085,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &clock,
                 scenario.ctx()
             );
-            assert!(remove_balance_a.value() == 1082352715785369270, 92348768657674);
+            assert!(remove_balance_a.value() == 1082352715785369272, 92348768657674);
             assert!(remove_balance_b.value() == 365061384823952775, 92348768657674);
             transfer::public_transfer(sui::coin::from_balance(remove_balance_a, scenario.ctx()), admin);
             transfer::public_transfer(sui::coin::from_balance(remove_balance_b, scenario.ctx()), admin);
@@ -5404,16 +5404,17 @@ module liquidity_locker::liquidity_lock_v2_tests {
             assert!(locker.is_position_locked(position_id), 9234887456443);
 
             // full unlock
-            let staked_position = liquidity_lock_v2::unlock_position<TestCoinB, TestCoinA>(
+            let (staked_position, coin_a, coin_b) = liquidity_lock_v2::unlock_position<TestCoinB, TestCoinA>(
                 &mut locker,
                 locked_position_1,
                 &mut gauge,
-                &clock,
-                scenario.ctx()
+                &clock
             );
 
             assert!(!locker.is_position_locked(position_id), 9234887456444);
 
+            transfer::public_transfer(sui::coin::from_balance(coin_a, scenario.ctx()), admin);
+            transfer::public_transfer(sui::coin::from_balance(coin_b, scenario.ctx()), admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(staked_position, admin);
             transfer::public_transfer(admin_cap, admin);
@@ -6715,15 +6716,16 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             liquidity_lock_v2::locker_pause(&mut locker, true, scenario.ctx());
 
-            let staked_position = liquidity_lock_v2::unlock_position<TestCoinB, TestCoinA>(
+            let (staked_position, coin_a, coin_b) = liquidity_lock_v2::unlock_position<TestCoinB, TestCoinA>(
                 &mut locker,
                 locked_position_1,
                 &mut gauge,
-                &clock,
-                scenario.ctx()
+                &clock
             );
 
             transfer::public_transfer(staked_position, admin);
+            transfer::public_transfer(sui::coin::from_balance(coin_a, scenario.ctx()), admin);
+            transfer::public_transfer(sui::coin::from_balance(coin_b, scenario.ctx()), admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
@@ -6901,15 +6903,16 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut locked_position_1 = scenario.take_from_sender<liquidity_lock_v2::LockedPosition<TestCoinB, TestCoinA>>();
 
-            let staked_position = liquidity_lock_v2::unlock_position<TestCoinB, TestCoinA>(
+            let (staked_position, coin_a, coin_b) = liquidity_lock_v2::unlock_position<TestCoinB, TestCoinA>(
                 &mut locker,
                 locked_position_1,
                 &mut gauge,
-                &clock,
-                scenario.ctx()
+                &clock
             );
 
             transfer::public_transfer(staked_position, admin);
+            transfer::public_transfer(sui::coin::from_balance(coin_a, scenario.ctx()), admin);
+            transfer::public_transfer(sui::coin::from_balance(coin_b, scenario.ctx()), admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
@@ -7089,15 +7092,16 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             clock::increment_for_testing(&mut clock, common::epoch_to_seconds(4)*1000);
 
-            let staked_position = liquidity_lock_v2::unlock_position<TestCoinB, TestCoinA>(
+            let (staked_position, coin_a, coin_b) = liquidity_lock_v2::unlock_position<TestCoinB, TestCoinA>(
                 &mut locker,
                 locked_position_1,
                 &mut gauge,
-                &clock,
-                scenario.ctx()
+                &clock
             );
 
             transfer::public_transfer(staked_position, admin);
+            transfer::public_transfer(sui::coin::from_balance(coin_a, scenario.ctx()), admin);
+            transfer::public_transfer(sui::coin::from_balance(coin_b, scenario.ctx()), admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
@@ -11589,7 +11593,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let lock2 = scenario.take_from_sender<voting_escrow::Lock>();
             let lock1 = scenario.take_from_sender<voting_escrow::Lock>();
 
-            assert!(lock1.get_amount() + lock2.get_amount() + lock3.get_amount() == 649997, 9262236263635); // reward was not accrued for 3.5 epochs (position was outside current price)
+            assert!(lock1.get_amount() + lock2.get_amount() + lock3.get_amount() == 649998, 9262236263635); // reward was not accrued for 3.5 epochs (position was outside current price)
 
             transfer::public_transfer(lock1, admin);
             transfer::public_transfer(lock2, admin);
@@ -13339,6 +13343,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             );
 
             liquidity_lock_v2::add_admin(
+                &admin_cap,
                 &mut locker,
                 admin2,
                 scenario.ctx()
@@ -13347,6 +13352,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             liquidity_lock_v2::check_admin(&locker, admin2);
 
             liquidity_lock_v2::revoke_admin(
+                &admin_cap,
                 &mut locker,
                 admin2,
                 scenario.ctx()
@@ -13407,6 +13413,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             );
 
             liquidity_lock_v2::revoke_admin(
+                &admin_cap,
                 &mut locker,
                 admin2,
                 scenario.ctx()
