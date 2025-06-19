@@ -26,13 +26,14 @@ module sail_test::sail_test {
     }
 
     fun init(otw: SAIL_TEST, ctx: &mut TxContext) {
+        let url = sui::url::new_unsafe(std::ascii::string(b"https://app.fullsail.finance/static_files/sail_test_coin.png"));
         let (treasury_cap, metadata) = sui::coin::create_currency<SAIL_TEST>(
             otw,
             9,
             b"SAIL-TEST",
             b"SAIL-TEST",
             b"",
-            option::none<sui::url::Url>(),
+            option::some(url),
             ctx
         );
         let minter_cap = MinterCap<SAIL_TEST> {
