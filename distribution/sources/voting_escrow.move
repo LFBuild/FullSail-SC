@@ -99,7 +99,12 @@ module distribution::voting_escrow {
 
     public struct EventCreateLock has copy, drop, store {
         lock_id: ID,
+        escrow: ID,
         owner: address,
+        amount: u64,
+        start: u64,
+        end: u64,
+        permanent: bool,
     }
 
     public struct EventDeposit has copy, drop, store {
@@ -1037,8 +1042,13 @@ module distribution::voting_escrow {
             ctx
         );
         let create_lock_event = EventCreateLock {
-            lock_id,
-            owner,
+            lock_id: lock_id,
+            escrow: object::id<VotingEscrow<SailCoinType>>(voting_escrow),
+            owner: owner,
+            amount: lock_amount,
+            start: start_time,
+            end: end_time,
+            permanent: permanent,
         };
         sui::event::emit<EventCreateLock>(create_lock_event);
         let create_lock_receipt = CreateLockReceipt { amount: lock_amount };
