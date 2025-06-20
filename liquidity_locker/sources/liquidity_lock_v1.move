@@ -777,8 +777,6 @@ module liquidity_locker::liquidity_lock_v1 {
             } else {
                 locker_utils::calculate_position_liquidity_in_token_b(pool, position_id_copy)
             };
-            std::debug::print(&(liquidity_in_token>>64));
-            std::debug::print(&(delta_volume>>64));
 
             let (
                 _position_id, 
@@ -787,8 +785,6 @@ module liquidity_locker::liquidity_lock_v1 {
                 remainder_b,
                 split,
             ) = if (liquidity_in_token > delta_volume) { // split position
-                std::debug::print(&std::string::utf8(b"split"));
-
                 let share_first_part = integer_mate::full_math_u128::mul_div_floor(
                     delta_volume,
                     consts::lock_liquidity_share_denom() as u128,
@@ -826,7 +822,6 @@ module liquidity_locker::liquidity_lock_v1 {
                     true,
                 )
             } else {
-                std::debug::print(&std::string::utf8(b"full"));
                 pool_tranche::fill_tranches(
                     tranche,
                     liquidity_in_token,
@@ -1548,22 +1543,13 @@ module liquidity_locker::liquidity_lock_v1 {
         
         let mut position =locker.positions.remove(lock_position.position_id);
 
-        std::debug::print(&std::string::utf8(b"current_tick_index"));
-        std::debug::print(&(pool.current_tick_index()));
-        std::debug::print(&std::string::utf8(b"new_tick_lower"));
-        std::debug::print(&(new_tick_lower));
-        std::debug::print(&std::string::utf8(b"new_tick_upper"));
-        std::debug::print(&(new_tick_upper));
-
         let (tick_lower, tick_upper) = position.tick_range();
         assert!(!new_tick_lower.eq(tick_lower) || !new_tick_upper.eq(tick_upper), ENotChangedTickRange);
 
         let position_liquidity = position.liquidity();
-        let current_tick_range = tick_upper.sub(tick_lower).abs_u32();
-        let new_tick_range = new_tick_upper.sub(new_tick_lower).abs_u32();
 
         // Remove liquidity and collect fees
-        let (mut removed_a, mut removed_b) = remove_liquidity_and_collect_fee<CoinTypeA, CoinTypeB>(
+        let ( removed_a, removed_b) = remove_liquidity_and_collect_fee<CoinTypeA, CoinTypeB>(
             global_config,
             vault,
             pool,
@@ -1571,11 +1557,6 @@ module liquidity_locker::liquidity_lock_v1 {
             position_liquidity,
             clock
         );
-
-        std::debug::print(&std::string::utf8(b"removed_a"));
-        std::debug::print(&(removed_a.value()));
-        std::debug::print(&std::string::utf8(b"removed_b"));
-        std::debug::print(&(removed_b.value()));
 
         // Calculate total value in token B terms
         let current_volume_coins_in_token_b = (locker_utils::calculate_token_a_in_token_b(pool, removed_a.value()) as u128) + (removed_b.value() as u128);
@@ -1628,16 +1609,6 @@ module liquidity_locker::liquidity_lock_v1 {
             after_volume_coins_in_token_b
         );
 
-        std::debug::print(&std::string::utf8(b"after_volume_coins_in_token_b"));
-        std::debug::print(&(after_volume_coins_in_token_b));
-        std::debug::print(&std::string::utf8(b"current_volume_coins_in_token_b"));
-        std::debug::print(&(current_volume_coins_in_token_b));
-
-
-        std::debug::print(&std::string::utf8(b"liquidity_calc"));
-        std::debug::print(&(liquidity_calc));
-        std::debug::print(&(liquidity_calc>>64));
-
         // выведенные токены добавляем в лок
         lock_position.coin_a.join(removed_a);
         lock_position.coin_b.join(removed_b);
@@ -1652,21 +1623,9 @@ module liquidity_locker::liquidity_lock_v1 {
             clock
         );
 
-        std::debug::print(&std::string::utf8(b"START lock_position.coin_a.value()"));
-        std::debug::print(&(lock_position.coin_a.value()));
-        std::debug::print(&std::string::utf8(b"START lock_position.coin_b.value()"));
-        std::debug::print(&(lock_position.coin_b.value()));
-
-        // вычисляем сколько ликвидности осталось добавить
         if (new_position.liquidity() < liquidity_calc) {
             liquidity_calc = liquidity_calc - new_position.liquidity();
         } else {
-            std::debug::print(&std::string::utf8(b"STOP"));
-            std::debug::print(&std::string::utf8(b"liquidity_calc"));
-            std::debug::print(&(liquidity_calc));
-            std::debug::print(&std::string::utf8(b"new_position.liquidity()"));
-            std::debug::print(&(new_position.liquidity()));
-            
             liquidity_calc = 0;
         };
 
@@ -1681,14 +1640,7 @@ module liquidity_locker::liquidity_lock_v1 {
                 true
             );
 
-            std::debug::print(&std::string::utf8(b"amount_a_calc"));
-            std::debug::print(&(amount_a_calc));
-            std::debug::print(&std::string::utf8(b"amount_b_calc"));
-            std::debug::print(&(amount_b_calc));
-
-            // по идее такого никогда не будет
             if (lock_position.coin_b.value() < amount_b_calc && lock_position.coin_a.value() < amount_a_calc) {
-                std::debug::print(&std::string::utf8(b"NOOOOOOOO"));
                 (liquidity_calc, amount_a_calc, amount_b_calc) = get_liquidity_by_amount_by_lock_position(
                     pool, 
                     lock_position, 
@@ -1817,15 +1769,6 @@ module liquidity_locker::liquidity_lock_v1 {
                 );
             };
 
-            std::debug::print(&std::string::utf8(b"lock_position.coin_a.value()"));
-            std::debug::print(&(lock_position.coin_a.value()));
-            std::debug::print(&std::string::utf8(b"pay_amount_a"));
-            std::debug::print(&(pay_amount_a));
-            std::debug::print(&std::string::utf8(b"lock_position.coin_b.value()"));
-            std::debug::print(&(lock_position.coin_b.value()));
-            std::debug::print(&std::string::utf8(b"pay_amount_b"));
-            std::debug::print(&(pay_amount_b));
-
             let add_coin_a = lock_position.coin_a.split(pay_amount_a);
             let add_coin_b = lock_position.coin_b.split(pay_amount_b);
             
@@ -1841,21 +1784,6 @@ module liquidity_locker::liquidity_lock_v1 {
             );
         };
 
-        std::debug::print(&std::string::utf8(b"PREEND lock_position.coin_a.value()"));
-        std::debug::print(&(lock_position.coin_a.value()));
-        std::debug::print(&std::string::utf8(b"PREEND lock_position.coin_b.value()"));
-        std::debug::print(&(lock_position.coin_b.value()));
-
-        // Add remaining tokens back to position
-        // add_liquidity_by_lock_position<CoinTypeA, CoinTypeB>(
-        //     global_config,
-        //     vault,
-        //     pool,
-        //     lock_position,
-        //     &mut new_position,
-        //     clock
-        // );
-
         add_liquidity_by_lock_position_with_swap<CoinTypeA, CoinTypeB>(
             global_config,
             vault,
@@ -1866,11 +1794,6 @@ module liquidity_locker::liquidity_lock_v1 {
             price_provider,
             clock
         );
-
-        std::debug::print(&std::string::utf8(b"END lock_position.coin_a.value()"));
-        std::debug::print(&(lock_position.coin_a.value()));
-        std::debug::print(&std::string::utf8(b"END lock_position.coin_b.value()"));
-        std::debug::print(&(lock_position.coin_b.value()));
 
         let new_position_liquidity = new_position.liquidity();
 
@@ -2111,6 +2034,20 @@ module liquidity_locker::liquidity_lock_v1 {
         }
     }
 
+    /// Adds liquidity to a position with a flash swap.
+    /// 
+    /// # Arguments
+    /// * `global_config` - Global configuration for the pool
+    /// * `vault` - Global vault for rewards
+    /// * `pool` - The pool containing the position
+    /// * `lock_position` - Locked position containing remaining token balances
+    /// * `position` - Position to add liquidity to
+    /// * `stats` - Statistics for the pool
+    /// * `price_provider` - Price provider for the pool
+    /// * `clock` - Clock object for timestamp verification
+    /// 
+    /// # Returns
+    /// * Remaining tokens after liquidity addition
     public fun add_liquidity_by_lock_position_with_swap<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
@@ -2172,10 +2109,7 @@ module liquidity_locker::liquidity_lock_v1 {
                 );
             };
         };
-        std::debug::print(&std::string::utf8(b"ADD lock_position.coin_a.value()"));
-        std::debug::print(&(lock_position.coin_a.value()));
-        std::debug::print(&std::string::utf8(b"ADD lock_position.coin_b.value()"));
-        std::debug::print(&(lock_position.coin_b.value()));
+
         add_liquidity_by_lock_position<CoinTypeA, CoinTypeB>(
             global_config,
             vault,

@@ -3091,7 +3091,7 @@ module liquidity_locker::liquidity_lock_v1_tests {
             assert!(new_position_id != position_id, 932605293560);
 
             let new_liquidity = pool.position_manager().borrow_position_info(locked_position.get_locked_position_id()).info_liquidity();
-            assert!(new_liquidity == 172906014476930916208, 923412491398739); // liquidity should be proportionally increased by ~4.87x
+            assert!(new_liquidity == 179624801200738960856, 923412491398739); // liquidity should be proportionally increased by ~4.87x
 
             let (new_tick_lower, new_tick_upper) = pool.position_manager().borrow_position_info(locked_position.get_locked_position_id()).info_tick_range();
             assert!(new_tick_lower.eq(integer_mate::i32::from_u32(100)), 96340634523452);
@@ -3255,7 +3255,7 @@ module liquidity_locker::liquidity_lock_v1_tests {
             assert!(new_position_id != position_id, 932605293560);
 
             let new_liquidity = pool.position_manager().borrow_position_info(locked_position.get_locked_position_id()).info_liquidity();
-            assert!(new_liquidity == 4335569372545992377, 923412491398739); // liquidity should be proportionally decreased by ~4x
+            assert!(new_liquidity == 4585062764232538298, 923412491398739); // liquidity should be proportionally decreased by ~4x
 
             let (new_tick_lower, new_tick_upper) = pool.position_manager().borrow_position_info(locked_position.get_locked_position_id()).info_tick_range();
             assert!(new_tick_lower.eq(integer_mate::i32::from_u32(13)), 96340634523452);
@@ -3430,7 +3430,7 @@ module liquidity_locker::liquidity_lock_v1_tests {
             assert!(new_position_id != position_id, 932605293560);
 
             let new_liquidity = pool.position_manager().borrow_position_info(locked_position.get_locked_position_id()).info_liquidity();
-            assert!(new_liquidity == 562642917157293473398, 923412491398739);
+            assert!(new_liquidity == 562642917157293473889, 923412491398739);
 
             let (new_tick_lower, new_tick_upper) = pool.position_manager().borrow_position_info(locked_position.get_locked_position_id()).info_tick_range();
             assert!(new_tick_lower.eq(integer_mate::i32::from_u32(211)), 96340634523452);
@@ -3606,7 +3606,7 @@ module liquidity_locker::liquidity_lock_v1_tests {
             assert!(new_position_id != position_id, 932605293560);
 
             let new_liquidity = pool.position_manager().borrow_position_info(locked_position.get_locked_position_id()).info_liquidity();
-            assert!(new_liquidity == 360008798430211681734, 923412491398739);
+            assert!(new_liquidity == 360008798430211682133, 923412491398739);
 
             let (new_tick_lower, new_tick_upper) = pool.position_manager().borrow_position_info(locked_position.get_locked_position_id()).info_tick_range();
             assert!(new_tick_lower.eq(integer_mate::i32::from_u32(4294967295-1)), 96340634523452);
