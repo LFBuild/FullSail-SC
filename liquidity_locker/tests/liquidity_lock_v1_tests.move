@@ -3091,7 +3091,7 @@ module liquidity_locker::liquidity_lock_v1_tests {
             assert!(new_position_id != position_id, 932605293560);
 
             let new_liquidity = pool.position_manager().borrow_position_info(locked_position.get_locked_position_id()).info_liquidity();
-            assert!(new_liquidity == 178386082707908692847, 923412491398739); // liquidity should be proportionally increased by ~4.87x
+            assert!(new_liquidity == 172906014476930916208, 923412491398739); // liquidity should be proportionally increased by ~4.87x
 
             let (new_tick_lower, new_tick_upper) = pool.position_manager().borrow_position_info(locked_position.get_locked_position_id()).info_tick_range();
             assert!(new_tick_lower.eq(integer_mate::i32::from_u32(100)), 96340634523452);
@@ -3255,7 +3255,7 @@ module liquidity_locker::liquidity_lock_v1_tests {
             assert!(new_position_id != position_id, 932605293560);
 
             let new_liquidity = pool.position_manager().borrow_position_info(locked_position.get_locked_position_id()).info_liquidity();
-            assert!(new_liquidity == 4566025760819195944, 923412491398739); // liquidity should be proportionally decreased by ~4x
+            assert!(new_liquidity == 4335569372545992377, 923412491398739); // liquidity should be proportionally decreased by ~4x
 
             let (new_tick_lower, new_tick_upper) = pool.position_manager().borrow_position_info(locked_position.get_locked_position_id()).info_tick_range();
             assert!(new_tick_lower.eq(integer_mate::i32::from_u32(13)), 96340634523452);
@@ -3430,7 +3430,7 @@ module liquidity_locker::liquidity_lock_v1_tests {
             assert!(new_position_id != position_id, 932605293560);
 
             let new_liquidity = pool.position_manager().borrow_position_info(locked_position.get_locked_position_id()).info_liquidity();
-            assert!(new_liquidity == 562642917157293473889, 923412491398739);
+            assert!(new_liquidity == 562642917157293473398, 923412491398739);
 
             let (new_tick_lower, new_tick_upper) = pool.position_manager().borrow_position_info(locked_position.get_locked_position_id()).info_tick_range();
             assert!(new_tick_lower.eq(integer_mate::i32::from_u32(211)), 96340634523452);
@@ -3606,7 +3606,7 @@ module liquidity_locker::liquidity_lock_v1_tests {
             assert!(new_position_id != position_id, 932605293560);
 
             let new_liquidity = pool.position_manager().borrow_position_info(locked_position.get_locked_position_id()).info_liquidity();
-            assert!(new_liquidity == 360008798430211682134, 923412491398739);
+            assert!(new_liquidity == 360008798430211681734, 923412491398739);
 
             let (new_tick_lower, new_tick_upper) = pool.position_manager().borrow_position_info(locked_position.get_locked_position_id()).info_tick_range();
             assert!(new_tick_lower.eq(integer_mate::i32::from_u32(4294967295-1)), 96340634523452);
@@ -3616,6 +3616,1364 @@ module liquidity_locker::liquidity_lock_v1_tests {
             transfer::public_transfer(locked_position, admin);
             transfer::public_transfer(position_admin, admin);
             transfer::public_transfer(position_admin_2, admin);
+            transfer::public_transfer(admin_cap, admin);
+            transfer::public_transfer(locker_create_cap, admin);
+            test_scenario::return_shared(tranche_manager);
+            test_scenario::return_shared(global_config);
+            test_scenario::return_shared(locker);
+            test_scenario::return_shared(vault);
+            test_scenario::return_shared(stats);
+            test_scenario::return_shared(price_provider);
+        };
+
+        clock::destroy_for_testing(clock);
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_change_tick_range_interval() {
+        let admin = @0x1;
+        let mut scenario = test_scenario::begin(admin);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        
+        // Initialize
+        {
+            liquidity_lock_v1::test_init(scenario.ctx());
+            pool_tranche::test_init(scenario.ctx());
+            locker_cap::init_test(scenario.ctx());
+            config::test_init(scenario.ctx());
+            factory::test_init(scenario.ctx());
+            stats::init_test(scenario.ctx());
+            price_provider::init_test(scenario.ctx());
+            rewarder::test_init(scenario.ctx());
+        };
+
+        scenario.next_tx(admin);
+        {
+            create_pool<TestCoinB, TestCoinA>(
+                &mut scenario, 
+                admin, 
+                18584142135623730951, // tick = 148
+                &clock
+            );
+        };
+
+        scenario.next_tx(admin);
+        {
+            let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
+            let global_config = scenario.take_shared<config::GlobalConfig>();
+            let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
+            let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
+            let mut stats = scenario.take_shared<stats::Stats>();
+            let price_provider = scenario.take_shared<price_provider::PriceProvider>();
+
+            let mut periods_blocking = std::vector::empty();
+            std::vector::push_back(&mut periods_blocking, 4);
+            std::vector::push_back(&mut periods_blocking, 5);
+            std::vector::push_back(&mut periods_blocking, 6);
+            let mut periods_post_lockdown = std::vector::empty();
+            std::vector::push_back(&mut periods_post_lockdown, 1);
+            std::vector::push_back(&mut periods_post_lockdown, 2);
+            std::vector::push_back(&mut periods_post_lockdown, 3);
+            liquidity_lock_v1::init_locker(
+                &admin_cap,
+                &locker_create_cap,
+                &mut locker,
+                periods_blocking,
+                periods_post_lockdown,
+                scenario.ctx()
+            );
+
+            liquidity_lock_v1::set_ignore_whitelist(
+                &mut locker,
+                true,
+                scenario.ctx()
+            );
+
+            let mut duration_profitabilities = std::vector::empty();
+            std::vector::push_back(&mut duration_profitabilities, 10000);
+            std::vector::push_back(&mut duration_profitabilities, 20000);
+            std::vector::push_back(&mut duration_profitabilities, 30000);
+
+            create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
+                &mut scenario,
+                &mut tranche_manager,
+                &pool,
+                true,
+                17288384724888837365 << 64,  // total_volume
+                duration_profitabilities, // duration_profitabilities
+                100, // 1%
+                10000000, // reward_value
+                90000, // total_income,
+                clock.timestamp_ms()/1000
+            );
+
+            // ensure liquidity in the pool
+            let position_admin = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                0,
+                500,
+                5<<64,
+                &clock
+            );
+            let position_admin_2 = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                4294967295-50,
+                300,
+                4<<64,
+                &clock
+            );
+            let position_admin_3 = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                0,
+                110,
+                4<<64,
+                &clock
+            );
+            let position_admin_4 = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                100,
+                180,
+                4<<64,
+                &clock
+            );
+            let position_admin_5 = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                200,
+                2500,
+                3<<64,
+                &clock
+            );
+
+            let (position) = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                4294967295-400,
+                600,
+                12<<64,
+                &clock
+            );
+
+            let mut locked_positions = liquidity_lock_v1::lock_position<TestCoinB, TestCoinA>(
+                &global_config,
+                &mut vault,
+                &mut locker,
+                &mut tranche_manager,
+                &mut pool,
+                position,
+                0,
+                &clock,
+                scenario.ctx()
+            );
+            assert!(locked_positions.length() == 1);
+            let mut locked_position = locked_positions.pop_back();
+            locked_positions.destroy_empty();
+
+            liquidity_lock_v1::change_tick_range<TestCoinB, TestCoinA>(
+                &global_config,
+                &mut vault,
+                &mut locker,
+                &mut locked_position,
+                &mut pool,
+                &mut stats,
+                &price_provider,
+                integer_mate::i32::from_u32(110),
+                integer_mate::i32::from_u32(160),
+                &clock,
+                scenario.ctx()
+            );
+
+            transfer::public_transfer(pool, admin);
+            transfer::public_transfer(locked_position, admin);
+            transfer::public_transfer(position_admin, admin);
+            transfer::public_transfer(position_admin_2, admin);
+            transfer::public_transfer(position_admin_3, admin);
+            transfer::public_transfer(position_admin_4, admin);
+            transfer::public_transfer(position_admin_5, admin);
+            transfer::public_transfer(admin_cap, admin);
+            transfer::public_transfer(locker_create_cap, admin);
+            test_scenario::return_shared(tranche_manager);
+            test_scenario::return_shared(global_config);
+            test_scenario::return_shared(locker);
+            test_scenario::return_shared(vault);
+            test_scenario::return_shared(stats);
+            test_scenario::return_shared(price_provider);
+        };
+
+        clock::destroy_for_testing(clock);
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_change_tick_range_interval_out_range() {
+        let admin = @0x1;
+        let mut scenario = test_scenario::begin(admin);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        
+        // Initialize
+        {
+            liquidity_lock_v1::test_init(scenario.ctx());
+            pool_tranche::test_init(scenario.ctx());
+            locker_cap::init_test(scenario.ctx());
+            config::test_init(scenario.ctx());
+            factory::test_init(scenario.ctx());
+            stats::init_test(scenario.ctx());
+            price_provider::init_test(scenario.ctx());
+            rewarder::test_init(scenario.ctx());
+        };
+
+        scenario.next_tx(admin);
+        {
+            create_pool<TestCoinB, TestCoinA>(
+                &mut scenario, 
+                admin, 
+                18584142135623730951, // tick = 148
+                &clock
+            );
+        };
+
+        scenario.next_tx(admin);
+        {
+            let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
+            let global_config = scenario.take_shared<config::GlobalConfig>();
+            let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
+            let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
+            let mut stats = scenario.take_shared<stats::Stats>();
+            let price_provider = scenario.take_shared<price_provider::PriceProvider>();
+
+            let mut periods_blocking = std::vector::empty();
+            std::vector::push_back(&mut periods_blocking, 4);
+            std::vector::push_back(&mut periods_blocking, 5);
+            std::vector::push_back(&mut periods_blocking, 6);
+            let mut periods_post_lockdown = std::vector::empty();
+            std::vector::push_back(&mut periods_post_lockdown, 1);
+            std::vector::push_back(&mut periods_post_lockdown, 2);
+            std::vector::push_back(&mut periods_post_lockdown, 3);
+            liquidity_lock_v1::init_locker(
+                &admin_cap,
+                &locker_create_cap,
+                &mut locker,
+                periods_blocking,
+                periods_post_lockdown,
+                scenario.ctx()
+            );
+
+            liquidity_lock_v1::set_ignore_whitelist(
+                &mut locker,
+                true,
+                scenario.ctx()
+            );
+
+            let mut duration_profitabilities = std::vector::empty();
+            std::vector::push_back(&mut duration_profitabilities, 10000);
+            std::vector::push_back(&mut duration_profitabilities, 20000);
+            std::vector::push_back(&mut duration_profitabilities, 30000);
+
+            create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
+                &mut scenario,
+                &mut tranche_manager,
+                &pool,
+                true,
+                17288384724888837365 << 64,  // total_volume
+                duration_profitabilities, // duration_profitabilities
+                100, // 1%
+                10000000, // reward_value
+                90000, // total_income,
+                clock.timestamp_ms()/1000
+            );
+
+            // ensure liquidity in the pool
+            let position_admin = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                0,
+                500,
+                9<<64,
+                &clock
+            );
+            let position_admin_2 = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                4294967295-50,
+                300,
+                4<<64,
+                &clock
+            );
+            let position_admin_3 = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                0,
+                110,
+                4<<64,
+                &clock
+            );
+            let position_admin_4 = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                100,
+                180,
+                8<<64,
+                &clock
+            );
+            let position_admin_5 = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                200,
+                2500,
+                3<<64,
+                &clock
+            );
+
+            let (position) = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                200,
+                600,
+                9<<64,
+                &clock
+            );
+
+            let mut locked_positions = liquidity_lock_v1::lock_position<TestCoinB, TestCoinA>(
+                &global_config,
+                &mut vault,
+                &mut locker,
+                &mut tranche_manager,
+                &mut pool,
+                position,
+                0,
+                &clock,
+                scenario.ctx()
+            );
+            assert!(locked_positions.length() == 1);
+            let mut locked_position = locked_positions.pop_back();
+            locked_positions.destroy_empty();
+
+            liquidity_lock_v1::change_tick_range<TestCoinB, TestCoinA>(
+                &global_config,
+                &mut vault,
+                &mut locker,
+                &mut locked_position,
+                &mut pool,
+                &mut stats,
+                &price_provider,
+                integer_mate::i32::from_u32(110),
+                integer_mate::i32::from_u32(160),
+                &clock,
+                scenario.ctx()
+            );
+
+            transfer::public_transfer(pool, admin);
+            transfer::public_transfer(locked_position, admin);
+            transfer::public_transfer(position_admin, admin);
+            transfer::public_transfer(position_admin_2, admin);
+            transfer::public_transfer(position_admin_3, admin);
+            transfer::public_transfer(position_admin_4, admin);
+            transfer::public_transfer(position_admin_5, admin);
+            transfer::public_transfer(admin_cap, admin);
+            transfer::public_transfer(locker_create_cap, admin);
+            test_scenario::return_shared(tranche_manager);
+            test_scenario::return_shared(global_config);
+            test_scenario::return_shared(locker);
+            test_scenario::return_shared(vault);
+            test_scenario::return_shared(stats);
+            test_scenario::return_shared(price_provider);
+        };
+
+        clock::destroy_for_testing(clock);
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_change_tick_range_interval_out_range_v2() {
+        let admin = @0x1;
+        let mut scenario = test_scenario::begin(admin);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        
+        // Initialize
+        {
+            liquidity_lock_v1::test_init(scenario.ctx());
+            pool_tranche::test_init(scenario.ctx());
+            locker_cap::init_test(scenario.ctx());
+            config::test_init(scenario.ctx());
+            factory::test_init(scenario.ctx());
+            stats::init_test(scenario.ctx());
+            price_provider::init_test(scenario.ctx());
+            rewarder::test_init(scenario.ctx());
+        };
+
+        scenario.next_tx(admin);
+        {
+            create_pool<TestCoinB, TestCoinA>(
+                &mut scenario, 
+                admin, 
+                18584142135623730951, // tick = 148
+                &clock
+            );
+        };
+
+        scenario.next_tx(admin);
+        {
+            let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
+            let global_config = scenario.take_shared<config::GlobalConfig>();
+            let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
+            let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
+            let mut stats = scenario.take_shared<stats::Stats>();
+            let price_provider = scenario.take_shared<price_provider::PriceProvider>();
+
+            let mut periods_blocking = std::vector::empty();
+            std::vector::push_back(&mut periods_blocking, 4);
+            std::vector::push_back(&mut periods_blocking, 5);
+            std::vector::push_back(&mut periods_blocking, 6);
+            let mut periods_post_lockdown = std::vector::empty();
+            std::vector::push_back(&mut periods_post_lockdown, 1);
+            std::vector::push_back(&mut periods_post_lockdown, 2);
+            std::vector::push_back(&mut periods_post_lockdown, 3);
+            liquidity_lock_v1::init_locker(
+                &admin_cap,
+                &locker_create_cap,
+                &mut locker,
+                periods_blocking,
+                periods_post_lockdown,
+                scenario.ctx()
+            );
+
+            liquidity_lock_v1::set_ignore_whitelist(
+                &mut locker,
+                true,
+                scenario.ctx()
+            );
+
+            let mut duration_profitabilities = std::vector::empty();
+            std::vector::push_back(&mut duration_profitabilities, 10000);
+            std::vector::push_back(&mut duration_profitabilities, 20000);
+            std::vector::push_back(&mut duration_profitabilities, 30000);
+
+            create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
+                &mut scenario,
+                &mut tranche_manager,
+                &pool,
+                true,
+                17288384724888837365 << 64,  // total_volume
+                duration_profitabilities, // duration_profitabilities
+                100, // 1%
+                10000000, // reward_value
+                90000, // total_income,
+                clock.timestamp_ms()/1000
+            );
+
+            // ensure liquidity in the pool
+            let position_admin = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                0,
+                500,
+                9<<64,
+                &clock
+            );
+            let position_admin_2 = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                4294967295-50,
+                300,
+                4<<64,
+                &clock
+            );
+            let position_admin_3 = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                0,
+                110,
+                4<<64,
+                &clock
+            );
+            let position_admin_4 = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                100,
+                180,
+                8<<64,
+                &clock
+            );
+            let position_admin_5 = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                200,
+                2500,
+                3<<64,
+                &clock
+            );
+
+            let (position) = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                200,
+                600,
+                9<<64,
+                &clock
+            );
+
+            let mut locked_positions = liquidity_lock_v1::lock_position<TestCoinB, TestCoinA>(
+                &global_config,
+                &mut vault,
+                &mut locker,
+                &mut tranche_manager,
+                &mut pool,
+                position,
+                0,
+                &clock,
+                scenario.ctx()
+            );
+            assert!(locked_positions.length() == 1);
+            let mut locked_position = locked_positions.pop_back();
+            locked_positions.destroy_empty();
+
+            liquidity_lock_v1::change_tick_range<TestCoinB, TestCoinA>(
+                &global_config,
+                &mut vault,
+                &mut locker,
+                &mut locked_position,
+                &mut pool,
+                &mut stats,
+                &price_provider,
+                integer_mate::i32::from_u32(400),
+                integer_mate::i32::from_u32(2500),
+                &clock,
+                scenario.ctx()
+            );
+
+            transfer::public_transfer(pool, admin);
+            transfer::public_transfer(locked_position, admin);
+            transfer::public_transfer(position_admin, admin);
+            transfer::public_transfer(position_admin_2, admin);
+            transfer::public_transfer(position_admin_3, admin);
+            transfer::public_transfer(position_admin_4, admin);
+            transfer::public_transfer(position_admin_5, admin);
+            transfer::public_transfer(admin_cap, admin);
+            transfer::public_transfer(locker_create_cap, admin);
+            test_scenario::return_shared(tranche_manager);
+            test_scenario::return_shared(global_config);
+            test_scenario::return_shared(locker);
+            test_scenario::return_shared(vault);
+            test_scenario::return_shared(stats);
+            test_scenario::return_shared(price_provider);
+        };
+
+        clock::destroy_for_testing(clock);
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_change_tick_range_interval_out_range_v3() {
+        let admin = @0x1;
+        let mut scenario = test_scenario::begin(admin);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        
+        // Initialize
+        {
+            liquidity_lock_v1::test_init(scenario.ctx());
+            pool_tranche::test_init(scenario.ctx());
+            locker_cap::init_test(scenario.ctx());
+            config::test_init(scenario.ctx());
+            factory::test_init(scenario.ctx());
+            stats::init_test(scenario.ctx());
+            price_provider::init_test(scenario.ctx());
+            rewarder::test_init(scenario.ctx());
+        };
+
+        scenario.next_tx(admin);
+        {
+            create_pool<TestCoinB, TestCoinA>(
+                &mut scenario, 
+                admin, 
+                18584142135623730951, // tick = 148
+                &clock
+            );
+        };
+
+        scenario.next_tx(admin);
+        {
+            let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
+            let global_config = scenario.take_shared<config::GlobalConfig>();
+            let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
+            let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
+            let mut stats = scenario.take_shared<stats::Stats>();
+            let price_provider = scenario.take_shared<price_provider::PriceProvider>();
+
+            let mut periods_blocking = std::vector::empty();
+            std::vector::push_back(&mut periods_blocking, 4);
+            std::vector::push_back(&mut periods_blocking, 5);
+            std::vector::push_back(&mut periods_blocking, 6);
+            let mut periods_post_lockdown = std::vector::empty();
+            std::vector::push_back(&mut periods_post_lockdown, 1);
+            std::vector::push_back(&mut periods_post_lockdown, 2);
+            std::vector::push_back(&mut periods_post_lockdown, 3);
+            liquidity_lock_v1::init_locker(
+                &admin_cap,
+                &locker_create_cap,
+                &mut locker,
+                periods_blocking,
+                periods_post_lockdown,
+                scenario.ctx()
+            );
+
+            liquidity_lock_v1::set_ignore_whitelist(
+                &mut locker,
+                true,
+                scenario.ctx()
+            );
+
+            let mut duration_profitabilities = std::vector::empty();
+            std::vector::push_back(&mut duration_profitabilities, 10000);
+            std::vector::push_back(&mut duration_profitabilities, 20000);
+            std::vector::push_back(&mut duration_profitabilities, 30000);
+
+            create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
+                &mut scenario,
+                &mut tranche_manager,
+                &pool,
+                true,
+                17288384724888837365 << 64,  // total_volume
+                duration_profitabilities, // duration_profitabilities
+                100, // 1%
+                10000000, // reward_value
+                90000, // total_income,
+                clock.timestamp_ms()/1000
+            );
+
+            // ensure liquidity in the pool
+            let position_admin = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                0,
+                500,
+                9<<64,
+                &clock
+            );
+            let position_admin_2 = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                4294967295-50,
+                300,
+                9<<64,
+                &clock
+            );
+            let position_admin_3 = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                0,
+                110,
+                4<<64,
+                &clock
+            );
+            let position_admin_4 = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                100,
+                180,
+                8<<64,
+                &clock
+            );
+            let position_admin_5 = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                200,
+                2500,
+                3<<64,
+                &clock
+            );
+
+            let (position) = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                200,
+                600,
+                10<<64,
+                &clock
+            );
+
+            let mut locked_positions = liquidity_lock_v1::lock_position<TestCoinB, TestCoinA>(
+                &global_config,
+                &mut vault,
+                &mut locker,
+                &mut tranche_manager,
+                &mut pool,
+                position,
+                0,
+                &clock,
+                scenario.ctx()
+            );
+            assert!(locked_positions.length() == 1);
+            let mut locked_position = locked_positions.pop_back();
+            locked_positions.destroy_empty();
+
+            liquidity_lock_v1::change_tick_range<TestCoinB, TestCoinA>(
+                &global_config,
+                &mut vault,
+                &mut locker,
+                &mut locked_position,
+                &mut pool,
+                &mut stats,
+                &price_provider,
+                integer_mate::i32::from_u32(4294967295-1000),
+                integer_mate::i32::from_u32(4294967295-50),
+                &clock,
+                scenario.ctx()
+            );
+
+            transfer::public_transfer(pool, admin);
+            transfer::public_transfer(locked_position, admin);
+            transfer::public_transfer(position_admin, admin);
+            transfer::public_transfer(position_admin_2, admin);
+            transfer::public_transfer(position_admin_3, admin);
+            transfer::public_transfer(position_admin_4, admin);
+            transfer::public_transfer(position_admin_5, admin);
+            transfer::public_transfer(admin_cap, admin);
+            transfer::public_transfer(locker_create_cap, admin);
+            test_scenario::return_shared(tranche_manager);
+            test_scenario::return_shared(global_config);
+            test_scenario::return_shared(locker);
+            test_scenario::return_shared(vault);
+            test_scenario::return_shared(stats);
+            test_scenario::return_shared(price_provider);
+        };
+
+        clock::destroy_for_testing(clock);
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_change_tick_range_interval_out_range_v4() {
+        let admin = @0x1;
+        let mut scenario = test_scenario::begin(admin);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        
+        // Initialize
+        {
+            liquidity_lock_v1::test_init(scenario.ctx());
+            pool_tranche::test_init(scenario.ctx());
+            locker_cap::init_test(scenario.ctx());
+            config::test_init(scenario.ctx());
+            factory::test_init(scenario.ctx());
+            stats::init_test(scenario.ctx());
+            price_provider::init_test(scenario.ctx());
+            rewarder::test_init(scenario.ctx());
+        };
+
+        scenario.next_tx(admin);
+        {
+            create_pool<TestCoinB, TestCoinA>(
+                &mut scenario, 
+                admin, 
+                18584142135623730951, // tick = 148
+                &clock
+            );
+        };
+
+        scenario.next_tx(admin);
+        {
+            let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
+            let global_config = scenario.take_shared<config::GlobalConfig>();
+            let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
+            let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
+            let mut stats = scenario.take_shared<stats::Stats>();
+            let price_provider = scenario.take_shared<price_provider::PriceProvider>();
+
+            let mut periods_blocking = std::vector::empty();
+            std::vector::push_back(&mut periods_blocking, 4);
+            std::vector::push_back(&mut periods_blocking, 5);
+            std::vector::push_back(&mut periods_blocking, 6);
+            let mut periods_post_lockdown = std::vector::empty();
+            std::vector::push_back(&mut periods_post_lockdown, 1);
+            std::vector::push_back(&mut periods_post_lockdown, 2);
+            std::vector::push_back(&mut periods_post_lockdown, 3);
+            liquidity_lock_v1::init_locker(
+                &admin_cap,
+                &locker_create_cap,
+                &mut locker,
+                periods_blocking,
+                periods_post_lockdown,
+                scenario.ctx()
+            );
+
+            liquidity_lock_v1::set_ignore_whitelist(
+                &mut locker,
+                true,
+                scenario.ctx()
+            );
+
+            let mut duration_profitabilities = std::vector::empty();
+            std::vector::push_back(&mut duration_profitabilities, 10000);
+            std::vector::push_back(&mut duration_profitabilities, 20000);
+            std::vector::push_back(&mut duration_profitabilities, 30000);
+
+            create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
+                &mut scenario,
+                &mut tranche_manager,
+                &pool,
+                true,
+                17288384724888837365 << 64,  // total_volume
+                duration_profitabilities, // duration_profitabilities
+                100, // 1%
+                10000000, // reward_value
+                90000, // total_income,
+                clock.timestamp_ms()/1000
+            );
+
+            // ensure liquidity in the pool
+            let position_admin = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                0,
+                500,
+                9<<64,
+                &clock
+            );
+            let position_admin_2 = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                4294967295-50,
+                300,
+                9<<64,
+                &clock
+            );
+            let position_admin_3 = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                0,
+                110,
+                4<<64,
+                &clock
+            );
+            let position_admin_4 = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                100,
+                180,
+                8<<64,
+                &clock
+            );
+            let position_admin_5 = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                200,
+                2500,
+                3<<64,
+                &clock
+            );
+
+            let (position) = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                4294967295-400,
+                4294967295-100,
+                10<<64,
+                &clock
+            );
+
+            let mut locked_positions = liquidity_lock_v1::lock_position<TestCoinB, TestCoinA>(
+                &global_config,
+                &mut vault,
+                &mut locker,
+                &mut tranche_manager,
+                &mut pool,
+                position,
+                0,
+                &clock,
+                scenario.ctx()
+            );
+            assert!(locked_positions.length() == 1);
+            let mut locked_position = locked_positions.pop_back();
+            locked_positions.destroy_empty();
+
+            liquidity_lock_v1::change_tick_range<TestCoinB, TestCoinA>(
+                &global_config,
+                &mut vault,
+                &mut locker,
+                &mut locked_position,
+                &mut pool,
+                &mut stats,
+                &price_provider,
+                integer_mate::i32::from_u32(4294967295-1000),
+                integer_mate::i32::from_u32(4294967295-50),
+                &clock,
+                scenario.ctx()
+            );
+
+            transfer::public_transfer(pool, admin);
+            transfer::public_transfer(locked_position, admin);
+            transfer::public_transfer(position_admin, admin);
+            transfer::public_transfer(position_admin_2, admin);
+            transfer::public_transfer(position_admin_3, admin);
+            transfer::public_transfer(position_admin_4, admin);
+            transfer::public_transfer(position_admin_5, admin);
+            transfer::public_transfer(admin_cap, admin);
+            transfer::public_transfer(locker_create_cap, admin);
+            test_scenario::return_shared(tranche_manager);
+            test_scenario::return_shared(global_config);
+            test_scenario::return_shared(locker);
+            test_scenario::return_shared(vault);
+            test_scenario::return_shared(stats);
+            test_scenario::return_shared(price_provider);
+        };
+
+        clock::destroy_for_testing(clock);
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_change_tick_range_interval_out_range_v5() {
+        let admin = @0x1;
+        let mut scenario = test_scenario::begin(admin);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        
+        // Initialize
+        {
+            liquidity_lock_v1::test_init(scenario.ctx());
+            pool_tranche::test_init(scenario.ctx());
+            locker_cap::init_test(scenario.ctx());
+            config::test_init(scenario.ctx());
+            factory::test_init(scenario.ctx());
+            stats::init_test(scenario.ctx());
+            price_provider::init_test(scenario.ctx());
+            rewarder::test_init(scenario.ctx());
+        };
+
+        scenario.next_tx(admin);
+        {
+            create_pool<TestCoinB, TestCoinA>(
+                &mut scenario, 
+                admin, 
+                18584142135623730951, // tick = 148
+                &clock
+            );
+        };
+
+        scenario.next_tx(admin);
+        {
+            let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
+            let global_config = scenario.take_shared<config::GlobalConfig>();
+            let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
+            let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
+            let mut stats = scenario.take_shared<stats::Stats>();
+            let price_provider = scenario.take_shared<price_provider::PriceProvider>();
+
+            let mut periods_blocking = std::vector::empty();
+            std::vector::push_back(&mut periods_blocking, 4);
+            std::vector::push_back(&mut periods_blocking, 5);
+            std::vector::push_back(&mut periods_blocking, 6);
+            let mut periods_post_lockdown = std::vector::empty();
+            std::vector::push_back(&mut periods_post_lockdown, 1);
+            std::vector::push_back(&mut periods_post_lockdown, 2);
+            std::vector::push_back(&mut periods_post_lockdown, 3);
+            liquidity_lock_v1::init_locker(
+                &admin_cap,
+                &locker_create_cap,
+                &mut locker,
+                periods_blocking,
+                periods_post_lockdown,
+                scenario.ctx()
+            );
+
+            liquidity_lock_v1::set_ignore_whitelist(
+                &mut locker,
+                true,
+                scenario.ctx()
+            );
+
+            let mut duration_profitabilities = std::vector::empty();
+            std::vector::push_back(&mut duration_profitabilities, 10000);
+            std::vector::push_back(&mut duration_profitabilities, 20000);
+            std::vector::push_back(&mut duration_profitabilities, 30000);
+
+            create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
+                &mut scenario,
+                &mut tranche_manager,
+                &pool,
+                true,
+                17288384724888837365 << 64,  // total_volume
+                duration_profitabilities, // duration_profitabilities
+                100, // 1%
+                10000000, // reward_value
+                90000, // total_income,
+                clock.timestamp_ms()/1000
+            );
+
+            // ensure liquidity in the pool
+            let position_admin = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                0,
+                500,
+                9<<64,
+                &clock
+            );
+            let position_admin_2 = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                4294967295-50,
+                300,
+                9<<64,
+                &clock
+            );
+            let position_admin_3 = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                0,
+                110,
+                4<<64,
+                &clock
+            );
+            let position_admin_4 = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                100,
+                180,
+                8<<64,
+                &clock
+            );
+            let position_admin_5 = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                200,
+                2500,
+                3<<64,
+                &clock
+            );
+
+            let (position) = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                4294967295-10000,
+                4294967295-100,
+                2<<64,
+                &clock
+            );
+
+            let mut locked_positions = liquidity_lock_v1::lock_position<TestCoinB, TestCoinA>(
+                &global_config,
+                &mut vault,
+                &mut locker,
+                &mut tranche_manager,
+                &mut pool,
+                position,
+                0,
+                &clock,
+                scenario.ctx()
+            );
+            assert!(locked_positions.length() == 1);
+            let mut locked_position = locked_positions.pop_back();
+            locked_positions.destroy_empty();
+
+            liquidity_lock_v1::change_tick_range<TestCoinB, TestCoinA>(
+                &global_config,
+                &mut vault,
+                &mut locker,
+                &mut locked_position,
+                &mut pool,
+                &mut stats,
+                &price_provider,
+                integer_mate::i32::from_u32(4294967295-4000),
+                integer_mate::i32::from_u32(4294967295-450),
+                &clock,
+                scenario.ctx()
+            );
+
+            transfer::public_transfer(pool, admin);
+            transfer::public_transfer(locked_position, admin);
+            transfer::public_transfer(position_admin, admin);
+            transfer::public_transfer(position_admin_2, admin);
+            transfer::public_transfer(position_admin_3, admin);
+            transfer::public_transfer(position_admin_4, admin);
+            transfer::public_transfer(position_admin_5, admin);
+            transfer::public_transfer(admin_cap, admin);
+            transfer::public_transfer(locker_create_cap, admin);
+            test_scenario::return_shared(tranche_manager);
+            test_scenario::return_shared(global_config);
+            test_scenario::return_shared(locker);
+            test_scenario::return_shared(vault);
+            test_scenario::return_shared(stats);
+            test_scenario::return_shared(price_provider);
+        };
+
+        clock::destroy_for_testing(clock);
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_change_tick_range_interval_out_range_v6() {
+        let admin = @0x1;
+        let mut scenario = test_scenario::begin(admin);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        
+        // Initialize
+        {
+            liquidity_lock_v1::test_init(scenario.ctx());
+            pool_tranche::test_init(scenario.ctx());
+            locker_cap::init_test(scenario.ctx());
+            config::test_init(scenario.ctx());
+            factory::test_init(scenario.ctx());
+            stats::init_test(scenario.ctx());
+            price_provider::init_test(scenario.ctx());
+            rewarder::test_init(scenario.ctx());
+        };
+
+        scenario.next_tx(admin);
+        {
+            create_pool<TestCoinB, TestCoinA>(
+                &mut scenario, 
+                admin, 
+                18584142135623730951, // tick = 148
+                &clock
+            );
+        };
+
+        scenario.next_tx(admin);
+        {
+            let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
+            let global_config = scenario.take_shared<config::GlobalConfig>();
+            let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
+            let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
+            let mut stats = scenario.take_shared<stats::Stats>();
+            let price_provider = scenario.take_shared<price_provider::PriceProvider>();
+
+            let mut periods_blocking = std::vector::empty();
+            std::vector::push_back(&mut periods_blocking, 4);
+            std::vector::push_back(&mut periods_blocking, 5);
+            std::vector::push_back(&mut periods_blocking, 6);
+            let mut periods_post_lockdown = std::vector::empty();
+            std::vector::push_back(&mut periods_post_lockdown, 1);
+            std::vector::push_back(&mut periods_post_lockdown, 2);
+            std::vector::push_back(&mut periods_post_lockdown, 3);
+            liquidity_lock_v1::init_locker(
+                &admin_cap,
+                &locker_create_cap,
+                &mut locker,
+                periods_blocking,
+                periods_post_lockdown,
+                scenario.ctx()
+            );
+
+            liquidity_lock_v1::set_ignore_whitelist(
+                &mut locker,
+                true,
+                scenario.ctx()
+            );
+
+            let mut duration_profitabilities = std::vector::empty();
+            std::vector::push_back(&mut duration_profitabilities, 10000);
+            std::vector::push_back(&mut duration_profitabilities, 20000);
+            std::vector::push_back(&mut duration_profitabilities, 30000);
+
+            create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
+                &mut scenario,
+                &mut tranche_manager,
+                &pool,
+                true,
+                17288384724888837365 << 64,  // total_volume
+                duration_profitabilities, // duration_profitabilities
+                100, // 1%
+                10000000, // reward_value
+                90000, // total_income,
+                clock.timestamp_ms()/1000
+            );
+
+            // ensure liquidity in the pool
+            let position_admin = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                0,
+                500,
+                9<<64,
+                &clock
+            );
+            let position_admin_2 = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                4294967295-50,
+                300,
+                9<<64,
+                &clock
+            );
+            let position_admin_3 = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                0,
+                110,
+                4<<64,
+                &clock
+            );
+            let position_admin_4 = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                100,
+                180,
+                8<<64,
+                &clock
+            );
+            let position_admin_5 = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                200,
+                2500,
+                3<<64,
+                &clock
+            );
+
+            let (position) = create_position_with_liquidity<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &mut vault,
+                &mut pool,
+                4294967295-400,
+                4294967295-100,
+                10<<64,
+                &clock
+            );
+
+            let mut locked_positions = liquidity_lock_v1::lock_position<TestCoinB, TestCoinA>(
+                &global_config,
+                &mut vault,
+                &mut locker,
+                &mut tranche_manager,
+                &mut pool,
+                position,
+                0,
+                &clock,
+                scenario.ctx()
+            );
+            assert!(locked_positions.length() == 1);
+            let mut locked_position = locked_positions.pop_back();
+            locked_positions.destroy_empty();
+
+            liquidity_lock_v1::change_tick_range<TestCoinB, TestCoinA>(
+                &global_config,
+                &mut vault,
+                &mut locker,
+                &mut locked_position,
+                &mut pool,
+                &mut stats,
+                &price_provider,
+                integer_mate::i32::from_u32(550),
+                integer_mate::i32::from_u32(1000),
+                &clock,
+                scenario.ctx()
+            );
+
+            transfer::public_transfer(pool, admin);
+            transfer::public_transfer(locked_position, admin);
+            transfer::public_transfer(position_admin, admin);
+            transfer::public_transfer(position_admin_2, admin);
+            transfer::public_transfer(position_admin_3, admin);
+            transfer::public_transfer(position_admin_4, admin);
+            transfer::public_transfer(position_admin_5, admin);
             transfer::public_transfer(admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             test_scenario::return_shared(tranche_manager);

@@ -53,6 +53,7 @@ module liquidity_locker::liquidity_lock_v1 {
     const EInsufficientBalanceBOutput: u64 = 9247240362830633;
     const EAdminNotWhitelisted: u64 = 9389469239702349;
     const EAddressNotAdmin: u64 = 9630793046376343;
+    const ECalculationLiquidityOverflow: u64 = 9237457234734723;
 
     /// Capability for administrative functions in the protocol.
     /// This capability is required for managing global settings and protocol parameters.
@@ -776,6 +777,8 @@ module liquidity_locker::liquidity_lock_v1 {
             } else {
                 locker_utils::calculate_position_liquidity_in_token_b(pool, position_id_copy)
             };
+            std::debug::print(&(liquidity_in_token>>64));
+            std::debug::print(&(delta_volume>>64));
 
             let (
                 _position_id, 
@@ -784,6 +787,8 @@ module liquidity_locker::liquidity_lock_v1 {
                 remainder_b,
                 split,
             ) = if (liquidity_in_token > delta_volume) { // split position
+                std::debug::print(&std::string::utf8(b"split"));
+
                 let share_first_part = integer_mate::full_math_u128::mul_div_floor(
                     delta_volume,
                     consts::lock_liquidity_share_denom() as u128,
@@ -821,6 +826,7 @@ module liquidity_locker::liquidity_lock_v1 {
                     true,
                 )
             } else {
+                std::debug::print(&std::string::utf8(b"full"));
                 pool_tranche::fill_tranches(
                     tranche,
                     liquidity_in_token,
@@ -1542,6 +1548,13 @@ module liquidity_locker::liquidity_lock_v1 {
         
         let mut position =locker.positions.remove(lock_position.position_id);
 
+        std::debug::print(&std::string::utf8(b"current_tick_index"));
+        std::debug::print(&(pool.current_tick_index()));
+        std::debug::print(&std::string::utf8(b"new_tick_lower"));
+        std::debug::print(&(new_tick_lower));
+        std::debug::print(&std::string::utf8(b"new_tick_upper"));
+        std::debug::print(&(new_tick_upper));
+
         let (tick_lower, tick_upper) = position.tick_range();
         assert!(!new_tick_lower.eq(tick_lower) || !new_tick_upper.eq(tick_upper), ENotChangedTickRange);
 
@@ -1559,8 +1572,13 @@ module liquidity_locker::liquidity_lock_v1 {
             clock
         );
 
+        std::debug::print(&std::string::utf8(b"removed_a"));
+        std::debug::print(&(removed_a.value()));
+        std::debug::print(&std::string::utf8(b"removed_b"));
+        std::debug::print(&(removed_b.value()));
+
         // Calculate total value in token B terms
-        // let current_volume_coins_in_token_b = (locker_utils::calculate_token_a_in_token_b(pool, removed_a.value()) as u128) + (removed_b.value() as u128);
+        let current_volume_coins_in_token_b = (locker_utils::calculate_token_a_in_token_b(pool, removed_a.value()) as u128) + (removed_b.value() as u128);
 
         // Close old position and create new one
         clmm_pool::pool::close_position<CoinTypeA, CoinTypeB>(global_config, pool, position);
@@ -1575,186 +1593,56 @@ module liquidity_locker::liquidity_lock_v1 {
         let new_position_id = object::id<clmm_pool::position::Position>(&new_position);
 
         // Calculate token amounts for new range with current liquidity
-        // let (pre_amount_a_calc, pre_amount_b_calc) = clmm_pool::clmm_math::get_amount_by_liquidity(
-        //     new_tick_lower,
-        //     new_tick_upper,
-        //     pool.current_tick_index(),
-        //     pool.current_sqrt_price(),
-        //     position_liquidity,
-        //     true
-        // );
-        
-        // Calculate total value in token B terms for new range
-        // let after_volume_coins_in_token_b = (locker_utils::calculate_token_a_in_token_b(pool, pre_amount_a_calc) as u128) + (pre_amount_b_calc as u128);
-
-        // Adjust liquidity based on value ratio between ranges
-        // let mut liquidity_calc = integer_mate::full_math_u128::mul_div_floor(
-        //     position_liquidity,
-        //     current_volume_coins_in_token_b,
-        //     after_volume_coins_in_token_b
-        // );
-
-        // P.S. calculation through volume ratio is more accurate,
-        // but prone to arithmetic errors in get_amount_by_liquidity when expanding the range and large position_liquidity
-        let mut liquidity_calc = integer_mate::full_math_u128::mul_div_floor(
-            position_liquidity,
-            current_tick_range as u128,
-            new_tick_range as u128
-        );
-
-        // Calculate final token amounts with adjusted liquidity
-        let (mut amount_a_calc, mut amount_b_calc) = clmm_pool::clmm_math::get_amount_by_liquidity(
+        let (pre_amount_a_calc, pre_amount_b_calc) = clmm_pool::clmm_math::get_amount_by_liquidity(
             new_tick_lower,
             new_tick_upper,
             pool.current_tick_index(),
             pool.current_sqrt_price(),
-            liquidity_calc,
+            position_liquidity,
             true
         );
-
-        // Handle token imbalances through swaps
-        if ((removed_b.value() > amount_b_calc) || (removed_a.value() > amount_a_calc)) {
-            // Calculate liquidity before swap to avoid price impact
-            if (removed_b.value() > amount_b_calc) {
-                let calculate_swap_result = clmm_pool::pool::calculate_swap_result<CoinTypeA, CoinTypeB>(
-                    global_config,
-                    pool,
-                    false,
-                    true,
-                    removed_b.value() - amount_b_calc
-                );
-
-                let amount_a_out = calculate_swap_result.calculated_swap_result_amount_out();
-
-                if ((amount_a_out + removed_a.value()) < amount_a_calc) {
-                    (liquidity_calc, amount_a_calc, amount_b_calc) = clmm_pool::clmm_math::get_liquidity_by_amount(
-                        new_tick_lower,
-                        new_tick_upper,
-                        pool.current_tick_index(),
-                        pool.current_sqrt_price(),
-                        amount_a_out + removed_a.value(),
-                        true
-                    );
-                };
-            } else {
-                let calculate_swap_result = clmm_pool::pool::calculate_swap_result<CoinTypeA, CoinTypeB>(
-                    global_config,
-                    pool,
-                    true,
-                    true,
-                    removed_a.value() - amount_a_calc
-                );
-
-                let amount_b_out = calculate_swap_result.calculated_swap_result_amount_out();
-
-                if ((amount_b_out + removed_b.value()) < amount_b_calc) {
-                    (liquidity_calc, amount_a_calc, amount_b_calc) = clmm_pool::clmm_math::get_liquidity_by_amount(
-                        new_tick_lower,
-                        new_tick_upper,
-                        pool.current_tick_index(),
-                        pool.current_sqrt_price(),
-                        amount_b_out + removed_b.value(),
-                        false
-                    );
-                };
-            };
-        };
-
-        // Add liquidity before swap
-        let receipt = clmm_pool::pool::add_liquidity<CoinTypeA, CoinTypeB>(
-            global_config,
-            vault,
-            pool,
-            &mut new_position,
-            liquidity_calc,
-            clock
-        );
-        let (pay_amount_a, pay_amount_b) = receipt.add_liquidity_pay_amount();
-
-        if ((removed_b.value() > amount_b_calc) || (removed_a.value() > amount_a_calc)) {
-            // Token balance adjustment through swap
-            // If token balance decreases, swap that portion to get maximum value of second token as reference
-            let (receipt, swap_pay_amount_a, swap_pay_amount_b) = if (removed_b.value() > amount_b_calc) {
-                // Swap B to A
-                let (amount_a_out, amount_b_out, receipt) = clmm_pool::pool::flash_swap<CoinTypeA, CoinTypeB>(
-                    global_config,
-                    vault,
-                    pool,
-                    false, // a2b = false, since we swap B to A
-                    true,
-                    removed_b.value() - amount_b_calc,
-                    clmm_pool::tick_math::max_sqrt_price(),
-                    stats,
-                    price_provider,
-                    clock
-                );
-                removed_b.join(amount_b_out);
-                removed_a.join(amount_a_out);
-
-                // Swap excess B token to get A, but it won't be sufficient to reach amount_a_calc
-                let swap_pay_amount_b_receipt = receipt.swap_pay_amount();
-                let swap_pay_amount_b = removed_b.split(swap_pay_amount_b_receipt);
-
-                (receipt, sui::balance::zero<CoinTypeA>(), swap_pay_amount_b)
-            } else {
-                // Swap A to B
-                let (amount_a_out, amount_b_out, receipt) = clmm_pool::pool::flash_swap<CoinTypeA, CoinTypeB>(
-                    global_config,
-                    vault,
-                    pool,
-                    true,
-                    true,
-                    removed_a.value() - amount_a_calc,
-                    clmm_pool::tick_math::min_sqrt_price(),
-                    stats,
-                    price_provider,
-                    clock
-                );
-                removed_a.join(amount_a_out);
-                removed_b.join(amount_b_out);
-
-                // Swap excess A token to get B, but it won't be sufficient to reach amount_b_calc
-                let swap_pay_amount_a_receipt = receipt.swap_pay_amount();
-                let swap_pay_amount_a = removed_a.split(swap_pay_amount_a_receipt);
-
-                (receipt, swap_pay_amount_a, sui::balance::zero<CoinTypeB>())
-            };
-
-            assert!(removed_a.value() >= amount_a_calc, EIncorrectSwapResultA);
-            assert!(removed_b.value() >= amount_b_calc, EIncorrectSwapResultB);
-
-            clmm_pool::pool::repay_flash_swap<CoinTypeA, CoinTypeB>(
-                global_config,
-                pool,
-                swap_pay_amount_a,
-                swap_pay_amount_b,
-                receipt
-            );
-        };
-
-        if (removed_a.value() > pay_amount_a) {
-            let removed_a_value = removed_a.value();
-
-            lock_position.coin_a.join(removed_a.split(removed_a_value - pay_amount_a));
-        };
-        if (removed_b.value() > pay_amount_b) {
-            let removed_b_value = removed_b.value();
-
-            lock_position.coin_b.join(removed_b.split(removed_b_value - pay_amount_b));
-        };
         
-        assert!(pay_amount_a == removed_a.value(), EIncorrectLiquidityAmountA);
-        assert!(pay_amount_b == removed_b.value(), EIncorrectLiquidityAmountB);
+        // Calculate total value in token B terms for new range
+        let after_volume_coins_in_token_b = (locker_utils::calculate_token_a_in_token_b(pool, pre_amount_a_calc) as u128) + (pre_amount_b_calc as u128);
 
-        clmm_pool::pool::repay_add_liquidity<CoinTypeA, CoinTypeB>(
-            global_config,
-            pool,
-            removed_a,
-            removed_b,
-            receipt,
+        // let (mut liquidity_calc) = if (current_volume_coins_in_token_b > after_volume_coins_in_token_b) { 
+        //     let multiplier = (current_volume_coins_in_token_b as u128) / (after_volume_coins_in_token_b as u128);
+
+        //     // Adjust liquidity based on value ratio between ranges
+        //     let (liquidity_calc, overflow) = integer_mate::math_u128::overflowing_mul(
+        //         position_liquidity,
+        //         multiplier
+        //     );
+        //     assert!(!overflow, ECalculationLiquidityOverflow);
+
+        //     liquidity_calc
+        // } else {
+        //     let denom = (after_volume_coins_in_token_b as u128) / (current_volume_coins_in_token_b as u128);
+
+        //     position_liquidity/denom
+        // };
+
+        let (mut liquidity_calc) = integer_mate::full_math_u128::mul_div_floor(
+            position_liquidity,
+            current_volume_coins_in_token_b,
+            after_volume_coins_in_token_b
         );
 
-        // Add remaining tokens back to position
+        std::debug::print(&std::string::utf8(b"after_volume_coins_in_token_b"));
+        std::debug::print(&(after_volume_coins_in_token_b));
+        std::debug::print(&std::string::utf8(b"current_volume_coins_in_token_b"));
+        std::debug::print(&(current_volume_coins_in_token_b));
+
+
+        std::debug::print(&std::string::utf8(b"liquidity_calc"));
+        std::debug::print(&(liquidity_calc));
+        std::debug::print(&(liquidity_calc>>64));
+
+        // выведенные токены добавляем в лок
+        lock_position.coin_a.join(removed_a);
+        lock_position.coin_b.join(removed_b);
+
+        // пробуем добавить ликвидность в новую позу, если есть оба токена
         add_liquidity_by_lock_position<CoinTypeA, CoinTypeB>(
             global_config,
             vault,
@@ -1763,6 +1651,226 @@ module liquidity_locker::liquidity_lock_v1 {
             &mut new_position,
             clock
         );
+
+        std::debug::print(&std::string::utf8(b"START lock_position.coin_a.value()"));
+        std::debug::print(&(lock_position.coin_a.value()));
+        std::debug::print(&std::string::utf8(b"START lock_position.coin_b.value()"));
+        std::debug::print(&(lock_position.coin_b.value()));
+
+        // вычисляем сколько ликвидности осталось добавить
+        if (new_position.liquidity() < liquidity_calc) {
+            liquidity_calc = liquidity_calc - new_position.liquidity();
+        } else {
+            std::debug::print(&std::string::utf8(b"STOP"));
+            std::debug::print(&std::string::utf8(b"liquidity_calc"));
+            std::debug::print(&(liquidity_calc));
+            std::debug::print(&std::string::utf8(b"new_position.liquidity()"));
+            std::debug::print(&(new_position.liquidity()));
+            
+            liquidity_calc = 0;
+        };
+
+        if (liquidity_calc > 0) {
+            // Calculate final token amounts with adjusted liquidity
+            let (mut amount_a_calc, mut amount_b_calc) = clmm_pool::clmm_math::get_amount_by_liquidity(
+                new_tick_lower,
+                new_tick_upper,
+                pool.current_tick_index(),
+                pool.current_sqrt_price(),
+                liquidity_calc,
+                true
+            );
+
+            std::debug::print(&std::string::utf8(b"amount_a_calc"));
+            std::debug::print(&(amount_a_calc));
+            std::debug::print(&std::string::utf8(b"amount_b_calc"));
+            std::debug::print(&(amount_b_calc));
+
+            // по идее такого никогда не будет
+            if (lock_position.coin_b.value() < amount_b_calc && lock_position.coin_a.value() < amount_a_calc) {
+                std::debug::print(&std::string::utf8(b"NOOOOOOOO"));
+                (liquidity_calc, amount_a_calc, amount_b_calc) = get_liquidity_by_amount_by_lock_position(
+                    pool, 
+                    lock_position, 
+                    new_tick_lower, 
+                    new_tick_upper
+                );
+            };
+
+            // Handle token imbalances through swaps
+            // Calculate liquidity before swap to avoid price impact
+            if (lock_position.coin_b.value() > amount_b_calc) {
+                let calculate_swap_result = clmm_pool::pool::calculate_swap_result<CoinTypeA, CoinTypeB>(
+                    global_config,
+                    pool,
+                    false,
+                    true,
+                    lock_position.coin_b.value() - amount_b_calc
+                );
+
+                let amount_a_out = calculate_swap_result.calculated_swap_result_amount_out();
+
+                if ((amount_a_out + lock_position.coin_a.value()) < amount_a_calc) {
+                    (liquidity_calc, amount_a_calc, amount_b_calc) = clmm_pool::clmm_math::get_liquidity_by_amount(
+                        new_tick_lower,
+                        new_tick_upper,
+                        pool.current_tick_index(),
+                        pool.current_sqrt_price(),
+                        amount_a_out + lock_position.coin_a.value(),
+                        true
+                    );
+                };
+            } else {
+                if (lock_position.coin_a.value() > amount_a_calc) {
+                    let calculate_swap_result = clmm_pool::pool::calculate_swap_result<CoinTypeA, CoinTypeB>(
+                        global_config,
+                        pool,
+                        true,
+                        true,
+                        lock_position.coin_a.value() - amount_a_calc
+                    );
+
+                    let amount_b_out = calculate_swap_result.calculated_swap_result_amount_out();
+
+                    if ((amount_b_out + lock_position.coin_b.value()) < amount_b_calc) {
+                        (liquidity_calc, amount_a_calc, amount_b_calc) = clmm_pool::clmm_math::get_liquidity_by_amount(
+                            new_tick_lower,
+                            new_tick_upper,
+                            pool.current_tick_index(),
+                            pool.current_sqrt_price(),
+                            amount_b_out + lock_position.coin_b.value(),
+                            false
+                        );
+                    };
+                };
+            };
+
+            // Add liquidity before swap
+            let receipt = clmm_pool::pool::add_liquidity<CoinTypeA, CoinTypeB>(
+                global_config,
+                vault,
+                pool,
+                &mut new_position,
+                liquidity_calc,
+                clock
+            );
+            let (pay_amount_a, pay_amount_b) = receipt.add_liquidity_pay_amount();
+
+            if ((lock_position.coin_b.value() > amount_b_calc) || (lock_position.coin_a.value() > amount_a_calc)) {
+                // Token balance adjustment through swap
+                // If token balance decreases, swap that portion to get maximum value of second token as reference
+                let (receipt, swap_pay_amount_a, swap_pay_amount_b) = if (lock_position.coin_b.value() > amount_b_calc) {
+                    // Swap B to A
+                    let (amount_a_out, amount_b_out, receipt) = clmm_pool::pool::flash_swap<CoinTypeA, CoinTypeB>(
+                        global_config,
+                        vault,
+                        pool,
+                        false, // a2b = false, since we swap B to A
+                        true,
+                        lock_position.coin_b.value() - amount_b_calc,
+                        clmm_pool::tick_math::max_sqrt_price(),
+                        stats,
+                        price_provider,
+                        clock
+                    );
+                    lock_position.coin_b.join(amount_b_out);
+                    lock_position.coin_a.join(amount_a_out);
+
+                    // Swap excess B token to get A, but it won't be sufficient to reach amount_a_calc
+                    let swap_pay_amount_b_receipt = receipt.swap_pay_amount();
+                    let swap_pay_amount_b = lock_position.coin_b.split(swap_pay_amount_b_receipt);
+
+                    (receipt, sui::balance::zero<CoinTypeA>(), swap_pay_amount_b)
+                } else {
+                    // Swap A to B
+                    let (amount_a_out, amount_b_out, receipt) = clmm_pool::pool::flash_swap<CoinTypeA, CoinTypeB>(
+                        global_config,
+                        vault,
+                        pool,
+                        true,
+                        true,
+                        lock_position.coin_a.value() - amount_a_calc,
+                        clmm_pool::tick_math::min_sqrt_price(),
+                        stats,
+                        price_provider,
+                        clock
+                    );
+                    lock_position.coin_a.join(amount_a_out);
+                    lock_position.coin_b.join(amount_b_out);
+
+                    // Swap excess A token to get B, but it won't be sufficient to reach amount_b_calc
+                    let swap_pay_amount_a_receipt = receipt.swap_pay_amount();
+                    let swap_pay_amount_a = lock_position.coin_a.split(swap_pay_amount_a_receipt);
+
+                    (receipt, swap_pay_amount_a, sui::balance::zero<CoinTypeB>())
+                };
+
+                assert!(lock_position.coin_a.value() >= amount_a_calc, EIncorrectSwapResultA);
+                assert!(lock_position.coin_b.value() >= amount_b_calc, EIncorrectSwapResultB);
+
+                clmm_pool::pool::repay_flash_swap<CoinTypeA, CoinTypeB>(
+                    global_config,
+                    pool,
+                    swap_pay_amount_a,
+                    swap_pay_amount_b,
+                    receipt
+                );
+            };
+
+            std::debug::print(&std::string::utf8(b"lock_position.coin_a.value()"));
+            std::debug::print(&(lock_position.coin_a.value()));
+            std::debug::print(&std::string::utf8(b"pay_amount_a"));
+            std::debug::print(&(pay_amount_a));
+            std::debug::print(&std::string::utf8(b"lock_position.coin_b.value()"));
+            std::debug::print(&(lock_position.coin_b.value()));
+            std::debug::print(&std::string::utf8(b"pay_amount_b"));
+            std::debug::print(&(pay_amount_b));
+
+            let add_coin_a = lock_position.coin_a.split(pay_amount_a);
+            let add_coin_b = lock_position.coin_b.split(pay_amount_b);
+            
+            assert!(pay_amount_a == add_coin_a.value(), EIncorrectLiquidityAmountA);
+            assert!(pay_amount_b == add_coin_b.value(), EIncorrectLiquidityAmountB);
+
+            clmm_pool::pool::repay_add_liquidity<CoinTypeA, CoinTypeB>(
+                global_config,
+                pool,
+                add_coin_a,
+                add_coin_b,
+                receipt,
+            );
+        };
+
+        std::debug::print(&std::string::utf8(b"PREEND lock_position.coin_a.value()"));
+        std::debug::print(&(lock_position.coin_a.value()));
+        std::debug::print(&std::string::utf8(b"PREEND lock_position.coin_b.value()"));
+        std::debug::print(&(lock_position.coin_b.value()));
+
+        // Add remaining tokens back to position
+        // add_liquidity_by_lock_position<CoinTypeA, CoinTypeB>(
+        //     global_config,
+        //     vault,
+        //     pool,
+        //     lock_position,
+        //     &mut new_position,
+        //     clock
+        // );
+
+        add_liquidity_by_lock_position_with_swap<CoinTypeA, CoinTypeB>(
+            global_config,
+            vault,
+            pool,
+            lock_position,
+            &mut new_position,
+            stats,
+            price_provider,
+            clock
+        );
+
+        std::debug::print(&std::string::utf8(b"END lock_position.coin_a.value()"));
+        std::debug::print(&(lock_position.coin_a.value()));
+        std::debug::print(&std::string::utf8(b"END lock_position.coin_b.value()"));
+        std::debug::print(&(lock_position.coin_b.value()));
 
         let new_position_liquidity = new_position.liquidity();
 
@@ -1785,6 +1893,44 @@ module liquidity_locker::liquidity_lock_v1 {
         locker.positions.add(new_position_id, new_position);
 
         sui::event::emit<ChangeRangePositionEvent>(event);
+    }
+
+    fun get_liquidity_by_amount_by_lock_position<CoinTypeA, CoinTypeB>(
+        pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        lock_position: &LockedPosition<CoinTypeA, CoinTypeB>,
+        new_tick_lower: integer_mate::i32::I32,
+        new_tick_upper: integer_mate::i32::I32,
+    ): (u128, u64, u64) { // liquidity_calc, amount_a_calc, amount_b_calc
+        if (
+            lock_position.coin_a.value() == 0 &&
+            lock_position.coin_b.value() == 0
+        ) {
+            return (0, 0, 0)
+        };
+
+        if (
+            (lock_position.coin_a.value() > 0 &&
+            lock_position.coin_a.value() < lock_position.coin_b.value()) ||
+            lock_position.coin_b.value() == 0
+        ) {
+            clmm_pool::clmm_math::get_liquidity_by_amount(
+                new_tick_lower,
+                new_tick_upper,
+                pool.current_tick_index(),
+                pool.current_sqrt_price(),
+                lock_position.coin_a.value(),
+                true
+            )
+        } else {
+            clmm_pool::clmm_math::get_liquidity_by_amount(
+                new_tick_lower,
+                new_tick_upper,
+                pool.current_tick_index(),
+                pool.current_sqrt_price(),
+                lock_position.coin_b.value(),
+                false
+            )
+        }
     }
 
     /// Removes liquidity from a position and collects accumulated fees.
@@ -1963,6 +2109,81 @@ module liquidity_locker::liquidity_lock_v1 {
             lock_position.coin_a.join(remainder_a);
             lock_position.coin_b.join(remainder_b);
         }
+    }
+
+    public fun add_liquidity_by_lock_position_with_swap<CoinTypeA, CoinTypeB>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        lock_position: &mut LockedPosition<CoinTypeA, CoinTypeB>,
+        position: &mut clmm_pool::position::Position,
+        stats: &mut clmm_pool::stats::Stats,
+        price_provider: &clmm_pool::price_provider::PriceProvider,
+        clock: &sui::clock::Clock,
+    ) {
+        let (tick_lower, tick_upper) = position.tick_range();
+        if (integer_mate::i32::gte(pool.current_tick_index(), tick_lower) && integer_mate::i32::lt(pool.current_tick_index(), tick_upper)) {
+            if (lock_position.coin_b.value() == 0 && lock_position.coin_a.value() > 2) {
+                let (amount_a_out, amount_b_out, receipt) = clmm_pool::pool::flash_swap<CoinTypeA, CoinTypeB>(
+                    global_config,
+                    vault,
+                    pool,
+                    true,
+                    true,
+                    lock_position.coin_a.value()/2,
+                    clmm_pool::tick_math::min_sqrt_price(),
+                    stats,
+                    price_provider,
+                    clock
+                );
+                lock_position.coin_a.join(amount_a_out);
+                lock_position.coin_b.join(amount_b_out);
+
+                clmm_pool::pool::repay_flash_swap<CoinTypeA, CoinTypeB>(
+                    global_config,
+                    pool,
+                    lock_position.coin_a.split(receipt.swap_pay_amount()),
+                    sui::balance::zero<CoinTypeB>(),
+                    receipt
+                );
+            };
+            if (lock_position.coin_a.value() == 0 && lock_position.coin_b.value() > 2) {
+                let (amount_a_out, amount_b_out, receipt) = clmm_pool::pool::flash_swap<CoinTypeA, CoinTypeB>(
+                            global_config,
+                            vault,
+                            pool,
+                            false,
+                            true,
+                            lock_position.coin_b.value()/2,
+                            clmm_pool::tick_math::max_sqrt_price(),
+                            stats,
+                            price_provider,
+                            clock
+                        );
+                        lock_position.coin_b.join(amount_b_out);
+                        lock_position.coin_a.join(amount_a_out);
+
+                clmm_pool::pool::repay_flash_swap<CoinTypeA, CoinTypeB>(
+                    global_config,
+                    pool,
+                    sui::balance::zero<CoinTypeA>(),
+                    lock_position.coin_b.split(receipt.swap_pay_amount()),
+                    receipt
+                );
+            };
+        };
+        std::debug::print(&std::string::utf8(b"ADD lock_position.coin_a.value()"));
+        std::debug::print(&(lock_position.coin_a.value()));
+        std::debug::print(&std::string::utf8(b"ADD lock_position.coin_b.value()"));
+        std::debug::print(&(lock_position.coin_b.value()));
+        add_liquidity_by_lock_position<CoinTypeA, CoinTypeB>(
+            global_config,
+            vault,
+            pool,
+            lock_position,
+            position,
+            clock
+        );
     }
 
     /// Internal function to add liquidity to a position.
