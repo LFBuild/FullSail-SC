@@ -983,7 +983,7 @@ public fun update_minter_period<SailCoinType, OSailCoinType>(
 public fun distribute_gauge_epoch_1<CoinTypeA, CoinTypeB, SailCoinType, PrevEpochOSail, EpochOSail>(
     scenario: &mut test_scenario::Scenario,
     clock: &Clock,
-) {
+): u64 {
     // initial epoch is distributed without any historical data
     let prev_epoch_pool_emissions: u64 = 0;
     let prev_epoch_pool_fees_usd: u64 = 0;
@@ -1001,13 +1001,13 @@ public fun distribute_gauge_epoch_1<CoinTypeA, CoinTypeB, SailCoinType, PrevEpoc
         epoch_pool_volume_usd,
         epoch_pool_predicted_volume_usd,
         clock
-    );
+    )
 }
 
 public fun distribute_gauge_epoch_2<CoinTypeA, CoinTypeB, SailCoinType, PrevEpochOSail, EpochOSail>(
         scenario: &mut test_scenario::Scenario,
     clock: &Clock,
-) {
+): u64 {
     // epoch 2 is distributed with historical data from epoch 1
     // this data results into stable emissions, same as epoch 1 emissions
     let prev_epoch_pool_emissions: u64 = 0;
@@ -1026,13 +1026,13 @@ public fun distribute_gauge_epoch_2<CoinTypeA, CoinTypeB, SailCoinType, PrevEpoc
         epoch_pool_volume_usd,
         epoch_pool_predicted_volume_usd,
         clock
-    );
+    )
 }
 
 public fun distribute_gauge_epoch_3<CoinTypeA, CoinTypeB, SailCoinType, PrevEpochOSail, EpochOSail>(
         scenario: &mut test_scenario::Scenario,
     clock: &Clock,
-) {
+): u64 {
     // this data results into stable emissions, same as epoch 2 emissions
     let prev_epoch_pool_emissions: u64 = 1_000_000_000;
     let prev_epoch_pool_fees_usd: u64 = 1_000_000_000;
@@ -1050,7 +1050,7 @@ public fun distribute_gauge_epoch_3<CoinTypeA, CoinTypeB, SailCoinType, PrevEpoc
         epoch_pool_volume_usd,
         epoch_pool_predicted_volume_usd,
         clock
-    );
+    )
 }
 
 // Utility to call minter.distribute_gauge
@@ -1064,7 +1064,7 @@ public fun distribute_gauge_emissions_controlled<CoinTypeA, CoinTypeB, SailCoinT
     epoch_pool_volume_usd: u64,
     epoch_pool_predicted_volume_usd: u64,
     clock: &Clock,
-) {
+): u64 {
     let mut minter = scenario.take_shared<Minter<SailCoinType>>(); // Minter is now responsible
     let mut voter = scenario.take_shared<Voter>();
     let mut gauge = scenario.take_shared<Gauge<CoinTypeA, CoinTypeB>>();
@@ -1072,7 +1072,7 @@ public fun distribute_gauge_emissions_controlled<CoinTypeA, CoinTypeB, SailCoinT
     let distribution_config = scenario.take_shared<DistributionConfig>();
     let distribute_governor_cap = scenario.take_from_sender<minter::DistributeGovernorCap>(); // Minter uses DistributeGovernorCap
 
-    minter.distribute_gauge<CoinTypeA, CoinTypeB, SailCoinType, PrevEpochOSail, EpochOSail>(
+    let distributed_amount = minter.distribute_gauge<CoinTypeA, CoinTypeB, SailCoinType, PrevEpochOSail, EpochOSail>(
         // &mut minter, // minter is the receiver
         &mut voter,
         &distribute_governor_cap,
@@ -1096,6 +1096,8 @@ public fun distribute_gauge_emissions_controlled<CoinTypeA, CoinTypeB, SailCoinT
     test_scenario::return_shared(pool);
     test_scenario::return_shared(distribution_config);
     scenario.return_to_sender(distribute_governor_cap);
+
+    distributed_amount
 }
 
 /// Sets up the entire environment: CLMM, Distribution, Pool, Gauge,

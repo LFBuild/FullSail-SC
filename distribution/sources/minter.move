@@ -258,6 +258,9 @@ module distribution::minter {
     /// # Returns
     /// The calculated rebase growth amount
     public fun calculate_rebase_growth(epoch_emissions: u64, total_supply: u64, total_locked: u64): u64 {
+        if (total_supply == 0) {
+            return 0
+        };
         // epoch_emissions * ((total_supply - total_locked) / total_supply)^2 / 2
         integer_mate::full_math_u64::mul_div_ceil(
             integer_mate::full_math_u64::mul_div_ceil(epoch_emissions, total_supply - total_locked, total_supply),
@@ -719,17 +722,19 @@ module distribution::minter {
                 minter.team_wallet
             );
         };
-        let rebase_emissions = minter.mint_sail(
-            rebase_growth,
-            ctx
-        );
-        reward_distributor.checkpoint_token(
-            option::borrow<distribution::reward_distributor_cap::RewardDistributorCap>(
-                &minter.reward_distributor_cap
-            ),
-            rebase_emissions,
-            clock
-        );
+        if (rebase_growth > 0) {
+            let rebase_emissions = minter.mint_sail(
+                rebase_growth,
+                ctx
+            );
+            reward_distributor.checkpoint_token(
+                option::borrow<distribution::reward_distributor_cap::RewardDistributorCap>(
+                    &minter.reward_distributor_cap
+                ),
+                rebase_emissions,
+                clock
+            );
+        };
         let distribute_cap = minter.distribute_cap.borrow();
         voter.notify_epoch_token<EpochOSail>(distribute_cap, ctx);
         minter.active_period = distribution::common::current_period(clock);
