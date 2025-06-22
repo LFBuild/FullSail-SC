@@ -149,10 +149,12 @@ public fun setup_distribution<SailCoinType>(
     scenario.next_tx(sender);
     {
         let minter_publisher = minter::test_init(scenario.ctx());
+        let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
         let treasury_cap = coin::create_treasury_cap_for_testing<SailCoinType>(scenario.ctx());
         let (minter_obj, minter_admin_cap) = minter::create<SailCoinType>(
             &minter_publisher,
             option::some(treasury_cap),
+            object::id(&distribution_config),
             scenario.ctx()
         );
         minter::grant_distribute_governor(
@@ -163,6 +165,7 @@ public fun setup_distribution<SailCoinType>(
         
         transfer::public_share_object(minter_obj);
         transfer::public_transfer(minter_admin_cap, sender);
+        test_scenario::return_shared(distribution_config);
 
         // Create and transfer DistributeGovernorCap using the correct function
         minter::grant_distribute_governor(&minter_publisher, sender, scenario.ctx());

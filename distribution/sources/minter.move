@@ -58,13 +58,17 @@ module distribution::minter {
     const EUpdatePeriodMinterNotActive: u64 = 922337339406490010;
     const EUpdatePeriodNotFinishedYet: u64 = 922337340695058843;
     const EUpdatePeriodNotAllGaugesDistributed: u64 = 150036217874985900;
+    const EUpdatePeriodDistributionConfigInvalid: u64 = 222427100417155840;
     const EUpdatePeriodOSailAlreadyUsed: u64 = 573264404146058900;
 
     const EDistributeGaugeMinterPaused: u64 = 383966743216827200;
     const EDistributeGaugeInvalidToken: u64 = 802874746577660900;
     const EDistributeGaugeAlreadyDistributed: u64 = 259145126193785820;
     const EDistributeGaugePoolHasNoBaseSupply: u64 = 764215244078886900;
+    const EDistributeGaugeDistributionConfigInvalid: u64 = 540205746933504640;
     const EDistributeGaugeMinterNotActive: u64 = 728194857362048571;
+    const EDistributeGaugeFirstEpochMetricsInvalid: u64 = 671508139267645600;
+    const EDistributeGaugeMetricsInvalid: u64 = 95918619286974770;
 
     const ECheckAdminRevoked: u64 = 922337280994888908;
     const ECheckDistributeGovernorRevoked: u64 = 369612027923601500;
@@ -92,6 +96,20 @@ module distribution::minter {
     const ECreateGaugeMinterPaused: u64 = 173400731963214500;
     const ECreateGaugeMinterNotActive: u64 = 506817394857201639;
     const ECreateGaugeZeroBaseEmissions: u64 = 676230237726862100;
+
+    const EResetGaugeMinterPaused: u64 = 412179529765746000;
+    const EResetGaugeMinterNotActive: u64 = 125563751493106940;
+    const EResetGaugeZeroBaseEmissions: u64 = 777730412186606000;
+    const EResetGaugeDistributionConfigInvalid: u64 = 726258387105137800;
+    const EResetGaugeGaugeAlreadyAlive: u64 = 452133119942522700;
+    const EResetGaugeAlreadyDistributed: u64 = 97456931979148290;
+
+    const EKillGaugeDistributionConfigInvalid: u64 = 401018599948013600;
+    const EKillGaugeAlreadyKilled: u64 = 812297136203523100;
+
+    const EReviveGaugeDistributionConfigInvalid: u64 = 211832148784139800;
+    const EReviveGaugeAlreadyAlive: u64 = 533150247921935500;
+    const EReviveGaugeNotKilledInCurrentEpoch: u64 = 295306155667221200;
 
     const EWhitelistPoolMinterPaused: u64 = 316161888154524900;
 
@@ -131,6 +149,14 @@ module distribution::minter {
 
     public struct EventUpdateEpoch has copy, drop, store {
         new_period: u64,
+    }
+
+    public struct EventReviveGauge has copy, drop, store {
+        id: ID,
+    }
+
+    public struct EventKillGauge has copy, drop, store {
+        id: ID,
     }
 
     public struct EventPauseEmission has copy, drop, store {}
@@ -181,6 +207,7 @@ module distribution::minter {
         // Sum of emissions for all gauges
         // Epoch start seconds -> sum of emissions for all gauges
         total_epoch_emissions: Table<u64, u64>,
+        distribution_config: ID,
     }
 
     /// Returns the total supply only of SailCoin managed by this minter.
@@ -382,6 +409,7 @@ module distribution::minter {
     public fun create<SailCoinType>(
         _publisher: &sui::package::Publisher,
         treasury_cap: Option<TreasuryCap<SailCoinType>>,
+        distribution_config: ID,
         ctx: &mut TxContext
     ): (Minter<SailCoinType>, AdminCap) {
         let id = object::new(ctx);
@@ -409,6 +437,7 @@ module distribution::minter {
             gauge_active_period: table::new<ID, u64>(ctx),
             gauge_epoch_count: table::new<ID, u64>(ctx),
             total_epoch_emissions: table::new<u64, u64>(ctx),
+            distribution_config,
         };
         let admin_cap = AdminCap { id: object::new(ctx) };
         (minter, admin_cap)
@@ -457,6 +486,13 @@ module distribution::minter {
     /// Nearly all functions should be protected by this check for safety.
     public fun is_paused<SailCoinType>(minter: &Minter<SailCoinType>): bool {
         minter.paused
+    }
+
+    public fun is_valid_distribution_config<SailCoinType>(
+        minter: &Minter<SailCoinType>, 
+        distribution_config: &distribution::distribution_config::DistributionConfig
+    ): bool {
+        minter.distribution_config == object::id(distribution_config)
     }
 
     /// Returns the timestamp of the last epoch update
@@ -708,6 +744,7 @@ module distribution::minter {
     ) {
         assert!(!minter.is_paused(), EUpdatePeriodMinterPaused);
         minter.check_distribute_governor(distribute_governor_cap);
+        assert!(minter.is_valid_distribution_config(distribution_config), EUpdatePeriodDistributionConfigInvalid);
         assert!(minter.is_active(clock), EUpdatePeriodMinterNotActive);
         assert!(
             minter.active_period + distribution::common::week() < distribution::common::current_timestamp(clock),
@@ -815,6 +852,7 @@ module distribution::minter {
              EDistributeGaugeAlreadyDistributed
         );
         assert!(minter.gauge_epoch_emissions.contains(gauge_id), EDistributeGaugePoolHasNoBaseSupply);
+        assert!(minter.is_valid_distribution_config(distribution_config), EDistributeGaugeDistributionConfigInvalid);
         
         let gauge_epoch_count = if (minter.gauge_epoch_count.contains(gauge_id)) {
             minter.gauge_epoch_count.remove(gauge_id)
@@ -833,7 +871,8 @@ module distribution::minter {
                 epoch_pool_emissions_usd == 0 &&
                 epoch_pool_fees_usd == 0 &&
                 epoch_pool_volume_usd == 0 &&
-                epoch_pool_predicted_volume_usd == 0
+                epoch_pool_predicted_volume_usd == 0,
+                EDistributeGaugeFirstEpochMetricsInvalid,
             )
         } else {
             // These values should not be zero, othervise the formula breaks
@@ -843,7 +882,8 @@ module distribution::minter {
                 epoch_pool_emissions_usd > 0 &&
                 epoch_pool_fees_usd > 0 &&
                 epoch_pool_volume_usd > 0 &&
-                epoch_pool_predicted_volume_usd > 0
+                epoch_pool_predicted_volume_usd > 0,
+                EDistributeGaugeMetricsInvalid
             )
         };
         // calculate amount of oSAIL to distribute
@@ -955,7 +995,6 @@ module distribution::minter {
     ): distribution::gauge::Gauge<CoinTypeA, CoinTypeB> {
         assert!(!minter.is_paused(), ECreateGaugeMinterPaused);
         minter.check_admin(admin_cap);
-        assert!(minter.is_active(clock), ECreateGaugeMinterNotActive);
         assert!(gauge_base_emissions > 0, ECreateGaugeZeroBaseEmissions);
 
         let distribute_cap = minter.distribute_cap.borrow();
@@ -973,6 +1012,136 @@ module distribution::minter {
         minter.gauge_epoch_emissions.add(gauge_id, gauge_base_emissions);
         
         gauge
+    }
+
+    /// Kills (deactivates) a gauge in the system.
+    /// This should be used in emergency situations when a gauge needs to be disabled.
+    /// Only the emergency council can perform this operation.
+    /// Remaining balances should be claimed using another function `claim_killed_gauge`.
+    ///
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `distribution_config` - The distribution configuration
+    /// * `emergency_council_cap` - The emergency council capability
+    /// * `gauge_id` - The ID of the gauge to kill
+    /// * `ctx` - The transaction context
+    public fun kill_gauge<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        distribution_config: &mut distribution::distribution_config::DistributionConfig,
+        emergency_council_cap: &distribution::emergency_council::EmergencyCouncilCap,
+        gauge_id: ID,
+    ) {
+        emergency_council_cap.validate_emergency_council_minter_id(object::id(minter));
+        assert!(
+            minter.is_valid_distribution_config(distribution_config),
+            EKillGaugeDistributionConfigInvalid
+        );
+        assert!(
+            distribution_config.is_gauge_alive(gauge_id),
+            EKillGaugeAlreadyKilled
+        );
+        distribution_config.update_gauge_liveness(vector<ID>[gauge_id], false);
+        let kill_gauge_event = EventKillGauge { id: gauge_id };
+        sui::event::emit<EventKillGauge>(kill_gauge_event);
+    }
+
+
+    /// Revives a previously killed gauge, making it active again.
+    /// Only the emergency council can perform this operation.
+    /// You could revive a gauge only in the same epoch it was killed.
+    /// Otherwise you need to reset the gauge to bootstrap it again
+    /// with new emissions.
+    /// 
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `distribution_config` - The distribution configuration
+    /// * `emergency_council_cap` - The emergency council capability
+    /// * `gauge_id` - The ID of the gauge to revive
+    /// * `ctx` - The transaction context
+    public fun revive_gauge<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        distribution_config: &mut distribution::distribution_config::DistributionConfig,
+        emergency_council_cap: &distribution::emergency_council::EmergencyCouncilCap,
+        gauge_id: ID,
+    ) {
+        emergency_council_cap.validate_emergency_council_minter_id(object::id(minter));
+        assert!(
+            minter.is_valid_distribution_config(distribution_config),
+            EReviveGaugeDistributionConfigInvalid
+        );
+        assert!(
+            !distribution_config.is_gauge_alive(gauge_id),
+            EReviveGaugeAlreadyAlive
+        );
+        // gauge was distributed in the same epoch it was killed
+        // if not use reset_gauge instead
+        assert!(
+            minter.gauge_active_period.contains(gauge_id) && *minter.gauge_active_period.borrow(gauge_id) == minter.active_period,
+            EReviveGaugeNotKilledInCurrentEpoch,
+        );
+        revive_gauge_internal(distribution_config, gauge_id);
+    }
+
+    fun revive_gauge_internal(
+        distribution_config: &mut distribution::distribution_config::DistributionConfig,
+        gauge_id: ID,
+    ) {
+        distribution_config.update_gauge_liveness(vector<ID>[gauge_id], true);
+        let revieve_gauge_event = EventReviveGauge { id: gauge_id };
+        sui::event::emit<EventReviveGauge>(revieve_gauge_event);
+    }
+
+
+    // Emergency function to reset a gauge to bootstrap it again.
+    // Used when we were not able to revive the gauge in the same epoch it was killed.
+    // This function will reset the gauge to the base emissions and start distributing oSAIL again.
+    // 
+    // # Arguments
+    // * `minter` - The minter instance managing token emissions
+    // * `voter` - The voter instance managing gauge voting
+    // * `distribution_config` - Configuration for token distribution
+    public fun reset_gauge<CoinTypeA, CoinTypeB, SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        distribution_config: &mut distribution::distribution_config::DistributionConfig,
+        emergency_council_cap: &distribution::emergency_council::EmergencyCouncilCap,
+        gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        gauge_base_emissions: u64,
+        clock: &sui::clock::Clock
+    ) {
+        distribution::emergency_council::validate_emergency_council_minter_id(emergency_council_cap, object::id(minter));
+        assert!(!minter.is_paused(), EResetGaugeMinterPaused);
+        assert!(minter.is_active(clock), EResetGaugeMinterNotActive);
+        assert!(gauge_base_emissions > 0, EResetGaugeZeroBaseEmissions);
+        assert!(
+            minter.is_valid_distribution_config(distribution_config),
+            EResetGaugeDistributionConfigInvalid
+        );
+        let gauge_id = object::id(gauge);
+        assert!(
+            !distribution_config.is_gauge_alive(gauge_id),
+            EResetGaugeGaugeAlreadyAlive
+        );
+
+        // gauge should not be distributed this epoch
+        // if so use revive_gauge instead
+        assert!(
+            !minter.gauge_active_period.contains(gauge_id) || *minter.gauge_active_period.borrow(gauge_id) < minter.active_period,
+             EResetGaugeAlreadyDistributed
+        );
+
+        // reset epoch count
+        if (minter.gauge_epoch_count.contains(gauge_id)) {
+            minter.gauge_epoch_count.remove(gauge_id);
+        };
+        minter.gauge_epoch_count.add(gauge_id, 0);
+
+        // reset epoch emissions
+        if (minter.gauge_epoch_emissions.contains(gauge_id)) {
+            minter.gauge_epoch_emissions.remove(gauge_id);
+        };
+        minter.gauge_epoch_emissions.add(gauge_id, gauge_base_emissions);
+
+        revive_gauge_internal(distribution_config, gauge_id);
     }
 
     /// Borrows current epoch oSAIL token

@@ -32,9 +32,6 @@ module distribution::voter {
 
     const EGetVotesNotVoted: u64 = 922337561885750067;
 
-    const EKillGaugeDistributionConfigInvalid: u64 = 922337430889634207;
-    const EKillGaugeAlreadyKilled: u64 = 922337401683594446;
-
     const EPokeVotingNotStartedYet: u64 = 922337443344842755;
     const EPokeLockNotVoted: u64 = 922337451075875639;
     const EPokePoolNotVoted: u64 = 922337452793862558;
@@ -48,9 +45,6 @@ module distribution::voter {
     const EReceiveGaugePoolAreadyHasGauge: u64 = 922337372477987230;
 
     const ERemoveEpochGovernorNotAGovernor: u64 = 922337331246157007;
-
-    const EReviveGaugeInvalidDistributionConfig: u64 = 922337440338562258;
-    const EReviveGaugeAlreadyAlive: u64 = 922337412420888166;
 
     const ESetMaxVotingNumGovernorInvalid: u64 = 922337318361255119;
     const ESetMaxVotingNumAtLeast10: u64 = 922337318790764956;
@@ -67,6 +61,7 @@ module distribution::voter {
 
     const EDistributeGaugeInvalidToken: u64 = 727114932399146200;
     const EDistributeGaugeInvalidGaugeRepresent: u64 = 922337598392972083;
+    const EDistributeGaugeGaugeIsKilled: u64 = 519025590138764600;
 
     const EWhitelistNftGovernorInvalid: u64 = 922337395670666447;
 
@@ -162,16 +157,6 @@ module distribution::voter {
         sender: address,
         id: ID,
         listed: bool,
-    }
-
-    /// Event emitted when a gauge is killed
-    public struct EventKillGauge has copy, drop, store {
-        id: ID,
-    }
-
-    /// Event emitted when a gauge is revived
-    public struct EventReviveGauge has copy, drop, store {
-        id: ID,
     }
 
     /// Event emitted when a user casts a vote
@@ -920,10 +905,9 @@ module distribution::voter {
     ): (u64, Balance<CurrentEpochOSail>) {
         distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
         assert!(voter.is_valid_epoch_token<NextEpochOSail>(), EDistributeGaugeInvalidToken);
+        assert!(distribution_config.is_gauge_alive(object::id(gauge)), EDistributeGaugeGaugeIsKilled);
 
-        let gauge_id = into_gauge_id(
-            object::id<distribution::gauge::Gauge<CoinTypeA, CoinTypeB>>(gauge)
-        );
+        let gauge_id = into_gauge_id(object::id(gauge));
         let gauge_represent = voter.gauge_represents.borrow(gauge_id);
         assert!(
             gauge_represent.pool_id == object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(
@@ -1136,44 +1120,6 @@ module distribution::voter {
         } else {
             false
         }
-    }
-
-    /// Kills (deactivates) a gauge in the system.
-    /// This should be used in emergency situations when a gauge needs to be disabled.
-    /// Only the emergency council can perform this operation.
-    /// Remaining balances should be claimed using another function `claim_killed_gauge`.
-    ///
-    /// # Arguments
-    /// * `voter` - The voter contract reference
-    /// * `distribution_config` - The distribution configuration
-    /// * `emergency_council_cap` - The emergency council capability
-    /// * `gauge_id` - The ID of the gauge to kill
-    /// * `ctx` - The transaction context
-    public fun kill_gauge<RewardCoinType>(
-        voter: &mut Voter,
-        distribution_config: &mut distribution::distribution_config::DistributionConfig,
-        emergency_council_cap: &distribution::emergency_council::EmergencyCouncilCap,
-        gauge_id: ID,
-    ) {
-        emergency_council_cap.validate_emergency_council_voter_id(object::id<Voter>(
-            voter
-        ));
-        assert!(
-            object::id<distribution::distribution_config::DistributionConfig>(
-                distribution_config
-            ) == voter.distribution_config,
-            EKillGaugeDistributionConfigInvalid
-        );
-        assert!(
-            distribution_config.is_gauge_alive(gauge_id),
-            EKillGaugeAlreadyKilled
-        );
-        let gauge_id_obj = into_gauge_id(gauge_id);
-        let mut killed_gauge_ids = std::vector::empty<ID>();
-        killed_gauge_ids.push_back(gauge_id_obj.id);
-        distribution_config.update_gauge_liveness(killed_gauge_ids, false);
-        let kill_gauge_event = EventKillGauge { id: gauge_id_obj.id };
-        sui::event::emit<EventKillGauge>(kill_gauge_event);
     }
 
     /// Returns the timestamp when a lock last voted.
@@ -1605,41 +1551,6 @@ module distribution::voter {
         gauge
     }
 
-    /// Revives a previously killed gauge, making it active again.
-    /// Only the emergency council can perform this operation.
-    /// 
-    /// # Arguments
-    /// * `voter` - The voter contract reference
-    /// * `distribution_config` - The distribution configuration
-    /// * `emergency_council_cap` - The emergency council capability
-    /// * `gauge_id` - The ID of the gauge to revive
-    /// * `ctx` - The transaction context
-    public fun revive_gauge(
-        voter: &mut Voter,
-        distribution_config: &mut distribution::distribution_config::DistributionConfig,
-        emergency_council_cap: &distribution::emergency_council::EmergencyCouncilCap,
-        gauge_id: ID,
-    ) {
-        emergency_council_cap.validate_emergency_council_voter_id(object::id<Voter>(
-            voter
-        ));
-        assert!(
-            object::id<distribution::distribution_config::DistributionConfig>(
-                distribution_config
-            ) == voter.distribution_config,
-            EReviveGaugeInvalidDistributionConfig
-        );
-        assert!(
-            !distribution_config.is_gauge_alive(gauge_id),
-            EReviveGaugeAlreadyAlive
-        );
-        let mut alive_gauge_ids = std::vector::empty<ID>();
-        alive_gauge_ids.push_back(gauge_id);
-        distribution_config.update_gauge_liveness(alive_gauge_ids, true);
-        let revieve_gauge_event = EventReviveGauge { id: gauge_id };
-        sui::event::emit<EventReviveGauge>(revieve_gauge_event);
-    }
-
     /// Sets the maximum number of pools a user can vote for.
     ///
     /// # Arguments
@@ -2040,14 +1951,6 @@ module distribution::voter {
     #[test_only]
     public fun test_init(ctx: &mut sui::tx_context::TxContext): sui::package::Publisher {
         sui::package::claim<VOTER>(VOTER {}, ctx)
-    }
-
-    #[test_only]
-    public fun test_init_emergency_council(
-        voter: &Voter,
-        ctx: &mut sui::tx_context::TxContext
-    ): distribution::emergency_council::EmergencyCouncilCap {
-        distribution::emergency_council::create_for_testing(object::id(voter), ctx)
     }
 }
 
