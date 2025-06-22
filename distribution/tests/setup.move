@@ -19,13 +19,6 @@ use distribution::reward_distributor::{Self, RewardDistributor};
 use clmm_pool::tick_math;
 use clmm_pool::rewarder;
 use distribution::gauge::{Self, Gauge, StakedPosition};
-use distribution::distribute_cap::{Self, DistributeCap};
-
-public struct USD1 has drop {}
-
-public struct USD2 has drop {}
-    
-public struct SAIL has drop {}
 
 // Define dummy types used in setup
 public struct OSAIL1 has drop {}
@@ -244,6 +237,10 @@ public fun setup_distribution<SailCoinType>(
     };
 }
 
+public struct USD1 has drop {}
+    
+public struct SAIL has drop {}
+
 #[test]
 fun test_distribution_setup_utility() {
     let admin = @0xC1;
@@ -325,27 +322,37 @@ fun test_distribution_setup_utility() {
 
 // Activates the minter for a specific oSAIL epoch.
 // Requires the minter, voter, rd, and admin cap to be set up.
-public fun activate_minter<SailCoinType>( // Changed to public
+public fun activate_minter<SailCoinType, OSailCoinType>( // Changed to public
     scenario: &mut test_scenario::Scenario,
+    initial_o_sail_supply: u64,
     clock: &mut Clock
-) { // Returns the minted oSAIL
+): Coin<OSailCoinType> { // Returns the minted oSAIL
 
-    // increment clock to make sure the activated_at field is not and epoch start is not 0
+    // increment clock to make sure the activated_at field is not 0 and epoch start is not 0
     clock.increment_for_testing(7 * 24 * 60 * 60 * 1000 + 1000);
     let mut minter_obj = scenario.take_shared<Minter<SailCoinType>>();
+    let mut voter = scenario.take_shared<Voter>();
     let mut rd = scenario.take_shared<RewardDistributor<SailCoinType>>();
     let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
+    // Create TreasuryCap for OSAIL2 for the next epoch
+    let mut o_sail_cap = coin::create_treasury_cap_for_testing<OSailCoinType>(scenario.ctx());
+    let initial_supply = o_sail_cap.mint(initial_o_sail_supply, scenario.ctx());
 
-    minter_obj.activate<SailCoinType>(
+    minter_obj.activate<SailCoinType, OSailCoinType>(
+        &mut voter,
         &minter_admin_cap,
         &mut rd,
+        o_sail_cap,
         clock,
         scenario.ctx()
     );
 
     test_scenario::return_shared(minter_obj);
+    test_scenario::return_shared(voter);
     test_scenario::return_shared(rd);
     scenario.return_to_sender(minter_admin_cap);
+
+    initial_supply
 }
 
 // Whitelists or de-whitelists a pool in the Minter for oSAIL exercising.
@@ -953,6 +960,7 @@ public fun update_minter_period<SailCoinType, OSailCoinType>(
         let mut voter = scenario.take_shared<Voter>();
         let voting_escrow = scenario.take_shared<VotingEscrow<SailCoinType>>();
         let mut reward_distributor = scenario.take_shared<RewardDistributor<SailCoinType>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
         let distribute_governor_cap = scenario.take_from_sender<minter::DistributeGovernorCap>(); // Correct cap for update_period
 
         // Create TreasuryCap for OSAIL2 for the next epoch
@@ -962,6 +970,7 @@ public fun update_minter_period<SailCoinType, OSailCoinType>(
         minter::update_period<SailCoinType, OSailCoinType>(
             &mut minter, // minter is the receiver
             &mut voter,
+            &distribution_config,
             &distribute_governor_cap, // Pass the correct DistributeGovernorCap
             &voting_escrow,
             &mut reward_distributor,
@@ -974,6 +983,7 @@ public fun update_minter_period<SailCoinType, OSailCoinType>(
         test_scenario::return_shared(minter);
         test_scenario::return_shared(voter);
         test_scenario::return_shared(voting_escrow);
+        test_scenario::return_shared(distribution_config);
         test_scenario::return_shared(reward_distributor);
         scenario.return_to_sender(distribute_governor_cap);    
 
@@ -1105,7 +1115,7 @@ public fun distribute_gauge_emissions_controlled<CoinTypeA, CoinTypeB, SailCoinT
 /// Assumes standard tick spacing and price for the pool.
 /// The admin address receives MinterAdminCap, GovernorCap, CreateCap.
 /// The user address receives the specified oSAIL and the created Lock.
-public fun full_setup_with_lock<CoinTypeA: drop + store, CoinTypeB: drop + store, SailCoinType>(
+public fun full_setup_with_lock<CoinTypeA: drop + store, CoinTypeB: drop + store, SailCoinType, OSailCoinType>(
     scenario: &mut test_scenario::Scenario,
     admin: address,
     user: address,
@@ -1113,6 +1123,7 @@ public fun full_setup_with_lock<CoinTypeA: drop + store, CoinTypeB: drop + store
     lock_amount: u64,
     lock_duration_days: u64,
     gauge_base_emissions: u64,
+    initial_o_sail_supply: u64
 ) {
     // Tx 1: Setup CLMM Factory & Fee Tier (using tick_spacing=1)
     {
@@ -1140,7 +1151,8 @@ public fun full_setup_with_lock<CoinTypeA: drop + store, CoinTypeB: drop + store
     // Tx 4: Activate Minter for Epoch 1 (OSAILCoinType)
     scenario.next_tx(admin);
     {
-        activate_minter<SailCoinType>(scenario, clock);
+        let o_sail_coin = activate_minter<SailCoinType, OSailCoinType>(scenario, initial_o_sail_supply, clock);
+        o_sail_coin.burn_for_testing();
     };
 
     // Tx 5: Create Gauge for the CoinTypeA/CoinTypeB pool

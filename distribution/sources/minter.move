@@ -57,6 +57,7 @@ module distribution::minter {
     const EUpdatePeriodMinterPaused: u64 = 540422149172903100;
     const EUpdatePeriodMinterNotActive: u64 = 922337339406490010;
     const EUpdatePeriodNotFinishedYet: u64 = 922337340695058843;
+    const EUpdatePeriodNotAllGaugesDistributed: u64 = 150036217874985900;
     const EUpdatePeriodOSailAlreadyUsed: u64 = 573264404146058900;
 
     const EDistributeGaugeMinterPaused: u64 = 383966743216827200;
@@ -199,8 +200,8 @@ module distribution::minter {
 
 
     /// Activates the minter to begin token emissions according to the protocol schedule.
-    /// Initializes the active period and sets up the reward distributor. This must be
-    /// called before any token emissions can occur.
+    /// Initializes the active period, sets up the reward distributor and current epoch oSAIL.
+    /// This must be called before any token emissions can occur.
     ///
     /// # Arguments
     /// * `minter` - The minter instance to activate
@@ -211,10 +212,12 @@ module distribution::minter {
     /// # Aborts
     /// * If the minter is already active
     /// * If the reward distributor capability is not set
-    public fun activate<SailCoinType>(
+    public fun activate<SailCoinType, EpochOSail>(
         minter: &mut Minter<SailCoinType>,
+        voter: &mut distribution::voter::Voter,
         admin_cap: &AdminCap,
         reward_distributor: &mut distribution::reward_distributor::RewardDistributor<SailCoinType>,
+        epoch_o_sail_treasury_cap: TreasuryCap<EpochOSail>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
     ) {
@@ -225,13 +228,18 @@ module distribution::minter {
             option::is_some(&minter.reward_distributor_cap),
             EActivateMinterNoDistributorCap
         );
+        minter.update_o_sail_token(epoch_o_sail_treasury_cap, clock);
+        let distribute_cap = minter.distribute_cap.borrow();
+        voter.notify_epoch_token<EpochOSail>(distribute_cap, ctx);
         let current_time = distribution::common::current_timestamp(clock);
         minter.activated_at = current_time;
         minter.active_period = distribution::common::to_period(minter.activated_at);
         minter.last_epoch_update_time = current_time;
-        reward_distributor.start(option::borrow<distribution::reward_distributor_cap::RewardDistributorCap>(
-            &minter.reward_distributor_cap
-        ), minter.active_period, clock);
+        reward_distributor.start(
+            option::borrow(&minter.reward_distributor_cap),
+            minter.active_period,
+            clock,
+        );
     }
 
     /// Returns the timestamp when the minter was activated.
@@ -690,6 +698,7 @@ module distribution::minter {
     public fun update_period<SailCoinType, EpochOSail>(
         minter: &mut Minter<SailCoinType>,
         voter: &mut distribution::voter::Voter,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
         distribute_governor_cap: &DistributeGovernorCap,
         voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
         reward_distributor: &mut distribution::reward_distributor::RewardDistributor<SailCoinType>,
@@ -704,6 +713,7 @@ module distribution::minter {
             minter.active_period + distribution::common::week() < distribution::common::current_timestamp(clock),
             EUpdatePeriodNotFinishedYet
         );
+        assert!(minter.all_gauges_distributed(distribution_config), EUpdatePeriodNotAllGaugesDistributed);
         let ending_epoch_emissions = minter.epoch_emissions();
         minter.update_o_sail_token(epoch_o_sail_treasury_cap, clock);
         let rebase_growth = calculate_rebase_growth(
@@ -739,9 +749,7 @@ module distribution::minter {
         voter.notify_epoch_token<EpochOSail>(distribute_cap, ctx);
         minter.active_period = distribution::common::current_period(clock);
         reward_distributor.update_active_period(
-            option::borrow<distribution::reward_distributor_cap::RewardDistributorCap>(
-                &minter.reward_distributor_cap
-            ),
+            option::borrow(&minter.reward_distributor_cap),
             minter.active_period
         );
         let update_epoch_event = EventUpdateEpoch {
@@ -785,6 +793,7 @@ module distribution::minter {
         distribution_config: &distribution::distribution_config::DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        // params related to rewards change calculation
         prev_epoch_pool_emissions: u64,
         prev_epoch_pool_fees_usd: u64,
         epoch_pool_emissions_usd: u64,
@@ -888,6 +897,30 @@ module distribution::minter {
         minter.total_epoch_emissions.add(minter.active_period, total_epoch_emissions + next_epoch_emissions);
 
         claimable_amount
+    }
+
+    public fun all_gauges_distributed<SailCoinType>(
+        minter: &Minter<SailCoinType>,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
+    ): bool {
+        let alive_gauges = distribution_config.borrow_alive_gauges().keys();
+        let mut i = 0;
+        let alive_gauges_len = alive_gauges.length();
+        while (i < alive_gauges_len) {
+            let gauge_id = *alive_gauges.borrow(i);
+            let gauge_active_period = if (minter.gauge_active_period.contains(gauge_id)) {
+                *minter.gauge_active_period.borrow(gauge_id)
+            } else {
+                0
+            };
+
+            if (minter.active_period > gauge_active_period) {
+                return false
+            };
+            i = i + 1;
+        };
+
+        true
     }
 
     

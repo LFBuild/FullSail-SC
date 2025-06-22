@@ -56,14 +56,15 @@ public fun test_gauge_notify_epoch_token() {
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL, OSAIL1>(
         &mut scenario, 
         admin,
         user,
         &mut clock,
         1000,
         182,
-        DEFAULT_GAUGE_EMISSIONS // PASSED PARAMETER
+        DEFAULT_GAUGE_EMISSIONS,
+        0
     );
 
     scenario.next_tx(admin);
@@ -115,14 +116,15 @@ public fun test_gauge_notify_epoch_token_twice_fail(
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL, OSAIL1>(
         &mut scenario, 
         admin,
         user,
         &mut clock,
         1000,
         182,
-        DEFAULT_GAUGE_EMISSIONS
+        DEFAULT_GAUGE_EMISSIONS,
+        0
     );
 
     scenario.next_tx(admin);
@@ -179,14 +181,15 @@ public fun test_gauge_notify_epoch_token_epoch_already_started() {
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL, OSAIL1>(
         &mut scenario, 
         admin,
         user,
         &mut clock,
         1000,
         182,
-        DEFAULT_GAUGE_EMISSIONS
+        DEFAULT_GAUGE_EMISSIONS,
+        0
     );
 
         // advance time to make sure that voting started
@@ -198,22 +201,9 @@ public fun test_gauge_notify_epoch_token_epoch_already_started() {
         setup::vote_for_pool<USD1, SAIL, SAIL>(&mut scenario, &mut clock)
     };
 
-
     scenario.next_tx(admin);
     {
         create_voter_cap(&mut scenario, admin);
-    };
-
-    // --- Advance Time to Epoch 1 & Update Period ---
-    clock::increment_for_testing(&mut clock, WEEK); // Advance to next epoch
-    scenario.next_tx(admin);
-    {
-        let initial_o_sail_supply = setup::update_minter_period<SAIL, OSAIL1>(
-            &mut scenario,
-            1_000_000,
-            &clock
-        );
-        coin::burn_for_testing(initial_o_sail_supply);
     };
 
     scenario.next_tx(admin);
@@ -252,14 +242,15 @@ public fun test_gauge_notify_epoch_token_invalid_pool() {
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL, OSAIL1>(
         &mut scenario, 
         admin,
         user,
         &mut clock,
         1000,
         182,
-        DEFAULT_GAUGE_EMISSIONS
+        DEFAULT_GAUGE_EMISSIONS,
+        0
     );
 
     // Tx 2: Add another fee tier to use it to create second pool
@@ -316,14 +307,15 @@ public fun test_gauge_notify_epoch_token_invalid_voter() {
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL, OSAIL1>(
         &mut scenario, 
         admin,
         user,
         &mut clock,
         1000,
         182,
-        DEFAULT_GAUGE_EMISSIONS
+        DEFAULT_GAUGE_EMISSIONS,
+        0
     );
 
     scenario.next_tx(admin);
@@ -366,14 +358,15 @@ public fun test_gauge_notify_epoch_token_already_notified(
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL, OSAIL1>(
         &mut scenario, 
         admin,
         user,
         &mut clock,
         1000,
         182,
-        DEFAULT_GAUGE_EMISSIONS
+        DEFAULT_GAUGE_EMISSIONS,
+        0
     );
 
     scenario.next_tx(admin);
@@ -431,14 +424,15 @@ public fun test_gauge_get_position_reward_invalid_reward_token() {
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL, OSAIL1>(
         &mut scenario, 
         admin,
         user,
         &mut clock,
         1000,
         182,
-        DEFAULT_GAUGE_EMISSIONS
+        DEFAULT_GAUGE_EMISSIONS,
+        0
     );
 
     // setup position
@@ -454,11 +448,10 @@ public fun test_gauge_get_position_reward_invalid_reward_token() {
         );
     };
 
-    // deposit position
-    let position_id: ID;
+
     scenario.next_tx(user);
     {
-        position_id = setup::deposit_position<USD1, SAIL>(
+        setup::deposit_position<USD1, SAIL>(
             &mut scenario,
             &clock
         );
@@ -481,14 +474,15 @@ public fun test_gauge_get_position_reward_invalid_pool() {
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL, OSAIL1>(
         &mut scenario, 
         admin,
         user,
         &mut clock,
         1000,
         182,
-        DEFAULT_GAUGE_EMISSIONS
+        DEFAULT_GAUGE_EMISSIONS,
+        0
     );
 
         scenario.next_tx(user);
@@ -503,11 +497,10 @@ public fun test_gauge_get_position_reward_invalid_pool() {
         );
     };
 
-    // deposit position
-    let position_id: ID;
+
     scenario.next_tx(user);
     {
-        position_id = setup::deposit_position<USD1, SAIL>(
+        setup::deposit_position<USD1, SAIL>(
             &mut scenario,
             &clock
         );
@@ -551,14 +544,15 @@ public fun test_gauge_get_reward_invalid_reward_token() {
     let mut clock = clock::create_for_testing(scenario.ctx());
     let default_gauge_base_emissions = 1_000_000;
 
-    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL, OSAIL1>(
         &mut scenario, 
         admin,
         user,
         &mut clock,
         1000,
         182,
-        default_gauge_base_emissions
+        default_gauge_base_emissions,
+        0
     );
 
     // setup position
@@ -601,14 +595,15 @@ public fun test_gauge_get_reward_invalid_pool() {
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL, OSAIL1>(
         &mut scenario, 
         admin,
         user,
         &mut clock,
         1000,
         182,
-        DEFAULT_GAUGE_EMISSIONS
+        DEFAULT_GAUGE_EMISSIONS,
+        0
     );
 
         scenario.next_tx(user);
@@ -676,14 +671,13 @@ fun full_setup_with_two_positions(
 ): (u64, ID, ID) {
 
     let ms_in_week = 7 * 24 * 60 * 60 * 1000;
-    let gap_to_vote = 60 * 60 * 1000 + 1000;
 
     let lock_amount = 50_000;
     let lock_duration = 182; // ~6 months
 
     let epoch_emissions: u64 = DEFAULT_GAUGE_EMISSIONS;
 
-    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL, OSAIL1>(
         scenario,
         admin,
         user,
@@ -691,35 +685,16 @@ fun full_setup_with_two_positions(
         lock_amount,
         lock_duration,
         DEFAULT_GAUGE_EMISSIONS,
+        0
     );
 
-    // advance time to make sure that voting started
-    clock::increment_for_testing(clock, gap_to_vote);
-
-    // Tx Vote for the pool
-    scenario.next_tx(user);
-    {
-        setup::vote_for_pool<USD1, SAIL, SAIL>(scenario, clock)
-    };
-
-    clock.increment_for_testing(ms_in_week - gap_to_vote + 1000);
-
-    // Update Minter Period with OSAIL1
-    scenario.next_tx(admin);
-    {
-        let o_sail1_initial_supply = setup::update_minter_period<SAIL, OSAIL1>(
-            scenario,
-            lock_amount, // to make total supply = total locked, cos sail is minted outside of the minter
-            clock
-        );
-        coin::burn_for_testing(o_sail1_initial_supply);
-    };
-
     // distribute gauge
+    // not at the start of the epoch, but it is pretty close to the real world situation
     scenario.next_tx(admin);
     {
         setup::distribute_gauge_epoch_1<USD1, SAIL, SAIL, OTHER, OSAIL1>(scenario, clock);
     };
+
     // lp1 creates and stakes position
     scenario.next_tx(lp1);
     {
@@ -1008,37 +983,31 @@ fun test_update_minter_period_with_same_o_sail_fails() {
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL, OSAIL1>(
         &mut scenario, 
         admin,
         user,
         &mut clock,
         1000,
         182,
-        DEFAULT_GAUGE_EMISSIONS
+        DEFAULT_GAUGE_EMISSIONS,
+        0
     );
 
-    clock.increment_for_testing(WEEK);
-
-    // Update Minter Period with OSAIL1
+    // Distribute Gauge Rewards (OSAIL1)
     scenario.next_tx(admin);
     {
-        let o_sail1_initial_supply = setup::update_minter_period<SAIL, OSAIL1>(
-            &mut scenario,
-            100_000, // to make total supply = total locked, cos sail is minted outside of the minter
-            &clock
-        );
-        coin::burn_for_testing(o_sail1_initial_supply);
+        setup::distribute_gauge_epoch_1<USD1, SAIL, SAIL, OTHER, OSAIL1>(&mut scenario, &clock);
     };
 
     clock.increment_for_testing(WEEK);
 
-    // Update Minter Period with OSAIL1 again, should fail
+    // Update Minter Period with OSAIL1, should fail
     scenario.next_tx(admin);
     {
         let o_sail1_initial_supply = setup::update_minter_period<SAIL, OSAIL1>(
             &mut scenario,
-            100_000, // to make total supply = total locked, cos sail is minted outside of the minter
+            0, 
             &clock
         );
         coin::burn_for_testing(o_sail1_initial_supply);
@@ -1062,42 +1031,24 @@ fun test_single_position_reward_over_time_distribute() {
     let epoch1_emissions: u64 = DEFAULT_GAUGE_EMISSIONS;
 
     // --- Initial Setup --- 
-    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL, OSAIL1>(
         &mut scenario,
         admin,
         user,
         &mut clock,
         lock_amount,
         lock_duration,
-        DEFAULT_GAUGE_EMISSIONS
+        DEFAULT_GAUGE_EMISSIONS,
+        0
     );
 
-    // advance time to make sure that voting started
-    clock::increment_for_testing(&mut clock, 10 * 60 * 60 * 1000);
-
-    // --- Tx: User votes for the pool ---
-    scenario.next_tx(user);
-    {
-        setup::vote_for_pool<USD1, SAIL, SAIL>(&mut scenario, &mut clock)
-    };
-
-    // --- Advance Time to Epoch 1 & Update Period ---
-    clock::increment_for_testing(&mut clock, WEEK - (10 * 60 * 60 * 1000)); // Advance to next epoch
-    scenario.next_tx(admin);
-    {
-        let initial_o_sail_supply = setup::update_minter_period<SAIL, OSAIL1>(
-            &mut scenario,
-            1_000_000,
-            &clock
-        );
-        coin::burn_for_testing(initial_o_sail_supply);
-    };
 
     // --- Tx: Distribute Gauge Rewards (OSAIL1) ---
     scenario.next_tx(admin);
     {
         setup::distribute_gauge_epoch_1<USD1, SAIL, SAIL, OTHER, OSAIL1>(&mut scenario, &clock);
     };
+
 
     // --- Tx: lp1 Creates and Stakes Position ---
     let position_tick_lower = tick_math::min_tick().as_u32();
@@ -1222,15 +1173,23 @@ fun test_single_position_withdraw_distribute() {
     let epoch1_emissions: u64 = DEFAULT_GAUGE_EMISSIONS;
 
     // --- Initial Setup ---
-    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL, OSAIL1>(
         &mut scenario,
         admin,
         user,
         &mut clock,
         lock_amount,
         lock_duration,
-        DEFAULT_GAUGE_EMISSIONS
+        DEFAULT_GAUGE_EMISSIONS,
+        0
     );
+
+    // --- Tx: Distribute Gauge Rewards (OSAIL1) ---
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge_epoch_1<USD1, SAIL, SAIL, OTHER, OSAIL1>(&mut scenario, &clock);
+    };
+
 
     // advance time to make sure that voting started
     clock::increment_for_testing(&mut clock, 10 * 60 * 60 * 1000);
@@ -1241,23 +1200,6 @@ fun test_single_position_withdraw_distribute() {
         setup::vote_for_pool<USD1, SAIL, SAIL>(&mut scenario, &mut clock)
     };
 
-    // --- Advance Time to Epoch 1 & Update Period ---
-    clock::increment_for_testing(&mut clock, WEEK - (10 * 60 * 60 * 1000)); // Advance to next epoch
-    scenario.next_tx(admin);
-    {
-        let initial_o_sail_supply = setup::update_minter_period<SAIL, OSAIL1>(
-            &mut scenario,
-            1_000_000,
-            &clock
-        );
-        coin::burn_for_testing(initial_o_sail_supply);
-    };
-
-    // --- Tx: Distribute Gauge Rewards (OSAIL1) ---
-    scenario.next_tx(admin);
-    {
-        setup::distribute_gauge_epoch_1<USD1, SAIL, SAIL, OTHER, OSAIL1>(&mut scenario, &clock);
-    };
 
     // --- Tx: lp1 Creates and Stakes Position ---
     let position_tick_lower = tick_math::min_tick().as_u32();
@@ -1333,15 +1275,22 @@ fun test_single_position_deposit_for_1h() {
     let epoch1_emissions: u64 = DEFAULT_GAUGE_EMISSIONS;
 
     // --- Initial Setup ---
-    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL, OSAIL1>(
         &mut scenario,
         admin,
         user,
         &mut clock,
         lock_amount,
         lock_duration,
-        DEFAULT_GAUGE_EMISSIONS
+        DEFAULT_GAUGE_EMISSIONS,
+        0
     );
+
+        // --- Tx: Distribute Gauge Rewards (OSAIL1) ---
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge_epoch_1<USD1, SAIL, SAIL, OTHER, OSAIL1>(&mut scenario, &clock);
+    };
 
     // advance time to make sure that voting started
     clock::increment_for_testing(&mut clock, 10 * 60 * 60 * 1000);
@@ -1352,25 +1301,8 @@ fun test_single_position_deposit_for_1h() {
         setup::vote_for_pool<USD1, SAIL, SAIL>(&mut scenario, &mut clock)
     };
 
-    // --- Advance Time to Epoch 1 & Update Period ---
-    clock::increment_for_testing(&mut clock, WEEK - (10 * 60 * 60 * 1000)); // Advance to next epoch
-    scenario.next_tx(admin);
-    {
-        let initial_o_sail_supply = setup::update_minter_period<SAIL, OSAIL1>(
-            &mut scenario,
-            1_000_000,
-            &clock
-        );
-        coin::burn_for_testing(initial_o_sail_supply);
-    };
 
-    // --- Tx: Distribute Gauge Rewards (OSAIL1) ---
-    scenario.next_tx(admin);
-    {
-        setup::distribute_gauge_epoch_1<USD1, SAIL, SAIL, OTHER, OSAIL1>(&mut scenario, &clock);
-    };
-
-    clock.increment_for_testing(WEEK / 2);
+    clock.increment_for_testing(WEEK / 2 - 10 * 60 * 60 * 1000);
 
     // --- Tx: lp1 Creates and Stakes Position ---
     let position_tick_lower = tick_math::min_tick().as_u32();
@@ -1439,15 +1371,22 @@ fun test_position_deposit_for_1h_widthrawal_and_deposit_again_for_1h() {
     let epoch1_emissions: u64 = DEFAULT_GAUGE_EMISSIONS;
 
     // --- Initial Setup ---
-    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL, OSAIL1>(
         &mut scenario,
         admin,
         user,
         &mut clock,
         lock_amount,
         lock_duration,
-        DEFAULT_GAUGE_EMISSIONS
+        DEFAULT_GAUGE_EMISSIONS,
+        0
     );
+
+    // --- Tx: Distribute Gauge Rewards (OSAIL1) ---
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge_epoch_1<USD1, SAIL, SAIL, OTHER, OSAIL1>(&mut scenario, &clock);
+    };
 
     // advance time to make sure that voting started
     clock::increment_for_testing(&mut clock, 10 * 60 * 60 * 1000);
@@ -1458,25 +1397,7 @@ fun test_position_deposit_for_1h_widthrawal_and_deposit_again_for_1h() {
         setup::vote_for_pool<USD1, SAIL, SAIL>(&mut scenario, &mut clock)
     };
 
-    // --- Advance Time to Epoch 1 & Update Period ---
-    clock::increment_for_testing(&mut clock, WEEK - (10 * 60 * 60 * 1000)); // Advance to next epoch
-    scenario.next_tx(admin);
-    {
-        let initial_o_sail_supply = setup::update_minter_period<SAIL, OSAIL1>(
-            &mut scenario,
-            1_000_000,
-            &clock
-        );
-        coin::burn_for_testing(initial_o_sail_supply);
-    };
-
-    // --- Tx: Distribute Gauge Rewards (OSAIL1) ---
-    scenario.next_tx(admin);
-    {
-        setup::distribute_gauge_epoch_1<USD1, SAIL, SAIL, OTHER, OSAIL1>(&mut scenario, &clock);
-    };
-
-    clock.increment_for_testing(WEEK / 3);
+    clock.increment_for_testing(WEEK / 3 - 10 * 60 * 60 * 1000);
 
     // --- Tx: lp1 Creates and Stakes Position ---
     let position_tick_lower = tick_math::min_tick().as_u32();
@@ -1580,38 +1501,16 @@ fun multi_epoch_distribute_setup(
     let second_epoch_emissions: u64 = DEFAULT_GAUGE_EMISSIONS;
 
     // --- 1. Full Setup ---
-    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL, OSAIL1>(
         scenario,
         admin,
         user,
         clock,
         lock_amount,
         lock_duration,
-        DEFAULT_GAUGE_EMISSIONS
+        DEFAULT_GAUGE_EMISSIONS,
+        0
     );
-
-    // advance time to make sure that voting started
-    clock::increment_for_testing(clock, 10 * 60 * 60 * 1000);
-
-    // --- 2. User Votes for the Pool ---
-    scenario.next_tx(user);
-    {
-        setup::vote_for_pool<USD1, SAIL, SAIL>(scenario, clock)
-    };
-
-    // --- 3. Advance to Epoch 1 (OSAIL1) ---
-    clock::increment_for_testing(clock, WEEK - (10 * 60 * 60 * 1000)); // Advance to next epoch start
-
-    // Update Minter Period to OSAIL1
-    scenario.next_tx(admin);
-    {
-        let initial_o_sail_supply = setup::update_minter_period<SAIL, OSAIL1>(
-            scenario,
-            1_000_000, // Arbitrary supply for OSAIL1
-            clock
-        );
-        coin::burn_for_testing(initial_o_sail_supply); // Burn the minted OSAIL1 as it's not directly used here
-    };
 
     // Distribute OSAIL1 rewards to the gauge
     scenario.next_tx(admin);
@@ -1952,43 +1851,25 @@ fun test_half_epoch_staking_distribute() {
     let lock_duration = 182; // ~6 months
     let epoch_emissions: u64 = DEFAULT_GAUGE_EMISSIONS;
 
-    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL, OSAIL1>(
         &mut scenario,
         admin,
         user,
         &mut clock,
         lock_amount,
         lock_duration,
-        DEFAULT_GAUGE_EMISSIONS
+        DEFAULT_GAUGE_EMISSIONS,
+        0
     );
 
-    // advance time to make sure that voting started
-    clock::increment_for_testing(&mut clock, gap_to_vote);
-
-    // Tx Vote for the pool
-    scenario.next_tx(user);
-    {
-        setup::vote_for_pool<USD1, SAIL, SAIL>(&mut scenario, &mut clock)
-    };
-
-    clock.increment_for_testing(ms_in_week - gap_to_vote + 1000);
-
-    // Update Minter Period with OSAIL1
-    scenario.next_tx(admin);
-    {
-        let o_sail1_initial_supply = setup::update_minter_period<SAIL, OSAIL1>(
-            &mut scenario,
-            lock_amount, // to make total supply = total locked, cos sail is minted outside of the minter
-            &clock
-        );
-        coin::burn_for_testing(o_sail1_initial_supply);
-    };
-
-    // distribute gauge
     scenario.next_tx(admin);
     {
         setup::distribute_gauge_epoch_1<USD1, SAIL, SAIL, OTHER, OSAIL1>(&mut scenario, &clock);
     };
+
+
+    // distribute gauge
+
 
     // --- Add and Stake Positions ---
     let position_tick_lower = tick_math::min_tick().as_u32();
@@ -2025,7 +1906,6 @@ fun test_half_epoch_staking_distribute() {
 
     // advance half a week.
     // minus 500ms, cos we advanced 1000ms extra duting minter activation
-    // so half of that is 500ms
     clock.increment_for_testing(ms_in_week / 2 - 500);
 
     // lp2 creates and stakes position
@@ -2522,15 +2402,22 @@ fun rollover_setup(
     let second_epoch_emissions: u64 = DEFAULT_GAUGE_EMISSIONS;
 
     // --- 1. Full Setup ---
-    setup::full_setup_with_lock<USD1, SAIL, SAIL>(
+    setup::full_setup_with_lock<USD1, SAIL, SAIL, OSAIL1>(
         scenario,
         admin,
         user,
         clock,
         lock_amount,
         lock_duration,
-        DEFAULT_GAUGE_EMISSIONS
+        DEFAULT_GAUGE_EMISSIONS,
+        0
     );
+
+    // Distribute OSAIL1 rewards to the gauge
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge_epoch_1<USD1, SAIL, SAIL, OTHER, OSAIL1>(scenario, clock);
+    };
 
     // advance time to make sure that voting started
     clock::increment_for_testing(clock, 10 * 60 * 60 * 1000);
@@ -2543,24 +2430,6 @@ fun rollover_setup(
 
     // --- 3. Advance to Epoch 1 (OSAIL1) ---
     clock::increment_for_testing(clock, WEEK - (10 * 60 * 60 * 1000)); // Advance to next epoch start
-
-    // Update Minter Period to OSAIL1
-    scenario.next_tx(admin);
-    {
-        let initial_o_sail_supply = setup::update_minter_period<SAIL, OSAIL1>(
-            scenario,
-            1_000_000, // Arbitrary supply for OSAIL1
-            clock
-        );
-        extra_o_sail_supply = extra_o_sail_supply + initial_o_sail_supply.value();
-        coin::burn_for_testing(initial_o_sail_supply); // Burn the minted OSAIL1 as it's not directly used here;
-    };
-
-    // Distribute OSAIL1 rewards to the gauge
-    scenario.next_tx(admin);
-    {
-        setup::distribute_gauge_epoch_1<USD1, SAIL, SAIL, OTHER, OSAIL1>(scenario, clock);
-    };
 
     // --- 5. Advance to Epoch 2 (OSAIL2) ---
     clock::increment_for_testing(clock, WEEK); // Advance clock by one week

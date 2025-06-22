@@ -17,18 +17,14 @@ use clmm_pool::config::GlobalConfig;
 use sui::test_utils;
 
 use distribution::common;
-use distribution::distribute_cap::{Self, DistributeCap};
+use distribution::distribute_cap::{Self};
 use distribution::distribution_config::{Self, DistributionConfig};
 use distribution::gauge::{Self, Gauge};
 use gauge_cap::gauge_cap::{Self, CreateCap};
-use distribution::minter::{AdminCap, Minter, ECreateGaugeMinterNotActive, ECheckAdminRevoked};
-use distribution::reward_distributor;
-use distribution::reward_distributor_cap;
+use distribution::minter::{AdminCap, Minter};
 use distribution::voter::{Self, Voter};
 use distribution::voting_escrow::{Self, VotingEscrow};
-use std::option;
 use distribution::setup;
-use distribution::voter::ECreateGaugePoolAlreadyHasGauge;
 use sui::sui::SUI;
 
 const WEEK: u64 = 7 * 24 * 60 * 60 * 1000;
@@ -51,7 +47,8 @@ fun setup_for_gauge_creation(scenario: &mut test_scenario::Scenario, admin: addr
     setup::setup_pool_with_sqrt_price<USD1, AUSD>(scenario, pool_sqrt_price, 1);
     
     scenario.next_tx(admin);
-    setup::activate_minter<SAIL>(scenario, clock);
+    let o_sail_coin = setup::activate_minter<SAIL, OSAIL1>(scenario, 0, clock);
+    o_sail_coin.burn_for_testing();
 }
 
 #[test]
@@ -835,27 +832,17 @@ fun test_distribute_gauge_initial_amount() {
 
     let gauge_base_emissions = 1_000_000;
 
-    setup::full_setup_with_lock<USD1, AUSD, SAIL>(
+    setup::full_setup_with_lock<USD1, AUSD, SAIL, OSAIL1>(
         &mut scenario,
         admin,
         user,
         &mut clock,
         1000000,
         182,
-        gauge_base_emissions
+        gauge_base_emissions,
+        0
     );
-
-    clock.increment_for_testing(WEEK);
-
     let current_period = common::current_period(&clock);
-
-    // update minter period
-    scenario.next_tx(admin);
-    {
-        // the initial supply doesn't matter for this test
-        let o_sail_coin = setup::update_minter_period<SAIL, OSAIL1>(&mut scenario, 0, &clock);
-        o_sail_coin.burn_for_testing();
-    };
 
     // distribute the gauge
     scenario.next_tx(admin);
@@ -900,27 +887,16 @@ fun test_distribute_gauge_increase_emissions() {
 
     let gauge_base_emissions = 1_000_000;
 
-    setup::full_setup_with_lock<USD1, AUSD, SAIL>(
+    setup::full_setup_with_lock<USD1, AUSD, SAIL, OSAIL1>(
         &mut scenario,
         admin,
         user,
         &mut clock,
         1000000,
         182,
-        gauge_base_emissions
+        gauge_base_emissions,
+        0
     );
-
-    // --- EPOCH 1 ---
-
-    clock.increment_for_testing(WEEK);
-
-    // update minter period
-    scenario.next_tx(admin);
-    {
-        // the initial supply doesn't matter for this test
-        let o_sail_coin = setup::update_minter_period<SAIL, OSAIL1>(&mut scenario, 0, &clock);
-        o_sail_coin.burn_for_testing();
-    };
 
     // distribute the gauge for epoch 1
     scenario.next_tx(admin);
@@ -996,26 +972,16 @@ fun test_distribute_gauge_with_emission_changes() {
 
     let gauge_base_emissions = 1_000_000;
 
-    setup::full_setup_with_lock<USD1, AUSD, SAIL>(
+    setup::full_setup_with_lock<USD1, AUSD, SAIL, OSAIL1>(
         &mut scenario,
         admin,
         user,
         &mut clock,
         1000000,
         182,
-        gauge_base_emissions
+        gauge_base_emissions,
+        0
     );
-
-    // --- EPOCH 1 ---
-
-    clock.increment_for_testing(WEEK);
-
-    // Update minter period for epoch 1
-    scenario.next_tx(admin);
-    {
-        let o_sail_coin_1 = setup::update_minter_period<SAIL, OSAIL1>(&mut scenario, 0, &clock);
-        o_sail_coin_1.burn_for_testing();
-    };
 
     // Distribute the gauge for epoch 1 (base emissions)
     scenario.next_tx(admin);
@@ -1126,6 +1092,7 @@ fun test_distribute_gauge_with_emission_changes() {
 }
 
 #[test]
+#[expected_failure(abort_code = minter::EUpdatePeriodNotAllGaugesDistributed)]
 fun test_skip_distribution_epoch() {
     let admin = @0xA;
     let user = @0xB;
@@ -1134,56 +1101,25 @@ fun test_skip_distribution_epoch() {
 
     let gauge_base_emissions = 1_000_000;
 
-    setup::full_setup_with_lock<USD1, AUSD, SAIL>(
+    setup::full_setup_with_lock<USD1, AUSD, SAIL, OSAIL1>(
         &mut scenario,
         admin,
         user,
         &mut clock,
         1000000,
         182,
-        gauge_base_emissions
+        gauge_base_emissions,
+        0
     );
-
-    // --- EPOCH 1 ---
-
-    clock.increment_for_testing(WEEK);
-    let period1 = common::current_period(&clock);
-
-    // Update minter period for epoch 1, but don't distribute
-    scenario.next_tx(admin);
-    {
-        let o_sail_coin_1 = setup::update_minter_period<SAIL, OSAIL1>(&mut scenario, 0, &clock);
-        o_sail_coin_1.burn_for_testing();
-    };
 
     // --- EPOCH 2 ---
     clock.increment_for_testing(WEEK);
-    let period2 = common::current_period(&clock);
 
     // Update minter period for epoch 2
     scenario.next_tx(admin);
     {
         let o_sail_coin_2 = setup::update_minter_period<SAIL, OSAIL2>(&mut scenario, 0, &clock);
         o_sail_coin_2.burn_for_testing();
-    };
-
-    // --- VERIFICATION ---
-    scenario.next_tx(admin);
-    {
-        let minter = scenario.take_shared<Minter<SAIL>>();
-        
-        // No emissions were distributed in either epoch
-        assert!(minter.emissions_by_epoch(period1) == 0, 1);
-        assert!(minter.emissions_by_epoch(period2) == 0, 2);
-        
-        // Current epoch emissions should be 0
-        assert!(minter.epoch_emissions() == 0, 3);
-        
-        // No oSAIL should have been minted for distribution
-        assert!(minter.o_sail_total_supply() == 0, 4);
-        assert!(minter.total_supply() == 0, 5);
-
-        test_scenario::return_shared(minter);
     };
 
     clock::destroy_for_testing(clock);

@@ -2,6 +2,8 @@
 /// It maintains a list of active gauges that participate in token distribution and rewards.
 module distribution::distribution_config {
 
+    use sui::vec_set::{Self, VecSet};
+
     /// Error code for attempting to update gauge liveness with an empty list of gauges
     const EUpdateGaugeLivenessNoGauges: u64 = 9223372148523925503;
 
@@ -12,7 +14,7 @@ module distribution::distribution_config {
     /// * `alive_gauges` - A set of gauge IDs that are currently active in the system
     public struct DistributionConfig has store, key {
         id: UID,
-        alive_gauges: sui::vec_set::VecSet<ID>,
+        alive_gauges: VecSet<ID>,
     }
 
     /// Initializes the distribution configuration object
@@ -24,7 +26,7 @@ module distribution::distribution_config {
     fun init(ctx: &mut TxContext) {
         let distribution_config = DistributionConfig {
             id: object::new(ctx),
-            alive_gauges: sui::vec_set::empty<ID>(),
+            alive_gauges: vec_set::empty<ID>(),
         };
         transfer::share_object<DistributionConfig>(distribution_config);
     }
@@ -77,6 +79,10 @@ module distribution::distribution_config {
                 i = i + 1;
             };
         };
+    }
+
+    public fun borrow_alive_gauges(distribution_config: &DistributionConfig): &VecSet<ID> {
+        &distribution_config.alive_gauges
     }
 
     #[test_only]
