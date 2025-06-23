@@ -7,12 +7,18 @@ module distribution::voter {
     use sui::vec_map::{Self, VecMap};
     use std::type_name::{Self, TypeName};
 
-    // Error codes for contract operations
+    
+    const ECreateVoterInvalidPublisher: u64 = 831911472280262500;
+
     const EDepositManagedEpochVoteEnded: u64 = 922337530103326315;
 
     const EWithdrawManagedInvlidManaged: u64 = 922337537833933209;
 
     const EAddEpochGovernorInvalidGovernor: u64 = 922337326521692981;
+
+    const ERevokeGaugeCreateCapInvalidPublisher: u64 = 740613477966525400;
+
+    const EAddGovernorInvalidPublisher: u64 = 155939257957301570;
 
     const ERevokeGaugeCreateCapAlreadyRevoked: u64 = 525186290931396700;
 
@@ -45,6 +51,8 @@ module distribution::voter {
     const EReceiveGaugePoolAreadyHasGauge: u64 = 922337372477987230;
 
     const ERemoveEpochGovernorNotAGovernor: u64 = 922337331246157007;
+
+    const ERemoveGovernorInvalidPublisher: u64 = 774314565719218300;
 
     const ESetMaxVotingNumGovernorInvalid: u64 = 922337318361255119;
     const ESetMaxVotingNumAtLeast10: u64 = 922337318790764956;
@@ -236,7 +244,7 @@ module distribution::voter {
     /// Creates a new Voter contract.
     /// 
     /// # Arguments
-    /// * `_publisher` - The publisher of the package
+    /// * `publisher` - The publisher of the package
     /// * `global_config` - The ID of the global configuration
     /// * `distribution_config` - The ID of the distribution configuration
     /// * `supported_coins` - List of initially supported token types
@@ -245,11 +253,12 @@ module distribution::voter {
     /// # Returns
     /// A new Voter instance and a NotifyRewardCap for reward notification
     public fun create(
-        _publisher: &sui::package::Publisher,
+        publisher: &sui::package::Publisher,
         global_config: ID,
         distribution_config: ID,
         ctx: &mut TxContext
     ): (Voter, distribution::distribute_cap::DistributeCap) {
+        assert!(publisher.from_module<VOTER>(), ECreateVoterInvalidPublisher);
         let uid = object::new(ctx);
         let id = *object::uid_as_inner(&uid);
         let voter = Voter {
@@ -414,9 +423,10 @@ module distribution::voter {
     /// Supposed to be used in emergency case when the gauge create cap is compromised.
     public fun revoke_gauge_create_cap(
         voter: &mut Voter,
-        _publisher: &sui::package::Publisher,
+        publisher: &sui::package::Publisher,
         create_cap_id: ID
     ) {
+        assert!(publisher.from_module<VOTER>(), ERevokeGaugeCreateCapInvalidPublisher);
         assert!(
             !voter.revoked_gauge_create_caps.contains(&create_cap_id),
             ERevokeGaugeCreateCapAlreadyRevoked
@@ -438,7 +448,7 @@ module distribution::voter {
     ///
     /// # Arguments
     /// * `voter` - The voter contract reference
-    /// * `_publisher` - The publisher of the package
+    /// * `publisher` - The publisher of the package
     /// * `who` - The address of the new governor
     /// * `ctx` - The transaction context
     ///
@@ -446,10 +456,11 @@ module distribution::voter {
     /// * `EventAddGovernor` when a governor is added
     public fun add_governor(
         voter: &mut Voter,
-        _publisher: &sui::package::Publisher,
+        publisher: &sui::package::Publisher,
         who: address,
         ctx: &mut TxContext
     ) {
+        assert!(publisher.from_module<VOTER>(), EAddGovernorInvalidPublisher);
         let governor_cap = distribution::voter_cap::create_governor_cap(
             object::id<Voter>(voter),
             who,
@@ -1401,13 +1412,14 @@ module distribution::voter {
     /// 
     /// # Arguments
     /// * `voter` - The voter contract reference
-    /// * `_publisher` - The publisher of the package
+    /// * `publisher` - The publisher of the package
     /// * `who` - The ID of the governor to remove
     public fun remove_governor(
         voter: &mut Voter,
-        _publisher: &sui::package::Publisher,
+        publisher: &sui::package::Publisher,
         who: ID
     ) {
+        assert!(publisher.from_module<VOTER>(), ERemoveGovernorInvalidPublisher);
         voter.governors.remove<ID>(&who);
         let remove_governor_event = EventRemoveGovernor { cap: who };
         sui::event::emit<EventRemoveGovernor>(remove_governor_event);
