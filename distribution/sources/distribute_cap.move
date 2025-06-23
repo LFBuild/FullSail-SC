@@ -8,6 +8,7 @@ module distribution::distribute_cap;
 use sui::package;
 
 const EValidateDistributeInvalidVoter: u64 = 421990001503268030;
+const ECreateDistributeCapInvalidPublisher: u64 = 43646573017044340;
 
 public struct DISTRIBUTE_CAP has drop {}
 
@@ -18,11 +19,12 @@ public struct DistributeCap has store, key {
 }
 
 public fun create(
-    _publisher: &package::Publisher,
+    publisher: &package::Publisher,
     voter_id: ID,
     who: ID,
     ctx: &mut TxContext
 ): DistributeCap {
+    assert!(publisher.from_module<DISTRIBUTE_CAP>(), ECreateDistributeCapInvalidPublisher);
     DistributeCap {
         id: object::new(ctx),
         voter_id,

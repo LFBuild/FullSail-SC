@@ -1412,7 +1412,7 @@ module distribution::voter {
     /// 
     /// # Arguments
     /// * `voter` - The voter contract reference
-    /// * `_publisher` - The publisher of the package
+    /// * `publisher` - The publisher of the package
     /// * `who` - The ID of the governor to remove
     public fun remove_governor(
         voter: &mut Voter,
