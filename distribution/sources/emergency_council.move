@@ -18,7 +18,8 @@
 /// governance for routine protocol decisions.
 module distribution::emergency_council {
 
-    const EEmergencyCouncilDoesNotMatchVoter: u64 = 9223372084099416065;
+    const EEmergencyCouncilDoesNotMatchVoter: u64 = 370065501622769400;
+    const EEmergencyCouncilDoesNotMatchMinter: u64 = 715059658219014000;
 
     /// The Emergency Council Capability (EmergencyCouncilCap) is a privileged object that 
     /// grants special administrative powers to address emergency situations in the protocol.
@@ -34,10 +35,28 @@ module distribution::emergency_council {
     public struct EmergencyCouncilCap has store, key {
         id: UID,
         voter: ID,
+        minter: ID,
     }
 
     public fun validate_emergency_council_voter_id(emergency_council_cap: &EmergencyCouncilCap, voter_id: ID) {
         assert!(emergency_council_cap.voter == voter_id, EEmergencyCouncilDoesNotMatchVoter);
+    }
+
+    public fun validate_emergency_council_minter_id(emergency_council_cap: &EmergencyCouncilCap, minter_id: ID) {
+        assert!(emergency_council_cap.minter == minter_id, EEmergencyCouncilDoesNotMatchMinter);
+    }
+
+    #[test_only]
+    public fun create_for_testing(
+        voter_id: ID,
+        minter_id: ID,
+        ctx: &mut sui::tx_context::TxContext
+    ): EmergencyCouncilCap {
+        EmergencyCouncilCap {
+            id: object::new(ctx),
+            voter: voter_id,
+            minter: minter_id,
+        }
     }
 }
 
