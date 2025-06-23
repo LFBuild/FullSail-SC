@@ -9,7 +9,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
     use clmm_pool::position;
     use clmm_pool::pool;
     use clmm_pool::factory::{Self as factory, Pools};
-    use clmm_pool::config::{Self as config, GlobalConfig, AdminCap};
+    use clmm_pool::config::{Self as config, GlobalConfig};
     use clmm_pool::stats;
     use clmm_pool::rewarder;
     use price_provider::price_provider;
@@ -64,7 +64,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             // let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
 
@@ -131,10 +131,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -169,7 +168,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 5000000000000000000 << 64,  // total_volume
@@ -221,7 +219,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -277,10 +274,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -315,7 +311,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 5000000000000000000 << 64,  // total_volume
@@ -339,7 +334,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &clock
             );
 
-            liquidity_lock_v2::locker_pause(&admin_cap, &mut locker, true);
+            liquidity_lock_v2::locker_pause(&mut locker, true, scenario.ctx());
 
             let mut locked_positions = liquidity_lock_v2::lock_position<TestCoinB, TestCoinA, OSAIL1>(
                 &global_config,
@@ -358,7 +353,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -414,10 +408,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -455,7 +448,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 5000000000000000000 << 64,  // total_volume
@@ -510,7 +502,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(pool_2, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -567,10 +558,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -605,7 +595,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 5000000000000000000 << 64,  // total_volume
@@ -646,7 +635,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -702,10 +690,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
-            let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
+            let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>(); 
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -762,7 +749,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -818,10 +804,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -854,7 +839,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 5000000000000000000 << 64,  // total_volume
@@ -895,7 +879,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -949,10 +932,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -987,7 +969,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 4000000000000000000 << 64,  // total_volume
@@ -1001,7 +982,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 1000000000000000000 << 64,  // total_volume
@@ -1068,7 +1048,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_2, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -1123,10 +1102,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -1160,7 +1138,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 4000000000000000000 << 64,  // total_volume
@@ -1174,7 +1151,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 50000000000000000000 << 64,  // total_volume
@@ -1240,7 +1216,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_2, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -1295,10 +1270,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -1331,8 +1305,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
-                &mut tranche_manager,
-                &tranche_admin_cap,
+                &mut tranche_manager,   
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -1428,7 +1401,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_12, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -1483,10 +1455,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -1520,7 +1491,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -1620,7 +1590,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_12, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -1675,10 +1644,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -1712,7 +1680,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -1812,7 +1779,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_12, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -1870,10 +1836,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -1911,7 +1876,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -1956,7 +1920,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_1, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -1998,9 +1961,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -2030,7 +1992,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -2070,7 +2031,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Add reward to the SECOND epoch
         scenario.next_tx(admin);
         {
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
@@ -2082,7 +2042,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             let reward2 = sui::coin::mint_for_testing<SailCoinType>(10000000, scenario.ctx());
             pool_tranche::set_total_incomed_and_add_reward<SailCoinType>(
-                &tranche_admin_cap,
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
@@ -2092,7 +2051,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 scenario.ctx()
             );
 
-            transfer::public_transfer(tranche_admin_cap, admin);
             test_scenario::return_shared(tranche_manager);
             transfer::public_transfer(pool, admin);
         };
@@ -2102,9 +2060,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -2133,7 +2090,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -2185,7 +2141,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Add reward to the THIRD epoch
         scenario.next_tx(admin);
         {
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
@@ -2197,7 +2152,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             let reward3 = sui::coin::mint_for_testing<RewardCoinType2>(10000000, scenario.ctx());
             pool_tranche::set_total_incomed_and_add_reward<RewardCoinType2>(
-                &tranche_admin_cap,
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
@@ -2207,7 +2161,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 scenario.ctx()
             );
 
-            transfer::public_transfer(tranche_admin_cap, admin);
             test_scenario::return_shared(tranche_manager);
             transfer::public_transfer(pool, admin);
         };
@@ -2217,9 +2170,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
-            let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>(); 
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -2248,7 +2200,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -2307,10 +2258,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -2348,7 +2298,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -2361,7 +2310,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -2384,10 +2332,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -2433,7 +2380,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_2, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -2475,9 +2421,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -2507,7 +2452,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position1, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -2568,10 +2512,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
-            let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
+            let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>(); 
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -2609,7 +2552,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -2631,7 +2573,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             let reward2 = sui::coin::mint_for_testing<RewardCoinType2>(30000000, scenario.ctx());
             pool_tranche::add_reward<RewardCoinType2>(
-                &tranche_admin_cap,
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 tranche_id,
@@ -2642,7 +2583,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             let reward3 = sui::coin::mint_for_testing<RewardCoinType3>(60000000, scenario.ctx());
             pool_tranche::add_reward<RewardCoinType3>(
-                &tranche_admin_cap,
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 tranche_id,
@@ -2685,7 +2625,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_1, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -2727,9 +2666,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -2785,7 +2723,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -2845,10 +2782,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -2886,7 +2822,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -2931,7 +2866,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_1, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -2973,9 +2907,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -3005,7 +2938,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -3044,7 +2976,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Add reward to the SECOND epoch
         scenario.next_tx(admin);
         {
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
@@ -3056,7 +2987,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             let reward2 = sui::coin::mint_for_testing<SailCoinType>(10000000, scenario.ctx());
             pool_tranche::set_total_incomed_and_add_reward<SailCoinType>(
-                &tranche_admin_cap,
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
@@ -3066,7 +2996,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 scenario.ctx()
             );
 
-            transfer::public_transfer(tranche_admin_cap, admin);
             test_scenario::return_shared(tranche_manager);
             transfer::public_transfer(pool, admin);
         };
@@ -3076,9 +3005,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -3107,7 +3035,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -3158,8 +3085,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
         // Add reward to the THIRD epoch
         scenario.next_tx(admin);
-        {
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
+        {   
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
@@ -3171,7 +3097,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             let reward3 = sui::coin::mint_for_testing<RewardCoinType2>(10000000, scenario.ctx());
             pool_tranche::set_total_incomed_and_add_reward<RewardCoinType2>(
-                &tranche_admin_cap,
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
@@ -3181,7 +3106,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 scenario.ctx()
             );
 
-            transfer::public_transfer(tranche_admin_cap, admin);
             test_scenario::return_shared(tranche_manager);
             transfer::public_transfer(pool, admin);
         };
@@ -3191,9 +3115,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -3222,7 +3145,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -3243,9 +3165,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -3268,7 +3189,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             let reward = sui::coin::mint_for_testing<SailCoinType>(30000000, scenario.ctx());
             pool_tranche::add_reward<SailCoinType>(
-                &tranche_admin_cap,
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 tranche_id,
@@ -3291,7 +3211,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -3312,9 +3231,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -3337,7 +3255,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             let reward = sui::coin::mint_for_testing<RewardCoinType3>(50000000, scenario.ctx());
             pool_tranche::add_reward<RewardCoinType3>(
-                &tranche_admin_cap,
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 tranche_id,
@@ -3361,7 +3278,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -3421,10 +3337,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -3462,7 +3377,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -3507,7 +3421,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_1, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -3549,9 +3462,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -3581,7 +3493,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -3603,10 +3514,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -3643,7 +3553,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_2, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -3680,7 +3589,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Add reward to the SECOND epoch
         scenario.next_tx(admin);
         {
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
@@ -3692,7 +3600,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             let reward2 = sui::coin::mint_for_testing<SailCoinType>(10000000, scenario.ctx());
             pool_tranche::set_total_incomed_and_add_reward<SailCoinType>(
-                &tranche_admin_cap,
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
@@ -3702,7 +3609,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 scenario.ctx()
             );
 
-            transfer::public_transfer(tranche_admin_cap, admin);
             test_scenario::return_shared(tranche_manager);
             transfer::public_transfer(pool, admin);
         };
@@ -3712,9 +3618,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -3756,7 +3661,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position2, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -3814,7 +3718,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Add reward to the THIRD epoch
         scenario.next_tx(admin);
         {
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
@@ -3826,7 +3729,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             let reward3 = sui::coin::mint_for_testing<RewardCoinType2>(10000000, scenario.ctx());
             pool_tranche::set_total_incomed_and_add_reward<RewardCoinType2>(
-                &tranche_admin_cap,
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
@@ -3836,7 +3738,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 scenario.ctx()
             );
 
-            transfer::public_transfer(tranche_admin_cap, admin);
             test_scenario::return_shared(tranche_manager);
             transfer::public_transfer(pool, admin);
         };
@@ -3846,9 +3747,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -3892,7 +3792,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position2, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -3951,10 +3850,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -3988,7 +3886,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -4029,7 +3926,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let locked_position_1 = locked_positions.pop_back();
             locked_positions.destroy_empty();
 
-            liquidity_lock_v2::locker_pause(&admin_cap, &mut locker, true);
+            liquidity_lock_v2::locker_pause(&mut locker, true, scenario.ctx());
 
             let (locked_position_11, locked_position_12) = liquidity_lock_v2::split_position<TestCoinB, TestCoinA, OSAIL1>(
                 &global_config,
@@ -4048,7 +3945,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_12, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -4105,10 +4001,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -4142,7 +4037,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -4202,7 +4096,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_12, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -4259,10 +4152,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -4301,7 +4193,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -4373,7 +4264,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(pool_2, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -4429,10 +4319,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -4470,7 +4359,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 4320664223000003333 << 64,  // total_volume
@@ -4484,7 +4372,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -4539,7 +4426,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_2, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -4579,7 +4465,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Add reward to the first tranche
         scenario.next_tx(admin);
         {
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
@@ -4591,7 +4476,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             let reward1 = sui::coin::mint_for_testing<SailCoinType>(10000000, scenario.ctx());
             pool_tranche::set_total_incomed_and_add_reward<SailCoinType>(
-                &tranche_admin_cap,
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
@@ -4601,7 +4485,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 scenario.ctx()
             );
 
-            transfer::public_transfer(tranche_admin_cap, admin);
             test_scenario::return_shared(tranche_manager);
             transfer::public_transfer(pool, admin);
         };
@@ -4628,7 +4511,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
         scenario.next_tx(admin);
         {
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
@@ -4640,7 +4522,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             let reward2 = sui::coin::mint_for_testing<RewardCoinType2>(10000000, scenario.ctx());
             pool_tranche::set_total_incomed_and_add_reward<RewardCoinType2>(
-                &tranche_admin_cap,
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
@@ -4650,7 +4531,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 scenario.ctx()
             );
 
-            transfer::public_transfer(tranche_admin_cap, admin);
             test_scenario::return_shared(tranche_manager);
             transfer::public_transfer(pool, admin);
         };
@@ -4677,7 +4557,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
         scenario.next_tx(admin);
         {
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
@@ -4689,7 +4568,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             let reward3 = sui::coin::mint_for_testing<RewardCoinType3>(10000000, scenario.ctx());
             pool_tranche::set_total_incomed_and_add_reward<RewardCoinType3>(
-                &tranche_admin_cap,
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
@@ -4699,7 +4577,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 scenario.ctx()
             );
 
-            transfer::public_transfer(tranche_admin_cap, admin);
             test_scenario::return_shared(tranche_manager);
             transfer::public_transfer(pool, admin);
         };
@@ -4708,9 +4585,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -4803,7 +4679,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &clock,
                 scenario.ctx()
             );
-            assert!(remove_balance_a.value() == 3794126173307114777, 92348768657674);
+            assert!(remove_balance_a.value() == 3794126173307114780, 92348768657674);
             assert!(remove_balance_b.value() == 534405474921791512, 92348768657674);
             transfer::public_transfer(sui::coin::from_balance(remove_balance_a, scenario.ctx()), admin);
             transfer::public_transfer(sui::coin::from_balance(remove_balance_b, scenario.ctx()), admin);
@@ -4811,7 +4687,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_1, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -4888,10 +4763,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -4929,7 +4803,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 4320664223000003333 << 64,  // total_volume
@@ -4943,7 +4816,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -4998,7 +4870,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_2, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -5038,7 +4909,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // adding reward to tranche 1
         scenario.next_tx(admin);
         {
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
@@ -5050,7 +4920,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             let reward1 = sui::coin::mint_for_testing<SailCoinType>(10000000, scenario.ctx());
             pool_tranche::set_total_incomed_and_add_reward<SailCoinType>(
-                &tranche_admin_cap,
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
@@ -5060,7 +4929,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 scenario.ctx()
             );
 
-            transfer::public_transfer(tranche_admin_cap, admin);
             test_scenario::return_shared(tranche_manager);
             transfer::public_transfer(pool, admin);
         };
@@ -5087,7 +4955,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
         scenario.next_tx(admin);
         {
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
@@ -5099,7 +4966,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             let reward2 = sui::coin::mint_for_testing<RewardCoinType2>(10000000, scenario.ctx());
             pool_tranche::set_total_incomed_and_add_reward<RewardCoinType2>(
-                &tranche_admin_cap,
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
@@ -5109,7 +4975,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 scenario.ctx()
             );
 
-            transfer::public_transfer(tranche_admin_cap, admin);
             test_scenario::return_shared(tranche_manager);
             transfer::public_transfer(pool, admin);
         };
@@ -5138,7 +5003,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
         scenario.next_tx(admin);
         {
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
@@ -5150,7 +5014,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             let reward3 = sui::coin::mint_for_testing<RewardCoinType3>(10000000, scenario.ctx());
             pool_tranche::set_total_incomed_and_add_reward<RewardCoinType3>(
-                &tranche_admin_cap,
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
@@ -5160,7 +5023,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 scenario.ctx()
             );
 
-            transfer::public_transfer(tranche_admin_cap, admin);
             test_scenario::return_shared(tranche_manager);
             transfer::public_transfer(pool, admin);
         };
@@ -5169,9 +5031,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -5256,7 +5117,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_1, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -5334,7 +5194,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &clock,
                 scenario.ctx()
             );
-            assert!(remove_balance_a.value() == 1082352715785369270, 92348768657674);
+            assert!(remove_balance_a.value() == 1082352715785369272, 92348768657674);
             assert!(remove_balance_b.value() == 365061384823952775, 92348768657674);
             transfer::public_transfer(sui::coin::from_balance(remove_balance_a, scenario.ctx()), admin);
             transfer::public_transfer(sui::coin::from_balance(remove_balance_b, scenario.ctx()), admin);
@@ -5399,10 +5259,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -5440,7 +5299,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -5484,7 +5342,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_1, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -5524,7 +5381,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // adding reward to the first tranche
         scenario.next_tx(admin);
         {
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
@@ -5536,7 +5392,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             let reward1 = sui::coin::mint_for_testing<SailCoinType>(10000000, scenario.ctx());
             pool_tranche::set_total_incomed_and_add_reward<SailCoinType>(
-                &tranche_admin_cap,
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
@@ -5546,7 +5401,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 scenario.ctx()
             );
 
-            transfer::public_transfer(tranche_admin_cap, admin);
             test_scenario::return_shared(tranche_manager);
             transfer::public_transfer(pool, admin);
         };
@@ -5573,7 +5427,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
         scenario.next_tx(admin);
         {
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
@@ -5585,7 +5438,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             let reward2 = sui::coin::mint_for_testing<RewardCoinType2>(10000000, scenario.ctx());
             pool_tranche::set_total_incomed_and_add_reward<RewardCoinType2>(
-                &tranche_admin_cap,
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
@@ -5595,7 +5447,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 scenario.ctx()
             );
 
-            transfer::public_transfer(tranche_admin_cap, admin);
             test_scenario::return_shared(tranche_manager);
             transfer::public_transfer(pool, admin);
         };
@@ -5604,9 +5455,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -5674,20 +5524,20 @@ module liquidity_locker::liquidity_lock_v2_tests {
             assert!(locker.is_position_locked(position_id), 9234887456443);
 
             // full unlock
-            let staked_position = liquidity_lock_v2::unlock_position<TestCoinB, TestCoinA>(
+            let (staked_position, coin_a, coin_b) = liquidity_lock_v2::unlock_position<TestCoinB, TestCoinA>(
                 &mut locker,
                 locked_position_1,
                 &mut gauge,
-                &clock,
-                scenario.ctx()
+                &clock
             );
 
             assert!(!locker.is_position_locked(position_id), 9234887456444);
 
+            transfer::public_transfer(sui::coin::from_balance(coin_a, scenario.ctx()), admin);
+            transfer::public_transfer(sui::coin::from_balance(coin_b, scenario.ctx()), admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(staked_position, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -5745,10 +5595,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -5783,7 +5632,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 1234567899876543210 << 64,  // total_volume
@@ -5797,7 +5645,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 5000000000000000000 << 64,  // total_volume
@@ -5862,7 +5709,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_1, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -5918,10 +5764,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -5959,7 +5804,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 5000000000000000000 << 64,  // total_volume
@@ -6027,7 +5871,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(pool_2, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -6084,10 +5927,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -6125,7 +5967,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 5000000000000000000 << 64,  // total_volume
@@ -6193,7 +6034,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(pool_2, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -6250,10 +6090,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -6291,7 +6130,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -6335,7 +6173,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_1, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -6356,9 +6193,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -6386,7 +6222,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_1, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -6444,10 +6279,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -6485,7 +6319,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 5000000000000000000 << 64,  // total_volume
@@ -6539,7 +6372,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_1, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -6596,10 +6428,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -6637,7 +6468,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -6681,7 +6511,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_1, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -6721,7 +6550,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // adding reward to tranche 1
         scenario.next_tx(admin);
         {
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
@@ -6733,7 +6561,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             let reward1 = sui::coin::mint_for_testing<SailCoinType>(10000000, scenario.ctx());
             pool_tranche::set_total_incomed_and_add_reward<SailCoinType>(
-                &tranche_admin_cap,
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
@@ -6743,7 +6570,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 scenario.ctx()
             );
 
-            transfer::public_transfer(tranche_admin_cap, admin);
             test_scenario::return_shared(tranche_manager);
             transfer::public_transfer(pool, admin);
         };
@@ -6770,7 +6596,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
         scenario.next_tx(admin);
         {
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
@@ -6782,7 +6607,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             let reward2 = sui::coin::mint_for_testing<RewardCoinType2>(10000000, scenario.ctx());
             pool_tranche::set_total_incomed_and_add_reward<RewardCoinType2>(
-                &tranche_admin_cap,
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
@@ -6792,7 +6616,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 scenario.ctx()
             );
 
-            transfer::public_transfer(tranche_admin_cap, admin);
             test_scenario::return_shared(tranche_manager);
             transfer::public_transfer(pool, admin);
         };
@@ -6801,9 +6624,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -6853,7 +6675,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_1, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -6912,10 +6733,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -6953,7 +6773,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -6997,7 +6816,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_1, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -7018,9 +6836,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -7034,20 +6851,20 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut locked_position_1 = scenario.take_from_sender<liquidity_lock_v2::LockedPosition<TestCoinB, TestCoinA>>();
 
-            liquidity_lock_v2::locker_pause(&admin_cap, &mut locker, true);
+            liquidity_lock_v2::locker_pause(&mut locker, true, scenario.ctx());
 
-            let staked_position = liquidity_lock_v2::unlock_position<TestCoinB, TestCoinA>(
+            let (staked_position, coin_a, coin_b) = liquidity_lock_v2::unlock_position<TestCoinB, TestCoinA>(
                 &mut locker,
                 locked_position_1,
                 &mut gauge,
-                &clock,
-                scenario.ctx()
+                &clock
             );
 
             transfer::public_transfer(staked_position, admin);
+            transfer::public_transfer(sui::coin::from_balance(coin_a, scenario.ctx()), admin);
+            transfer::public_transfer(sui::coin::from_balance(coin_b, scenario.ctx()), admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -7106,10 +6923,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -7147,7 +6963,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -7191,7 +7006,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_1, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -7212,9 +7026,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -7228,18 +7041,18 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut locked_position_1 = scenario.take_from_sender<liquidity_lock_v2::LockedPosition<TestCoinB, TestCoinA>>();
 
-            let staked_position = liquidity_lock_v2::unlock_position<TestCoinB, TestCoinA>(
+            let (staked_position, coin_a, coin_b) = liquidity_lock_v2::unlock_position<TestCoinB, TestCoinA>(
                 &mut locker,
                 locked_position_1,
                 &mut gauge,
-                &clock,
-                scenario.ctx()
+                &clock
             );
 
             transfer::public_transfer(staked_position, admin);
+            transfer::public_transfer(sui::coin::from_balance(coin_a, scenario.ctx()), admin);
+            transfer::public_transfer(sui::coin::from_balance(coin_b, scenario.ctx()), admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -7298,10 +7111,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -7339,7 +7151,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -7383,7 +7194,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_1, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -7404,9 +7214,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -7422,18 +7231,18 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             clock::increment_for_testing(&mut clock, common::epoch_to_seconds(4)*1000);
 
-            let staked_position = liquidity_lock_v2::unlock_position<TestCoinB, TestCoinA>(
+            let (staked_position, coin_a, coin_b) = liquidity_lock_v2::unlock_position<TestCoinB, TestCoinA>(
                 &mut locker,
                 locked_position_1,
                 &mut gauge,
-                &clock,
-                scenario.ctx()
+                &clock
             );
 
             transfer::public_transfer(staked_position, admin);
+            transfer::public_transfer(sui::coin::from_balance(coin_a, scenario.ctx()), admin);
+            transfer::public_transfer(sui::coin::from_balance(coin_b, scenario.ctx()), admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -7492,10 +7301,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -7533,7 +7341,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -7577,7 +7384,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_1, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -7598,9 +7404,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -7614,7 +7419,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let locked_position_1 = scenario.take_from_sender<liquidity_lock_v2::LockedPosition<TestCoinB, TestCoinA>>();
 
-            liquidity_lock_v2::locker_pause(&admin_cap, &mut locker, true);
+            liquidity_lock_v2::locker_pause(&mut locker, true, scenario.ctx());
 
             let (remove_balance_a, remove_balance_b) = liquidity_lock_v2::remove_lock_liquidity<TestCoinB, TestCoinA, OSAIL1>(
                 &global_config,
@@ -7631,7 +7436,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -7690,10 +7494,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -7731,7 +7534,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -7775,7 +7577,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_1, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -7796,9 +7597,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -7827,7 +7627,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -7886,10 +7685,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -7927,7 +7725,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -7971,7 +7768,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_1, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -7992,9 +7788,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -8042,7 +7837,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(pool_2, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -8102,10 +7896,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -8143,7 +7936,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 4320664223000003333 << 64,  // total_volume
@@ -8157,7 +7949,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -8212,7 +8003,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_2, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -8252,7 +8042,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // adding reward to tranche 1
         scenario.next_tx(admin);
         {
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
@@ -8264,7 +8053,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             let reward1 = sui::coin::mint_for_testing<SailCoinType>(10000000, scenario.ctx());
             pool_tranche::set_total_incomed_and_add_reward<SailCoinType>(
-                &tranche_admin_cap,
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
@@ -8274,7 +8062,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 scenario.ctx()
             );
 
-            transfer::public_transfer(tranche_admin_cap, admin);
             test_scenario::return_shared(tranche_manager);
             transfer::public_transfer(pool, admin);
         };
@@ -8301,7 +8088,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
         scenario.next_tx(admin);
         {
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
@@ -8313,7 +8099,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             let reward2 = sui::coin::mint_for_testing<RewardCoinType2>(10000000, scenario.ctx());
             pool_tranche::set_total_incomed_and_add_reward<RewardCoinType2>(
-                &tranche_admin_cap,
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
@@ -8323,7 +8108,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 scenario.ctx()
             );
 
-            transfer::public_transfer(tranche_admin_cap, admin);
             test_scenario::return_shared(tranche_manager);
             transfer::public_transfer(pool, admin);
         };
@@ -8350,7 +8134,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
         scenario.next_tx(admin);
         {
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
@@ -8362,7 +8145,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             let reward3 = sui::coin::mint_for_testing<RewardCoinType3>(10000000, scenario.ctx());
             pool_tranche::set_total_incomed_and_add_reward<RewardCoinType3>(
-                &tranche_admin_cap,
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
@@ -8372,7 +8154,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 scenario.ctx()
             );
 
-            transfer::public_transfer(tranche_admin_cap, admin);
             test_scenario::return_shared(tranche_manager);
             transfer::public_transfer(pool, admin);
         };
@@ -8381,9 +8162,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -8438,7 +8218,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_1, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -8497,10 +8276,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -8538,7 +8316,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 4320664223000003333 << 64,  // total_volume
@@ -8552,7 +8329,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -8607,7 +8383,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_2, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -8647,7 +8422,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // adding reward to tranche 1
         scenario.next_tx(admin);
         {
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
@@ -8659,7 +8433,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             let reward1 = sui::coin::mint_for_testing<SailCoinType>(10000000, scenario.ctx());
             pool_tranche::set_total_incomed_and_add_reward<SailCoinType>(
-                &tranche_admin_cap,
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
@@ -8669,7 +8442,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 scenario.ctx()
             );
 
-            transfer::public_transfer(tranche_admin_cap, admin);
             test_scenario::return_shared(tranche_manager);
             transfer::public_transfer(pool, admin);
         };
@@ -8696,7 +8468,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
         scenario.next_tx(admin);
         {
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
@@ -8708,7 +8479,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             let reward2 = sui::coin::mint_for_testing<RewardCoinType2>(10000000, scenario.ctx());
             pool_tranche::set_total_incomed_and_add_reward<RewardCoinType2>(
-                &tranche_admin_cap,
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
@@ -8718,7 +8488,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 scenario.ctx()
             );
 
-            transfer::public_transfer(tranche_admin_cap, admin);
             test_scenario::return_shared(tranche_manager);
             transfer::public_transfer(pool, admin);
         };
@@ -8745,7 +8514,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
         scenario.next_tx(admin);
         {
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
@@ -8757,7 +8525,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             let reward3 = sui::coin::mint_for_testing<RewardCoinType3>(10000000, scenario.ctx());
             pool_tranche::set_total_incomed_and_add_reward<RewardCoinType3>(
-                &tranche_admin_cap,
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
@@ -8767,7 +8534,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 scenario.ctx()
             );
 
-            transfer::public_transfer(tranche_admin_cap, admin);
             test_scenario::return_shared(tranche_manager);
             transfer::public_transfer(pool, admin);
         };
@@ -8776,9 +8542,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -8842,7 +8607,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_1, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -8899,10 +8663,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -8939,7 +8702,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -9029,7 +8791,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position, admin);
             transfer::public_transfer(position_admin, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -9086,10 +8847,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -9126,7 +8886,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -9214,7 +8973,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position, admin);
             transfer::public_transfer(position_admin, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -9271,10 +9029,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -9311,7 +9068,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -9401,7 +9157,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position, admin);
             transfer::public_transfer(position_admin, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -9501,10 +9256,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -9541,7 +9295,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -9643,7 +9396,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(position_admin, admin);
             transfer::public_transfer(position_admin_2, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -9743,10 +9495,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -9783,7 +9534,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -9882,7 +9632,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position, admin);
             transfer::public_transfer(position_admin, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -9942,10 +9691,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -9983,7 +9731,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -10053,7 +9800,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(position_admin2, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -10095,9 +9841,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -10127,7 +9872,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -10149,10 +9893,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -10193,7 +9936,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -10232,7 +9974,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Add reward to the SECOND epoch
         scenario.next_tx(admin);
         {
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
@@ -10244,7 +9985,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             let reward2 = sui::coin::mint_for_testing<SailCoinType>(10000000, scenario.ctx());
             pool_tranche::set_total_incomed_and_add_reward<SailCoinType>(
-                &tranche_admin_cap,
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
@@ -10254,7 +9994,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 scenario.ctx()
             );
 
-            transfer::public_transfer(tranche_admin_cap, admin);
             test_scenario::return_shared(tranche_manager);
             transfer::public_transfer(pool, admin);
         };
@@ -10264,9 +10003,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -10295,7 +10033,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -10330,10 +10067,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -10374,7 +10110,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -10413,7 +10148,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Add reward to the THIRD epoch
         scenario.next_tx(admin);
         {
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
@@ -10425,7 +10159,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             let reward3 = sui::coin::mint_for_testing<RewardCoinType2>(10000000, scenario.ctx());
             pool_tranche::set_total_incomed_and_add_reward<RewardCoinType2>(
-                &tranche_admin_cap,
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
@@ -10435,7 +10168,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 scenario.ctx()
             );
 
-            transfer::public_transfer(tranche_admin_cap, admin);
             test_scenario::return_shared(tranche_manager);
             transfer::public_transfer(pool, admin);
         };
@@ -10445,9 +10177,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -10475,7 +10206,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -10533,10 +10263,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -10573,7 +10302,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -10616,7 +10344,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             clock::increment_for_testing(&mut clock, 3600*5*24*1000);
 
-            liquidity_lock_v2::locker_pause(&admin_cap, &mut locker, true);
+            liquidity_lock_v2::locker_pause(&mut locker, true, scenario.ctx());
 
             liquidity_lock_v2::change_tick_range<TestCoinB, TestCoinA, OSAIL1>(
                 &global_config,
@@ -10637,7 +10365,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(locked_position, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -10695,10 +10422,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -10738,7 +10464,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -10814,7 +10539,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(pool_2, admin);
             transfer::public_transfer(locked_position, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -10873,10 +10597,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -10913,7 +10636,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -10975,7 +10697,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(locked_position, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -11033,10 +10754,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -11073,7 +10793,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -11135,7 +10854,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(locked_position, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -11193,10 +10911,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -11233,7 +10950,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -11295,7 +11011,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(locked_position, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -11354,10 +11069,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         scenario.next_tx(admin);
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -11389,7 +11103,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -11471,7 +11184,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(position_admin3, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge, admin);
             test_scenario::return_shared(tranche_manager);
@@ -12000,7 +11712,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Add reward to the SECOND epoch
         scenario.next_tx(admin);
         {
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
@@ -12012,7 +11723,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             let reward2 = sui::coin::mint_for_testing<SailCoinType>(10000000, scenario.ctx());
             pool_tranche::set_total_incomed_and_add_reward<SailCoinType>(
-                &tranche_admin_cap,
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
@@ -12022,7 +11732,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 scenario.ctx()
             );
 
-            transfer::public_transfer(tranche_admin_cap, admin);
             test_scenario::return_shared(tranche_manager);
             transfer::public_transfer(pool, admin);
         };
@@ -12095,7 +11804,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let lock2 = scenario.take_from_sender<voting_escrow::Lock>();
             let lock1 = scenario.take_from_sender<voting_escrow::Lock>();
 
-            assert!(lock1.get_amount() + lock2.get_amount() + lock3.get_amount() == 649997, 9262236263635); // reward was not accrued for 3.5 epochs (position was outside current price)
+            assert!(lock1.get_amount() + lock2.get_amount() + lock3.get_amount() == 649998, 9262236263635); // reward was not accrued for 3.5 epochs (position was outside current price)
 
             transfer::public_transfer(lock1, admin);
             transfer::public_transfer(lock2, admin);
@@ -12150,10 +11859,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -12191,7 +11899,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -12273,7 +11980,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(position_admin3, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -12315,9 +12021,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -12347,7 +12052,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -12369,10 +12073,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -12413,7 +12116,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -12435,10 +12137,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -12470,7 +12171,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -12492,10 +12192,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -12527,7 +12226,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -12551,10 +12249,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -12587,7 +12284,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_2, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -12610,10 +12306,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -12648,7 +12343,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_22, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -12671,10 +12365,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -12709,7 +12402,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_32, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -12751,7 +12443,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Add reward to the SECOND epoch
         scenario.next_tx(admin);
         {
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
@@ -12763,7 +12454,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             let reward2 = sui::coin::mint_for_testing<SailCoinType>(10000000, scenario.ctx());
             pool_tranche::set_total_incomed_and_add_reward<SailCoinType>(
-                &tranche_admin_cap,
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
@@ -12773,7 +12463,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 scenario.ctx()
             );
 
-            transfer::public_transfer(tranche_admin_cap, admin);
             test_scenario::return_shared(tranche_manager);
             transfer::public_transfer(pool, admin);
         };
@@ -12783,9 +12472,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -12858,7 +12546,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position4, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -12941,10 +12628,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -12982,7 +12668,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &mut scenario,
                 &mut tranche_manager,
-                &tranche_admin_cap,
                 &pool,
                 true,
                 9000000000000000000 << 64,  // total_volume
@@ -13064,7 +12749,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(position_admin3, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -13109,9 +12793,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -13150,7 +12833,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -13174,10 +12856,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -13228,7 +12909,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_2, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -13270,7 +12950,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Add reward to the SECOND epoch
         scenario.next_tx(admin);
         {
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
@@ -13282,7 +12961,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             let reward2 = sui::coin::mint_for_testing<SailCoinType>(10000000, scenario.ctx());
             pool_tranche::set_total_incomed_and_add_reward<SailCoinType>(
-                &tranche_admin_cap,
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
@@ -13292,7 +12970,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 scenario.ctx()
             );
 
-            transfer::public_transfer(tranche_admin_cap, admin);
             test_scenario::return_shared(tranche_manager);
             transfer::public_transfer(pool, admin);
         };
@@ -13302,9 +12979,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::AdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
-            let tranche_admin_cap = scenario.take_from_sender<pool_tranche::AdminCap>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -13377,7 +13053,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             // transfer::public_transfer(locked_position4, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
-            transfer::public_transfer(tranche_admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
             transfer::public_transfer(gauge_create_cap, admin);
             transfer::public_transfer(gauge, admin);
@@ -13422,7 +13097,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
     fun create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType>(
         scenario: &mut test_scenario::Scenario,
         tranche_manager: &mut pool_tranche::PoolTrancheManager,
-        tranche_admin_cap: &pool_tranche::AdminCap,
         pool: &pool::Pool<TestCoinB, TestCoinA>,
         volume_in_coin_a: bool,
         total_volume: u128, // Q64.64
@@ -13434,13 +13108,12 @@ module liquidity_locker::liquidity_lock_v2_tests {
     ) {
             // set ignore_whitelist to true
             pool_tranche::set_ignore_whitelist(
-                tranche_admin_cap,
                 tranche_manager,
-                true
+                true,
+                scenario.ctx()
             );
 
             pool_tranche::new(
-                tranche_admin_cap,
                 tranche_manager,
                 pool,
                 volume_in_coin_a,
@@ -13459,7 +13132,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward = sui::coin::mint_for_testing<RewardCoinType>(reward_value, scenario.ctx());
 
             pool_tranche::set_total_incomed_and_add_reward<RewardCoinType>(
-                tranche_admin_cap,
                 tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(pool),
                 tranche_id,
@@ -13978,4 +13650,208 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
         distributed_amount
     }
+
+    #[test]
+    fun test_admins() {
+        let admin = @0x1;
+        let admin2 = @0x5;
+        let mut scenario = test_scenario::begin(admin);
+        let clock = clock::create_for_testing(scenario.ctx());
+        
+        // Initialize
+        {
+            liquidity_lock_v2::test_init(scenario.ctx());
+            pool_tranche::test_init(scenario.ctx());
+            locker_cap::init_test(scenario.ctx());
+            config::test_init(scenario.ctx());
+            factory::test_init(scenario.ctx());
+            stats::init_test(scenario.ctx());
+            price_provider::init_test(scenario.ctx());
+            rewarder::test_init(scenario.ctx());
+        };
+
+        scenario.next_tx(admin);
+        {
+            let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
+            let global_config = scenario.take_shared<config::GlobalConfig>();
+
+            let mut periods_blocking = std::vector::empty();
+            std::vector::push_back(&mut periods_blocking, 4);
+            std::vector::push_back(&mut periods_blocking, 5);
+            std::vector::push_back(&mut periods_blocking, 6);
+            let mut periods_post_lockdown = std::vector::empty();
+            std::vector::push_back(&mut periods_post_lockdown, 1);
+            std::vector::push_back(&mut periods_post_lockdown, 2);
+            std::vector::push_back(&mut periods_post_lockdown, 3);
+            liquidity_lock_v2::init_locker(
+                &admin_cap,
+                &locker_create_cap,
+                &mut locker,
+                periods_blocking,
+                periods_post_lockdown,
+                scenario.ctx()
+            );
+
+            liquidity_lock_v2::add_admin(
+                &admin_cap,
+                &mut locker,
+                admin2,
+                scenario.ctx()
+            );
+
+            liquidity_lock_v2::check_admin(&locker, admin2);
+
+            liquidity_lock_v2::revoke_admin(
+                &admin_cap,
+                &mut locker,
+                admin2,
+                scenario.ctx()
+            );
+
+            transfer::public_transfer(admin_cap, admin);
+            transfer::public_transfer(locker_create_cap, admin);
+            test_scenario::return_shared(global_config);
+            test_scenario::return_shared(locker);
+        };
+
+        clock::destroy_for_testing(clock);
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = liquidity_lock_v2::EAddressNotAdmin)]
+    fun test_revoke_not_admin() {
+        let admin = @0x1;
+        let admin2 = @0x5;
+        let mut scenario = test_scenario::begin(admin);
+        let clock = clock::create_for_testing(scenario.ctx());
+        
+        // Initialize
+        {
+            liquidity_lock_v2::test_init(scenario.ctx());
+            pool_tranche::test_init(scenario.ctx());
+            locker_cap::init_test(scenario.ctx());
+            config::test_init(scenario.ctx());
+            factory::test_init(scenario.ctx());
+            stats::init_test(scenario.ctx());
+            price_provider::init_test(scenario.ctx());
+            rewarder::test_init(scenario.ctx());
+        };
+
+        scenario.next_tx(admin);
+        {
+            let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
+            let global_config = scenario.take_shared<config::GlobalConfig>();
+
+            let mut periods_blocking = std::vector::empty();
+            std::vector::push_back(&mut periods_blocking, 4);
+            std::vector::push_back(&mut periods_blocking, 5);
+            std::vector::push_back(&mut periods_blocking, 6);
+            let mut periods_post_lockdown = std::vector::empty();
+            std::vector::push_back(&mut periods_post_lockdown, 1);
+            std::vector::push_back(&mut periods_post_lockdown, 2);
+            std::vector::push_back(&mut periods_post_lockdown, 3);
+            liquidity_lock_v2::init_locker(
+                &admin_cap,
+                &locker_create_cap,
+                &mut locker,
+                periods_blocking,
+                periods_post_lockdown,
+                scenario.ctx()
+            );
+
+            liquidity_lock_v2::revoke_admin(
+                &admin_cap,
+                &mut locker,
+                admin2,
+                scenario.ctx()
+            );
+
+            transfer::public_transfer(admin_cap, admin);
+            transfer::public_transfer(locker_create_cap, admin);
+            test_scenario::return_shared(global_config);
+            test_scenario::return_shared(locker);
+        };
+
+        clock::destroy_for_testing(clock);
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = liquidity_lock_v2::EAdminNotWhitelisted)]
+    fun test_not_admin_locker_pause() {
+        let admin = @0x1;
+        let admin2 = @0x5;
+        let mut scenario = test_scenario::begin(admin);
+        let clock = clock::create_for_testing(scenario.ctx());
+        
+        // Initialize
+        {
+            liquidity_lock_v2::test_init(scenario.ctx());
+            pool_tranche::test_init(scenario.ctx());
+            locker_cap::init_test(scenario.ctx());
+            config::test_init(scenario.ctx());
+            factory::test_init(scenario.ctx());
+            stats::init_test(scenario.ctx());
+            price_provider::init_test(scenario.ctx());
+            rewarder::test_init(scenario.ctx());
+        };
+
+        scenario.next_tx(admin);
+        {
+            let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
+            let global_config = scenario.take_shared<config::GlobalConfig>();
+
+            let mut periods_blocking = std::vector::empty();
+            std::vector::push_back(&mut periods_blocking, 4);
+            std::vector::push_back(&mut periods_blocking, 5);
+            std::vector::push_back(&mut periods_blocking, 6);
+            let mut periods_post_lockdown = std::vector::empty();
+            std::vector::push_back(&mut periods_post_lockdown, 1);
+            std::vector::push_back(&mut periods_post_lockdown, 2);
+            std::vector::push_back(&mut periods_post_lockdown, 3);
+            liquidity_lock_v2::init_locker(
+                &admin_cap,
+                &locker_create_cap,
+                &mut locker,
+                periods_blocking,
+                periods_post_lockdown,
+                scenario.ctx()
+            );
+
+            liquidity_lock_v2::locker_pause(
+                &mut locker,
+                true,
+                scenario.ctx()
+            );
+
+            transfer::public_transfer(admin_cap, admin);
+            transfer::public_transfer(locker_create_cap, admin);
+            test_scenario::return_shared(global_config);
+            test_scenario::return_shared(locker);
+        };
+
+        scenario.next_tx(admin2);
+        {
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
+
+            liquidity_lock_v2::locker_pause(
+                &mut locker,
+                true,
+                scenario.ctx()
+            );
+
+            test_scenario::return_shared(locker);
+        };
+
+        clock::destroy_for_testing(clock);
+        test_scenario::end(scenario);
+    }
+
 }
