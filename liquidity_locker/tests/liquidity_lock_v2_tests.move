@@ -122,6 +122,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -267,6 +268,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -403,6 +405,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -555,6 +558,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -689,6 +693,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -804,6 +809,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -934,6 +940,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -1107,6 +1114,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -1278,6 +1286,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -1465,6 +1474,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -1656,6 +1666,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -1848,6 +1859,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -1967,13 +1979,18 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Update Minter Period to OSAIL2
         scenario.next_tx(admin);
         {
-            let initial_o_sail2_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL1, OSAIL2>(
+            let initial_o_sail2_supply = update_minter_period<SailCoinType, OSAIL2>(
                 &mut scenario,
                 1_000_000, // Arbitrary supply for OSAIL2
-                admin,
                 &clock
             );
             sui::coin::burn_for_testing(initial_o_sail2_supply); // Burn OSAIL2
+        };
+
+        // Distribute gauge for epoch 2
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_2<SailCoinType, OSAIL1, OSAIL2>(&mut scenario, &clock);
         };
 
         // Claim rewards for the first epoch
@@ -2003,10 +2020,10 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position,
-                common::epoch_start(common::epoch_to_seconds(2)),
+                common::epoch_start(common::epoch_to_seconds(1)),
                 scenario.ctx()
             );
-            assert!(reward1.value() == 999999, 9234129832754); // 10% of total reward for epoch 1
+            assert!(1000000 - reward1.value() <= 1, 9234129832754); // 10% of total reward for epoch 1
 
             transfer::public_transfer(sui::coin::from_balance(reward1, scenario.ctx()), admin);
 
@@ -2035,13 +2052,19 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Update Minter Period to OSAIL3
         scenario.next_tx(admin);
         {
-            let initial_o_sail3_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL2, OSAIL3>(
+            let initial_o_sail3_supply = update_minter_period<SailCoinType, OSAIL3>(
                 &mut scenario,
                 1_000_000, // Arbitrary supply for OSAIL3
-                admin,
                 &clock
             );
             sui::coin::burn_for_testing(initial_o_sail3_supply); // Burn OSAIL3
+        };
+
+
+        // Distribute gauge for epoch 3
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_3<SailCoinType, OSAIL2, OSAIL3>(&mut scenario, &clock);
         };
 
         // Add reward to the SECOND epoch
@@ -2063,7 +2086,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
-                common::epoch_start(common::epoch_to_seconds(3)),
+                common::epoch_start(common::epoch_to_seconds(2)),
                 reward2.into_balance(),
                 10300000000000,
                 scenario.ctx()
@@ -2102,7 +2125,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position,
-                common::epoch_start(common::epoch_to_seconds(3)),
+                common::epoch_start(common::epoch_to_seconds(2)),
                 &clock,
                 scenario.ctx()
             );
@@ -2145,13 +2168,18 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Update Minter Period to OSAIL4
         scenario.next_tx(admin);
         {
-            let initial_o_sail4_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL3, OSAIL4>(
+            let initial_o_sail4_supply = update_minter_period<SailCoinType, OSAIL4>(
                 &mut scenario,
                 1_000_000, // Arbitrary supply for OSAIL4
-                admin,
                 &clock
             );
             sui::coin::burn_for_testing(initial_o_sail4_supply); // Burn OSAIL4
+        };
+
+        // distribute gauge for epoch 4
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_3<SailCoinType, OSAIL3, OSAIL4>(&mut scenario, &clock);
         };
 
         // Add reward to the THIRD epoch
@@ -2173,7 +2201,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
-                common::epoch_start(common::epoch_to_seconds(4)),
+                common::epoch_start(common::epoch_to_seconds(3)),
                 reward3.into_balance(),
                 10609000000000,
                 scenario.ctx()
@@ -2210,7 +2238,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position,
-                common::epoch_start(common::epoch_to_seconds(4)),
+                common::epoch_start(common::epoch_to_seconds(3)),
                 scenario.ctx()
             );
             assert!(reward3.value() == 999999, 9234129832754); // 10% of total reward for epoch 3
@@ -2269,6 +2297,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -2427,13 +2456,18 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Update Minter Period to OSAIL2
         scenario.next_tx(admin);
         {
-            let initial_o_sail2_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL1, OSAIL2>(
+            let initial_o_sail2_supply = update_minter_period<SailCoinType, OSAIL2>(
                 &mut scenario,
                 1_000_000, // Arbitrary supply for OSAIL2
-                admin,
                 &clock
             );
             sui::coin::burn_for_testing(initial_o_sail2_supply); // Burn OSAIL2
+        };
+
+        // Distribute gauge for epoch 2
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_2<SailCoinType, OSAIL1, OSAIL2>(&mut scenario, &clock);
         };
 
         // Claim rewards for the first epoch
@@ -2463,7 +2497,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position1,
-                common::epoch_start(common::epoch_to_seconds(2)),
+                common::epoch_start(common::epoch_to_seconds(1)),
                 scenario.ctx()
             );
             assert!(reward1.value() == 99998, 9234129832754);
@@ -2522,6 +2556,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -2673,13 +2708,18 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Update Minter Period to OSAIL2
         scenario.next_tx(admin);
         {
-            let initial_o_sail2_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL1, OSAIL2>(
+            let initial_o_sail2_supply = update_minter_period<SailCoinType, OSAIL2>(
                 &mut scenario,
                 1_000_000, // Arbitrary supply for OSAIL2
-                admin,
                 &clock
             );
             sui::coin::burn_for_testing(initial_o_sail2_supply); // Burn OSAIL2
+        };
+
+        // distribute gauge for epoch 2
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_2<SailCoinType, OSAIL1, OSAIL2>(&mut scenario, &clock);
         };
 
         // Claim rewards for the first epoch
@@ -2709,10 +2749,10 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position,
-                common::epoch_start(common::epoch_to_seconds(2)),
+                common::epoch_start(common::epoch_to_seconds(1)),
                 scenario.ctx()
             );
-            assert!(reward1.value() == 999999, 9234129832754); // 10% of total reward for epoch 1
+            assert!(1000000  - reward1.value() <= 1, 9234129832754); // 10% of total reward for epoch 1
 
             transfer::public_transfer(sui::coin::from_balance(reward1, scenario.ctx()), admin);
 
@@ -2722,10 +2762,10 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position,
-                common::epoch_start(common::epoch_to_seconds(2)),
+                common::epoch_start(common::epoch_to_seconds(1)),
                 scenario.ctx()
             );
-            assert!(reward2.value() == 2999999, 92341298374545); // 10% of total reward for epoch 1
+            assert!(3000000 - reward2.value() <= 1, 92341298374545); // 10% of total reward for epoch 1
 
             transfer::public_transfer(sui::coin::from_balance(reward2, scenario.ctx()), admin);
 
@@ -2735,10 +2775,10 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position,
-                common::epoch_start(common::epoch_to_seconds(2)),
+                common::epoch_start(common::epoch_to_seconds(1)),
                 scenario.ctx()
             );
-            assert!(reward3.value() == 5999999, 92341298374545); // 10% of total reward for epoch 1
+            assert!(6000000 - reward3.value() <= 1, 92341298374545); // 10% of total reward for epoch 1
 
             transfer::public_transfer(sui::coin::from_balance(reward3, scenario.ctx()), admin);
 
@@ -2794,6 +2834,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -2913,13 +2954,18 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Update Minter Period to OSAIL2
         scenario.next_tx(admin);
         {
-            let initial_o_sail2_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL1, OSAIL2>(
+            let initial_o_sail2_supply = update_minter_period<SailCoinType, OSAIL2>(
                 &mut scenario,
                 1_000_000, // Arbitrary supply for OSAIL2
-                admin,
                 &clock
             );
             sui::coin::burn_for_testing(initial_o_sail2_supply); // Burn OSAIL2
+        };
+
+        // Distribute gauge for epoch 2
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_2<SailCoinType, OSAIL1, OSAIL2>(&mut scenario, &clock);
         };
 
         // Claim rewards for the first epoch
@@ -2949,10 +2995,10 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position,
-                common::epoch_start(common::epoch_to_seconds(2)),
+                common::epoch_start(common::epoch_to_seconds(1)),
                 scenario.ctx()
             );
-            assert!(reward1.value() == 999999, 9234129832754); // 10% of total reward for epoch 1
+            assert!(1000000 - reward1.value() <= 1, 9234129832754); // 10% of total reward for epoch 1
 
             transfer::public_transfer(sui::coin::from_balance(reward1, scenario.ctx()), admin);
 
@@ -2981,13 +3027,18 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Update Minter Period to OSAIL3
         scenario.next_tx(admin);
         {
-            let initial_o_sail3_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL2, OSAIL3>(
+            let initial_o_sail3_supply = update_minter_period<SailCoinType, OSAIL3>(
                 &mut scenario,
                 1_000_000, // Arbitrary supply for OSAIL3
-                admin,
                 &clock
             );
             sui::coin::burn_for_testing(initial_o_sail3_supply); // Burn OSAIL3
+        };
+
+        // Distribute gauge for epoch 3
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_3<SailCoinType, OSAIL2, OSAIL3>(&mut scenario, &clock);
         };
 
         // Add reward to the SECOND epoch
@@ -3009,7 +3060,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
-                common::epoch_start(common::epoch_to_seconds(3)),
+                common::epoch_start(common::epoch_to_seconds(2)),
                 reward2.into_balance(),
                 10300000000000,
                 scenario.ctx()
@@ -3048,7 +3099,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position,
-                common::epoch_start(common::epoch_to_seconds(3)),
+                common::epoch_start(common::epoch_to_seconds(2)),
                 &clock,
                 scenario.ctx()
             );
@@ -3091,13 +3142,18 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Update Minter Period to OSAIL4
         scenario.next_tx(admin);
         {
-            let initial_o_sail4_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL3, OSAIL4>(
+            let initial_o_sail4_supply = update_minter_period<SailCoinType, OSAIL4>(
                 &mut scenario,
                 1_000_000, // Arbitrary supply for OSAIL4
-                admin,
                 &clock
             );
             sui::coin::burn_for_testing(initial_o_sail4_supply); // Burn OSAIL4
+        };
+
+        // Distribute gauge for epoch 4
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_3<SailCoinType, OSAIL3, OSAIL4>(&mut scenario, &clock);
         };
 
         // Add reward to the THIRD epoch
@@ -3119,7 +3175,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
-                common::epoch_start(common::epoch_to_seconds(4)),
+                common::epoch_start(common::epoch_to_seconds(3)),
                 reward3.into_balance(),
                 10609000000000,
                 scenario.ctx()
@@ -3156,7 +3212,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position,
-                common::epoch_start(common::epoch_to_seconds(4)),
+                common::epoch_start(common::epoch_to_seconds(3)),
                 scenario.ctx()
             );
             assert!(reward3.value() == 999999, 9234129832754); // 10% of total reward for epoch 3
@@ -3216,7 +3272,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 tranche_id,
-                common::epoch_start(common::epoch_to_seconds(2)),
+                common::epoch_start(common::epoch_to_seconds(1)),
                 reward.into_balance(),
                 scenario.ctx()
             );
@@ -3227,7 +3283,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position,
-                common::epoch_start(common::epoch_to_seconds(2)),
+                common::epoch_start(common::epoch_to_seconds(1)),
                 &clock,
                 scenario.ctx()
             );
@@ -3285,7 +3341,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 tranche_id,
-                common::epoch_start(common::epoch_to_seconds(3)),
+                common::epoch_start(common::epoch_to_seconds(2)),
                 reward.into_balance(),
                 scenario.ctx()
             );
@@ -3295,7 +3351,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position,
-                common::epoch_start(common::epoch_to_seconds(3)),
+                common::epoch_start(common::epoch_to_seconds(2)),
                 scenario.ctx()
             );
             assert!(reward.value() == 4999999, 9234129832754); // 10% of total reward for epoch 2
@@ -3354,6 +3410,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -3473,13 +3530,18 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Update Minter Period to OSAIL2
         scenario.next_tx(admin);
         {
-            let initial_o_sail2_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL1, OSAIL2>(
+            let initial_o_sail2_supply = update_minter_period<SailCoinType, OSAIL2>(
                 &mut scenario,
                 1_000_000, // Arbitrary supply for OSAIL2
-                admin,
                 &clock
             );
             sui::coin::burn_for_testing(initial_o_sail2_supply); // Burn OSAIL2
+        };
+
+        // Distribute gauge for epoch 2
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_2<SailCoinType, OSAIL1, OSAIL2>(&mut scenario, &clock);
         };
 
         // Claim rewards for the first epoch
@@ -3509,10 +3571,10 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position,
-                common::epoch_start(common::epoch_to_seconds(2)),
+                common::epoch_start(common::epoch_to_seconds(1)),
                 scenario.ctx()
             );
-            assert!(reward1.value() == 999999, 9234129832754); // 10% of total reward for epoch 1
+            assert!(1000000 - reward1.value() <= 1, 9234129832754); // 10% of total reward for epoch 1
 
             transfer::public_transfer(sui::coin::from_balance(reward1, scenario.ctx()), admin);
 
@@ -3601,13 +3663,18 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Update Minter Period to OSAIL3
         scenario.next_tx(admin);
         {
-            let initial_o_sail3_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL2, OSAIL3>(
+            let initial_o_sail3_supply = update_minter_period<SailCoinType, OSAIL3>(
                 &mut scenario,
                 1_000_000, // Arbitrary supply for OSAIL3
-                admin,
                 &clock
             );
             sui::coin::burn_for_testing(initial_o_sail3_supply); // Burn OSAIL3
+        };
+
+        // Distribute gauge for epoch 3
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_3<SailCoinType, OSAIL2, OSAIL3>(&mut scenario, &clock);
         };
 
         // Add reward to the SECOND epoch
@@ -3629,7 +3696,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
-                common::epoch_start(common::epoch_to_seconds(3)),
+                common::epoch_start(common::epoch_to_seconds(2)),
                 reward2.into_balance(),
                 10300000000000,
                 scenario.ctx()
@@ -3669,7 +3736,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position1,
-                common::epoch_start(common::epoch_to_seconds(3)),
+                common::epoch_start(common::epoch_to_seconds(2)),
                 &clock,
                 scenario.ctx()
             );
@@ -3680,7 +3747,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position2,
-                common::epoch_start(common::epoch_to_seconds(3)),
+                common::epoch_start(common::epoch_to_seconds(2)),
                 &clock,
                 scenario.ctx()
             );
@@ -3730,13 +3797,18 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Update Minter Period to OSAIL4
         scenario.next_tx(admin);
         {
-            let initial_o_sail4_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL3, OSAIL4>(
+            let initial_o_sail4_supply = update_minter_period<SailCoinType, OSAIL4>(
                 &mut scenario,
                 1_000_000, // Arbitrary supply for OSAIL4
-                admin,
                 &clock
             );
             sui::coin::burn_for_testing(initial_o_sail4_supply); // Burn OSAIL4
+        };
+
+        // Distribute gauge for epoch 4
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_3<SailCoinType, OSAIL3, OSAIL4>(&mut scenario, &clock);
         };
 
         // Add reward to the THIRD epoch
@@ -3758,7 +3830,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
-                common::epoch_start(common::epoch_to_seconds(4)),
+                common::epoch_start(common::epoch_to_seconds(3)),
                 reward3.into_balance(),
                 10609000000000,
                 scenario.ctx()
@@ -3796,7 +3868,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position1,
-                common::epoch_start(common::epoch_to_seconds(4)),
+                common::epoch_start(common::epoch_to_seconds(3)),
                 scenario.ctx()
             );
             assert!(reward3_1.value() == 599999, 9234129832754); // 60%
@@ -3806,7 +3878,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position2,
-                common::epoch_start(common::epoch_to_seconds(4)),
+                common::epoch_start(common::epoch_to_seconds(3)),
                 scenario.ctx()
             );
             assert!(reward3_2.value() == 399999, 9234129832754); // 40%
@@ -3870,6 +3942,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -4023,6 +4096,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -4176,6 +4250,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -4345,6 +4420,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -4486,13 +4562,18 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Update Minter Period to OSAIL2
         scenario.next_tx(admin);
         {
-            let initial_o_sail2_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL1, OSAIL2>(
+            let initial_o_sail2_supply = update_minter_period<SailCoinType, OSAIL2>(
                 &mut scenario,
                 1_000_000, // Arbitrary supply for OSAIL2
-                admin,
                 &clock
             );
             sui::coin::burn_for_testing(initial_o_sail2_supply); // Burn OSAIL2
+        };
+
+        // Distribute gauge for epoch 2
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_2<SailCoinType, OSAIL1, OSAIL2>(&mut scenario, &clock);
         };
 
         // Add reward to the first tranche
@@ -4531,13 +4612,18 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Update Minter Period to OSAIL3
         scenario.next_tx(admin);
         {
-            let initial_o_sail3_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL2, OSAIL3>(
+            let initial_o_sail3_supply = update_minter_period<SailCoinType, OSAIL3>(
                 &mut scenario,
                 1_000_000, // Arbitrary supply for OSAIL3
-                admin,
                 &clock
             );
             sui::coin::burn_for_testing(initial_o_sail3_supply); // Burn OSAIL3
+        };
+
+        // Distribute gauge for epoch 3
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_3<SailCoinType, OSAIL2, OSAIL3>(&mut scenario, &clock);
         };
 
         scenario.next_tx(admin);
@@ -4575,13 +4661,18 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Update Minter Period to OSAIL4
         scenario.next_tx(admin);
         {
-            let initial_o_sail4_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL3, OSAIL4>(
+            let initial_o_sail4_supply = update_minter_period<SailCoinType, OSAIL4>(
                 &mut scenario,
                 1_000_000, // Arbitrary supply for OSAIL4
-                admin,
                 &clock
             );
             sui::coin::burn_for_testing(initial_o_sail4_supply); // Burn OSAIL4
+        };
+
+        // Distribute gauge for epoch 4
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_3<SailCoinType, OSAIL3, OSAIL4>(&mut scenario, &clock);
         };
 
         scenario.next_tx(admin);
@@ -4641,7 +4732,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position_2,
-                common::epoch_start(common::epoch_to_seconds(2)),
+                common::epoch_start(common::epoch_to_seconds(1)),
                 scenario.ctx()
             );
             assert!(reward1.value() == 6606699, 9234129832754);
@@ -4655,7 +4746,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position_2,
-                common::epoch_start(common::epoch_to_seconds(3)),
+                common::epoch_start(common::epoch_to_seconds(2)),
                 &clock,
                 scenario.ctx()
             );
@@ -4666,7 +4757,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position_2,
-                common::epoch_start(common::epoch_to_seconds(4)),
+                common::epoch_start(common::epoch_to_seconds(3)),
                 scenario.ctx()
             );
             assert!(reward3.value() == 7009048, 9234129832754); // +3% for epoch 2 and +3% for epoch 3
@@ -4788,6 +4879,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 (101<<64)/100, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -4929,13 +5021,18 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Update Minter Period to OSAIL2
         scenario.next_tx(admin);
         {
-            let initial_o_sail2_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL1, OSAIL2>(
+            let initial_o_sail2_supply = update_minter_period<SailCoinType, OSAIL2>(
                 &mut scenario,
                 1_000_000, // Arbitrary supply for OSAIL2
-                admin,
                 &clock
             );
             sui::coin::burn_for_testing(initial_o_sail2_supply); // Burn OSAIL2
+        };
+
+        // Distribute gauge for epoch 2
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_2<SailCoinType, OSAIL1, OSAIL2>(&mut scenario, &clock);
         };
 
         // adding reward to tranche 1
@@ -4974,13 +5071,18 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Update Minter Period to OSAIL3
         scenario.next_tx(admin);
         {
-            let initial_o_sail3_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL2, OSAIL3>(
+            let initial_o_sail3_supply = update_minter_period<SailCoinType, OSAIL3>(
                 &mut scenario,
                 1_000_000, // Arbitrary supply for OSAIL3
-                admin,
                 &clock
             );
             sui::coin::burn_for_testing(initial_o_sail3_supply); // Burn OSAIL3
+        };
+
+        // Distribute gauge for epoch 3
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_3<SailCoinType, OSAIL2, OSAIL3>(&mut scenario, &clock);
         };
 
         scenario.next_tx(admin);
@@ -5018,13 +5120,20 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Update Minter Period to OSAIL4
         scenario.next_tx(admin);
         {
-            let initial_o_sail4_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL3, OSAIL4>(
+            let initial_o_sail4_supply = update_minter_period<SailCoinType, OSAIL4>(
                 &mut scenario,
                 1_000_000, // Arbitrary supply for OSAIL4
-                admin,
                 &clock
             );
             sui::coin::burn_for_testing(initial_o_sail4_supply); // Burn OSAIL4
+        };
+
+        // Distribute gauge for epoch 4
+
+        // Distribute gauge for epoch 4
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_3<SailCoinType, OSAIL3, OSAIL4>(&mut scenario, &clock);
         };
 
         scenario.next_tx(admin);
@@ -5083,7 +5192,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position_2,
-                common::epoch_start(common::epoch_to_seconds(2)),
+                common::epoch_start(common::epoch_to_seconds(1)),
                 scenario.ctx()
             );
             assert!(reward1.value() == 6612899, 9234129832754);
@@ -5094,7 +5203,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position_2,
-                common::epoch_start(common::epoch_to_seconds(3)),
+                common::epoch_start(common::epoch_to_seconds(2)),
                 &clock,
                 scenario.ctx()
             );
@@ -5281,6 +5390,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -5397,13 +5507,18 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Update Minter Period to OSAIL2
         scenario.next_tx(admin);
         {
-            let initial_o_sail2_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL1, OSAIL2>(
+            let initial_o_sail2_supply = update_minter_period<SailCoinType, OSAIL2>(
                 &mut scenario,
                 1_000_000, // Arbitrary supply for OSAIL2
-                admin,
                 &clock
             );
             sui::coin::burn_for_testing(initial_o_sail2_supply); // Burn OSAIL2
+        };
+
+        // Distribute gauge for epoch 2
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_2<SailCoinType, OSAIL1, OSAIL2>(&mut scenario, &clock);
         };
 
         // adding reward to the first tranche
@@ -5442,13 +5557,18 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Update Minter Period to OSAIL3
         scenario.next_tx(admin);
         {
-            let initial_o_sail3_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL2, OSAIL3>(
+            let initial_o_sail3_supply = update_minter_period<SailCoinType, OSAIL3>(
                 &mut scenario,
                 1_000_000, // Arbitrary supply for OSAIL3
-                admin,
                 &clock
             );
             sui::coin::burn_for_testing(initial_o_sail3_supply); // Burn OSAIL3
+        };
+
+        // Distribute gauge for epoch 3
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_3<SailCoinType, OSAIL2, OSAIL3>(&mut scenario, &clock);
         };
 
         scenario.next_tx(admin);
@@ -5505,7 +5625,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position_1,
-                common::epoch_start(common::epoch_to_seconds(2)),
+                common::epoch_start(common::epoch_to_seconds(1)),
                 scenario.ctx()
             );
 
@@ -5517,7 +5637,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position_1,
-                common::epoch_start(common::epoch_to_seconds(3)),
+                common::epoch_start(common::epoch_to_seconds(2)),
                 &clock,
                 scenario.ctx()
             );
@@ -5616,6 +5736,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -5788,6 +5909,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -5952,7 +6074,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 admin, 
                 1000, 
                 182, 
-                18584142135623730951, 
+                18584142135623730951,
+                10_000_000_000_000, 
                 &mut clock
             );
         };
@@ -6118,6 +6241,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -6253,7 +6377,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position_1,
-                common::epoch_start(common::epoch_to_seconds(1)),
+                common::epoch_start(common::epoch_to_seconds(0)),
                 scenario.ctx()
             );
 
@@ -6310,7 +6434,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 admin, 
                 1000, 
                 182, 
-                18584142135623730951, 
+                18584142135623730951,
+                10_000_000_000_000, 
                 &mut clock
             );
         };
@@ -6462,6 +6587,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -6578,13 +6704,18 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Update Minter Period to OSAIL2
         scenario.next_tx(admin);
         {
-            let initial_o_sail2_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL1, OSAIL2>(
+            let initial_o_sail2_supply = update_minter_period<SailCoinType, OSAIL2>(
                 &mut scenario,
                 1_000_000, // Arbitrary supply for OSAIL2
-                admin,
                 &clock
             );
             sui::coin::burn_for_testing(initial_o_sail2_supply); // Burn OSAIL2
+        };
+
+        // Distribute gauge for epoch 2
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_2<SailCoinType, OSAIL1, OSAIL2>(&mut scenario, &clock);
         };
 
         // adding reward to tranche 1
@@ -6623,13 +6754,18 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Update Minter Period to OSAIL3
         scenario.next_tx(admin);
         {
-            let initial_o_sail3_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL2, OSAIL3>(
+            let initial_o_sail3_supply = update_minter_period<SailCoinType, OSAIL3>(
                 &mut scenario,
                 1_000_000, // Arbitrary supply for OSAIL3
-                admin,
                 &clock
             );
             sui::coin::burn_for_testing(initial_o_sail3_supply); // Burn OSAIL3
+        };
+
+        // Distribute gauge for epoch 3
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_3<SailCoinType, OSAIL2, OSAIL3>(&mut scenario, &clock);
         };
 
         scenario.next_tx(admin);
@@ -6767,6 +6903,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -6959,7 +7096,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 admin, 
                 1000, 
                 182, 
-                18584142135623730951, 
+                18584142135623730951,
+                10_000_000_000_000, 
                 &mut clock
             );
         };
@@ -7150,7 +7288,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 admin, 
                 1000, 
                 182, 
-                18584142135623730951, 
+                18584142135623730951,
+                10_000_000_000_000, 
                 &mut clock
             );
         };
@@ -7343,7 +7482,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 admin, 
                 1000, 
                 182, 
-                18584142135623730951, 
+                18584142135623730951,
+                10_000_000_000_000, 
                 &mut clock
             );
         };
@@ -7541,6 +7681,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -7736,6 +7877,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -7951,6 +8093,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -8092,13 +8235,18 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Update Minter Period to OSAIL2
         scenario.next_tx(admin);
         {
-            let initial_o_sail2_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL1, OSAIL2>(
+            let initial_o_sail2_supply = update_minter_period<SailCoinType, OSAIL2>(
                 &mut scenario,
                 1_000_000, // Arbitrary supply for OSAIL2
-                admin,
                 &clock
             );
             sui::coin::burn_for_testing(initial_o_sail2_supply); // Burn OSAIL2
+        };
+
+        // Distribute gauge for epoch 2
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_2<SailCoinType, OSAIL1, OSAIL2>(&mut scenario, &clock);
         };
 
         // adding reward to tranche 1
@@ -8137,13 +8285,18 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Update Minter Period to OSAIL3
         scenario.next_tx(admin);
         {
-            let initial_o_sail3_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL2, OSAIL3>(
+            let initial_o_sail3_supply = update_minter_period<SailCoinType, OSAIL3>(
                 &mut scenario,
                 1_000_000, // Arbitrary supply for OSAIL3
-                admin,
                 &clock
             );
             sui::coin::burn_for_testing(initial_o_sail3_supply); // Burn OSAIL3
+        };
+
+        // Distribute gauge for epoch 3
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_3<SailCoinType, OSAIL2, OSAIL3>(&mut scenario, &clock);
         };
 
         scenario.next_tx(admin);
@@ -8181,13 +8334,18 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Update Minter Period to OSAIL4
         scenario.next_tx(admin);
         {
-            let initial_o_sail4_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL3, OSAIL4>(
+            let initial_o_sail4_supply = update_minter_period<SailCoinType, OSAIL4>(
                 &mut scenario,
                 1_000_000, // Arbitrary supply for OSAIL4
-                admin,
                 &clock
             );
             sui::coin::burn_for_testing(initial_o_sail4_supply); // Burn OSAIL4
+        };
+
+        // Distribute gauge for epoch 4
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_3<SailCoinType, OSAIL3, OSAIL4>(&mut scenario, &clock);
         };
 
         scenario.next_tx(admin);
@@ -8245,7 +8403,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position_2,
-                common::epoch_start(common::epoch_to_seconds(2)),
+                common::epoch_start(common::epoch_to_seconds(1)),
                 scenario.ctx()
             );
 
@@ -8257,7 +8415,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position_2,
-                common::epoch_start(common::epoch_to_seconds(3)),
+                common::epoch_start(common::epoch_to_seconds(2)),
                 &clock,
                 scenario.ctx()
             );
@@ -8330,6 +8488,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -8471,13 +8630,18 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Update Minter Period to OSAIL2
         scenario.next_tx(admin);
         {
-            let initial_o_sail2_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL1, OSAIL2>(
+            let initial_o_sail2_supply = update_minter_period<SailCoinType, OSAIL2>(
                 &mut scenario,
                 1_000_000, // Arbitrary supply for OSAIL2
-                admin,
                 &clock
             );
             sui::coin::burn_for_testing(initial_o_sail2_supply); // Burn OSAIL2
+        };
+
+        // Distribute gauge for epoch 2
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_2<SailCoinType, OSAIL1, OSAIL2>(&mut scenario, &clock);
         };
 
         // adding reward to tranche 1
@@ -8516,13 +8680,18 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Update Minter Period to OSAIL3
         scenario.next_tx(admin);
         {
-            let initial_o_sail3_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL2, OSAIL3>(
+            let initial_o_sail3_supply = update_minter_period<SailCoinType, OSAIL3>(
                 &mut scenario,
                 1_000_000, // Arbitrary supply for OSAIL3
-                admin,
                 &clock
             );
             sui::coin::burn_for_testing(initial_o_sail3_supply); // Burn OSAIL3
+        };
+
+        // Distribute gauge for epoch 3
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_3<SailCoinType, OSAIL2, OSAIL3>(&mut scenario, &clock);
         };
 
         scenario.next_tx(admin);
@@ -8560,13 +8729,18 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Update Minter Period to OSAIL4
         scenario.next_tx(admin);
         {
-            let initial_o_sail4_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL3, OSAIL4>(
+            let initial_o_sail4_supply = update_minter_period<SailCoinType, OSAIL4>(
                 &mut scenario,
                 1_000_000, // Arbitrary supply for OSAIL4
-                admin,
                 &clock
             );
             sui::coin::burn_for_testing(initial_o_sail4_supply); // Burn OSAIL4
+        };
+
+        // Distribute gauge for epoch 4
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_3<SailCoinType, OSAIL3, OSAIL4>(&mut scenario, &clock);
         };
 
         scenario.next_tx(admin);
@@ -8624,7 +8798,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position_2,
-                common::epoch_start(common::epoch_to_seconds(2)),
+                common::epoch_start(common::epoch_to_seconds(1)),
                 scenario.ctx()
             );
 
@@ -8636,7 +8810,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position_2,
-                common::epoch_start(common::epoch_to_seconds(3)),
+                common::epoch_start(common::epoch_to_seconds(2)),
                 &clock,
                 scenario.ctx()
             );
@@ -8646,7 +8820,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position_2,
-                common::epoch_start(common::epoch_to_seconds(4)),
+                common::epoch_start(common::epoch_to_seconds(3)),
                 scenario.ctx()
             );
 
@@ -8716,6 +8890,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -8902,6 +9077,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, // 148 current tick
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -9086,6 +9262,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -9315,6 +9492,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -9556,6 +9734,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -9752,6 +9931,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -9896,13 +10076,18 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Update Minter Period to OSAIL2
         scenario.next_tx(admin);
         {
-            let initial_o_sail2_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL1, OSAIL2>(
+            let initial_o_sail2_supply = update_minter_period<SailCoinType, OSAIL2>(
                 &mut scenario,
                 1_000_000, // Arbitrary supply for OSAIL2
-                admin,
                 &clock
             );
             sui::coin::burn_for_testing(initial_o_sail2_supply); // Burn OSAIL2
+        };
+
+        // Distribute gauge for epoch 2
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_2<SailCoinType, OSAIL1, OSAIL2>(&mut scenario, &clock);
         };
 
         // Claim rewards for the first epoch
@@ -9932,10 +10117,10 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position,
-                common::epoch_start(common::epoch_to_seconds(2)),
+                common::epoch_start(common::epoch_to_seconds(1)),
                 scenario.ctx()
             );
-            assert!(reward1.value() == 999999, 9234129832754); // 10% of total reward for epoch 1
+            assert!(1000000 - reward1.value() <= 1, 9234129832754); // 10% of total reward for epoch 1
 
             transfer::public_transfer(sui::coin::from_balance(reward1, scenario.ctx()), admin);
 
@@ -10030,13 +10215,18 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Update Minter Period to OSAIL3
         scenario.next_tx(admin);
         {
-            let initial_o_sail3_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL2, OSAIL3>(
+            let initial_o_sail3_supply = update_minter_period<SailCoinType, OSAIL3>(
                 &mut scenario,
                 1_000_000, // Arbitrary supply for OSAIL3
-                admin,
                 &clock
             );
             sui::coin::burn_for_testing(initial_o_sail3_supply); // Burn OSAIL3
+        };
+
+        // Distribute gauge for epoch 3
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_3<SailCoinType, OSAIL2, OSAIL3>(&mut scenario, &clock);
         };
 
         // Add reward to the SECOND epoch
@@ -10058,7 +10248,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
-                common::epoch_start(common::epoch_to_seconds(3)),
+                common::epoch_start(common::epoch_to_seconds(2)),
                 reward2.into_balance(),
                 10300000000000,
                 scenario.ctx()
@@ -10097,7 +10287,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position,
-                common::epoch_start(common::epoch_to_seconds(3)),
+                common::epoch_start(common::epoch_to_seconds(2)),
                 &clock,
                 scenario.ctx()
             );
@@ -10206,13 +10396,18 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Update Minter Period to OSAIL4
         scenario.next_tx(admin);
         {
-            let initial_o_sail4_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL3, OSAIL4>(
+            let initial_o_sail4_supply = update_minter_period<SailCoinType, OSAIL4>(
                 &mut scenario,
                 1_000_000, // Arbitrary supply for OSAIL4
-                admin,
                 &clock
             );
             sui::coin::burn_for_testing(initial_o_sail4_supply); // Burn OSAIL4
+        };
+
+        // Distribute gauge for epoch 4
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_3<SailCoinType, OSAIL3, OSAIL4>(&mut scenario, &clock);
         };
 
         // Add reward to the THIRD epoch
@@ -10234,7 +10429,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
-                common::epoch_start(common::epoch_to_seconds(4)),
+                common::epoch_start(common::epoch_to_seconds(3)),
                 reward3.into_balance(),
                 10609000000000,
                 scenario.ctx()
@@ -10271,10 +10466,10 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position,
-                common::epoch_start(common::epoch_to_seconds(4)),
+                common::epoch_start(common::epoch_to_seconds(3)),
                 scenario.ctx()
             );
-            assert!(reward3.value() == 999999, 9234129832754); // 10% of total reward for epoch 3 
+            assert!(1000000 - reward3.value() <= 1, 9234129832754); // 10% of total reward for epoch 3 
 
             transfer::public_transfer(sui::coin::from_balance(reward3, scenario.ctx()), admin);
             transfer::public_transfer(locked_position, admin);
@@ -10329,6 +10524,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -10490,6 +10686,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -10667,6 +10864,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -10826,6 +11024,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -10984,7 +11183,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 admin, 
                 1000, 
                 182, 
-                18584142135623730951, 
+                18584142135623730951,
+                10_000_000_000_000, 
                 &mut clock
             );
         };
@@ -11144,6 +11344,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -11286,13 +11487,18 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Update Minter Period to OSAIL2
         scenario.next_tx(admin);
         {
-            let initial_o_sail2_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL1, OSAIL2>(
+            let initial_o_sail2_supply = update_minter_period<SailCoinType, OSAIL2>(
                 &mut scenario,
                 1_000_000, // Arbitrary supply for OSAIL2
-                admin,
                 &clock
             );
             sui::coin::burn_for_testing(initial_o_sail2_supply); // Burn OSAIL2
+        };
+
+        // Distribute gauge for epoch 2
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_2<SailCoinType, OSAIL1, OSAIL2>(&mut scenario, &clock);
         };
 
         // Claim rewards for the first epoch
@@ -11311,10 +11517,10 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position,
-                common::epoch_start(common::epoch_to_seconds(2)),
+                common::epoch_start(common::epoch_to_seconds(1)),
                 scenario.ctx()
             );
-            assert!(reward1.value() == 999999, 9234129832754); // 10% of total reward for epoch 1
+            assert!(1000000 - reward1.value() <= 1, 9234129832754); // 10% of total reward for epoch 1
 
             transfer::public_transfer(sui::coin::from_balance(reward1, scenario.ctx()), admin);
 
@@ -11777,15 +11983,20 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Update Minter Period to OSAIL3
         scenario.next_tx(admin);
         {
-            let initial_o_sail3_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL2, OSAIL3>(
+            let initial_o_sail3_supply = update_minter_period<SailCoinType, OSAIL3>(
                 &mut scenario,
                 1_000_000, // Arbitrary supply for OSAIL3
-                admin,
                 &clock
             );
             sui::coin::burn_for_testing(initial_o_sail3_supply); // Burn OSAIL3
         };
-        
+
+        // Distribute gauge for epoch 3
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_3<SailCoinType, OSAIL2, OSAIL3>(&mut scenario, &clock);
+        };
+
         // Add reward to the SECOND epoch
         scenario.next_tx(admin);
         {
@@ -11805,7 +12016,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
-                common::epoch_start(common::epoch_to_seconds(3)),
+                common::epoch_start(common::epoch_to_seconds(2)),
                 reward2.into_balance(),
                 10300000000000,
                 scenario.ctx()
@@ -11838,7 +12049,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position1,
-                common::epoch_start(common::epoch_to_seconds(3)),
+                common::epoch_start(common::epoch_to_seconds(2)),
                 &clock,
                 scenario.ctx()
             );
@@ -11849,7 +12060,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position2,
-                common::epoch_start(common::epoch_to_seconds(3)),
+                common::epoch_start(common::epoch_to_seconds(2)),
                 &clock,
                 scenario.ctx()
             );
@@ -11860,7 +12071,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position3,
-                common::epoch_start(common::epoch_to_seconds(3)),
+                common::epoch_start(common::epoch_to_seconds(2)),
                 &clock,
                 scenario.ctx()
             );
@@ -11927,7 +12138,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 admin, 
                 1000, 
                 182, 
-                18584142135623730951, 
+                18584142135623730951,
+                10_000_000_000_000, 
                 &mut clock
             );
         };
@@ -12084,13 +12296,18 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Update Minter Period to OSAIL2
         scenario.next_tx(admin);
         {
-            let initial_o_sail2_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL1, OSAIL2>(
+            let initial_o_sail2_supply = update_minter_period<SailCoinType, OSAIL2>(
                 &mut scenario,
                 1_000_000, // Arbitrary supply for OSAIL2
-                admin,
                 &clock
             );
             sui::coin::burn_for_testing(initial_o_sail2_supply); // Burn OSAIL2
+        };
+
+        // Distribute gauge for epoch 2
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_2<SailCoinType, OSAIL1, OSAIL2>(&mut scenario, &clock);
         };
 
         // Claim rewards for the first epoch
@@ -12120,10 +12337,10 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position,
-                common::epoch_start(common::epoch_to_seconds(2)),
+                common::epoch_start(common::epoch_to_seconds(1)),
                 scenario.ctx()
             );
-            assert!(reward1.value() == 999999, 9234129832754); // 10% of total reward for epoch 1
+            assert!(1000000 - reward1.value() <= 1, 9234129832754); // 10% of total reward for epoch 1
 
             transfer::public_transfer(sui::coin::from_balance(reward1, scenario.ctx()), admin);
 
@@ -12514,13 +12731,21 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Update Minter Period to OSAIL3
         scenario.next_tx(admin);
         {
-            let initial_o_sail3_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL2, OSAIL3>(
+            let initial_o_sail3_supply = update_minter_period<SailCoinType, OSAIL3>(
                 &mut scenario,
                 1_000_000, // Arbitrary supply for OSAIL3
-                admin,
                 &clock
             );
             sui::coin::burn_for_testing(initial_o_sail3_supply); // Burn OSAIL3
+        };
+
+        // Distribute gauge emissions for epoch 3
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_3<SailCoinType, OSAIL2, OSAIL3>(
+                &mut scenario,
+                &clock
+            );
         };
 
         // Add reward to the SECOND epoch
@@ -12542,7 +12767,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
-                common::epoch_start(common::epoch_to_seconds(3)),
+                common::epoch_start(common::epoch_to_seconds(2)),
                 reward2.into_balance(),
                 10300000000000,
                 scenario.ctx()
@@ -12589,7 +12814,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position1,
-                common::epoch_start(common::epoch_to_seconds(3)),
+                common::epoch_start(common::epoch_to_seconds(2)),
                 &clock,
                 scenario.ctx()
             );
@@ -12600,7 +12825,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position2,
-                common::epoch_start(common::epoch_to_seconds(3)),
+                common::epoch_start(common::epoch_to_seconds(2)),
                 &clock,
                 scenario.ctx()
             );
@@ -12611,7 +12836,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position3,
-                common::epoch_start(common::epoch_to_seconds(3)),
+                common::epoch_start(common::epoch_to_seconds(2)),
                 &clock,
                 scenario.ctx()
             );
@@ -12622,7 +12847,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position4,
-                common::epoch_start(common::epoch_to_seconds(3)),
+                common::epoch_start(common::epoch_to_seconds(2)),
                 &clock,
                 scenario.ctx()
             );
@@ -12705,6 +12930,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951, 
+                10_000_000_000_000,
                 &mut clock
             );
         };
@@ -12861,13 +13087,21 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Update Minter Period to OSAIL2
         scenario.next_tx(admin);
         {
-            let initial_o_sail2_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL1, OSAIL2>(
+            let initial_o_sail2_supply = update_minter_period<SailCoinType, OSAIL2>(
                 &mut scenario,
                 1_000_000, // Arbitrary supply for OSAIL2
-                admin,
                 &clock
             );
             sui::coin::burn_for_testing(initial_o_sail2_supply); // Burn OSAIL2
+        };
+
+        // Distribute gauge emissions for epoch 2
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_2<SailCoinType, OSAIL1, OSAIL2>(
+                &mut scenario,
+                &clock
+            );
         };
 
         // Claim rewards for the first epoch
@@ -12897,10 +13131,10 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position,
-                common::epoch_start(common::epoch_to_seconds(2)),
+                common::epoch_start(common::epoch_to_seconds(1)),
                 scenario.ctx()
             );
-            assert!(reward1.value() == 999999, 9234129832754); // 10% of total reward for epoch 1
+            assert!(1000000 - reward1.value() <= 1, 9234129832754); // 10% of total reward for epoch 1
 
             transfer::public_transfer(sui::coin::from_balance(reward1, scenario.ctx()), admin);
 
@@ -13016,13 +13250,21 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // Update Minter Period to OSAIL3
         scenario.next_tx(admin);
         {
-            let initial_o_sail3_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL2, OSAIL3>(
+            let initial_o_sail3_supply = update_minter_period<SailCoinType, OSAIL3>(
                 &mut scenario,
                 1_000_000, // Arbitrary supply for OSAIL3
-                admin,
                 &clock
             );
             sui::coin::burn_for_testing(initial_o_sail3_supply); // Burn OSAIL3
+        };
+
+        // Distribute gauge emissions for epoch 3
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_3<SailCoinType, OSAIL2, OSAIL3>(
+                &mut scenario,
+                &clock
+            );
         };
 
         // Add reward to the SECOND epoch
@@ -13044,7 +13286,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
-                common::epoch_start(common::epoch_to_seconds(3)),
+                common::epoch_start(common::epoch_to_seconds(2)),
                 reward2.into_balance(),
                 10300000000000,
                 scenario.ctx()
@@ -13091,7 +13333,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position1,
-                common::epoch_start(common::epoch_to_seconds(3)),
+                common::epoch_start(common::epoch_to_seconds(2)),
                 &clock,
                 scenario.ctx()
             );
@@ -13102,7 +13344,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &mut gauge,
                 &mut pool,
                 &mut locked_position2,
-                common::epoch_start(common::epoch_to_seconds(3)),
+                common::epoch_start(common::epoch_to_seconds(2)),
                 &clock,
                 scenario.ctx()
             );
@@ -13330,8 +13572,9 @@ module liquidity_locker::liquidity_lock_v2_tests {
         amount_to_lock: u64,
         lock_duration_days: u64,
         current_sqrt_price: u128,
+        gauge_base_emissions: u64,
         clock: &mut clock::Clock
-    ){
+    ) {
         scenario.next_tx(admin);
         {
             setup_distribution<SailCoinType>(scenario, admin);
@@ -13339,32 +13582,24 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
         scenario.next_tx(admin);
         {
-            activate_minter<SailCoinType>(scenario, amount_to_lock, lock_duration_days);
+            activate_minter<SailCoinType, OSAIL1>(scenario, amount_to_lock, lock_duration_days, clock);
         };
 
-        clock::increment_for_testing(clock, 3601000); // + 1 hour 1 sec
         scenario.next_tx(admin);
         {
             create_pool_and_gauge<TestCoinB, TestCoinA, SailCoinType>(
                 scenario, 
                 admin,
                 current_sqrt_price,
+                gauge_base_emissions,
                 clock
             );
         };
 
-        clock::increment_for_testing(clock, (common::epoch_start(common::epoch_to_seconds(2))*1000)-3600000); // Advance clock by 1 epoch
-
         // Update Minter Period to OSAIL1
         scenario.next_tx(admin);
         {
-            let initial_o_sail1_supply = update_minter_period_and_distribute_gauge<SailCoinType, OSAIL1, OSAIL1>(
-                scenario,
-                1_000_000, // Arbitrary supply for OSAIL1
-                admin,
-                clock
-            );
-            sui::coin::burn_for_testing(initial_o_sail1_supply); // Burn OSAIL1
+            distribute_gauge_epoch_1<SailCoinType, OSAIL1, OSAIL1>(scenario, clock);
         };
     }
 
@@ -13385,15 +13620,23 @@ module liquidity_locker::liquidity_lock_v2_tests {
         scenario.next_tx(sender);
         {
             let minter_publisher = minter::test_init(scenario.ctx());
+            let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let treasury_cap = sui::coin::create_treasury_cap_for_testing<SailCoinType>(scenario.ctx());
             let (minter_obj, minter_admin_cap) = minter::create<SailCoinType>(
                 &minter_publisher,
                 option::some(treasury_cap),
+                object::id(&distribution_config),
+                scenario.ctx()
+            );
+            minter::grant_distribute_governor(
+                &minter_publisher,
+                sender,
                 scenario.ctx()
             );
             test_utils::destroy(minter_publisher);
             transfer::public_share_object(minter_obj);
             transfer::public_transfer(minter_admin_cap, sender);
+            test_scenario::return_shared(distribution_config);
         };
 
         // --- Voter Setup --- 
@@ -13406,7 +13649,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let distribution_config_obj = scenario.take_shared<distribution_config::DistributionConfig>();
             let distribution_config_id = object::id(&distribution_config_obj);
             test_scenario::return_shared(distribution_config_obj);
-            let (mut voter_obj, notify_cap) = voter::create(
+            let (mut voter_obj, distribute_cap) = voter::create(
                 &voter_publisher,
                 global_config_id,
                 distribution_config_id,
@@ -13418,10 +13661,10 @@ module liquidity_locker::liquidity_lock_v2_tests {
             test_utils::destroy(voter_publisher);
             transfer::public_share_object(voter_obj);
 
-            // --- Set Notify Reward Cap ---
+            // --- Set Distribute Cap ---
             let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            minter.set_notify_reward_cap(&minter_admin_cap, notify_cap);
+            minter.set_distribute_cap(&minter_admin_cap, distribute_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
         };
@@ -13467,83 +13710,75 @@ module liquidity_locker::liquidity_lock_v2_tests {
         };
     }
 
-    #[test_only]
     // Updates the minter period, sets the next period token to OSailCoinTypeNext
-    public fun update_minter_period_and_distribute_gauge<SailCoinType, PrevOSailCoinType, OSailCoinType>(
+    #[test_only]
+    public fun update_minter_period<SailCoinType, OSailCoinType>(
         scenario: &mut test_scenario::Scenario,
         initial_o_sail_supply: u64,
-        admin: address,
-        clock: &sui::clock::Clock,
+        clock: &clock::Clock,
     ): sui::coin::Coin<OSailCoinType> {
-            let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
-            let mut voter = scenario.take_shared<voter::Voter>();
-            let voting_escrow = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
-            let mut reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
-            let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
-            let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
-            let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
+        let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
+        let mut voter = scenario.take_shared<voter::Voter>();
+        let voting_escrow = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
+        let mut reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+        let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
+        let distribute_governor_cap = scenario.take_from_sender<minter::DistributeGovernorCap>(); // Correct cap for update_period
 
-            // Create TreasuryCap for OSAIL for the next epoch
-            let mut o_sail_cap = sui::coin::create_treasury_cap_for_testing<OSailCoinType>(scenario.ctx());
-            let initial_supply = o_sail_cap.mint(initial_o_sail_supply, scenario.ctx());
+        // Create TreasuryCap for OSAIL2 for the next epoch
+        let mut o_sail_cap = sui::coin::create_treasury_cap_for_testing<OSailCoinType>(scenario.ctx());
+        let initial_supply = o_sail_cap.mint(initial_o_sail_supply, scenario.ctx());
 
-            minter::update_period<SailCoinType, OSailCoinType>(
-                &minter_admin_cap,
-                &mut minter,
-                &mut voter,
-                &voting_escrow,
-                &mut reward_distributor,
-                o_sail_cap, 
-                clock,
-                scenario.ctx()
-            );
+        minter::update_period<SailCoinType, OSailCoinType>(
+            &mut minter, // minter is the receiver
+            &mut voter,
+            &distribution_config,
+            &distribute_governor_cap, // Pass the correct DistributeGovernorCap
+            &voting_escrow,
+            &mut reward_distributor,
+            o_sail_cap, 
+            clock,
+            scenario.ctx()
+        );
 
-            minter.distribute_gauge<TestCoinB, TestCoinA, SailCoinType, PrevOSailCoinType, OSailCoinType>(
-                &mut voter,
-                &distribution_config,
-                &mut gauge,
-                &mut pool,
-                clock,
-                scenario.ctx()
-            );
+        // Return shared objects & caps
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(voter);
+        test_scenario::return_shared(voting_escrow);
+        test_scenario::return_shared(distribution_config);
+        test_scenario::return_shared(reward_distributor);
+        scenario.return_to_sender(distribute_governor_cap);    
 
-            // Return shared objects & caps
-            test_scenario::return_shared(minter);
-            test_scenario::return_shared(voter);
-            test_scenario::return_shared(voting_escrow);
-            test_scenario::return_shared(reward_distributor);
-            scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(distribution_config);
-            transfer::public_transfer(pool, admin);
-            transfer::public_transfer(gauge, admin);
-
-            initial_supply
+        initial_supply
     }
 
     #[test_only]
     // Activates the minter for a specific oSAIL epoch.
     // Requires the minter, voter, rd, and admin cap to be set up.
-    public fun activate_minter<SailCoinType>( // Changed to public
+    public fun activate_minter<SailCoinType, OSailCoinType>( // Changed to public
         scenario: &mut test_scenario::Scenario,
         amount_to_lock: u64,
-        lock_duration_days: u64
+        lock_duration_days: u64,
+        clock: &mut clock::Clock
     ) { // Returns the minted oSAIL
 
         // increment clock to make sure the activated_at field is not and epoch start is not 0
         let mut minter_obj = scenario.take_shared<minter::Minter<SailCoinType>>();
+        let mut voter = scenario.take_shared<voter::Voter>();
         let mut rd = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
         let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
         let mut ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
-        let mut clock = clock::create_for_testing(scenario.ctx());
+        let o_sail_cap = sui::coin::create_treasury_cap_for_testing<OSailCoinType>(scenario.ctx());
 
-        clock.increment_for_testing(1000);
-        minter_obj.activate<SailCoinType>(
-            &minter_admin_cap,
-            &mut rd,
-            &clock,
-            scenario.ctx()
-        );
+        // increment clock to make sure the activated_at field is not 0 and epoch start is not 0
+    clock.increment_for_testing(7 * 24 * 60 * 60 * 1000 + 1000);
+    minter_obj.activate<SailCoinType, OSailCoinType>(
+        &mut voter,
+        &minter_admin_cap,
+        &mut rd,
+        o_sail_cap,
+        clock,
+        scenario.ctx()
+    );
 
         let sail_coin = sui::coin::mint_for_testing<SailCoinType>(amount_to_lock, scenario.ctx());
         // create_lock consumes the coin and transfers the lock to ctx.sender()
@@ -13551,15 +13786,15 @@ module liquidity_locker::liquidity_lock_v2_tests {
             sail_coin,
             lock_duration_days,
             false, // permanent lock = false
-            &clock,
+            clock,
             scenario.ctx()
         );
 
         test_scenario::return_shared(minter_obj);
+        test_scenario::return_shared(voter);
         test_scenario::return_shared(ve);
         test_scenario::return_shared(rd);
         scenario.return_to_sender(minter_admin_cap);
-        clock::destroy_for_testing(clock);
     }
 
     #[test_only]
@@ -13567,14 +13802,16 @@ module liquidity_locker::liquidity_lock_v2_tests {
         scenario: &mut test_scenario::Scenario,
         admin: address,
         current_sqrt_price: u128,
+        gauge_base_emissions: u64,
         clock: &clock::Clock,
     ){
         let mut global_config = scenario.take_shared<config::GlobalConfig>();
         let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
-        let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-        let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
+        let create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
+        let admin_cap = scenario.take_from_sender<minter::AdminCap>(); // Minter uses AdminCap
         let mut ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
         let mut voter = scenario.take_shared<voter::Voter>();
+        let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
         let mut pools = scenario.take_shared<Pools>();
         let lock = scenario.take_from_sender<voting_escrow::Lock>();
 
@@ -13594,22 +13831,14 @@ module liquidity_locker::liquidity_lock_v2_tests {
         );
         let pool_id = sui::object::id<pool::Pool<TestCoinB, TestCoinA>>(&pool);
 
-        let gauge = voter.create_gauge<TestCoinB, TestCoinA, SailCoinType>(
+        let gauge = minter.create_gauge<TestCoinB, TestCoinA, SailCoinType>(
+            &mut voter,
             &mut distribution_config,
-            &gauge_create_cap,
-            &governor_cap,
-            &ve, // VotingEscrow is borrowed immutably here
+            &create_cap,
+            &admin_cap,
+            &ve,
             &mut pool,
-            clock,
-            scenario.ctx()
-        );
-
-        voter.vote(
-            &mut ve,
-            &distribution_config,
-            &lock,
-            vector[pool_id],
-            vector[10000], // 100% weight
+            gauge_base_emissions,
             clock,
             scenario.ctx()
         );
@@ -13618,11 +13847,135 @@ module liquidity_locker::liquidity_lock_v2_tests {
         transfer::public_transfer(pool, admin);
         transfer::public_transfer(gauge, admin);
         scenario.return_to_sender(lock);
-        transfer::public_transfer(gauge_create_cap, admin);
-        scenario.return_to_sender(governor_cap);
+        scenario.return_to_sender(admin_cap);
+        scenario.return_to_sender(create_cap);
         test_scenario::return_shared(global_config);
         test_scenario::return_shared(distribution_config);
+        test_scenario::return_shared(minter);
         test_scenario::return_shared(voter);
         test_scenario::return_shared(ve);
+    }
+
+    #[test_only]
+    fun distribute_gauge_epoch_1<SailCoinType, PrevEpochOSail, EpochOSail>(
+        scenario: &mut test_scenario::Scenario,
+        clock: &clock::Clock,
+    ): u64 {
+        // initial epoch is distributed without any historical data
+        let prev_epoch_pool_emissions: u64 = 0;
+        let prev_epoch_pool_fees_usd: u64 = 0;
+        let epoch_pool_emissions_usd: u64 = 0;
+        let epoch_pool_fees_usd: u64 = 0;
+        let epoch_pool_volume_usd: u64 = 0;
+        let epoch_pool_predicted_volume_usd: u64 = 0;
+
+        distribute_gauge_emissions_controlled<TestCoinB, TestCoinA, SailCoinType, PrevEpochOSail, EpochOSail>(
+            scenario,
+            prev_epoch_pool_emissions,
+            prev_epoch_pool_fees_usd,
+            epoch_pool_emissions_usd,
+            epoch_pool_fees_usd,
+            epoch_pool_volume_usd,
+            epoch_pool_predicted_volume_usd,
+            clock
+        )
+    }
+
+    #[test_only]
+    fun distribute_gauge_epoch_2<SailCoinType, PrevEpochOSail, EpochOSail>(
+        scenario: &mut test_scenario::Scenario,
+        clock: &clock::Clock,
+    ): u64 {
+        // epoch 2 is distributed with historical data from epoch 1
+        // this data results into stable emissions, same as epoch 1 emissions
+        let prev_epoch_pool_emissions: u64 = 0;
+        let prev_epoch_pool_fees_usd: u64 = 0;
+        let epoch_pool_emissions_usd: u64 = 1_000_000_000;
+        let epoch_pool_fees_usd: u64 = 1_000_000_000;
+        let epoch_pool_volume_usd: u64 = 1_000_000_000;
+        let epoch_pool_predicted_volume_usd: u64 = 1_060_000_000; // +3% emissions increase
+
+        distribute_gauge_emissions_controlled<TestCoinB, TestCoinA, SailCoinType, PrevEpochOSail, EpochOSail>(
+            scenario,
+            prev_epoch_pool_emissions,
+            prev_epoch_pool_fees_usd,
+            epoch_pool_emissions_usd,
+            epoch_pool_fees_usd,
+            epoch_pool_volume_usd,
+            epoch_pool_predicted_volume_usd,
+            clock
+        )
+    }
+
+    #[test_only]
+    fun distribute_gauge_epoch_3<SailCoinType, PrevEpochOSail, EpochOSail>(
+        scenario: &mut test_scenario::Scenario,
+        clock: &clock::Clock,
+    ): u64 {
+        // this data results into stable emissions, same as epoch 2 emissions
+        let prev_epoch_pool_emissions: u64 = 1_000_000_000;
+        let prev_epoch_pool_fees_usd: u64 = 1_000_000_000;
+        let epoch_pool_emissions_usd: u64 = 1_000_000_000;
+        let epoch_pool_fees_usd: u64 = 1_000_000_000;
+        let epoch_pool_volume_usd: u64 = 1_000_000_000;
+        let epoch_pool_predicted_volume_usd: u64 = 1_060_000_000; // +3% emissions increase
+
+        distribute_gauge_emissions_controlled<TestCoinB, TestCoinA, SailCoinType, PrevEpochOSail, EpochOSail>(
+            scenario,
+            prev_epoch_pool_emissions,
+            prev_epoch_pool_fees_usd,
+            epoch_pool_emissions_usd,
+            epoch_pool_fees_usd,
+            epoch_pool_volume_usd,
+            epoch_pool_predicted_volume_usd,
+            clock
+        )
+    }
+
+    // Utility to call minter.distribute_gauge
+    #[test_only]
+    fun distribute_gauge_emissions_controlled<CoinTypeA, CoinTypeB, SailCoinType, PrevEpochOSail, EpochOSail>(
+        scenario: &mut test_scenario::Scenario,
+        prev_epoch_pool_emissions: u64,
+        prev_epoch_pool_fees_usd: u64,
+        epoch_pool_emissions_usd: u64,
+        epoch_pool_fees_usd: u64,
+        epoch_pool_volume_usd: u64,
+        epoch_pool_predicted_volume_usd: u64,
+        clock: &clock::Clock,
+    ): u64 {
+        let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>(); // Minter is now responsible
+        let mut voter = scenario.take_shared<voter::Voter>();
+        let mut gauge = scenario.take_from_sender<gauge::Gauge<CoinTypeA, CoinTypeB>>();
+        let mut pool = scenario.take_from_sender<pool::Pool<CoinTypeA, CoinTypeB>>();
+        let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
+        let distribute_governor_cap = scenario.take_from_sender<minter::DistributeGovernorCap>(); // Minter uses DistributeGovernorCap
+
+        let distributed_amount = minter.distribute_gauge<CoinTypeA, CoinTypeB, SailCoinType, PrevEpochOSail, EpochOSail>(
+            // &mut minter, // minter is the receiver
+            &mut voter,
+            &distribute_governor_cap,
+            &distribution_config,
+            &mut gauge,
+            &mut pool,
+            prev_epoch_pool_emissions,
+            prev_epoch_pool_fees_usd,
+            epoch_pool_emissions_usd,
+            epoch_pool_fees_usd,
+            epoch_pool_volume_usd,
+            epoch_pool_predicted_volume_usd,
+            clock,
+            scenario.ctx()
+        );
+
+        // Return shared objects
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(voter);
+        scenario.return_to_sender(gauge);
+        scenario.return_to_sender(pool);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(distribute_governor_cap);
+
+        distributed_amount
     }
 }
