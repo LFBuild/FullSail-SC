@@ -1,5 +1,7 @@
 module distribution::reward_distributor {
 
+    const ECreateRewardDistributorInvalidPublisher: u64 = 297048250711179300;
+
     const EMinterNotActive: u64 = 9223372904438169601;
     const EOnlyLockedVotingEscrowCanClaim: u64 = 9223372908733267971;
 
@@ -55,17 +57,18 @@ module distribution::reward_distributor {
     /// Creates a new reward distributor and its associated capability.
     /// 
     /// # Arguments
-    /// * `_publisher` - The publisher reference
+    /// * `publisher` - The publisher reference
     /// * `clock` - The system clock
     /// * `ctx` - The transaction context
     /// 
     /// # Returns
     /// A tuple containing the new reward distributor and its capability
     public fun create<SailCoinType>(
-        _publisher: &sui::package::Publisher,
+        publisher: &sui::package::Publisher,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): (RewardDistributor<SailCoinType>, distribution::reward_distributor_cap::RewardDistributorCap) {
+        assert!(publisher.from_module<REWARD_DISTRIBUTOR>(), ECreateRewardDistributorInvalidPublisher);
         let uid = object::new(ctx);
         let reward_distributor = RewardDistributor<SailCoinType> {
             id: uid,
@@ -433,6 +436,11 @@ module distribution::reward_distributor {
     ) {
         reward_distributor_cap.validate(object::id<RewardDistributor<SailCoinType>>(reward_distributor));
         reward_distributor.minter_active_period = new_active_period;
+    }
+
+    #[test_only]
+    public fun test_init(ctx: &mut sui::tx_context::TxContext): sui::package::Publisher {
+        sui::package::claim<REWARD_DISTRIBUTOR>(REWARD_DISTRIBUTOR {}, ctx)
     }
 }
 

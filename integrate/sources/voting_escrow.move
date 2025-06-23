@@ -125,7 +125,7 @@ module integrate::voting_escrow {
     }
 
     public entry fun lock_summary<SailCoinType>(
-        voter: &distribution::voter::Voter<SailCoinType>,
+        voter: &distribution::voter::Voter,
         voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
         reward_distributor: &distribution::reward_distributor::RewardDistributor<SailCoinType>,
         lock_id: ID,
@@ -141,7 +141,7 @@ module integrate::voting_escrow {
     }
 
     fun lock_summary_internal<SailCoinType>(
-        voter: &distribution::voter::Voter<SailCoinType>,
+        voter: &distribution::voter::Voter,
         voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
         reward_distributor: &distribution::reward_distributor::RewardDistributor<SailCoinType>,
         lock_id: ID,
@@ -182,7 +182,7 @@ module integrate::voting_escrow {
 
     public entry fun summary<SailCoinType>(
         minter: &distribution::minter::Minter<SailCoinType>,
-        voter: &distribution::voter::Voter<SailCoinType>,
+        voter: &distribution::voter::Voter,
         voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
         clock: &sui::clock::Clock
     ) {
@@ -191,7 +191,7 @@ module integrate::voting_escrow {
         let epoch_emissions = minter.epoch_emissions();
         let rebase_growth = distribution::minter::calculate_rebase_growth(
             epoch_emissions,
-            minter.total_supply(),
+            minter.sail_total_supply(),
             total_locked
         );
         let summary_event = Summary {
@@ -203,8 +203,8 @@ module integrate::voting_escrow {
                 max_bps(),
                 integer_mate::full_math_u64::mul_div_floor(
                     epoch_emissions + rebase_growth,
-                    distribution::minter::max_bps(),
-                    distribution::minter::max_bps() - minter.team_emission_rate()
+                    distribution::minter::rate_denom(),
+                    distribution::minter::rate_denom() - minter.team_emission_rate()
                 )
             ),
             current_epoch_end: distribution::common::epoch_next(current_timestamp),

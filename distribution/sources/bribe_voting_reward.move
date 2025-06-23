@@ -62,7 +62,14 @@ module distribution::bribe_voting_reward {
         BribeVotingReward {
             id,
             gauge: gauge_id,
-            reward: distribution::reward::create(voter, ve, voter, reward_coin_types, ctx),
+            reward: distribution::reward::create(
+                voter,
+                option::some(ve),
+                voter,
+                reward_coin_types,
+                true,
+                ctx
+            ),
         }
     }
 
@@ -157,6 +164,40 @@ module distribution::bribe_voting_reward {
         ctx: &mut TxContext
     ) {
         reward.reward.withdraw(reward_authorized_cap, amount, lock_id, clock, ctx);
+    }
+
+    /// Updates the balances of bribe rewards for specific locks for a given epoch.
+    /// This function is typically called by an authorized process to retroactively record
+    /// voting power that determine rewards distribution. It is required due to voting power
+    /// calculation being too expensive to be done on-chain.
+    ///
+    /// # Arguments
+    /// * `reward` - The `BribeVotingReward` instance to update.
+    /// * `reward_authorized_cap` - Capability proving authorization to update balances.
+    /// * `balances` - A vector of balance amounts corresponding to each `lock_id`.
+    /// * `lock_ids` - A vector of `ID`s for the locks whose balances are being updated.
+    /// * `for_epoch_start` - The timestamp marking the beginning of the epoch for which balances are being set.
+    /// * `final` - true if thats the last update for the epoch
+    /// * `ctx` - The transaction context.
+    public fun update_balances(
+        reward: &mut BribeVotingReward,
+        reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
+        balances: vector<u64>,
+        lock_ids: vector<ID>,
+        for_epoch_start: u64,
+        final: bool,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        reward.reward.update_balances(
+            reward_authorized_cap,
+            balances,
+            lock_ids,
+            for_epoch_start,
+            final,
+            clock,
+            ctx
+        );
     }
 
     /// Borrows the reward field from the BribeVotingReward.

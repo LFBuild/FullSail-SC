@@ -1,3 +1,7 @@
 build/*
+.coverage_map.mvcov
+.trace
 
 .idea
+
+FullSail-CLMM-SC/*

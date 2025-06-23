@@ -1,8 +1,12 @@
 module distribution::common {
-    // TODO: replace with actual week before deployment
-    const WEEK: u64 = 7 * 86400;
-    const DAY: u64 = 86400;
     const HOUR: u64 = 3600;
+    const DAY: u64 = 24 * HOUR;
+    const WEEK: u64 = 7 * DAY;
+
+    // OSail params
+    const MAX_DISCOUNT: u64 = 100000000;
+    const MIN_DISCOUNT: u64 = MAX_DISCOUNT / 2;
+    const PERCENT_DENOMINATOR: u64 = 100000000;
 
     /// Returns the current period based on the system time
     /// 
@@ -42,9 +46,19 @@ module distribution::common {
     /// # Returns
     /// The timestamp of the start of the next epoch
     public fun epoch_next(timestamp: u64): u64 {
-        timestamp - timestamp % WEEK + WEEK
+        timestamp - (timestamp % WEEK) + WEEK
     }
 
+    /// Calculates the start timestamp of the previous epoch (week)
+    /// 
+    /// # Arguments
+    /// * `timestamp` - The current timestamp in seconds
+    /// 
+    /// # Returns
+    /// The timestamp of the start of the previous epoch
+    public fun epoch_prev(timestamp: u64): u64 {
+        timestamp - (timestamp % WEEK) - WEEK
+    }
     /// Calculates the start timestamp of the current epoch (week)
     /// 
     /// # Arguments
@@ -53,7 +67,7 @@ module distribution::common {
     /// # Returns
     /// The timestamp of the start of the current epoch
     public fun epoch_start(timestamp: u64): u64 {
-        timestamp - timestamp % WEEK
+        timestamp - (timestamp % WEEK)
     }
 
     /// Calculates the end timestamp of the voting period in the current epoch
@@ -65,7 +79,7 @@ module distribution::common {
     /// # Returns
     /// The timestamp when voting ends in the current epoch
     public fun epoch_vote_end(timestamp: u64): u64 {
-        timestamp - timestamp % WEEK + WEEK - HOUR
+        timestamp - (timestamp % WEEK) + WEEK - HOUR
     }
 
     /// Calculates the start timestamp of the voting period in the current epoch
@@ -129,6 +143,45 @@ module distribution::common {
     /// The number of seconds in a week (604800)
     public fun week(): u64 {
         WEEK
+    }
+
+    /// The oSAIL option token should be exercisable for this number of seconds
+    /// after it is distributed.
+    public fun o_sail_duration(): u64 {
+        WEEK * 4
+    }
+
+    /// Discount that oSAIL grants. Currently it's the only option,
+    /// but there is a possibility that different percents will be implemented.
+    public fun o_sail_discount(): u64 {
+        return MIN_DISCOUNT
+    }
+
+    /// If you want to calculate 1% of X, multiply X by percent value and divide by persent_denominator
+    public fun persent_denominator(): u64 {
+        return PERCENT_DENOMINATOR
+    }
+
+    /// Converts an epoch to seconds
+    /// 
+    /// # Arguments
+    /// * `epoch` - The epoch to convert
+    /// 
+    /// # Returns
+    /// The epoch in seconds
+    public fun epoch_to_seconds(epoch: u64): u64 {
+        epoch * WEEK
+    }
+
+    /// Returns the number of complete epochs contained in the timestamp
+    /// 
+    /// # Arguments
+    /// * `timestamp` - The timestamp in seconds
+    /// 
+    /// # Returns
+    /// The number of complete epochs contained in the timestamp
+    public fun number_epochs_in_timestamp(timestamp: u64): u64 {
+        timestamp / WEEK
     }
 }
 
