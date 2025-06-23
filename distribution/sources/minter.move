@@ -37,6 +37,16 @@ module distribution::minter {
     use sui::table::{Self, Table};
     use integer_mate::full_math_u128;
 
+    const ECreateMinterInvalidPublisher: u64 = 695309471293028100;
+
+    const EGrantAdminInvalidPublisher: u64 = 198127851942335970;
+
+    const EGrantDistributeGovernorInvalidPublisher: u64 = 49774594592309590;
+
+    const ERevokeAdminInvalidPublisher: u64 = 729123415718822900;
+
+    const ERevokeDistributeGovernorInvalidPublisher: u64 = 639606009071379600;
+
     const EActivateMinterAlreadyActive: u64 = 922337310630222234;
     const EActivateMinterPaused: u64 = 996659030249798900;
     const EActivateMinterNoDistributorCap: u64 = 922337311059823823;
@@ -94,7 +104,6 @@ module distribution::minter {
     const EDistributeTeamMinterPaused: u64 = 482957361048572639;
 
     const ECreateGaugeMinterPaused: u64 = 173400731963214500;
-    const ECreateGaugeMinterNotActive: u64 = 506817394857201639;
     const ECreateGaugeZeroBaseEmissions: u64 = 676230237726862100;
 
     const EResetGaugeMinterPaused: u64 = 412179529765746000;
@@ -123,7 +132,7 @@ module distribution::minter {
     ];
 
     /// After expiration oSAIL can only be locked for 4 years or permanently
-    const VALID_EXPIRED_O_SAIL_DURATION_DAYS: u64 =  4 * 52 * 7;
+    const VALID_EXPIRED_O_SAIL_DURATION_DAYS: u64 =  4 * 52 * DAYS_IN_WEEK;
 
     /// Denominator in rate calculations (i.e. fee percent, team emission percent)
     const RATE_DENOM: u64 = 10000;
@@ -400,18 +409,19 @@ module distribution::minter {
     /// Creates a new Minter instance with default configuration.
     ///
     /// # Arguments
-    /// * `_publisher` - Publisher proving authorization
+    /// * `publisher` - Publisher proving authorization
     /// * `treasury_cap` - Optional minter capability for SailCoin
     /// * `ctx` - Transaction context
     ///
     /// # Returns
     /// A tuple with (minter, admin_cap), where admin_cap grants administrative privileges
     public fun create<SailCoinType>(
-        _publisher: &sui::package::Publisher,
+        publisher: &sui::package::Publisher,
         treasury_cap: Option<TreasuryCap<SailCoinType>>,
         distribution_config: ID,
         ctx: &mut TxContext
     ): (Minter<SailCoinType>, AdminCap) {
+        assert!(publisher.from_module<MINTER>(), ECreateMinterInvalidPublisher);
         let id = object::new(ctx);
         let minter = Minter<SailCoinType> {
             id,
@@ -445,7 +455,8 @@ module distribution::minter {
 
     /// Grants and transfers administrative capability to a specified address.
     /// This function is not protected by is_paused to prevent deadlocks.
-    public fun grant_admin(_publisher: &sui::package::Publisher, who: address, ctx: &mut TxContext) {
+    public fun grant_admin(publisher: &sui::package::Publisher, who: address, ctx: &mut TxContext) {
+        assert!(publisher.from_module<MINTER>(), EGrantAdminInvalidPublisher);
         let admin_cap = AdminCap { id: object::new(ctx) };
         let grant_admin_event = EventGrantAdmin {
             who,
@@ -456,7 +467,8 @@ module distribution::minter {
     }
 
     /// Grants and transfers distribute governor capability to a specified address.
-    public fun grant_distribute_governor(_publisher: &sui::package::Publisher, who: address, ctx: &mut TxContext) {
+    public fun grant_distribute_governor(publisher: &sui::package::Publisher, who: address, ctx: &mut TxContext) {
+        assert!(publisher.from_module<MINTER>(), EGrantDistributeGovernorInvalidPublisher);
         let distribute_governor_cap = DistributeGovernorCap { id: object::new(ctx) };
         let grant_distribute_governor_event = EventGrantDistributeGovernor {
             who,
@@ -509,18 +521,20 @@ module distribution::minter {
     /// Revokes administrative capabilities for a specific admin.
     public fun revoke_admin<SailCoinType>(
         minter: &mut Minter<SailCoinType>,
-        _publisher: &sui::package::Publisher,
+        publisher: &sui::package::Publisher,
         cap_id: ID
     ) {
+        assert!(publisher.from_module<MINTER>(), ERevokeAdminInvalidPublisher);
         minter.revoked_admins.insert(cap_id);
     }
 
     /// Revokes distribute governor capabilities for a specific distribute governor.
     public fun revoke_distribute_governor<SailCoinType>(
         minter: &mut Minter<SailCoinType>,
-        _publisher: &sui::package::Publisher,
+        publisher: &sui::package::Publisher,
         cap_id: ID
     ) {
+        assert!(publisher.from_module<MINTER>(), ERevokeDistributeGovernorInvalidPublisher);
         minter.revoked_distribute_governors.insert(cap_id);
     }
 
