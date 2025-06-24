@@ -8606,7 +8606,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             assert!(new_position_id != position_id, 932605293560);
 
             let new_liquidity = pool.position_manager().borrow_position_info(locked_position.get_locked_position_id()).info_liquidity();
-            assert!(new_liquidity == 178386082707908692847, 923412491398739); // liquidity should be proportionally increased by ~4.87x
+            assert!(new_liquidity == 179200794087989674225, 923412491398739); // liquidity should be proportionally increased by ~4.87x
 
             let (new_tick_lower, new_tick_upper) = pool.position_manager().borrow_position_info(locked_position.get_locked_position_id()).info_tick_range();
             assert!(new_tick_lower.eq(integer_mate::i32::from_u32(100)), 96340634523452);
@@ -8735,7 +8735,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let (staked_position) = create_and_deposit_position<TestCoinB, TestCoinA>(
                 &mut scenario,
                 &global_config,
-                &mut distribution_config,
+                &distribution_config,
                 &mut gauge,
                 &mut vault,
                 &mut pool,
@@ -8787,7 +8787,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             assert!(new_position_id != position_id, 932605293560);
 
             let new_liquidity = pool.position_manager().borrow_position_info(locked_position.get_locked_position_id()).info_liquidity();
-            assert!(new_liquidity == 4566025760819195944, 923412491398739); // liquidity should be proportionally decreased by ~4x
+            assert!(new_liquidity == 4576892976317919965, 923412491398739); // liquidity should be proportionally decreased by ~4x
 
             let (new_tick_lower, new_tick_upper) = pool.position_manager().borrow_position_info(locked_position.get_locked_position_id()).info_tick_range();
             assert!(new_tick_lower.eq(integer_mate::i32::from_u32(13)), 96340634523452);
@@ -9207,7 +9207,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             assert!(new_position_id != position_id, 932605293560);
 
             let new_liquidity = pool.position_manager().borrow_position_info(locked_position.get_locked_position_id()).info_liquidity();
-            assert!(new_liquidity == 360008798430211682134, 923412491398739);
+            assert!(new_liquidity == 360008798430211682133, 923412491398739);
 
             let (new_tick_lower, new_tick_upper) = pool.position_manager().borrow_position_info(locked_position.get_locked_position_id()).info_tick_range();
             assert!(new_tick_lower.eq(integer_mate::i32::from_u32(4294967295-1)), 96340634523452);
@@ -9233,7 +9233,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
         };
 
-          // second call of change_tick_range function
+        // second call of change_tick_range function
         clock::increment_for_testing(&mut clock, common::epoch_to_seconds(1)*1000*5/10);
         scenario.next_tx(admin);
         {
@@ -12836,8 +12836,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let lock1 = scenario.take_from_sender<voting_escrow::Lock>();
 
             assert!(lock1.get_amount() + lock2.get_amount() == 999999, 9262236263635); // 10% of total reward for epoch 2
-            assert!(lock1.get_amount() == 695973, 4631118131817); // 100% for 1/10 epoch + 2/3% for 9/10 epoch
-            assert!(lock2.get_amount() == 304026, 4631118131818); // 1/3% for 9/10 epoch
+            assert!(lock1.get_amount() == 696826, 4631118131817); // 100% for 1/10 epoch + 2/3% for 9/10 epoch
+            assert!(lock2.get_amount() == 303173, 4631118131818); // 1/3% for 9/10 epoch
 
             transfer::public_transfer(lock1, admin);
             transfer::public_transfer(lock2, admin);
