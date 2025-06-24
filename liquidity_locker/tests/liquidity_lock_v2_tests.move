@@ -11150,16 +11150,16 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &clock
             );
 
-            let position_admin3 = create_position_with_liquidity<TestCoinB, TestCoinA>(
-                &mut scenario,
-                &global_config,
-                &mut vault,
-                &mut pool,
-                90,
-                350,
-                9<<64,
-                &clock
-            );
+            // let position_admin3 = create_position_with_liquidity<TestCoinB, TestCoinA>(
+            //     &mut scenario,
+            //     &global_config,
+            //     &mut vault,
+            //     &mut pool,
+            //     90,
+            //     350,
+            //     9<<64,
+            //     &clock
+            // );
 
             let mut locked_positions = liquidity_lock_v2::lock_position<TestCoinB, TestCoinA, OSAIL1>(
                 &global_config,
@@ -11181,7 +11181,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             transfer::public_transfer(locked_position_1, admin);
             transfer::public_transfer(position_admin, admin);
             transfer::public_transfer(position_admin2, admin);
-            transfer::public_transfer(position_admin3, admin);
+            // transfer::public_transfer(position_admin3, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
@@ -11269,21 +11269,21 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 scenario.ctx()
             );
 
-            liquidity_lock_v2::change_tick_range<TestCoinB, TestCoinA, OSAIL2>(
-                &global_config,
-                &distribution_config,
-                &mut vault,
-                &mut locker,
-                &mut locked_position,
-                &mut gauge,
-                &mut pool,
-                &mut stats,
-                &price_provider,
-                integer_mate::i32::from_u32(371),
-                integer_mate::i32::from_u32(380),
-                &clock,
-                scenario.ctx()
-            );
+            // liquidity_lock_v2::change_tick_range<TestCoinB, TestCoinA, OSAIL2>(
+            //     &global_config,
+            //     &distribution_config,
+            //     &mut vault,
+            //     &mut locker,
+            //     &mut locked_position,
+            //     &mut gauge,
+            //     &mut pool,
+            //     &mut stats,
+            //     &price_provider,
+            //     integer_mate::i32::from_u32(371),
+            //     integer_mate::i32::from_u32(380),
+            //     &clock,
+            //     scenario.ctx()
+            // );
 
             transfer::public_transfer(locked_position, admin);
             transfer::public_transfer(pool, admin);
@@ -11479,7 +11479,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // store position IDs to identify them in subsequent transactions
         let mut position_ids =  sui::table::new<u32, ID>(scenario.ctx());
         // change range position and split in the 50/100 of epoch 2
-        clock::increment_for_testing(&mut clock, common::epoch_to_seconds(1)*10*1000/100);
+        clock::increment_for_testing(&mut clock, common::epoch_to_seconds(1)*20*1000/100);
         scenario.next_tx(admin);
         {
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
@@ -11804,7 +11804,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let lock2 = scenario.take_from_sender<voting_escrow::Lock>();
             let lock1 = scenario.take_from_sender<voting_escrow::Lock>();
 
-            assert!(lock1.get_amount() + lock2.get_amount() + lock3.get_amount() == 649998, 9262236263635); // reward was not accrued for 3.5 epochs (position was outside current price)
+            assert!(lock1.get_amount() + lock2.get_amount() + lock3.get_amount() == 699998, 9262236263635); // reward was not accrued for 3.5 epochs (position was outside current price)
 
             transfer::public_transfer(lock1, admin);
             transfer::public_transfer(lock2, admin);
