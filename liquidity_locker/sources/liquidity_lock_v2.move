@@ -1826,14 +1826,12 @@ module liquidity_locker::liquidity_lock_v2 {
         );
         let new_position_id = object::id<clmm_pool::position::Position>(&new_position);
 
-
         let (mut liquidity_calc) = integer_mate::full_math_u128::mul_div_floor(
             position_liquidity,
             sqrt_price_diff_old,
             sqrt_price_diff_new
         );
 
-        // выведенные токены добавляем в лок
         lock_position.coin_a.join(removed_a);
         lock_position.coin_b.join(removed_b);
 
