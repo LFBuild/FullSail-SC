@@ -221,14 +221,14 @@ module distribution::gauge {
     ///
     /// # Arguments
     /// * `gauge` - The gauge instance
-    /// * `_notify_reward_cap` - Capability to claim fees
+    /// * `_distribute_cap` - Capability to control distribution
     /// * `pool` - The pool to claim fees from
     ///
     /// # Returns
     /// A tuple of balances for CoinTypeA and CoinTypeB
     public fun claim_fees<CoinTypeA, CoinTypeB>(
         gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
-        _notify_reward_cap: &distribution::notify_reward_cap::NotifyRewardCap,
+        _distribute_cap: &distribution::distribute_cap::DistributeCap,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>
     ): (Balance<CoinTypeA>, Balance<CoinTypeB>) {
         gauge.claim_fees_internal(pool)

@@ -17,8 +17,10 @@
 /// killing/reviving gauges and deactivating managed locks, ensuring it cannot override normal
 /// governance for routine protocol decisions.
 module distribution::emergency_council {
+    use sui::package;
 
-    const EEmergencyCouncilDoesNotMatchVoter: u64 = 9223372084099416065;
+    const EEmergencyCouncilDoesNotMatchVoter: u64 = 370065501622769400;
+    const EEmergencyCouncilDoesNotMatchMinter: u64 = 715059658219014000;
 
     /// The Emergency Council Capability (EmergencyCouncilCap) is a privileged object that 
     /// grants special administrative powers to address emergency situations in the protocol.
@@ -34,10 +36,34 @@ module distribution::emergency_council {
     public struct EmergencyCouncilCap has store, key {
         id: UID,
         voter: ID,
+        minter: ID,
     }
+
+    public struct EMERGENCY_COUNCIL has drop {}
 
     public fun validate_emergency_council_voter_id(emergency_council_cap: &EmergencyCouncilCap, voter_id: ID) {
         assert!(emergency_council_cap.voter == voter_id, EEmergencyCouncilDoesNotMatchVoter);
+    }
+
+    public fun validate_emergency_council_minter_id(emergency_council_cap: &EmergencyCouncilCap, minter_id: ID) {
+        assert!(emergency_council_cap.minter == minter_id, EEmergencyCouncilDoesNotMatchMinter);
+    }
+
+    fun init(otw: EMERGENCY_COUNCIL, ctx: &mut TxContext) {
+        package::claim_and_keep<EMERGENCY_COUNCIL>(otw, ctx);
+    }
+
+    #[test_only]
+    public fun create_for_testing(
+        voter_id: ID,
+        minter_id: ID,
+        ctx: &mut sui::tx_context::TxContext
+    ): EmergencyCouncilCap {
+        EmergencyCouncilCap {
+            id: object::new(ctx),
+            voter: voter_id,
+            minter: minter_id,
+        }
     }
 }
 

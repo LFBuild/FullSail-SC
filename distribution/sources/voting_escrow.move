@@ -1,5 +1,7 @@
 module distribution::voting_escrow {
+    
     // Error constants
+    const ECreateVotingEscrowInvalidPublisher: u64 = 184812403570428600;
     const ESplitOwnerNotFound: u64 = 922337599252162153;
     const ESplitNotAllowed: u64 = 922337600111090075;
     const ESplitNotNormalEscrow: u64 = 922337600540613020; 
@@ -10,6 +12,7 @@ module distribution::voting_escrow {
     const ETransferLockedPosition: u64 = 922337688587377051;
     const ETransferNotOwner: u64 = 922337689875775487;
     const EWithdrawPositionVoted: u64 = 922337640483821980;
+    const EAddAllowedManagerInvalidPublisher: u64 = 277556739040212930;
     const EWithdrawPositionNotNormalEscrow: u64 = 922337640913305602;
     const EWithdrawPermanentPosition: u64 = 922337642201861328;
     const EWithdrawBeforeEndTime: u64 = 922337643060684391;
@@ -45,6 +48,7 @@ module distribution::voting_escrow {
     const EMergePositionVoted: u64 = 922337607412573801;
     const EMergeSourceNotNormalEscrow: u64 = 922337607842057423;
     const EMergeTargetNotNormalEscrow: u64 = 922337608271554152;
+    const ERemoveAllowedManagerInvalidPublisher: u64 = 695214134516513500;
     const EMergeSamePosition: u64 = 922337608701247493;
     const EMergeSourcePermanent: u64 = 922337611707593526;
     const ESetManagedLockNotManagedType: u64 = 922337850078330884;
@@ -384,7 +388,7 @@ module distribution::voting_escrow {
     /// and voting power calculations.
     ///
     /// # Arguments
-    /// * `_publisher` - The publisher of the module
+    /// * `publisher` - The publisher of the module
     /// * `voter_id` - The ID of the associated voter
     /// * `clock` - The system clock
     /// * `ctx` - The transaction context
@@ -392,11 +396,12 @@ module distribution::voting_escrow {
     /// # Returns
     /// A new VotingEscrow instance
     public fun create<SailCoinType>(
-        _publisher: &sui::package::Publisher,
+        publisher: &sui::package::Publisher,
         voter_id: ID,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): VotingEscrow<SailCoinType> {
+        assert!(publisher.from_module<VOTING_ESCROW>(), ECreateVotingEscrowInvalidPublisher);
         let uid = object::new(ctx);
         let inner_id = object::uid_to_inner(&uid);
         let mut voting_escrow = VotingEscrow<SailCoinType> {
@@ -505,13 +510,14 @@ module distribution::voting_escrow {
     ///
     /// # Arguments
     /// * `voting_escrow` - The voting escrow instance
-    /// * `_publisher` - The publisher of the module
+    /// * `publisher` - The publisher of the module
     /// * `who` - The address to add as an allowed manager
     public fun add_allowed_manager<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
-        _publisher: &sui::package::Publisher,
+        publisher: &sui::package::Publisher,
         who: address
     ) {
+        assert!(publisher.from_module<VOTING_ESCROW>(), EAddAllowedManagerInvalidPublisher);
         voting_escrow.allowed_managers.insert(who);
     }
 
@@ -2093,9 +2099,10 @@ module distribution::voting_escrow {
 
     public fun remove_allowed_manager<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
-        _publisher: &sui::package::Publisher,
+        publisher: &sui::package::Publisher,
         who: address
     ) {
+        assert!(publisher.from_module<VOTING_ESCROW>(), ERemoveAllowedManagerInvalidPublisher);
         voting_escrow.allowed_managers.remove(&who);
     }
 
@@ -2603,6 +2610,11 @@ module distribution::voting_escrow {
         sui::event::emit<EventWithdrawManaged>(v12);
         let metadata_update_event = EventMetadataUpdate { lock_id };
         sui::event::emit<EventMetadataUpdate>(metadata_update_event);
+    }
+
+    // Returns the voter ID of the voting escrow.
+    public fun get_voter_id<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>): ID {
+        voting_escrow.voter
     }
 
     #[test_only]
