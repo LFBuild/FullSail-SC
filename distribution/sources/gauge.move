@@ -84,6 +84,8 @@ module distribution::gauge {
     const EFullEarnedForTypeEpochToken: u64 = 932952345345345345;
     const EFullEarnedForTypeNoGrowthGlobalByToken: u64 = 923483942940234034;
 
+    const EReservesSplitInsufficientReserves: u64 = 923407934206342745;
+
     public struct TRANSFORMER has drop {}
 
     public struct AdminCap has store, key {
@@ -1169,9 +1171,9 @@ module distribution::gauge {
         clock: &sui::clock::Clock
     ) {
         let current_time = clock.timestamp_ms() / 1000;
-        let time_until_next_epoch = distribution::common::epoch_next(current_time) - current_time;
+        let next_epoch_time = distribution::common::epoch_next(current_time);
+        let time_until_next_epoch = next_epoch_time - current_time;
         pool.update_fullsail_distribution_growth_global(gauge.gauge_cap.borrow(), clock);
-        let next_epoch_time = current_time + time_until_next_epoch;
         let current_distribution_reserve = pool.get_fullsail_distribution_reserve();
         if (current_time >= gauge.period_finish) {
             gauge.reward_rate = integer_mate::full_math_u128::mul_div_floor(
@@ -1201,13 +1203,16 @@ module distribution::gauge {
             pool.sync_fullsail_distribution_reward(
                 gauge.gauge_cap.borrow(),
                 gauge.reward_rate,
-                current_distribution_reserve + amount + ((future_rewards / 1 << 64) as u64),
+                current_distribution_reserve + amount + ((future_rewards / (1 << 64)) as u64),
                 next_epoch_time,
                 clock
             );
         };
         // TODO: check why double reward notification in a single epoch is prohibited by this table::add
         // while it is explicitly handled by if else above
+        if (gauge.reward_rate_by_epoch.contains(distribution::common::epoch_start(current_time))) {
+            gauge.reward_rate_by_epoch.remove(distribution::common::epoch_start(current_time));
+        };
         gauge.reward_rate_by_epoch.add(distribution::common::epoch_start(current_time), gauge.reward_rate);
         assert!(gauge.reward_rate != 0, ENotifyRewardAmountRewardRateZero);
         assert!(
@@ -1348,8 +1353,14 @@ module distribution::gauge {
         };
         let coin_type = type_name::get<RewardCoinType>();
 
+        assert!(gauge.reserves_all_tokens >= amount, EReservesSplitInsufficientReserves);
         gauge.reserves_all_tokens = gauge.reserves_all_tokens - amount;
 
+        assert!(
+            gauge.reserves_balance.contains(coin_type) && 
+            gauge.reserves_balance.borrow<TypeName, Balance<RewardCoinType>>(coin_type).value() >= amount, 
+            EReservesSplitInsufficientReserves
+        );
         gauge
             .reserves_balance
             .borrow_mut<TypeName, Balance<RewardCoinType>>(coin_type)
@@ -1661,7 +1672,9 @@ module distribution::gauge {
         _locker_cap: &locker_cap::locker_cap::LockerCap,
         position_id: ID,
     ) {
-        gauge.locked_positions.add(position_id, Locked {});
+        if (!gauge.locked_positions.contains(position_id)) {
+            gauge.locked_positions.add(position_id, Locked {});
+        }
     }
 
     /// Remove the locked status from a position in the gauge
@@ -1675,6 +1688,8 @@ module distribution::gauge {
         _locker_cap: &locker_cap::locker_cap::LockerCap,
         position_id: ID,
     ) {
-        gauge.locked_positions.remove(position_id);
+        if (gauge.locked_positions.contains(position_id)) {
+            gauge.locked_positions.remove(position_id);
+        }
     }
 }

@@ -79,7 +79,7 @@ module distribution::common {
     /// # Returns
     /// The timestamp when voting ends in the current epoch
     public fun epoch_vote_end(timestamp: u64): u64 {
-        timestamp - (timestamp % WEEK) + WEEK - HOUR
+        epoch_next(timestamp) - HOUR
     }
 
     /// Calculates the start timestamp of the voting period in the current epoch
@@ -91,7 +91,7 @@ module distribution::common {
     /// # Returns
     /// The timestamp when voting starts in the current epoch
     public fun epoch_vote_start(timestamp: u64): u64 {
-        timestamp - timestamp % WEEK + HOUR
+        epoch_start(timestamp) + HOUR
     }
 
     /// Returns the time required for transaction finality

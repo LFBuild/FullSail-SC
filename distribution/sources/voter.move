@@ -173,6 +173,7 @@ module distribution::voter {
         pool: ID,
         lock: ID,
         voting_weight: u64,
+        volume: u64,
         pool_weight: u64,
     }
 
@@ -627,9 +628,9 @@ module distribution::voter {
         volumes: &vector<u64>
     ) {
         let pools_length = pool_ids.length();
+        assert!(pools_length <= voter.max_voting_num, ECheckVoteMaxVoteNumExceed);
         assert!(pools_length == weights.length(), ECheckVoteSizesDoNotMatch);
         assert!(pools_length == volumes.length(), ECheckVoteVolumeSizeDoNotMatch);
-        assert!(pools_length <= voter.max_voting_num, ECheckVoteMaxVoteNumExceed);
         let mut i = 0;
         while (i < pools_length) {
             assert!(
@@ -878,7 +879,7 @@ module distribution::voter {
             into_gauge_id(gauge_id),
             distribution::bribe_voting_reward::create(voter_id, voting_escrow_id, gauge_id, reward_coins, ctx)
         );
-        voter.receive_gauger(distribute_cap, &mut gauge, clock, ctx);
+        voter.receive_gauger(distribute_cap, &mut gauge, clock);
         let mut alive_gauges_vec = std::vector::empty<ID>();
         alive_gauges_vec.push_back(gauge_id);
         distribution_config.update_gauge_liveness(alive_gauges_vec, true);
@@ -1353,13 +1354,11 @@ module distribution::voter {
     /// * `governor_cap` - The governor capability to authorize the operation
     /// * `gauge` - The gauge to be received
     /// * `clock` - The system clock
-    /// * `ctx` - The transaction context
     public fun receive_gauger<CoinTypeA, CoinTypeB>(
         voter: &mut Voter,
         distribute_cap: &distribution::distribute_cap::DistributeCap,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
-        clock: &sui::clock::Clock,
-        ctx: &mut TxContext
+        clock: &sui::clock::Clock
     ) {
         distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
         let gauge_id = into_gauge_id(
@@ -1460,7 +1459,7 @@ module distribution::voter {
     fun reset_internal<SailCoinType>(
         voter: &mut Voter,
         voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
-        distribution_config: &distribution::distribution_config::DistributionConfig,
+        _: &distribution::distribution_config::DistributionConfig,
         lock: &distribution::voting_escrow::Lock,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
@@ -1611,6 +1610,7 @@ module distribution::voter {
     /// * `lock` - The lock to vote with
     /// * `pools` - A vector of pool IDs to vote for
     /// * `weights` - A vector of weights to allocate to each pool
+    /// * `volumes` - A vector of volumes to allocate to each pool
     /// * `clock` - The system clock
     /// * `ctx` - The transaction context
     ///
@@ -1655,7 +1655,7 @@ module distribution::voter {
     }
 
     /// Internal function to implement the voting logic.
-    /// Handles the details of allocating voting power to pools based on weights.
+    /// Handles the details of allocating voting power to pools based on weights and volumes.
     ///
     /// # Arguments
     /// * `voter` - The voter contract reference
@@ -1665,6 +1665,7 @@ module distribution::voter {
     /// * `voting_power` - The voting power of the lock
     /// * `pools` - A vector of pool IDs to vote for
     /// * `weights` - A vector of weights to allocate to each pool
+    /// * `volumes` - A vector of volumes to allocate to each pool
     /// * `clock` - The system clock
     /// * `ctx` - The transaction context
     ///
@@ -1780,6 +1781,7 @@ module distribution::voter {
                 pool: pool_id.id,
                 lock: lock_id.id,
                 voting_weight: votes_for_pool,
+                volume: volumes[i],
                 pool_weight: *voter.weights.borrow(gauge_id),
             };
             sui::event::emit<EventVoted>(voted_event);
@@ -1887,7 +1889,7 @@ module distribution::voter {
             voter.is_governor(object::id(governor_cap)),
             EWhitelistTokenGovernorInvalid
         );
-        voter.whitelist_token_internal<CoinToWhitelistType>(
+        voter.whitelist_token_internal(
             type_name::get<CoinToWhitelistType>(),
             listed,
             tx_context::sender(ctx)
@@ -1905,7 +1907,7 @@ module distribution::voter {
     ///
     /// # Emits
     /// * `EventWhitelistToken` with whitelist information
-    fun whitelist_token_internal<SailCoinType>(
+    fun whitelist_token_internal(
         voter: &mut Voter,
         coinTypeName: std::type_name::TypeName,
         listed: bool,
