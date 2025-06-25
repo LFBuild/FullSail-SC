@@ -122,6 +122,21 @@ module distribution::minter {
 
     const EWhitelistPoolMinterPaused: u64 = 316161888154524900;
 
+    const EScheduleSailMintPublisherInvalid: u64 = 716204622969124700;
+    const EScheduleSailMintMinterPaused: u64 = 849544693573603300;
+    const EScheduleSailMintAmountZero: u64 = 520351519384544260;
+
+    const EScheduleOSailMintPublisherInvalid: u64 = 734928593233084000;
+    const EScheduleOSailMintMinterPaused: u64 = 621003109924614900;
+    const EScheduleOSailMintInvalidOSail: u64 = 348840174999730750;
+
+    const EExecuteSailMintStillLocked: u64 = 163079933457922500;
+    const EExecuteSailMintMinterPaused: u64 = 563287666418746940;
+
+    const EExecuteOSailMintStillLocked: u64 = 151689484412189660;
+    const EExecuteOSailMintMinterPaused: u64 = 701790096846469900;
+    const EExecuteOSailMintInvalidOSail: u64 = 656291036632650900;
+
     const DAYS_IN_WEEK: u64 = 7;
 
     /// Possible lock duration available be oSAIL expiry date
@@ -142,6 +157,8 @@ module distribution::minter {
 
     const MAX_EMISSIONS_CHANGE_RATE: u64 = RATE_DENOM + RATE_DENOM / 10; // +10%
     const MIN_EMISSIONS_CHANGE_RATE: u64 = RATE_DENOM - RATE_DENOM / 10; // -10%
+
+    const MINT_LOCK_TIME_MS: u64 = 24 * 60 * 60 * 1000; // 1 day
 
     /// Admin is responsible for initialization functions.
     public struct AdminCap has store, key {
@@ -180,6 +197,18 @@ module distribution::minter {
     public struct EventGrantDistributeGovernor has copy, drop, store {
         who: address,
         distribute_governor_cap: ID,
+    }
+
+    public struct TimeLockedSailMint has key, store {
+        id: UID,
+        amount: u64,
+        unlock_time: u64,
+    }
+
+    public struct TimeLockedOSailMint<phantom OSailCoinType> has key, store {
+        id: UID,
+        amount: u64,
+        unlock_time: u64,
     }
 
     public struct Minter<phantom SailCoinType> has store, key {
@@ -1628,6 +1657,75 @@ module distribution::minter {
         minter: &Minter<SailCoinType>,
     ): &VecSet<ID> {
         &minter.whitelisted_pools
+    }
+
+    public fun schedule_sail_mint<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        publisher: &mut sui::package::Publisher,
+        amount: u64,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext,
+    ): TimeLockedSailMint {
+        assert!(publisher.from_module<MINTER>(), EScheduleSailMintPublisherInvalid);
+        assert!(!minter.is_paused(), EScheduleSailMintMinterPaused);
+        assert!(amount > 0, EScheduleSailMintAmountZero);
+        let id = object::new(ctx);
+        let unlock_time = clock.timestamp_ms() + MINT_LOCK_TIME_MS;
+        TimeLockedSailMint {
+            id,
+            amount,
+            unlock_time,
+        }
+    }
+
+    public fun schedule_o_sail_mint<SailCoinType, OSailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        publisher: &mut sui::package::Publisher,
+        amount: u64,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext,
+    ): TimeLockedOSailMint<OSailCoinType> {
+        assert!(publisher.from_module<MINTER>(), EScheduleOSailMintPublisherInvalid);
+        assert!(!minter.is_paused(), EScheduleOSailMintMinterPaused);
+        assert!(minter.is_valid_o_sail_type<SailCoinType, OSailCoinType>(), EScheduleOSailMintInvalidOSail);
+        let id = object::new(ctx);
+        let unlock_time = clock.timestamp_ms() + MINT_LOCK_TIME_MS;
+        TimeLockedOSailMint<OSailCoinType> {
+            id,
+            amount,
+            unlock_time,
+        }
+    }
+
+    public fun execute_sail_mint<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        mint: TimeLockedSailMint,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext,
+    ): Coin<SailCoinType> {
+        assert!(!minter.is_paused(), EExecuteSailMintMinterPaused);
+        let TimeLockedSailMint {id, amount, unlock_time} = mint;
+        object::delete(id);
+
+        assert!(unlock_time <= clock.timestamp_ms(), EExecuteSailMintStillLocked);
+
+        minter.mint_sail(amount, ctx)
+    }
+
+    public fun execute_o_sail_mint<SailCoinType, OSailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        mint: TimeLockedOSailMint<OSailCoinType>,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext,
+    ): Coin<OSailCoinType> {
+        assert!(!minter.is_paused(), EExecuteOSailMintMinterPaused);
+        let TimeLockedOSailMint {id, amount, unlock_time} = mint;
+        object::delete(id);
+
+        assert!(unlock_time <= clock.timestamp_ms(), EExecuteOSailMintStillLocked);
+        assert!(minter.is_valid_o_sail_type<SailCoinType, OSailCoinType>(), EExecuteOSailMintInvalidOSail);
+
+        minter.mint_o_sail<SailCoinType, OSailCoinType>(amount, ctx)
     }
 
     #[test_only]
