@@ -1,11 +1,11 @@
 module distribution::reward {
 
     const EUpdateBalancesDisabled: u64 = 931921756019291001;
-    const EUpdateBalancesEpochStartInvalid: u64 = 17211664930268266;
-    const EUpdateBalancesInvalidLocksLength: u64 = 651147350837936100;
+    const EUpdateBalancesEpochStartInvalid: u64 = 97211664930268266;
+    const EUpdateBalancesInvalidLocksLength: u64 = 951147350837936100;
     const EUpdateBalancesAlreadyFinal: u64 = 931921756019291000;
-    const EUpdateBalancesLockWasNotDeposited: u64 = 540228096373927230;
-    const EUpdateBalancesOnlyFinishedEpochAllowed: u64 = 787934305039328400;
+    const EUpdateBalancesLockWasNotDeposited: u64 = 940228096373927230;
+    const EUpdateBalancesOnlyFinishedEpochAllowed: u64 = 987934305039328400;
 
     const ERewardPerEpochInvalidToken: u64 = 9223372492121309183;
 
@@ -307,8 +307,7 @@ module distribution::reward {
         let zero_checkpoints = if (!reward.num_checkpoints.contains(lock_id)) {
             true
         } else {
-            let v1 = 0;
-            reward.num_checkpoints.borrow(lock_id) == &v1
+            *reward.num_checkpoints.borrow(lock_id) == 0
         };
         if (zero_checkpoints) {
             return 0
@@ -761,7 +760,9 @@ module distribution::reward {
         let epoch_start = distribution::common::epoch_start(time);
         // latest checkpoint timestam is equal to current epoch start
         if (
-            num_of_checkpoints > 0 && 
+            num_of_checkpoints > 0 &&
+            reward.checkpoints.contains(lock_id) &&
+            reward.checkpoints.borrow(lock_id).contains(num_of_checkpoints - 1) &&
             reward.checkpoints.borrow(lock_id).borrow(num_of_checkpoints - 1).epoch_start == epoch_start 
         ) {
             let checkpoint = reward.checkpoints.borrow_mut(lock_id);
@@ -822,12 +823,12 @@ module distribution::reward {
         let epoch_start = distribution::common::epoch_start(time);
         // latest checkpoint timestam is equal to current epoch start
         if (
-            num_of_checkpoints > 0 
-            && reward.supply_checkpoints.borrow(num_of_checkpoints - 1).epoch_start == epoch_start
+            num_of_checkpoints > 0 &&
+            reward.supply_checkpoints.contains(num_of_checkpoints - 1) &&
+            reward.supply_checkpoints.borrow(num_of_checkpoints - 1).epoch_start == epoch_start
         ) {
-            if (reward.supply_checkpoints.contains(num_of_checkpoints - 1)) {
-                reward.supply_checkpoints.remove(num_of_checkpoints - 1);
-            };
+            reward.supply_checkpoints.remove(num_of_checkpoints - 1);
+            
             let updated_checkpoint = SupplyCheckpoint {
                 epoch_start,
                 supply: total_supply,

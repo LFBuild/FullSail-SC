@@ -1258,7 +1258,7 @@ module distribution::voting_escrow {
         assert!(
             clock.timestamp_ms() - *voting_escrow.ownership_change_at.borrow(
                 lock_id
-            ) >= distribution::common::get_time_to_finality(),
+            ) >= distribution::common::get_time_to_finality() * 1000, // in ms
             EDelegateOwnershipChangeTooRecent
         );
         let current_delegatee = voting_escrow.voting_dao.delegatee(lock_id);
@@ -1654,7 +1654,7 @@ module distribution::voting_escrow {
         assert!(
             clock.timestamp_ms() - *voting_escrow.ownership_change_at.borrow(
                 lock_id
-            ) >= distribution::common::get_time_to_finality(),
+            ) >= distribution::common::get_time_to_finality() * 1000, // in ms
             EGetVotingPowerOwnershipChangeTooRecent
         );
         voting_escrow.balance_of_nft_at_internal(lock_id, distribution::common::current_timestamp(clock))
@@ -2132,7 +2132,7 @@ module distribution::voting_escrow {
         values.push_back(std::string::utf8(b"{end}"));
         values.push_back(std::string::utf8(b"{permanent}"));
         values.push_back(std::string::utf8(b""));
-        values.push_back(std::string::utf8(b"https://fullsailfinance.io"));
+        values.push_back(std::string::utf8(b"https://app.fullsail.finance"));
         values.push_back(std::string::utf8(b"FULLSAIL"));
         let mut display = sui::display::new_with_fields<Lock>(
             publisher,

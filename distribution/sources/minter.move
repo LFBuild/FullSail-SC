@@ -1289,7 +1289,7 @@ module distribution::minter {
                 while (i < valid_durations_len) {
                     if (valid_durations[i] == lock_duration_days) {
                         valid_duration = true;
-                        break;
+                        break
                     };
                     i = i + 1;
                 };
@@ -1354,9 +1354,6 @@ module distribution::minter {
         exercise_o_sail_free_internal(minter, o_sail, percent_to_receive, clock, ctx)
     }
 
-    
-
-
     /// Checks conditions, exercises oSAIL
     public fun exercise_o_sail_ab<SailCoinType, USDCoinType, OSailCoinType>(
         minter: &mut Minter<SailCoinType>,
@@ -1370,8 +1367,8 @@ module distribution::minter {
         ctx: &mut TxContext,
     ): (Coin<USDCoinType>, Coin<SailCoinType>) {
         assert!(!minter.is_paused(), EExerciseOSailAbMinterPaused);
-        let o_sail_type = type_name::get<OSailCoinType>();
         assert!(minter.is_valid_o_sail_type<SailCoinType, OSailCoinType>(), EExerciseOSailInvalidOSail);
+        let o_sail_type = type_name::get<OSailCoinType>();
         let expiry_date: u64 = *minter.o_sail_expiry_dates.borrow(o_sail_type);
         let current_time = distribution::common::current_timestamp(clock);
         assert!(current_time < expiry_date, EExerciseOSailExpired);
@@ -1403,8 +1400,8 @@ module distribution::minter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
     ): (Coin<USDCoinType>, Coin<SailCoinType>) {
-        assert!(minter.is_valid_o_sail_type<SailCoinType, OSailCoinType>(), EExerciseOSailInvalidOSail);
         assert!(!minter.is_paused(), EExerciseOSailBaMinterPaused);
+        assert!(minter.is_valid_o_sail_type<SailCoinType, OSailCoinType>(), EExerciseOSailInvalidOSail);
         let o_sail_type = type_name::get<OSailCoinType>();
         let expiry_date: u64 = *minter.o_sail_expiry_dates.borrow(o_sail_type);
         let current_time = distribution::common::current_timestamp(clock);
