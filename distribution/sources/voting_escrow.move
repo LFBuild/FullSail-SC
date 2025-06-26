@@ -771,14 +771,7 @@ module distribution::voting_escrow {
             }
         };
         let mut current_point = last_point;
-        let last_point_timestamp = current_point.ts;
-        // TODO: it was useless code, find out why it was here
-        // GlobalPoint {
-        //     bias: current_point.bias,
-        //     slope: current_point.slope,
-        //     ts: current_point.ts,
-        //     permanent_lock_balance: current_point.permanent_lock_balance
-        // };
+        let mut last_point_timestamp = current_point.ts;
         let mut period_timestamp = distribution::common::to_period(last_point_timestamp);
         let mut i = 0;
         while (i < 255) {
@@ -810,6 +803,7 @@ module distribution::voting_escrow {
                 current_point.slope = integer_mate::i128::from(0);
             };
             current_point.ts = period_timestamp;
+            last_point_timestamp = period_timestamp;
             let incremented_epoch = new_epoch + 1;
             new_epoch = incremented_epoch;
             if (period_timestamp == current_timestamp) {
@@ -1258,7 +1252,7 @@ module distribution::voting_escrow {
         assert!(
             clock.timestamp_ms() - *voting_escrow.ownership_change_at.borrow(
                 lock_id
-            ) >= distribution::common::get_time_to_finality(),
+            ) >= distribution::common::get_time_to_finality() * 1000, // in ms
             EDelegateOwnershipChangeTooRecent
         );
         let current_delegatee = voting_escrow.voting_dao.delegatee(lock_id);
@@ -1654,7 +1648,7 @@ module distribution::voting_escrow {
         assert!(
             clock.timestamp_ms() - *voting_escrow.ownership_change_at.borrow(
                 lock_id
-            ) >= distribution::common::get_time_to_finality(),
+            ) >= distribution::common::get_time_to_finality() * 1000, // in ms
             EGetVotingPowerOwnershipChangeTooRecent
         );
         voting_escrow.balance_of_nft_at_internal(lock_id, distribution::common::current_timestamp(clock))
@@ -2132,7 +2126,7 @@ module distribution::voting_escrow {
         values.push_back(std::string::utf8(b"{end}"));
         values.push_back(std::string::utf8(b"{permanent}"));
         values.push_back(std::string::utf8(b""));
-        values.push_back(std::string::utf8(b"https://fullsailfinance.io"));
+        values.push_back(std::string::utf8(b"https://app.fullsail.finance"));
         values.push_back(std::string::utf8(b"FULLSAIL"));
         let mut display = sui::display::new_with_fields<Lock>(
             publisher,

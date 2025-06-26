@@ -198,8 +198,7 @@ module distribution::reward_distributor {
         let reward = reward_distributor.claim_internal(voting_escrow, lock_id, period);
         if (reward > 0) {
             let (locked_balance, _) = voting_escrow.locked(lock_id);
-            if (distribution::common::current_timestamp(clock) >= locked_balance.end() && !locked_balance.is_permanent(
-            )) {
+            if (distribution::common::current_timestamp(clock) >= locked_balance.end() && !locked_balance.is_permanent()) {
                 transfer::public_transfer<sui::coin::Coin<SailCoinType>>(
                     sui::coin::from_balance<SailCoinType>(reward_distributor.balance.split<SailCoinType>(reward), ctx),
                     voting_escrow.owner_of(lock_id)
