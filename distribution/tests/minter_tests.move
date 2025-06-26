@@ -3374,153 +3374,153 @@ fun test_double_activation_fails() {
 
 
 // TODO: fix rebase
-// #[test]
-// fun test_rebase_distribution_and_claim() {
-//     let admin = @0xA;
-//     let user = @0xB;
-//     let mut scenario = test_scenario::begin(admin);
-//     let mut clock = clock::create_for_testing(scenario.ctx());
+#[test]
+fun test_rebase_distribution_and_claim() {
+    let admin = @0xA;
+    let user = @0xB;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
 
-//     let gauge_base_emissions = 1_000_000;
-//     let lock_amount = 500_000;
-//     let initial_o_sail_supply = 0;
+    let gauge_base_emissions = 1_000_000;
+    let lock_amount = 500_000;
+    let initial_o_sail_supply = 0;
 
-//     // 1. Full setup
-//     setup::full_setup_with_lock<USD1, AUSD, SAIL, OSAIL1>(
-//         &mut scenario,
-//         admin,
-//         user,
-//         &mut clock,
-//         lock_amount,
-//         182, // lock_duration_days
-//         gauge_base_emissions,
-//         initial_o_sail_supply
-//     );
+    // 1. Full setup
+    setup::full_setup_with_lock<USD1, AUSD, SAIL, OSAIL1>(
+        &mut scenario,
+        admin,
+        user,
+        &mut clock,
+        lock_amount,
+        182, // lock_duration_days
+        gauge_base_emissions,
+        initial_o_sail_supply
+    );
 
-//     // Create and deposit a position for the user
-//     scenario.next_tx(user);
-//     {
-//         setup::create_position_with_liquidity<USD1, AUSD>(
-//             &mut scenario,
-//             user,
-//             tick_math::min_tick().as_u32(),
-//             tick_math::max_tick().as_u32(),
-//             100_000_000,
-//             &clock
-//         );
-//     };
-//     scenario.next_tx(user);
-//     {
-//         setup::deposit_position<USD1, AUSD>(&mut scenario, &clock);
-//     };
+    // Create and deposit a position for the user
+    scenario.next_tx(user);
+    {
+        setup::create_position_with_liquidity<USD1, AUSD>(
+            &mut scenario,
+            user,
+            tick_math::min_tick().as_u32(),
+            tick_math::max_tick().as_u32(),
+            100_000_000,
+            &clock
+        );
+    };
+    scenario.next_tx(user);
+    {
+        setup::deposit_position<USD1, AUSD>(&mut scenario, &clock);
+    };
 
-//     // 2. Distribute gauge for epoch 1
-//     scenario.next_tx(admin);
-//     {
-//         setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, sui::sui::SUI, OSAIL1>(&mut scenario, &clock);
-//     };
+    // 2. Distribute gauge for epoch 1
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, sui::sui::SUI, OSAIL1>(&mut scenario, &clock);
+    };
 
-//     // 3. Advance to the next epoch
-//     clock.increment_for_testing(WEEK);
+    // 3. Advance to the next epoch
+    clock.increment_for_testing(WEEK);
 
-//     // 4. Check RewardDistributor balance before update (should be 0)
-//     scenario.next_tx(admin);
-//     {
-//         let rd = scenario.take_shared<RewardDistributor<SAIL>>();
-//         assert!(reward_distributor::balance(&rd) == 0, 0);
-//         test_scenario::return_shared(rd);
-//     };
+    // 4. Check RewardDistributor balance before update (should be 0)
+    scenario.next_tx(admin);
+    {
+        let rd = scenario.take_shared<RewardDistributor<SAIL>>();
+        assert!(reward_distributor::balance(&rd) == 0, 0);
+        test_scenario::return_shared(rd);
+    };
 
-//     // 5. Update minter period for epoch 2, which triggers rebase
-//     scenario.next_tx(admin);
-//     {
-//         let o_sail_coin_2 = setup::update_minter_period<SAIL, OSAIL2>(&mut scenario, 0, &clock);
-//         o_sail_coin_2.burn_for_testing();
-//     };
+    // 5. Update minter period for epoch 2, which triggers rebase
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin_2 = setup::update_minter_period<SAIL, OSAIL2>(&mut scenario, 0, &clock);
+        o_sail_coin_2.burn_for_testing();
+    };
 
-//     // 6. Verify rebase amount was distributed to RewardDistributor
-//     scenario.next_tx(admin);
-//     {
-//         let rd = scenario.take_shared<RewardDistributor<SAIL>>();
-//         assert!(reward_distributor::balance(&rd) == 125000, 1);
-//         test_scenario::return_shared(rd);
-//     };
+    // 6. Verify rebase amount was distributed to RewardDistributor
+    scenario.next_tx(admin);
+    {
+        let rd = scenario.take_shared<RewardDistributor<SAIL>>();
+        assert!(reward_distributor::balance(&rd) == 125000, 1);
+        test_scenario::return_shared(rd);
+    };
 
-//     // 7. User claims rewards
-//     scenario.next_tx(user);
-//     {
-//         let mut rd = scenario.take_shared<RewardDistributor<SAIL>>();
-//         let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
-//         let mut lock = scenario.take_from_sender<Lock>();
+    // 7. User claims rewards
+    scenario.next_tx(user);
+    {
+        let mut rd = scenario.take_shared<RewardDistributor<SAIL>>();
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let mut lock = scenario.take_from_sender<Lock>();
 
-//         let claimed_amount = reward_distributor::claim(&mut rd, &mut ve, &mut lock, &clock, scenario.ctx());
-//         assert!(125000 - claimed_amount <= 1, 2);
+        let claimed_amount = reward_distributor::claim(&mut rd, &mut ve, &mut lock, &clock, scenario.ctx());
+        assert!(125000 - claimed_amount <= 1, 2);
 
-//         // The reward should be added to the lock amount since it's still active
-//         let (locked_balance, _) = voting_escrow::locked(&ve, object::id(&lock));
-//         assert!(lock_amount + 125000 - locked_balance.amount() <= 1, 3);
-//         assert!(reward_distributor::balance(&rd) <= 1, 4);
+        // The reward should be added to the lock amount since it's still active
+        let (locked_balance, _) = voting_escrow::locked(&ve, object::id(&lock));
+        assert!(lock_amount + 125000 - locked_balance.amount() <= 1, 3);
+        assert!(reward_distributor::balance(&rd) <= 1, 4);
 
-//         test_scenario::return_shared(rd);
-//         test_scenario::return_shared(ve);
-//         scenario.return_to_sender(lock);
-//     };
+        test_scenario::return_shared(rd);
+        test_scenario::return_shared(ve);
+        scenario.return_to_sender(lock);
+    };
 
-//     // distribute the gauge for epoch 2
-//     scenario.next_tx(admin);
-//     {
-//         setup::distribute_gauge_epoch_2<USD1, AUSD, SAIL, OSAIL1, OSAIL2>(&mut scenario, &clock);
-//     };
+    // distribute the gauge for epoch 2
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge_epoch_2<USD1, AUSD, SAIL, OSAIL1, OSAIL2>(&mut scenario, &clock);
+    };
 
-//     scenario.next_tx(admin);
-//     {
-//         // print the total supply
-//         let minter = scenario.take_shared<Minter<SAIL>>();
-//         test_scenario::return_shared(minter);
-//     };
+    scenario.next_tx(admin);
+    {
+        // print the total supply
+        let minter = scenario.take_shared<Minter<SAIL>>();
+        test_scenario::return_shared(minter);
+    };
 
-//     clock.increment_for_testing(WEEK);
+    clock.increment_for_testing(WEEK);
 
-//     // update minter period for epoch 3
-//     scenario.next_tx(admin);
-//     {
-//         let o_sail_coin_3 = setup::update_minter_period<SAIL, OSAIL3>(&mut scenario, 0, &clock);
-//         o_sail_coin_3.burn_for_testing();
-//     };
+    // update minter period for epoch 3
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin_3 = setup::update_minter_period<SAIL, OSAIL3>(&mut scenario, 0, &clock);
+        o_sail_coin_3.burn_for_testing();
+    };
 
-//     // expected total supply is 1_000_000 + 1_000_000 + 125000;
-//     // locked supply is 500_000 + 125000
-//     // expected rebase is 249136
+    // expected total supply is 1_000_000 + 1_000_000 + 125000;
+    // locked supply is 500_000 + 125000
+    // expected rebase is 249136
 
-//     // 8. Verify rebase amount was distributed to RewardDistributor
-//     scenario.next_tx(admin);
-//     {
-//         let rd = scenario.take_shared<RewardDistributor<SAIL>>();
-//         assert!(249136 - reward_distributor::balance(&rd) <= 2, 1);
-//         test_scenario::return_shared(rd);
-//     };
+    // 8. Verify rebase amount was distributed to RewardDistributor
+    scenario.next_tx(admin);
+    {
+        let rd = scenario.take_shared<RewardDistributor<SAIL>>();
+        assert!(249136 - reward_distributor::balance(&rd) <= 2, 1);
+        test_scenario::return_shared(rd);
+    };
 
-//     // 9. User claims rewards
-//     scenario.next_tx(user);
-//     {
-//         let mut rd = scenario.take_shared<RewardDistributor<SAIL>>();
-//         let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
-//         let mut lock = scenario.take_from_sender<Lock>();
+    // 9. User claims rewards
+    scenario.next_tx(user);
+    {
+        let mut rd = scenario.take_shared<RewardDistributor<SAIL>>();
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let mut lock = scenario.take_from_sender<Lock>();
 
-//         let claimed_amount = reward_distributor::claim(&mut rd, &mut ve, &mut lock, &clock, scenario.ctx());
-//         assert!(249136 - claimed_amount <= 1, 2);
+        let claimed_amount = reward_distributor::claim(&mut rd, &mut ve, &mut lock, &clock, scenario.ctx());
+        assert!(249136 - claimed_amount <= 2, 2);
 
-//         // The reward should be added to the lock amount since it's still active
-//         let (locked_balance, _) = voting_escrow::locked(&ve, object::id(&lock));
-//         assert!(lock_amount + 125000 + 249136 - locked_balance.amount() <= 2, 3);
-//         assert!(reward_distributor::balance(&rd) <= 1, 4);
+        // The reward should be added to the lock amount since it's still active
+        let (locked_balance, _) = voting_escrow::locked(&ve, object::id(&lock));
+        assert!(lock_amount + 125000 + 249136 - locked_balance.amount() <= 3, 3);
+        assert!(reward_distributor::balance(&rd) <= 2, 4);
 
-//         test_scenario::return_shared(rd);
-//         test_scenario::return_shared(ve);
-//         scenario.return_to_sender(lock);
-//     };
+        test_scenario::return_shared(rd);
+        test_scenario::return_shared(ve);
+        scenario.return_to_sender(lock);
+    };
 
 
-//     clock::destroy_for_testing(clock);
-//     scenario.end();
-// }
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}

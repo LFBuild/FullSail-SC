@@ -771,14 +771,7 @@ module distribution::voting_escrow {
             }
         };
         let mut current_point = last_point;
-        let last_point_timestamp = current_point.ts;
-        // TODO: it was useless code, find out why it was here
-        // GlobalPoint {
-        //     bias: current_point.bias,
-        //     slope: current_point.slope,
-        //     ts: current_point.ts,
-        //     permanent_lock_balance: current_point.permanent_lock_balance
-        // };
+        let mut last_point_timestamp = current_point.ts;
         let mut period_timestamp = distribution::common::to_period(last_point_timestamp);
         let mut i = 0;
         while (i < 255) {
@@ -810,6 +803,7 @@ module distribution::voting_escrow {
                 current_point.slope = integer_mate::i128::from(0);
             };
             current_point.ts = period_timestamp;
+            last_point_timestamp = period_timestamp;
             let incremented_epoch = new_epoch + 1;
             new_epoch = incremented_epoch;
             if (period_timestamp == current_timestamp) {
