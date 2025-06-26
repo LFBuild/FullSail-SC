@@ -158,6 +158,8 @@ module distribution::minter {
 
     public struct EventUpdateEpoch has copy, drop, store {
         new_period: u64,
+        finished_epoch_emissions: u64,
+        finished_epoch_growth_rebase: u64,
     }
 
     public struct EventReviveGauge has copy, drop, store {
@@ -805,6 +807,8 @@ module distribution::minter {
         );
         let update_epoch_event = EventUpdateEpoch {
             new_period: minter.active_period,
+            finished_epoch_emissions: ending_epoch_emissions,
+            finished_epoch_growth_rebase: rebase_growth,
         };
         sui::event::emit<EventUpdateEpoch>(update_epoch_event);
     }
