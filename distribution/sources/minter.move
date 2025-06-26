@@ -1678,6 +1678,21 @@ module distribution::minter {
         }
     }
 
+    public fun execute_sail_mint<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        mint: TimeLockedSailMint,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext,
+    ): Coin<SailCoinType> {
+        assert!(!minter.is_paused(), EExecuteSailMintMinterPaused);
+        let TimeLockedSailMint {id, amount, unlock_time} = mint;
+        object::delete(id);
+
+        assert!(unlock_time <= clock.timestamp_ms(), EExecuteSailMintStillLocked);
+
+        minter.mint_sail(amount, ctx)
+    }
+
     public fun schedule_o_sail_mint<SailCoinType, OSailCoinType>(
         minter: &mut Minter<SailCoinType>,
         publisher: &mut sui::package::Publisher,
@@ -1695,21 +1710,6 @@ module distribution::minter {
             amount,
             unlock_time,
         }
-    }
-
-    public fun execute_sail_mint<SailCoinType>(
-        minter: &mut Minter<SailCoinType>,
-        mint: TimeLockedSailMint,
-        clock: &sui::clock::Clock,
-        ctx: &mut TxContext,
-    ): Coin<SailCoinType> {
-        assert!(!minter.is_paused(), EExecuteSailMintMinterPaused);
-        let TimeLockedSailMint {id, amount, unlock_time} = mint;
-        object::delete(id);
-
-        assert!(unlock_time <= clock.timestamp_ms(), EExecuteSailMintStillLocked);
-
-        minter.mint_sail(amount, ctx)
     }
 
     public fun execute_o_sail_mint<SailCoinType, OSailCoinType>(
