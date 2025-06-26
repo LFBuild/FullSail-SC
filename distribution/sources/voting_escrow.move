@@ -1252,7 +1252,7 @@ module distribution::voting_escrow {
         assert!(
             clock.timestamp_ms() - *voting_escrow.ownership_change_at.borrow(
                 lock_id
-            ) >= distribution::common::get_time_to_finality() * 1000, // in ms
+            ) >= distribution::common::get_time_to_finality_ms(),
             EDelegateOwnershipChangeTooRecent
         );
         let current_delegatee = voting_escrow.voting_dao.delegatee(lock_id);
@@ -1648,7 +1648,7 @@ module distribution::voting_escrow {
         assert!(
             clock.timestamp_ms() - *voting_escrow.ownership_change_at.borrow(
                 lock_id
-            ) >= distribution::common::get_time_to_finality() * 1000, // in ms
+            ) >= distribution::common::get_time_to_finality_ms(),
             EGetVotingPowerOwnershipChangeTooRecent
         );
         voting_escrow.balance_of_nft_at_internal(lock_id, distribution::common::current_timestamp(clock))

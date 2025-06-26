@@ -92,8 +92,8 @@ module liquidity_locker::time_manager {
     /// Returns the time required for transaction finality
     /// 
     /// # Returns
-    /// The time in seconds required for transaction finality (500)
-    public fun get_time_to_finality(): u64 {
+    /// The time in milliseconds required for transaction finality (500)
+    public fun get_time_to_finality_ms(): u64 {
         500
     }
 
