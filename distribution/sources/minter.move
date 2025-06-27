@@ -1667,6 +1667,7 @@ module distribution::minter {
         assert!(publisher.from_module<MINTER>(), EScheduleSailMintPublisherInvalid);
         assert!(!minter.is_paused(), EScheduleSailMintMinterPaused);
         assert!(amount > 0, EScheduleSailMintAmountZero);
+        
         let id = object::new(ctx);
         let unlock_time = clock.timestamp_ms() + MINT_LOCK_TIME_MS;
         TimeLockedSailMint {
@@ -1709,6 +1710,7 @@ module distribution::minter {
         assert!(!minter.is_paused(), EScheduleOSailMintMinterPaused);
         assert!(minter.is_valid_o_sail_type<SailCoinType, OSailCoinType>(), EScheduleOSailMintInvalidOSail);
         assert!(amount > 0, EScheduleOSailMintAmountZero);
+
         let id = object::new(ctx);
         let unlock_time = clock.timestamp_ms() + MINT_LOCK_TIME_MS;
         TimeLockedOSailMint<OSailCoinType> {
@@ -1725,11 +1727,11 @@ module distribution::minter {
         ctx: &mut TxContext,
     ): Coin<OSailCoinType> {
         assert!(!minter.is_paused(), EExecuteOSailMintMinterPaused);
+        assert!(minter.is_valid_o_sail_type<SailCoinType, OSailCoinType>(), EExecuteOSailMintInvalidOSail);
         let TimeLockedOSailMint {id, amount, unlock_time} = mint;
         object::delete(id);
 
         assert!(unlock_time <= clock.timestamp_ms(), EExecuteOSailMintStillLocked);
-        assert!(minter.is_valid_o_sail_type<SailCoinType, OSailCoinType>(), EExecuteOSailMintInvalidOSail);
 
         minter.mint_o_sail<SailCoinType, OSailCoinType>(amount, ctx)
     }
