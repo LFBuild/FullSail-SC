@@ -2012,7 +2012,7 @@ fun test_exercise_fee_distribution() {
     };
 
     // advance by time to finality
-    clock::increment_for_testing(&mut clock, 500);
+    clock::increment_for_testing(&mut clock, 500 * 1000);
 
     // use lock 2 to vote for pool 1
     scenario.next_tx(user2);
