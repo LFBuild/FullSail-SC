@@ -105,6 +105,7 @@ module distribution::voting_escrow {
         start: u64,
         end: u64,
         permanent: bool,
+        voting_power: u64,
     }
 
     public struct EventDeposit has copy, drop, store {
@@ -112,16 +113,22 @@ module distribution::voting_escrow {
         deposit_type: DepositType,
         amount: u64,
         unlock_time: u64,
+        voting_power: u64,
     }
 
     public struct EventSupply has copy, drop, store {
-        before: u64,
-        after: u64,
+        before_total_locked: u64,
+        after_total_locked: u64,
+        before_permanent_lock_balance: u64,
+        after_permanent_lock_balance: u64,
+        before_balance: u64,
+        after_balance: u64,
     }
 
     public struct EventDelegateChanged has copy, drop, store {
         old: ID,
         new: ID,
+        new_voting_power: u64,
     }
 
     public struct EventMetadataUpdate has copy, drop, store {
@@ -139,6 +146,8 @@ module distribution::voting_escrow {
         new_id2: ID,
         amount1: u64,
         amount2: u64,
+        voting_power1: u64,
+        voting_power2: u64,
     }
 
     public struct EventWithdraw has copy, drop, store {
@@ -150,13 +159,15 @@ module distribution::voting_escrow {
     public struct EventLockPermanent has copy, drop, store {
         sender: address,
         lock_id: ID,
-        amount: u64,
+        voting_power: u64,
     }
 
     public struct EventUnlockPermanent has copy, drop, store {
         sender: address,
         lock_id: ID,
-        amount: u64,
+        voting_power: u64,
+        end_time: u64,
+        start_time: u64,
     }
 
     public struct EventCreateManaged has copy, drop, store {
@@ -171,14 +182,20 @@ module distribution::voting_escrow {
         owner: address,
         lock_id: ID,
         managed_lock_id: ID,
-        amount: u64,
+        managed_lock_amount: u64,
+        lock_voting_power: u64,
+        managed_lock_voting_power: u64,
     }
 
     public struct EventWithdrawManaged has copy, drop, store {
         owner: address,
         lock_id: ID,
         managed_lock_id: ID,
-        amount: u64,
+        lock_amount: u64,
+        managed_lock_amount: u64,
+        lock_end_time: u64,
+        lock_voting_power: u64,
+        managed_lock_voting_power: u64,
     }
 
     public struct EventMerge has copy, drop, store {
@@ -189,6 +206,7 @@ module distribution::voting_escrow {
         to_amount: u64,
         new_amount: u64,
         new_end: u64,
+        new_voting_power: u64,
     }
 
     public struct EventTransfer has copy, drop, store {
@@ -274,32 +292,41 @@ module distribution::voting_escrow {
         ctx: &mut TxContext
     ): (ID, ID) {
         voting_escrow.validate_lock(&lock);
+
         let lock_id = object::id<Lock>(&lock);
         assert!(voting_escrow.owner_of.contains(lock_id), ESplitOwnerNotFound);
+
         let owner_of_lock = *voting_escrow.owner_of.borrow(lock_id);
         assert!(
             voting_escrow.is_split_allowed(owner_of_lock) || voting_escrow.is_split_allowed(tx_context::sender(ctx)),
             ESplitNotAllowed
         );
+
         let mut is_normal_escrow = if (!voting_escrow.escrow_type.contains(lock_id)) {
             true
         } else {
             *voting_escrow.escrow_type.borrow(lock_id) == EscrowType::NORMAL
         };
         assert!(is_normal_escrow, ESplitNotNormalEscrow);
+
         let lock_has_voted = voting_escrow.lock_has_voted(lock_id);
         assert!(!lock_has_voted, ESplitPositionVoted);
+
         let locked_balance = *voting_escrow.locked.borrow(lock_id);
         assert!(
             locked_balance.end > distribution::common::current_timestamp(clock) || locked_balance.is_permanent,
             ESplitAmountZero
         );
+
         assert!(amount > 0, ESplitAmountZero);
         assert!(locked_balance.amount > amount, ESplitAmountExceedsLocked);
+
         let lock_escrow_id = lock.escrow;
         let lock_start = lock.start;
         let lock_end = lock.end;
+
         voting_escrow.burn_lock_internal(lock, locked_balance, clock, ctx);
+
         let split_lock_a = voting_escrow.create_split_internal(
             owner_of_lock,
             lock_escrow_id,
@@ -309,6 +336,7 @@ module distribution::voting_escrow {
             clock,
             ctx
         );
+
         let split_lock_b = voting_escrow.create_split_internal(
             owner_of_lock,
             lock_escrow_id,
@@ -318,18 +346,27 @@ module distribution::voting_escrow {
             clock,
             ctx
         );
+
+        split_lock_a.transfer(voting_escrow, owner_of_lock, clock, ctx);
+        split_lock_b.transfer(voting_escrow, owner_of_lock, clock, ctx);
+
         let split_lock_a_id = object::id<Lock>(&split_lock_a);
         let split_lock_b_id = object::id<Lock>(&split_lock_b);
+
+        let split_lock_a_voting_power = voting_escrow.get_voting_power_internal(split_lock_a_id, clock);
+        let split_lock_b_voting_power = voting_escrow.get_voting_power_internal(split_lock_b_id, clock);
+
         let split_event = EventSplit {
             original_id: lock_id,
             new_id1: split_lock_a_id,
             new_id2: split_lock_b_id,
             amount1: split_lock_a.amount,
             amount2: split_lock_b.amount,
+            voting_power1: split_lock_a_voting_power,
+            voting_power2: split_lock_b_voting_power,
         };
         sui::event::emit<EventSplit>(split_event);
-        split_lock_a.transfer(voting_escrow, owner_of_lock, clock, ctx);
-        split_lock_b.transfer(voting_escrow, owner_of_lock, clock, ctx);
+
         (split_lock_a_id, split_lock_b_id)
     }
 
@@ -355,13 +392,16 @@ module distribution::voting_escrow {
         ctx: &mut TxContext
     ) {
         assert!(lock.escrow == object::id<VotingEscrow<SailCoinType>>(voting_escrow), ETransferInvalidEscrow);
+
         let lock_id = object::id<Lock>(&lock);
         if (recipient == voting_escrow.owner_of(lock_id) && recipient == tx_context::sender(ctx)) {
             transfer::transfer<Lock>(lock, recipient);
         } else {
             assert!(voting_escrow.escrow_type(lock_id) != EscrowType::LOCKED, ETransferLockedPosition);
+
             let owner_of_lock = voting_escrow.owner_of.remove(lock_id);
             assert!(owner_of_lock == tx_context::sender(ctx), ETransferNotOwner);
+
             voting_escrow.voting_dao.checkpoint_delegator(
                 lock_id,
                 0,
@@ -370,12 +410,15 @@ module distribution::voting_escrow {
                 clock,
                 ctx
             );
+
             voting_escrow.owner_of.add(lock_id, recipient);
             if (voting_escrow.ownership_change_at.contains(lock_id)) {
                 voting_escrow.ownership_change_at.remove(lock_id);
             };
+
             voting_escrow.ownership_change_at.add(lock_id, clock.timestamp_ms());
             transfer::transfer<Lock>(lock, recipient);
+
             let transfer_event = EventTransfer {
                 from: owner_of_lock,
                 to: recipient,
@@ -471,6 +514,7 @@ module distribution::voting_escrow {
     ) {
         let sender = tx_context::sender(ctx);
         let lock_id = object::id<Lock>(&lock);
+
         let lock_has_voted = voting_escrow.lock_has_voted(lock_id);
         assert!(!lock_has_voted, EWithdrawPositionVoted);
         assert!(
@@ -479,12 +523,18 @@ module distribution::voting_escrow {
             ) == EscrowType::NORMAL,
             EWithdrawPositionNotNormalEscrow
         );
+
         let locked_balance = *voting_escrow.locked.borrow(lock_id);
         assert!(!locked_balance.is_permanent, EWithdrawPermanentPosition);
+
         assert!(distribution::common::current_timestamp(clock) >= locked_balance.end, EWithdrawBeforeEndTime);
+
         let current_total_locked = voting_escrow.total_locked;
+
         voting_escrow.total_locked = voting_escrow.total_locked - locked_balance.amount;
+
         voting_escrow.burn_lock_internal(lock, locked_balance, clock, ctx);
+
         transfer::public_transfer<sui::coin::Coin<SailCoinType>>(
             sui::coin::from_balance<SailCoinType>(
                 voting_escrow.balance.split(locked_balance.amount),
@@ -492,15 +542,21 @@ module distribution::voting_escrow {
             ),
             sender
         );
+
         let withdraw_event = EventWithdraw {
             sender,
             lock_id,
             amount: locked_balance.amount,
         };
         sui::event::emit<EventWithdraw>(withdraw_event);
+
         let supply_event = EventSupply {
-            before: current_total_locked,
-            after: current_total_locked - locked_balance.amount,
+            before_total_locked: current_total_locked,
+            after_total_locked: voting_escrow.total_locked,
+            before_permanent_lock_balance: 0,
+            after_permanent_lock_balance: 0,
+            before_balance: 0,
+            after_balance: 0,
         };
         sui::event::emit<EventSupply>(supply_event);
     }
@@ -629,6 +685,7 @@ module distribution::voting_escrow {
         ctx: &mut TxContext
     ) {
         let lock_id = object::id<Lock>(&lock);
+
         voting_escrow.voting_dao.checkpoint_delegator(
             lock_id,
             current_locked_balance.amount,
@@ -637,8 +694,10 @@ module distribution::voting_escrow {
             clock,
             ctx
         );
+
         voting_escrow.owner_of.remove(lock_id);
         voting_escrow.locked.remove(lock_id);
+
         voting_escrow.checkpoint_internal(
             option::some<ID>(lock_id),
             current_locked_balance,
@@ -646,6 +705,7 @@ module distribution::voting_escrow {
             clock,
             ctx
         );
+
         let Lock {
             id,
             escrow: _,
@@ -654,6 +714,7 @@ module distribution::voting_escrow {
             end: _,
             permanent: _,
         } = lock;
+
         object::delete(id);
     }
 
@@ -912,8 +973,11 @@ module distribution::voting_escrow {
         voting_escrow.validate_lock_duration(lock_duration_days);
         let lock_amount = coin_to_lock.value();
         assert!(lock_amount > 0, ECreateLockAmountZero);
+
         let current_time = distribution::common::current_timestamp(clock);
+
         let sender = tx_context::sender(ctx);
+
         let (lock_immut, create_lock_receipt) = voting_escrow.create_lock_internal(
             sender,
             lock_amount,
@@ -923,13 +987,32 @@ module distribution::voting_escrow {
             clock,
             ctx
         );
+
         let mut lock = lock_immut;
+
         let CreateLockReceipt { amount: amout } = create_lock_receipt;
         assert!(amout == lock_amount, ECreateLockAmountMismatch);
+
+        let before_balance = sui::balance::value(&voting_escrow.balance);
+
         voting_escrow.balance.join(coin_to_lock.into_balance());
+
+        let after_balance = sui::balance::value(&voting_escrow.balance);
+
         if (permanent) {
             voting_escrow.lock_permanent_internal(&mut lock, clock, ctx);
         };
+
+        let supply_event = EventSupply {
+            before_total_locked: 0,
+            after_total_locked: 0,
+            before_permanent_lock_balance: 0,
+            after_permanent_lock_balance: 0,
+            before_balance: before_balance,
+            after_balance: after_balance,
+        };
+        sui::event::emit<EventSupply>(supply_event);
+
         transfer::transfer<Lock>(lock, sender);
     }
 
@@ -960,9 +1043,12 @@ module distribution::voting_escrow {
         ctx: &mut TxContext
     ) {
         voting_escrow.validate_lock_duration(duration_days);
+
         let lock_amount = coin.value();
         assert!(lock_amount > 0, ECreateLockForAmountZero);
+
         let start_time = distribution::common::current_timestamp(clock);
+
         let (lock_immut, create_lock_receipt) = voting_escrow.create_lock_internal(
             owner,
             lock_amount,
@@ -972,13 +1058,31 @@ module distribution::voting_escrow {
             clock,
             ctx
         );
+
         let mut lock = lock_immut;
+
         let CreateLockReceipt { amount } = create_lock_receipt;
         assert!(amount == lock_amount, ECreateLockForAmountMismatch);
+
+        let before_balance = sui::balance::value(&voting_escrow.balance);
+
         voting_escrow.balance.join(coin.into_balance());
         if (permanent) {
             voting_escrow.lock_permanent_internal(&mut lock, clock, ctx);
         };
+
+        let after_balance = sui::balance::value(&voting_escrow.balance);
+
+        let supply_event = EventSupply {
+            before_total_locked: 0,
+            after_total_locked: 0,
+            before_permanent_lock_balance: 0,
+            after_permanent_lock_balance: 0,
+            before_balance: before_balance,
+            after_balance: after_balance,
+        };
+        sui::event::emit<EventSupply>(supply_event);
+
         transfer::transfer<Lock>(lock, owner);
     }
 
@@ -1019,11 +1123,15 @@ module distribution::voting_escrow {
             end: end_time,
             permanent,
         };
+
         let lock_id = object::id<Lock>(&lock);
+
         assert!(!voting_escrow.owner_of.contains(lock_id), ECreateLockOwnerExists);
         assert!(!voting_escrow.locked.contains(lock_id), ECreateLockLockedExists);
+
         voting_escrow.owner_of.add(lock_id, owner);
         voting_escrow.ownership_change_at.add(lock_id, clock.timestamp_ms());
+
         voting_escrow.voting_dao.checkpoint_delegator(
             lock_id,
             lock_amount,
@@ -1032,6 +1140,7 @@ module distribution::voting_escrow {
             clock,
             ctx
         );
+
         voting_escrow.deposit_for_internal(
             lock_id,
             lock_amount,
@@ -1041,6 +1150,9 @@ module distribution::voting_escrow {
             clock,
             ctx
         );
+
+        let voting_power = voting_escrow.get_voting_power_internal(lock_id, clock);
+
         let create_lock_event = EventCreateLock {
             lock_id: lock_id,
             escrow: object::id<VotingEscrow<SailCoinType>>(voting_escrow),
@@ -1049,8 +1161,10 @@ module distribution::voting_escrow {
             start: start_time,
             end: end_time,
             permanent: permanent,
+            voting_power: voting_power,
         };
         sui::event::emit<EventCreateLock>(create_lock_event);
+
         let create_lock_receipt = CreateLockReceipt { amount: lock_amount };
         (lock, create_lock_receipt)
     }
@@ -1079,6 +1193,7 @@ module distribution::voting_escrow {
     ): ID {
         let sender = tx_context::sender(ctx);
         assert!(voting_escrow.allowed_managers.contains(&sender), ECreateManagedNotAllowedManager);
+
         let (lock, create_lock_receipt) = voting_escrow.create_lock_internal(
             owner,
             0,
@@ -1088,23 +1203,33 @@ module distribution::voting_escrow {
             clock,
             ctx
         );
+
         let CreateLockReceipt { amount: _ } = create_lock_receipt;
+
         let lock_id = object::id<Lock>(&lock);
+
         voting_escrow.managed_locks.insert(lock_id);
         voting_escrow.escrow_type.add(lock_id, EscrowType::MANAGED);
+
         let sail_coin_type = std::type_name::get<SailCoinType>();
+
         let lock_managed_reward = distribution::locked_managed_reward::create(
             voting_escrow.voter,
             object::id<VotingEscrow<SailCoinType>>(voting_escrow),
             sail_coin_type,
             ctx
         );
+
         let free_managed_reward = distribution::free_managed_reward::create(
             voting_escrow.voter,
             object::id<VotingEscrow<SailCoinType>>(voting_escrow),
             sail_coin_type,
             ctx
         );
+
+        voting_escrow.managed_to_locked.add(lock_id, lock_managed_reward);
+        voting_escrow.managed_to_free.add(lock_id, free_managed_reward);
+
         let create_managed_event = EventCreateManaged {
             owner,
             lock_id,
@@ -1115,8 +1240,7 @@ module distribution::voting_escrow {
             free_managed_reward: object::id<distribution::free_managed_reward::FreeManagedReward>(&free_managed_reward),
         };
         sui::event::emit<EventCreateManaged>(create_managed_event);
-        voting_escrow.managed_to_locked.add(lock_id, lock_managed_reward);
-        voting_escrow.managed_to_free.add(lock_id, free_managed_reward);
+
         transfer::public_share_object<Lock>(lock);
         lock_id
     }
@@ -1155,10 +1279,15 @@ module distribution::voting_escrow {
             end: lock_end,
             permanent: current_locked_balance.is_permanent,
         };
+
         let lock_id = object::id<Lock>(&lock);
+
         voting_escrow.locked.add(lock_id, current_locked_balance);
+
         voting_escrow.owner_of.add(lock_id, owner);
+
         voting_escrow.ownership_change_at.add(lock_id, clock.timestamp_ms());
+
         voting_escrow.voting_dao.checkpoint_delegator(
             lock_id,
             current_locked_balance.amount,
@@ -1167,6 +1296,7 @@ module distribution::voting_escrow {
             clock,
             ctx
         );
+
         voting_escrow.checkpoint_internal(
             option::some<ID>(object::id<Lock>(&lock)),
             locked_balance(0, 0, false),
@@ -1174,6 +1304,7 @@ module distribution::voting_escrow {
             clock,
             ctx
         );
+
         lock
     }
 
@@ -1251,24 +1382,31 @@ module distribution::voting_escrow {
     ) {
         let lock_id = object::id<Lock>(lock);
         let (current_locked_balance, _) = voting_escrow.locked(lock_id);
+
         assert!(current_locked_balance.is_permanent, EDelegateNotPermanent);
         assert!(
             delegatee == object::id_from_address(@0x0) || voting_escrow.owner_of.contains(delegatee),
             EDelegateInvalidDelegatee
         );
+
         if (object::id<Lock>(lock) == delegatee) {
             delegatee = object::id_from_address(@0x0);
         };
+
         assert!(
             clock.timestamp_ms() - *voting_escrow.ownership_change_at.borrow(
                 lock_id
             ) >= distribution::common::get_time_to_finality(),
             EDelegateOwnershipChangeTooRecent
         );
+
         let current_delegatee = voting_escrow.voting_dao.delegatee(lock_id);
         if (current_delegatee == delegatee) {
             return
         };
+
+        let new_voting_power = voting_escrow.get_voting_power_internal(lock_id, clock);
+
         voting_escrow.voting_dao.checkpoint_delegator(
             lock_id,
             current_locked_balance.amount,
@@ -1277,11 +1415,14 @@ module distribution::voting_escrow {
             clock,
             ctx
         );
+
         voting_escrow.voting_dao.checkpoint_delegatee(delegatee, current_locked_balance.amount, true, clock, ctx);
         let delegatee_changed_event = EventDelegateChanged {
             old: current_delegatee,
             new: delegatee,
+            new_voting_power: voting_power,
         };
+
         sui::event::emit<EventDelegateChanged>(delegatee_changed_event);
     }
 
@@ -1302,7 +1443,11 @@ module distribution::voting_escrow {
         ctx: &mut TxContext
     ) {
         let deposit_amount = coin.value<SailCoinType>();
+
+        let before_balance = sui::balance::value(&voting_escrow.balance);
+
         voting_escrow.balance.join<SailCoinType>(coin.into_balance());
+
         voting_escrow.increase_amount_for_internal(
             object::id<Lock>(lock),
             deposit_amount,
@@ -1310,7 +1455,20 @@ module distribution::voting_escrow {
             clock,
             ctx
         );
+
         lock.amount = lock.amount + deposit_amount;
+
+        let after_balance = sui::balance::value(&voting_escrow.balance);
+
+        let supply_event = EventSupply {
+            before_total_locked: 0,
+            after_total_locked: 0,
+            before_permanent_lock_balance: 0,
+            after_permanent_lock_balance: 0,
+            before_balance: before_balance,
+            after_balance: after_balance,
+        };
+        sui::event::emit<EventSupply>(supply_event);  
     }
 
     /// Internal implementation for depositing tokens into a lock.
@@ -1336,16 +1494,25 @@ module distribution::voting_escrow {
         ctx: &mut TxContext
     ) {
         let current_total_locked = voting_escrow.total_locked;
+
         voting_escrow.total_locked = voting_escrow.total_locked + lock_amount;
         let mut new_locked_balance = locked_balance(
             current_locked_balance.amount,
             current_locked_balance.end,
             current_locked_balance.is_permanent
         );
+
+        let old_permanent_lock_balance = voting_escrow.permanent_lock_balance
+
+        if (current_locked_balance.is_permanent) {
+            voting_escrow.permanent_lock_balance = voting_escrow.permanent_lock_balance + amount_to_add;
+        };
+
         new_locked_balance.amount = new_locked_balance.amount + lock_amount;
         if (end_time != 0) {
             new_locked_balance.end = end_time;
         };
+
         voting_escrow.set_locked(lock_id, new_locked_balance);
         voting_escrow.checkpoint_internal(
             option::some<ID>(lock_id),
@@ -1354,16 +1521,25 @@ module distribution::voting_escrow {
             clock,
             ctx
         );
+
+        let voting_power = voting_escrow.get_voting_power_internal(lock_id, clock);
+
         let deposit_event = EventDeposit {
             lock_id,
             deposit_type,
-            amount: lock_amount,
+            amount: new_locked_balance.amount,
             unlock_time: new_locked_balance.end,
+            voting_power: voting_power,
         };
         sui::event::emit<EventDeposit>(deposit_event);
+
         let supply_event = EventSupply {
-            before: current_total_locked,
-            after: voting_escrow.total_locked,
+            before_total_locked: current_total_locked,
+            after_total_locked: voting_escrow.total_locked,
+            before_permanent_lock_balance: old_permanent_lock_balance,
+            after_permanent_lock_balance: voting_escrow.permanent_lock_balance,
+            before_balance: 0,
+            after_balance: 0,
         };
         sui::event::emit<EventSupply>(supply_event);
     }
@@ -1395,8 +1571,10 @@ module distribution::voting_escrow {
         ctx: &mut TxContext
     ) {
         assert!(voter_cap.get_voter_id() == voting_escrow.voter, EDepositManagedInvalidVoter);
+
         let lock_id = object::id<Lock>(lock);
         let managed_lock_id = object::id<Lock>(managed_lock);
+
         assert!(voting_escrow.escrow_type(managed_lock_id) == EscrowType::MANAGED, EDepositManagedNotManagedType);
         assert!(!voting_escrow.deactivated(managed_lock_id), EDepositManagedDeactivated);
         assert!(voting_escrow.escrow_type(lock_id) == EscrowType::NORMAL, EDepositManagedNotNormalEscrow);
@@ -1404,22 +1582,36 @@ module distribution::voting_escrow {
             voting_escrow.balance_of_nft_at_internal(lock_id, distribution::common::current_timestamp(clock)) > 0,
             EDepositManagedNoBalance
         );
+
         let current_locked_balance = *voting_escrow.locked.borrow(lock_id);
         let current_locked_amount = current_locked_balance.amount;
+
+        let old_permanent_lock_balance = voting_escrow.permanent_lock_balance;
+
         if (current_locked_balance.is_permanent) {
-            voting_escrow.permanent_lock_balance = voting_escrow.permanent_lock_balance - current_locked_balance.amount;
+            voting_escrow.permanent_lock_balance = voting_escrow.permanent_lock_balance - current_locked_amount;
             voting_escrow.delegate_internal(lock, object::id_from_address(@0x0), clock, ctx);
         };
+
         voting_escrow.checkpoint_internal(option::some<ID>(lock_id),
             current_locked_balance, locked_balance(0, 0, false), clock, ctx);
+
         voting_escrow.locked.remove(lock_id);
         voting_escrow.locked.add(lock_id, locked_balance(0, 0, false));
-        voting_escrow.permanent_lock_balance = voting_escrow.permanent_lock_balance + current_locked_amount;
+
         let mut managed_locked_balance = *voting_escrow.locked.borrow(managed_lock_id);
         managed_locked_balance.amount = managed_locked_balance.amount + current_locked_amount;
+
+        if (managed_locked_balance.is_permanent) {
+            voting_escrow.permanent_lock_balance = voting_escrow.permanent_lock_balance + current_locked_amount;
+        };
+
         let delegatee_id = voting_escrow.voting_dao.delegatee(managed_lock_id);
+
         voting_escrow.voting_dao.checkpoint_delegatee(delegatee_id, current_locked_amount, true, clock, ctx);
+
         let old_managed_locked_balance = voting_escrow.locked.remove(managed_lock_id);
+
         voting_escrow.checkpoint_internal(
             option::some<ID>(managed_lock_id),
             old_managed_locked_balance,
@@ -1427,12 +1619,16 @@ module distribution::voting_escrow {
             clock,
             ctx
         );
+
         voting_escrow.locked.add(managed_lock_id, managed_locked_balance);
         if (!voting_escrow.managed_weights.contains(lock_id)) {
             voting_escrow.managed_weights.add(lock_id, sui::table::new<ID, u64>(ctx));
         };
+
         voting_escrow.managed_weights.borrow_mut(lock_id).add(managed_lock_id, current_locked_amount);
+
         voting_escrow.id_to_managed.add(lock_id, managed_lock_id);
+
         voting_escrow.escrow_type.add(lock_id, EscrowType::LOCKED);
         voting_escrow.managed_to_locked.borrow_mut(managed_lock_id).deposit(
             &voting_escrow.locked_managed_reward_authorized_cap,
@@ -1441,6 +1637,7 @@ module distribution::voting_escrow {
             clock,
             ctx
         );
+
         voting_escrow.managed_to_free.borrow_mut(managed_lock_id).deposit(
             &voting_escrow.free_managed_reward_authorized_cap,
             current_locked_amount,
@@ -1448,16 +1645,34 @@ module distribution::voting_escrow {
             clock,
             ctx
         );
+
+        managed_lock.amount = managed_lock.amount + current_locked_amount;
+
+        let lock_voting_power = voting_escrow.get_voting_power_internal(lock_id, clock);
+        let managed_lock_voting_power = voting_escrow.get_voting_power_internal(managed_lock_id, clock);
+
         let deposit_managed_event = EventDepositManaged {
             owner: *voting_escrow.owner_of.borrow(lock_id),
-            lock_id,
-            managed_lock_id,
-            amount: current_locked_amount,
+            lock_id: lock_id,
+            managed_lock_id: managed_lock_id,
+            managed_lock_amount: managed_locked_balance.amount,
+            lock_voting_power: lock_voting_power,
+            managed_lock_voting_power: managed_lock_voting_power,
         };
         sui::event::emit<EventDepositManaged>(deposit_managed_event);
-        let metadata_update_event = EventMetadataUpdate { lock_id };
+
+        let supply_event = EventSupply {
+            before_total_locked: 0,
+            after_total_locked: 0,
+            before_permanent_lock_balance: old_permanent_lock_balance,
+            after_permanent_lock_balance: voting_escrow.permanent_lock_balance,
+            before_balance: 0,
+            after_balance: 0,
+        };
+        sui::event::emit<EventSupply>(supply_event);
+
+        let metadata_update_event = EventMetadataUpdate { lock_id,};
         sui::event::emit<EventMetadataUpdate>(metadata_update_event);
-        managed_lock.amount = managed_lock.amount + current_locked_amount;
     }
 
     /// Returns the end timestamp of a locked balance.
@@ -1649,12 +1864,49 @@ module distribution::voting_escrow {
         lower_bound_epoch
     }
 
+    /// Returns the current voting power of a lock.
+    /// This is the main public interface for getting voting power, with safety checks
+    /// to prevent abuse immediately after ownership changes.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `lock` - The lock to calculate voting power for
+    /// * `clock` - The system clock
+    ///
+    /// # Returns
+    /// The current voting power of the lock
+    ///
+    /// # Aborts
+    /// * If the lock ownership changed too recently (within finality time)
     public fun get_voting_power<SailCoinType>(
         voting_escrow: &VotingEscrow<SailCoinType>,
         lock: &Lock,
         clock: &sui::clock::Clock
     ): u64 {
         let lock_id = object::id<Lock>(lock);
+        voting_escrow.get_voting_power_internal(lock_id, clock)
+    }
+
+    /// Internal implementation to get voting power by lock ID with safety checks.
+    /// This function provides the same safety guarantees as the public get_voting_power
+    /// but works with lock IDs instead of requiring the Lock object, making it suitable
+    /// for internal operations where only the ID is available.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `lock_id` - The ID of the lock to calculate voting power for
+    /// * `clock` - The system clock
+    ///
+    /// # Returns
+    /// The current voting power of the lock
+    ///
+    /// # Aborts
+    /// * If the lock ownership changed too recently (within finality time)
+    fun get_voting_power_internal<SailCoinType>(
+        voting_escrow: &VotingEscrow<SailCoinType>,
+        lock_id: ID,
+        clock: &sui::clock::Clock
+    ): u64 {
         assert!(
             clock.timestamp_ms() - *voting_escrow.ownership_change_at.borrow(
                 lock_id
@@ -1721,21 +1973,24 @@ module distribution::voting_escrow {
         ctx: &mut TxContext
     ) {
         assert!(amount_to_add > 0, EIncreaseAmountZero);
+
         let escrow_type = voting_escrow.escrow_type(lock_id);
         assert!(escrow_type != EscrowType::LOCKED, EIncreaseAmountLockedEscrow);
+
         let (current_locked_balance, exists) = voting_escrow.locked(lock_id);
+
         assert!(exists, EIncreaseAmountNotExists);
         assert!(current_locked_balance.amount > 0, EIncreaseAmountNoBalance);
+
         assert!(
             current_locked_balance.end > distribution::common::current_timestamp(
                 clock
             ) || current_locked_balance.is_permanent,
             EIncreaseTimeNotNormalEscrow
         );
-        if (current_locked_balance.is_permanent) {
-            voting_escrow.permanent_lock_balance = voting_escrow.permanent_lock_balance + amount_to_add;
-        };
+
         let delegatee = voting_escrow.voting_dao.delegatee(lock_id);
+
         voting_escrow.voting_dao.checkpoint_delegatee(
             delegatee,
             amount_to_add,
@@ -1743,6 +1998,7 @@ module distribution::voting_escrow {
             clock,
             ctx
         );
+
         voting_escrow.deposit_for_internal(
             lock_id,
             amount_to_add,
@@ -1752,6 +2008,7 @@ module distribution::voting_escrow {
             clock,
             ctx
         );
+
         if (escrow_type == EscrowType::MANAGED) {
             voting_escrow.managed_to_locked.borrow_mut(lock_id).notify_reward_amount(
                 &voting_escrow.locked_managed_reward_authorized_cap,
@@ -1760,6 +2017,7 @@ module distribution::voting_escrow {
                 ctx
             );
         };
+
         let metadata_update_event = EventMetadataUpdate { lock_id };
         sui::event::emit<EventMetadataUpdate>(metadata_update_event);
     }
@@ -1772,18 +2030,23 @@ module distribution::voting_escrow {
         ctx: &mut TxContext
     ) {
         let lock_id = object::id<Lock>(lock);
+
         let is_normal_escrow = if (!voting_escrow.escrow_type.contains(lock_id)) {
             true
         } else {
             *voting_escrow.escrow_type.borrow(lock_id) == EscrowType::NORMAL
         };
         assert!(is_normal_escrow, EIncreaseTimeNotNormalEscrow);
+
         let current_locked_balance = *voting_escrow.locked.borrow(lock_id);
         assert!(!current_locked_balance.is_permanent, EIncreaseTimePermanent);
+
         let current_time = distribution::common::current_timestamp(clock);
+
         let lock_end_epoch_time = distribution::common::to_period(
             current_time + days_to_add * distribution::common::day()
         );
+
         assert!(current_locked_balance.end > current_time, EIncreaseTimeExpired);
         assert!(current_locked_balance.amount > 0, EIncreaseTimeNoBalance);
         assert!(lock_end_epoch_time > current_locked_balance.end, EIncreaseTimeNotLater);
@@ -1791,6 +2054,7 @@ module distribution::voting_escrow {
             lock_end_epoch_time < current_time + (distribution::common::max_lock_time() as u64),
             EIncreaseTimeTooLong
         );
+
         voting_escrow.deposit_for_internal(
             lock_id,
             0,
@@ -1800,10 +2064,12 @@ module distribution::voting_escrow {
             clock,
             ctx
         );
-        let metadata_update_event = EventMetadataUpdate { lock_id };
-        sui::event::emit<EventMetadataUpdate>(metadata_update_event);
+
         lock.start = current_time;
         lock.end = lock_end_epoch_time;
+
+        let metadata_update_event = EventMetadataUpdate { lock_id };
+        sui::event::emit<EventMetadataUpdate>(metadata_update_event);
     }
 
     fun init(voting_escrow: VOTING_ESCROW, ctx: &mut TxContext) {
@@ -1907,16 +2173,21 @@ module distribution::voting_escrow {
         ctx: &mut TxContext
     ) {
         let lock_id = object::id<Lock>(lock);
+
         let is_normal_escrow = if (!voting_escrow.escrow_type.contains(lock_id)) {
             true
         } else {
             *voting_escrow.escrow_type.borrow(lock_id) == EscrowType::NORMAL
         };
+
         assert!(is_normal_escrow, ELockPermanentNotNormalEscrow);
-        let v3 = *voting_escrow.locked.borrow(lock_id);
-        assert!(!v3.is_permanent, ELockPermanentAlreadyPermanent);
-        assert!(v3.end > distribution::common::current_timestamp(clock), ELockPermanentExpired);
-        assert!(v3.amount > 0, ELockPermanentNoBalance);
+
+        let locked_balance = *voting_escrow.locked.borrow(lock_id);
+
+        assert!(!locked_balance.is_permanent, ELockPermanentAlreadyPermanent);
+        assert!(locked_balance.end > distribution::common::current_timestamp(clock), ELockPermanentExpired);
+        assert!(locked_balance.amount > 0, ELockPermanentNoBalance);
+
         voting_escrow.lock_permanent_internal(lock, clock, ctx);
     }
 
@@ -1927,11 +2198,17 @@ module distribution::voting_escrow {
         ctx: &mut TxContext
     ) {
         let lock_id = object::id<Lock>(lock);
+
         let mut current_locked_balance = *voting_escrow.locked.borrow(lock_id);
+
+        let old_permanent_lock_balance = voting_escrow.permanent_lock_balance
         voting_escrow.permanent_lock_balance = voting_escrow.permanent_lock_balance + current_locked_balance.amount;
+
         current_locked_balance.end = 0;
         current_locked_balance.is_permanent = true;
+
         let old_locked_balance = *voting_escrow.locked.borrow(lock_id);
+
         voting_escrow.checkpoint_internal(
             option::some<ID>(lock_id),
             old_locked_balance,
@@ -1939,18 +2216,34 @@ module distribution::voting_escrow {
             clock,
             ctx
         );
+
         voting_escrow.locked.remove(lock_id);
         voting_escrow.locked.add(lock_id, current_locked_balance);
-        let lock_permanent_event = EventLockPermanent {
-            sender: tx_context::sender(ctx),
-            lock_id,
-            amount: current_locked_balance.amount,
-        };
-        sui::event::emit<EventLockPermanent>(lock_permanent_event);
-        let metadata_update_event = EventMetadataUpdate { lock_id };
-        sui::event::emit<EventMetadataUpdate>(metadata_update_event);
+
         lock.end = 0;
         lock.permanent = true;
+
+        let new_voting_power = voting_escrow.get_voting_power_internal(lock_id, clock);
+
+        let lock_permanent_event = EventLockPermanent {
+            sender: tx_context::sender(ctx),
+            lock_id: lock_id,
+            voting_power: new_voting_power,
+        };
+        sui::event::emit<EventLockPermanent>(lock_permanent_event);
+
+        let supply_event = EventSupply {
+            before_total_locked: 0,
+            after_total_locked: 0,
+            before_permanent_lock_balance: old_permanent_lock_balance,
+            after_permanent_lock_balance: voting_escrow.permanent_lock_balance,
+            before_balance: 0,
+            after_balance: 0,
+        };
+        sui::event::emit<EventSupply>(supply_event);
+
+        let metadata_update_event = EventMetadataUpdate { lock_id };
+        sui::event::emit<EventMetadataUpdate>(metadata_update_event);
     }
 
     public fun locked<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>, lock_id: ID): (LockedBalance, bool) {
@@ -2006,37 +2299,50 @@ module distribution::voting_escrow {
         let lock_id_a = object::id<Lock>(&lock_a);
         let lock_id_b = object::id<Lock>(lock_b);
         let lock_a_voted = voting_escrow.lock_has_voted(lock_id_a);
+
         assert!(!lock_a_voted, EMergePositionVoted);
         assert!(voting_escrow.escrow_type(lock_id_a) == EscrowType::NORMAL, EMergeSourceNotNormalEscrow);
         assert!(voting_escrow.escrow_type(lock_id_b) == EscrowType::NORMAL, EMergeTargetNotNormalEscrow);
         assert!(lock_id_a != lock_id_b, EMergeSamePosition);
+
         let lock_b_balance = *voting_escrow.locked.borrow(lock_id_b);
+
         assert!(
             lock_b_balance.end > distribution::common::current_timestamp(clock) || lock_b_balance.is_permanent == true,
             EMergeSourcePermanent
         );
+
         let lock_a_balance = *voting_escrow.locked.borrow(lock_id_a);
         assert!(lock_a_balance.is_permanent == false, EMergeSourcePermanent);
+
         let max_end_time = if (lock_a_balance.end >= lock_b_balance.end) {
             lock_a_balance.end
         } else {
             lock_b_balance.end
         };
+
         voting_escrow.burn_lock_internal(lock_a, lock_a_balance, clock, ctx);
+
         let result_lock_end_time = if (lock_b_balance.is_permanent) {
             0
         } else {
             max_end_time
         };
+
         let new_locked_balance = locked_balance(
             lock_a_balance.amount + lock_b_balance.amount,
             result_lock_end_time,
             lock_b_balance.is_permanent
         );
+
+        let old_permanent_lock_balance = voting_escrow.permanent_lock_balance;
+
         if (new_locked_balance.is_permanent) {
             voting_escrow.permanent_lock_balance = voting_escrow.permanent_lock_balance + lock_a_balance.amount;
         };
+
         let delegatee = voting_escrow.voting_dao.delegatee(lock_id_b);
+
         voting_escrow.voting_dao.checkpoint_delegatee(
             delegatee,
             lock_a_balance.amount,
@@ -2044,6 +2350,7 @@ module distribution::voting_escrow {
             clock,
             ctx
         );
+
         voting_escrow.checkpoint_internal(
             option::some<ID>(lock_id_b),
             lock_b_balance,
@@ -2051,12 +2358,17 @@ module distribution::voting_escrow {
             clock,
             ctx
         );
+
         voting_escrow.locked.remove(lock_id_b);
         voting_escrow.locked.add(
             lock_id_b,
             new_locked_balance
         );
+
         lock_b.amount = new_locked_balance.amount;
+
+        let lock_b_voting_power = voting_escrow.get_voting_power_internal(lock_id_b, clock);
+
         let merge_lock_event = EventMerge {
             sender: tx_context::sender(ctx),
             from: lock_id_a,
@@ -2065,8 +2377,20 @@ module distribution::voting_escrow {
             to_amount: lock_b_balance.amount,
             new_amount: new_locked_balance.amount,
             new_end: new_locked_balance.end,
+            new_voting_power: lock_b_voting_power,
         };
         sui::event::emit<EventMerge>(merge_lock_event);
+
+        let supply_event = EventSupply {
+            before_total_locked: 0,
+            after_total_locked: 0,
+            before_permanent_lock_balance: old_permanent_lock_balance,
+            after_permanent_lock_balance: voting_escrow.permanent_lock_balance,
+            before_balance: 0,
+            after_balance: 0,
+        };
+        sui::event::emit<EventSupply>(supply_event);
+
         let metadata_update_event = EventMetadataUpdate { lock_id: lock_id_b };
         sui::event::emit<EventMetadataUpdate>(metadata_update_event);
     }
@@ -2185,6 +2509,8 @@ module distribution::voting_escrow {
         if (voting_escrow.deactivated.contains(lock_id)) {
             voting_escrow.deactivated.remove(lock_id);
         };
+
+        // TODO: should i add status 'deactivated' with event? only managed lock can have it
         voting_escrow.deactivated.add(lock_id, deactivated);
     }
 
@@ -2424,15 +2750,24 @@ module distribution::voting_escrow {
             *voting_escrow.escrow_type.borrow(lock_id) == EscrowType::NORMAL
         };
         assert!(is_normal_escrow, EUnlockPermanentNotNormalEscrow);
+
         let has_voted = voting_escrow.lock_has_voted(lock_id);
         assert!(!has_voted, EUnlockPermanentPositionVoted);
+
         let mut old_locked_balance = *voting_escrow.locked.borrow(lock_id);
         assert!(old_locked_balance.is_permanent, EUnlockPermanentNotPermanent);
+
         let current_time = distribution::common::current_timestamp(clock);
+
+        let old_permanent_lock_balance = voting_escrow.permanent_lock_balance
+
         voting_escrow.permanent_lock_balance = voting_escrow.permanent_lock_balance - old_locked_balance.amount;
+
         old_locked_balance.end = distribution::common::to_period(current_time + distribution::common::max_lock_time());
         old_locked_balance.is_permanent = false;
+
         voting_escrow.delegate_internal(lock, object::id_from_address(@0x0), clock, ctx);
+
         let current_locked_balance = *voting_escrow.locked.borrow(lock_id);
         voting_escrow.checkpoint_internal(
             option::some<ID>(lock_id),
@@ -2443,15 +2778,32 @@ module distribution::voting_escrow {
         );
         voting_escrow.locked.remove(lock_id);
         voting_escrow.locked.add(lock_id, old_locked_balance);
+
         lock.permanent = false;
         lock.end = old_locked_balance.end;
         lock.start = current_time;
+
+        let new_voting_power = voting_escrow.get_voting_power_internal(lock_id, clock);
+
         let permanent_unlock_event = EventUnlockPermanent {
-            sender,
-            lock_id,
-            amount: old_locked_balance.amount,
+            sender: sender,
+            lock_id: lock_id,
+            voting_power: new_voting_power,
+            end_time: lock.end,
+            start_time: lock.start,
         };
         sui::event::emit<EventUnlockPermanent>(permanent_unlock_event);
+
+        let supply_event = EventSupply {
+            before_total_locked: 0,
+            after_total_locked: 0,
+            before_permanent_lock_balance: old_permanent_lock_balance,
+            after_permanent_lock_balance: voting_escrow.permanent_lock_balance,
+            before_balance: 0,
+            after_balance: 0,
+        };
+        sui::event::emit<EventSupply>(supply_event);
+
         let metadata_update_event = EventMetadataUpdate { lock_id };
         sui::event::emit<EventMetadataUpdate>(metadata_update_event);
     }
@@ -2537,32 +2889,48 @@ module distribution::voting_escrow {
         ctx: &mut TxContext
     ) {
         let lock_id = object::id<Lock>(lock);
+
         assert!(voter_cap.get_voter_id() == voting_escrow.voter, EWithdrawManagedInvalidVoter);
         assert!(voting_escrow.id_to_managed.contains(lock_id), EWithdrawManagedNotManaged);
         assert!(voting_escrow.escrow_type(lock_id) == EscrowType::LOCKED, EWithdrawManagedNotLockedType);
+
         let managed_lock_id = *voting_escrow.id_to_managed.borrow(lock_id);
         assert!(managed_lock_id == object::id<Lock>(managed_lock), EWithdrawManagedInvalidManagedLock);
+
         let locked_managed_reward = voting_escrow.managed_to_locked.borrow_mut(managed_lock_id);
+
         let managed_weight = *voting_escrow.managed_weights.borrow(lock_id).borrow(managed_lock_id);
+
         let new_managed_weight = managed_weight + locked_managed_reward.earned<SailCoinType>(lock_id, clock);
+
         let lock_end_time = distribution::common::to_period(
             distribution::common::current_timestamp(clock) + distribution::common::max_lock_time()
         );
+
         voting_escrow.managed_to_free.borrow_mut(managed_lock_id).get_reward<SailCoinType>(owner_proof, clock, ctx);
+
+        let before_balance = sui::balance::value(&voting_escrow.balance);
+
         voting_escrow.balance.join<SailCoinType>(locked_managed_reward.get_reward<SailCoinType>(
             &voting_escrow.locked_managed_reward_authorized_cap,
             lock_id,
             clock,
             ctx
         ));
+
+        let after_balance = sui::balance::value(&voting_escrow.balance);
+
         lock.amount = new_managed_weight;
         lock.permanent = false;
         lock.end = lock_end_time;
         managed_lock.amount = managed_lock.amount - managed_weight;
+
         let lock_balance = voting_escrow.locked.remove(lock_id);
         let new_lock_balance = locked_balance(new_managed_weight, lock_end_time, false);
+
         voting_escrow.checkpoint_internal(option::some<ID>(lock_id), lock_balance, new_lock_balance, clock, ctx);
         voting_escrow.locked.add(lock_id, new_lock_balance);
+
         let mut managed_lock_balance = *voting_escrow.locked.borrow(managed_lock_id);
         let mut remaining_amount = if (new_managed_weight < managed_lock_balance.amount) {
             managed_lock_balance.amount - new_managed_weight
@@ -2570,15 +2938,23 @@ module distribution::voting_escrow {
             0
         };
         managed_lock_balance.amount = remaining_amount;
+
         let mut new_weight = if (new_managed_weight < voting_escrow.permanent_lock_balance) {
             new_managed_weight
         } else {
             voting_escrow.permanent_lock_balance
         };
+
+        let old_permanent_lock_balance = voting_escrow.permanent_lock_balance
+
         voting_escrow.permanent_lock_balance = voting_escrow.permanent_lock_balance - new_weight;
+
         let delegatee_id = voting_escrow.voting_dao.delegatee(managed_lock_id);
+
         voting_escrow.voting_dao.checkpoint_delegatee(delegatee_id, new_managed_weight, false, clock, ctx);
+
         let old_lock_balance = voting_escrow.locked.remove(managed_lock_id);
+
         voting_escrow.checkpoint_internal(
             option::some<ID>(managed_lock_id),
             old_lock_balance,
@@ -2586,7 +2962,9 @@ module distribution::voting_escrow {
             clock,
             ctx
         );
+
         voting_escrow.locked.add(managed_lock_id, managed_lock_balance);
+
         voting_escrow.managed_to_locked.borrow_mut(managed_lock_id).withdraw(
             &voting_escrow.locked_managed_reward_authorized_cap,
             managed_weight,
@@ -2594,6 +2972,7 @@ module distribution::voting_escrow {
             clock,
             ctx
         );
+
         voting_escrow.managed_to_free.borrow_mut(managed_lock_id).withdraw(
             &voting_escrow.free_managed_reward_authorized_cap,
             managed_weight,
@@ -2601,16 +2980,36 @@ module distribution::voting_escrow {
             clock,
             ctx
         );
+
         voting_escrow.id_to_managed.remove(lock_id);
         voting_escrow.managed_weights.borrow_mut(lock_id).remove(managed_lock_id);
         voting_escrow.escrow_type.remove(lock_id);
-        let v12 = EventWithdrawManaged {
+
+        let lock_voting_power = voting_escrow.get_voting_power_internal(lock_id, clock);
+        let managed_lock_voting_power = voting_escrow.get_voting_power_internal(managed_lock_id, clock);
+
+        let event = EventWithdrawManaged {
             owner: *voting_escrow.owner_of.borrow(lock_id),
-            lock_id,
-            managed_lock_id,
-            amount: new_managed_weight,
+            lock_id: lock_id,
+            managed_lock_id: managed_lock_id,
+            lock_amount: new_managed_weight,
+            managed_lock_amount: managed_lock.amount,
+            lock_end_time: lock_end_time,
+            lock_voting_power: lock_voting_power,
+            managed_lock_voting_power: managed_lock_voting_power,
         };
-        sui::event::emit<EventWithdrawManaged>(v12);
+        sui::event::emit<EventWithdrawManaged>(event);
+
+        let supply_event = EventSupply {
+            before_total_locked: 0,
+            after_total_locked: 0,
+            before_permanent_lock_balance: old_permanent_lock_balance,
+            after_permanent_lock_balance: voting_escrow.permanent_lock_balance,
+            before_balance: before_balance,
+            after_balance: after_balance,
+        };
+        sui::event::emit<EventSupply>(supply_event);
+
         let metadata_update_event = EventMetadataUpdate { lock_id };
         sui::event::emit<EventMetadataUpdate>(metadata_update_event);
     }
