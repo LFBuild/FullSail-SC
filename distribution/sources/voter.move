@@ -6,7 +6,7 @@ module distribution::voter {
     use sui::vec_set::{Self, VecSet};
     use sui::vec_map::{Self, VecMap};
     use std::type_name::{Self, TypeName};
-
+    use switchboard::aggregator::{Aggregator};
     
     const ECreateVoterInvalidPublisher: u64 = 831911472280262500;
 
@@ -239,7 +239,8 @@ module distribution::voter {
         gauge: ID,
         fee_a_amount: u64,
         fee_b_amount: u64,
-        amount: u64,
+        usd_amount: u64,
+        ended_epoch_o_sail_emission: u64,
     }
 
     /// Creates a new Voter contract.
@@ -905,16 +906,17 @@ module distribution::voter {
     ///
     /// # Emits
     /// * `EventDistributeGauge` with information about distributed rewards
-    public fun distribute_gauge<CoinTypeA, CoinTypeB, CurrentEpochOSail, NextEpochOSail>(
+    public fun distribute_gauge<CoinTypeA, CoinTypeB, NextEpochOSail>(
         voter: &mut Voter,
         distribute_cap: &distribution::distribute_cap::DistributeCap,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        reward: Coin<NextEpochOSail>,
+        usd_reward_amount: u64,
+        aggregator: &Aggregator,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
-    ): (u64, Balance<CurrentEpochOSail>) {
+    ): u64 {
         distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
         assert!(voter.is_valid_epoch_token<NextEpochOSail>(), EDistributeGaugeInvalidToken);
         assert!(distribution_config.is_gauge_alive(object::id(gauge)), EDistributeGaugeGaugeIsKilled);
@@ -927,9 +929,22 @@ module distribution::voter {
             ) && gauge_represent.gauger_id == gauge_id.id,
             EDistributeGaugeInvalidGaugeRepresent
         );
-        let reward_amount = reward.value();
-        let rollover_balance = gauge.notify_epoch_token<CoinTypeA, CoinTypeB, CurrentEpochOSail, NextEpochOSail>(pool, &voter.voter_cap, clock, ctx);
-        let (fee_reward_a, fee_reward_b) = gauge.notify_reward(&voter.voter_cap, pool, reward.into_balance(), clock, ctx);
+        let ended_epoch_o_sail_emission = gauge.notify_epoch_token<CoinTypeA, CoinTypeB, NextEpochOSail>(
+            distribution_config,
+            pool,
+            &voter.voter_cap,
+            clock,
+            ctx
+        );
+        let (fee_reward_a, fee_reward_b) = gauge.notify_reward(
+            distribution_config,
+            &voter.voter_cap,
+            pool,
+            usd_reward_amount,
+            aggregator,
+            clock,
+            ctx
+        );
         let fee_a_amount = fee_reward_a.value<CoinTypeA>();
         let fee_b_amount = fee_reward_b.value<CoinTypeB>();
         let fee_voting_reward = voter.gauge_to_fee.borrow_mut(gauge_id);
@@ -950,10 +965,12 @@ module distribution::voter {
             gauge: gauge_id.id,
             fee_a_amount,
             fee_b_amount,
-            amount: reward_amount,
+            usd_amount: usd_reward_amount,
+            ended_epoch_o_sail_emission,
         };
         sui::event::emit<EventDistributeGauge>(distribute_gauge_event);
-        (reward_amount, rollover_balance)
+
+        ended_epoch_o_sail_emission
     }
 
     /// Returns the balance of a specific token type in the fee voting rewards for a gauge.
@@ -1960,6 +1977,52 @@ module distribution::voter {
             clock,
             ctx
         );
+    }
+
+    /// Proxy method to be called via Minter
+    public fun get_position_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
+        voter: &mut Voter,
+        distribute_cap: &distribution::distribute_cap::DistributeCap,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
+        gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        staked_position: &distribution::gauge::StakedPosition,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ): u64 {
+        distribute_cap.validate_distribute_voter_id(object::id(voter));
+        
+        gauge.get_position_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
+            pool,
+            &voter.voter_cap,
+            distribution_config,
+            staked_position,
+            clock,
+            ctx
+        )
+    }
+
+    /// Proxy method to be called via Minter
+    public fun get_multiple_position_rewards<CoinTypeA, CoinTypeB, RewardCoinType>(
+        voter: &mut Voter,
+        distribute_cap: &distribution::distribute_cap::DistributeCap,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
+        gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        staked_positions: &vector<distribution::gauge::StakedPosition>,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ): u64 {
+        distribute_cap.validate_distribute_voter_id(object::id(voter));
+
+        gauge.get_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
+            pool,
+            &voter.voter_cap,
+            distribution_config,
+            staked_positions,
+            clock,
+            ctx
+        )
     }
 
     #[test_only]

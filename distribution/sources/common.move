@@ -1,4 +1,12 @@
 module distribution::common {
+
+    use switchboard::decimal::{Self, Decimal};
+    use switchboard::aggregator::{Self, Aggregator};
+
+    const EDecimalToQ64NegativeNotSupported: u64 = 440708559177319000;
+    const EGetTimeCheckedPriceOutdated: u64 = 286529906002696900;
+    const EGetTimeCheckedPriceNegativePrice: u64 = 986261309772136700;
+
     const HOUR: u64 = 3600;
     const DAY: u64 = 24 * HOUR;
     const WEEK: u64 = 7 * DAY;
@@ -7,6 +15,8 @@ module distribution::common {
     const MAX_DISCOUNT: u64 = 100000000;
     const MIN_DISCOUNT: u64 = MAX_DISCOUNT / 2;
     const PERCENT_DENOMINATOR: u64 = 100000000;
+
+    const MAX_PRICE_AGE_MS: u64 = 1 * 60 * 1000; // 1 minute
 
     /// Returns the current period based on the system time
     /// 
@@ -182,6 +192,59 @@ module distribution::common {
     /// The number of complete epochs contained in the timestamp
     public fun number_epochs_in_timestamp(timestamp: u64): u64 {
         timestamp / WEEK
+    }
+
+
+    public fun decimal_to_q64(
+        decimal: &Decimal,
+    ): u128 {
+        assert!(!decimal.neg(), EDecimalToQ64NegativeNotSupported);
+
+        let dec = decimal.dec();
+        let dec_multiplier = decimal::pow_10(dec);
+
+        integer_mate::full_math_u128::mul_div_floor(
+            decimal.value(),
+            dec_multiplier,
+            1 << 64
+        )
+    }
+
+    /// Utility function to convert USD amount * 2^64 to asset amount * 2^64
+    public fun usd_q64_to_asset_q64(
+        usd_amount_q64: u128,
+        asset_price_q64: u128,
+    ): u128 {
+        integer_mate::full_math_u128::mul_div_floor(
+            usd_amount_q64,
+            1 << 64,
+            asset_price_q64
+        )
+    }
+
+    /// Utility function to get the current price of an asset from a switchboard aggregator
+    /// Asserts that the price is not too old and returns the price
+    /// 
+    /// # Arguments
+    /// * `aggregator` - The switchboard aggregator to get the price from
+    /// * `clock` - The system clock
+    /// 
+    /// # Returns
+    /// The price in Q64.64 format, i.e USD/asset * 2^64
+    public fun get_time_checked_price_q64(
+        aggregator: &Aggregator,
+        clock: &sui::clock::Clock,
+    ): u128 {
+        let price_result = aggregator.current_result();
+        let current_time = clock.timestamp_ms();
+        let price_result_time = price_result.timestamp_ms();
+
+        assert!(price_result_time > current_time - MAX_PRICE_AGE_MS, EGetTimeCheckedPriceOutdated);
+
+        let price_result_price = price_result.result();
+        assert!(!price_result_price.neg(), EGetTimeCheckedPriceNegativePrice);
+
+        decimal_to_q64(price_result_price)
     }
 }
 
