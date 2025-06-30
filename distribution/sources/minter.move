@@ -209,6 +209,13 @@ module distribution::minter {
         distribute_governor_cap: ID,
     }
 
+    public struct EventDistributeGauge has copy, drop, store {
+        gauge_id: ID,
+        pool_id: ID,
+        o_sail_type: TypeName,
+        next_epoch_emissions_usd: u64,
+    }
+
     public struct TimeLockedSailMint has key, store {
         id: UID,
         amount: u64,
@@ -383,7 +390,7 @@ module distribution::minter {
     /// TDVR = Total Dollar Value Returned
     public fun calculate_next_pool_emissions(
         epoch_pool_emissions: u64,
-        prev_epoch_pool_emissions: u64,
+        prev_epoch_pool_emissions_usd: u64,
         prev_epoch_pool_fees_usd: u64,
         epoch_pool_emissions_usd: u64,
         epoch_pool_fees_usd: u64,
@@ -392,11 +399,11 @@ module distribution::minter {
     ): u64 {
 
         // ROE change is 1 for first voting epoch
-        let roe_change_q64 = if (prev_epoch_pool_fees_usd > 0 && prev_epoch_pool_emissions > 0) {
+        let roe_change_q64 = if (prev_epoch_pool_fees_usd > 0 && prev_epoch_pool_emissions_usd > 0) {
             let prev_epoch_roe_q64 = full_math_u128::mul_div_floor(
                 prev_epoch_pool_fees_usd as u128,
                 1<<64,
-                prev_epoch_pool_emissions as u128,
+                prev_epoch_pool_emissions_usd as u128,
             );
             let current_epoch_roe_q64 = full_math_u128::mul_div_floor(
                 epoch_pool_fees_usd as u128,
@@ -865,7 +872,7 @@ module distribution::minter {
     /// * `distribution_config` - Configuration for token distribution
     /// * `gauge` - The gauge to distribute tokens to
     /// * `pool` - The pool associated with the gauge
-    /// * `prev_epoch_pool_emissions` - N-2 epoch's (i.e epoch that ended 1 week ago) emissions for the pool. Zero for gauges younger than 2 weeks.
+    /// * `prev_epoch_pool_emissions_usd` - N-2 epoch's (i.e epoch that ended 1 week ago) emissions for the pool. Zero for gauges younger than 2 weeks.
     /// * `prev_epoch_pool_fees_usd` - N-2 epoch's (i.e epoch that ended 1 week ago) fees in USD. Zero for gauges younger than 2 weeks.
     /// * `epoch_pool_emissions_usd` - N-1 epoch's (i.e epoch that just ended) emissions in USD. Zero for new gauges.
     /// * `epoch_pool_fees_usd` - N-1 epoch's (i.e epoch that just ended) fees in USD. Zero for new gauges.
@@ -890,7 +897,7 @@ module distribution::minter {
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         // params related to rewards change calculation
-        prev_epoch_pool_emissions: u64,
+        prev_epoch_pool_emissions_usd: u64,
         prev_epoch_pool_fees_usd: u64,
         epoch_pool_emissions_usd: u64,
         epoch_pool_fees_usd: u64,
@@ -926,7 +933,7 @@ module distribution::minter {
             // for pools that are new there is no enough data.
             // This extra validation should make sure that our service handles such situations properly
             assert!(
-                prev_epoch_pool_emissions == 0 &&
+                prev_epoch_pool_emissions_usd == 0 &&
                 prev_epoch_pool_fees_usd == 0 &&
                 epoch_pool_emissions_usd == 0 &&
                 epoch_pool_fees_usd == 0 &&
@@ -936,7 +943,7 @@ module distribution::minter {
             )
         } else {
             // These values should not be zero, othervise the formula breaks
-            // we are not checking prev_epoch_pool_emissions and prev_epoch_pool_fees_usd
+            // we are not checking prev_epoch_pool_emissions_usd and prev_epoch_pool_fees_usd
             // cos we can make the term with them equal to 1 and the formula will be correct
             assert!(
                 epoch_pool_emissions_usd > 0 &&
@@ -953,7 +960,7 @@ module distribution::minter {
         } else {
             calculate_next_pool_emissions(
                 current_epoch_emissions_usd,
-                prev_epoch_pool_emissions,
+                prev_epoch_pool_emissions_usd,
                 prev_epoch_pool_fees_usd,
                 epoch_pool_emissions_usd,
                 epoch_pool_fees_usd,
@@ -1000,6 +1007,14 @@ module distribution::minter {
             0
         };
         minter.total_epoch_emissions_usd.add(minter.active_period, total_epoch_emissions + next_epoch_emissions_usd);
+
+        let event = EventDistributeGauge {
+            gauge_id,
+            pool_id: object::id(pool),
+            o_sail_type: next_epoch_o_sail_type,
+            next_epoch_emissions_usd,
+        };
+        sui::event::emit<EventDistributeGauge>(event);
 
         next_epoch_emissions_usd
     }
