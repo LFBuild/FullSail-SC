@@ -241,17 +241,17 @@ module distribution::gauge {
         gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>
     ): (Balance<CoinTypeA>, Balance<CoinTypeB>) {
-        let weekCoinPerSecond = common::week();
+        let epochCoinPerSecond = common::epoch();
         let (fee_a, fee_b) = pool.collect_fullsail_distribution_gauger_fees(gauge.gauge_cap.borrow());
         if (fee_a.value<CoinTypeA>() > 0 || fee_b.value<CoinTypeB>() > 0) {
             let amount_a = gauge.fee_a.join<CoinTypeA>(fee_a);
             let amount_b = gauge.fee_b.join<CoinTypeB>(fee_b);
-            let withdrawn_a = if (amount_a > weekCoinPerSecond) {
+            let withdrawn_a = if (amount_a > epochCoinPerSecond) {
                 gauge.fee_a.withdraw_all<CoinTypeA>()
             } else {
                 balance::zero<CoinTypeA>()
             };
-            let withdraw_b = if (amount_b > weekCoinPerSecond) {
+            let withdraw_b = if (amount_b > epochCoinPerSecond) {
                 gauge.fee_b.withdraw_all<CoinTypeB>()
             } else {
                 balance::zero<CoinTypeB>()
@@ -1089,7 +1089,7 @@ module distribution::gauge {
         assert!(current_time >= gauge.period_finish, ENotifyEpochTokenEpochAlreadyStarted);
         let last_notified_period = common::to_period(gauge.epoch_token_last_notified);
         assert!(
-            current_time >= last_notified_period + common::week(),
+            current_time >= last_notified_period + common::epoch(),
             ENotifyEpochTokenAlreadyNotifiedThisEpoch
         );
 

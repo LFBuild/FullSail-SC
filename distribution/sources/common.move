@@ -10,6 +10,7 @@ module distribution::common {
     const HOUR: u64 = 3600;
     const DAY: u64 = 24 * HOUR;
     const WEEK: u64 = 7 * DAY;
+    const EPOCH_DURATION: u64 = WEEK;
 
     // OSail params
     const MAX_DISCOUNT: u64 = 100000000;
@@ -48,7 +49,7 @@ module distribution::common {
         DAY
     }
 
-    /// Calculates the start timestamp of the next epoch (week)
+    /// Calculates the start timestamp of the next epoch
     /// 
     /// # Arguments
     /// * `timestamp` - The current timestamp in seconds
@@ -56,10 +57,10 @@ module distribution::common {
     /// # Returns
     /// The timestamp of the start of the next epoch
     public fun epoch_next(timestamp: u64): u64 {
-        timestamp - (timestamp % WEEK) + WEEK
+        timestamp - (timestamp % EPOCH_DURATION) + EPOCH_DURATION
     }
 
-    /// Calculates the start timestamp of the previous epoch (week)
+    /// Calculates the start timestamp of the previous epoch
     /// 
     /// # Arguments
     /// * `timestamp` - The current timestamp in seconds
@@ -67,9 +68,9 @@ module distribution::common {
     /// # Returns
     /// The timestamp of the start of the previous epoch
     public fun epoch_prev(timestamp: u64): u64 {
-        timestamp - (timestamp % WEEK) - WEEK
+        timestamp - (timestamp % EPOCH_DURATION) - EPOCH_DURATION
     }
-    /// Calculates the start timestamp of the current epoch (week)
+    /// Calculates the start timestamp of the current epoch
     /// 
     /// # Arguments
     /// * `timestamp` - The current timestamp in seconds
@@ -77,7 +78,7 @@ module distribution::common {
     /// # Returns
     /// The timestamp of the start of the current epoch
     public fun epoch_start(timestamp: u64): u64 {
-        timestamp - (timestamp % WEEK)
+        timestamp - (timestamp % EPOCH_DURATION)
     }
 
     /// Calculates the end timestamp of the voting period in the current epoch
@@ -131,20 +132,20 @@ module distribution::common {
     /// Returns the minimum allowed lock time for token locking
     /// 
     /// # Returns
-    /// The minimum lock time in seconds (604800 - 1 week)
+    /// The minimum lock time in seconds
     public fun min_lock_time(): u64 {
-        WEEK
+        EPOCH_DURATION
     }
 
-    /// Converts a timestamp to its corresponding period by rounding down to the start of the week
+    /// Converts a timestamp to its corresponding period by rounding down to the start of the epoch
     /// 
     /// # Arguments
     /// * `timestamp` - The timestamp in seconds to convert
     /// 
     /// # Returns
-    /// The timestamp of the start of the week containing the input timestamp
+    /// The timestamp of the start of the epoch containing the input timestamp
     public fun to_period(timestamp: u64): u64 {
-        timestamp / WEEK * WEEK
+        timestamp / EPOCH_DURATION * EPOCH_DURATION
     }
 
     /// Returns the number of seconds in a week
@@ -158,7 +159,7 @@ module distribution::common {
     /// The oSAIL option token should be exercisable for this number of seconds
     /// after it is distributed.
     public fun o_sail_duration(): u64 {
-        WEEK * 4
+        EPOCH_DURATION * 4
     }
 
     /// Discount that oSAIL grants. Currently it's the only option,
@@ -172,6 +173,14 @@ module distribution::common {
         return PERCENT_DENOMINATOR
     }
 
+    /// Returns the number of seconds in an epoch
+    /// 
+    /// # Returns
+    /// The number of seconds in an epoch
+    public fun epoch(): u64 {
+        EPOCH_DURATION
+    }
+
     /// Converts an epoch to seconds
     /// 
     /// # Arguments
@@ -180,7 +189,7 @@ module distribution::common {
     /// # Returns
     /// The epoch in seconds
     public fun epoch_to_seconds(epoch: u64): u64 {
-        epoch * WEEK
+        epoch * EPOCH_DURATION
     }
 
     /// Returns the number of complete epochs contained in the timestamp
@@ -191,7 +200,7 @@ module distribution::common {
     /// # Returns
     /// The number of complete epochs contained in the timestamp
     public fun number_epochs_in_timestamp(timestamp: u64): u64 {
-        timestamp / WEEK
+        timestamp / EPOCH_DURATION
     }
 
 

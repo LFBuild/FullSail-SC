@@ -5,9 +5,9 @@ module distribution::minter {
     *
     * The Minter is a core component of the FullSail protocol responsible for:
     * 1. Token Emission Control - Implements a sophisticated three-phase emission schedule:
-    *    - Take-off phase: Starting at 10M tokens/week with 3% weekly increase for 14 weeks
+    *    - Take-off phase: Starting at 10M tokens/epoch with 3% weekly increase for 14 weeks
     *    - Cruise phase: 1% weekly decay until emissions fall below 9M tokens
-    *    - Tail emission phase: Stabilized at 0.67% of total supply per week
+    *    - Tail emission phase: Stabilized at 0.67% of total supply per epoch
     * 
     * 2. Reward Distribution - Mints and distributes tokens to:
     *    - Stakers/voters through the reward distributor
@@ -757,11 +757,11 @@ module distribution::minter {
         minter.current_epoch_o_sail.swap_or_fill(o_sail_type);
         minter.o_sail_minted_supply = minter.o_sail_minted_supply + treasury_cap.total_supply();
         minter.o_sail_caps.add(o_sail_type, treasury_cap);
-        // oSAIL is distributed until the end of the active period, so we add extra week to the duration
-        // as in some cases users will not be able to claim oSAIL until the end of the week.
+        // oSAIL is distributed until the end of the active period, so we add extra epoch to the duration
+        // as in some cases users will not be able to claim oSAIL until the end of the epoch.
         let o_sail_expiry_date = distribution::common::current_period(clock) +
             distribution::common::o_sail_duration() +
-            distribution::common::week();
+            distribution::common::epoch();
         minter.o_sail_expiry_dates.add(o_sail_type, o_sail_expiry_date);
     }
 
@@ -775,7 +775,7 @@ module distribution::minter {
     /// 5. Updates the epoch oSAIL token in the Voter
     /// 6. Updates the epoch counters and emission rates for the next epoch
     ///
-    /// This function should be called once per week (per epoch) to maintain
+    /// This function should be called once per epoch to maintain
     /// the emission schedule.
     ///
     /// # Arguments
@@ -812,7 +812,7 @@ module distribution::minter {
         assert!(minter.is_valid_distribution_config(distribution_config), EUpdatePeriodDistributionConfigInvalid);
         assert!(minter.is_active(clock), EUpdatePeriodMinterNotActive);
         assert!(
-            minter.active_period + distribution::common::week() < distribution::common::current_timestamp(clock),
+            minter.active_period + distribution::common::epoch() < distribution::common::current_timestamp(clock),
             EUpdatePeriodNotFinishedYet
         );
         assert!(minter.all_gauges_distributed(distribution_config), EUpdatePeriodNotAllGaugesDistributed);
@@ -872,8 +872,8 @@ module distribution::minter {
     /// * `distribution_config` - Configuration for token distribution
     /// * `gauge` - The gauge to distribute tokens to
     /// * `pool` - The pool associated with the gauge
-    /// * `prev_epoch_pool_emissions_usd` - N-2 epoch's (i.e epoch that ended 1 week ago) emissions for the pool. Zero for gauges younger than 2 weeks.
-    /// * `prev_epoch_pool_fees_usd` - N-2 epoch's (i.e epoch that ended 1 week ago) fees in USD. Zero for gauges younger than 2 weeks.
+    /// * `prev_epoch_pool_emissions_usd` - N-2 epoch's (i.e epoch that ended 1 epoch ago) emissions for the pool. Zero for gauges younger than 2 epochs.
+    /// * `prev_epoch_pool_fees_usd` - N-2 epoch's (i.e epoch that ended 1 epoch ago) fees in USD. Zero for gauges younger than 2 epochs.
     /// * `epoch_pool_emissions_usd` - N-1 epoch's (i.e epoch that just ended) emissions in USD. Zero for new gauges.
     /// * `epoch_pool_fees_usd` - N-1 epoch's (i.e epoch that just ended) fees in USD. Zero for new gauges.
     /// * `epoch_pool_volume_usd` - N-1 epoch's (i.e epoch that just ended) trading volume in USD. Zero for new gauges.
@@ -1656,7 +1656,7 @@ module distribution::minter {
         distribution_config: &distribution::distribution_config::DistributionConfig,
     ): u64 {
         let active_period = minter.active_period;
-        let prev_active_period = active_period - distribution::common::week();
+        let prev_active_period = active_period - distribution::common::epoch();
         assert!(minter.all_gauges_distributed(distribution_config), EOSailEpochEmissionsNotAllGaugesDistributed);
         minter.o_sail_emissions_by_epoch(prev_active_period)
     }
