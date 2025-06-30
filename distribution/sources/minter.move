@@ -1674,7 +1674,7 @@ module distribution::minter {
 
     /// Returns the table of epoch emissions for each pool. These emissions are valid for last distributed epoch
     /// or will be distributed in initial epoch.
-    public fun borrow_pool_epoch_emissions<SailCoinType>(minter: &Minter<SailCoinType>): &Table<ID, u64> {
+    public fun borrow_pool_epoch_emissions_usd<SailCoinType>(minter: &Minter<SailCoinType>): &Table<ID, u64> {
         &minter.gauge_epoch_emissions_usd
     }
 

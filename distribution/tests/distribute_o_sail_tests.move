@@ -674,7 +674,7 @@ public fun test_gauge_get_reward_invalid_pool() {
 
     scenario.next_tx(user);
     {
-        setup::get_staked_position_reward<USD1, SAIL, OSAIL1>(&mut scenario, &clock);
+        setup::get_staked_position_reward<USD1, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     clock::destroy_for_testing(clock);
@@ -718,7 +718,7 @@ fun full_setup_with_two_positions(
     // not at the start of the epoch, but it is pretty close to the real world situation
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, SAIL, SAIL, OTHER, OSAIL1>(scenario, clock);
+        setup::distribute_gauge_epoch_1<USD1, SAIL, SAIL, OSAIL1>(scenario, clock);
     };
 
     // lp1 creates and stakes position
@@ -878,7 +878,7 @@ fun check_two_positions_single_epoch(
     // lp1 claims reward
     scenario.next_tx(lp1);
     {
-        setup::get_staked_position_reward<USD1, SAIL, OSAIL1>(scenario, clock);
+        setup::get_staked_position_reward<USD1, SAIL, SAIL, OSAIL1>(scenario, clock);
     };
 
     // check claimed rewards
@@ -894,7 +894,7 @@ fun check_two_positions_single_epoch(
     // lp2 claims reward
     scenario.next_tx(lp2);
     {
-        setup::get_staked_position_reward<USD1, SAIL, OSAIL1>(scenario, clock);
+        setup::get_staked_position_reward<USD1, SAIL, SAIL, OSAIL1>(scenario, clock);
     };
 
     // check claimed rewards
@@ -1023,7 +1023,7 @@ fun test_update_minter_period_with_same_o_sail_fails() {
     // Distribute Gauge Rewards (OSAIL1)
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, SAIL, SAIL, OTHER, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     clock.increment_for_testing(WEEK);
@@ -1072,7 +1072,7 @@ fun test_single_position_reward_over_time_distribute() {
     // --- Tx: Distribute Gauge Rewards (OSAIL1) ---
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, SAIL, SAIL, OTHER, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
 
@@ -1134,7 +1134,7 @@ fun test_single_position_reward_over_time_distribute() {
     // claim half reward
     scenario.next_tx(lp1);
     {
-        setup::get_staked_position_reward<USD1, SAIL, OSAIL1>(&mut scenario, &clock);
+        setup::get_staked_position_reward<USD1, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // verify half reward was claimed
@@ -1170,7 +1170,7 @@ fun test_single_position_reward_over_time_distribute() {
     // claim second half reward
     scenario.next_tx(lp1);
     {
-        setup::get_staked_position_reward<USD1, SAIL, OSAIL1>(&mut scenario, &clock);
+        setup::get_staked_position_reward<USD1, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // verify second half reward was claimed
@@ -1213,7 +1213,7 @@ fun test_single_position_withdraw_distribute() {
     // --- Tx: Distribute Gauge Rewards (OSAIL1) ---
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, SAIL, SAIL, OTHER, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
 
@@ -1315,7 +1315,7 @@ fun test_single_position_deposit_for_1h() {
         // --- Tx: Distribute Gauge Rewards (OSAIL1) ---
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, SAIL, SAIL, OTHER, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // advance time to make sure that voting started
@@ -1411,7 +1411,7 @@ fun test_position_deposit_for_1h_widthrawal_and_deposit_again_for_1h() {
     // --- Tx: Distribute Gauge Rewards (OSAIL1) ---
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, SAIL, SAIL, OTHER, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // advance time to make sure that voting started
@@ -1541,7 +1541,7 @@ fun multi_epoch_distribute_setup(
     // Distribute OSAIL1 rewards to the gauge
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, SAIL, SAIL, OTHER, OSAIL1>(scenario, clock);
+        setup::distribute_gauge_epoch_1<USD1, SAIL, SAIL, OSAIL1>(scenario, clock);
     };
 
     // --- 4. LP Creates and Stakes Position ---
@@ -1589,7 +1589,7 @@ fun multi_epoch_distribute_setup(
     // Distribute OSAIL2 rewards to the gauge
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_2<USD1, SAIL, SAIL, OSAIL1, OSAIL2>(scenario, clock);
+        setup::distribute_gauge_epoch_2<USD1, SAIL, SAIL, OSAIL2>(scenario, clock);
     };
 
     // --- 6. Advance Time by One More Week ---
@@ -1634,12 +1634,12 @@ fun test_gauge_get_position_reward() {
         // Claim all rewards
     scenario.next_tx(lp);
     {
-        setup::get_staked_position_reward<USD1, SAIL, OSAIL1>(&mut scenario, &clock);
+        setup::get_staked_position_reward<USD1, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     scenario.next_tx(lp);
     {
-        setup::get_staked_position_reward<USD1, SAIL, OSAIL2>(&mut scenario, &clock);
+        setup::get_staked_position_reward<USD1, SAIL, SAIL, OSAIL2>(&mut scenario, &clock);
     };
 
     // Verify all rewards were claimed
@@ -1710,12 +1710,12 @@ fun test_increase_time_after_distribute() {
     // Claim all rewards
     scenario.next_tx(lp);
     {
-        setup::get_staked_position_reward<USD1, SAIL, OSAIL1>(&mut scenario, &clock);
+        setup::get_staked_position_reward<USD1, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     scenario.next_tx(lp);
     {
-        setup::get_staked_position_reward<USD1, SAIL, OSAIL2>(&mut scenario, &clock);
+        setup::get_staked_position_reward<USD1, SAIL, SAIL, OSAIL2>(&mut scenario, &clock);
     };
 
     // Verify all rewards were claimed
@@ -1756,12 +1756,12 @@ fun test_gauge_get_position_reward_fails_wrong_order() {
     // Should error because of wrong order
     scenario.next_tx(lp);
     {
-        setup::get_staked_position_reward<USD1, SAIL, OSAIL2>(&mut scenario, &clock);
+        setup::get_staked_position_reward<USD1, SAIL, SAIL, OSAIL2>(&mut scenario, &clock);
     };
 
     scenario.next_tx(lp);
     {
-        setup::get_staked_position_reward<USD1, SAIL, OSAIL1>(&mut scenario, &clock);
+        setup::get_staked_position_reward<USD1, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     clock::destroy_for_testing(clock);
@@ -1804,12 +1804,12 @@ fun test_gauge_get_reward() {
         // Claim all rewards
     scenario.next_tx(lp);
     {
-        setup::get_staked_position_reward<USD1, SAIL, OSAIL1>(&mut scenario, &clock);
+        setup::get_staked_position_reward<USD1, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     scenario.next_tx(lp);
     {
-        setup::get_staked_position_reward<USD1, SAIL, OSAIL2>(&mut scenario, &clock);
+        setup::get_staked_position_reward<USD1, SAIL, SAIL, OSAIL2>(&mut scenario, &clock);
     };
 
     // Verify all rewards were claimed
@@ -1849,12 +1849,12 @@ fun test_gauge_get_reward_fails_wrong_order() {
     // Should error because of wrong order
     scenario.next_tx(lp);
     {
-        setup::get_staked_position_reward<USD1, SAIL, OSAIL2>(&mut scenario, &clock);
+        setup::get_staked_position_reward<USD1, SAIL, SAIL, OSAIL2>(&mut scenario, &clock);
     };
 
     scenario.next_tx(lp);
     {
-        setup::get_staked_position_reward<USD1, SAIL, OSAIL1>(&mut scenario, &clock);
+        setup::get_staked_position_reward<USD1, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     clock::destroy_for_testing(clock);
@@ -1890,7 +1890,7 @@ fun test_half_epoch_staking_distribute() {
 
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, SAIL, SAIL, OTHER, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
 
@@ -1997,7 +1997,7 @@ fun test_half_epoch_staking_distribute() {
     // lp1 claims reward
     scenario.next_tx(lp1);
     {
-        setup::get_staked_position_reward<USD1, SAIL, OSAIL1>(&mut scenario, &clock);
+        setup::get_staked_position_reward<USD1, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // check claimed rewards
@@ -2013,7 +2013,7 @@ fun test_half_epoch_staking_distribute() {
     // lp2 claims reward
     scenario.next_tx(lp2);
     {
-        setup::get_staked_position_reward<USD1, SAIL, OSAIL1>(&mut scenario, &clock);
+        setup::get_staked_position_reward<USD1, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // check claimed rewards
@@ -2116,7 +2116,7 @@ fun test_half_epoch_withdrawal_distribute() {
     // lp1 claims reward
     scenario.next_tx(lp1);
     {
-        setup::get_staked_position_reward<USD1, SAIL, OSAIL1>(&mut scenario, &clock);
+        setup::get_staked_position_reward<USD1, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // check claimed rewards
@@ -2240,7 +2240,7 @@ fun test_distribute_position_increase_after_deposit() {
     // lp1 claims reward
     scenario.next_tx(lp1);
     {
-        setup::get_staked_position_reward<USD1, SAIL, OSAIL1>(&mut scenario, &clock);
+        setup::get_staked_position_reward<USD1, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // check claimed rewards
@@ -2255,7 +2255,7 @@ fun test_distribute_position_increase_after_deposit() {
     // lp2 claims reward
     scenario.next_tx(lp2);
     {
-        setup::get_staked_position_reward<USD1, SAIL, OSAIL1>(&mut scenario, &clock);
+        setup::get_staked_position_reward<USD1, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // check claimed rewards
@@ -2380,7 +2380,7 @@ fun test_distribute_position_decrease_after_deposit() {
     // lp1 claims reward
     scenario.next_tx(lp1);
     {
-        setup::get_staked_position_reward<USD1, SAIL, OSAIL1>(&mut scenario, &clock);
+        setup::get_staked_position_reward<USD1, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // check claimed rewards
@@ -2395,7 +2395,7 @@ fun test_distribute_position_decrease_after_deposit() {
     // lp2 claims reward
     scenario.next_tx(lp2);
     {
-        setup::get_staked_position_reward<USD1, SAIL, OSAIL1>(&mut scenario, &clock);
+        setup::get_staked_position_reward<USD1, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // check claimed rewards
@@ -2442,7 +2442,7 @@ fun rollover_setup(
     // Distribute OSAIL1 rewards to the gauge
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, SAIL, SAIL, OTHER, OSAIL1>(scenario, clock);
+        setup::distribute_gauge_epoch_1<USD1, SAIL, SAIL, OSAIL1>(scenario, clock);
     };
 
     // advance time to make sure that voting started
@@ -2475,7 +2475,7 @@ fun rollover_setup(
     // Distribute OSAIL2 rewards to the gauge
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_2<USD1, SAIL, SAIL, OSAIL1, OSAIL2>(scenario, clock);
+        setup::distribute_gauge_epoch_2<USD1, SAIL, SAIL, OSAIL2>(scenario, clock);
     };
 
     (first_epoch_emissions, second_epoch_emissions, extra_o_sail_supply)
@@ -2502,7 +2502,7 @@ fun test_distribution_rollover_is_burnt() {
     {
         // first epoch was not distributed, so current total supply is only from second epoch
         let minter = scenario.take_shared<Minter<SAIL>>();
-        assert!(minter.o_sail_total_supply() - expected_total_supply <= 2, 1);
+        assert!(minter.o_sail_minted_supply() - expected_total_supply <= 2, 1);
         test_scenario::return_shared(minter);
     };
 
@@ -2581,7 +2581,7 @@ fun test_distribute_rollover_not_affecting_next_epoch() {
     // lp1 claims reward for second epoch
     scenario.next_tx(lp1);
     {
-        setup::get_staked_position_reward<USD1, SAIL, OSAIL2>(&mut scenario, &clock);
+        setup::get_staked_position_reward<USD1, SAIL, SAIL, OSAIL2>(&mut scenario, &clock);
     };
 
     // check claimed rewards
@@ -2591,82 +2591,6 @@ fun test_distribute_rollover_not_affecting_next_epoch() {
         assert!(expected_rewards_second_epoch - reward.value() <= 2, 4);
 
         coin::burn_for_testing(reward);
-    };
-
-    clock::destroy_for_testing(clock);
-    scenario.end();
-}
-
-#[test]
-#[expected_failure(abort_code = gauge::ENotifyEpochTokenInvalidCurrentToken)]
-fun test_distribute_rollover_random_current_token_is_invalid() {
-    let admin = @0xA1;
-    let user = @0xA2;
-    let mut scenario = test_scenario::begin(admin);
-    let mut clock = clock::create_for_testing(scenario.ctx());
-
-    let (_, _, _) = rollover_setup(
-        &mut scenario,
-        admin,
-        user,
-        &mut clock
-    );
-     //  Advance to Epoch 3 (OSAIL3) ---
-    clock.increment_for_testing(WEEK); // Advance clock by one week
-
-    // Update Minter Period to OSAIL2
-    scenario.next_tx(admin);
-    {
-        let initial_o_sail3_supply = setup::update_minter_period<SAIL, OSAIL3>(
-            &mut scenario,
-            500_000, // Arbitrary supply for OSAIL3
-            &clock
-        );
-        coin::burn_for_testing(initial_o_sail3_supply); // Burn OSAIL3
-    };
-
-    // use wrong current epoch token
-    scenario.next_tx(admin);
-    {
-        setup::distribute_gauge_epoch_3<USD1, SAIL, SAIL, OTHER, OSAIL3>(&mut scenario, &clock);
-    };
-
-    clock::destroy_for_testing(clock);
-    scenario.end();
-}
-
-#[test]
-#[expected_failure(abort_code = gauge::ENotifyEpochTokenInvalidCurrentToken)]
-fun test_distribute_rollover_wrong_epoch_current_token_is_invalid() {
-    let admin = @0xA1;
-    let user = @0xA2;
-    let mut scenario = test_scenario::begin(admin);
-    let mut clock = clock::create_for_testing(scenario.ctx());
-
-    let (_, _, _) = rollover_setup(
-        &mut scenario,
-        admin,
-        user,
-        &mut clock
-    );
-     //  Advance to Epoch 3 (OSAIL3) ---
-    clock.increment_for_testing(WEEK); // Advance clock by one week
-
-    // Update Minter Period to OSAIL2
-    scenario.next_tx(admin);
-    {
-        let initial_o_sail3_supply = setup::update_minter_period<SAIL, OSAIL3>(
-            &mut scenario,
-            500_000, // Arbitrary supply for OSAIL3
-            &clock
-        );
-        coin::burn_for_testing(initial_o_sail3_supply); // Burn OSAIL3
-    };
-
-    // use current epoch token from wrong epoch
-    scenario.next_tx(admin);
-    {
-        setup::distribute_gauge_epoch_3<USD1, SAIL, SAIL, OSAIL1, OSAIL3>(&mut scenario, &clock);
     };
 
     clock::destroy_for_testing(clock);
@@ -2704,7 +2628,7 @@ fun test_distribute_rollover_random_next_token_is_invalid() {
     // Distribute OSAIL2 (wrong token) rewards to the gauge
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_3<USD1, SAIL, SAIL, OSAIL2, OTHER>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_3<USD1, SAIL, SAIL, OTHER>(&mut scenario, &clock);
     };
 
     clock::destroy_for_testing(clock);

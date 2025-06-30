@@ -1087,10 +1087,10 @@ public fun distribute_gauge_epoch_3<CoinTypeA, CoinTypeB, SailCoinType, EpochOSa
 /// Aggregators are not shared objects due to missing store capability.
 public fun create_aggregator(
     scenario: &mut test_scenario::Scenario,
-    owner: address,
     price: u128, // decimals 18
     clock: &Clock,
 ): Aggregator {
+    let owner = scenario.ctx().sender();
     let mut aggregator = aggregator::new_aggregator(
         aggregator::example_queue_id(),
         std::string::utf8(b"test_aggregator"),
@@ -1148,7 +1148,7 @@ public fun distribute_gauge_emissions_controlled<CoinTypeA, CoinTypeB, SailCoinT
     let distribution_config = scenario.take_shared<DistributionConfig>();
     let distribute_governor_cap = scenario.take_from_sender<minter::DistributeGovernorCap>(); // Minter uses DistributeGovernorCap
 
-    let aggregator = create_aggregator(scenario, @0x1, ONE_DEC18, clock);
+    let aggregator = create_aggregator(scenario, ONE_DEC18, clock);
     let distributed_amount = minter.distribute_gauge<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
         // &mut minter, // minter is the receiver
         &mut voter,
@@ -1291,4 +1291,8 @@ public fun vote_for_pool<CoinTypeA, CoinTypeB, SailCoinType>(
         clock,
     );
     test_scenario::return_shared(pool);
+}
+
+public fun one_dec18(): u128 {
+    ONE_DEC18
 }

@@ -468,19 +468,19 @@ fun test_create_gauge_success() {
         let minter = scenario.take_shared<Minter<SAIL>>();
         let gauge = scenario.take_shared<Gauge<USD1, AUSD>>();
         let gauge_id = object::id(&gauge);
-        let emissions = minter::borrow_pool_epoch_emissions(&minter);
+        let emissions = minter::borrow_pool_epoch_emissions_usd(&minter);
         assert!(emissions.contains(gauge_id), 0);
         assert!(*emissions.borrow(gauge_id) == 100, 1);
 
         // total supply should be 0 as no emissions have been distributed yet
         assert!(minter.total_supply() == 0, 2);
-        assert!(minter.o_sail_total_supply() == 0, 3);
+        assert!(minter.o_sail_minted_supply() == 0, 3);
         assert!(minter.sail_total_supply() == 0, 4);
 
         // epoch emissions should be 0 as no emissions have been distributed yet
-        assert!(minter.epoch_emissions() == 0, 5);
+        assert!(minter.usd_epoch_emissions() == 0, 5);
         let current_epoch  = common::current_period(&clock);
-        assert!(minter.emissions_by_epoch(current_epoch) == 0, 6);
+        assert!(minter.usd_emissions_by_epoch(current_epoch) == 0, 6);
         
         test_scenario::return_shared(gauge);
         test_scenario::return_shared(minter);
@@ -907,7 +907,7 @@ fun test_distribute_gauge_initial_amount() {
     scenario.next_tx(admin);
     let distributed_amount: u64;
     {
-        distributed_amount = setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, SUI, OSAIL1>(&mut scenario, &clock);
+        distributed_amount = setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     scenario.next_tx(admin);
@@ -917,16 +917,16 @@ fun test_distribute_gauge_initial_amount() {
         let gauge_id = object::id(&gauge);
 
         assert!(distributed_amount == gauge_base_emissions, 0);
-        assert!(minter.epoch_emissions() == gauge_base_emissions, 1);
-        assert!(minter.emissions_by_epoch(current_period) == gauge_base_emissions, 2);
+        assert!(minter.usd_epoch_emissions() == gauge_base_emissions, 1);
+        assert!(minter.usd_emissions_by_epoch(current_period) == gauge_base_emissions, 2);
 
-        let emissions = minter::borrow_pool_epoch_emissions(&minter);
+        let emissions = minter::borrow_pool_epoch_emissions_usd(&minter);
         assert!(emissions.contains(gauge_id), 0);
         assert!(*emissions.borrow(gauge_id) == gauge_base_emissions, 1);
 
         // total supply should be 0 as no emissions have been distributed yet
         assert!(minter.total_supply() == gauge_base_emissions, 2);
-        assert!(minter.o_sail_total_supply() == gauge_base_emissions, 3);
+        assert!(minter.o_sail_minted_supply() == gauge_base_emissions, 3);
         assert!(minter.sail_total_supply() == 0, 4);
 
         test_scenario::return_shared(minter);
@@ -961,7 +961,7 @@ fun test_distribute_gauge_initial_epoch_with_non_zero_metrics_fails() {
     // distribute the gauge with non-zero metrics
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_emissions_controlled<USD1, AUSD, SAIL, SUI, OSAIL1>(
+        setup::distribute_gauge_emissions_controlled<USD1, AUSD, SAIL, OSAIL1>(
             &mut scenario,
             1_000_000, // prev_epoch_pool_emissions
             1_000_000, // prev_epoch_pool_fees_usd
@@ -1001,7 +1001,7 @@ fun test_distribute_gauge_second_epoch_with_zero_metrics_fails() {
     // --- EPOCH 1: Successful distribution ---
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, SUI, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // --- EPOCH 2: Attempt distribution with zero metrics (should fail) ---
@@ -1017,7 +1017,7 @@ fun test_distribute_gauge_second_epoch_with_zero_metrics_fails() {
     // Distribute for epoch 2 with all-zero metrics
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_emissions_controlled<USD1, AUSD, SAIL, OSAIL1, OSAIL2>(
+        setup::distribute_gauge_emissions_controlled<USD1, AUSD, SAIL, OSAIL2>(
             &mut scenario,
             0, // prev_epoch_pool_emissions
             0, // prev_epoch_pool_fees_usd
@@ -1076,7 +1076,7 @@ fun test_distribute_gauge_without_minter_activation_fails() {
     // Try to distribute the gauge, which should fail.
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, SUI, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // Cleanup
@@ -1108,13 +1108,13 @@ fun test_distribute_gauge_increase_emissions() {
     // distribute the gauge for epoch 1
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, SUI, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     scenario.next_tx(admin);
     {
         let minter = scenario.take_shared<Minter<SAIL>>();
-        assert!(minter.epoch_emissions() == gauge_base_emissions, 0);
+        assert!(minter.usd_epoch_emissions() == gauge_base_emissions, 0);
         test_scenario::return_shared(minter);
     };
 
@@ -1131,7 +1131,7 @@ fun test_distribute_gauge_increase_emissions() {
     // distribute the gauge for epoch 2 with metrics that should cause a 10% increase
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_emissions_controlled<USD1, AUSD, SAIL, OSAIL1, OSAIL2>(
+        setup::distribute_gauge_emissions_controlled<USD1, AUSD, SAIL, OSAIL2>(
             &mut scenario,
             0,
             0,
@@ -1147,18 +1147,18 @@ fun test_distribute_gauge_increase_emissions() {
     scenario.next_tx(admin);
     {
         let minter = scenario.take_shared<Minter<SAIL>>();
-        let new_emissions = minter.epoch_emissions();
+        let new_emissions = minter.usd_epoch_emissions();
         let current_period = common::current_period(&clock);
 
         let expected_emissions = gauge_base_emissions * 105 / 100; // 5% increase
 
         assert!(expected_emissions - new_emissions <= 1, 1);
-        assert!(minter.emissions_by_epoch(current_period) == new_emissions, 2);
+        assert!(minter.usd_emissions_by_epoch(current_period) == new_emissions, 2);
 
         // o_sail_total_supply should be epoch 2 emissions
         // epoch 1 emissions are burnt cos there were noone to distribute them to
         let expected_o_sail_supply = new_emissions;
-        assert!(minter.o_sail_total_supply() == expected_o_sail_supply, 3);
+        assert!(minter.o_sail_minted_supply() == expected_o_sail_supply, 3);
         // total_supply is o_sail_total_supply + sail_total_supply (which is 0)
         assert!(minter.total_supply() == expected_o_sail_supply, 4);
 
@@ -1193,7 +1193,7 @@ fun test_distribute_gauge_with_emission_changes() {
     // Distribute the gauge for epoch 1 (base emissions)
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, SUI, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // Verification after Epoch 1
@@ -1201,9 +1201,9 @@ fun test_distribute_gauge_with_emission_changes() {
     {
         let minter = scenario.take_shared<Minter<SAIL>>();
         let current_period = common::current_period(&clock);
-        assert!(minter.epoch_emissions() == gauge_base_emissions, 0);
-        assert!(minter.emissions_by_epoch(current_period) == gauge_base_emissions, 1);
-        assert!(minter.o_sail_total_supply() == gauge_base_emissions, 2);
+        assert!(minter.usd_epoch_emissions() == gauge_base_emissions, 0);
+        assert!(minter.usd_emissions_by_epoch(current_period) == gauge_base_emissions, 1);
+        assert!(minter.o_sail_minted_supply() == gauge_base_emissions, 2);
         assert!(minter.total_supply() == gauge_base_emissions, 3);
         test_scenario::return_shared(minter);
     };
@@ -1222,7 +1222,7 @@ fun test_distribute_gauge_with_emission_changes() {
     // Distribute for epoch 2 with metrics causing a 10% increase
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_emissions_controlled<USD1, AUSD, SAIL, OSAIL1, OSAIL2>(
+        setup::distribute_gauge_emissions_controlled<USD1, AUSD, SAIL, OSAIL2>(
             &mut scenario,
             0,
             0,
@@ -1238,14 +1238,14 @@ fun test_distribute_gauge_with_emission_changes() {
     scenario.next_tx(admin);
     {
         let minter = scenario.take_shared<Minter<SAIL>>();
-        let new_emissions = minter.epoch_emissions();
+        let new_emissions = minter.usd_epoch_emissions();
         let current_period = common::current_period(&clock);
 
         assert!(emissions_epoch_2 - new_emissions <= 1, 1);
-        assert!(minter.emissions_by_epoch(current_period) == new_emissions, 2);
+        assert!(minter.usd_emissions_by_epoch(current_period) == new_emissions, 2);
 
         let expected_o_sail_supply = emissions_epoch_2;
-        assert!(expected_o_sail_supply - minter.o_sail_total_supply() <= 1, 3);
+        assert!(expected_o_sail_supply - minter.o_sail_minted_supply() <= 1, 3);
         assert!(expected_o_sail_supply - minter.total_supply() <= 1, 4);
 
         test_scenario::return_shared(minter);
@@ -1265,7 +1265,7 @@ fun test_distribute_gauge_with_emission_changes() {
     // Distribute for epoch 3 with metrics causing a 10% decrease
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_emissions_controlled<USD1, AUSD, SAIL, OSAIL2, OSAIL3>(
+        setup::distribute_gauge_emissions_controlled<USD1, AUSD, SAIL, OSAIL3>(
             &mut scenario,
             1_000_000,    // prev_epoch_pool_emissions (from N-2, which is epoch 2)
             1_000_000,          // prev_epoch_pool_fees_usd
@@ -1281,14 +1281,14 @@ fun test_distribute_gauge_with_emission_changes() {
     scenario.next_tx(admin);
     {
         let minter = scenario.take_shared<Minter<SAIL>>();
-        let new_emissions = minter.epoch_emissions();
+        let new_emissions = minter.usd_epoch_emissions();
         let current_period = common::current_period(&clock);
 
         assert!(emissions_epoch_3 - new_emissions <= 1, 1);
-        assert!(minter.emissions_by_epoch(current_period) == new_emissions, 2);
+        assert!(minter.usd_emissions_by_epoch(current_period) == new_emissions, 2);
 
         let expected_o_sail_supply = emissions_epoch_3;
-        assert!(expected_o_sail_supply - minter.o_sail_total_supply() <= 2, 3);
+        assert!(expected_o_sail_supply - minter.o_sail_minted_supply() <= 2, 3);
 
         test_scenario::return_shared(minter);
     };
@@ -1357,7 +1357,7 @@ fun test_distribute_same_gauge_twice_in_one_epoch_fails() {
     // --- EPOCH 1: Successful distribution ---
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, SUI, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // --- Advance time by a few hours ---
@@ -1366,7 +1366,7 @@ fun test_distribute_same_gauge_twice_in_one_epoch_fails() {
     // --- Attempt to distribute the same gauge again (should fail) ---
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, SUI, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     clock::destroy_for_testing(clock);
@@ -1399,7 +1399,7 @@ fun test_distribute_gauge_with_wrong_o_sail_fails() {
     scenario.next_tx(admin);
     {
         // distribute_gauge_epoch_1 uses <SUI, OSAIL1> as <Prev, Next>
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, SUI, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // --- EPOCH 2 ---
@@ -1418,7 +1418,7 @@ fun test_distribute_gauge_with_wrong_o_sail_fails() {
     {
         // Here, CurrentEpochOSail (PrevEpochOSail in wrapper) is OSAIL1, 
         // and we are trying to distribute OSAIL1 again as NextEpochOSail (EpochOSail in wrapper)
-        setup::distribute_gauge_emissions_controlled<USD1, AUSD, SAIL, OSAIL1, OSAIL1>(
+        setup::distribute_gauge_emissions_controlled<USD1, AUSD, SAIL, OSAIL1>(
             &mut scenario,
             0,                  // prev_epoch_pool_emissions (N-2 is epoch 0, so 0)
             0,                  // prev_epoch_pool_fees_usd (N-2 is epoch 0, so 0)
@@ -1458,7 +1458,7 @@ fun test_distribute_killed_gauge_fails() {
     // --- EPOCH 1: Successful distribution ---
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, SUI, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // --- EPOCH 2 ---
@@ -1502,7 +1502,7 @@ fun test_distribute_killed_gauge_fails() {
     // Attempt to distribute the killed gauge
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_emissions_controlled<USD1, AUSD, SAIL, OSAIL1, OSAIL2>(
+        setup::distribute_gauge_emissions_controlled<USD1, AUSD, SAIL, OSAIL2>(
             &mut scenario,
             0,
             0,
@@ -1541,7 +1541,7 @@ fun test_distribute_revived_gauge_succeeds() {
     // distribute the gauge
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, SUI, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // --- EPOCH 2 ---
@@ -1619,14 +1619,14 @@ fun test_distribute_revived_gauge_succeeds() {
     scenario.next_tx(admin);
     {
         // prev epoch sail is OSAIL1, cos second epoch is skipped.
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1, OSAIL3>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL3>(&mut scenario, &clock);
     };
 
     // Verification
     scenario.next_tx(admin);
     {
         let minter = scenario.take_shared<Minter<SAIL>>();
-        let new_emissions = minter.epoch_emissions();
+        let new_emissions = minter.usd_epoch_emissions();
         // After being killed and revived, the gauge missed a distribution.
         // The emission calculation treats it as a new gauge, so it uses the base emission.
         assert!(new_emissions == gauge_base_emissions, 1);
@@ -1742,7 +1742,7 @@ fun test_kill_revive_in_same_epoch_rewards() {
     // 2. Distribute Gauge for Epoch 1
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, SUI, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // 3. User creates and deposits a position
@@ -1819,21 +1819,7 @@ fun test_kill_revive_in_same_epoch_rewards() {
     // 7. User claims rewards and we check if they got the full amount
     scenario.next_tx(user);
     {
-        let mut gauge = scenario.take_shared<Gauge<USD1 , AUSD>>();
-        let mut pool = scenario.take_shared<Pool<USD1, AUSD>>();
-        let staked_position = scenario.take_from_sender<StakedPosition>();
-        
-        // Claim rewards
-        gauge.get_position_reward<USD1, AUSD, OSAIL1>(
-            &mut pool,
-            &staked_position,
-            &clock,
-            scenario.ctx()
-        );
-
-        test_scenario::return_shared(gauge);
-        test_scenario::return_shared(pool);
-        scenario.return_to_sender(staked_position);
+        setup::get_staked_position_reward<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     scenario.next_tx(user);
@@ -1876,7 +1862,7 @@ fun test_revive_gauge_in_next_epoch_fails() {
     // 2. Distribute Gauge for Epoch 1
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, SUI, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // 3. Advance time 1/2 week and kill the gauge
@@ -1969,7 +1955,7 @@ fun test_reset_gauge_in_same_epoch_fails() {
     // 2. Distribute Gauge for Epoch 1
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, SUI, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // 3. Advance time 1/3 week and kill the gauge
@@ -2113,7 +2099,7 @@ fun test_reset_and_distribute_undistributed_killed_gauge() {
     // 5. Distribute the gauge now that it's reset and alive
     scenario.next_tx(admin);
     {
-        let distributed_amount = setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, sui::sui::SUI, OSAIL1>(&mut scenario, &clock);
+        let distributed_amount = setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
         assert!(distributed_amount == new_gauge_base_emissions, 0);
     };
 
@@ -2121,9 +2107,9 @@ fun test_reset_and_distribute_undistributed_killed_gauge() {
     scenario.next_tx(admin);
     {
         let minter = scenario.take_shared<Minter<SAIL>>();
-        assert!(minter.epoch_emissions() == new_gauge_base_emissions, 1);
+        assert!(minter.usd_epoch_emissions() == new_gauge_base_emissions, 1);
         let gauge = scenario.take_shared<Gauge<USD1, AUSD>>();
-        let emissions_table = minter.borrow_pool_epoch_emissions();
+        let emissions_table = minter.borrow_pool_epoch_emissions_usd();
         let gauge_id = object::id(&gauge);
         assert!(emissions_table.borrow(gauge_id) == new_gauge_base_emissions, 2);
         
@@ -2239,7 +2225,7 @@ fun test_revive_already_alive_gauge_fails() {
     // 2. Distribute the gauge
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, sui::sui::SUI, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // 3. Kill the gauge
@@ -2512,7 +2498,7 @@ fun test_revive_gauge_with_invalid_emergency_cap_fails() {
     // 2. Distribute the gauge
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, sui::sui::SUI, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // 3. Kill the gauge
@@ -2728,19 +2714,21 @@ fun test_distribute_gauge_with_wrong_voter_fails() {
         let distribution_config = scenario.take_shared<DistributionConfig>();
         let mut gauge = scenario.take_shared<Gauge<USD1, AUSD>>();
         let mut pool = scenario.take_shared<Pool<USD1, AUSD>>();
+        let aggregator = setup::create_aggregator(&mut scenario, setup::one_dec18(), &clock);
 
-        minter.distribute_gauge<USD1, AUSD, SAIL, sui::sui::SUI, OSAIL1>(
+        minter.distribute_gauge<USD1, AUSD, SAIL, OSAIL1>(
             &mut wrong_voter_obj,
             &distribute_governor_cap,
             &distribution_config,
             &mut gauge,
             &mut pool,
             0, 0, 0, 0, 0, 0, // Zero metrics for initial distribution
+            &aggregator,
             &clock,
             scenario.ctx()
         );
 
-        // Cleanup if test doesn't fail
+        test_utils::destroy(aggregator);
         test_scenario::return_shared(minter);
         test_scenario::return_shared(wrong_voter_obj);
         scenario.return_to_sender(distribute_governor_cap);
@@ -2799,19 +2787,22 @@ fun test_distribute_gauge_with_revoked_governor_cap_fails() {
         let mut pool = scenario.take_shared<Pool<USD1, AUSD>>();
         let distribution_config = scenario.take_shared<DistributionConfig>();
         let distribute_governor_cap = scenario.take_from_sender<minter::DistributeGovernorCap>();
+        let aggregator = setup::create_aggregator(&mut scenario, setup::one_dec18(), &clock);
 
-        minter.distribute_gauge<USD1, AUSD, SAIL, sui::sui::SUI, OSAIL1>(
+        minter.distribute_gauge<USD1, AUSD, SAIL, OSAIL1>(
             &mut voter,
             &distribute_governor_cap,
             &distribution_config,
             &mut gauge,
             &mut pool,
             0, 0, 0, 0, 0, 0, // Zero metrics for initial distribution
+            &aggregator,
             &clock,
             scenario.ctx()
         );
 
         // Cleanup if test doesn't fail
+        test_utils::destroy(aggregator);
         test_scenario::return_shared(minter);
         test_scenario::return_shared(voter);
         test_scenario::return_shared(gauge);
@@ -2864,19 +2855,22 @@ fun test_distribute_gauge_with_wrong_distribution_config_fails() {
         let mut pool = scenario.take_shared<Pool<USD1, AUSD>>();
         let wrong_distribution_config = scenario.take_shared<DistributionConfig>();
         let distribute_governor_cap = scenario.take_from_sender<minter::DistributeGovernorCap>();
+        let aggregator = setup::create_aggregator(&mut scenario, setup::one_dec18(), &clock);
 
-        minter.distribute_gauge<USD1, AUSD, SAIL, sui::sui::SUI, OSAIL1>(
+        minter.distribute_gauge<USD1, AUSD, SAIL, OSAIL1>(
             &mut voter,
             &distribute_governor_cap,
             &wrong_distribution_config,
             &mut gauge,
             &mut pool,
             0, 0, 0, 0, 0, 0, // Zero metrics for initial distribution
+            &aggregator,
             &clock,
             scenario.ctx()
         );
 
         // Cleanup if test doesn't fail
+        test_utils::destroy(aggregator);
         test_scenario::return_shared(minter);
         test_scenario::return_shared(voter);
         test_scenario::return_shared(gauge);
@@ -2942,19 +2936,22 @@ fun test_distribute_gauge_with_wrong_pool_fails() {
         let mut new_pool = scenario.take_shared<Pool<USD1, AUSD>>();
         let distribution_config = scenario.take_shared<DistributionConfig>();
         let distribute_governor_cap = scenario.take_from_sender<minter::DistributeGovernorCap>();
+        let aggregator = setup::create_aggregator(&mut scenario, setup::one_dec18(), &clock);
 
-        minter.distribute_gauge<USD1, AUSD, SAIL, sui::sui::SUI, OSAIL1>(
+        minter.distribute_gauge<USD1, AUSD, SAIL, OSAIL1>(
             &mut voter,
             &distribute_governor_cap,
             &distribution_config,
             &mut gauge,
             &mut new_pool,
             0, 0, 0, 0, 0, 0, // Zero metrics for initial distribution
+            &aggregator,
             &clock,
             scenario.ctx()
         );
 
         // Cleanup if test doesn't fail
+        test_utils::destroy(aggregator);
         test_scenario::return_shared(minter);
         test_scenario::return_shared(voter);
         test_scenario::return_shared(gauge);
@@ -2991,7 +2988,7 @@ fun test_update_period_with_wrong_voter_fails() {
     // 2. Distribute gauge for epoch 1
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, sui::sui::SUI, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // 3. Advance to the next epoch
@@ -3082,7 +3079,7 @@ fun test_update_period_with_wrong_distribution_config_fails() {
     // 2. Distribute gauge for epoch 1
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, sui::sui::SUI, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // 3. Advance to the next epoch
@@ -3158,7 +3155,7 @@ fun test_update_period_with_revoked_governor_cap_fails() {
     // 2. Distribute gauge for epoch 1
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, sui::sui::SUI, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // 3. Revoke the DistributeGovernorCap
@@ -3417,7 +3414,7 @@ fun test_rebase_distribution_and_claim() {
     // 2. Distribute gauge for epoch 1
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, sui::sui::SUI, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // 3. Advance to the next epoch
@@ -3469,7 +3466,7 @@ fun test_rebase_distribution_and_claim() {
     // distribute the gauge for epoch 2
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_2<USD1, AUSD, SAIL, OSAIL1, OSAIL2>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_2<USD1, AUSD, SAIL, OSAIL2>(&mut scenario, &clock);
     };
 
     scenario.next_tx(admin);
@@ -4158,7 +4155,7 @@ fun test_cancel_o_sail_mint_no_tokens_minted() {
     scenario.next_tx(admin);
     {
         let minter = scenario.take_shared<Minter<SAIL>>();
-        initial_o_sail_supply = minter.o_sail_total_supply();
+        initial_o_sail_supply = minter.o_sail_minted_supply();
         test_scenario::return_shared(minter);
     };
 
@@ -4193,7 +4190,7 @@ fun test_cancel_o_sail_mint_no_tokens_minted() {
     scenario.next_tx(admin);
     {
         let minter = scenario.take_shared<Minter<SAIL>>();
-        let final_o_sail_supply = minter.o_sail_total_supply();
+        let final_o_sail_supply = minter.o_sail_minted_supply();
         
         // Total supply should remain exactly the same
         assert!(final_o_sail_supply == initial_o_sail_supply, 0);
