@@ -2,7 +2,7 @@
 
 [move]
 version = 3
-manifest_digest = "E81E88274FF628DA96987A204A7EA4AA152D73BE254D08687DE023A5C1CD2CFF"
+manifest_digest = "85A6598302596C6B733CE248DB7F524B1377B0376C4A89075529E937AC65E39E"
 deps_digest = "04732BFEF428F74DE262001DC455D76B909EBC394B034A9A15CC095E4BDD9CEF"
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -28,6 +28,14 @@ dependencies = [
 ]
 
 [[move.package]]
+id = "Switchboard"
+source = { git = "https://github.com/switchboard-xyz/sui.git", rev = "mainnet", subdir = "on_demand/" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+]
+
+[[move.package]]
 id = "clmm_pool"
 source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "dev", subdir = "clmm_pool" }
 
@@ -45,9 +53,11 @@ source = { local = "../distribution" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
+  { id = "Switchboard", name = "Switchboard" },
   { id = "clmm_pool", name = "clmm_pool" },
   { id = "gauge_cap", name = "gauge_cap" },
   { id = "integer_mate", name = "integer_mate" },
+  { id = "locker_cap", name = "locker_cap" },
   { id = "price_provider", name = "price_provider" },
 ]
 
@@ -69,11 +79,12 @@ dependencies = [
 
 [[move.package]]
 id = "liquidity_locker"
-source = { git = "https://github.com/LFBuild/FullSail-LL-SC.git", rev = "dev", subdir = "liquidity_locker" }
+source = { local = "../liquidity_locker" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
   { id = "clmm_pool", name = "clmm_pool" },
+  { id = "distribution", name = "distribution" },
   { id = "gauge_cap", name = "gauge_cap" },
   { id = "integer_mate", name = "integer_mate" },
   { id = "locker_cap", name = "locker_cap" },
@@ -82,7 +93,7 @@ dependencies = [
 
 [[move.package]]
 id = "locker_cap"
-source = { git = "https://github.com/LFBuild/FullSail-LL-SC.git", rev = "dev", subdir = "locker_cap" }
+source = { local = "../locker_cap" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -105,20 +116,6 @@ dependencies = [
 ]
 
 [move.toolchain-version]
-compiler-version = "1.49.1"
+compiler-version = "1.50.1"
 edition = "2024"
 flavor = "sui"
-
-[env]
-
-[env.mainnet]
-chain-id = "35834a8a"
-original-published-id = "0x4d355503cc1413f93f1e6c860b68454c4f8ab1486f16bd992d929224cf515de4"
-latest-published-id = "0x88ffc2e730a6ab489a1e892c0c23e3228c20def5c1a7634fd434d741b8945626"
-published-version = "3"
-
-[env.testnet]
-chain-id = "4c78adac"
-original-published-id = "0xf0acfa4eb6717877f6882d32489049bf6f1c7050fd0977e318af390a34bd33ac"
-latest-published-id = "0xf0acfa4eb6717877f6882d32489049bf6f1c7050fd0977e318af390a34bd33ac"
-published-version = "1"

@@ -2,7 +2,6 @@ module integrate::voting_escrow {
     public struct Summary has copy, drop, store {
         total_locked: u64,
         total_voting_power: u64,
-        total_voted_power: u64,
         rebase_apr: u64,
         current_epoch_end: u64,
         current_epoch_vote_end: u64,
@@ -182,13 +181,13 @@ module integrate::voting_escrow {
 
     public entry fun summary<SailCoinType>(
         minter: &distribution::minter::Minter<SailCoinType>,
-        voter: &distribution::voter::Voter,
         voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
         clock: &sui::clock::Clock
     ) {
         let current_timestamp = distribution::common::current_timestamp(clock);
         let total_locked = voting_escrow.total_locked();
-        let epoch_emissions = minter.epoch_emissions();
+        let epoch_emissions = minter.o_sail_epoch_emissions(distribution_config);
         let rebase_growth = distribution::minter::calculate_rebase_growth(
             epoch_emissions,
             minter.sail_total_supply(),
@@ -197,7 +196,6 @@ module integrate::voting_escrow {
         let summary_event = Summary {
             total_locked,
             total_voting_power: voting_escrow.total_supply_at(distribution::common::current_timestamp(clock)),
-            total_voted_power: voter.total_weight(),
             rebase_apr: integer_mate::full_math_u64::mul_div_floor(
                 rebase_growth,
                 max_bps(),

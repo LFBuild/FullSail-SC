@@ -3,7 +3,7 @@ name = "integrate"
 edition = "2024"
 
 [addresses]
-integrate = "0x0"
+integrate = "0x01"
 
 [dev-dependencies]
 
@@ -49,7 +49,4 @@ rev = "dev"
 override = true
 
 [dependencies.liquidity_locker]
-git = "https://github.com/LFBuild/FullSail-LL-SC.git"
-subdir = "liquidity_locker"
-rev = "dev"
-override = true
+local = "../liquidity_locker"
