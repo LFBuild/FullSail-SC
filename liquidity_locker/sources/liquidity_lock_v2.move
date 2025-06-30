@@ -1132,7 +1132,7 @@ module liquidity_locker::liquidity_lock_v2 {
     /// * If the locker is paused
     /// * If the gauge and pool do not match
     /// * If rewards have already been claimed for the current period
-    public fun claim_position_reward_for_staking<SailCoinType, CoinTypeA, CoinTypeB, RewardCoinType>(
+    public fun claim_position_reward_for_staking<CoinTypeA, CoinTypeB, SailCoinType, RewardCoinType>(
         locker: &Locker,
         minter: &mut distribution::minter::Minter<SailCoinType>,
         voter: &mut distribution::voter::Voter,
@@ -1146,7 +1146,7 @@ module liquidity_locker::liquidity_lock_v2 {
         checked_package_version(locker);
         assert!(!locker.pause, ELockManagerPaused);
 
-        distribution::minter::get_position_reward<SailCoinType, CoinTypeA, CoinTypeB, RewardCoinType>(
+        distribution::minter::get_position_reward<CoinTypeA, CoinTypeB, SailCoinType, RewardCoinType>(
             minter,
             voter,
             distribution_config,

@@ -77,14 +77,18 @@ public fun test_gauge_notify_epoch_token() {
         let mut gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
         let mut pool = scenario.take_shared<Pool<USD1, SAIL>>();
         let voter_cap = scenario.take_from_sender<VoterCap>();
-        let undistributed = gauge.notify_epoch_token<USD1, SAIL, OTHER, OSAIL1>(
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+
+        let prev_epoch_emissions = gauge.notify_epoch_token<USD1, SAIL, OSAIL1>(
+            &distribution_config,
             &mut pool,
             &voter_cap,
             &clock,
             scenario.ctx()
         );
-        undistributed.destroy_zero();
+        assert!(prev_epoch_emissions == 0, 1);
 
+        test_scenario::return_shared(distribution_config);
         test_scenario::return_shared(gauge);
         test_scenario::return_shared(pool);
         scenario.return_to_sender(voter_cap);
@@ -137,14 +141,17 @@ public fun test_gauge_notify_epoch_token_twice_fail(
         let mut gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
         let mut pool = scenario.take_shared<Pool<USD1, SAIL>>();
         let voter_cap = scenario.take_from_sender<VoterCap>();
-        let undistributed = gauge.notify_epoch_token<USD1, SAIL, OTHER, OSAIL1>(
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+
+        gauge.notify_epoch_token<USD1, SAIL, OSAIL1>(
+            &distribution_config,
             &mut pool,
             &voter_cap,
             &clock,
             scenario.ctx()
         );
-        undistributed.destroy_zero();
 
+        test_scenario::return_shared(distribution_config);
         test_scenario::return_shared(gauge);
         test_scenario::return_shared(pool);
         scenario.return_to_sender(voter_cap);
@@ -156,14 +163,17 @@ public fun test_gauge_notify_epoch_token_twice_fail(
         let mut gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
         let mut pool = scenario.take_shared<Pool<USD1, SAIL>>();
         let voter_cap = scenario.take_from_sender<VoterCap>();
-        let undistributed = gauge.notify_epoch_token<USD1, SAIL, OSAIL1, OSAIL1>(
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+
+        gauge.notify_epoch_token<USD1, SAIL, OSAIL1>(
+            &distribution_config,
             &mut pool,
             &voter_cap,
             &clock,
             scenario.ctx()
         );
-        undistributed.destroy_zero();
 
+        test_scenario::return_shared(distribution_config);
         test_scenario::return_shared(gauge);
         test_scenario::return_shared(pool);
         scenario.return_to_sender(voter_cap);
@@ -208,7 +218,7 @@ public fun test_gauge_notify_epoch_token_epoch_already_started() {
 
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, SAIL, SAIL, OTHER, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     clock::increment_for_testing(&mut clock, WEEK * 2 / 3);
@@ -217,14 +227,18 @@ public fun test_gauge_notify_epoch_token_epoch_already_started() {
         let mut gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
         let mut pool = scenario.take_shared<Pool<USD1, SAIL>>();
         let voter_cap = scenario.take_from_sender<VoterCap>();
-        let undistributed = gauge.notify_epoch_token<USD1, SAIL, OSAIL1, OSAIL2>(
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+
+        let prev_epoch_emissions = gauge.notify_epoch_token<USD1, SAIL, OSAIL2>(
+            &distribution_config,
             &mut pool,
             &voter_cap,
             &clock,
             scenario.ctx()
         );
-        test_utils::destroy(undistributed);
+        assert!(prev_epoch_emissions == 0, 1);
 
+        test_scenario::return_shared(distribution_config);
         test_scenario::return_shared(gauge);
         test_scenario::return_shared(pool);
         scenario.return_to_sender(voter_cap);
@@ -282,14 +296,16 @@ public fun test_gauge_notify_epoch_token_invalid_pool() {
         let mut gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
         let mut pool = scenario.take_shared<Pool<USD1, SAIL>>();
         let voter_cap = scenario.take_from_sender<VoterCap>();
-        let undistributed = gauge.notify_epoch_token<USD1, SAIL, OTHER, OSAIL1>(
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        gauge.notify_epoch_token<USD1, SAIL, OSAIL1>(
+            &distribution_config,
             &mut pool,
             &voter_cap,
             &clock,
             scenario.ctx()
         );
-        undistributed.destroy_zero();
 
+        test_scenario::return_shared(distribution_config);
         test_scenario::return_shared(gauge);
         test_scenario::return_shared(pool);
         scenario.return_to_sender(voter_cap);
@@ -333,13 +349,17 @@ public fun test_gauge_notify_epoch_token_invalid_voter() {
         let mut gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
         let mut pool = scenario.take_shared<Pool<USD1, SAIL>>();
         let voter_cap = scenario.take_from_sender<VoterCap>();
-        let undistributed = gauge.notify_epoch_token<USD1, SAIL, OTHER, OSAIL1>(
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+
+        gauge.notify_epoch_token<USD1, SAIL, OSAIL1>(
+            &distribution_config,
             &mut pool,
             &voter_cap,
             &clock,
             scenario.ctx()
         );
-        undistributed.destroy_zero();
+
+        test_scenario::return_shared(distribution_config);
         test_scenario::return_shared(gauge);
         test_scenario::return_shared(pool);
         scenario.return_to_sender(voter_cap);
@@ -379,14 +399,17 @@ public fun test_gauge_notify_epoch_token_already_notified(
         let mut gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
         let mut pool = scenario.take_shared<Pool<USD1, SAIL>>();
         let voter_cap = scenario.take_from_sender<VoterCap>();
-        let undistributed = gauge.notify_epoch_token<USD1, SAIL, OTHER, OSAIL1>(
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+
+        gauge.notify_epoch_token<USD1, SAIL, OSAIL1>(
+            &distribution_config,
             &mut pool,
             &voter_cap,
             &clock,
             scenario.ctx()
         );
-        undistributed.destroy_zero();
 
+        test_scenario::return_shared(distribution_config);
         test_scenario::return_shared(gauge);
         test_scenario::return_shared(pool);
         scenario.return_to_sender(voter_cap);
@@ -399,14 +422,17 @@ public fun test_gauge_notify_epoch_token_already_notified(
         let mut gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
         let mut pool = scenario.take_shared<Pool<USD1, SAIL>>();
         let voter_cap = scenario.take_from_sender<VoterCap>();
-        let undistributed = gauge.notify_epoch_token<USD1, SAIL, OSAIL1, OSAIL2>(
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+
+        gauge.notify_epoch_token<USD1, SAIL, OSAIL2>(
+            &distribution_config,
             &mut pool,
             &voter_cap,
             &clock,
             scenario.ctx()
         );
-        undistributed.destroy_zero();
 
+        test_scenario::return_shared(distribution_config);
         test_scenario::return_shared(gauge);
         test_scenario::return_shared(pool);
         scenario.return_to_sender(voter_cap);
@@ -459,7 +485,7 @@ public fun test_gauge_get_position_reward_invalid_reward_token() {
 
     scenario.next_tx(user);
     {
-        setup::get_staked_position_reward<USD1, SAIL, USD1>(&mut scenario, &clock);
+        setup::get_staked_position_reward<USD1, SAIL, SAIL, USD1>(&mut scenario, &clock);
     };
 
     clock::destroy_for_testing(clock);
@@ -527,7 +553,7 @@ public fun test_gauge_get_position_reward_invalid_pool() {
 
     scenario.next_tx(user);
     {
-        setup::get_staked_position_reward<USD1, SAIL, OSAIL1>(&mut scenario, &clock);
+        setup::get_staked_position_reward<USD1, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     clock::destroy_for_testing(clock);
@@ -580,7 +606,7 @@ public fun test_gauge_get_reward_invalid_reward_token() {
     scenario.next_tx(user);
     {
         // USD1 is not a valid reward token
-        setup::get_staked_position_reward<USD1, SAIL, USD1>(&mut scenario, &clock);
+        setup::get_staked_position_reward<USD1, SAIL, SAIL, USD1>(&mut scenario, &clock);
     };
 
     clock::destroy_for_testing(clock);

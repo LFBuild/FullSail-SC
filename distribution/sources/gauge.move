@@ -1053,10 +1053,13 @@ module distribution::gauge {
     /// Returns undistributed reserves of previous epoch token.
     ///
     /// # Arguments
-    /// * `<PrevRewardCoinType> - The type that was used as previous epoch token. You can pass any type if there is no previous token.
-    /// * `<RewardCoinType>` - The type to be used as current epoch coin.
     /// * `gauge` - The gauge instance
     /// * `voter_cap` - Capability to notify rewards
+    /// * `clock` - The system clock
+    /// * `ctx` - Transaction context
+    ///
+    /// # Returns
+    /// The amount actual oSAIL emissions for the ended epoch.
     public fun notify_epoch_token<CoinTypeA, CoinTypeB, NextRewardCoinType>(
         gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
         distribution_config: &DistributionConfig,
