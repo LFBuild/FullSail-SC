@@ -910,6 +910,7 @@ public fun deposit_position<CoinTypeA, CoinTypeB>(
     position_id
 }
 
+// also claim last reward coin rewards
 public fun withdraw_position<CoinTypeA, CoinTypeB, LastRewardCoin>(
     scenario: &mut test_scenario::Scenario,
     clock: &Clock,
@@ -1085,8 +1086,9 @@ public fun distribute_gauge_epoch_3<CoinTypeA, CoinTypeB, SailCoinType, EpochOSa
 /// You can create new aggregator just prior to the call that requires it.
 /// Then just destroy it after the call.
 /// Aggregators are not shared objects due to missing store capability.
-public fun create_aggregator(
+public fun setup_aggregator(
     scenario: &mut test_scenario::Scenario,
+    distribution_config: &mut DistributionConfig,
     price: u128, // decimals 18
     clock: &Clock,
 ): Aggregator {
@@ -1126,6 +1128,8 @@ public fun create_aggregator(
         mean
     );
 
+    distribution_config.set_o_sail_price_aggregator(&aggregator);
+
     aggregator
 }
 
@@ -1145,10 +1149,10 @@ public fun distribute_gauge_emissions_controlled<CoinTypeA, CoinTypeB, SailCoinT
     let mut voter = scenario.take_shared<Voter>();
     let mut gauge = scenario.take_shared<Gauge<CoinTypeA, CoinTypeB>>();
     let mut pool = scenario.take_shared<Pool<CoinTypeA, CoinTypeB>>();
-    let distribution_config = scenario.take_shared<DistributionConfig>();
+    let mut distribution_config = scenario.take_shared<DistributionConfig>();
     let distribute_governor_cap = scenario.take_from_sender<minter::DistributeGovernorCap>(); // Minter uses DistributeGovernorCap
 
-    let aggregator = create_aggregator(scenario, ONE_DEC18, clock);
+    let aggregator = setup_aggregator(scenario, &mut distribution_config, one_dec18(), clock);
     let distributed_amount = minter.distribute_gauge<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
         // &mut minter, // minter is the receiver
         &mut voter,

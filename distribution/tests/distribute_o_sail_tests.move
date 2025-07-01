@@ -98,10 +98,8 @@ public fun test_gauge_notify_epoch_token() {
     scenario.next_tx(admin);
     {
         let gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
-
-        // token notification should not change the
-        assert!(gauge.period_finish() == 0, 1);
         assert!(gauge.borrow_epoch_token() == type_name::get<OSAIL1>(), 2);
+        assert!(gauge.period_finish() == WEEK * 2 / 1000, 1);
 
         test_scenario::return_shared(gauge);
     };
@@ -370,8 +368,8 @@ public fun test_gauge_notify_epoch_token_invalid_voter() {
 }
 
 #[test]
-#[expected_failure(abort_code = gauge::ENotifyEpochTokenAlreadyNotifiedThisEpoch)] 
-public fun test_gauge_notify_epoch_token_already_notified(
+#[expected_failure(abort_code = gauge::ENotifyEpochTokenEpochAlreadyStarted)] 
+public fun test_gauge_notify_epoch_token_already_started(
 ) {
     let admin = @0xD1; // Use a different address
     let user = @0xD2;
@@ -443,7 +441,7 @@ public fun test_gauge_notify_epoch_token_already_notified(
 }
 
 #[test]
-#[expected_failure(abort_code = gauge::EGetPositionRewardInvalidRewardToken)]
+#[expected_failure(abort_code = minter::EGetPositionRewardInvalidRewardToken)]
 public fun test_gauge_get_position_reward_invalid_reward_token() {
     let admin = @0xD1; // Use a different address
     let user = @0xD2;
@@ -562,7 +560,7 @@ public fun test_gauge_get_position_reward_invalid_pool() {
 
 
 #[test]
-#[expected_failure(abort_code = gauge::EGetPositionRewardInvalidRewardToken)]
+#[expected_failure(abort_code = minter::EGetPositionRewardInvalidRewardToken)]
 public fun test_gauge_get_reward_invalid_reward_token() {
     let admin = @0xD1; // Use a different address
     let user = @0xD2;
@@ -1259,8 +1257,14 @@ fun test_single_position_withdraw_distribute() {
     clock::increment_for_testing(&mut clock, WEEK / 2 - 500);
     let expected_lp1_reward = epoch1_emissions / 2;
 
+    // get rewards prior to withdrawing position
+    scenario.next_tx(lp1);
+    {
+        setup::get_staked_position_reward<USD1, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
+    };
+
     // --- Withdraw the position ---
-    scenario.next_tx(lp1); // lp1 checks their rewards
+    scenario.next_tx(lp1);
     {
         setup::withdraw_position<USD1, SAIL, OSAIL1>(
             &mut scenario,
@@ -1361,6 +1365,12 @@ fun test_single_position_deposit_for_1h() {
     clock::increment_for_testing(&mut clock, 60 * 60 * 1000);
     let expected_lp1_reward = ((epoch1_emissions as u128 * 60 * 60 * 1000) / (WEEK as u128 - 1000)) as u64;
 
+    // claim rewards
+    scenario.next_tx(lp1);
+    {
+        setup::get_staked_position_reward<USD1, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
+    };
+
     // --- Withdraw the position ---
     scenario.next_tx(lp1); // lp1 checks their rewards
     {
@@ -1456,6 +1466,12 @@ fun test_position_deposit_for_1h_widthrawal_and_deposit_again_for_1h() {
     clock::increment_for_testing(&mut clock, 60 * 60 * 1000);
     let expected_lp1_reward = ((epoch1_emissions as u128 * 60 * 60 * 1000) / (WEEK as u128 - 1000)) as u64;
 
+    // claim rewards
+    scenario.next_tx(lp1);
+    {
+        setup::get_staked_position_reward<USD1, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
+    };
+
     // --- Withdraw the position ---
     scenario.next_tx(lp1); // lp1 checks their rewards
     {
@@ -1488,6 +1504,12 @@ fun test_position_deposit_for_1h_widthrawal_and_deposit_again_for_1h() {
     // Advance time by half an hour
     clock::increment_for_testing(&mut clock, 30 * 60 * 1000);
     let expected_lp1_reward_dep_2 = ((epoch1_emissions as u128 * 30 * 60 * 1000) / (WEEK as u128 - 1000)) as u64;
+
+    // claim rewards
+    scenario.next_tx(lp1);
+    {
+        setup::get_staked_position_reward<USD1, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
+    };
 
     // --- Withdraw the position ---
     scenario.next_tx(lp1); // lp1 checks their rewards
@@ -2093,7 +2115,13 @@ fun test_half_epoch_withdrawal_distribute() {
         test_scenario::return_shared(minter);
     };
 
-    // lp2 withdraws the reward
+    // lp2 claims reward
+    scenario.next_tx(lp2);
+    {
+        setup::get_staked_position_reward<USD1, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
+    };
+
+    // lp2 withdraws the position
     scenario.next_tx(lp2);
     {
         setup::withdraw_position<USD1, SAIL, OSAIL1>(
@@ -2200,6 +2228,12 @@ fun test_distribute_position_increase_after_deposit() {
         test_scenario::return_shared(pool);
         test_scenario::return_shared(gauge);
         test_scenario::return_shared(minter);
+    };
+
+    // get rewards prior to withdrawing position
+    scenario.next_tx(lp2);
+    {
+        setup::get_staked_position_reward<USD1, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // lp2 withdraws position to increase its liquidity
@@ -2342,6 +2376,12 @@ fun test_distribute_position_decrease_after_deposit() {
         test_scenario::return_shared(minter);
     };
 
+    // get rewards prior to withdrawing position
+    scenario.next_tx(lp2);
+    {
+        setup::get_staked_position_reward<USD1, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
+    };
+
     // lp2 withdraws position to decrease its liquidity
     scenario.next_tx(lp2);
     {
@@ -2420,10 +2460,9 @@ fun rollover_setup(
     admin: address,
     user: address,
     clock: &mut Clock,
-): (u64, u64, u64) {
+): (u64, u64) {
     let lock_amount = 100_000;
     let lock_duration = 365; // 1 year
-    let mut extra_o_sail_supply = 0;
     let first_epoch_emissions: u64 = DEFAULT_GAUGE_EMISSIONS;
     let second_epoch_emissions: u64 = DEFAULT_GAUGE_EMISSIONS;
 
@@ -2465,10 +2504,9 @@ fun rollover_setup(
     {
         let initial_o_sail2_supply = setup::update_minter_period<SAIL, OSAIL2>(
             scenario,
-            500_000, // Arbitrary supply for OSAIL2
+            0,
             clock
         );
-        extra_o_sail_supply = extra_o_sail_supply + initial_o_sail2_supply.value();
         coin::burn_for_testing(initial_o_sail2_supply); // Burn OSAIL2
     };
 
@@ -2478,31 +2516,31 @@ fun rollover_setup(
         setup::distribute_gauge_epoch_2<USD1, SAIL, SAIL, OSAIL2>(scenario, clock);
     };
 
-    (first_epoch_emissions, second_epoch_emissions, extra_o_sail_supply)
+    (first_epoch_emissions, second_epoch_emissions)
 }
 
 #[test]
-fun test_distribution_rollover_is_burnt() {
+fun test_distribution_no_positions_no_emissions() {
     let admin = @0xA1;
     let user = @0xA2;
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    let (_, second_epoch_emissions, extra_o_sail_supply) = rollover_setup(
+    let (_, _) = rollover_setup(
         &mut scenario,
         admin,
         user,
         &mut clock
     );
 
-    let expected_total_supply = second_epoch_emissions + extra_o_sail_supply;
-
+    // we are not expecting any emissions as there are not positions deposited 
+    let expected_total_supply = 0;
     // check total supply of oSAIL
     scenario.next_tx(admin);
     {
         // first epoch was not distributed, so current total supply is only from second epoch
         let minter = scenario.take_shared<Minter<SAIL>>();
-        assert!(minter.o_sail_minted_supply() - expected_total_supply <= 2, 1);
+        assert!(expected_total_supply - minter.o_sail_minted_supply() <= 2, 1);
         test_scenario::return_shared(minter);
     };
 
@@ -2511,86 +2549,129 @@ fun test_distribution_rollover_is_burnt() {
 }
 
 #[test]
-fun test_distribute_rollover_not_affecting_next_epoch() {
+fun test_distribution_no_rollover() {
     let admin = @0xA1;
     let user = @0xA2;
     let lp1 = @0xA3;
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    let (_, second_epoch_emissions, _) = rollover_setup(
+    let (_, second_epoch_emissions) = rollover_setup(
         &mut scenario,
         admin,
         user,
         &mut clock
     );
 
-    let position_tick_lower = tick_math::min_tick().as_u32();
-    let position_tick_upper = tick_math::max_tick().as_u32();
-    let position_liquidity = 1_000_000_000u128;
-    let expected_rewards_second_epoch = second_epoch_emissions;
+    // we are depositing position only on second epoch, so we are expecting only second epoch emissions
+    let expected_total_supply = second_epoch_emissions;
 
-    // lp1 creates a position
+    // create position
     scenario.next_tx(lp1);
     {
         setup::create_position_with_liquidity<USD1, SAIL>(
             &mut scenario,
             lp1,
-            position_tick_lower,
-            position_tick_upper,
-            position_liquidity,
+            tick_math::min_tick().as_u32(),
+            tick_math::max_tick().as_u32(),
+            1000,
             &clock
         );
     };
 
-    // lp1 deposits the position
-    let position_id: ID;
+    // deposit position
     scenario.next_tx(lp1);
     {
-        position_id = setup::deposit_position<USD1, SAIL>(&mut scenario, &clock);
+        setup::deposit_position<USD1, SAIL>(&mut scenario, &clock);
     };
 
-    // Advance time by one week to earn the rewards
-    clock::increment_for_testing(&mut clock, WEEK);
+    clock.increment_for_testing(WEEK);
 
-    scenario.next_tx(user); // Any user can read shared state
-    {
-        let pool = scenario.take_shared<Pool<USD1, SAIL>>();
-        let gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
-        let minter = scenario.take_shared<Minter<SAIL>>();
-
-        let (earned_first_epoch, _) = gauge.earned_by_position<USD1, SAIL, OSAIL1>( 
-            &pool,
-            position_id,
-            &clock
-        );
-        let (earned_second_epoch, _) = gauge.earned_by_position<USD1, SAIL, OSAIL2>(
-            &pool,
-            position_id,
-            &clock
-        );
-
-        assert!(earned_first_epoch == 0, 1);
-        assert!(expected_rewards_second_epoch - earned_second_epoch <= 2, 2);
-
-        test_scenario::return_shared(pool);
-        test_scenario::return_shared(gauge);
-        test_scenario::return_shared(minter);
-    };
-
-    // lp1 claims reward for second epoch
+    // get rewards prior to withdrawing position
     scenario.next_tx(lp1);
     {
         setup::get_staked_position_reward<USD1, SAIL, SAIL, OSAIL2>(&mut scenario, &clock);
     };
 
-    // check claimed rewards
+    // withdraw position
     scenario.next_tx(lp1);
     {
-        let reward = scenario.take_from_sender<Coin<OSAIL2>>();
-        assert!(expected_rewards_second_epoch - reward.value() <= 2, 4);
+        setup::withdraw_position<USD1, SAIL, OSAIL2>(&mut scenario, &clock);
+    };
 
-        coin::burn_for_testing(reward);
+    // check emissions are equal to the second epoch emissions
+    scenario.next_tx(admin);
+    {
+        let minter = scenario.take_shared<Minter<SAIL>>();
+        assert!(expected_total_supply - minter.o_sail_minted_supply() <= 2, 1);
+        test_scenario::return_shared(minter);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_distribution_rollover_no_rewards_in_non_distributed_epoch() {
+        let admin = @0xA1;
+    let user = @0xA2;
+    let lp1 = @0xA3;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    let (_, _) = rollover_setup(
+        &mut scenario,
+        admin,
+        user,
+        &mut clock
+    );
+
+    // we are depositing position only on second epoch, so we are expecting only second epoch emissions
+    let expected_total_supply = 0;
+
+    // advance to the next epoch so there should be no rewards
+    clock.increment_for_testing(WEEK);
+
+    // create position
+    scenario.next_tx(lp1);
+    {
+        setup::create_position_with_liquidity<USD1, SAIL>(
+            &mut scenario,
+            lp1,
+            tick_math::min_tick().as_u32(),
+            tick_math::max_tick().as_u32(),
+            1000,
+            &clock
+        );
+    };
+
+    // deposit position
+    scenario.next_tx(lp1);
+    {
+        setup::deposit_position<USD1, SAIL>(&mut scenario, &clock);
+    };
+
+    clock.increment_for_testing(WEEK);
+
+    // get rewards prior to withdrawing position
+    // rewards should be 0 as this epoch was not distributed
+    scenario.next_tx(lp1);
+    {
+        setup::get_staked_position_reward<USD1, SAIL, SAIL, OSAIL2>(&mut scenario, &clock);
+    };
+
+    // withdraw position
+    scenario.next_tx(lp1);
+    {
+        setup::withdraw_position<USD1, SAIL, OSAIL2>(&mut scenario, &clock);
+    };
+
+    // check emissions are equal to the second epoch emissions
+    scenario.next_tx(admin);
+    {
+        let minter = scenario.take_shared<Minter<SAIL>>();
+        assert!(minter.o_sail_minted_supply() - expected_total_supply <= 2, 1);
+        test_scenario::return_shared(minter);
     };
 
     clock::destroy_for_testing(clock);
@@ -2605,7 +2686,7 @@ fun test_distribute_rollover_random_next_token_is_invalid() {
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    let (_, _, _) = rollover_setup(
+    let (_, _) = rollover_setup(
         &mut scenario,
         admin,
         user,
@@ -2628,7 +2709,7 @@ fun test_distribute_rollover_random_next_token_is_invalid() {
     // Distribute OSAIL2 (wrong token) rewards to the gauge
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_3<USD1, SAIL, SAIL, OTHER>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_3<USD1, SAIL, SAIL, OSAIL2>(&mut scenario, &clock);
     };
 
     clock::destroy_for_testing(clock);

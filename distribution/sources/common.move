@@ -205,8 +205,8 @@ module distribution::common {
 
         integer_mate::full_math_u128::mul_div_floor(
             decimal.value(),
-            dec_multiplier,
-            1 << 64
+            1 << 64,
+            dec_multiplier
         )
     }
 

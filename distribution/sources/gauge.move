@@ -88,7 +88,6 @@ module distribution::gauge {
     const ENotifyRewardWithoutClaimInvalidAmount: u64 = 9223373819267317778;
 
     const ESyncFullsailDistributionPriceInvalidEpoch: u64 = 524842288068695600;
-    const ESyncFullsailDistributionPriceDistributionFinished: u64 = 994391645022309800;
     const ESyncOsailDistributionPriceInvalidAggregator: u64 = 989270720807518800;
     const ESyncOsailDistributionPriceDistributionConfInvalid: u64 = 490749102979896500;
     const ESyncOsailDistributionPriceGaugeNotAlive: u64 = 298752582283296830;
@@ -1092,12 +1091,20 @@ module distribution::gauge {
             current_time >= last_notified_period + common::week(),
             ENotifyEpochTokenAlreadyNotifiedThisEpoch
         );
+        let next_epoch_time = common::epoch_next(current_time);
 
         // update distribution. All rewards from previous epoch should be either distributed or burnt
         let gauge_cap = gauge.gauge_cap.borrow();
         pool.update_fullsail_distribution_growth_global(gauge_cap, clock);
         let fullsail_distribution_reserves = pool.get_fullsail_distribution_reserve();
         assert!(fullsail_distribution_reserves == 0, ENotifyEpochTokenPrevRewardsNotFinished);
+        gauge.period_finish = next_epoch_time;
+        // New token distribution starts from scratch, so we are nulling all the rates.
+        // You may notice that pool reward rates are not 0 yet, but reserve is zero, so reward rates are not applied.
+        // We will set the reward rates and reserves to the new values and will start applying them
+        // when we call sync_fullsail_distribution_reward.
+        gauge.usd_reward_rate = 0;
+        gauge.o_sail_reward_rate = 0;
 
         let distribution_reserve_delta = gauge.last_distribution_reserve - fullsail_distribution_reserves;
         let current_emission = if (gauge.o_sail_emission_by_epoch.contains(last_notified_period)) {
@@ -1239,31 +1246,21 @@ module distribution::gauge {
         let current_time = clock.timestamp_ms() / 1000;
         let next_epoch_time = common::epoch_next(current_time);
         let time_until_next_epoch = next_epoch_time - current_time;
-        if (current_time >= gauge.period_finish) {
-            gauge.usd_reward_rate = integer_mate::full_math_u128::mul_div_floor(
-                usd_amount as u128,
-                1 << 64,
-                time_until_next_epoch as u128
-            );
-        } else {
-            // we are adding rewards in a preiod that already has some rewards.
-            let future_rewards = integer_mate::full_math_u128::mul_div_floor(
-                (time_until_next_epoch as u128),
-                gauge.usd_reward_rate,
-                1 << 64
-            );
-            gauge.usd_reward_rate = integer_mate::full_math_u128::mul_div_floor(
-                (usd_amount as u128) + future_rewards,
-                1 << 64,
-                time_until_next_epoch as u128
-            );
-        };
+        let future_rewards = integer_mate::full_math_u128::mul_div_floor(
+            (time_until_next_epoch as u128),
+            gauge.usd_reward_rate,
+            1 << 64
+        );
+        gauge.usd_reward_rate = integer_mate::full_math_u128::mul_div_floor(
+            (usd_amount as u128) + future_rewards,
+            1 << 64,
+            time_until_next_epoch as u128
+        );
         if (gauge.usd_reward_rate_by_epoch.contains(common::epoch_start(current_time))) {
             gauge.usd_reward_rate_by_epoch.remove(common::epoch_start(current_time));
         };
         gauge.usd_reward_rate_by_epoch.add(common::epoch_start(current_time), gauge.usd_reward_rate);
         assert!(gauge.usd_reward_rate != 0, ENotifyRewardAmountRewardRateZero);
-        gauge.period_finish = next_epoch_time;
         let notify_reward_event = EventNotifyReward {
             sender: *gauge.voter.borrow(),
             usd_amount,
@@ -1289,7 +1286,6 @@ module distribution::gauge {
         assert!(current_time < gauge.period_finish, ESyncFullsailDistributionPriceInvalidEpoch);
         pool.update_fullsail_distribution_growth_global(gauge.gauge_cap.borrow(), clock);
         let current_distribution_reserve = pool.get_fullsail_distribution_reserve();
-        assert!(current_distribution_reserve > 0, ESyncFullsailDistributionPriceDistributionFinished);
 
         let current_epoch = common::to_period(gauge.epoch_token_last_notified);
 
