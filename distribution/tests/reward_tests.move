@@ -1687,8 +1687,7 @@ fun test_reward_third_epoch_balance_updates() {
 }
 
 #[test]
-#[expected_failure(abort_code = distribution::reward::EUpdateBalancesLockWasNotDeposited)]
-fun test_reward_update_balances_before_lock_exists_should_fail() {
+fun test_reward_update_balances_of_non_existing_lock() {
     let admin = @0xBB;
     let authorized_id: ID = object::id_from_address(@0xCC);
     let mut scenario = test_scenario::begin(admin);
@@ -1715,8 +1714,6 @@ fun test_reward_update_balances_before_lock_exists_should_fail() {
     assert!(reward_obj.total_supply(&clock) == deposit_amount, 1);
     assert!(reward_obj.balance_of(lock_id1, &clock) == deposit_amount, 2);
 
-    // --- Try to update balance for Epoch 1 (before lock existed) ---
-    // This should fail because the lock didn't exist in Epoch 1
     let lock_ids = vector[lock_id1];
     let balances = vector[10000u64];
     
@@ -1729,6 +1726,9 @@ fun test_reward_update_balances_before_lock_exists_should_fail() {
         &clock,
         scenario.ctx()
     );
+
+    assert!(reward_obj.balance_of_at(lock_id1, epoch1_start) == 10000, 3);
+    assert!(reward_obj.total_supply_at(epoch1_start) == 10000, 4);
 
     // Should never reach here due to expected failure
     test_utils::destroy(reward_cap);
@@ -1768,8 +1768,7 @@ fun test_reward_balance_of_non_existing_lock() {
 }
 
 #[test]
-#[expected_failure(abort_code = distribution::reward::EUpdateBalancesLockWasNotDeposited)]
-fun test_reward_update_balances_non_existing_lock_should_fail() {
+fun test_reward_update_balances_non_deposited_lock() {
     let admin = @0xFF;
     let authorized_id: ID = object::id_from_address(@0xAB);
     let mut scenario = test_scenario::begin(admin);
@@ -1804,6 +1803,9 @@ fun test_reward_update_balances_non_existing_lock_should_fail() {
         &clock,
         scenario.ctx()
     );
+
+    assert!(reward_obj.balance_of_at(non_existing_lock, epoch_start) == 5000u64, 1);
+    assert!(reward_obj.total_supply_at(epoch_start) == 5000u64, 2);
 
     // Should never reach here due to expected failure
     test_utils::destroy(reward_cap);

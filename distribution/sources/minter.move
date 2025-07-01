@@ -1871,6 +1871,36 @@ module distribution::minter {
         minter.mint_o_sail<SailCoinType, RewardCoinType>(reward_amount, ctx)
     }
 
+    // A method that is supposed to be called by the backend voting service to update voted weights.
+    // The weights are updated to match accuracy of the volume prediction.
+    public fun update_voted_weights<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        voter: &mut distribution::voter::Voter,
+        distribute_governor_cap: &DistributeGovernorCap,
+        gauge_id: ID,
+        weights: vector<u64>,
+        lock_ids: vector<ID>,
+        for_epoch_start: u64,
+        final: bool,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        minter.check_distribute_governor(distribute_governor_cap);
+
+        let distribute_cap = minter.distribute_cap.borrow();
+
+        voter.update_voted_weights(
+            distribute_cap,
+            gauge_id,
+            weights,
+            lock_ids,
+            for_epoch_start,
+            final,
+            clock,
+            ctx
+        )
+    }
+
     #[test_only]
     public fun test_init(ctx: &mut sui::tx_context::TxContext): sui::package::Publisher {
          sui::package::claim<MINTER>(MINTER {}, ctx)

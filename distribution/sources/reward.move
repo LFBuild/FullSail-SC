@@ -279,7 +279,6 @@ module distribution::reward {
             let lock_id = lock_ids[i];
             let balance = balances[i];
             let old_balance = reward.balance_of_at(lock_id, for_epoch_start);
-            assert!(old_balance > 0, EUpdateBalancesLockWasNotDeposited);
             // change total supply by balance delta. Should never overflow cos old balance is always included in total supply
             total_supply = total_supply + balance - old_balance;
 
