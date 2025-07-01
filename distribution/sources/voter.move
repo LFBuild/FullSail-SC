@@ -1506,20 +1506,7 @@ module distribution::voter {
                 let weight = voter.weights.remove(gauge_id) - pool_votes;
                 voter.weights.add(gauge_id, weight);
                 voter.votes.borrow_mut(lock_id).remove(pool_id);
-                voter.gauge_to_fee.borrow_mut(gauge_id).withdraw(
-                    &voter.gauge_to_fee_authorized_cap,
-                    pool_votes,
-                    lock_id.id,
-                    clock,
-                    ctx
-                );
-                voter.gauge_to_bribe.borrow_mut(gauge_id).withdraw(
-                    &voter.gauge_to_bribe_authorized_cap,
-                    pool_votes,
-                    lock_id.id,
-                    clock,
-                    ctx
-                );
+                // we are not withdrawing from reward contracts as they are updated by backend voting service
                 total_removed_weight = total_removed_weight + pool_votes;
                 let abstained_event = EventAbstained {
                     sender: tx_context::sender(ctx),
@@ -1773,20 +1760,7 @@ module distribution::voter {
                 volume: volumes[i],
             };
             lock_votes.add(pool_id, lock_volume_vote);
-            voter.gauge_to_fee.borrow_mut(gauge_id).deposit(
-                &voter.gauge_to_fee_authorized_cap,
-                votes_for_pool,
-                lock_id.id,
-                clock,
-                ctx
-            );
-            voter.gauge_to_bribe.borrow_mut(gauge_id).deposit(
-                &voter.gauge_to_bribe_authorized_cap,
-                votes_for_pool,
-                lock_id.id,
-                clock,
-                ctx
-            );
+            // we are not depositing to reward contracts as they are updated by backend voting service
             lock_used_weights = lock_used_weights + votes_for_pool;
             let voted_event = EventVoted {
                 sender: tx_context::sender(ctx),
@@ -1937,6 +1911,7 @@ module distribution::voter {
         sui::event::emit<EventWhitelistToken>(whitelist_token_event);
     }
 
+    // proxy method to be called via Minter
     public fun update_voted_weights(
         voter: &mut Voter,
         distribute_cap: &distribution::distribute_cap::DistributeCap,
