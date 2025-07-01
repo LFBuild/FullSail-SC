@@ -490,13 +490,8 @@ module distribution::voter {
     /// # Aborts
     /// * If the lock has already voted in the current epoch
     /// * If voting for the current epoch hasn't started yet
-    fun assert_only_new_epoch(voter: &Voter, lock_id: LockID, clock: &sui::clock::Clock) {
+    fun assert_only_new_epoch(_: &Voter, _: LockID, clock: &sui::clock::Clock) {
         let current_time = distribution::common::current_timestamp(clock);
-        assert!(
-            !voter.last_voted.contains(lock_id) ||
-                distribution::common::epoch_start(current_time) > *voter.last_voted.borrow(lock_id),
-            EAlreadyVotedInCurrentEpoch
-        );
         assert!(current_time > distribution::common::epoch_vote_start(current_time), EVotingNotStarted);
     }
 
