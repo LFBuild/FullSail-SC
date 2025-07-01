@@ -27,6 +27,14 @@ dependencies = [
 ]
 
 [[move.package]]
+id = "Switchboard"
+source = { git = "https://github.com/switchboard-xyz/sui.git", rev = "mainnet", subdir = "on_demand/" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+]
+
+[[move.package]]
 id = "clmm_pool"
 source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "main", subdir = "clmm_pool" }
 
@@ -44,6 +52,7 @@ source = { local = "../distribution" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
+  { id = "Switchboard", name = "Switchboard" },
   { id = "clmm_pool", name = "clmm_pool" },
   { id = "gauge_cap", name = "gauge_cap" },
   { id = "integer_mate", name = "integer_mate" },

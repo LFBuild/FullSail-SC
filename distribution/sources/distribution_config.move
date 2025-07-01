@@ -3,6 +3,7 @@
 module distribution::distribution_config {
 
     use sui::vec_set::{Self, VecSet};
+    use switchboard::aggregator::{Aggregator};
 
     /// Error code for attempting to update gauge liveness with an empty list of gauges
     const EUpdateGaugeLivenessNoGauges: u64 = 9223372148523925503;
@@ -15,6 +16,7 @@ module distribution::distribution_config {
     public struct DistributionConfig has store, key {
         id: UID,
         alive_gauges: VecSet<ID>,
+        o_sail_price_aggregator_id: Option<ID>,
     }
 
     /// Initializes the distribution configuration object
@@ -27,6 +29,7 @@ module distribution::distribution_config {
         let distribution_config = DistributionConfig {
             id: object::new(ctx),
             alive_gauges: vec_set::empty<ID>(),
+            o_sail_price_aggregator_id: option::none<ID>(),
         };
         transfer::share_object<DistributionConfig>(distribution_config);
     }
@@ -83,6 +86,21 @@ module distribution::distribution_config {
 
     public fun borrow_alive_gauges(distribution_config: &DistributionConfig): &VecSet<ID> {
         &distribution_config.alive_gauges
+    }
+
+    public(package) fun set_o_sail_price_aggregator(
+        distribution_config: &mut DistributionConfig,
+        aggregator: &Aggregator,
+    ) {
+        distribution_config.o_sail_price_aggregator_id = option::some(object::id(aggregator));
+    }
+
+    public fun is_valid_o_sail_price_aggregator(
+        distribution_config: &DistributionConfig,
+        aggregator: &Aggregator,
+    ): bool {
+        distribution_config.o_sail_price_aggregator_id.is_some() && 
+        object::id(aggregator) == distribution_config.o_sail_price_aggregator_id.borrow()
     }
 
     #[test_only]

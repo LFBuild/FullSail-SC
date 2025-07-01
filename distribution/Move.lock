@@ -2,10 +2,11 @@
 
 [move]
 version = 3
-manifest_digest = "4A6C0E23E396091C0A6BCABC30C64E7858750E4C8A86569852076573CAF31295"
-deps_digest = "52B406A7A21811BEF51751CF88DA0E76DAEFFEAC888D4F4060B1A72BBE7D8D35"
+manifest_digest = "6F754F6844DEE61E62498F2FADD48278E3D9925DCC56C748824791F509BF4AB0"
+deps_digest = "CAFAD8A7CF51067FB4358215BECB86BD100DD64E57C2AC8A7AE7D74B688F5965"
 dependencies = [
   { id = "Sui", name = "Sui" },
+  { id = "Switchboard", name = "Switchboard" },
   { id = "clmm_pool", name = "clmm_pool" },
   { id = "gauge_cap", name = "gauge_cap" },
   { id = "integer_mate", name = "integer_mate" },
@@ -23,6 +24,14 @@ source = { git = "https://github.com/MystenLabs/sui.git", rev = "framework/mainn
 
 dependencies = [
   { id = "MoveStdlib", name = "MoveStdlib" },
+]
+
+[[move.package]]
+id = "Switchboard"
+source = { git = "https://github.com/switchboard-xyz/sui.git", rev = "mainnet", subdir = "on_demand/" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
 ]
 
 [[move.package]]
@@ -78,7 +87,7 @@ dependencies = [
 ]
 
 [move.toolchain-version]
-compiler-version = "1.50.1"
+compiler-version = "1.49.1"
 edition = "2024"
 flavor = "sui"
 
