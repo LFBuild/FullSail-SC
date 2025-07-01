@@ -248,7 +248,7 @@ module distribution::reward {
     /// # Aborts
     /// * If the authorization is invalid
     /// * If the lock was not deposited in the epoch start
-    /// * If the epoch start is not a multiple of the week
+    /// * If the epoch start is not a multiple of the epoch
     /// * If the epoch is already finalized
     public(package) fun update_balances(
         reward: &mut Reward,
@@ -262,7 +262,7 @@ module distribution::reward {
     ) {
         reward_authorized_cap.validate(reward.authorized);
         assert!(reward.balance_update_enabled, EUpdateBalancesDisabled);
-        assert!(for_epoch_start % distribution::common::week() == 0, EUpdateBalancesEpochStartInvalid);
+        assert!(for_epoch_start % distribution::common::epoch() == 0, EUpdateBalancesEpochStartInvalid);
         assert!(lock_ids.length() == balances.length(), EUpdateBalancesInvalidLocksLength);
         assert!(
             !reward.epoch_updates_finalized.contains(for_epoch_start) || 
@@ -336,7 +336,7 @@ module distribution::reward {
         let mut next_epoch_time = latest_epoch_time;
         let epochs_until_now = (distribution::common::epoch_start(
             distribution::common::current_timestamp(clock)
-        ) - latest_epoch_time) / distribution::common::week();
+        ) - latest_epoch_time) / distribution::common::epoch();
         if (epochs_until_now > 0) {
             let mut i = 0;
             while (i < epochs_until_now) {
@@ -350,9 +350,9 @@ module distribution::reward {
                     break
                 };
                 let next_checkpoint = reward.checkpoints.borrow(lock_id).borrow(
-                    reward.get_prior_balance_index(lock_id, next_epoch_time + distribution::common::week() - 1)
+                    reward.get_prior_balance_index(lock_id, next_epoch_time + distribution::common::epoch() - 1)
                 );
-                let supply_index = reward.get_prior_supply_index(next_epoch_time + distribution::common::week() - 1);
+                let supply_index = reward.get_prior_supply_index(next_epoch_time + distribution::common::epoch() - 1);
                 let supply = if (!reward.supply_checkpoints.contains(supply_index)) {
                     1
                 } else {
@@ -377,7 +377,7 @@ module distribution::reward {
                     reward_in_epoch,
                     supply
                 );
-                next_epoch_time = next_epoch_time + distribution::common::week();
+                next_epoch_time = next_epoch_time + distribution::common::epoch();
                 i = i + 1;
             };
         };

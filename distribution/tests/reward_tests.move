@@ -1756,8 +1756,8 @@ fun test_reward_balance_of_non_existing_lock() {
     assert!(reward_obj.balance_of(non_existing_lock1, &clock) == 0, 1);
     assert!(reward_obj.balance_of_at(non_existing_lock1, epoch_start) == 0, 4);
     assert!(reward_obj.balance_of_at(non_existing_lock1, epoch_start + 1) == 0, 4);
-    assert!(reward_obj.balance_of_at(non_existing_lock1, epoch_start + 1 * distribution::common::week() - 1) == 0, 4);
-    assert!(reward_obj.balance_of_at(non_existing_lock1, epoch_start + distribution::common::week() / 2) == 0, 4);
+    assert!(reward_obj.balance_of_at(non_existing_lock1, epoch_start + 1 * distribution::common::epoch() - 1) == 0, 4);
+    assert!(reward_obj.balance_of_at(non_existing_lock1, epoch_start + distribution::common::epoch() / 2) == 0, 4);
 
     // Cleanup
     test_utils::destroy(reward_cap);
@@ -2034,7 +2034,7 @@ fun test_reward_update_balances_future_epoch_should_fail() {
     let current_epoch_start = distribution::common::epoch_start(current_time);
     
     // Calculate a future epoch start (10 weeks in the future)
-    let one_week = distribution::common::week();
+    let one_week = distribution::common::epoch();
     let future_epoch_start = current_epoch_start + (10 * one_week);
 
     // --- Try to update balances for the future epoch ---

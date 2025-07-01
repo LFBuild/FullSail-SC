@@ -313,7 +313,7 @@ module integrate::voter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        if (minter.active_period() + distribution::common::week() < distribution::common::current_timestamp(clock)) {
+        if (minter.active_period() + distribution::common::epoch() < distribution::common::current_timestamp(clock)) {
             abort EDistributeInvalidPeriod
         };
         assert!(
