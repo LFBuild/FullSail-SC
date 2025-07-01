@@ -43,6 +43,6 @@ override = true
 local = "../locker_cap"
 
 [dependencies.Switchboard]
-git = "https://github.com/switchboard-xyz/sui.git"
+git = "https://github.com/LFBuild/sui.git"
 subdir = "on_demand/"
 rev = "mainnet"

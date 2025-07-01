@@ -2030,7 +2030,7 @@ module liquidity_locker::liquidity_lock_v1 {
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         lock_position: &mut LockedPosition<CoinTypeA, CoinTypeB>,
         stats: &mut clmm_pool::stats::Stats,
-        price_provider: &clmm_pool::price_provider::PriceProvider,
+        price_provider: &price_provider::price_provider::PriceProvider,
         clock: &sui::clock::Clock,
     ) {
         checked_package_version(locker);
@@ -2061,7 +2061,7 @@ module liquidity_locker::liquidity_lock_v1 {
         lock_position: &mut LockedPosition<CoinTypeA, CoinTypeB>,
         position: &mut clmm_pool::position::Position,
         stats: &mut clmm_pool::stats::Stats,
-        price_provider: &clmm_pool::price_provider::PriceProvider,
+        price_provider: &price_provider::price_provider::PriceProvider,
         clock: &sui::clock::Clock,
     ) {
         let (tick_lower, tick_upper) = position.tick_range();

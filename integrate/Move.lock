@@ -2,7 +2,7 @@
 
 [move]
 version = 3
-manifest_digest = "85A6598302596C6B733CE248DB7F524B1377B0376C4A89075529E937AC65E39E"
+manifest_digest = "768F818D9ACB2E6A0F3384FB316FE92240CA0EF8FCA0921487E5D309E529C0E0"
 deps_digest = "04732BFEF428F74DE262001DC455D76B909EBC394B034A9A15CC095E4BDD9CEF"
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -29,7 +29,7 @@ dependencies = [
 
 [[move.package]]
 id = "Switchboard"
-source = { git = "https://github.com/switchboard-xyz/sui.git", rev = "mainnet", subdir = "on_demand/" }
+source = { git = "https://github.com/LFBuild/sui.git", rev = "mainnet", subdir = "on_demand/" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -116,6 +116,14 @@ dependencies = [
 ]
 
 [move.toolchain-version]
-compiler-version = "1.50.1"
+compiler-version = "1.49.1"
 edition = "2024"
 flavor = "sui"
+
+[env]
+
+[env.mainnet]
+chain-id = "35834a8a"
+original-published-id = "0x8fb5c510c8f89ca02b63595b80eac234e34c00f66a3f128a44759c4cd4a93a80"
+latest-published-id = "0x8fb5c510c8f89ca02b63595b80eac234e34c00f66a3f128a44759c4cd4a93a80"
+published-version = "1"
