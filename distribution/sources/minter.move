@@ -183,10 +183,18 @@ module distribution::minter {
 
     public struct MINTER has drop {}
 
+    public struct EventActivateMinter has copy, drop, store {
+        activated_at: u64,
+        active_period: u64,
+        epoch_o_sail_type: TypeName,
+    }
+
     public struct EventUpdateEpoch has copy, drop, store {
         new_period: u64,
-        finished_epoch_emissions: u64,
+        updated_at: u64,
+        prev_prev_epoch_o_sail_emissions: u64,
         finished_epoch_growth_rebase: u64,
+        epoch_o_sail_type: TypeName,
     }
 
     public struct EventReviveGauge has copy, drop, store {
@@ -216,6 +224,7 @@ module distribution::minter {
         pool_id: ID,
         o_sail_type: TypeName,
         next_epoch_emissions_usd: u64,
+        ended_epoch_o_sail_emission: u64,
     }
 
     public struct TimeLockedSailMint has key, store {
@@ -328,6 +337,13 @@ module distribution::minter {
             minter.active_period,
             clock,
         );
+
+        let event = EventActivateMinter {
+            activated_at: current_time,
+            active_period: minter.active_period,
+            epoch_o_sail_type: type_name::get<EpochOSail>(),
+        };
+        sui::event::emit<EventActivateMinter>(event);
     }
 
     /// Returns the timestamp when the minter was activated.
@@ -813,22 +829,23 @@ module distribution::minter {
         minter.check_distribute_governor(distribute_governor_cap);
         assert!(minter.is_valid_distribution_config(distribution_config), EUpdatePeriodDistributionConfigInvalid);
         assert!(minter.is_active(clock), EUpdatePeriodMinterNotActive);
+        let current_time = distribution::common::current_timestamp(clock);
         assert!(
-            minter.active_period + distribution::common::epoch() < distribution::common::current_timestamp(clock),
+            minter.active_period + distribution::common::epoch() < current_time,
             EUpdatePeriodNotFinishedYet
         );
         assert!(minter.all_gauges_distributed(distribution_config), EUpdatePeriodNotAllGaugesDistributed);
-        let ending_epoch_emissions = minter.o_sail_epoch_emissions(distribution_config);
+        let prev_prev_epoch_emissions = minter.o_sail_epoch_emissions(distribution_config);
         minter.update_o_sail_token(epoch_o_sail_treasury_cap, clock);
         let rebase_growth = calculate_rebase_growth(
-            ending_epoch_emissions,
+            prev_prev_epoch_emissions,
             minter.total_supply(),
             voting_escrow.total_locked()
         );
         if (minter.team_emission_rate > 0 && minter.team_wallet != @0x0) {
             let team_emissions = integer_mate::full_math_u64::mul_div_floor(
                 minter.team_emission_rate,
-                rebase_growth + ending_epoch_emissions,
+                rebase_growth + prev_prev_epoch_emissions,
                 RATE_DENOM - minter.team_emission_rate
             );
             transfer::public_transfer<Coin<SailCoinType>>(
@@ -858,8 +875,10 @@ module distribution::minter {
         );
         let update_epoch_event = EventUpdateEpoch {
             new_period: minter.active_period,
-            finished_epoch_emissions: ending_epoch_emissions,
+            updated_at: current_time,
+            prev_prev_epoch_o_sail_emissions: prev_prev_epoch_emissions,
             finished_epoch_growth_rebase: rebase_growth,
+            epoch_o_sail_type: type_name::get<EpochOSail>(),
         };
         sui::event::emit<EventUpdateEpoch>(update_epoch_event);
     }
@@ -893,7 +912,7 @@ module distribution::minter {
     /// * If the gauge has already been distributed for the current period
     /// * If the gauge has no base supply
     /// * If pool metrics are invalid for non-initial epochs
-    public fun distribute_gauge<CoinTypeA, CoinTypeB, SailCoinType, NextEpochOSail>(
+    public fun distribute_gauge<CoinTypeA, CoinTypeB, SailCoinType, CurrentEpochOSail>(
         minter: &mut Minter<SailCoinType>,
         voter: &mut distribution::voter::Voter,
         distribute_governor_cap: &DistributeGovernorCap,
@@ -914,8 +933,8 @@ module distribution::minter {
         assert!(!minter.is_paused(), EDistributeGaugeMinterPaused);
         minter.check_distribute_governor(distribute_governor_cap);
         assert!(minter.is_active(clock), EDistributeGaugeMinterNotActive);
-        let next_epoch_o_sail_type = type_name::get<NextEpochOSail>();
-        assert!(minter.current_epoch_o_sail.borrow() == next_epoch_o_sail_type, EDistributeGaugeInvalidToken);
+        let current_epoch_o_sail_type = type_name::get<CurrentEpochOSail>();
+        assert!(minter.current_epoch_o_sail.borrow() == current_epoch_o_sail_type, EDistributeGaugeInvalidToken);
         
         let gauge_id = object::id(gauge);
         assert!(
@@ -973,7 +992,7 @@ module distribution::minter {
             )
         };
         let distribute_cap = minter.distribute_cap.borrow();
-        let ended_epoch_o_sail_emission = voter.distribute_gauge<CoinTypeA, CoinTypeB, NextEpochOSail>(
+        let ended_epoch_o_sail_emission = voter.distribute_gauge<CoinTypeA, CoinTypeB, CurrentEpochOSail>(
             distribute_cap,
             distribution_config,
             gauge,
@@ -1015,8 +1034,9 @@ module distribution::minter {
         let event = EventDistributeGauge {
             gauge_id,
             pool_id: object::id(pool),
-            o_sail_type: next_epoch_o_sail_type,
+            o_sail_type: current_epoch_o_sail_type,
             next_epoch_emissions_usd,
+            ended_epoch_o_sail_emission,
         };
         sui::event::emit<EventDistributeGauge>(event);
 
