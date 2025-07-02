@@ -59,3 +59,5 @@ Use `sui client publish` command.
 - [integrate](https://suivision.xyz/txblock/HaWZSzJGFNk5nUJbfUFv3JdW3i4KZEajYkZZNrUVUiRh)
 
 [Setup distribution tx](https://suivision.xyz/txblock/FndPvHwGpzeovWWyKiG3CFehSKH3JvV2WonwK8gC9ZeS)
+[Gauge create tx](https://suivision.xyz/txblock/GHRqUpRL3e5CkhjErEdGpPdzdEKsfFYedUkcKMSUTTz3?tab=Changes)
+[Gauge create tx 2](https://suivision.xyz/txblock/DcVYV7C4HbkUayhnr4xea3JonWAyCucbqJfXY13cAGLQ)
