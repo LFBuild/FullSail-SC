@@ -227,6 +227,15 @@ module distribution::minter {
         ended_epoch_o_sail_emission: u64,
     }
 
+    public struct EventCreateLockFromOSail has copy, drop, store {
+        o_sail_amount_in: u64,
+        o_sail_type: TypeName,
+        sail_amount_to_lock: u64,
+        o_sail_expired: bool,
+        duration: u64,
+        permanent: bool,
+    }
+
     public struct TimeLockedSailMint has key, store {
         id: UID,
         amount: u64,
@@ -1364,10 +1373,11 @@ module distribution::minter {
         let o_sail_type = type_name::get<OSailCoinType>();
         let expiry_date: u64 = *minter.o_sail_expiry_dates.borrow(o_sail_type);
         let current_time = distribution::common::current_timestamp(clock);
+        let o_sail_expired = current_time >= expiry_date;
 
         // locking for any duration less than permanent
         let mut valid_duration = false;
-        if (current_time >= expiry_date) {
+        if (o_sail_expired) {
             valid_duration = permanent || lock_duration_days == VALID_EXPIRED_O_SAIL_DURATION_DAYS
         } else {
             if (permanent) {
@@ -1399,7 +1409,9 @@ module distribution::minter {
             )
         };
 
+        let o_sail_amount_in = o_sail.value();
         let sail_to_lock = minter.exercise_o_sail_free_internal(o_sail, percent_to_receive, clock, ctx);
+        let sail_amount_to_lock = sail_to_lock.value();
 
         voting_escrow.create_lock<SailCoinType>(
             sail_to_lock,
@@ -1407,7 +1419,17 @@ module distribution::minter {
             permanent,
             clock,
             ctx
-        )
+        );
+
+        let event = EventCreateLockFromOSail {
+            o_sail_amount_in,
+            o_sail_type,
+            sail_amount_to_lock,
+            o_sail_expired,
+            duration: lock_duration_days,
+            permanent,
+        };
+        sui::event::emit<EventCreateLockFromOSail>(event);
     }
 
     // method that burns oSAIL and mints SAIL
