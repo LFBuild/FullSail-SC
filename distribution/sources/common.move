@@ -231,6 +231,18 @@ module distribution::common {
         )
     }
 
+    /// Utility function to convert asset amount * 2^64 to USD amount * 2^64
+    public fun asset_q64_to_usd_q64(
+        asset_amount_q64: u128,
+        asset_price_q64: u128,
+    ): u128 {
+        integer_mate::full_math_u128::mul_div_floor(
+            asset_amount_q64,
+            asset_price_q64,
+            1 << 64
+        )
+    }
+
     /// Utility function to get the current price of an asset from a switchboard aggregator
     /// Asserts that the price is not too old and returns the price
     /// 
@@ -248,7 +260,7 @@ module distribution::common {
         let current_time = clock.timestamp_ms();
         let price_result_time = price_result.timestamp_ms();
 
-        assert!(price_result_time > current_time - MAX_PRICE_AGE_MS, EGetTimeCheckedPriceOutdated);
+        assert!(price_result_time + MAX_PRICE_AGE_MS > current_time, EGetTimeCheckedPriceOutdated);
 
         let price_result_price = price_result.result();
         assert!(!price_result_price.neg(), EGetTimeCheckedPriceNegativePrice);
