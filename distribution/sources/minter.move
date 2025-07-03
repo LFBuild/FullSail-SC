@@ -1588,16 +1588,19 @@ module distribution::minter {
         let o_sail_amount = o_sail.value();
         let o_sail_amount_q64 = (o_sail_amount as u128) << 64;
         let pay_for_percent = distribution::common::persent_denominator() - discount_percent;
-        let sail_amount_to_pay_for_q64 = integer_mate::full_math_u128::mul_div_floor(
+        // round up amount to pay for to avoid rounding abuse
+        let sail_amount_to_pay_for_q64 = integer_mate::full_math_u128::mul_div_ceil(
             pay_for_percent as u128,
             o_sail_amount_q64,
             distribution::common::persent_denominator() as u128
         );
         let usd_amount_to_pay_q64 = distribution::common::asset_q64_to_usd_q64(
             sail_amount_to_pay_for_q64,
-            sail_price_q64
+            sail_price_q64,
+            true, // round up payment to avoid rounding abuse
         );
-        let usd_amount_to_pay = (usd_amount_to_pay_q64 >> 64) as u64;
+        // round up to avoid rounding abuse
+        let usd_amount_to_pay = integer_mate::math_u128::checked_div_round(usd_amount_to_pay_q64, 1<<64, true) as u64;
 
         usd_amount_to_pay
     }

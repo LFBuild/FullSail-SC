@@ -235,12 +235,21 @@ module distribution::common {
     public fun asset_q64_to_usd_q64(
         asset_amount_q64: u128,
         asset_price_q64: u128,
+        ceil: bool,
     ): u128 {
-        integer_mate::full_math_u128::mul_div_floor(
-            asset_amount_q64,
-            asset_price_q64,
-            1 << 64
-        )
+        if (ceil) {
+            integer_mate::full_math_u128::mul_div_ceil(
+                asset_amount_q64,
+                asset_price_q64,
+                1 << 64
+            )
+        } else {
+            integer_mate::full_math_u128::mul_div_floor(
+                asset_amount_q64,
+                asset_price_q64,
+                1 << 64
+            )
+        }
     }
 
     /// Utility function to get the current price of an asset from a switchboard aggregator
