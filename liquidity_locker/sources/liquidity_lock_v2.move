@@ -1139,12 +1139,21 @@ module liquidity_locker::liquidity_lock_v2 {
         distribution_config: &distribution::distribution_config::DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        locked_position: &LockedPosition<CoinTypeA, CoinTypeB>,
+        locked_position: &mut LockedPosition<CoinTypeA, CoinTypeB>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): sui::coin::Coin<RewardCoinType> {
         checked_package_version(locker);
         assert!(!locker.pause, ELockManagerPaused);
+
+        // проверять, что клейм за текущую эпоху
+        let reward_type = std::type_name::get<RewardCoinType>();
+        let current_epoch_o_sail = minter.borrow_current_epoch_o_sail();
+        if (reward_type == current_epoch_o_sail) {
+            let (current_earned, growth_inside) = gauge.earned_by_position<CoinTypeA, CoinTypeB, RewardCoinType>(pool, locked_position.position_id, clock);
+            locked_position.last_growth_inside = growth_inside;
+            locked_position.accumulated_amount_earned = locked_position.accumulated_amount_earned + current_earned;
+        };
 
         distribution::minter::get_position_reward<CoinTypeA, CoinTypeB, SailCoinType, RewardCoinType>(
             minter,
@@ -1154,7 +1163,7 @@ module liquidity_locker::liquidity_lock_v2 {
             pool,
             locker.staked_positions.borrow(locked_position.position_id),
             clock,
-            ctx,
+            ctx
         )
     }
 
@@ -1450,7 +1459,13 @@ module liquidity_locker::liquidity_lock_v2 {
         lock_position.lock_liquidity_info.total_lock_liquidity = liquidity_1;
         lock_position.lock_liquidity_info.current_lock_liquidity = liquidity_1;
         lock_position.last_growth_inside = growth_inside;
-        lock_position.accumulated_amount_earned = lock_position.accumulated_amount_earned + current_earned;
+
+        let current_accumulated_amount_earned = lock_position.accumulated_amount_earned + current_earned;
+        lock_position.accumulated_amount_earned = integer_mate::full_math_u128::mul_div_floor(
+            current_accumulated_amount_earned as u128,
+            share_first_part as u128,
+            consts::lock_liquidity_share_denom() as u128
+        ) as u64;
 
         // Create new lock position with proportional split of remaining assets
         let new_coin_a_value = calculate_remainder_coin_split(
@@ -1475,7 +1490,7 @@ module liquidity_locker::liquidity_lock_v2 {
             full_unlocking_time: lock_position.full_unlocking_time,
             profitability: lock_position.profitability,
             last_growth_inside: growth_inside,
-            accumulated_amount_earned: 0,
+            accumulated_amount_earned: current_accumulated_amount_earned - lock_position.accumulated_amount_earned,
             earned_epoch: sui::table::new(ctx),
             last_reward_claim_epoch: lock_position.last_reward_claim_epoch,
             lock_liquidity_info: new_lock_liquidity_info,

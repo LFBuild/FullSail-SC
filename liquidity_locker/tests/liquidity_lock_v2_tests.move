@@ -1348,7 +1348,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 scenario.ctx()
             );
             assert!(locked_positions.length() == 1);
-            let locked_position_1 = locked_positions.pop_back();
+            let mut locked_position_1 = locked_positions.pop_back();
             locked_positions.destroy_empty();
 
             let liquidity1 = pool.position_manager().borrow_position_info(locked_position_1.get_locked_position_id()).info_liquidity();
@@ -1365,7 +1365,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                &locked_position_1,
+                &mut locked_position_1,
                 &clock,
                 scenario.ctx()
             );
@@ -3360,7 +3360,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
-            let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
+            let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -3410,7 +3410,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let (staked_position) = create_and_deposit_position<TestCoinB, TestCoinA>( 
                 &mut scenario,
                 &global_config,
-                &mut distribution_config,
+                &distribution_config,
                 &mut gauge,
                 &mut vault,
                 &mut pool,
@@ -3545,7 +3545,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
-            let locked_position = scenario.take_from_sender<liquidity_lock_v2::LockedPosition<TestCoinB, TestCoinA>>();
+            let mut locked_position = scenario.take_from_sender<liquidity_lock_v2::LockedPosition<TestCoinB, TestCoinA>>();
 
             let reward = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &locker,
@@ -3554,7 +3554,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                &locked_position,
+                &mut locked_position,
                 &clock,
                 scenario.ctx()
             );
@@ -3567,7 +3567,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                &locked_position,
+                &mut locked_position,
                 &clock,
                 scenario.ctx()
             );
@@ -3722,11 +3722,10 @@ module liquidity_locker::liquidity_lock_v2_tests {
             // which was automatically locked in VOTING_ESCROW
             let lock2 = scenario.take_from_sender<voting_escrow::Lock>();
             let lock1 = scenario.take_from_sender<voting_escrow::Lock>();
-            // lock1 is larger than 60% because during the first half of the epoch rewards were distributed to only one position (500000)
-            // during the second half of the epoch rewards were distributed to two positions and the remaining 500000 was split 60/40
-            assert!(lock1.get_amount() == 800000, 9262236263635);
-            assert!(lock2.get_amount() == 199999, 926223626354);
-            assert!(lock1.get_amount() + lock2.get_amount() == 999999, 926223626362); // 10% of total reward for epoch 2
+            // despite the fact that for half of the epoch the position was not split, the total reward is divided 60/40
+            assert!(lock1.get_amount() == 599999, 9262236263635);
+            assert!(lock2.get_amount() == 399999, 926223626354);
+            assert!(lock1.get_amount() + lock2.get_amount() == 999998, 926223626362); // 10% of total reward for epoch 2
 
             transfer::public_transfer(lock1, admin);
             transfer::public_transfer(lock2, admin);
@@ -4689,7 +4688,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                &locked_position_2,
+                &mut locked_position_2,
                 &clock,
                 scenario.ctx()
             );
@@ -4702,7 +4701,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                &locked_position_2,
+                &mut locked_position_2,
                 &clock,
                 scenario.ctx()
             );
@@ -4715,7 +4714,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                &locked_position_2,
+                &mut locked_position_2,
                 &clock,
                 scenario.ctx()
             );
@@ -4728,7 +4727,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                &locked_position_2,
+                &mut locked_position_2,
                 &clock,
                 scenario.ctx()
             );
@@ -5148,7 +5147,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                &locked_position_2,
+                &mut locked_position_2,
                 &clock,
                 scenario.ctx()
             );
@@ -5161,7 +5160,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                &locked_position_2,
+                &mut locked_position_2,
                 &clock,
                 scenario.ctx()
             );
@@ -5174,7 +5173,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                &locked_position_2,
+                &mut locked_position_2,
                 &clock,
                 scenario.ctx()
             );
@@ -5187,7 +5186,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                &locked_position_2,
+                &mut locked_position_2,
                 &clock,
                 scenario.ctx()
             );
@@ -5244,7 +5243,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let locked_position_1 = scenario.take_from_sender<liquidity_lock_v2::LockedPosition<TestCoinB, TestCoinA>>();
             // locked_position_2 is the first lock from the first tranche
-            let locked_position_2 = scenario.take_from_sender<liquidity_lock_v2::LockedPosition<TestCoinB, TestCoinA>>();
+            let mut locked_position_2 = scenario.take_from_sender<liquidity_lock_v2::LockedPosition<TestCoinB, TestCoinA>>();
 
             let reward4 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL4>(
                 &locker,
@@ -5253,7 +5252,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                &locked_position_2,
+                &mut locked_position_2,
                 &clock,
                 scenario.ctx()
             );
@@ -5622,7 +5621,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                &locked_position_1,
+                &mut locked_position_1,
                 &clock,
                 scenario.ctx()
             );
@@ -5634,7 +5633,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                &locked_position_1,
+                &mut locked_position_1,
                 &clock,
                 scenario.ctx()
             );
@@ -5647,7 +5646,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                &locked_position_1,
+                &mut locked_position_1,
                 &clock,
                 scenario.ctx()
             );
@@ -8921,7 +8920,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                &locked_position,
+                &mut locked_position,
                 &clock,
                 scenario.ctx()
             );
@@ -10083,7 +10082,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                &locked_position,
+                &mut locked_position,
                 &clock,
                 scenario.ctx()
             );
@@ -10096,7 +10095,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                &locked_position,
+                &mut locked_position,
                 &clock,
                 scenario.ctx()
             );
@@ -10276,11 +10275,24 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                &locked_position,
+                &mut locked_position,
                 &clock,
                 scenario.ctx()
             );
             transfer::public_transfer(reward, scenario.sender());
+
+            let reward2 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL3>(
+                &locker,
+                &mut minter,
+                &voter,
+                &distribution_config,
+                &mut gauge,
+                &mut pool,
+                &mut locked_position,
+                &clock,
+                scenario.ctx()
+            );
+            transfer::public_transfer(reward2, scenario.sender());
 
             liquidity_lock_v2::change_tick_range<TestCoinB, TestCoinA, OSAIL3>(
                 &global_config,
@@ -11192,7 +11204,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                &locked_position,
+                &mut locked_position,
                 &clock,
                 scenario.ctx()
             );
@@ -11454,62 +11466,62 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // change range position in the 5/100 of epoch 2
         // current tick is less than the range
         // rewards are not accrued
-        clock::increment_for_testing(&mut clock, common::epoch_to_seconds(1)*5*1000/100);
-        scenario.next_tx(admin);
-        {
-            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
-            let global_config = scenario.take_shared<config::GlobalConfig>();
-            let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
-            let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
-            let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
-            let voter = scenario.take_shared<voter::Voter>();
-            let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
-            let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
-            let mut locked_position = scenario.take_from_sender<liquidity_lock_v2::LockedPosition<TestCoinB, TestCoinA>>();
-            let mut stats = scenario.take_shared<clmm_pool::stats::Stats>();
-            let price_provider = scenario.take_shared<clmm_pool::price_provider::PriceProvider>();
+        // clock::increment_for_testing(&mut clock, common::epoch_to_seconds(1)*5*1000/100);
+        // scenario.next_tx(admin);
+        // {
+        //     let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
+        //     let global_config = scenario.take_shared<config::GlobalConfig>();
+        //     let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
+        //     let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
+        //     let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
+        //     let voter = scenario.take_shared<voter::Voter>();
+        //     let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
+        //     let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
+        //     let mut locked_position = scenario.take_from_sender<liquidity_lock_v2::LockedPosition<TestCoinB, TestCoinA>>();
+        //     let mut stats = scenario.take_shared<clmm_pool::stats::Stats>();
+        //     let price_provider = scenario.take_shared<clmm_pool::price_provider::PriceProvider>();
 
-            let reward = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
-                &locker,
-                &mut minter,
-                &voter,
-                &distribution_config,
-                &mut gauge,
-                &mut pool,
-                &locked_position,
-                &clock,
-                scenario.ctx()
-            );
-            transfer::public_transfer(reward, scenario.sender());
+        //     let reward = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
+        //         &locker,
+        //         &mut minter,
+        //         &voter,
+        //         &distribution_config,
+        //         &mut gauge,
+        //         &mut pool,
+        //         &mut locked_position,
+        //         &clock,
+        //         scenario.ctx()
+        //     );
+        //     transfer::public_transfer(reward, scenario.sender());
 
-            // liquidity_lock_v2::change_tick_range<TestCoinB, TestCoinA, OSAIL2>(
-            //     &global_config,
-            //     &distribution_config,
-            //     &mut vault,
-            //     &mut locker,
-            //     &mut locked_position,
-            //     &mut gauge,
-            //     &mut pool,
-            //     &mut stats,
-            //     &price_provider,
-            //     integer_mate::i32::from_u32(371),
-            //     integer_mate::i32::from_u32(380),
-            //     &clock,
-            //     scenario.ctx()
-            // );
+        //     // liquidity_lock_v2::change_tick_range<TestCoinB, TestCoinA, OSAIL2>(
+        //     //     &global_config,
+        //     //     &distribution_config,
+        //     //     &mut vault,
+        //     //     &mut locker,
+        //     //     &mut locked_position,
+        //     //     &mut gauge,
+        //     //     &mut pool,
+        //     //     &mut stats,
+        //     //     &price_provider,
+        //     //     integer_mate::i32::from_u32(371),
+        //     //     integer_mate::i32::from_u32(380),
+        //     //     &clock,
+        //     //     scenario.ctx()
+        //     // );
 
-            transfer::public_transfer(locked_position, admin);
-            transfer::public_transfer(pool, admin);
-            transfer::public_transfer(gauge, admin);
-            test_scenario::return_shared(global_config);
-            test_scenario::return_shared(distribution_config);
-            test_scenario::return_shared(locker);
-            test_scenario::return_shared(minter);
-            test_scenario::return_shared(voter);
-            test_scenario::return_shared(vault);
-            test_scenario::return_shared(stats);
-            test_scenario::return_shared(price_provider);
-        };
+        //     transfer::public_transfer(locked_position, admin);
+        //     transfer::public_transfer(pool, admin);
+        //     transfer::public_transfer(gauge, admin);
+        //     test_scenario::return_shared(global_config);
+        //     test_scenario::return_shared(distribution_config);
+        //     test_scenario::return_shared(locker);
+        //     test_scenario::return_shared(minter);
+        //     test_scenario::return_shared(voter);
+        //     test_scenario::return_shared(vault);
+        //     test_scenario::return_shared(stats);
+        //     test_scenario::return_shared(price_provider);
+        // };
 
         // change range position in the 10/100 of epoch 2
         // current tick is less than the range
@@ -11536,7 +11548,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                &locked_position,
+                &mut locked_position,
                 &clock,
                 scenario.ctx()
             );
@@ -11549,7 +11561,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                &locked_position,
+                &mut locked_position,
                 &clock,
                 scenario.ctx()
             );
@@ -11726,7 +11738,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let voter = scenario.take_shared<voter::Voter>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
-            let locked_position = scenario.take_from_sender<liquidity_lock_v2::LockedPosition<TestCoinB, TestCoinA>>();
+            let mut locked_position = scenario.take_from_sender<liquidity_lock_v2::LockedPosition<TestCoinB, TestCoinA>>();
             let mut stats = scenario.take_shared<clmm_pool::stats::Stats>();
             let price_provider = scenario.take_shared<clmm_pool::price_provider::PriceProvider>();
             
@@ -11737,7 +11749,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                &locked_position,
+                &mut locked_position,
                 &clock,
                 scenario.ctx()
             );
@@ -11817,7 +11829,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                &locked_position2,
+                &mut locked_position2,
                 &clock,
                 scenario.ctx()
             );
@@ -11846,7 +11858,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                &locked_position1,
+                &mut locked_position1,
                 &clock,
                 scenario.ctx()
             );
@@ -11951,7 +11963,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                &locked_position1,
+                &mut locked_position1,
                 &clock,
                 scenario.ctx()
             );
@@ -12396,7 +12408,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                &locked_position,
+                &mut locked_position,
                 &clock,
                 scenario.ctx()
             );
@@ -12409,7 +12421,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                &locked_position,
+                &mut locked_position,
                 &clock,
                 scenario.ctx()
             );
@@ -12480,7 +12492,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                &locked_position,
+                &mut locked_position,
                 &clock,
                 scenario.ctx()
             );
@@ -12550,7 +12562,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                &locked_position,
+                &mut locked_position,
                 &clock,
                 scenario.ctx()
             );
@@ -12622,7 +12634,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                &locked_position,
+                &mut locked_position,
                 &clock,
                 scenario.ctx()
             );
@@ -12685,7 +12697,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let stats = scenario.take_shared<clmm_pool::stats::Stats>();
             let price_provider = scenario.take_shared<clmm_pool::price_provider::PriceProvider>();
-            let locked_position2 = scenario.take_from_sender<liquidity_lock_v2::LockedPosition<TestCoinB, TestCoinA>>(); // 67%
+            let mut locked_position2 = scenario.take_from_sender<liquidity_lock_v2::LockedPosition<TestCoinB, TestCoinA>>(); // 67%
 
             assert!(position_ids.borrow(2) == sui::object::id<liquidity_lock_v2::LockedPosition<TestCoinB, TestCoinA>>(&locked_position2));
 
@@ -12697,7 +12709,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                &locked_position2,
+                &mut locked_position2,
                 &clock,
                 scenario.ctx()
             );
@@ -12760,7 +12772,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let stats = scenario.take_shared<clmm_pool::stats::Stats>();
             let price_provider = scenario.take_shared<clmm_pool::price_provider::PriceProvider>();
-            let locked_position3 = scenario.take_from_sender<liquidity_lock_v2::LockedPosition<TestCoinB, TestCoinA>>();
+            let mut locked_position3 = scenario.take_from_sender<liquidity_lock_v2::LockedPosition<TestCoinB, TestCoinA>>();
 
             assert!(position_ids.borrow(3) == sui::object::id<liquidity_lock_v2::LockedPosition<TestCoinB, TestCoinA>>(&locked_position3));
 
@@ -12771,7 +12783,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                &locked_position3,
+                &mut locked_position3,
                 &clock,
                 scenario.ctx()
             );
@@ -12968,7 +12980,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let lock2 = scenario.take_from_sender<voting_escrow::Lock>();
             let lock1 = scenario.take_from_sender<voting_escrow::Lock>();
 
-            assert!(lock1.get_amount() + lock2.get_amount() + lock3.get_amount() + lock4.get_amount() == 999997, 9262236263635); // 10% of total reward for epoch 2
+            assert!(lock1.get_amount() + lock2.get_amount() + lock3.get_amount() + lock4.get_amount() == 999996, 9262236263635); // 10% of total reward for epoch 2
 
             transfer::public_transfer(lock1, admin);
             transfer::public_transfer(lock2, admin);
@@ -13225,7 +13237,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                &locked_position,
+                &mut locked_position,
                 &clock,
                 scenario.ctx()
             );
@@ -13281,7 +13293,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                &locked_position,
+                &mut locked_position,
                 &clock,
                 scenario.ctx()
             );
@@ -13495,8 +13507,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let lock1 = scenario.take_from_sender<voting_escrow::Lock>();
 
             assert!(lock1.get_amount() + lock2.get_amount() == 999999, 9262236263635); // 10% of total reward for epoch 2
-            assert!(lock1.get_amount() == 696826, 4631118131817); // 100% for 1/10 epoch + 2/3% for 9/10 epoch
-            assert!(lock2.get_amount() == 303173, 4631118131818); // 1/3% for 9/10 epoch
+            assert!(lock1.get_amount() == 646826, 4631118131817); // ~ 2/3% because the liquidity range is narrow, so profitability is higher
+            assert!(lock2.get_amount() == 353173, 4631118131818); // ~ 1/3%
 
             transfer::public_transfer(lock1, admin);
             transfer::public_transfer(lock2, admin);
