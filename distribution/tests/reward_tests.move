@@ -3028,3 +3028,106 @@ fun test_reward_multi_token_notify_and_claim() {
 
     scenario.end();
 }
+
+#[test]
+fun test_reward_update_balances_empty_vectors_should_succeed() {
+    let admin = @0xEA;
+    let authorized_id: ID = object::id_from_address(@0xEB);
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Create reward with balance_update_enabled = true
+    let mut reward_obj = create_default_reward(&mut scenario, authorized_id, true);
+    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx());
+
+    let one_week_ms = 7 * 24 * 60 * 60 * 1000;
+
+    // --- Epoch 1: Set up initial deposits ---
+    let lock_id1: ID = object::id_from_address(@0xE01);
+    let lock_id2: ID = object::id_from_address(@0xE02);
+    let deposit1 = 4000;
+    let deposit2 = 6000;
+    let total_deposit = deposit1 + deposit2;
+
+    reward_obj.deposit(&reward_cap, deposit1, lock_id1, &clock, scenario.ctx());
+    reward_obj.deposit(&reward_cap, deposit2, lock_id2, &clock, scenario.ctx());
+    
+    assert!(reward_obj.total_supply(&clock) == total_deposit, 1);
+    assert!(reward_obj.balance_of(lock_id1, &clock) == deposit1, 2);
+    assert!(reward_obj.balance_of(lock_id2, &clock) == deposit2, 3);
+
+    // Add a reward for the epoch
+    let reward_coin = coin::mint_for_testing<USD1>(1000, scenario.ctx());
+    reward::notify_reward_amount_internal<USD1>(
+        &mut reward_obj,
+        reward_coin.into_balance(),
+        &clock,
+        scenario.ctx()
+    );
+
+    // Store epoch start for reference
+    let epoch1_start = distribution::common::epoch_start(distribution::common::current_timestamp(&clock));
+
+    // --- Advance to Epoch 2 ---
+    clock::increment_for_testing(&mut clock, one_week_ms);
+
+    // Verify current state before empty update
+    assert!(reward_obj.total_supply(&clock) == total_deposit, 4);
+    assert!(reward_obj.balance_of(lock_id1, &clock) == deposit1, 5);
+    assert!(reward_obj.balance_of(lock_id2, &clock) == deposit2, 6);
+
+    // Verify balances at epoch 1 (should be the original deposits)
+    assert!(reward_obj.balance_of_at(lock_id1, epoch1_start) == deposit1, 7);
+    assert!(reward_obj.balance_of_at(lock_id2, epoch1_start) == deposit2, 8);
+    assert!(reward_obj.total_supply_at(epoch1_start) == total_deposit, 9);
+
+    // --- Call update_balances with empty vectors (both balances and lock_ids empty) ---
+    let empty_lock_ids = vector<ID>[];
+    let empty_balances = vector<u64>[];
+    
+    reward_obj.update_balances(
+        &reward_cap,
+        empty_balances, // Empty vector (0 elements)
+        empty_lock_ids, // Empty vector (0 elements)
+        epoch1_start,
+        true, // final = true
+        &clock,
+        scenario.ctx()
+    );
+
+    // --- Verify that balances remain unchanged after empty update ---
+    
+    // Current balances should remain the same
+    assert!(reward_obj.total_supply(&clock) == total_deposit, 10);
+    assert!(reward_obj.balance_of(lock_id1, &clock) == deposit1, 11);
+    assert!(reward_obj.balance_of(lock_id2, &clock) == deposit2, 12);
+
+    // Historical balances at epoch 1 should remain the same
+    assert!(reward_obj.balance_of_at(lock_id1, epoch1_start) == deposit1, 13);
+    assert!(reward_obj.balance_of_at(lock_id2, epoch1_start) == deposit2, 14);
+    assert!(reward_obj.total_supply_at(epoch1_start) == total_deposit, 15);
+
+    // Advance to next epoch to make rewards claimable
+    clock::increment_for_testing(&mut clock, one_week_ms);
+
+    // Verify that rewards can be claimed (indicating the epoch was properly finalized)
+    let earned1 = reward_obj.earned<USD1>(lock_id1, &clock);
+    let earned2 = reward_obj.earned<USD1>(lock_id2, &clock);
+    
+    // Should have earned rewards proportional to their deposits
+    // lock_id1: 4000/10000 = 40% of 1000 = 400
+    // lock_id2: 6000/10000 = 60% of 1000 = 600
+    let expected_earned1 = 400;
+    let expected_earned2 = 600;
+    
+    assert!(earned1 == expected_earned1, 16);
+    assert!(earned2 == expected_earned2, 17);
+    assert!(earned1 + earned2 == 1000, 18);
+
+    // Cleanup
+    test_utils::destroy(reward_cap);
+    test_utils::destroy(reward_obj);
+    clock::destroy_for_testing(clock);
+
+    scenario.end();
+}

@@ -2038,7 +2038,6 @@ module distribution::minter {
         weights: vector<u64>,
         lock_ids: vector<ID>,
         for_epoch_start: u64,
-        final: bool,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
@@ -2052,7 +2051,34 @@ module distribution::minter {
             weights,
             lock_ids,
             for_epoch_start,
-            final,
+            false,
+            clock,
+            ctx
+        )
+    }
+
+    // A method to finalize voted weights for a specific gauge.
+    // Users will be able to claim rewards only after the epoch is finalized.
+    public fun finalize_voted_weights<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        voter: &mut distribution::voter::Voter,
+        distribute_governor_cap: &DistributeGovernorCap,
+        gauge_id: ID,
+        for_epoch_start: u64,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        minter.check_distribute_governor(distribute_governor_cap);
+
+        let distribute_cap = minter.distribute_cap.borrow();
+
+        voter.update_voted_weights(
+            distribute_cap,
+            gauge_id,
+            vector::empty(),
+            vector::empty(),
+            for_epoch_start,
+            true,
             clock,
             ctx
         )
