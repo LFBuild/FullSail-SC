@@ -2,10 +2,11 @@
 
 [move]
 version = 3
-manifest_digest = "A488F11796CB57DA8E4939926AF28725E4F97AC3A57105B7F98A56BF6C8CA479"
-deps_digest = "CAFAD8A7CF51067FB4358215BECB86BD100DD64E57C2AC8A7AE7D74B688F5965"
+manifest_digest = "A26EB4C7FBE249E1F9A14CE940BA02F92EF63BD5E5FB2D213C9F08CFD6BEA24F"
+deps_digest = "04732BFEF428F74DE262001DC455D76B909EBC394B034A9A15CC095E4BDD9CEF"
 dependencies = [
   { id = "Sui", name = "Sui" },
+  { id = "Switchboard", name = "Switchboard" },
   { id = "clmm_pool", name = "clmm_pool" },
   { id = "distribution", name = "distribution" },
   { id = "gauge_cap", name = "gauge_cap" },

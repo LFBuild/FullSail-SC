@@ -22,6 +22,10 @@ module liquidity_locker::lock_position_migrate_test {
     use distribution::common;
     use distribution::reward_distributor;
     use sui::clock;
+    use switchboard::aggregator;
+    use switchboard::decimal;
+
+    const ONE_DEC18: u128 = 1000000000000000000;
 
     #[test_only]
     public struct TestCoinA has drop {}
@@ -204,7 +208,7 @@ module liquidity_locker::lock_position_migrate_test {
         // Distribute gauge emissions for epoch 2
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_2<SailCoinType, OSAIL1, OSAIL2>(
+            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(
                 &mut scenario,
                 &clock
             );
@@ -319,7 +323,7 @@ module liquidity_locker::lock_position_migrate_test {
         // Distribute gauge emissions for epoch 3
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL2, OSAIL3>(
+            distribute_gauge_epoch_3<SailCoinType, OSAIL3>(
                 &mut scenario,
                 &clock
             );
@@ -1459,7 +1463,7 @@ module liquidity_locker::lock_position_migrate_test {
         // Update Minter Period to OSAIL1
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_1<SailCoinType, OSAIL1, OSAIL1>(scenario, clock);
+            distribute_gauge_epoch_1<SailCoinType, OSAIL1>(scenario, clock);
         };
     }
 
@@ -1717,7 +1721,7 @@ module liquidity_locker::lock_position_migrate_test {
 
 
     #[test_only]
-    fun distribute_gauge_epoch_1<SailCoinType, PrevEpochOSail, EpochOSail>(
+    fun distribute_gauge_epoch_1<SailCoinType, EpochOSail>(
         scenario: &mut test_scenario::Scenario,
         clock: &clock::Clock,
     ): u64 {
@@ -1729,7 +1733,7 @@ module liquidity_locker::lock_position_migrate_test {
         let epoch_pool_volume_usd: u64 = 0;
         let epoch_pool_predicted_volume_usd: u64 = 0;
 
-        distribute_gauge_emissions_controlled<TestCoinB, TestCoinA, SailCoinType, PrevEpochOSail, EpochOSail>(
+        distribute_gauge_emissions_controlled<TestCoinB, TestCoinA, SailCoinType, EpochOSail>(
             scenario,
             prev_epoch_pool_emissions,
             prev_epoch_pool_fees_usd,
@@ -1742,7 +1746,7 @@ module liquidity_locker::lock_position_migrate_test {
     }
 
     #[test_only]
-    fun distribute_gauge_epoch_2<SailCoinType, PrevEpochOSail, EpochOSail>(
+    fun distribute_gauge_epoch_2<SailCoinType, EpochOSail>(
         scenario: &mut test_scenario::Scenario,
         clock: &clock::Clock,
     ): u64 {
@@ -1755,7 +1759,7 @@ module liquidity_locker::lock_position_migrate_test {
         let epoch_pool_volume_usd: u64 = 1_000_000_000;
         let epoch_pool_predicted_volume_usd: u64 = 1_060_000_000; // +3% emissions increase
 
-        distribute_gauge_emissions_controlled<TestCoinB, TestCoinA, SailCoinType, PrevEpochOSail, EpochOSail>(
+        distribute_gauge_emissions_controlled<TestCoinB, TestCoinA, SailCoinType, EpochOSail>(
             scenario,
             prev_epoch_pool_emissions,
             prev_epoch_pool_fees_usd,
@@ -1768,7 +1772,7 @@ module liquidity_locker::lock_position_migrate_test {
     }
 
     #[test_only]
-    fun distribute_gauge_epoch_3<SailCoinType, PrevEpochOSail, EpochOSail>(
+    fun distribute_gauge_epoch_3<SailCoinType, EpochOSail>(
         scenario: &mut test_scenario::Scenario,
         clock: &clock::Clock,
     ): u64 {
@@ -1780,7 +1784,7 @@ module liquidity_locker::lock_position_migrate_test {
         let epoch_pool_volume_usd: u64 = 1_000_000_000;
         let epoch_pool_predicted_volume_usd: u64 = 1_060_000_000; // +3% emissions increase
 
-        distribute_gauge_emissions_controlled<TestCoinB, TestCoinA, SailCoinType, PrevEpochOSail, EpochOSail>(
+        distribute_gauge_emissions_controlled<TestCoinB, TestCoinA, SailCoinType, EpochOSail>(
             scenario,
             prev_epoch_pool_emissions,
             prev_epoch_pool_fees_usd,
@@ -1794,7 +1798,7 @@ module liquidity_locker::lock_position_migrate_test {
 
     // Utility to call minter.distribute_gauge
     #[test_only]
-    fun distribute_gauge_emissions_controlled<CoinTypeA, CoinTypeB, SailCoinType, PrevEpochOSail, EpochOSail>(
+    fun distribute_gauge_emissions_controlled<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
         scenario: &mut test_scenario::Scenario,
         prev_epoch_pool_emissions: u64,
         prev_epoch_pool_fees_usd: u64,
@@ -1808,10 +1812,12 @@ module liquidity_locker::lock_position_migrate_test {
         let mut voter = scenario.take_shared<voter::Voter>();
         let mut gauge = scenario.take_from_sender<gauge::Gauge<CoinTypeA, CoinTypeB>>();
         let mut pool = scenario.take_from_sender<pool::Pool<CoinTypeA, CoinTypeB>>();
-        let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
+        let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
         let distribute_governor_cap = scenario.take_from_sender<minter::DistributeGovernorCap>(); // Minter uses DistributeGovernorCap
 
-        let distributed_amount = minter.distribute_gauge<CoinTypeA, CoinTypeB, SailCoinType, PrevEpochOSail, EpochOSail>(
+        let aggregator = setup_aggregator(scenario, &mut distribution_config, one_dec18(), clock);
+
+        let distributed_amount = minter.distribute_gauge<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
             // &mut minter, // minter is the receiver
             &mut voter,
             &distribute_governor_cap,
@@ -1824,9 +1830,11 @@ module liquidity_locker::lock_position_migrate_test {
             epoch_pool_fees_usd,
             epoch_pool_volume_usd,
             epoch_pool_predicted_volume_usd,
+            &aggregator,
             clock,
             scenario.ctx()
         );
+        test_utils::destroy(aggregator);
 
         // Return shared objects
         test_scenario::return_shared(minter);
@@ -1838,6 +1846,62 @@ module liquidity_locker::lock_position_migrate_test {
 
         distributed_amount
     }
+
+    public fun one_dec18(): u128 {
+        ONE_DEC18
+    }
+
+    /// You can create new aggregator just prior to the call that requires it.
+    /// Then just destroy it after the call.
+    /// Aggregators are not shared objects due to missing store capability.
+    public fun setup_aggregator(
+        scenario: &mut test_scenario::Scenario,
+        distribution_config: &mut distribution_config::DistributionConfig,
+        price: u128, // decimals 18
+        clock: &clock::Clock,
+    ): aggregator::Aggregator {
+        let owner = scenario.ctx().sender();
+        let mut aggregator = aggregator::new_aggregator(
+            aggregator::example_queue_id(),
+            std::string::utf8(b"test_aggregator"),
+            owner,
+            vector::empty(),
+            1,
+            1000000000000000,
+            100000000000,
+            5,
+            1000,
+            scenario.ctx(),
+        );
+
+        // 1 * 10^18
+        let result = decimal::new(price, false);
+        let result_timestamp_ms = clock.timestamp_ms();
+        let min_result = result;
+        let max_result = result;
+        let stdev = decimal::new(0, false);
+        let range = decimal::new(0, false);
+        let mean = result;
+
+        aggregator::set_current_value(
+            &mut aggregator,
+            result,
+            result_timestamp_ms,
+            result_timestamp_ms,
+            result_timestamp_ms,
+            min_result,
+            max_result,
+            stdev,
+            range,
+            mean
+        );
+
+        distribution_config.test_set_o_sail_price_aggregator(&aggregator);
+        distribution_config.test_set_sail_price_aggregator(&aggregator);
+
+        aggregator
+    }
+
 
     #[test_only]
     fun get_tranche_by_index(

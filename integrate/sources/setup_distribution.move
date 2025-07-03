@@ -34,6 +34,7 @@ module integrate::setup_distribution {
         minter.set_reward_distributor_cap(&admin_cap, reward_distributor_cap);
         minter.set_team_wallet(&admin_cap, team_wallet);
         minter.set_o_sail_price_aggregator(&admin_cap, distribtuion_config, aggregator);
+        minter.set_sail_price_aggregator(&admin_cap, distribtuion_config, aggregator);
         transfer::public_transfer<distribution::minter::AdminCap>(
             admin_cap,
             tx_context::sender(ctx)

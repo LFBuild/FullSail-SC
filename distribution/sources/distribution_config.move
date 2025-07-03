@@ -16,7 +16,10 @@ module distribution::distribution_config {
     public struct DistributionConfig has store, key {
         id: UID,
         alive_gauges: VecSet<ID>,
+        // will probably be the same as sail_price_aggregator_id in practice.
+        // But we keep it separate for now to be ready for future changes.
         o_sail_price_aggregator_id: Option<ID>,
+        sail_price_aggregator_id: Option<ID>,
     }
 
     /// Initializes the distribution configuration object
@@ -30,6 +33,7 @@ module distribution::distribution_config {
             id: object::new(ctx),
             alive_gauges: vec_set::empty<ID>(),
             o_sail_price_aggregator_id: option::none<ID>(),
+            sail_price_aggregator_id: option::none<ID>(),
         };
         transfer::share_object<DistributionConfig>(distribution_config);
     }
@@ -95,12 +99,43 @@ module distribution::distribution_config {
         distribution_config.o_sail_price_aggregator_id = option::some(object::id(aggregator));
     }
 
+    public(package) fun set_sail_price_aggregator(
+        distribution_config: &mut DistributionConfig,
+        aggregator: &Aggregator,
+    ) {
+        distribution_config.sail_price_aggregator_id = option::some(object::id(aggregator));
+    }
+
+    #[test_only]
+    public fun test_set_o_sail_price_aggregator(
+        distribution_config: &mut DistributionConfig,
+        aggregator: &Aggregator,
+    ) {
+        distribution_config.o_sail_price_aggregator_id = option::some(object::id(aggregator));
+    }
+
+    #[test_only]
+    public fun test_set_sail_price_aggregator(
+        distribution_config: &mut DistributionConfig,
+        aggregator: &Aggregator,
+    ) {
+        distribution_config.sail_price_aggregator_id = option::some(object::id(aggregator));
+    }
+
     public fun is_valid_o_sail_price_aggregator(
         distribution_config: &DistributionConfig,
         aggregator: &Aggregator,
     ): bool {
         distribution_config.o_sail_price_aggregator_id.is_some() && 
         object::id(aggregator) == distribution_config.o_sail_price_aggregator_id.borrow()
+    }
+
+    public fun is_valid_sail_price_aggregator(
+        distribution_config: &DistributionConfig,
+        aggregator: &Aggregator,
+    ): bool {
+        distribution_config.sail_price_aggregator_id.is_some() && 
+        object::id(aggregator) == distribution_config.sail_price_aggregator_id.borrow()
     }
 
     #[test_only]

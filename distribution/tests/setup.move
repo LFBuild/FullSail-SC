@@ -362,26 +362,19 @@ public fun activate_minter<SailCoinType, OSailCoinType>( // Changed to public
     initial_supply
 }
 
-// Whitelists or de-whitelists a pool in the Minter for oSAIL exercising.
+// Whitelists or de-whitelists a token in the Minter for oSAIL exercising.
 // Requires the minter and admin cap to be set up.
-public fun whitelist_pool<SailCoinType, CoinTypeA, CoinTypeB>(
+public fun whitelist_usd<SailCoinType, UsdCoinType>(
     scenario: &mut test_scenario::Scenario,
     list: bool, 
 ) {
-    let pool = scenario.take_shared<Pool<CoinTypeA, CoinTypeB>>();
     let mut minter = scenario.take_shared<Minter<SailCoinType>>();
     let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
     
-    minter::whitelist_pool<SailCoinType, CoinTypeA, CoinTypeB>(
-        &mut minter, 
-        &minter_admin_cap, 
-        &pool, 
-        list,
-    );
+    minter::whitelist_usd<SailCoinType, UsdCoinType>(&mut minter, &minter_admin_cap, list);
 
     test_scenario::return_shared(minter);
     scenario.return_to_sender(minter_admin_cap);
-    test_scenario::return_shared(pool);
 }
 
 // Mints SAIL and creates a permanent lock in the Voting Escrow for the user.
@@ -942,14 +935,14 @@ public fun get_staked_position_reward<CoinTypeA, CoinTypeB, SailCoinType, Reward
     {
         let mut gauge = scenario.take_shared<Gauge<CoinTypeA, CoinTypeB>>();
         let mut minter = scenario.take_shared<Minter<SailCoinType>>();
-        let mut voter = scenario.take_shared<Voter>();
+        let voter = scenario.take_shared<Voter>();
         let mut pool = scenario.take_shared<Pool<CoinTypeA, CoinTypeB>>();
         let position = scenario.take_from_sender<StakedPosition>();
         let distribution_config = scenario.take_shared<DistributionConfig>();
 
         // USD1 is not a valid reward token
         let reward = minter.get_position_reward<CoinTypeA, CoinTypeB, SailCoinType, RewardCoinType>(
-            &mut voter,
+            &voter,
             &distribution_config,
             &mut gauge,
             &mut pool,
@@ -1129,6 +1122,7 @@ public fun setup_aggregator(
     );
 
     distribution_config.set_o_sail_price_aggregator(&aggregator);
+    distribution_config.set_sail_price_aggregator(&aggregator);
 
     aggregator
 }

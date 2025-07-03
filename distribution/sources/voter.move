@@ -1951,7 +1951,7 @@ module distribution::voter {
 
     /// Proxy method to be called via Minter
     public fun get_position_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
-        voter: &mut Voter,
+        voter: &Voter,
         distribute_cap: &distribution::distribute_cap::DistributeCap,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
@@ -1974,7 +1974,7 @@ module distribution::voter {
 
     /// Proxy method to be called via Minter
     public fun get_multiple_position_rewards<CoinTypeA, CoinTypeB, RewardCoinType>(
-        voter: &mut Voter,
+        voter: &Voter,
         distribute_cap: &distribution::distribute_cap::DistributeCap,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,

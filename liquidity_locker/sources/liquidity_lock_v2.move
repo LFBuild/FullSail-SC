@@ -586,7 +586,7 @@ module liquidity_locker::liquidity_lock_v2 {
     /// * `EInvalidBlockPeriodIndex` - If the block period index is invalid
     /// * `ENoTranches` - If there are no tranches available
     /// * `EInvalidProfitabilitiesLength` - If the profitabilities length is invalid
-    public fun lock_position<CoinTypeA, CoinTypeB, EpochOSail>(
+    public fun lock_position<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         distribution_config: &distribution::distribution_config::DistributionConfig,
@@ -669,7 +669,7 @@ module liquidity_locker::liquidity_lock_v2 {
                     _,
                     remainder_a,
                     remainder_b,
-                ) = split_position_internal<CoinTypeA, CoinTypeB, EpochOSail>(
+                ) = split_position_internal<CoinTypeA, CoinTypeB>(
                     global_config,
                     vault,
                     distribution_config,
@@ -1135,16 +1135,25 @@ module liquidity_locker::liquidity_lock_v2 {
     public fun claim_position_reward_for_staking<CoinTypeA, CoinTypeB, SailCoinType, RewardCoinType>(
         locker: &Locker,
         minter: &mut distribution::minter::Minter<SailCoinType>,
-        voter: &mut distribution::voter::Voter,
+        voter: &distribution::voter::Voter,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        locked_position: &LockedPosition<CoinTypeA, CoinTypeB>,
+        locked_position: &mut LockedPosition<CoinTypeA, CoinTypeB>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): sui::coin::Coin<RewardCoinType> {
         checked_package_version(locker);
         assert!(!locker.pause, ELockManagerPaused);
+
+        // проверять, что клейм за текущую эпоху
+        let reward_type = std::type_name::get<RewardCoinType>();
+        let current_epoch_o_sail = minter.borrow_current_epoch_o_sail();
+        if (reward_type == current_epoch_o_sail) {
+            let (current_earned, growth_inside) = gauge.earned_by_position<CoinTypeA, CoinTypeB, RewardCoinType>(pool, locked_position.position_id, clock);
+            locked_position.last_growth_inside = growth_inside;
+            locked_position.accumulated_amount_earned = locked_position.accumulated_amount_earned + current_earned;
+        };
 
         distribution::minter::get_position_reward<CoinTypeA, CoinTypeB, SailCoinType, RewardCoinType>(
             minter,
@@ -1154,7 +1163,7 @@ module liquidity_locker::liquidity_lock_v2 {
             pool,
             locker.staked_positions.borrow(locked_position.position_id),
             clock,
-            ctx,
+            ctx
         )
     }
 
@@ -1432,7 +1441,7 @@ module liquidity_locker::liquidity_lock_v2 {
             liquidity_2,
             remainder_a,
             remainder_b,
-        ) = split_position_internal<CoinTypeA, CoinTypeB, EpochOSail>(
+        ) = split_position_internal<CoinTypeA, CoinTypeB>(
             global_config,
             vault,
             distribution_config,
@@ -1450,7 +1459,13 @@ module liquidity_locker::liquidity_lock_v2 {
         lock_position.lock_liquidity_info.total_lock_liquidity = liquidity_1;
         lock_position.lock_liquidity_info.current_lock_liquidity = liquidity_1;
         lock_position.last_growth_inside = growth_inside;
-        lock_position.accumulated_amount_earned = lock_position.accumulated_amount_earned + current_earned;
+
+        let current_accumulated_amount_earned = lock_position.accumulated_amount_earned + current_earned;
+        lock_position.accumulated_amount_earned = integer_mate::full_math_u128::mul_div_floor(
+            current_accumulated_amount_earned as u128,
+            share_first_part as u128,
+            consts::lock_liquidity_share_denom() as u128
+        ) as u64;
 
         // Create new lock position with proportional split of remaining assets
         let new_coin_a_value = calculate_remainder_coin_split(
@@ -1475,7 +1490,7 @@ module liquidity_locker::liquidity_lock_v2 {
             full_unlocking_time: lock_position.full_unlocking_time,
             profitability: lock_position.profitability,
             last_growth_inside: growth_inside,
-            accumulated_amount_earned: 0,
+            accumulated_amount_earned: current_accumulated_amount_earned - lock_position.accumulated_amount_earned,
             earned_epoch: sui::table::new(ctx),
             last_reward_claim_epoch: lock_position.last_reward_claim_epoch,
             lock_liquidity_info: new_lock_liquidity_info,
@@ -1551,7 +1566,7 @@ module liquidity_locker::liquidity_lock_v2 {
     /// * Liquidity for the new position
     /// * Remainder balance of CoinTypeA
     /// * Remainder balance of CoinTypeB
-    fun split_position_internal<CoinTypeA, CoinTypeB, EpochOSail>(
+    fun split_position_internal<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         distribution_config: &distribution::distribution_config::DistributionConfig,
