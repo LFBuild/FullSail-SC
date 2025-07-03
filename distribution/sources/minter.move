@@ -30,7 +30,7 @@ module distribution::minter {
     */
 
     use std::type_name::{Self, TypeName};
-    use sui::coin::{Self, TreasuryCap, Coin};
+    use sui::coin::{Self, TreasuryCap, Coin, CoinMetadata};
     use sui::balance::{Self, Balance};
     use sui::vec_set::{Self, VecSet};
     use sui::bag::{Self, Bag};
@@ -39,6 +39,7 @@ module distribution::minter {
     use switchboard::aggregator::{Aggregator};
 
     const ECreateMinterInvalidPublisher: u64 = 695309471293028100;
+    const ECreateMinterInvalidSailDecimals: u64 = 744215000566210300;
 
     const EGrantAdminInvalidPublisher: u64 = 198127851942335970;
 
@@ -48,12 +49,14 @@ module distribution::minter {
 
     const ERevokeDistributeGovernorInvalidPublisher: u64 = 639606009071379600;
 
+    const EActivateMinterInvalidOSailDecimals: u64 = 305250931597320450;
     const EActivateMinterAlreadyActive: u64 = 922337310630222234;
     const EActivateMinterPaused: u64 = 996659030249798900;
     const EActivateMinterNoDistributorCap: u64 = 922337311059823823;
 
     const ESetTreasuryCapMinterPaused: u64 = 179209983522842700;
     const EMinterCapAlreadySet: u64 = 922337283142372556;
+    const ESetTreasuryCapInvalidSailDecimals: u64 = 776365075387678700;
 
     const ESetDistributeCapMinterPaused: u64 = 939345375978791600;
 
@@ -65,6 +68,7 @@ module distribution::minter {
 
     const ESetTeamWalletMinterPaused: u64 = 587854778781893500;
 
+    const EUpdatePeriodOSailInvalidDecimals: u64 = 569106921639800800;
     const EUpdatePeriodMinterPaused: u64 = 540422149172903100;
     const EUpdatePeriodMinterNotActive: u64 = 922337339406490010;
     const EUpdatePeriodNotFinishedYet: u64 = 922337340695058843;
@@ -127,6 +131,7 @@ module distribution::minter {
     const EOSailEpochEmissionsNotAllGaugesDistributed: u64 = 371288980415980200;
 
     const EWhitelistPoolMinterPaused: u64 = 316161888154524900;
+    const EWhitelistPoolInvalidUsdDecimals: u64 = 248951658954113400;
 
     const EScheduleSailMintPublisherInvalid: u64 = 716204622969124700;
     const EScheduleSailMintMinterPaused: u64 = 849544693573603300;
@@ -173,6 +178,9 @@ module distribution::minter {
     const MIN_EMISSIONS_CHANGE_RATE: u64 = RATE_DENOM - RATE_DENOM / 10; // -10%
 
     const MINT_LOCK_TIME_MS: u64 = 24 * 60 * 60 * 1000; // 1 day
+
+    // We use 9 decimals for exercise fee tokens as these are most commonly used.
+    const EXERCISE_FEE_USD_DECIMALS: u8 = 9;
 
     /// Admin is responsible for initialization functions.
     public struct AdminCap has store, key {
@@ -323,6 +331,48 @@ module distribution::minter {
     /// * If the minter is already active
     /// * If the reward distributor capability is not set
     public fun activate<SailCoinType, EpochOSail>(
+        minter: &mut Minter<SailCoinType>,
+        voter: &mut distribution::voter::Voter,
+        admin_cap: &AdminCap,
+        reward_distributor: &mut distribution::reward_distributor::RewardDistributor<SailCoinType>,
+        epoch_o_sail_treasury_cap: TreasuryCap<EpochOSail>,
+        epoch_o_sail_metadata: &CoinMetadata<EpochOSail>,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(epoch_o_sail_metadata.get_decimals() == distribution::common::sail_decimals(), EActivateMinterInvalidOSailDecimals);
+        minter.activate_internal(
+            voter,
+            admin_cap,
+            reward_distributor,
+            epoch_o_sail_treasury_cap,
+            clock,
+            ctx,
+        );
+    }
+
+    /// Test only method without metadata check as it is impossible to create metadata in test environment.
+    #[test_only]
+    public fun activate_test<SailCoinType, EpochOSail>(
+        minter: &mut Minter<SailCoinType>,
+        voter: &mut distribution::voter::Voter,
+        admin_cap: &AdminCap,
+        reward_distributor: &mut distribution::reward_distributor::RewardDistributor<SailCoinType>,
+        epoch_o_sail_treasury_cap: TreasuryCap<EpochOSail>,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext,
+    ) {
+        minter.activate_internal(
+            voter,
+            admin_cap,
+            reward_distributor,
+            epoch_o_sail_treasury_cap,
+            clock,
+            ctx,
+        );
+    }
+
+    fun activate_internal<SailCoinType, EpochOSail>(
         minter: &mut Minter<SailCoinType>,
         voter: &mut distribution::voter::Voter,
         admin_cap: &AdminCap,
@@ -492,11 +542,34 @@ module distribution::minter {
     /// # Arguments
     /// * `publisher` - Publisher proving authorization
     /// * `treasury_cap` - Optional minter capability for SailCoin
+    /// * `metadata` - Metadata for SailCoin
     /// * `ctx` - Transaction context
     ///
     /// # Returns
     /// A tuple with (minter, admin_cap), where admin_cap grants administrative privileges
     public fun create<SailCoinType>(
+        publisher: &sui::package::Publisher,
+        treasury_cap: Option<TreasuryCap<SailCoinType>>,
+        metadata: &CoinMetadata<SailCoinType>,
+        distribution_config: ID,
+        ctx: &mut TxContext
+    ): (Minter<SailCoinType>, AdminCap) {
+        assert!(metadata.get_decimals() == distribution::common::sail_decimals(), ECreateMinterInvalidSailDecimals);
+        create_internal(publisher, treasury_cap, distribution_config, ctx)
+    }
+
+    /// Test only method without metadata check as it is impossible to create metadata in test environment.
+    #[test_only]
+    public fun create_test<SailCoinType>(
+        publisher: &sui::package::Publisher,
+        treasury_cap: Option<TreasuryCap<SailCoinType>>,
+        distribution_config: ID,
+        ctx: &mut TxContext
+    ): (Minter<SailCoinType>, AdminCap) {
+        create_internal(publisher, treasury_cap, distribution_config, ctx)
+    }
+
+    fun create_internal<SailCoinType>(
         publisher: &sui::package::Publisher,
         treasury_cap: Option<TreasuryCap<SailCoinType>>,
         distribution_config: ID,
@@ -634,7 +707,29 @@ module distribution::minter {
     public fun set_treasury_cap<SailCoinType>(
         minter: &mut Minter<SailCoinType>,
         admin_cap: &AdminCap,
-        treasury_cap: TreasuryCap<SailCoinType>
+        treasury_cap: TreasuryCap<SailCoinType>,
+        metadata: &CoinMetadata<SailCoinType>
+    ) {
+        assert!(metadata.get_decimals() == distribution::common::sail_decimals(), ESetTreasuryCapInvalidSailDecimals);
+        minter.set_treasury_cap_internal(admin_cap, treasury_cap, metadata);
+    }
+
+    /// Test only method without metadata check as it is impossible to create metadata in test environment.
+    #[test_only]
+    public fun set_treasury_cap_test<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        admin_cap: &AdminCap,
+        treasury_cap: TreasuryCap<SailCoinType>,
+        metadata: &CoinMetadata<SailCoinType>
+    ) {
+        minter.set_treasury_cap_internal(admin_cap, treasury_cap, metadata);
+    }
+
+    fun set_treasury_cap_internal<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        admin_cap: &AdminCap,
+        treasury_cap: TreasuryCap<SailCoinType>,
+        metadata: &CoinMetadata<SailCoinType>
     ) {
         assert!(!minter.is_paused(), ESetTreasuryCapMinterPaused);
         minter.check_admin(admin_cap);
@@ -642,6 +737,7 @@ module distribution::minter {
             option::is_none<TreasuryCap<SailCoinType>>(&minter.sail_cap),
             EMinterCapAlreadySet
         );
+        assert!(metadata.get_decimals() == distribution::common::sail_decimals(), ESetTreasuryCapInvalidSailDecimals);
         option::fill<TreasuryCap<SailCoinType>>(&mut minter.sail_cap, treasury_cap);
     }
 
@@ -835,6 +931,56 @@ module distribution::minter {
         voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
         reward_distributor: &mut distribution::reward_distributor::RewardDistributor<SailCoinType>,
         epoch_o_sail_treasury_cap: TreasuryCap<EpochOSail>,
+        epoch_o_sail_metadata: &CoinMetadata<EpochOSail>,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        assert!(epoch_o_sail_metadata.get_decimals() == distribution::common::sail_decimals(), EUpdatePeriodOSailInvalidDecimals);
+        minter.update_period_internal(
+            voter,
+            distribution_config,
+            distribute_governor_cap,
+            voting_escrow,
+            reward_distributor,
+            epoch_o_sail_treasury_cap,
+            clock,
+            ctx,
+        );
+    }
+
+    /// Test only method without metadata check as it is impossible to create metadata in test environment.
+    #[test_only]
+    public fun update_period_test<SailCoinType, EpochOSail>(
+        minter: &mut Minter<SailCoinType>,
+        voter: &mut distribution::voter::Voter,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
+        distribute_governor_cap: &DistributeGovernorCap,
+        voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        reward_distributor: &mut distribution::reward_distributor::RewardDistributor<SailCoinType>,
+        epoch_o_sail_treasury_cap: TreasuryCap<EpochOSail>,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        minter.update_period_internal(
+            voter,
+            distribution_config,
+            distribute_governor_cap,
+            voting_escrow,
+            reward_distributor,
+            epoch_o_sail_treasury_cap,
+            clock,
+            ctx,
+        );
+    }
+
+    fun update_period_internal<SailCoinType, EpochOSail>(
+        minter: &mut Minter<SailCoinType>,
+        voter: &mut distribution::voter::Voter,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
+        distribute_governor_cap: &DistributeGovernorCap,
+        voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        reward_distributor: &mut distribution::reward_distributor::RewardDistributor<SailCoinType>,
+        epoch_o_sail_treasury_cap: TreasuryCap<EpochOSail>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
@@ -900,6 +1046,7 @@ module distribution::minter {
     /// Distributes oSAIL tokens to a gauge based on pool performance metrics.
     /// Calculates and distributes the next epoch's emissions based on current pool metrics
     /// and historical data. For new pools, uses base emissions without performance adjustments.
+    /// IMPORTANT: For all USD values we use 6 decimals.
     ///
     /// # Arguments
     /// * `minter` - The minter instance managing token emissions
@@ -908,12 +1055,12 @@ module distribution::minter {
     /// * `distribution_config` - Configuration for token distribution
     /// * `gauge` - The gauge to distribute tokens to
     /// * `pool` - The pool associated with the gauge
-    /// * `prev_epoch_pool_emissions_usd` - N-2 epoch's (i.e epoch that ended 1 epoch ago) emissions for the pool. Zero for gauges younger than 2 epochs.
-    /// * `prev_epoch_pool_fees_usd` - N-2 epoch's (i.e epoch that ended 1 epoch ago) fees in USD. Zero for gauges younger than 2 epochs.
-    /// * `epoch_pool_emissions_usd` - N-1 epoch's (i.e epoch that just ended) emissions in USD. Zero for new gauges.
-    /// * `epoch_pool_fees_usd` - N-1 epoch's (i.e epoch that just ended) fees in USD. Zero for new gauges.
-    /// * `epoch_pool_volume_usd` - N-1 epoch's (i.e epoch that just ended) trading volume in USD. Zero for new gauges.
-    /// * `epoch_pool_predicted_volume_usd` - Predicted volume for epoch N (i.e epoch that just started) in USD. Zero for new gauges.
+    /// * `prev_epoch_pool_emissions_usd` - N-2 epoch's (i.e epoch that ended 1 epoch ago) emissions for the pool. Zero for gauges younger than 2 epochs. 6 decimals.
+    /// * `prev_epoch_pool_fees_usd` - N-2 epoch's (i.e epoch that ended 1 epoch ago) fees in USD. Zero for gauges younger than 2 epochs. 6 decimals.
+    /// * `epoch_pool_emissions_usd` - N-1 epoch's (i.e epoch that just ended) emissions in USD. Zero for new gauges. 6 decimals.
+    /// * `epoch_pool_fees_usd` - N-1 epoch's (i.e epoch that just ended) fees in USD. Zero for new gauges. 6 decimals.
+    /// * `epoch_pool_volume_usd` - N-1 epoch's (i.e epoch that just ended) trading volume in USD. Zero for new gauges. 6 decimals.
+    /// * `epoch_pool_predicted_volume_usd` - Predicted volume for epoch N (i.e epoch that just started) in USD. Zero for new gauges. 6 decimals.
     /// * `aggregator` - The aggregator of oSAIL price to fetch the price from
     /// * `clock` - The system clock
     /// * `ctx` - Transaction context
@@ -1092,7 +1239,7 @@ module distribution::minter {
     /// * `admin_cap` - Capability allowing token distribution
     /// * `voting_escrow` - The voting escrow contract
     /// * `pool` - The pool to create a gauge for
-    /// * `gauge_base_emissions` - Base amount of oSAIL tokens to emit per epoch
+    /// * `gauge_base_emissions` - Base amount of usd to be emitted per epoch. 6 decimals.
     /// * `clock` - The system clock
     /// * `ctx` - Transaction context
     ///
@@ -1508,7 +1655,12 @@ module distribution::minter {
         assert!(distribution_config.is_valid_sail_price_aggregator(sail_price_aggregator), EExerciseOSailInvalidAggregator);
         assert!(minter.is_whitelisted_usd<SailCoinType, USDCoinType>(), EExerciseOSailInvalidUsd);
 
-        let sail_price_q64 = distribution::common::get_time_checked_price_q64(sail_price_aggregator, clock);
+        let sail_price_q64 = distribution::common::get_time_checked_price_q64(
+            sail_price_aggregator,
+            distribution::common::sail_decimals(),
+            EXERCISE_FEE_USD_DECIMALS,
+            clock
+        );
 
         // there is a possibility that different discount percents will be implemented
         let discount_percent = distribution::common::o_sail_discount();
@@ -1653,6 +1805,31 @@ module distribution::minter {
     /// Allows usage of the pool for oSAIL exercise
     /// Also allows tokens from the pool to be used as exercise fee tokens
     public fun whitelist_usd<SailCoinType, UsdCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        admin_cap: &AdminCap,
+        metadata: &CoinMetadata<UsdCoinType>,
+        list: bool,
+    ) {
+        assert!(metadata.get_decimals() == EXERCISE_FEE_USD_DECIMALS, EWhitelistPoolInvalidUsdDecimals);
+        minter.whitelist_usd_internal<SailCoinType, UsdCoinType>(
+            admin_cap,
+            list,
+        );
+    }
+
+    #[test_only]
+    public fun whitelist_usd_test<SailCoinType, UsdCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        admin_cap: &AdminCap,
+        list: bool,
+    ) {
+        minter.whitelist_usd_internal<SailCoinType, UsdCoinType>(
+            admin_cap,
+            list,
+        );
+    }
+
+    fun whitelist_usd_internal<SailCoinType, UsdCoinType>(
         minter: &mut Minter<SailCoinType>,
         admin_cap: &AdminCap,
         list: bool,

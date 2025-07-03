@@ -19,6 +19,10 @@ module distribution::common {
 
     const MAX_PRICE_AGE_MS: u64 = 1 * 60 * 1000; // 1 minute
 
+    // We use 6 decimals for all tokens participating in distribution calculations.
+    const USD_DECIMALS: u8 = 6;
+    const SAIL_DECIMALS: u8 = 6;
+
     /// Returns the current period based on the system time
     /// 
     /// # Arguments
@@ -207,15 +211,22 @@ module distribution::common {
     public fun decimal_to_q64(
         decimal: &Decimal,
     ): u128 {
-        assert!(!decimal.neg(), EDecimalToQ64NegativeNotSupported);
-
         let dec = decimal.dec();
-        let dec_multiplier = decimal::pow_10(dec);
+        let dec_denominator = decimal::pow_10(dec);
+
+        decimal_to_q64_decimals(decimal, dec_denominator)
+    }
+
+    public fun decimal_to_q64_decimals(
+        decimal: &Decimal,
+        dec_denominator: u128,
+    ): u128 {
+        assert!(!decimal.neg(), EDecimalToQ64NegativeNotSupported);
 
         integer_mate::full_math_u128::mul_div_floor(
             decimal.value(),
             1 << 64,
-            dec_multiplier
+            dec_denominator
         )
     }
 
@@ -253,16 +264,21 @@ module distribution::common {
     }
 
     /// Utility function to get the current price of an asset from a switchboard aggregator
-    /// Asserts that the price is not too old and returns the price
+    /// Asserts that the price is not too old and returns the price.
+    /// If asset and USD decimals are different the price is adjusted to reflect equasion asset * price = USD
     /// 
     /// # Arguments
     /// * `aggregator` - The switchboard aggregator to get the price from
+    /// * `asset_decimals` - The number of decimals of the asset
+    /// * `usd_decimals` - The number of decimals of the USD
     /// * `clock` - The system clock
     /// 
     /// # Returns
-    /// The price in Q64.64 format, i.e USD/asset * 2^64
+    /// The price in Q64.64 format, i.e USD/asset * 2^64 with respect to decimals.
     public fun get_time_checked_price_q64(
         aggregator: &Aggregator,
+        asset_decimals: u8,
+        usd_decimals: u8,
         clock: &sui::clock::Clock,
     ): u128 {
         let price_result = aggregator.current_result();
@@ -274,7 +290,32 @@ module distribution::common {
         let price_result_price = price_result.result();
         assert!(!price_result_price.neg(), EGetTimeCheckedPriceNegativePrice);
 
-        decimal_to_q64(price_result_price)
+        let mut dec = price_result_price.dec();
+
+        if (asset_decimals > usd_decimals) {
+            // asset is bigger than USD
+            // asset * price = USD
+            // so to compensate we need to decrease price therefore increase denominator
+            let decimals_delta = asset_decimals - usd_decimals;
+            dec = dec + decimals_delta;
+        } else {
+            // USD is bigger than asset
+            // USD / price = asset
+            // so to compensate we need to increase price therefore decrease denominator
+            let decimals_delta = usd_decimals - asset_decimals;
+            dec = dec - decimals_delta;
+        };
+        let dec_denominator = decimal::pow_10(dec);
+
+        decimal_to_q64_decimals(price_result_price, dec_denominator)
+    }
+
+    public fun sail_decimals(): u8 {
+        SAIL_DECIMALS
+    }
+
+    public fun usd_decimals(): u8 {
+        USD_DECIMALS
     }
 }
 

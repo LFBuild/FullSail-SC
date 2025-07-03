@@ -69,7 +69,7 @@ fun run_calc_test(
         let dummy_o_sail = coin::mint_for_testing<OSAIL1>(o_sail_amount, scenario.ctx());
         let mut distribution_config = scenario.take_shared<DistributionConfig>();
         let aggregator = setup::setup_aggregator(scenario, &mut distribution_config, price_dec_18, clock);
-        let price_q64 = common::get_time_checked_price_q64(&aggregator, clock);
+        let price_q64 = common::get_time_checked_price_q64(&aggregator, 6, 6, clock);
         let calculated_usd = minter::exercise_o_sail_calc<OSAIL1>(
             &dummy_o_sail,
             discount_percent,
@@ -248,8 +248,9 @@ fun test_exercise_o_sail() {
         let o_sail_to_exercise = o_sail1_coin.split(100_000, scenario.ctx());
 
         // Mint USD1 fee for the user
-        let usd_fee = coin::mint_for_testing<USD1>(12_500, scenario.ctx()); // Amount should cover ~50% of SAIL value at price 1
-        let usd_limit = 12_500;
+        // decimals delta = 3 so multiply by 1000
+        let usd_fee = coin::mint_for_testing<USD1>(12_500 * 1000, scenario.ctx()); // Amount should cover ~50% of SAIL value at price 1
+        let usd_limit = 12_500 * 1000;
         let aggregator = setup::setup_aggregator(&mut scenario, &mut distribution_config, setup::one_dec18() / 4, &clock);
 
         // Exercise o_sail_ba because Pool is <USD1, SAIL>
@@ -483,11 +484,11 @@ fun test_exercise_o_sail_fail_insufficient_usd_fee() {
         // Calculate expected USD needed (price=4, discount=50% -> pay for 50% of SAIL value)
         // SAIL to pay for = 100_000 * 0.5 = 50_000 SAIL
         // USD needed = 50_000 SAIL / Price(4 USD/SAIL) = 12_500 USD
-        let expected_usd_needed = 12_500;
+        let expected_usd_needed = 12_500 * 1000; // decimals delta = 3
 
         // Mint less USD than needed, but set limit high enough
         let usd_fee = coin::mint_for_testing<USD1>(expected_usd_needed - 1, scenario.ctx()); 
-        let usd_limit = 1_000_000;
+        let usd_limit = 1_000_000_000;
 
         // Attempt exercise - should fail here due to insufficient balance in usd_fee coin
         let (usd_left, sail_received) = minter::exercise_o_sail<SAIL, USD1, OSAIL1>(
@@ -633,7 +634,7 @@ fun test_exercise_o_sail_before_expiry() {
         let o_sail_to_exercise = o_sail1_coin.split(o_sail_amount_to_exercise, scenario.ctx());
 
         // Calculate expected USD needed (Price=1, discount=50% -> pay 50%)
-        let expected_usd_needed = o_sail_amount_to_exercise / 2;
+        let expected_usd_needed = o_sail_amount_to_exercise / 2 * 1000; // decimals delta = 3
         let usd_fee = coin::mint_for_testing<USD1>(expected_usd_needed, scenario.ctx()); 
         let usd_limit = expected_usd_needed;
         let aggregator = setup::setup_aggregator(&mut scenario, &mut distribution_config, setup::one_dec18(), &clock);
@@ -709,7 +710,7 @@ fun test_exercise_o_sail_whitelist_toggle() {
         let o_sail_amount_to_exercise = 50_000; // Exercise smaller amount
         let o_sail_to_exercise = o_sail1_coin.split(o_sail_amount_to_exercise, scenario.ctx());
 
-        let expected_usd_needed = o_sail_amount_to_exercise / 2; // Price=1, Discount=50%
+        let expected_usd_needed = o_sail_amount_to_exercise / 2 * 1000; // Price=1, Discount=50%, decimals delta = 3
         let usd_fee = coin::mint_for_testing<USD1>(expected_usd_needed, scenario.ctx()); 
         let usd_limit = expected_usd_needed;
         let aggregator = setup::setup_aggregator(&mut scenario, &mut distribution_config, setup::one_dec18(), &clock);
@@ -1532,7 +1533,7 @@ fun test_exercise_and_lock_after_epoch_update() {
         let o_sail_to_exercise = o_sail1_coin.split(o_sail1_to_exercise, scenario.ctx());
 
         // Calculate expected USD needed (Price=1, discount=50% -> pay 50%)
-        let expected_usd_needed = o_sail1_to_exercise / 2; 
+        let expected_usd_needed = o_sail1_to_exercise / 2 * 1000; // decimals delta = 3
         let usd_fee = coin::mint_for_testing<USD1>(expected_usd_needed, scenario.ctx()); 
         let usd_limit = expected_usd_needed;
         let aggregator = setup::setup_aggregator(&mut scenario, &mut distribution_config, setup::one_dec18(), &clock);
@@ -1749,7 +1750,7 @@ fun test_exercise_fee_distribution() {
     // --- User3 Exercises oSAIL ---
     let o_sail_to_exercise_amount = 100_000;
     // Calculate expected USD needed and team fee (assuming default 5% protocol fee)
-    let expected_usd_needed = o_sail_to_exercise_amount / 2; // Price=1, discount=50%
+    let expected_usd_needed = o_sail_to_exercise_amount / 2 * 1000; // Price=1, discount=50%, decimals delta = 3
     let protocol_fee_rate = 500; // Default rate = 5%
     assert!(protocol_fee_rate * 100 / minter::rate_denom() == 5, 1); // check decimals are correct
     let expected_team_fee = expected_usd_needed * protocol_fee_rate / minter::rate_denom();
@@ -2048,8 +2049,8 @@ fun test_exercise_o_sail_high_price() {
 
         let o_sail_to_exercise = o_sail1_coin.split(o_sail_to_exercise_amount, scenario.ctx());
 
-        let high_price = (1<<60) * setup::one_dec18();
-        let expected_usd_needed = (4 * (1<<60)) as u64; 
+        let high_price = (1<<50) * setup::one_dec18();
+        let expected_usd_needed = (4 * (1<<50)) * 1000; // decimals delta = 3
         let usd_fee = coin::mint_for_testing<USD1>(expected_usd_needed, scenario.ctx()); 
         let usd_limit = expected_usd_needed;
         let aggregator = setup::setup_aggregator(&mut scenario, &mut distribution_config, high_price, &clock);
@@ -2129,7 +2130,7 @@ fun test_exercise_o_sail_small_price() {
         let o_sail_to_exercise = o_sail1_coin.split(o_sail_to_exercise_amount, scenario.ctx());
 
         let low_price = 1000;
-        let expected_usd_needed = 500; 
+        let expected_usd_needed = 500 * 1000; // decimals delta = 3
         let usd_fee = coin::mint_for_testing<USD1>(expected_usd_needed, scenario.ctx()); 
         let usd_limit = expected_usd_needed;
         let aggregator = setup::setup_aggregator(&mut scenario, &mut distribution_config, low_price, &clock);
