@@ -586,7 +586,7 @@ module liquidity_locker::liquidity_lock_v2 {
     /// * `EInvalidBlockPeriodIndex` - If the block period index is invalid
     /// * `ENoTranches` - If there are no tranches available
     /// * `EInvalidProfitabilitiesLength` - If the profitabilities length is invalid
-    public fun lock_position<CoinTypeA, CoinTypeB, EpochOSail>(
+    public fun lock_position<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         distribution_config: &distribution::distribution_config::DistributionConfig,
@@ -669,7 +669,7 @@ module liquidity_locker::liquidity_lock_v2 {
                     _,
                     remainder_a,
                     remainder_b,
-                ) = split_position_internal<CoinTypeA, CoinTypeB, EpochOSail>(
+                ) = split_position_internal<CoinTypeA, CoinTypeB>(
                     global_config,
                     vault,
                     distribution_config,
@@ -1135,7 +1135,7 @@ module liquidity_locker::liquidity_lock_v2 {
     public fun claim_position_reward_for_staking<CoinTypeA, CoinTypeB, SailCoinType, RewardCoinType>(
         locker: &Locker,
         minter: &mut distribution::minter::Minter<SailCoinType>,
-        voter: &mut distribution::voter::Voter,
+        voter: &distribution::voter::Voter,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
@@ -1432,7 +1432,7 @@ module liquidity_locker::liquidity_lock_v2 {
             liquidity_2,
             remainder_a,
             remainder_b,
-        ) = split_position_internal<CoinTypeA, CoinTypeB, EpochOSail>(
+        ) = split_position_internal<CoinTypeA, CoinTypeB>(
             global_config,
             vault,
             distribution_config,
@@ -1551,7 +1551,7 @@ module liquidity_locker::liquidity_lock_v2 {
     /// * Liquidity for the new position
     /// * Remainder balance of CoinTypeA
     /// * Remainder balance of CoinTypeB
-    fun split_position_internal<CoinTypeA, CoinTypeB, EpochOSail>(
+    fun split_position_internal<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         distribution_config: &distribution::distribution_config::DistributionConfig,

@@ -106,6 +106,22 @@ module distribution::distribution_config {
         distribution_config.sail_price_aggregator_id = option::some(object::id(aggregator));
     }
 
+    #[test_only]
+    public fun test_set_o_sail_price_aggregator(
+        distribution_config: &mut DistributionConfig,
+        aggregator: &Aggregator,
+    ) {
+        distribution_config.o_sail_price_aggregator_id = option::some(object::id(aggregator));
+    }
+
+    #[test_only]
+    public fun test_set_sail_price_aggregator(
+        distribution_config: &mut DistributionConfig,
+        aggregator: &Aggregator,
+    ) {
+        distribution_config.sail_price_aggregator_id = option::some(object::id(aggregator));
+    }
+
     public fun is_valid_o_sail_price_aggregator(
         distribution_config: &DistributionConfig,
         aggregator: &Aggregator,

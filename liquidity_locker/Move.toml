@@ -69,3 +69,8 @@ local = "../distribution"
 
 [dependencies.locker_cap]
 local = "../locker_cap"
+
+[dependencies.Switchboard]
+git = "https://github.com/LFBuild/sui.git"
+subdir = "on_demand/"
+rev = "mainnet"

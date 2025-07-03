@@ -1800,7 +1800,7 @@ module distribution::minter {
         /// Proxy method to be called via Minter
     public fun get_position_reward<CoinTypeA, CoinTypeB, SailCoinType, RewardCoinType>(
         minter: &mut Minter<SailCoinType>,
-        voter: &mut distribution::voter::Voter,
+        voter: &distribution::voter::Voter,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
@@ -1827,7 +1827,7 @@ module distribution::minter {
     /// Proxy method to be called via Minter
     public fun get_multiple_position_rewards<CoinTypeA, CoinTypeB, SailCoinType, RewardCoinType>(
         minter: &mut Minter<SailCoinType>,
-        voter: &mut distribution::voter::Voter,
+        voter: &distribution::voter::Voter,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,

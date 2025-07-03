@@ -935,14 +935,14 @@ public fun get_staked_position_reward<CoinTypeA, CoinTypeB, SailCoinType, Reward
     {
         let mut gauge = scenario.take_shared<Gauge<CoinTypeA, CoinTypeB>>();
         let mut minter = scenario.take_shared<Minter<SailCoinType>>();
-        let mut voter = scenario.take_shared<Voter>();
+        let voter = scenario.take_shared<Voter>();
         let mut pool = scenario.take_shared<Pool<CoinTypeA, CoinTypeB>>();
         let position = scenario.take_from_sender<StakedPosition>();
         let distribution_config = scenario.take_shared<DistributionConfig>();
 
         // USD1 is not a valid reward token
         let reward = minter.get_position_reward<CoinTypeA, CoinTypeB, SailCoinType, RewardCoinType>(
-            &mut voter,
+            &voter,
             &distribution_config,
             &mut gauge,
             &mut pool,
