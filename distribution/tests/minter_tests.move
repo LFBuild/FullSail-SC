@@ -3125,7 +3125,7 @@ fun test_update_period_with_wrong_voter_fails() {
         let initial_supply = o_sail_cap_2.mint(0, scenario.ctx());
         initial_supply.burn_for_testing();
 
-        minter::update_period<SAIL, OSAIL2>(
+        minter::update_period_test<SAIL, OSAIL2>(
             &mut minter,
             &mut wrong_voter,
             &distribution_config,
@@ -3201,7 +3201,7 @@ fun test_update_period_with_wrong_distribution_config_fails() {
         let initial_supply = o_sail_cap_2.mint(0, scenario.ctx());
         initial_supply.burn_for_testing();
 
-        minter::update_period<SAIL, OSAIL2>(
+        minter::update_period_test<SAIL, OSAIL2>(
             &mut minter,
             &mut voter,
             &wrong_distribution_config,
@@ -3283,7 +3283,7 @@ fun test_update_period_with_revoked_governor_cap_fails() {
         let initial_supply = o_sail_cap_2.mint(0, scenario.ctx());
         initial_supply.burn_for_testing();
 
-        minter::update_period<SAIL, OSAIL2>(
+        minter::update_period_test<SAIL, OSAIL2>(
             &mut minter,
             &mut voter,
             &distribution_config,
@@ -3356,7 +3356,7 @@ fun test_activate_with_wrong_voter_fails() {
         let mut o_sail_cap = coin::create_treasury_cap_for_testing<OSAIL1>(scenario.ctx());
         o_sail_cap.mint(0, scenario.ctx()).burn_for_testing();
         
-        minter.activate<SAIL, OSAIL1>(
+        minter.activate_test<SAIL, OSAIL1>(
             &mut wrong_voter,
             &admin_cap,
             &mut rd,
@@ -3414,7 +3414,7 @@ fun test_activate_with_revoked_admin_cap_fails() {
         let mut o_sail_cap = coin::create_treasury_cap_for_testing<OSAIL1>(scenario.ctx());
         o_sail_cap.mint(0, scenario.ctx()).burn_for_testing();
         
-        minter.activate<SAIL, OSAIL1>(
+        minter.activate_test<SAIL, OSAIL1>(
             &mut voter,
             &admin_cap,
             &mut rd,

@@ -1176,7 +1176,12 @@ module distribution::gauge {
         assert!(usd_amount > 0, ENotifyRewardWithoutClaimInvalidAmount);
         gauge.notify_reward_amount_internal<CoinTypeA, CoinTypeB>(usd_amount, clock);
 
-        let o_sail_price_q64 = common::get_time_checked_price_q64(aggregator, clock);
+        let o_sail_price_q64 = common::get_time_checked_price_q64(
+            aggregator,
+            common::sail_decimals(),
+            common::usd_decimals(),
+            clock
+        );
         gauge.sync_o_sail_distribution_price_internal(pool, o_sail_price_q64, clock);
     }
 
@@ -1222,7 +1227,12 @@ module distribution::gauge {
         let (fee_a, fee_b) = gauge.claim_fees_internal(pool);
         gauge.notify_reward_amount_internal<CoinTypeA, CoinTypeB>(usd_amount, clock);
 
-        let o_sail_price_q64 = common::get_time_checked_price_q64(aggregator, clock);
+        let o_sail_price_q64 = common::get_time_checked_price_q64(
+            aggregator,
+            common::sail_decimals(),
+            common::usd_decimals(),
+            clock
+        );
         gauge.sync_o_sail_distribution_price_internal(pool, o_sail_price_q64, clock);
         (fee_a, fee_b)
     }
@@ -1352,7 +1362,12 @@ module distribution::gauge {
         assert!(distribution_config.is_gauge_alive(object::id(gauge)), ESyncOsailDistributionPriceGaugeNotAlive);
         assert!(gauge.check_gauger_pool(pool), ESyncOsailDistributionPriceInvalidPool);
 
-        let o_sail_price_q64 = common::get_time_checked_price_q64(aggregator, clock);
+        let o_sail_price_q64 = common::get_time_checked_price_q64(
+            aggregator,
+            common::sail_decimals(),
+            common::usd_decimals(),
+            clock
+        );
         gauge.sync_o_sail_distribution_price_internal(pool, o_sail_price_q64, clock);
     }
 

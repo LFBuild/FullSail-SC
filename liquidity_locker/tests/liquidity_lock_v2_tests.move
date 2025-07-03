@@ -13723,7 +13723,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let minter_publisher = minter::test_init(scenario.ctx());
             let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let treasury_cap = sui::coin::create_treasury_cap_for_testing<SailCoinType>(scenario.ctx());
-            let (minter_obj, minter_admin_cap) = minter::create<SailCoinType>(
+            let (minter_obj, minter_admin_cap) = minter::create_test<SailCoinType>(
                 &minter_publisher,
                 option::some(treasury_cap),
                 object::id(&distribution_config),
@@ -13829,7 +13829,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         let mut o_sail_cap = sui::coin::create_treasury_cap_for_testing<OSailCoinType>(scenario.ctx());
         let initial_supply = o_sail_cap.mint(initial_o_sail_supply, scenario.ctx());
 
-        minter::update_period<SailCoinType, OSailCoinType>(
+        minter::update_period_test<SailCoinType, OSailCoinType>(
             &mut minter, // minter is the receiver
             &mut voter,
             &distribution_config,
@@ -13872,7 +13872,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
         // increment clock to make sure the activated_at field is not 0 and epoch start is not 0
     clock.increment_for_testing(7 * 24 * 60 * 60 * 1000 + 1000);
-    minter_obj.activate<SailCoinType, OSailCoinType>(
+    minter_obj.activate_test<SailCoinType, OSailCoinType>(
         &mut voter,
         &minter_admin_cap,
         &mut rd,

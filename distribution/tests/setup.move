@@ -155,7 +155,7 @@ public fun setup_distribution<SailCoinType>(
         let minter_publisher = minter::test_init(scenario.ctx());
         let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
         let treasury_cap = coin::create_treasury_cap_for_testing<SailCoinType>(scenario.ctx());
-        let (minter_obj, minter_admin_cap) = minter::create<SailCoinType>(
+        let (minter_obj, minter_admin_cap) = minter::create_test<SailCoinType>(
             &minter_publisher,
             option::some(treasury_cap),
             object::id(&distribution_config),
@@ -345,7 +345,7 @@ public fun activate_minter<SailCoinType, OSailCoinType>( // Changed to public
     let mut o_sail_cap = coin::create_treasury_cap_for_testing<OSailCoinType>(scenario.ctx());
     let initial_supply = o_sail_cap.mint(initial_o_sail_supply, scenario.ctx());
 
-    minter_obj.activate<SailCoinType, OSailCoinType>(
+    minter_obj.activate_test<SailCoinType, OSailCoinType>(
         &mut voter,
         &minter_admin_cap,
         &mut rd,
@@ -371,7 +371,7 @@ public fun whitelist_usd<SailCoinType, UsdCoinType>(
     let mut minter = scenario.take_shared<Minter<SailCoinType>>();
     let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
     
-    minter::whitelist_usd<SailCoinType, UsdCoinType>(&mut minter, &minter_admin_cap, list);
+    minter::whitelist_usd_test<SailCoinType, UsdCoinType>(&mut minter, &minter_admin_cap, list);
 
     test_scenario::return_shared(minter);
     scenario.return_to_sender(minter_admin_cap);
@@ -979,7 +979,7 @@ public fun update_minter_period<SailCoinType, OSailCoinType>(
         let mut o_sail_cap = coin::create_treasury_cap_for_testing<OSailCoinType>(scenario.ctx());
         let initial_supply = o_sail_cap.mint(initial_o_sail_supply, scenario.ctx());
 
-        minter::update_period<SailCoinType, OSailCoinType>(
+        minter::update_period_test<SailCoinType, OSailCoinType>(
             &mut minter, // minter is the receiver
             &mut voter,
             &distribution_config,
