@@ -142,8 +142,10 @@ module distribution::gauge {
     }
 
     public struct EventWithdrawPosition has copy, drop, store {
+        staked_position_id: ID,
         position_id: ID,
         gauger_id: ID,
+        pool_id: ID,
     }
 
     public struct EventDepositGauge has copy, drop, store {
@@ -1605,15 +1607,9 @@ module distribution::gauge {
         let position = gauge.withdraw_position_internal<CoinTypeA, CoinTypeB>(
             pool,
             staked_position,
-            clock,
-            ctx
+            clock
         );
-        
-        let withdraw_position_event = EventWithdrawPosition {
-            position_id: object::id<clmm_pool::position::Position>(&position),
-            gauger_id: object::id<Gauge<CoinTypeA, CoinTypeB>>(gauge),
-        };
-        sui::event::emit<EventWithdrawPosition>(withdraw_position_event);
+
 
         position
     }
@@ -1653,8 +1649,7 @@ module distribution::gauge {
         gauge.withdraw_position_internal<CoinTypeA, CoinTypeB>(
             pool,
             staked_position,
-            clock,
-            ctx
+            clock
         )
     }
 
@@ -1680,12 +1675,13 @@ module distribution::gauge {
         gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         staked_position: StakedPosition,
-        clock: &sui::clock::Clock,
-        ctx: &mut TxContext
+        clock: &sui::clock::Clock
     ): clmm_pool::position::Position {
 
         assert!(gauge.check_gauger_pool(pool), EWithdrawPositionInvalidPool);
         assert!(gauge.all_rewards_claimed<CoinTypeA, CoinTypeB>(pool, staked_position.position_id, clock), EWithdrawPositionNotAllRewardsClaimed);
+
+        let staked_position_id = object::id<StakedPosition>(&staked_position);
 
         let position = gauge.staked_positions.remove(staked_position.position_id);
         pool.unstake_from_fullsail_distribution(
@@ -1695,6 +1691,14 @@ module distribution::gauge {
         );
 
         destroy_staked_positions(staked_position);
+
+        let withdraw_position_event = EventWithdrawPosition {
+            staked_position_id,
+            position_id: object::id<clmm_pool::position::Position>(&position),
+            gauger_id: object::id<Gauge<CoinTypeA, CoinTypeB>>(gauge),
+            pool_id:  object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool),
+        };
+        sui::event::emit<EventWithdrawPosition>(withdraw_position_event);
 
         position
     }
