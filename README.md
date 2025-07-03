@@ -49,32 +49,15 @@ Use `sui client publish` command.
 
 ## Latest publication artifacts
 
-### Testnet
-
-#### Publication transactions:
-
-- [move_stl](https://testnet.suivision.xyz/txblock/GmnSDVgMEj9FhMBZr4KDeqbSKZmDydfbXSqgA8ToUg1C)
-- [integer_mate](https://testnet.suivision.xyz/txblock/58sGFmxKmD7rdKcGWJTKvv61EjYLGn5uAELmphQ6MFga)
-- [gauge_cap](https://testnet.suivision.xyz/txblock/Wi57YbH9vRspiEc9LL22NxDjxnQXTV1igShdpzKXvpD)
-- [clmm_pool](https://testnet.suivision.xyz/txblock/JDixgrY2ukAH7osgCeJX8YfTeq9xSEPE68VJPmF1EBJs)
-- [distribution](https://testnet.suivision.xyz/txblock/ECihTgcyGtTsQdDDs6SjC9x2616brY6jnq4sZnSQc23R)
-- [integrate](https://testnet.suivision.xyz/txblock/7FhEtcJBxGJGyntVUwMkemhqgGEZZwgUL63M3xSqwDDb)
-
-[Setup distribution tx](https://testnet.suivision.xyz/txblock/6Z1DjeSo25XEu48MSteNSSmkv1MAD17hH5w1D3YckaL7)
-
 ### Mainnet (test version)
 
 #### Publication transactions
 
-- [move_stl](https://suivision.xyz/txblock/D5d6rSAqCjEVm3v58sksyTRFMbDfUfHh6esgwsAivWTw)
-- [integer_mate](https://suivision.xyz/txblock/FPsTPKvEpKLB7huuvgxmDetSdUxUwUb6ZQTV6CwULHCp)
-- [gauge_cap](https://suivision.xyz/txblock/3zp6J98rVv9c6pDae4gHoRA1kyEeEg9c6w2X5Xqj9EK3)
-- [price_provider](https://suivision.xyz/txblock/J2hrKfrUhnmKJTAcWDrCF5B6VfHHaKZcDhXAnaXgEgiL)
-- [clmm_pool](https://suivision.xyz/txblock/5WincqGA4JxVFrx4jZLi2pJAGcDNwVfdPxVkKkPgLf4e)
-- [distribution](https://suivision.xyz/txblock/AbURt8dazp7U7pd84froyMREqzyg1pzURcYQtzHuqcvC)
-- [integrate](https://suivision.xyz/txblock/5oGNpGb5CfM1wFnmaoLovNsMDFjhX5sMQtBG3wjABEjd), [upgrade integrate](https://suivision.xyz/txblock/8YboNNJfhMPVVDshfDmCL6hc4P7nS2YorrY9CzzKkvzU)
+- [locker_cap](https://suivision.xyz/txblock/6beJNe6xim5mW2yofXZYyarizeg2GMtYmZrw4BAfhJ1c)
+- [distribution](https://suivision.xyz/txblock/CCLQ3jyD6j9g5mVhvDq3RByffokctZpe9uKnNnrwZsDX)
+- [liquidity_locker](https://suivision.xyz/txblock/GH87ajY9LB1QXiF7Hm2FcUqt84m42eezqD8Vco8h3AS8)
+- [integrate](https://suivision.xyz/txblock/HaWZSzJGFNk5nUJbfUFv3JdW3i4KZEajYkZZNrUVUiRh)
 
-[Setup distribution tx](https://suivision.xyz/txblock/31N5n7ZHB5X6K1ZPaAtJUny4eEZUYbZJGbFoEqbSnVas)
-[Create gauge tx](https://suivision.xyz/txblock/2uLEzLu2JYCM2qqCbCNMgqayVCiT43tNEvbK4pPc425U)
-[Create gauge tx2](https://suivision.xyz/txblock/D3vc98r73mvJ7mmsPE2ucsARs8QqA2v5A6aTiy6q4a2H)
-[Activate minter tx](https://suivision.xyz/txblock/A6BNVhv4GG7AkniPBinLtrDak7y4um3CcX6ejAe3z7NK)
+[Setup distribution tx](https://suivision.xyz/txblock/FndPvHwGpzeovWWyKiG3CFehSKH3JvV2WonwK8gC9ZeS)
+[Gauge create tx](https://suivision.xyz/txblock/GHRqUpRL3e5CkhjErEdGpPdzdEKsfFYedUkcKMSUTTz3?tab=Changes)
+[Gauge create tx 2](https://suivision.xyz/txblock/DcVYV7C4HbkUayhnr4xea3JonWAyCucbqJfXY13cAGLQ)

@@ -38,6 +38,7 @@ public struct SAIL has drop, store {}
 public struct OSAIL1 has drop, store {}
 public struct OSAIL2 has drop, store {}
 public struct OSAIL3 has drop, store {}
+public struct OSAIL4 has drop, store {}
 
 fun setup_for_gauge_creation(scenario: &mut test_scenario::Scenario, admin: address, clock: &mut Clock) {
     setup::setup_clmm_factory_with_fee_tier(scenario, admin, 1, 1000);
@@ -468,19 +469,19 @@ fun test_create_gauge_success() {
         let minter = scenario.take_shared<Minter<SAIL>>();
         let gauge = scenario.take_shared<Gauge<USD1, AUSD>>();
         let gauge_id = object::id(&gauge);
-        let emissions = minter::borrow_pool_epoch_emissions(&minter);
+        let emissions = minter::borrow_pool_epoch_emissions_usd(&minter);
         assert!(emissions.contains(gauge_id), 0);
         assert!(*emissions.borrow(gauge_id) == 100, 1);
 
         // total supply should be 0 as no emissions have been distributed yet
         assert!(minter.total_supply() == 0, 2);
-        assert!(minter.o_sail_total_supply() == 0, 3);
+        assert!(minter.o_sail_minted_supply() == 0, 3);
         assert!(minter.sail_total_supply() == 0, 4);
 
         // epoch emissions should be 0 as no emissions have been distributed yet
-        assert!(minter.epoch_emissions() == 0, 5);
+        assert!(minter.usd_epoch_emissions() == 0, 5);
         let current_epoch  = common::current_period(&clock);
-        assert!(minter.emissions_by_epoch(current_epoch) == 0, 6);
+        assert!(minter.usd_emissions_by_epoch(current_epoch) == 0, 6);
         
         test_scenario::return_shared(gauge);
         test_scenario::return_shared(minter);
@@ -907,7 +908,7 @@ fun test_distribute_gauge_initial_amount() {
     scenario.next_tx(admin);
     let distributed_amount: u64;
     {
-        distributed_amount = setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, SUI, OSAIL1>(&mut scenario, &clock);
+        distributed_amount = setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     scenario.next_tx(admin);
@@ -917,16 +918,16 @@ fun test_distribute_gauge_initial_amount() {
         let gauge_id = object::id(&gauge);
 
         assert!(distributed_amount == gauge_base_emissions, 0);
-        assert!(minter.epoch_emissions() == gauge_base_emissions, 1);
-        assert!(minter.emissions_by_epoch(current_period) == gauge_base_emissions, 2);
+        assert!(minter.usd_epoch_emissions() == gauge_base_emissions, 1);
+        assert!(minter.usd_emissions_by_epoch(current_period) == gauge_base_emissions, 2);
 
-        let emissions = minter::borrow_pool_epoch_emissions(&minter);
+        let emissions = minter::borrow_pool_epoch_emissions_usd(&minter);
         assert!(emissions.contains(gauge_id), 0);
         assert!(*emissions.borrow(gauge_id) == gauge_base_emissions, 1);
 
         // total supply should be 0 as no emissions have been distributed yet
-        assert!(minter.total_supply() == gauge_base_emissions, 2);
-        assert!(minter.o_sail_total_supply() == gauge_base_emissions, 3);
+        assert!(minter.total_supply() == 0, 2);
+        assert!(minter.o_sail_minted_supply() == 0, 3);
         assert!(minter.sail_total_supply() == 0, 4);
 
         test_scenario::return_shared(minter);
@@ -961,7 +962,7 @@ fun test_distribute_gauge_initial_epoch_with_non_zero_metrics_fails() {
     // distribute the gauge with non-zero metrics
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_emissions_controlled<USD1, AUSD, SAIL, SUI, OSAIL1>(
+        setup::distribute_gauge_emissions_controlled<USD1, AUSD, SAIL, OSAIL1>(
             &mut scenario,
             1_000_000, // prev_epoch_pool_emissions
             1_000_000, // prev_epoch_pool_fees_usd
@@ -1001,7 +1002,7 @@ fun test_distribute_gauge_second_epoch_with_zero_metrics_fails() {
     // --- EPOCH 1: Successful distribution ---
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, SUI, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // --- EPOCH 2: Attempt distribution with zero metrics (should fail) ---
@@ -1017,7 +1018,7 @@ fun test_distribute_gauge_second_epoch_with_zero_metrics_fails() {
     // Distribute for epoch 2 with all-zero metrics
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_emissions_controlled<USD1, AUSD, SAIL, OSAIL1, OSAIL2>(
+        setup::distribute_gauge_emissions_controlled<USD1, AUSD, SAIL, OSAIL2>(
             &mut scenario,
             0, // prev_epoch_pool_emissions
             0, // prev_epoch_pool_fees_usd
@@ -1076,7 +1077,7 @@ fun test_distribute_gauge_without_minter_activation_fails() {
     // Try to distribute the gauge, which should fail.
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, SUI, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // Cleanup
@@ -1108,13 +1109,32 @@ fun test_distribute_gauge_increase_emissions() {
     // distribute the gauge for epoch 1
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, SUI, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
+    };
+
+    // create and deposit position
+    scenario.next_tx(user);
+    {
+        setup::create_position_with_liquidity<USD1, AUSD>(
+            &mut scenario,
+            user,
+            tick_math::min_tick().as_u32(),
+            tick_math::max_tick().as_u32(),
+            1000000,
+            &clock
+        );
+    };
+
+    // deposit position
+    scenario.next_tx(user);
+    {
+        setup::deposit_position<USD1, AUSD>(&mut scenario, &clock);
     };
 
     scenario.next_tx(admin);
     {
         let minter = scenario.take_shared<Minter<SAIL>>();
-        assert!(minter.epoch_emissions() == gauge_base_emissions, 0);
+        assert!(minter.usd_epoch_emissions() == gauge_base_emissions, 0);
         test_scenario::return_shared(minter);
     };
 
@@ -1131,7 +1151,7 @@ fun test_distribute_gauge_increase_emissions() {
     // distribute the gauge for epoch 2 with metrics that should cause a 10% increase
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_emissions_controlled<USD1, AUSD, SAIL, OSAIL1, OSAIL2>(
+        setup::distribute_gauge_emissions_controlled<USD1, AUSD, SAIL, OSAIL2>(
             &mut scenario,
             0,
             0,
@@ -1143,24 +1163,38 @@ fun test_distribute_gauge_increase_emissions() {
         );
     };
 
+    // advance to the end of the epoch
+    clock.increment_for_testing(WEEK);
+
+    // claim rewards OSAIL1
+    scenario.next_tx(user);
+    {
+        setup::get_staked_position_reward<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
+    };
+
+    // claim rewards OSAIL2
+    scenario.next_tx(user);
+    {
+        setup::get_staked_position_reward<USD1, AUSD, SAIL, OSAIL2>(&mut scenario, &clock);
+    };
+
     // --- VERIFICATION ---
     scenario.next_tx(admin);
     {
         let minter = scenario.take_shared<Minter<SAIL>>();
-        let new_emissions = minter.epoch_emissions();
-        let current_period = common::current_period(&clock);
+        let new_emissions = minter.usd_epoch_emissions();
+        // we advanced by the week, so we should go back to check emissions
+        let current_period = common::current_period(&clock) - common::week();
 
         let expected_emissions = gauge_base_emissions * 105 / 100; // 5% increase
 
         assert!(expected_emissions - new_emissions <= 1, 1);
-        assert!(minter.emissions_by_epoch(current_period) == new_emissions, 2);
+        assert!(minter.usd_emissions_by_epoch(current_period) == new_emissions, 2);
 
-        // o_sail_total_supply should be epoch 2 emissions
-        // epoch 1 emissions are burnt cos there were noone to distribute them to
-        let expected_o_sail_supply = new_emissions;
-        assert!(minter.o_sail_total_supply() == expected_o_sail_supply, 3);
+        let expected_o_sail_supply = gauge_base_emissions + expected_emissions;
+        assert!(expected_o_sail_supply - minter.o_sail_minted_supply() <= 5, 3);
         // total_supply is o_sail_total_supply + sail_total_supply (which is 0)
-        assert!(minter.total_supply() == expected_o_sail_supply, 4);
+        assert!(expected_o_sail_supply - minter.total_supply() <= 5, 4);
 
         test_scenario::return_shared(minter);
     };
@@ -1179,21 +1213,42 @@ fun test_distribute_gauge_with_emission_changes() {
 
     let gauge_base_emissions = 1_000_000;
 
+    let initial_sail_supply = 1000;
+
     setup::full_setup_with_lock<USD1, AUSD, SAIL, OSAIL1>(
         &mut scenario,
         admin,
         user,
         &mut clock,
-        1000000,
+        100,
         182,
         gauge_base_emissions,
-        0
+        initial_sail_supply
     );
 
     // Distribute the gauge for epoch 1 (base emissions)
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, SUI, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
+    };
+
+    // create position
+    scenario.next_tx(user);
+    {
+        setup::create_position_with_liquidity<USD1, AUSD>(
+            &mut scenario,
+            user,
+            tick_math::min_tick().as_u32(),
+            tick_math::max_tick().as_u32(),
+            1000000,
+            &clock
+        );
+    };
+
+    // deposit position
+    scenario.next_tx(user);
+    {
+        setup::deposit_position<USD1, AUSD>(&mut scenario, &clock);
     };
 
     // Verification after Epoch 1
@@ -1201,16 +1256,22 @@ fun test_distribute_gauge_with_emission_changes() {
     {
         let minter = scenario.take_shared<Minter<SAIL>>();
         let current_period = common::current_period(&clock);
-        assert!(minter.epoch_emissions() == gauge_base_emissions, 0);
-        assert!(minter.emissions_by_epoch(current_period) == gauge_base_emissions, 1);
-        assert!(minter.o_sail_total_supply() == gauge_base_emissions, 2);
-        assert!(minter.total_supply() == gauge_base_emissions, 3);
+        assert!(minter.usd_epoch_emissions() == gauge_base_emissions, 0);
+        assert!(minter.usd_emissions_by_epoch(current_period) == gauge_base_emissions, 1);
+        assert!(minter.o_sail_minted_supply() == initial_sail_supply, 2);
+        assert!(minter.total_supply() == initial_sail_supply, 3);
         test_scenario::return_shared(minter);
     };
 
     // --- EPOCH 2 (10% INCREASE) ---
     let emissions_epoch_2 = gauge_base_emissions * 11 / 10;
     clock.increment_for_testing(WEEK);
+
+    // get rewards OSAIL1
+    scenario.next_tx(user);
+    {
+        setup::get_staked_position_reward<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
+    };
 
     // Update minter period for epoch 2
     scenario.next_tx(admin);
@@ -1222,7 +1283,7 @@ fun test_distribute_gauge_with_emission_changes() {
     // Distribute for epoch 2 with metrics causing a 10% increase
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_emissions_controlled<USD1, AUSD, SAIL, OSAIL1, OSAIL2>(
+        setup::distribute_gauge_emissions_controlled<USD1, AUSD, SAIL, OSAIL2>(
             &mut scenario,
             0,
             0,
@@ -1238,15 +1299,16 @@ fun test_distribute_gauge_with_emission_changes() {
     scenario.next_tx(admin);
     {
         let minter = scenario.take_shared<Minter<SAIL>>();
-        let new_emissions = minter.epoch_emissions();
+        let new_emissions = minter.usd_epoch_emissions();
         let current_period = common::current_period(&clock);
 
         assert!(emissions_epoch_2 - new_emissions <= 1, 1);
-        assert!(minter.emissions_by_epoch(current_period) == new_emissions, 2);
+        assert!(minter.usd_emissions_by_epoch(current_period) == new_emissions, 2);
 
-        let expected_o_sail_supply = emissions_epoch_2;
-        assert!(expected_o_sail_supply - minter.o_sail_total_supply() <= 1, 3);
-        assert!(expected_o_sail_supply - minter.total_supply() <= 1, 4);
+        let expected_o_sail_supply = initial_sail_supply + gauge_base_emissions;
+
+        assert!(expected_o_sail_supply - minter.o_sail_minted_supply() <= 5, 3);
+        assert!(expected_o_sail_supply - minter.total_supply() <= 5, 4);
 
         test_scenario::return_shared(minter);
     };
@@ -1254,6 +1316,12 @@ fun test_distribute_gauge_with_emission_changes() {
     // --- EPOCH 3 (10% DECREASE) ---
     let emissions_epoch_3 = emissions_epoch_2 * 9 / 10;
     clock.increment_for_testing(WEEK);
+
+    // get rewards OSAIL2
+    scenario.next_tx(user);
+    {
+        setup::get_staked_position_reward<USD1, AUSD, SAIL, OSAIL2>(&mut scenario, &clock);
+    };
 
     // Update minter period for epoch 3
     scenario.next_tx(admin);
@@ -1265,7 +1333,7 @@ fun test_distribute_gauge_with_emission_changes() {
     // Distribute for epoch 3 with metrics causing a 10% decrease
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_emissions_controlled<USD1, AUSD, SAIL, OSAIL2, OSAIL3>(
+        setup::distribute_gauge_emissions_controlled<USD1, AUSD, SAIL, OSAIL3>(
             &mut scenario,
             1_000_000,    // prev_epoch_pool_emissions (from N-2, which is epoch 2)
             1_000_000,          // prev_epoch_pool_fees_usd
@@ -1281,14 +1349,41 @@ fun test_distribute_gauge_with_emission_changes() {
     scenario.next_tx(admin);
     {
         let minter = scenario.take_shared<Minter<SAIL>>();
-        let new_emissions = minter.epoch_emissions();
+        let new_emissions = minter.usd_epoch_emissions();
         let current_period = common::current_period(&clock);
 
         assert!(emissions_epoch_3 - new_emissions <= 1, 1);
-        assert!(minter.emissions_by_epoch(current_period) == new_emissions, 2);
+        assert!(minter.usd_emissions_by_epoch(current_period) == new_emissions, 2);
 
-        let expected_o_sail_supply = emissions_epoch_3;
-        assert!(expected_o_sail_supply - minter.o_sail_total_supply() <= 2, 3);
+        let expected_o_sail_supply = initial_sail_supply + gauge_base_emissions + emissions_epoch_2;
+        assert!(expected_o_sail_supply - minter.o_sail_minted_supply() <= 5, 3);
+
+        test_scenario::return_shared(minter);
+    };
+
+    // advance to the end of the epoch
+    clock.increment_for_testing(WEEK);
+
+    // get rewards OSAIL3
+    scenario.next_tx(user);
+    {
+        setup::get_staked_position_reward<USD1, AUSD, SAIL, OSAIL3>(&mut scenario, &clock);
+    };
+
+        // Verification after Epoch 3
+    scenario.next_tx(admin);
+    {
+        let minter = scenario.take_shared<Minter<SAIL>>();
+        let new_emissions = minter.usd_epoch_emissions();
+
+        // we advanced by the week, so we should go back to check emissions
+        let current_period = common::current_period(&clock) - common::week();
+
+        assert!(emissions_epoch_3 - new_emissions <= 1, 1);
+        assert!(new_emissions == minter.usd_emissions_by_epoch(current_period), 2);
+
+        let expected_o_sail_supply = initial_sail_supply + gauge_base_emissions + emissions_epoch_2 + emissions_epoch_3;
+        assert!(expected_o_sail_supply - minter.o_sail_minted_supply() <= 10, 3);
 
         test_scenario::return_shared(minter);
     };
@@ -1357,7 +1452,7 @@ fun test_distribute_same_gauge_twice_in_one_epoch_fails() {
     // --- EPOCH 1: Successful distribution ---
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, SUI, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // --- Advance time by a few hours ---
@@ -1366,7 +1461,7 @@ fun test_distribute_same_gauge_twice_in_one_epoch_fails() {
     // --- Attempt to distribute the same gauge again (should fail) ---
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, SUI, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     clock::destroy_for_testing(clock);
@@ -1399,7 +1494,7 @@ fun test_distribute_gauge_with_wrong_o_sail_fails() {
     scenario.next_tx(admin);
     {
         // distribute_gauge_epoch_1 uses <SUI, OSAIL1> as <Prev, Next>
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, SUI, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // --- EPOCH 2 ---
@@ -1418,7 +1513,7 @@ fun test_distribute_gauge_with_wrong_o_sail_fails() {
     {
         // Here, CurrentEpochOSail (PrevEpochOSail in wrapper) is OSAIL1, 
         // and we are trying to distribute OSAIL1 again as NextEpochOSail (EpochOSail in wrapper)
-        setup::distribute_gauge_emissions_controlled<USD1, AUSD, SAIL, OSAIL1, OSAIL1>(
+        setup::distribute_gauge_emissions_controlled<USD1, AUSD, SAIL, OSAIL1>(
             &mut scenario,
             0,                  // prev_epoch_pool_emissions (N-2 is epoch 0, so 0)
             0,                  // prev_epoch_pool_fees_usd (N-2 is epoch 0, so 0)
@@ -1458,7 +1553,7 @@ fun test_distribute_killed_gauge_fails() {
     // --- EPOCH 1: Successful distribution ---
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, SUI, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // --- EPOCH 2 ---
@@ -1502,7 +1597,7 @@ fun test_distribute_killed_gauge_fails() {
     // Attempt to distribute the killed gauge
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_emissions_controlled<USD1, AUSD, SAIL, OSAIL1, OSAIL2>(
+        setup::distribute_gauge_emissions_controlled<USD1, AUSD, SAIL, OSAIL2>(
             &mut scenario,
             0,
             0,
@@ -1541,7 +1636,7 @@ fun test_distribute_revived_gauge_succeeds() {
     // distribute the gauge
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, SUI, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // --- EPOCH 2 ---
@@ -1619,14 +1714,14 @@ fun test_distribute_revived_gauge_succeeds() {
     scenario.next_tx(admin);
     {
         // prev epoch sail is OSAIL1, cos second epoch is skipped.
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1, OSAIL3>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL3>(&mut scenario, &clock);
     };
 
     // Verification
     scenario.next_tx(admin);
     {
         let minter = scenario.take_shared<Minter<SAIL>>();
-        let new_emissions = minter.epoch_emissions();
+        let new_emissions = minter.usd_epoch_emissions();
         // After being killed and revived, the gauge missed a distribution.
         // The emission calculation treats it as a new gauge, so it uses the base emission.
         assert!(new_emissions == gauge_base_emissions, 1);
@@ -1742,7 +1837,7 @@ fun test_kill_revive_in_same_epoch_rewards() {
     // 2. Distribute Gauge for Epoch 1
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, SUI, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // 3. User creates and deposits a position
@@ -1819,21 +1914,7 @@ fun test_kill_revive_in_same_epoch_rewards() {
     // 7. User claims rewards and we check if they got the full amount
     scenario.next_tx(user);
     {
-        let mut gauge = scenario.take_shared<Gauge<USD1 , AUSD>>();
-        let mut pool = scenario.take_shared<Pool<USD1, AUSD>>();
-        let staked_position = scenario.take_from_sender<StakedPosition>();
-        
-        // Claim rewards
-        gauge.get_position_reward<USD1, AUSD, OSAIL1>(
-            &mut pool,
-            &staked_position,
-            &clock,
-            scenario.ctx()
-        );
-
-        test_scenario::return_shared(gauge);
-        test_scenario::return_shared(pool);
-        scenario.return_to_sender(staked_position);
+        setup::get_staked_position_reward<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     scenario.next_tx(user);
@@ -1841,7 +1922,7 @@ fun test_kill_revive_in_same_epoch_rewards() {
         // Check user has the rewards. Should be close to the total emissions for the gauge.
         let reward_coin = scenario.take_from_sender<Coin<OSAIL1>>();
         // allow for small rounding discrepancies
-        assert!(gauge_base_emissions - reward_coin.value() <= 1, 0); 
+        assert!(gauge_base_emissions - reward_coin.value() <= 3, 0); 
         reward_coin.burn_for_testing();
     };
 
@@ -1876,7 +1957,7 @@ fun test_revive_gauge_in_next_epoch_fails() {
     // 2. Distribute Gauge for Epoch 1
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, SUI, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // 3. Advance time 1/2 week and kill the gauge
@@ -1969,7 +2050,7 @@ fun test_reset_gauge_in_same_epoch_fails() {
     // 2. Distribute Gauge for Epoch 1
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, SUI, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // 3. Advance time 1/3 week and kill the gauge
@@ -2113,7 +2194,7 @@ fun test_reset_and_distribute_undistributed_killed_gauge() {
     // 5. Distribute the gauge now that it's reset and alive
     scenario.next_tx(admin);
     {
-        let distributed_amount = setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, sui::sui::SUI, OSAIL1>(&mut scenario, &clock);
+        let distributed_amount = setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
         assert!(distributed_amount == new_gauge_base_emissions, 0);
     };
 
@@ -2121,9 +2202,9 @@ fun test_reset_and_distribute_undistributed_killed_gauge() {
     scenario.next_tx(admin);
     {
         let minter = scenario.take_shared<Minter<SAIL>>();
-        assert!(minter.epoch_emissions() == new_gauge_base_emissions, 1);
+        assert!(minter.usd_epoch_emissions() == new_gauge_base_emissions, 1);
         let gauge = scenario.take_shared<Gauge<USD1, AUSD>>();
-        let emissions_table = minter.borrow_pool_epoch_emissions();
+        let emissions_table = minter.borrow_pool_epoch_emissions_usd();
         let gauge_id = object::id(&gauge);
         assert!(emissions_table.borrow(gauge_id) == new_gauge_base_emissions, 2);
         
@@ -2239,7 +2320,7 @@ fun test_revive_already_alive_gauge_fails() {
     // 2. Distribute the gauge
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, sui::sui::SUI, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // 3. Kill the gauge
@@ -2512,7 +2593,7 @@ fun test_revive_gauge_with_invalid_emergency_cap_fails() {
     // 2. Distribute the gauge
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, sui::sui::SUI, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // 3. Kill the gauge
@@ -2725,22 +2806,24 @@ fun test_distribute_gauge_with_wrong_voter_fails() {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
         let mut wrong_voter_obj = scenario.take_shared_by_id<Voter>(wrong_voter_id);
         let distribute_governor_cap = scenario.take_from_sender<minter::DistributeGovernorCap>();
-        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let mut distribution_config = scenario.take_shared<DistributionConfig>();
         let mut gauge = scenario.take_shared<Gauge<USD1, AUSD>>();
         let mut pool = scenario.take_shared<Pool<USD1, AUSD>>();
+        let aggregator = setup::setup_aggregator(&mut scenario, &mut distribution_config, setup::one_dec18(), &clock);
 
-        minter.distribute_gauge<USD1, AUSD, SAIL, sui::sui::SUI, OSAIL1>(
+        minter.distribute_gauge<USD1, AUSD, SAIL, OSAIL1>(
             &mut wrong_voter_obj,
             &distribute_governor_cap,
             &distribution_config,
             &mut gauge,
             &mut pool,
             0, 0, 0, 0, 0, 0, // Zero metrics for initial distribution
+            &aggregator,
             &clock,
             scenario.ctx()
         );
 
-        // Cleanup if test doesn't fail
+        test_utils::destroy(aggregator);
         test_scenario::return_shared(minter);
         test_scenario::return_shared(wrong_voter_obj);
         scenario.return_to_sender(distribute_governor_cap);
@@ -2797,21 +2880,24 @@ fun test_distribute_gauge_with_revoked_governor_cap_fails() {
         let mut voter = scenario.take_shared<Voter>();
         let mut gauge = scenario.take_shared<Gauge<USD1, AUSD>>();
         let mut pool = scenario.take_shared<Pool<USD1, AUSD>>();
-        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let mut distribution_config = scenario.take_shared<DistributionConfig>();
         let distribute_governor_cap = scenario.take_from_sender<minter::DistributeGovernorCap>();
+        let aggregator = setup::setup_aggregator(&mut scenario, &mut distribution_config, setup::one_dec18(), &clock);
 
-        minter.distribute_gauge<USD1, AUSD, SAIL, sui::sui::SUI, OSAIL1>(
+        minter.distribute_gauge<USD1, AUSD, SAIL, OSAIL1>(
             &mut voter,
             &distribute_governor_cap,
             &distribution_config,
             &mut gauge,
             &mut pool,
             0, 0, 0, 0, 0, 0, // Zero metrics for initial distribution
+            &aggregator,
             &clock,
             scenario.ctx()
         );
 
         // Cleanup if test doesn't fail
+        test_utils::destroy(aggregator);
         test_scenario::return_shared(minter);
         test_scenario::return_shared(voter);
         test_scenario::return_shared(gauge);
@@ -2862,21 +2948,24 @@ fun test_distribute_gauge_with_wrong_distribution_config_fails() {
         let mut voter = scenario.take_shared<Voter>();
         let mut gauge = scenario.take_shared<Gauge<USD1, AUSD>>();
         let mut pool = scenario.take_shared<Pool<USD1, AUSD>>();
-        let wrong_distribution_config = scenario.take_shared<DistributionConfig>();
+        let mut wrong_distribution_config = scenario.take_shared<DistributionConfig>();
         let distribute_governor_cap = scenario.take_from_sender<minter::DistributeGovernorCap>();
+        let aggregator = setup::setup_aggregator(&mut scenario, &mut wrong_distribution_config, setup::one_dec18(), &clock);
 
-        minter.distribute_gauge<USD1, AUSD, SAIL, sui::sui::SUI, OSAIL1>(
+        minter.distribute_gauge<USD1, AUSD, SAIL, OSAIL1>(
             &mut voter,
             &distribute_governor_cap,
             &wrong_distribution_config,
             &mut gauge,
             &mut pool,
             0, 0, 0, 0, 0, 0, // Zero metrics for initial distribution
+            &aggregator,
             &clock,
             scenario.ctx()
         );
 
         // Cleanup if test doesn't fail
+        test_utils::destroy(aggregator);
         test_scenario::return_shared(minter);
         test_scenario::return_shared(voter);
         test_scenario::return_shared(gauge);
@@ -2940,21 +3029,24 @@ fun test_distribute_gauge_with_wrong_pool_fails() {
         let mut voter = scenario.take_shared<Voter>();
         let mut gauge = scenario.take_shared<Gauge<USD1, AUSD>>();
         let mut new_pool = scenario.take_shared<Pool<USD1, AUSD>>();
-        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let mut distribution_config = scenario.take_shared<DistributionConfig>();
         let distribute_governor_cap = scenario.take_from_sender<minter::DistributeGovernorCap>();
+        let aggregator = setup::setup_aggregator(&mut scenario, &mut distribution_config, setup::one_dec18(), &clock);
 
-        minter.distribute_gauge<USD1, AUSD, SAIL, sui::sui::SUI, OSAIL1>(
+        minter.distribute_gauge<USD1, AUSD, SAIL, OSAIL1>(
             &mut voter,
             &distribute_governor_cap,
             &distribution_config,
             &mut gauge,
             &mut new_pool,
             0, 0, 0, 0, 0, 0, // Zero metrics for initial distribution
+            &aggregator,
             &clock,
             scenario.ctx()
         );
 
         // Cleanup if test doesn't fail
+        test_utils::destroy(aggregator);
         test_scenario::return_shared(minter);
         test_scenario::return_shared(voter);
         test_scenario::return_shared(gauge);
@@ -2991,7 +3083,7 @@ fun test_update_period_with_wrong_voter_fails() {
     // 2. Distribute gauge for epoch 1
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, sui::sui::SUI, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // 3. Advance to the next epoch
@@ -3033,7 +3125,7 @@ fun test_update_period_with_wrong_voter_fails() {
         let initial_supply = o_sail_cap_2.mint(0, scenario.ctx());
         initial_supply.burn_for_testing();
 
-        minter::update_period<SAIL, OSAIL2>(
+        minter::update_period_test<SAIL, OSAIL2>(
             &mut minter,
             &mut wrong_voter,
             &distribution_config,
@@ -3082,7 +3174,7 @@ fun test_update_period_with_wrong_distribution_config_fails() {
     // 2. Distribute gauge for epoch 1
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, sui::sui::SUI, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // 3. Advance to the next epoch
@@ -3109,7 +3201,7 @@ fun test_update_period_with_wrong_distribution_config_fails() {
         let initial_supply = o_sail_cap_2.mint(0, scenario.ctx());
         initial_supply.burn_for_testing();
 
-        minter::update_period<SAIL, OSAIL2>(
+        minter::update_period_test<SAIL, OSAIL2>(
             &mut minter,
             &mut voter,
             &wrong_distribution_config,
@@ -3158,7 +3250,7 @@ fun test_update_period_with_revoked_governor_cap_fails() {
     // 2. Distribute gauge for epoch 1
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, sui::sui::SUI, OSAIL1>(&mut scenario, &clock);
+        setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     // 3. Revoke the DistributeGovernorCap
@@ -3191,7 +3283,7 @@ fun test_update_period_with_revoked_governor_cap_fails() {
         let initial_supply = o_sail_cap_2.mint(0, scenario.ctx());
         initial_supply.burn_for_testing();
 
-        minter::update_period<SAIL, OSAIL2>(
+        minter::update_period_test<SAIL, OSAIL2>(
             &mut minter,
             &mut voter,
             &distribution_config,
@@ -3264,7 +3356,7 @@ fun test_activate_with_wrong_voter_fails() {
         let mut o_sail_cap = coin::create_treasury_cap_for_testing<OSAIL1>(scenario.ctx());
         o_sail_cap.mint(0, scenario.ctx()).burn_for_testing();
         
-        minter.activate<SAIL, OSAIL1>(
+        minter.activate_test<SAIL, OSAIL1>(
             &mut wrong_voter,
             &admin_cap,
             &mut rd,
@@ -3322,7 +3414,7 @@ fun test_activate_with_revoked_admin_cap_fails() {
         let mut o_sail_cap = coin::create_treasury_cap_for_testing<OSAIL1>(scenario.ctx());
         o_sail_cap.mint(0, scenario.ctx()).burn_for_testing();
         
-        minter.activate<SAIL, OSAIL1>(
+        minter.activate_test<SAIL, OSAIL1>(
             &mut voter,
             &admin_cap,
             &mut rd,
@@ -3417,11 +3509,17 @@ fun test_double_activation_fails() {
 //     // 2. Distribute gauge for epoch 1
 //     scenario.next_tx(admin);
 //     {
-//         setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, sui::sui::SUI, OSAIL1>(&mut scenario, &clock);
+//         setup::distribute_gauge_epoch_1<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
 //     };
 
 //     // 3. Advance to the next epoch
 //     clock.increment_for_testing(WEEK);
+
+//     // get reward for lock
+//     scenario.next_tx(user);
+//     {
+//         setup::get_staked_position_reward<USD1, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
+//     };
 
 //     // 4. Check RewardDistributor balance before update (should be 0)
 //     scenario.next_tx(admin);
@@ -3438,10 +3536,39 @@ fun test_double_activation_fails() {
 //         o_sail_coin_2.burn_for_testing();
 //     };
 
-//     // 6. Verify rebase amount was distributed to RewardDistributor
+//     // distribute the gauge for epoch 2
+//     scenario.next_tx(admin);
+//     {
+//         setup::distribute_gauge_epoch_2<USD1, AUSD, SAIL, OSAIL2>(&mut scenario, &clock);
+//     };
+
+//     scenario.next_tx(admin);
+//     {
+//         // print the total supply
+//         let minter = scenario.take_shared<Minter<SAIL>>();
+//         test_scenario::return_shared(minter);
+//     };
+
+//     clock.increment_for_testing(WEEK);
+
+//     // get position reward oSAIL2
+//     scenario.next_tx(user);
+//     {
+//         setup::get_staked_position_reward<USD1, AUSD, SAIL, OSAIL2>(&mut scenario, &clock);
+//     };
+
+//     // update minter period for epoch 3
+//     scenario.next_tx(admin);
+//     {
+//         let o_sail_coin_3 = setup::update_minter_period<SAIL, OSAIL3>(&mut scenario, 0, &clock);
+//         o_sail_coin_3.burn_for_testing();
+//     };
+
+//         // 6. Verify rebase amount was distributed to RewardDistributor
 //     scenario.next_tx(admin);
 //     {
 //         let rd = scenario.take_shared<RewardDistributor<SAIL>>();
+//         std::debug::print(&reward_distributor::balance(&rd));
 //         assert!(reward_distributor::balance(&rd) == 125000, 1);
 //         test_scenario::return_shared(rd);
 //     };
@@ -3466,26 +3593,13 @@ fun test_double_activation_fails() {
 //         scenario.return_to_sender(lock);
 //     };
 
-//     // distribute the gauge for epoch 2
-//     scenario.next_tx(admin);
-//     {
-//         setup::distribute_gauge_epoch_2<USD1, AUSD, SAIL, OSAIL1, OSAIL2>(&mut scenario, &clock);
-//     };
-
-//     scenario.next_tx(admin);
-//     {
-//         // print the total supply
-//         let minter = scenario.take_shared<Minter<SAIL>>();
-//         test_scenario::return_shared(minter);
-//     };
-
 //     clock.increment_for_testing(WEEK);
 
-//     // update minter period for epoch 3
+//     // update to epoch 4
 //     scenario.next_tx(admin);
 //     {
-//         let o_sail_coin_3 = setup::update_minter_period<SAIL, OSAIL3>(&mut scenario, 0, &clock);
-//         o_sail_coin_3.burn_for_testing();
+//         let o_sail_coin_2 = setup::update_minter_period<SAIL, OSAIL4>(&mut scenario, 0, &clock);
+//         o_sail_coin_2.burn_for_testing();
 //     };
 
 //     // expected total supply is 1_000_000 + 1_000_000 + 125000;
@@ -3508,12 +3622,12 @@ fun test_double_activation_fails() {
 //         let mut lock = scenario.take_from_sender<Lock>();
 
 //         let claimed_amount = reward_distributor::claim(&mut rd, &mut ve, &mut lock, &clock, scenario.ctx());
-//         assert!(249136 - claimed_amount <= 1, 2);
+//         assert!(249136 - claimed_amount <= 2, 2);
 
 //         // The reward should be added to the lock amount since it's still active
 //         let (locked_balance, _) = voting_escrow::locked(&ve, object::id(&lock));
-//         assert!(lock_amount + 125000 + 249136 - locked_balance.amount() <= 2, 3);
-//         assert!(reward_distributor::balance(&rd) <= 1, 4);
+//         assert!(lock_amount + 125000 + 249136 - locked_balance.amount() <= 3, 3);
+//         assert!(reward_distributor::balance(&rd) <= 2, 4);
 
 //         test_scenario::return_shared(rd);
 //         test_scenario::return_shared(ve);
@@ -3524,3 +3638,683 @@ fun test_double_activation_fails() {
 //     clock::destroy_for_testing(clock);
 //     scenario.end();
 // }
+
+#[test]
+#[expected_failure(abort_code = minter::EScheduleSailMintPublisherInvalid)]
+fun test_schedule_sail_mint_with_wrong_publisher_fails() {
+    let admin = @0xA;
+    let mut scenario = test_scenario::begin(admin);
+    let clock = clock::create_for_testing(scenario.ctx());
+
+    // Setup distribution (but don't activate minter yet)
+    setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+    setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        
+        // Create a publisher from the voter module instead of minter module
+        let mut wrong_publisher = voter::test_init(scenario.ctx());
+        
+        // This should fail because we're using a publisher from the wrong module
+        let time_locked_mint = minter.schedule_sail_mint(
+            &mut wrong_publisher,
+            1_000_000, // amount
+            &clock,
+            scenario.ctx()
+        );
+        
+        // Cleanup - these lines won't be reached if the test fails as expected
+        test_utils::destroy(wrong_publisher);
+        transfer::public_transfer(time_locked_mint, admin);
+        test_scenario::return_shared(minter);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+#[expected_failure(abort_code = minter::EScheduleSailMintAmountZero)]
+fun test_schedule_sail_mint_with_zero_amount_fails() {
+    let admin = @0xA;
+    let mut scenario = test_scenario::begin(admin);
+    let clock = clock::create_for_testing(scenario.ctx());
+
+    // Setup distribution
+    setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+    setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        
+        // Create a valid publisher from the minter module
+        let mut publisher = minter::test_init(scenario.ctx());
+        
+        // This should fail because we're passing zero amount
+        let time_locked_mint = minter.schedule_sail_mint(
+            &mut publisher,
+            0, // amount
+            &clock,
+            scenario.ctx()
+        );
+        
+        // Cleanup - these lines won't be reached if the test fails as expected
+        test_utils::destroy(publisher);
+        transfer::public_transfer(time_locked_mint, admin);
+        test_scenario::return_shared(minter);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+#[expected_failure(abort_code = minter::EExecuteSailMintStillLocked)]
+fun test_execute_sail_mint_before_unlock_time_fails() {
+    let admin = @0xA;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Setup distribution
+    setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+    setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+
+    // Schedule a SAIL mint
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let mut publisher = minter::test_init(scenario.ctx());
+        
+        let time_locked_mint = minter.schedule_sail_mint(
+            &mut publisher,
+            1_000_000, // amount
+            &clock,
+            scenario.ctx()
+        );
+        
+        test_utils::destroy(publisher);
+        transfer::public_transfer(time_locked_mint, admin);
+        test_scenario::return_shared(minter);
+    };
+
+    // Immediately try to execute the mint without waiting for unlock time
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let time_locked_mint = scenario.take_from_sender<minter::TimeLockedSailMint>();
+        
+        // This should fail because not enough time has passed (need 1 day)
+        let sail_coin = minter.execute_sail_mint(
+            time_locked_mint,
+            &clock,
+            scenario.ctx()
+        );
+        
+        // Cleanup - these lines won't be reached if the test fails as expected
+        sail_coin.burn_for_testing();
+        test_scenario::return_shared(minter);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+#[expected_failure(abort_code = minter::EExecuteSailMintStillLocked)]
+fun test_execute_sail_mint_one_millisecond_before_unlock_fails() {
+    let admin = @0xA;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Setup distribution
+    setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+    setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+
+    // Schedule a SAIL mint
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let mut publisher = minter::test_init(scenario.ctx());
+        
+        let time_locked_mint = minter.schedule_sail_mint(
+            &mut publisher,
+            1_000_000, // amount
+            &clock,
+            scenario.ctx()
+        );
+        
+        test_utils::destroy(publisher);
+        transfer::public_transfer(time_locked_mint, admin);
+        test_scenario::return_shared(minter);
+    };
+
+    // Advance time by 24 hours - 1 millisecond (still 1ms short of unlock time)
+    let lock_time_ms = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+    clock.increment_for_testing(lock_time_ms - 1); // 1ms short
+
+    // Try to execute the mint (should fail as it's still 1ms too early)
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let time_locked_mint = scenario.take_from_sender<minter::TimeLockedSailMint>();
+        
+        // This should fail because we're still 1ms short of the unlock time
+        let sail_coin = minter.execute_sail_mint(
+            time_locked_mint,
+            &clock,
+            scenario.ctx()
+        );
+        
+        // Cleanup - these lines won't be reached if the test fails as expected
+        sail_coin.burn_for_testing();
+        test_scenario::return_shared(minter);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_execute_sail_mint_after_unlock_time_succeeds() {
+    let admin = @0xA;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Setup distribution
+    setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+    setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+
+    let mint_amount = 1_000_000;
+
+    // Schedule a SAIL mint
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let mut publisher = minter::test_init(scenario.ctx());
+        
+        let time_locked_mint = minter.schedule_sail_mint(
+            &mut publisher,
+            mint_amount, // amount
+            &clock,
+            scenario.ctx()
+        );
+        
+        test_utils::destroy(publisher);
+        transfer::public_transfer(time_locked_mint, admin);
+        test_scenario::return_shared(minter);
+    };
+
+    // Advance time by exactly 24 hours (unlock time)
+    let lock_time_ms = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+    clock.increment_for_testing(lock_time_ms);
+
+    // Execute the mint (should succeed now)
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let time_locked_mint = scenario.take_from_sender<minter::TimeLockedSailMint>();
+        
+        // This should succeed because exactly 24 hours have passed
+        let sail_coin = minter.execute_sail_mint(
+            time_locked_mint,
+            &clock,
+            scenario.ctx()
+        );
+        
+        // Verify the minted amount is exactly what was scheduled
+        assert!(sail_coin.value() == mint_amount, 0);
+        
+        sail_coin.burn_for_testing();
+        test_scenario::return_shared(minter);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_cancel_sail_mint_no_tokens_minted() {
+    let admin = @0xA;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Setup distribution
+    setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+    setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+
+    let mint_amount = 1_000_000;
+
+    // Record initial SAIL total supply
+    let initial_supply: u64;
+    scenario.next_tx(admin);
+    {
+        let minter = scenario.take_shared<Minter<SAIL>>();
+        initial_supply = minter.sail_total_supply();
+        test_scenario::return_shared(minter);
+    };
+
+    // Schedule a SAIL mint
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let mut publisher = minter::test_init(scenario.ctx());
+        
+        let time_locked_mint = minter.schedule_sail_mint(
+            &mut publisher,
+            mint_amount, // amount
+            &clock,
+            scenario.ctx()
+        );
+        
+        test_utils::destroy(publisher);
+        transfer::public_transfer(time_locked_mint, admin);
+        test_scenario::return_shared(minter);
+    };
+
+    // Cancel the mint
+    scenario.next_tx(admin);
+    {
+        let time_locked_mint = scenario.take_from_sender<minter::TimeLockedSailMint>();
+        
+        // Cancel the mint - this should not mint any tokens
+        minter::cancel_sail_mint(time_locked_mint);
+    };
+
+    // Verify SAIL total supply hasn't changed
+    scenario.next_tx(admin);
+    {
+        let minter = scenario.take_shared<Minter<SAIL>>();
+        let final_supply = minter.sail_total_supply();
+        
+        // Total supply should remain exactly the same
+        assert!(final_supply == initial_supply, 0);
+        
+        test_scenario::return_shared(minter);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+#[expected_failure(abort_code = minter::EScheduleOSailMintPublisherInvalid)]
+fun test_schedule_o_sail_mint_with_wrong_publisher_fails() {
+    let admin = @0xA;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Setup distribution and activate minter to have valid oSAIL
+    setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+    setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    scenario.next_tx(admin);
+    let pool_sqrt_price: u128 = 1 << 64;
+    setup::setup_pool_with_sqrt_price<USD1, AUSD>(&mut scenario, pool_sqrt_price, 1);
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 0, &mut clock);
+        o_sail_coin.burn_for_testing();
+    };
+
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        
+        // Create a publisher from the voter module instead of minter module
+        let mut wrong_publisher = voter::test_init(scenario.ctx());
+        
+        // This should fail because we're using a publisher from the wrong module
+        let time_locked_mint = minter.schedule_o_sail_mint<SAIL, OSAIL1>(
+            &mut wrong_publisher,
+            1_000_000, // amount
+            &clock,
+            scenario.ctx()
+        );
+        
+        // Cleanup - these lines won't be reached if the test fails as expected
+        test_utils::destroy(wrong_publisher);
+        transfer::public_transfer(time_locked_mint, admin);
+        test_scenario::return_shared(minter);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+#[expected_failure(abort_code = minter::EScheduleOSailMintAmountZero)]
+fun test_schedule_o_sail_mint_with_zero_amount_fails() {
+    let admin = @0xA;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Setup distribution and activate minter to have valid oSAIL
+    setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+    setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    scenario.next_tx(admin);
+    let pool_sqrt_price: u128 = 1 << 64;
+    setup::setup_pool_with_sqrt_price<USD1, AUSD>(&mut scenario, pool_sqrt_price, 1);
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 0, &mut clock);
+        o_sail_coin.burn_for_testing();
+    };
+
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let mut publisher = minter::test_init(scenario.ctx());
+        
+        // This should fail because we're passing zero amount
+        let time_locked_mint = minter.schedule_o_sail_mint<SAIL, OSAIL1>(
+            &mut publisher,
+            0, // amount
+            &clock,
+            scenario.ctx()
+        );
+        
+        // Cleanup - these lines won't be reached if the test fails as expected
+        test_utils::destroy(publisher);
+        transfer::public_transfer(time_locked_mint, admin);
+        test_scenario::return_shared(minter);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+#[expected_failure(abort_code = minter::EScheduleOSailMintInvalidOSail)]
+fun test_schedule_o_sail_mint_with_invalid_o_sail_fails() {
+    let admin = @0xA;
+    let mut scenario = test_scenario::begin(admin);
+    let clock = clock::create_for_testing(scenario.ctx());
+
+    // Setup distribution but don't activate minter, so OSAIL1 is not valid
+    setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+    setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let mut publisher = minter::test_init(scenario.ctx());
+        
+        // This should fail because OSAIL1 is not a valid oSAIL type (minter not activated)
+        let time_locked_mint = minter.schedule_o_sail_mint<SAIL, OSAIL1>(
+            &mut publisher,
+            1_000_000, // amount
+            &clock,
+            scenario.ctx()
+        );
+        
+        // Cleanup - these lines won't be reached if the test fails as expected
+        test_utils::destroy(publisher);
+        transfer::public_transfer(time_locked_mint, admin);
+        test_scenario::return_shared(minter);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+#[expected_failure(abort_code = minter::EExecuteOSailMintStillLocked)]
+fun test_execute_o_sail_mint_before_unlock_time_fails() {
+    let admin = @0xA;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Setup distribution and activate minter
+    setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+    setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    scenario.next_tx(admin);
+    let pool_sqrt_price: u128 = 1 << 64;
+    setup::setup_pool_with_sqrt_price<USD1, AUSD>(&mut scenario, pool_sqrt_price, 1);
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 0, &mut clock);
+        o_sail_coin.burn_for_testing();
+    };
+
+    // Schedule an oSAIL mint
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let mut publisher = minter::test_init(scenario.ctx());
+        
+        let time_locked_mint = minter.schedule_o_sail_mint<SAIL, OSAIL1>(
+            &mut publisher,
+            1_000_000, // amount
+            &clock,
+            scenario.ctx()
+        );
+        
+        test_utils::destroy(publisher);
+        transfer::public_transfer(time_locked_mint, admin);
+        test_scenario::return_shared(minter);
+    };
+
+    // Immediately try to execute the mint without waiting for unlock time
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let time_locked_mint = scenario.take_from_sender<minter::TimeLockedOSailMint<OSAIL1>>();
+        
+        // This should fail because not enough time has passed (need 1 day)
+        let o_sail_coin = minter.execute_o_sail_mint<SAIL, OSAIL1>(
+            time_locked_mint,
+            &clock,
+            scenario.ctx()
+        );
+        
+        // Cleanup - these lines won't be reached if the test fails as expected
+        o_sail_coin.burn_for_testing();
+        test_scenario::return_shared(minter);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+#[expected_failure(abort_code = minter::EExecuteOSailMintStillLocked)]
+fun test_execute_o_sail_mint_one_millisecond_before_unlock_fails() {
+    let admin = @0xA;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Setup distribution and activate minter
+    setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+    setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    scenario.next_tx(admin);
+    let pool_sqrt_price: u128 = 1 << 64;
+    setup::setup_pool_with_sqrt_price<USD1, AUSD>(&mut scenario, pool_sqrt_price, 1);
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 0, &mut clock);
+        o_sail_coin.burn_for_testing();
+    };
+
+    // Schedule an oSAIL mint
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let mut publisher = minter::test_init(scenario.ctx());
+        
+        let time_locked_mint = minter.schedule_o_sail_mint<SAIL, OSAIL1>(
+            &mut publisher,
+            1_000_000, // amount
+            &clock,
+            scenario.ctx()
+        );
+        
+        test_utils::destroy(publisher);
+        transfer::public_transfer(time_locked_mint, admin);
+        test_scenario::return_shared(minter);
+    };
+
+    // Advance time by 24 hours - 1 millisecond (still 1ms short of unlock time)
+    let lock_time_ms = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+    clock.increment_for_testing(lock_time_ms - 1); // 1ms short
+
+    // Try to execute the mint (should fail as it's still 1ms too early)
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let time_locked_mint = scenario.take_from_sender<minter::TimeLockedOSailMint<OSAIL1>>();
+        
+        // This should fail because we're still 1ms short of the unlock time
+        let o_sail_coin = minter.execute_o_sail_mint<SAIL, OSAIL1>(
+            time_locked_mint,
+            &clock,
+            scenario.ctx()
+        );
+        
+        // Cleanup - these lines won't be reached if the test fails as expected
+        o_sail_coin.burn_for_testing();
+        test_scenario::return_shared(minter);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_execute_o_sail_mint_after_unlock_time_succeeds() {
+    let admin = @0xA;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Setup distribution and activate minter
+    setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+    setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    scenario.next_tx(admin);
+    let pool_sqrt_price: u128 = 1 << 64;
+    setup::setup_pool_with_sqrt_price<USD1, AUSD>(&mut scenario, pool_sqrt_price, 1);
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 0, &mut clock);
+        o_sail_coin.burn_for_testing();
+    };
+
+    let mint_amount = 1_000_000;
+
+    // Schedule an oSAIL mint
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let mut publisher = minter::test_init(scenario.ctx());
+        
+        let time_locked_mint = minter.schedule_o_sail_mint<SAIL, OSAIL1>(
+            &mut publisher,
+            mint_amount, // amount
+            &clock,
+            scenario.ctx()
+        );
+        
+        test_utils::destroy(publisher);
+        transfer::public_transfer(time_locked_mint, admin);
+        test_scenario::return_shared(minter);
+    };
+
+    // Advance time by exactly 24 hours (unlock time)
+    let lock_time_ms = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+    clock.increment_for_testing(lock_time_ms);
+
+    // Execute the mint (should succeed now)
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let time_locked_mint = scenario.take_from_sender<minter::TimeLockedOSailMint<OSAIL1>>();
+        
+        // This should succeed because exactly 24 hours have passed
+        let o_sail_coin = minter.execute_o_sail_mint<SAIL, OSAIL1>(
+            time_locked_mint,
+            &clock,
+            scenario.ctx()
+        );
+        
+        // Verify the minted amount is exactly what was scheduled
+        assert!(o_sail_coin.value() == mint_amount, 0);
+        
+        o_sail_coin.burn_for_testing();
+        test_scenario::return_shared(minter);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_cancel_o_sail_mint_no_tokens_minted() {
+    let admin = @0xA;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Setup distribution and activate minter
+    setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+    setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    scenario.next_tx(admin);
+    let pool_sqrt_price: u128 = 1 << 64;
+    setup::setup_pool_with_sqrt_price<USD1, AUSD>(&mut scenario, pool_sqrt_price, 1);
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 0, &mut clock);
+        o_sail_coin.burn_for_testing();
+    };
+
+    let mint_amount = 1_000_000;
+
+    // Record initial oSAIL total supply
+    let initial_o_sail_supply: u64;
+    scenario.next_tx(admin);
+    {
+        let minter = scenario.take_shared<Minter<SAIL>>();
+        initial_o_sail_supply = minter.o_sail_minted_supply();
+        test_scenario::return_shared(minter);
+    };
+
+    // Schedule an oSAIL mint
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let mut publisher = minter::test_init(scenario.ctx());
+        
+        let time_locked_mint = minter.schedule_o_sail_mint<SAIL, OSAIL1>(
+            &mut publisher,
+            mint_amount, // amount
+            &clock,
+            scenario.ctx()
+        );
+        
+        test_utils::destroy(publisher);
+        transfer::public_transfer(time_locked_mint, admin);
+        test_scenario::return_shared(minter);
+    };
+
+    // Cancel the mint
+    scenario.next_tx(admin);
+    {
+        let time_locked_mint = scenario.take_from_sender<minter::TimeLockedOSailMint<OSAIL1>>();
+        
+        // Cancel the mint - this should not mint any tokens
+        minter::cancel_o_sail_mint(time_locked_mint);
+    };
+
+    // Verify oSAIL total supply hasn't changed
+    scenario.next_tx(admin);
+    {
+        let minter = scenario.take_shared<Minter<SAIL>>();
+        let final_o_sail_supply = minter.o_sail_minted_supply();
+        
+        // Total supply should remain exactly the same
+        assert!(final_o_sail_supply == initial_o_sail_supply, 0);
+        
+        test_scenario::return_shared(minter);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}

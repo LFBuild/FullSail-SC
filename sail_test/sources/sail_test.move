@@ -43,5 +43,15 @@ module sail_test::sail_test {
         transfer::transfer<MinterCap<SAIL_TEST>>(minter_cap, tx_context::sender(ctx));
         transfer::public_freeze_object<sui::coin::CoinMetadata<SAIL_TEST>>(metadata);
     }
+
+    public fun destroy<SailCoinType>(minter_cap: MinterCap<SailCoinType>): sui::coin::TreasuryCap<SailCoinType> {
+        let MinterCap{
+            id: minter_cap_id,
+            cap: minter_cap_cap,
+        } = minter_cap;
+
+        sui::object::delete(minter_cap_id);
+        minter_cap_cap
+    }
 }
 

@@ -6,7 +6,7 @@ module distribution::voter {
     use sui::vec_set::{Self, VecSet};
     use sui::vec_map::{Self, VecMap};
     use std::type_name::{Self, TypeName};
-
+    use switchboard::aggregator::{Aggregator};
     
     const ECreateVoterInvalidPublisher: u64 = 831911472280262500;
 
@@ -173,6 +173,7 @@ module distribution::voter {
         pool: ID,
         lock: ID,
         voting_weight: u64,
+        volume: u64,
         pool_weight: u64,
     }
 
@@ -238,7 +239,8 @@ module distribution::voter {
         gauge: ID,
         fee_a_amount: u64,
         fee_b_amount: u64,
-        amount: u64,
+        usd_amount: u64,
+        ended_epoch_o_sail_emission: u64,
     }
 
     /// Creates a new Voter contract.
@@ -488,13 +490,8 @@ module distribution::voter {
     /// # Aborts
     /// * If the lock has already voted in the current epoch
     /// * If voting for the current epoch hasn't started yet
-    fun assert_only_new_epoch(voter: &Voter, lock_id: LockID, clock: &sui::clock::Clock) {
+    fun assert_only_new_epoch(_: &Voter, _: LockID, clock: &sui::clock::Clock) {
         let current_time = distribution::common::current_timestamp(clock);
-        assert!(
-            !voter.last_voted.contains(lock_id) ||
-                distribution::common::epoch_start(current_time) > *voter.last_voted.borrow(lock_id),
-            EAlreadyVotedInCurrentEpoch
-        );
         assert!(current_time > distribution::common::epoch_vote_start(current_time), EVotingNotStarted);
     }
 
@@ -627,9 +624,9 @@ module distribution::voter {
         volumes: &vector<u64>
     ) {
         let pools_length = pool_ids.length();
+        assert!(pools_length <= voter.max_voting_num, ECheckVoteMaxVoteNumExceed);
         assert!(pools_length == weights.length(), ECheckVoteSizesDoNotMatch);
         assert!(pools_length == volumes.length(), ECheckVoteVolumeSizeDoNotMatch);
-        assert!(pools_length <= voter.max_voting_num, ECheckVoteMaxVoteNumExceed);
         let mut i = 0;
         while (i < pools_length) {
             assert!(
@@ -878,7 +875,7 @@ module distribution::voter {
             into_gauge_id(gauge_id),
             distribution::bribe_voting_reward::create(voter_id, voting_escrow_id, gauge_id, reward_coins, ctx)
         );
-        voter.receive_gauger(distribute_cap, &mut gauge, clock, ctx);
+        voter.receive_gauger(distribute_cap, &mut gauge, clock);
         let mut alive_gauges_vec = std::vector::empty<ID>();
         alive_gauges_vec.push_back(gauge_id);
         distribution_config.update_gauge_liveness(alive_gauges_vec, true);
@@ -904,16 +901,17 @@ module distribution::voter {
     ///
     /// # Emits
     /// * `EventDistributeGauge` with information about distributed rewards
-    public fun distribute_gauge<CoinTypeA, CoinTypeB, CurrentEpochOSail, NextEpochOSail>(
+    public fun distribute_gauge<CoinTypeA, CoinTypeB, NextEpochOSail>(
         voter: &mut Voter,
         distribute_cap: &distribution::distribute_cap::DistributeCap,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        reward: Coin<NextEpochOSail>,
+        usd_reward_amount: u64,
+        aggregator: &Aggregator,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
-    ): (u64, Balance<CurrentEpochOSail>) {
+    ): u64 {
         distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
         assert!(voter.is_valid_epoch_token<NextEpochOSail>(), EDistributeGaugeInvalidToken);
         assert!(distribution_config.is_gauge_alive(object::id(gauge)), EDistributeGaugeGaugeIsKilled);
@@ -926,9 +924,22 @@ module distribution::voter {
             ) && gauge_represent.gauger_id == gauge_id.id,
             EDistributeGaugeInvalidGaugeRepresent
         );
-        let reward_amount = reward.value();
-        let rollover_balance = gauge.notify_epoch_token<CoinTypeA, CoinTypeB, CurrentEpochOSail, NextEpochOSail>(pool, &voter.voter_cap, clock, ctx);
-        let (fee_reward_a, fee_reward_b) = gauge.notify_reward(&voter.voter_cap, pool, reward.into_balance(), clock, ctx);
+        let ended_epoch_o_sail_emission = gauge.notify_epoch_token<CoinTypeA, CoinTypeB, NextEpochOSail>(
+            distribution_config,
+            pool,
+            &voter.voter_cap,
+            clock,
+            ctx
+        );
+        let (fee_reward_a, fee_reward_b) = gauge.notify_reward(
+            distribution_config,
+            &voter.voter_cap,
+            pool,
+            usd_reward_amount,
+            aggregator,
+            clock,
+            ctx
+        );
         let fee_a_amount = fee_reward_a.value<CoinTypeA>();
         let fee_b_amount = fee_reward_b.value<CoinTypeB>();
         let fee_voting_reward = voter.gauge_to_fee.borrow_mut(gauge_id);
@@ -949,10 +960,12 @@ module distribution::voter {
             gauge: gauge_id.id,
             fee_a_amount,
             fee_b_amount,
-            amount: reward_amount,
+            usd_amount: usd_reward_amount,
+            ended_epoch_o_sail_emission,
         };
         sui::event::emit<EventDistributeGauge>(distribute_gauge_event);
-        (reward_amount, rollover_balance)
+
+        ended_epoch_o_sail_emission
     }
 
     /// Returns the balance of a specific token type in the fee voting rewards for a gauge.
@@ -1353,13 +1366,11 @@ module distribution::voter {
     /// * `governor_cap` - The governor capability to authorize the operation
     /// * `gauge` - The gauge to be received
     /// * `clock` - The system clock
-    /// * `ctx` - The transaction context
     public fun receive_gauger<CoinTypeA, CoinTypeB>(
         voter: &mut Voter,
         distribute_cap: &distribution::distribute_cap::DistributeCap,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
-        clock: &sui::clock::Clock,
-        ctx: &mut TxContext
+        clock: &sui::clock::Clock
     ) {
         distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
         let gauge_id = into_gauge_id(
@@ -1460,7 +1471,7 @@ module distribution::voter {
     fun reset_internal<SailCoinType>(
         voter: &mut Voter,
         voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
-        distribution_config: &distribution::distribution_config::DistributionConfig,
+        _: &distribution::distribution_config::DistributionConfig,
         lock: &distribution::voting_escrow::Lock,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
@@ -1495,20 +1506,7 @@ module distribution::voter {
                 let weight = voter.weights.remove(gauge_id) - pool_votes;
                 voter.weights.add(gauge_id, weight);
                 voter.votes.borrow_mut(lock_id).remove(pool_id);
-                voter.gauge_to_fee.borrow_mut(gauge_id).withdraw(
-                    &voter.gauge_to_fee_authorized_cap,
-                    pool_votes,
-                    lock_id.id,
-                    clock,
-                    ctx
-                );
-                voter.gauge_to_bribe.borrow_mut(gauge_id).withdraw(
-                    &voter.gauge_to_bribe_authorized_cap,
-                    pool_votes,
-                    lock_id.id,
-                    clock,
-                    ctx
-                );
+                // we are not withdrawing from reward contracts as they are updated by backend voting service
                 total_removed_weight = total_removed_weight + pool_votes;
                 let abstained_event = EventAbstained {
                     sender: tx_context::sender(ctx),
@@ -1611,6 +1609,7 @@ module distribution::voter {
     /// * `lock` - The lock to vote with
     /// * `pools` - A vector of pool IDs to vote for
     /// * `weights` - A vector of weights to allocate to each pool
+    /// * `volumes` - A vector of volumes to allocate to each pool
     /// * `clock` - The system clock
     /// * `ctx` - The transaction context
     ///
@@ -1655,7 +1654,7 @@ module distribution::voter {
     }
 
     /// Internal function to implement the voting logic.
-    /// Handles the details of allocating voting power to pools based on weights.
+    /// Handles the details of allocating voting power to pools based on weights and volumes.
     ///
     /// # Arguments
     /// * `voter` - The voter contract reference
@@ -1665,6 +1664,7 @@ module distribution::voter {
     /// * `voting_power` - The voting power of the lock
     /// * `pools` - A vector of pool IDs to vote for
     /// * `weights` - A vector of weights to allocate to each pool
+    /// * `volumes` - A vector of volumes to allocate to each pool
     /// * `clock` - The system clock
     /// * `ctx` - The transaction context
     ///
@@ -1760,26 +1760,14 @@ module distribution::voter {
                 volume: volumes[i],
             };
             lock_votes.add(pool_id, lock_volume_vote);
-            voter.gauge_to_fee.borrow_mut(gauge_id).deposit(
-                &voter.gauge_to_fee_authorized_cap,
-                votes_for_pool,
-                lock_id.id,
-                clock,
-                ctx
-            );
-            voter.gauge_to_bribe.borrow_mut(gauge_id).deposit(
-                &voter.gauge_to_bribe_authorized_cap,
-                votes_for_pool,
-                lock_id.id,
-                clock,
-                ctx
-            );
+            // we are not depositing to reward contracts as they are updated by backend voting service
             lock_used_weights = lock_used_weights + votes_for_pool;
             let voted_event = EventVoted {
                 sender: tx_context::sender(ctx),
                 pool: pool_id.id,
                 lock: lock_id.id,
                 voting_weight: votes_for_pool,
+                volume: volumes[i],
                 pool_weight: *voter.weights.borrow(gauge_id),
             };
             sui::event::emit<EventVoted>(voted_event);
@@ -1887,7 +1875,7 @@ module distribution::voter {
             voter.is_governor(object::id(governor_cap)),
             EWhitelistTokenGovernorInvalid
         );
-        voter.whitelist_token_internal<CoinToWhitelistType>(
+        voter.whitelist_token_internal(
             type_name::get<CoinToWhitelistType>(),
             listed,
             tx_context::sender(ctx)
@@ -1905,7 +1893,7 @@ module distribution::voter {
     ///
     /// # Emits
     /// * `EventWhitelistToken` with whitelist information
-    fun whitelist_token_internal<SailCoinType>(
+    fun whitelist_token_internal(
         voter: &mut Voter,
         coinTypeName: std::type_name::TypeName,
         listed: bool,
@@ -1923,6 +1911,7 @@ module distribution::voter {
         sui::event::emit<EventWhitelistToken>(whitelist_token_event);
     }
 
+    // proxy method to be called via Minter
     public fun update_voted_weights(
         voter: &mut Voter,
         distribute_cap: &distribution::distribute_cap::DistributeCap,
@@ -1958,6 +1947,52 @@ module distribution::voter {
             clock,
             ctx
         );
+    }
+
+    /// Proxy method to be called via Minter
+    public fun get_position_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
+        voter: &Voter,
+        distribute_cap: &distribution::distribute_cap::DistributeCap,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
+        gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        staked_position: &distribution::gauge::StakedPosition,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ): u64 {
+        distribute_cap.validate_distribute_voter_id(object::id(voter));
+        
+        gauge.get_position_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
+            pool,
+            &voter.voter_cap,
+            distribution_config,
+            staked_position,
+            clock,
+            ctx
+        )
+    }
+
+    /// Proxy method to be called via Minter
+    public fun get_multiple_position_rewards<CoinTypeA, CoinTypeB, RewardCoinType>(
+        voter: &Voter,
+        distribute_cap: &distribution::distribute_cap::DistributeCap,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
+        gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        staked_positions: &vector<distribution::gauge::StakedPosition>,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ): u64 {
+        distribute_cap.validate_distribute_voter_id(object::id(voter));
+
+        gauge.get_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
+            pool,
+            &voter.voter_cap,
+            distribution_config,
+            staked_positions,
+            clock,
+            ctx
+        )
     }
 
     #[test_only]

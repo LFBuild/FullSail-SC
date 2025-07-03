@@ -122,7 +122,7 @@ module distribution::reward_distributor {
             } else {
                 reward_distributor.tokens_per_period.remove(last_token_period)
             };
-            let next_token_period = last_token_period + distribution::common::week();
+            let next_token_period = last_token_period + distribution::common::epoch();
             if (time < next_token_period) {
                 if (token_time_delta == 0 && time == last_token_time) {
                     reward_distributor.tokens_per_period.add(
@@ -198,8 +198,7 @@ module distribution::reward_distributor {
         let reward = reward_distributor.claim_internal(voting_escrow, lock_id, period);
         if (reward > 0) {
             let (locked_balance, _) = voting_escrow.locked(lock_id);
-            if (distribution::common::current_timestamp(clock) >= locked_balance.end() && !locked_balance.is_permanent(
-            )) {
+            if (distribution::common::current_timestamp(clock) >= locked_balance.end() && !locked_balance.is_permanent()) {
                 transfer::public_transfer<sui::coin::Coin<SailCoinType>>(
                     sui::coin::from_balance<SailCoinType>(reward_distributor.balance.split<SailCoinType>(reward), ctx),
                     voting_escrow.owner_of(lock_id)
@@ -326,8 +325,8 @@ module distribution::reward_distributor {
             if (epoch_end >= max_period) {
                 break
             };
-            let user_balance = voting_escrow.balance_of_nft_at(lock_id, epoch_end + distribution::common::week() - 1);
-            let total_supply = voting_escrow.total_supply_at(epoch_end + distribution::common::week() - 1);
+            let user_balance = voting_escrow.balance_of_nft_at(lock_id, epoch_end + distribution::common::epoch() - 1);
+            let total_supply = voting_escrow.total_supply_at(epoch_end + distribution::common::epoch() - 1);
             let non_zero_total_supply = if (total_supply == 0) {
                 1
             } else {
@@ -344,7 +343,7 @@ module distribution::reward_distributor {
                 period_reward_tokens,
                 non_zero_total_supply
             );
-            epoch_end = epoch_end + distribution::common::week();
+            epoch_end = epoch_end + distribution::common::epoch();
             i = i + 1;
         };
         // TODO: in original smart contracts version it was (total_reward, epoch_end, epoch_start)
@@ -395,7 +394,7 @@ module distribution::reward_distributor {
     public fun start<SailCoinType>(
         reward_distributor: &mut RewardDistributor<SailCoinType>,
         reward_distributor_cap: &distribution::reward_distributor_cap::RewardDistributorCap,
-        minter_active_period: u64, // a period until which minting is available, in weeks
+        minter_active_period: u64, // a period until which minting is available, in epochs
         clock: &sui::clock::Clock
     ) {
         reward_distributor_cap.validate(object::id<RewardDistributor<SailCoinType>>(reward_distributor));

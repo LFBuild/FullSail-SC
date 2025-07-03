@@ -155,7 +155,7 @@ module distribution::voting_dao {
         };
         let v1 = v0 > 0 && arg2 - arg0.checkpoints.borrow(arg1).borrow(
             v0 - 1
-        ).from_timestamp < distribution::common::get_time_to_finality();
+        ).from_timestamp < distribution::common::get_time_to_finality_ms();
         !v1
     }
 }

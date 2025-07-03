@@ -1,0 +1,9 @@
+source ./export.sh
+
+export GAUGE=0xd44bf4ff756aae8f64676f92db409fa70053bfc01aa63d77149a68dd36a7b76c
+export COIN_A=0xda1f9eaf3d10cd6fa609d3061ac48d640c0aeb36fb031125a263736a0ae0be29::token_b::TOKEN_B
+export COIN_B=0xd4d7bdc15013391ea5776db31abfc0c2dcf9121b58dcffc29c179e95b56f4c21::sail_token::SAIL_TOKEN
+export POOL=0x2e53ea7a13eb6c406a6af3db6e806fbc556f80fc1794c63bd4be699e13ae425f
+
+sui client ptb \
+--move-call $PACKAGE::minter::distribute_gauge "<$COIN_A,$COIN_B,$FULLSAIL_TOKEN_TYPE,$OSAIL1_TYPE>" @$MINTER @$VOTER @$DISTRIBUTE_GOVERNOR_CAP @$DISTRIBUTION_CONFIG @$GAUGE @$POOL 0 0 0 0 0 0 @$AGGREGATOR @$CLOCK 
