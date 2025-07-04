@@ -612,16 +612,28 @@ module distribution::reward {
     /// # Returns
     /// The amount of rewards for the current epoch
     public fun rewards_this_epoch<CoinType>(reward: &Reward, clock: &sui::clock::Clock): u64 {
+        let epoch_start_time = distribution::common::epoch_start(distribution::common::current_timestamp(clock));
+        reward.rewards_at_epoch<CoinType>(epoch_start_time)
+    }
+
+    /// Returns the total rewards available for a specific epoch for a specific coin type.
+    /// 
+    /// # Arguments
+    /// * `reward` - The reward object
+    /// * `epoch_start` - The start time of the epoch
+    /// 
+    /// # Returns
+    /// The amount of rewards for the specified epoch
+    public fun rewards_at_epoch<CoinType>(reward: &Reward, epoch_start: u64): u64 {
         let coin_type_name = std::type_name::get<CoinType>();
         if (!reward.token_rewards_per_epoch.contains(coin_type_name)) {
             return 0
         };
-        let epoch_start_time = distribution::common::epoch_start(distribution::common::current_timestamp(clock));
         let rewards_per_epoch = reward.token_rewards_per_epoch.borrow(coin_type_name);
-        if (!rewards_per_epoch.contains(epoch_start_time)) {
+        if (!rewards_per_epoch.contains(epoch_start)) {
             return 0
         };
-        *rewards_per_epoch.borrow(epoch_start_time)
+        *rewards_per_epoch.borrow(epoch_start)
     }
 
     /// Returns the total supply of tokens in the reward system based on the latest checkpoint relative to the clock.

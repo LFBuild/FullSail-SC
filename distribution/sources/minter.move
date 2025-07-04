@@ -2088,5 +2088,26 @@ module distribution::minter {
     public fun test_init(ctx: &mut sui::tx_context::TxContext): sui::package::Publisher {
          sui::package::claim<MINTER>(MINTER {}, ctx)
     }
+
+    public fun inject_voting_fee_reward<SailCoinType, FeeCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        voter: &mut distribution::voter::Voter,
+        distribute_governor_cap: &DistributeGovernorCap,
+        gauge_id: ID,
+        reward: Coin<FeeCoinType>,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        minter.check_distribute_governor(distribute_governor_cap);
+
+        voter.inject_voting_fee_reward(
+            minter.distribute_cap.borrow(),
+            gauge_id,
+            reward,
+            clock,
+            ctx
+        );
+    }
+
 }
 
