@@ -8,6 +8,7 @@ module integrate::setup_distribution {
         distribtuion_config: &mut distribution::distribution_config::DistributionConfig,
         team_wallet: address,
         treasury_cap: sui::coin::TreasuryCap<SailCoinType>,
+        metadata: &sui::coin::CoinMetadata<SailCoinType>,
         aggregator: &switchboard::aggregator::Aggregator,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
@@ -15,6 +16,7 @@ module integrate::setup_distribution {
         let (minter_immut, admin_cap) = distribution::minter::create<SailCoinType>(
             minter_publisher,
             option::some(treasury_cap),
+            metadata,
             object::id(distribtuion_config),
             ctx
         );
