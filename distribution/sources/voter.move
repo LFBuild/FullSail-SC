@@ -805,6 +805,41 @@ module distribution::voter {
         voter.exercise_fee_reward.earned<ExerciseFeeCoinType>(lock_id, clock)
     }
 
+    /// Returns the total voting fee rewards available for a specific epoch for a specific coin type.
+    public fun voting_fee_rewards_at_epoch<FeeCoinType>(
+        voter: &Voter,
+        gauge_id: ID,
+        epoch_start: u64
+    ): u64 {
+        voter.gauge_to_fee.borrow(into_gauge_id(gauge_id)).rewards_at_epoch<FeeCoinType>(epoch_start)
+    }
+
+    /// Returns the total voting fee rewards available for the current epoch for a specific coin type.
+    public fun voting_fee_rewards_this_epoch<FeeCoinType>(
+        voter: &Voter,
+        gauge_id: ID,
+        clock: &sui::clock::Clock
+    ): u64 {
+        voter.gauge_to_fee.borrow(into_gauge_id(gauge_id)).rewards_this_epoch<FeeCoinType>(clock)
+    }
+
+    /// Returns the total bribe rewards available for a specific epoch for a specific coin type.
+    public fun bribe_voting_rewards_at_epoch<BribeCoinType>(
+        voter: &Voter,
+        gauge_id: ID,
+        epoch_start: u64
+    ): u64 {
+        voter.gauge_to_bribe.borrow(into_gauge_id(gauge_id)).rewards_at_epoch<BribeCoinType>(epoch_start)
+    }
+
+    /// Returns the total bribe rewards available for the current epoch for a specific coin type.
+    public fun bribe_voting_rewards_this_epoch<BribeCoinType>(
+        voter: &Voter,
+        gauge_id: ID,
+        clock: &sui::clock::Clock
+    ): u64 {
+        voter.gauge_to_bribe.borrow(into_gauge_id(gauge_id)).rewards_this_epoch<BribeCoinType>(clock)
+    }
 
     /// Creates a new gauge for a liquidity pool.
     /// Gauges are mechanisms that direct rewards to liquidity pools based on votes.
@@ -966,6 +1001,25 @@ module distribution::voter {
         sui::event::emit<EventDistributeGauge>(distribute_gauge_event);
 
         ended_epoch_o_sail_emission
+    }
+
+    public fun inject_voting_fee_reward<FeeCoinType>(
+        voter: &mut Voter,
+        distribute_cap: &distribution::distribute_cap::DistributeCap,
+        gauge_id: ID,
+        reward: Coin<FeeCoinType>,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
+        let fee_voting_reward = voter.gauge_to_fee.borrow_mut(into_gauge_id(gauge_id));
+
+        fee_voting_reward.notify_reward_amount(
+            &voter.gauge_to_fee_authorized_cap,
+            reward,
+            clock,
+            ctx
+        );
     }
 
     /// Returns the balance of a specific token type in the fee voting rewards for a gauge.

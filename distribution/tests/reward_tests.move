@@ -276,6 +276,11 @@ fun test_multi_lock_simple_reward_distribution() {
     );
 
     clock.increment_for_testing( 10000);
+    let notified_epoch_start = distribution::common::epoch_start(clock.timestamp_ms() / 1000);
+
+    assert!(reward::rewards_at_epoch<USD1>(&reward_obj, notified_epoch_start) == notify_amount, 10);
+    assert!(reward::rewards_this_epoch<USD1>(&reward_obj, &clock) == notify_amount, 11);
+
 
     // Verify earned is 0 immediately after notify (rewards apply to next epoch start)
     assert!(reward_obj.earned<USD1>(lock_id1, &clock) == 0, 4);
@@ -283,6 +288,10 @@ fun test_multi_lock_simple_reward_distribution() {
 
     // --- Advance to Epoch 2 ---
     clock.increment_for_testing(one_week_ms/2);
+
+    // rewards were notified in the previous epoch, but not in the current one
+    assert!(reward::rewards_at_epoch<USD1>(&reward_obj, notified_epoch_start) == notify_amount, 10);
+    assert!(reward::rewards_this_epoch<USD1>(&reward_obj, &clock) == 0, 11);
 
     // --- Epoch 2: Verify Earned Rewards ---
     let lock1_expected_share = full_math_u64::mul_div_floor(
@@ -340,6 +349,10 @@ fun test_multi_lock_simple_reward_distribution() {
     let earned2_other_token = reward_obj.earned<OTHER>(lock_id2, &clock);
     assert!(earned1_other_token == 0, 16);
     assert!(earned2_other_token == 0, 17);
+
+    // check that rewards amount are still the same
+    assert!(reward::rewards_at_epoch<USD1>(&reward_obj, notified_epoch_start) == notify_amount, 10);
+    assert!(reward::rewards_this_epoch<USD1>(&reward_obj, &clock) == 0, 11);
 
 
     // Cleanup
