@@ -16,6 +16,7 @@ digraph Dependencies {
     "liquidity_locker_v1" -> "integer_mate"
     "liquidity_locker_v1" -> "price_provider"
     "liquidity_locker_v1" -> "gauge_cap"
+    "liquidity_locker_v1" -> "locker_cap"
 
 
     "liquidity_locker_v2" -> "clmm_pool"
@@ -23,6 +24,8 @@ digraph Dependencies {
     "liquidity_locker_v2" -> "price_provider"
     "liquidity_locker_v2" -> "gauge_cap"
     "liquidity_locker_v2" -> "distribution"
+    "liquidity_locker_v2" -> "locker_cap"
+
 
     "distribution" -> "clmm_pool";
     "integrate"    -> "clmm_pool";
@@ -38,4 +41,5 @@ digraph Dependencies {
     "clmm_pool"    -> "gauge_cap";
     "distribution" -> "gauge_cap";
     "integrate"    -> "gauge_cap";
+    "distribtuion" -> "locker_cap"
 }

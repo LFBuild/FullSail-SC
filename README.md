@@ -53,9 +53,9 @@ Use `sui client publish` command.
 
 #### Publication transactions
 
-- [locker_cap](https://suivision.xyz/txblock/6beJNe6xim5mW2yofXZYyarizeg2GMtYmZrw4BAfhJ1c)
-- [distribution](https://suivision.xyz/txblock/CCLQ3jyD6j9g5mVhvDq3RByffokctZpe9uKnNnrwZsDX)
-- [liquidity_locker](https://suivision.xyz/txblock/GH87ajY9LB1QXiF7Hm2FcUqt84m42eezqD8Vco8h3AS8)
+- [locker_cap](https://suivision.xyz/txblock/66mFm2xq184KGBUSRJMLfBn6nPs8HKgeLhDbv8GchzBE)
+- [distribution](https://suivision.xyz/txblock/Dj5Lsx3Mj2GeFUnUaejBYmUpzDWuaLVAf3vKLDy4j2Ty)
+- [liquidity_locker](https://suivision.xyz/txblock/FEMGnXMw4so8TMDE3oYHfSv3A3gcSVeumP3RVPku943)
 - [integrate](https://suivision.xyz/txblock/HaWZSzJGFNk5nUJbfUFv3JdW3i4KZEajYkZZNrUVUiRh)
 
 [Setup distribution tx](https://suivision.xyz/txblock/FndPvHwGpzeovWWyKiG3CFehSKH3JvV2WonwK8gC9ZeS)
