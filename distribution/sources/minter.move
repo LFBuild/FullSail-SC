@@ -2084,6 +2084,20 @@ module distribution::minter {
         )
     }
 
+    // TODO: remove in production
+    public fun mint_test_sail<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        publisher: &mut sui::package::Publisher,
+        amount: u64,
+        ctx: &mut TxContext,
+    ): Coin<SailCoinType> {
+        assert!(publisher.from_module<MINTER>(), EScheduleSailMintPublisherInvalid);
+        assert!(!minter.is_paused(), EScheduleSailMintMinterPaused);
+        assert!(amount > 0, EScheduleSailMintAmountZero);
+
+        minter.mint_sail(amount, ctx)
+    }
+
     #[test_only]
     public fun test_init(ctx: &mut sui::tx_context::TxContext): sui::package::Publisher {
          sui::package::claim<MINTER>(MINTER {}, ctx)
