@@ -1,4 +1,4 @@
-module distribution::sail_token {
+module sail_token::sail_token {
     public struct SAIL_TOKEN has drop {}
 
     fun init(otw: SAIL_TOKEN, ctx: &mut TxContext) {
