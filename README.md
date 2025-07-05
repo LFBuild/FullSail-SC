@@ -49,7 +49,7 @@ Use `sui client publish` command.
 
 ## Latest publication artifacts
 
-### Mainnet (test version)
+### Mainnet prediction competiton version (i.e. sandbox)
 
 #### Publication transactions
 
@@ -58,6 +58,5 @@ Use `sui client publish` command.
 - [liquidity_locker](https://suivision.xyz/txblock/FEMGnXMw4so8TMDE3oYHfSv3A3gcSVeumP3RVPku943)
 - [integrate](https://suivision.xyz/txblock/HaWZSzJGFNk5nUJbfUFv3JdW3i4KZEajYkZZNrUVUiRh)
 
-[Setup distribution tx](https://suivision.xyz/txblock/FndPvHwGpzeovWWyKiG3CFehSKH3JvV2WonwK8gC9ZeS)
-[Gauge create tx](https://suivision.xyz/txblock/GHRqUpRL3e5CkhjErEdGpPdzdEKsfFYedUkcKMSUTTz3?tab=Changes)
-[Gauge create tx 2](https://suivision.xyz/txblock/DcVYV7C4HbkUayhnr4xea3JonWAyCucbqJfXY13cAGLQ)
+- [locker init tx](https://suivision.xyz/txblock/5zXvzCQgSqL8jyms6oB3ijhCWJpfa5JBGevtYfLNKiz8)
+- [setup distribtuion tx](https://suivision.xyz/txblock/BR889z7WhfG1onA9tp74FQinHggW7m8Dfgx8DprKZWTt)
