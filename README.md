@@ -60,3 +60,4 @@ Use `sui client publish` command.
 
 - [locker init tx](https://suivision.xyz/txblock/5zXvzCQgSqL8jyms6oB3ijhCWJpfa5JBGevtYfLNKiz8)
 - [setup distribtuion tx](https://suivision.xyz/txblock/BR889z7WhfG1onA9tp74FQinHggW7m8Dfgx8DprKZWTt)
+- [activate minter tx](https://suivision.xyz/txblock/Ak9pU4KtbKWCavxN3C3GtUAKoJV9qbiPaHxkhMfCnhTA)
