@@ -3,7 +3,7 @@ import os
 import argparse
 import math
 
-def generate_distribution_script(excel_file, output_script, package, minter_cap, token_name, token_symbol, decimals, max_addresses_per_script=250):
+def generate_distribution_script(excel_file, output_script, token_type, method, minter, publisher, decimals, max_addresses_per_script=250):
     """
     Generates shell scripts to distribute tokens based on an Excel file.
     Splits into multiple scripts if more than max_addresses_per_script addresses.
@@ -11,10 +11,9 @@ def generate_distribution_script(excel_file, output_script, package, minter_cap,
     Args:
         excel_file (str): Path to the Excel file with 'address' and 'amount' columns.
         output_script (str): Base name for the output shell scripts.
-        package (str): The package ID for the token.
-        minter_cap (str): The MinterCap object ID.
-        token_name (str): The name of the token module (e.g., 'token_a').
-        token_symbol (str): The symbol of the token (e.g., 'TOKEN_A').
+        token_type (str): The full type of the token (e.g., '0x1234567890::token_a::TOKEN_A').
+        method (str): The full adddress of the minter method (e.g., '0x1234567890::minter::mint_sail').
+        publisher (str): First argument of the minter method (e.g., '0x123123').
         decimals (int): The token decimals.
         max_addresses_per_script (int): Maximum number of addresses per script (default: 250).
     """
@@ -49,11 +48,11 @@ def generate_distribution_script(excel_file, output_script, package, minter_cap,
             if num_scripts > 1:
                 f.write(f"# Script {script_idx + 1} of {num_scripts} (addresses {start_idx + 1}-{end_idx})\n")
             f.write("\n")
-            f.write(f"export PACKAGE_ID='{package}'\n")
-            f.write(f"export MINTER_CAP_ID='{minter_cap}'\n")
-            f.write(f"export TOKEN_MODULE='{token_name}'\n")
-            f.write(f"export TOKEN_SYMBOL='{token_symbol}'\n")
-            f.write(f"export TOKEN_TYPE=\"$PACKAGE_ID::$TOKEN_MODULE::$TOKEN_SYMBOL\"\n\n")
+            f.write(f"export TOKEN_TYPE='{token_type}'\n")
+            f.write(f"export METHOD='{method}'\n")
+            f.write(f"export PUBLISHER='{publisher}'\n")
+            f.write(f"export MINTER='{minter}'\n")
+            f.write(f"export CLOCK=0x6\n")
 
             ptb_command = "sui client ptb"
 
@@ -63,7 +62,7 @@ def generate_distribution_script(excel_file, output_script, package, minter_cap,
                 amount_adjusted = int(float(amount) * (10**decimals))
 
                 coin_var = f"coin{index}"
-                ptb_command += f" \\\n--move-call $PACKAGE_ID::$TOKEN_MODULE::mint \"<$TOKEN_TYPE>\" @$MINTER_CAP_ID {amount_adjusted}"
+                ptb_command += f" \\\n--move-call $METHOD \"<$TOKEN_TYPE>\" @$MINTER @$PUBLISHER {amount_adjusted} @$CLOCK"
                 ptb_command += f" \\\n--assign {coin_var}"
                 ptb_command += f" \\\n--transfer-objects '[{coin_var}]' @{address}"
 
@@ -87,10 +86,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate Sui token distribution scripts from an Excel file.")
     parser.add_argument("excel_file", help="Path to the Excel file with 'address' and 'amount' columns.")
     parser.add_argument("-o", "--output", default="distribute_tokens.sh", help="Base name for output shell script files.")
-    parser.add_argument("--package", required=True, help="The package ID for the token.")
-    parser.add_argument("--minter-cap", required=True, help="The treasury cap object ID.")
-    parser.add_argument("--token-name", required=True, help="The name of the token module (e.g., 'token_a').")
-    parser.add_argument("--token-symbol", required=True, help="The symbol of the token (e.g., 'TOKEN_A').")
+    parser.add_argument("--token-type", required=True, help="Full type of the token.")
+    parser.add_argument("--method", required=True, help="Full address of the minter method.")
+    parser.add_argument("--minter", required=True, help="The ID of the minter object.")
+    parser.add_argument("--publisher", required=True, help="The ID of the minter publisher object.")
     parser.add_argument("--decimals", type=int, default=6, help="The token decimals (default: 6).")
     parser.add_argument("--max-addresses", type=int, default=250, help="Maximum number of addresses per script (default: 250).")
 
@@ -99,10 +98,10 @@ if __name__ == "__main__":
     generate_distribution_script(
         args.excel_file,
         args.output,
-        args.package,
-        args.minter_cap,
-        args.token_name,
-        args.token_symbol,
+        args.token_type,
+        args.method,
+        args.minter,
+        args.publisher,
         args.decimals,
         args.max_addresses
     ) 
