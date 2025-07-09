@@ -146,6 +146,8 @@ module distribution::voter {
         gauge_to_bribe: Table<GaugeID, distribution::bribe_voting_reward::BribeVotingReward>,
         exercise_fee_reward: distribution::exercise_fee_reward::ExerciseFeeReward,
         exercise_fee_authorized_cap: distribution::reward_authorized_cap::RewardAuthorizedCap,
+        // bag to be preapred for future updates
+        bag: sui::bag::Bag,
     }
 
     public struct EventNotifyEpochToken has copy, drop, store {
@@ -293,6 +295,8 @@ module distribution::voter {
             gauge_to_bribe: table::new<GaugeID, distribution::bribe_voting_reward::BribeVotingReward>(ctx),
             exercise_fee_reward: distribution::exercise_fee_reward::create(id, vector[], ctx),
             exercise_fee_authorized_cap: distribution::reward_authorized_cap::create(id, ctx),
+            // bag to be preapred for future updates
+            bag: sui::bag::new(ctx),
         };
         let distribute_cap = distribution::distribute_cap::create_internal(id, ctx);
         (voter, distribute_cap)

@@ -25,6 +25,8 @@ module distribution::free_managed_reward {
     public struct FreeManagedReward has store, key {
         id: UID,
         reward: distribution::reward::Reward,
+        // bag to be preapred for future updates
+        bag: sui::bag::Bag,
     }
 
     /// Creates a new FreeManagedReward instance.
@@ -55,6 +57,7 @@ module distribution::free_managed_reward {
                 false,
                 ctx
             ),
+            bag: sui::bag::new(ctx),
         }
     }
 

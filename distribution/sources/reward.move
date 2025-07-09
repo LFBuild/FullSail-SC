@@ -63,6 +63,8 @@ module distribution::reward {
         balance_update_enabled: bool,
         /// true if balance update for epoch is done.
         epoch_updates_finalized: sui::table::Table<u64, bool>,
+        // bag to be preapred for future updates
+        bag: sui::bag::Bag,
     }
 
     /// Returns the balance of a specific coin type in the reward contract.
@@ -178,6 +180,8 @@ module distribution::reward {
             balances: sui::bag::new(ctx),
             balance_update_enabled,
             epoch_updates_finalized: sui::table::new<u64, bool>(ctx),
+            // bag to be preapred for future updates
+            bag: sui::bag::new(ctx),
         };
         let mut i = 0;
         while (i < reward_coin_types.length()) {

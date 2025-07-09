@@ -195,6 +195,8 @@ module distribution::gauge {
         // growth_global_by_token.borrow(current_epoch_token) is always zero. This element is used to know order of tokens
         growth_global_by_token: LinkedTable<TypeName, u128>,
         rewards: Table<ID, RewardProfile>,
+        // bag to be preapred for future updates
+        bag: sui::bag::Bag,
     }
 
     /// Returns the pool ID associated with the gauge.
@@ -309,6 +311,7 @@ module distribution::gauge {
             last_distribution_reserve: 0,
             growth_global_by_token: linked_table::new<TypeName, u128>(ctx),
             rewards: table::new<ID, RewardProfile>(ctx),
+            bag: sui::bag::new(ctx),
         }
     }
 
