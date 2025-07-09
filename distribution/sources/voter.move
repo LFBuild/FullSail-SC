@@ -638,38 +638,6 @@ module distribution::voter {
         };
     }
 
-    /// Deprecated for the same reason as claim_voting_fee_reward.
-    public fun claim_voting_bribe<SailCoinType, BribeCoinType>(
-        voter: &mut Voter,
-        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
-        lock: &distribution::voting_escrow::Lock,
-        clock: &sui::clock::Clock,
-        ctx: &mut TxContext
-    ) {
-        let voted_pools = voter.pool_vote.borrow(
-            into_lock_id(object::id<distribution::voting_escrow::Lock>(lock))
-        );
-        let mut i = 0;
-        while (i < voted_pools.length()) {
-            let pool_id = *voted_pools.borrow(i);
-            let gauge_id = *voter.pool_to_gauger.borrow(pool_id);
-            i = i + 1;
-            let claim_bribe_reward_event = EventClaimBribeReward {
-                who: tx_context::sender(ctx),
-                amount: voter.gauge_to_bribe.borrow_mut(gauge_id).get_reward<SailCoinType, BribeCoinType>(
-                    voting_escrow,
-                    lock,
-                    clock,
-                    ctx
-                ),
-                pool: pool_id.id,
-                gauge: gauge_id.id,
-                token: type_name::get<BribeCoinType>(),
-            };
-            sui::event::emit<EventClaimBribeReward>(claim_bribe_reward_event);
-        };
-    }
-
 
     /// Claims bribe rewards for a single pool.
     ///
@@ -706,40 +674,6 @@ module distribution::voter {
             token: type_name::get<BribeCoinType>(),
         };
         sui::event::emit<EventClaimBribeReward>(claim_bribe_reward_event);
-    }
-
-    /// Deprecated. The problem is that voted pools are not all pools that user
-    /// wants to claim reward for. And also iteration over pools is useless as FeeCoinType
-    /// is often unique per pool.
-    public fun claim_voting_fee_reward<SailCoinType, FeeCoinType>(
-        voter: &mut Voter,
-        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
-        lock: &distribution::voting_escrow::Lock,
-        clock: &sui::clock::Clock,
-        ctx: &mut TxContext
-    ) {
-        let voted_pools = voter.pool_vote.borrow(
-            into_lock_id(object::id<distribution::voting_escrow::Lock>(lock))
-        );
-        let mut i = 0;
-        while (i < voted_pools.length()) {
-            let pool_id = *voted_pools.borrow(i);
-            let gauge_id = *voter.pool_to_gauger.borrow(pool_id);
-            i = i + 1;
-            let claim_voting_fee_reward_event = EventClaimVotingFeeReward {
-                who: tx_context::sender(ctx),
-                amount: voter.gauge_to_fee.borrow_mut(gauge_id).get_reward<SailCoinType, FeeCoinType>(
-                    voting_escrow,
-                    lock,
-                    clock,
-                    ctx
-                ),
-                pool: pool_id.id,
-                gauge: gauge_id.id,
-                token: type_name::get<FeeCoinType>(),
-            };
-            sui::event::emit<EventClaimVotingFeeReward>(claim_voting_fee_reward_event);
-        };
     }
 
     /// Claims fee rewards for a single pool.
