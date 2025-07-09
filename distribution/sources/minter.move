@@ -304,6 +304,8 @@ module distribution::minter {
         // Epoch start seconds -> sum of oSAIL emissions for all gauges
         total_epoch_o_sail_emissions: Table<u64, u64>,
         distribution_config: ID,
+        // bag to be preapred for future updates
+        bag: sui::bag::Bag,
     }
 
     /// Returns the total supply only of SailCoin managed by this minter.
@@ -608,6 +610,7 @@ module distribution::minter {
             total_epoch_emissions_usd: table::new<u64, u64>(ctx),
             total_epoch_o_sail_emissions: table::new<u64, u64>(ctx),
             distribution_config,
+            bag: sui::bag::new(ctx),
         };
         let admin_cap = AdminCap { id: object::new(ctx) };
         (minter, admin_cap)

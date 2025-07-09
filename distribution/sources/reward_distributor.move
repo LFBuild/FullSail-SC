@@ -41,6 +41,8 @@ module distribution::reward_distributor {
         balance: sui::balance::Balance<SailCoinType>,
         /// The period until which reward minting is active
         minter_active_period: u64,
+        // bag to be preapred for future updates
+        bag: sui::bag::Bag,
     }
 
     /// Returns the current balance of reward tokens in the distributor.
@@ -79,6 +81,8 @@ module distribution::reward_distributor {
             token_last_balance: 0,
             balance: sui::balance::zero<SailCoinType>(),
             minter_active_period: 0,
+            // bag to be preapred for future updates
+            bag: sui::bag::new(ctx),
         };
         let id = *object::uid_as_inner(&reward_distributor.id);
         (reward_distributor, distribution::reward_distributor_cap::create(id, ctx))

@@ -26,6 +26,7 @@ module distribution::reward {
         recipient: address,
         token_name: std::type_name::TypeName,
         reward_amount: u64,
+        lock_id: ID,
     }
 
     public struct EventNotifyReward has copy, drop, store {
@@ -62,6 +63,8 @@ module distribution::reward {
         balance_update_enabled: bool,
         /// true if balance update for epoch is done.
         epoch_updates_finalized: sui::table::Table<u64, bool>,
+        // bag to be preapred for future updates
+        bag: sui::bag::Bag,
     }
 
     /// Returns the balance of a specific coin type in the reward contract.
@@ -177,6 +180,8 @@ module distribution::reward {
             balances: sui::bag::new(ctx),
             balance_update_enabled,
             epoch_updates_finalized: sui::table::new<u64, bool>(ctx),
+            // bag to be preapred for future updates
+            bag: sui::bag::new(ctx),
         };
         let mut i = 0;
         while (i < reward_coin_types.length()) {
@@ -301,15 +306,15 @@ module distribution::reward {
     /// * `clock` - Clock object for timestamp
     /// 
     /// # Returns
-    /// The amount of coins earned as rewards
-    public(package) fun earned<CoinType>(reward: &Reward, lock_id: ID, clock: &sui::clock::Clock): u64 {
+    /// The amount of coins earned as rewards, first epoch that has not been earned yet.
+    public(package) fun earned_internal<CoinType>(reward: &Reward, lock_id: ID, clock: &sui::clock::Clock): (u64, u64) {
         let zero_checkpoints = if (!reward.num_checkpoints.contains(lock_id)) {
             true
         } else {
             *reward.num_checkpoints.borrow(lock_id) == 0
         };
         if (zero_checkpoints) {
-            return 0
+            return (0, 0)
         };
         let coin_type_name = std::type_name::get<CoinType>();
         let mut earned_amount = 0;
@@ -325,12 +330,10 @@ module distribution::reward {
         let prior_checkpoint = reward.checkpoints.borrow(lock_id).borrow(
             reward.get_prior_balance_index(lock_id, last_earn_epoch_time)
         );
-        let latest_epoch_time = if (last_earn_epoch_time >= distribution::common::epoch_start(
-            prior_checkpoint.epoch_start
-        )) {
+        let latest_epoch_time = if (last_earn_epoch_time >= prior_checkpoint.epoch_start) {
             last_earn_epoch_time
         } else {
-            distribution::common::epoch_start(prior_checkpoint.epoch_start)
+            prior_checkpoint.epoch_start
         };
         let mut next_epoch_time = latest_epoch_time;
         let epochs_until_now = (distribution::common::epoch_start(
@@ -380,8 +383,15 @@ module distribution::reward {
                 i = i + 1;
             };
         };
+        (earned_amount, next_epoch_time)
+    }
+
+    public(package) fun earned<CoinType>(reward: &Reward, lock_id: ID, clock: &sui::clock::Clock): u64 {
+        let (earned_amount, _) = reward.earned_internal<CoinType>(lock_id, clock);
+
         earned_amount
     }
+
 
     /// Returns the index of the latest checkpoint that has timestamp lower or equal to the specified time.
     /// Uses binary search to efficiently find the appropriate checkpoint.
@@ -481,7 +491,7 @@ module distribution::reward {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): Option<sui::balance::Balance<CoinType>> {
-        let reward_amount = reward.earned<CoinType>(lock_id, clock);
+        let (reward_amount, first_non_earned_epoch) = reward.earned_internal<CoinType>(lock_id, clock);
         let coin_type_name = std::type_name::get<CoinType>();
         if (!reward.last_earn.contains(coin_type_name)) {
             reward.last_earn.add(coin_type_name, sui::table::new<ID, u64>(ctx));
@@ -490,11 +500,12 @@ module distribution::reward {
         if (last_earned_times.contains(lock_id)) {
             last_earned_times.remove(lock_id);
         };
-        last_earned_times.add(lock_id, distribution::common::current_timestamp(clock));
+        last_earned_times.add(lock_id, first_non_earned_epoch);
         let claim_rewards_event = EventClaimRewards {
             recipient,
             token_name: coin_type_name,
             reward_amount,
+            lock_id,
         };
         sui::event::emit<EventClaimRewards>(claim_rewards_event);
         if (reward_amount > 0) {

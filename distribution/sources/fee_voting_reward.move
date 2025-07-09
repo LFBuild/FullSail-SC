@@ -22,6 +22,8 @@ module distribution::fee_voting_reward {
         id: UID,
         gauge: ID,
         reward: distribution::reward::Reward,
+        // bag to be preapred for future updates
+        bag: sui::bag::Bag,
     }
 
     /// Returns the balance of a specific fee coin type in the reward
@@ -64,6 +66,7 @@ module distribution::fee_voting_reward {
                 true,
                 ctx
             ),
+            bag: sui::bag::new(ctx),
         }
     }
 

@@ -146,6 +146,8 @@ module distribution::voter {
         gauge_to_bribe: Table<GaugeID, distribution::bribe_voting_reward::BribeVotingReward>,
         exercise_fee_reward: distribution::exercise_fee_reward::ExerciseFeeReward,
         exercise_fee_authorized_cap: distribution::reward_authorized_cap::RewardAuthorizedCap,
+        // bag to be preapred for future updates
+        bag: sui::bag::Bag,
     }
 
     public struct EventNotifyEpochToken has copy, drop, store {
@@ -293,6 +295,8 @@ module distribution::voter {
             gauge_to_bribe: table::new<GaugeID, distribution::bribe_voting_reward::BribeVotingReward>(ctx),
             exercise_fee_reward: distribution::exercise_fee_reward::create(id, vector[], ctx),
             exercise_fee_authorized_cap: distribution::reward_authorized_cap::create(id, ctx),
+            // bag to be preapred for future updates
+            bag: sui::bag::new(ctx),
         };
         let distribute_cap = distribution::distribute_cap::create_internal(id, ctx);
         (voter, distribute_cap)
@@ -638,90 +642,107 @@ module distribution::voter {
         };
     }
 
-    /// Claims bribe rewards across all pools that a lock has voted for.
-    /// Bribes are incentives provided by external parties to encourage voting for specific pools.
+
+    /// Claims bribe rewards for a single pool.
     ///
     /// # Arguments
     /// * `voter` - The voter contract reference
     /// * `voting_escrow` - The voting escrow reference
-    /// * `lock` - The lock for which to claim bribes
+    /// * `lock` - The lock for which to claim bribe
+    /// * `pool_id` - The pool which user voted for and which bribes to claim
     /// * `clock` - The system clock for time-based calculations
     /// * `ctx` - The transaction context
     ///
     /// # Emits
     /// * `EventClaimBribeReward` for each pool with claimed rewards
-    public fun claim_voting_bribe<SailCoinType, BribeCoinType>(
+    public fun claim_voting_bribe_by_pool<SailCoinType, BribeCoinType>(
         voter: &mut Voter,
         voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
         lock: &distribution::voting_escrow::Lock,
+        pool_id: ID,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        let voted_pools = voter.pool_vote.borrow(
-            into_lock_id(object::id<distribution::voting_escrow::Lock>(lock))
-        );
-        let mut i = 0;
-        while (i < voted_pools.length()) {
-            let pool_id = *voted_pools.borrow(i);
-            let gauge_id = *voter.pool_to_gauger.borrow(pool_id);
-            i = i + 1;
-            let claim_bribe_reward_event = EventClaimBribeReward {
-                who: tx_context::sender(ctx),
-                amount: voter.gauge_to_bribe.borrow_mut(gauge_id).get_reward<SailCoinType, BribeCoinType>(
-                    voting_escrow,
-                    lock,
-                    clock,
-                    ctx
-                ),
-                pool: pool_id.id,
-                gauge: gauge_id.id,
-                token: type_name::get<BribeCoinType>(),
-            };
-            sui::event::emit<EventClaimBribeReward>(claim_bribe_reward_event);
+        let pool_id_obj = into_pool_id(pool_id);
+        let gauge_id = *voter.pool_to_gauger.borrow(pool_id_obj);
+        let claim_bribe_reward_event = EventClaimBribeReward {
+            who: tx_context::sender(ctx),
+            amount: voter.gauge_to_bribe.borrow_mut(gauge_id).get_reward<SailCoinType, BribeCoinType>(
+                voting_escrow,
+                lock,
+                clock,
+                ctx
+            ),
+            pool: pool_id,
+            gauge: gauge_id.id,
+            token: type_name::get<BribeCoinType>(),
         };
+        sui::event::emit<EventClaimBribeReward>(claim_bribe_reward_event);
     }
 
-    /// Claims fee rewards across all pools that a lock has voted for.
-    /// Fees are the trading fees collected by the pools and distributed to voters.
+    /// Claims fee rewards for a single pool.
     ///
     /// # Arguments
     /// * `voter` - The voter contract reference
     /// * `voting_escrow` - The voting escrow reference
     /// * `lock` - The lock for which to claim fees
+    /// * `pool` - The pool which user voted for and which fees to claim
     /// * `clock` - The system clock for time-based calculations
     /// * `ctx` - The transaction context
     ///
     /// # Emits
     /// * `EventClaimVotingFeeReward` for each pool with claimed rewards
-    public fun claim_voting_fee_reward<SailCoinType, FeeCoinType>(
+    public fun claim_voting_fee_by_pool<CoinTypeA, CoinTypeB, SailCoinType>(
         voter: &mut Voter,
         voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
         lock: &distribution::voting_escrow::Lock,
+        pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        let voted_pools = voter.pool_vote.borrow(
-            into_lock_id(object::id<distribution::voting_escrow::Lock>(lock))
-        );
-        let mut i = 0;
-        while (i < voted_pools.length()) {
-            let pool_id = *voted_pools.borrow(i);
-            let gauge_id = *voter.pool_to_gauger.borrow(pool_id);
-            i = i + 1;
-            let claim_voting_fee_reward_event = EventClaimVotingFeeReward {
-                who: tx_context::sender(ctx),
-                amount: voter.gauge_to_fee.borrow_mut(gauge_id).get_reward<SailCoinType, FeeCoinType>(
+        let pool_id = object::id(pool);
+        claim_voting_fee<SailCoinType, CoinTypeA>(voter, voting_escrow, lock, pool_id, clock, ctx);
+        claim_voting_fee<SailCoinType, CoinTypeB>(voter, voting_escrow, lock, pool_id, clock, ctx);
+    }
+
+    /// Claims fee rewards for single pool and single fee coin type.
+    ///
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `voting_escrow` - The voting escrow reference
+    /// * `lock` - The lock for which to claim fees
+    /// * `pool_id` - The ID of the pool to claim fees for
+    /// * `clock` - The system clock for time-based calculations
+    /// * `ctx` - The transaction context
+    ///
+    /// # Emits
+    /// * `EventClaimVotingFeeReward` for each pool with claimed rewards
+    public fun claim_voting_fee<SailCoinType, FeeCoinType>(
+        voter: &mut Voter,
+        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        lock: &distribution::voting_escrow::Lock,
+        pool_id: ID,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext,
+    ) {
+        let pool_id_obj = into_pool_id(pool_id);
+        let gauge_id = *voter.pool_to_gauger.borrow(pool_id_obj);
+        let claim_voting_fee_reward_event = EventClaimVotingFeeReward {
+            who: tx_context::sender(ctx),
+            amount: voter
+                .gauge_to_fee
+                .borrow_mut(gauge_id)
+                .get_reward<SailCoinType, FeeCoinType>(
                     voting_escrow,
                     lock,
                     clock,
-                    ctx
+                    ctx,
                 ),
-                pool: pool_id.id,
-                gauge: gauge_id.id,
-                token: type_name::get<FeeCoinType>(),
-            };
-            sui::event::emit<EventClaimVotingFeeReward>(claim_voting_fee_reward_event);
+            pool: pool_id,
+            gauge: gauge_id.id,
+            token: type_name::get<FeeCoinType>(),
         };
+        sui::event::emit<EventClaimVotingFeeReward>(claim_voting_fee_reward_event);
     }
 
     public fun claim_exercise_fee_reward<SailCoinType, RewardCoinType>(

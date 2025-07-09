@@ -75,7 +75,7 @@ module distribution::voting_escrow {
         ve: ID,
     }
 
-    public struct Lock has store, key {
+    public struct Lock has key {
         id: UID,
         escrow: ID,
         amount: u64,
@@ -226,6 +226,8 @@ module distribution::voting_escrow {
         id_to_managed: sui::table::Table<ID, ID>,
         locked_managed_reward_authorized_cap: distribution::reward_authorized_cap::RewardAuthorizedCap,
         free_managed_reward_authorized_cap: distribution::reward_authorized_cap::RewardAuthorizedCap,
+        // bag to be preapred for future updates
+        bag: sui::bag::Bag,
     }
 
     public struct UserPoint has copy, drop, store {
@@ -438,6 +440,8 @@ module distribution::voting_escrow {
             id_to_managed: sui::table::new<ID, ID>(ctx),
             locked_managed_reward_authorized_cap: distribution::reward_authorized_cap::create(inner_id, ctx),
             free_managed_reward_authorized_cap: distribution::reward_authorized_cap::create(inner_id, ctx),
+            // bag to be preapred for future updates
+            bag: sui::bag::new(ctx),
         };
         let global_point = GlobalPoint {
             bias: integer_mate::i128::from(0),
@@ -1107,7 +1111,7 @@ module distribution::voting_escrow {
         sui::event::emit<EventCreateManaged>(create_managed_event);
         voting_escrow.managed_to_locked.add(lock_id, lock_managed_reward);
         voting_escrow.managed_to_free.add(lock_id, free_managed_reward);
-        transfer::public_share_object<Lock>(lock);
+        transfer::share_object<Lock>(lock);
         lock_id
     }
 

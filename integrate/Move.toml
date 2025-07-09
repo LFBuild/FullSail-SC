@@ -3,7 +3,7 @@ name = "integrate"
 edition = "2024"
 
 [addresses]
-integrate = "0x01"
+integrate = "0x0"
 
 [dev-dependencies]
 
@@ -18,13 +18,13 @@ override = true
 [dependencies.move_stl]
 git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
 subdir = "move_stl"
-rev = "dev"
+rev = "sandbox"
 override = true
 
 [dependencies.clmm_pool]
 git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
 subdir = "clmm_pool"
-rev = "dev"
+rev = "sandbox"
 override = true
 
 [dependencies.distribution]
@@ -33,19 +33,19 @@ local = "../distribution"
 [dependencies.integer_mate]
 git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
 subdir = "integer_mate"
-rev = "dev"
+rev = "sandbox"
 override = true
 
 [dependencies.gauge_cap]
 git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
 subdir = "gauge_cap"
-rev = "dev"
+rev = "sandbox"
 override = true
 
 [dependencies.price_provider]
 git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
 subdir = "price_provider"
-rev = "dev"
+rev = "sandbox"
 override = true
 
 [dependencies.liquidity_locker]
