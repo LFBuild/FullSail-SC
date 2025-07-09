@@ -75,7 +75,7 @@ module distribution::voting_escrow {
         ve: ID,
     }
 
-    public struct Lock has store, key {
+    public struct Lock has key {
         id: UID,
         escrow: ID,
         amount: u64,
@@ -1107,7 +1107,7 @@ module distribution::voting_escrow {
         sui::event::emit<EventCreateManaged>(create_managed_event);
         voting_escrow.managed_to_locked.add(lock_id, lock_managed_reward);
         voting_escrow.managed_to_free.add(lock_id, free_managed_reward);
-        transfer::public_share_object<Lock>(lock);
+        transfer::share_object<Lock>(lock);
         lock_id
     }
 
