@@ -26,6 +26,7 @@ module distribution::reward {
         recipient: address,
         token_name: std::type_name::TypeName,
         reward_amount: u64,
+        lock_id: ID,
     }
 
     public struct EventNotifyReward has copy, drop, store {
@@ -500,6 +501,7 @@ module distribution::reward {
             recipient,
             token_name: coin_type_name,
             reward_amount,
+            lock_id,
         };
         sui::event::emit<EventClaimRewards>(claim_rewards_event);
         if (reward_amount > 0) {
