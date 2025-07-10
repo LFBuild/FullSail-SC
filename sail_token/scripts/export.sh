@@ -1,0 +1,5 @@
+export ADDR=$(sui client active-address)
+
+export COIN_TYPE=0xda9585c9dd66f5048a0b0336bab8e90bb91054d100fb321cfb7151b16cf4a92::sail_token::SAIL_TOKEN
+export TREASURY_CAP=0xfe7c396249064b4ccc2ffd906b953804ad3896bd4128fe8d3646cafe4882884c
+export METADATA=0xe67dc91b74316365ac4f4c4028af1937b47aec8c7cbebacba0a21c705f8c9c47

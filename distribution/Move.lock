@@ -2,7 +2,7 @@
 
 [move]
 version = 3
-manifest_digest = "7EDCD4AFA57C4757D559CC69948F4AC070C31BA5BB5EFF985E7A188D620F1CAA"
+manifest_digest = "FDE4FAC787EB981AEFCA6BE1FA810F2226AE608D9658B1C06753A536EBDCAA91"
 deps_digest = "CAFAD8A7CF51067FB4358215BECB86BD100DD64E57C2AC8A7AE7D74B688F5965"
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -36,7 +36,7 @@ dependencies = [
 
 [[move.package]]
 id = "clmm_pool"
-source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "sandbox", subdir = "clmm_pool" }
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "dev", subdir = "clmm_pool" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -48,7 +48,7 @@ dependencies = [
 
 [[move.package]]
 id = "gauge_cap"
-source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "sandbox", subdir = "gauge_cap" }
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "dev", subdir = "gauge_cap" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -56,7 +56,7 @@ dependencies = [
 
 [[move.package]]
 id = "integer_mate"
-source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "sandbox", subdir = "integer_mate" }
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "dev", subdir = "integer_mate" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -72,7 +72,7 @@ dependencies = [
 
 [[move.package]]
 id = "move_stl"
-source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "sandbox", subdir = "move_stl" }
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "dev", subdir = "move_stl" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -80,14 +80,14 @@ dependencies = [
 
 [[move.package]]
 id = "price_provider"
-source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "sandbox", subdir = "price_provider" }
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "dev", subdir = "price_provider" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
 ]
 
 [move.toolchain-version]
-compiler-version = "1.49.1"
+compiler-version = "1.51.2"
 edition = "2024"
 flavor = "sui"
 
@@ -95,6 +95,6 @@ flavor = "sui"
 
 [env.mainnet]
 chain-id = "35834a8a"
-original-published-id = "0x9af1bff168d5155c2628a29ea17e7012353d94bf7173900461143d096079d96e"
-latest-published-id = "0x9af1bff168d5155c2628a29ea17e7012353d94bf7173900461143d096079d96e"
+original-published-id = "0xe81ff9e7a528b87f0855861232035a41a6b043e78a0a1ebb7b98db60083a3aed"
+latest-published-id = "0xe81ff9e7a528b87f0855861232035a41a6b043e78a0a1ebb7b98db60083a3aed"
 published-version = "1"

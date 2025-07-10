@@ -53,11 +53,13 @@ Use `sui client publish` command.
 
 #### Publication transactions
 
-- [locker_cap](https://suivision.xyz/txblock/66mFm2xq184KGBUSRJMLfBn6nPs8HKgeLhDbv8GchzBE)
-- [distribution](https://suivision.xyz/txblock/Dj5Lsx3Mj2GeFUnUaejBYmUpzDWuaLVAf3vKLDy4j2Ty)
-- [liquidity_locker](https://suivision.xyz/txblock/FEMGnXMw4so8TMDE3oYHfSv3A3gcSVeumP3RVPku943)
-- [integrate](https://suivision.xyz/txblock/HaWZSzJGFNk5nUJbfUFv3JdW3i4KZEajYkZZNrUVUiRh)
+- [locker_cap](https://suivision.xyz/txblock/ATcfkAx4mwjCqio1Zze3TTdd7we5RfSVoMqcSwpCmmRv)
+- [distribution](https://suivision.xyz/txblock/8618pqXNLpqAv57TfbUhb9X55E3SCTXdLBvF5FEu2j5T)
+- [liquidity_locker v1](https://suivision.xyz/txblock/CuqL6K4cotFx3TD4pnM1fK5iLQQwPgiPDGncokMjbLhJ)
+- [integrate](https://suivision.xyz/txblock/EYRyjZnbgw45KP6YJXSABT8s3HEVSqMhxjQ21rhBhHJx)
 
-- [locker init tx](https://suivision.xyz/txblock/5zXvzCQgSqL8jyms6oB3ijhCWJpfa5JBGevtYfLNKiz8)
-- [setup distribtuion tx](https://suivision.xyz/txblock/BR889z7WhfG1onA9tp74FQinHggW7m8Dfgx8DprKZWTt)
+- [o sail deploy](https://suivision.xyz/txblock/E5WBdzN9ogWpThLjZkckfy7BhgirnobmaBEcL6qEqo9h)
+
+- [locker init tx](https://suivision.xyz/txblock/327ZPNpNH8ujMZ47cFf2QMoVknfRgsx9PEbKXNK9bVrp)
+- [setup distribtuion tx](https://suivision.xyz/txblock/Cqq5ZZNzZFibkCYLHqqEVg1GW6ALKYmXAnz42QTKpkKN)
 - [activate minter tx](https://suivision.xyz/txblock/Ak9pU4KtbKWCavxN3C3GtUAKoJV9qbiPaHxkhMfCnhTA)
