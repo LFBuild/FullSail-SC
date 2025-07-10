@@ -62,9 +62,12 @@ def generate_distribution_script(excel_file, output_script, token_type, method, 
                 amount_adjusted = int(float(amount) * (10**decimals))
 
                 coin_var = f"coin{index}"
-                ptb_command += f" \\\n--move-call $METHOD \"<$TOKEN_TYPE>\" @$MINTER @$PUBLISHER {amount_adjusted} @$CLOCK"
-                ptb_command += f" \\\n--assign {coin_var}"
-                ptb_command += f" \\\n--transfer-objects '[{coin_var}]' @{address}"
+                if float(amount) > 0:
+                    ptb_command += f" \\\n--move-call $METHOD \"<$TOKEN_TYPE>\" @$MINTER @$PUBLISHER {amount_adjusted} @$CLOCK"
+                    ptb_command += f" \\\n--assign {coin_var}"
+                    ptb_command += f" \\\n--transfer-objects '[{coin_var}]' @{address}"
+                else:
+                    print(f"Skipping {address} because amount is 0")
 
             f.write(ptb_command + "\n")
 
