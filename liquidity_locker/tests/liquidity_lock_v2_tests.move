@@ -2127,13 +2127,13 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // CHECK SAIL LOCKED IN VOTING_ESCROW
         scenario.next_tx(admin);
         {
-            let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
+            let mut ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             // reward from the second epoch was in SAIL
             // which was automatically locked in VOTING_ESCROW
             let lock = scenario.take_from_sender<voting_escrow::Lock>();
             assert!(lock.get_amount() == 999999, 926223626362); // 10% of total reward for epoch 2
 
-            transfer::public_transfer(lock, admin);
+            lock.transfer(&mut ve, admin, &clock, scenario.ctx());
             test_scenario::return_shared(ve);
         };
         
@@ -3072,13 +3072,13 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // CHECK SAIL LOCKED IN VOTING_ESCROW
         scenario.next_tx(admin);
         {
-            let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
+            let mut ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             // reward from the second epoch was in SAIL
             // which was automatically locked in VOTING_ESCROW
             let lock = scenario.take_from_sender<voting_escrow::Lock>();
             assert!(lock.get_amount() == 999999, 926223626362); // 10% of total reward for epoch 2
 
-            transfer::public_transfer(lock, admin);
+            lock.transfer(&mut ve, admin, &clock, scenario.ctx());
             test_scenario::return_shared(ve);
         };
         
@@ -3717,7 +3717,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // CHECK SAIL LOCKED IN VOTING_ESCROW
         scenario.next_tx(admin);
         {
-            let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
+            let     mut ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             // reward from the second epoch was in SAIL
             // which was automatically locked in VOTING_ESCROW
             let lock2 = scenario.take_from_sender<voting_escrow::Lock>();
@@ -3727,8 +3727,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
             assert!(lock2.get_amount() == 399999, 926223626354);
             assert!(lock1.get_amount() + lock2.get_amount() == 999998, 926223626362); // 10% of total reward for epoch 2
 
-            transfer::public_transfer(lock1, admin);
-            transfer::public_transfer(lock2, admin);
+            lock1.transfer(&mut ve, admin, &clock, scenario.ctx());
+            lock2.transfer(&mut ve, admin, &clock, scenario.ctx());
             test_scenario::return_shared(ve);
         };
         
@@ -4771,7 +4771,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
         scenario.next_tx(admin);
         {
-            let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
+            let mut ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let position = scenario.take_from_sender<position::Position>();
             assert!(position.liquidity() == 0, 9234887456443);
 
@@ -4784,7 +4784,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let voting_power = ve.get_voting_power(&lock, &clock);
             assert!(voting_power == 6804900, 9745754745543);
 
-            transfer::public_transfer(lock, admin);
+            lock.transfer(&mut ve, admin, &clock, scenario.ctx());
             test_scenario::return_shared(ve);
         };
 
@@ -10236,13 +10236,13 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // CHECK SAIL LOCKED IN VOTING_ESCROW
         scenario.next_tx(admin);
         {
-            let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
+            let mut ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             // reward from the second epoch was in SAIL
             // which was automatically locked in VOTING_ESCROW
             let lock = scenario.take_from_sender<voting_escrow::Lock>();
             assert!(lock.get_amount() == 999999, 9262236263635); // 10% of total reward for epoch 2
 
-            transfer::public_transfer(lock, admin);
+            lock.transfer(&mut ve, admin, &clock, scenario.ctx());
             test_scenario::return_shared(ve);
         };
 
@@ -12972,7 +12972,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // CHECK SAIL LOCKED IN VOTING_ESCROW
         scenario.next_tx(admin);
         {
-            let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
+            let mut ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             // reward from the second epoch was in SAIL
             // which was automatically locked in VOTING_ESCROW
             let lock4 = scenario.take_from_sender<voting_escrow::Lock>();
@@ -12982,10 +12982,10 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             assert!(lock1.get_amount() + lock2.get_amount() + lock3.get_amount() + lock4.get_amount() == 999996, 9262236263635); // 10% of total reward for epoch 2
 
-            transfer::public_transfer(lock1, admin);
-            transfer::public_transfer(lock2, admin);
-            transfer::public_transfer(lock3, admin);
-            transfer::public_transfer(lock4, admin);
+            lock1.transfer(&mut ve, admin, &clock, scenario.ctx());
+            lock2.transfer(&mut ve, admin, &clock, scenario.ctx());
+            lock3.transfer(&mut ve, admin, &clock, scenario.ctx());
+            lock4.transfer(&mut ve, admin, &clock, scenario.ctx());
             test_scenario::return_shared(ve);
         };
 
@@ -13500,7 +13500,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // CHECK SAIL LOCKED IN VOTING_ESCROW
         scenario.next_tx(admin);
         {
-            let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
+            let mut ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             // reward from the second epoch was in SAIL
             // which was automatically locked in VOTING_ESCROW
             let lock2 = scenario.take_from_sender<voting_escrow::Lock>();
@@ -13510,8 +13510,8 @@ module liquidity_locker::liquidity_lock_v2_tests {
             assert!(lock1.get_amount() == 646826, 4631118131817); // ~ 2/3% because the liquidity range is narrow, so profitability is higher
             assert!(lock2.get_amount() == 353173, 4631118131818); // ~ 1/3%
 
-            transfer::public_transfer(lock1, admin);
-            transfer::public_transfer(lock2, admin);
+            lock1.transfer(&mut ve, admin, &clock, scenario.ctx());
+            lock2.transfer(&mut ve, admin, &clock, scenario.ctx());
             test_scenario::return_shared(ve);
         };
 
