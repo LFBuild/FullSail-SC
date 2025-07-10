@@ -217,6 +217,7 @@ module distribution::voter {
         pool: ID,
         gauge: ID,
         token: TypeName,
+        lock: ID,
     }
 
     /// Event emitted when a voting fee reward is claimed
@@ -226,6 +227,7 @@ module distribution::voter {
         pool: ID,
         gauge: ID,
         token: TypeName,
+        lock: ID,
     }
 
     /// Event emitted when an exercise oSAIL fee reward is claimed
@@ -233,6 +235,7 @@ module distribution::voter {
         who: address,
         amount: u64,
         token: TypeName,
+        lock: ID,
     }
 
     /// Event emitted when rewards are distributed to a gauge
@@ -676,6 +679,7 @@ module distribution::voter {
             pool: pool_id,
             gauge: gauge_id.id,
             token: type_name::get<BribeCoinType>(),
+            lock: into_lock_id(object::id(lock)).id,
         };
         sui::event::emit<EventClaimBribeReward>(claim_bribe_reward_event);
     }
@@ -741,6 +745,7 @@ module distribution::voter {
             pool: pool_id,
             gauge: gauge_id.id,
             token: type_name::get<FeeCoinType>(),
+            lock: into_lock_id(object::id(lock)).id,
         };
         sui::event::emit<EventClaimVotingFeeReward>(claim_voting_fee_reward_event);
     }
@@ -762,6 +767,7 @@ module distribution::voter {
             who: ctx.sender(),
             amount,
             token: type_name::get<RewardCoinType>(),
+            lock: into_lock_id(object::id(lock)).id,
         };
         sui::event::emit<EventClaimExerciseFeeReward>(claim_exercise_fee_reward_event);
     }
