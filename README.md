@@ -60,6 +60,6 @@ Use `sui client publish` command.
 
 - [o sail deploy](https://suivision.xyz/txblock/E5WBdzN9ogWpThLjZkckfy7BhgirnobmaBEcL6qEqo9h)
 
-- [locker init tx](https://suivision.xyz/txblock/327ZPNpNH8ujMZ47cFf2QMoVknfRgsx9PEbKXNK9bVrp)
-- [setup distribtuion tx](https://suivision.xyz/txblock/Cqq5ZZNzZFibkCYLHqqEVg1GW6ALKYmXAnz42QTKpkKN)
-- [activate minter tx](https://suivision.xyz/txblock/Ak9pU4KtbKWCavxN3C3GtUAKoJV9qbiPaHxkhMfCnhTA)
+- [locker init tx](https://suivision.xyz/txblock/8MoCvWRhPQKGVE1nUVGSqkZPcAT4tbes3hoYmVwuJhpT)
+- [setup distribtuion tx](https://suivision.xyz/txblock/9CnQMkTQAJ33abKwLjScApBiwxPc3TG9W8oDQBo4X44G)
+- [activate minter tx](https://suivision.xyz/txblock/GHNjuit1CaTUeDyEjHvmeB7z6byV3mq3DK55sXKs3SHc)
