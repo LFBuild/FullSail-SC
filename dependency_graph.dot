@@ -41,5 +41,5 @@ digraph Dependencies {
     "clmm_pool"    -> "gauge_cap";
     "distribution" -> "gauge_cap";
     "integrate"    -> "gauge_cap";
-    "distribtuion" -> "locker_cap"
+    "distribution" -> "locker_cap"
 }
