@@ -116,6 +116,8 @@ module distribution::gauge {
     public struct EventNotifyEpochToken has copy, drop, store {
         sender: ID,
         token: TypeName,
+        prev_token: TypeName,
+        growth_global_by_token: u128,
     }
 
     public struct EventNotifyReward has copy, drop, store {
@@ -1129,21 +1131,26 @@ module distribution::gauge {
         gauge.o_sail_emission_by_epoch.add(last_notified_period, ended_epoch_o_sail_emission);
 
         let coin_type = type_name::get<NextRewardCoinType>();
+        let mut event = EventNotifyEpochToken {
+            sender: object::id_from_address(tx_context::sender(ctx)),
+            token: coin_type,
+            prev_token: coin_type,
+            growth_global_by_token: 0,
+        };
         if (gauge.current_epoch_token.is_some()) {
             let prev_epoch_token = gauge.current_epoch_token.extract();
             gauge.growth_global_by_token.remove(prev_epoch_token); // remove zero from the end
 
             // last growth_global that corresponds to the **previous** token.
-            gauge.growth_global_by_token.push_back(prev_epoch_token, pool.get_fullsail_distribution_growth_global());
+            let growth_global = pool.get_fullsail_distribution_growth_global();
+            gauge.growth_global_by_token.push_back(prev_epoch_token, growth_global);
+            event.prev_token = prev_epoch_token;
+            event.growth_global_by_token = growth_global;
         };
         // Update TokenName state
         gauge.current_epoch_token.fill(coin_type);
         gauge.growth_global_by_token.push_back(coin_type, 0); // add zero to the end
 
-        let event = EventNotifyEpochToken {
-            sender: object::id_from_address(tx_context::sender(ctx)),
-            token: coin_type,
-        };
         gauge.epoch_token_last_notified = current_time;
 
         sui::event::emit<EventNotifyEpochToken>(event);
