@@ -165,6 +165,14 @@ module distribution::gauge {
         voter_id: ID,
     }
 
+    public struct EventUpdateRewardPosition has copy, drop, store {
+        gauger_id: ID,
+        pool_id: ID,
+        position_id: ID,
+        growth_inside: u128,
+        amount: u64,
+    }
+
     public struct Locked has copy, drop, store {}
 
     public struct Gauge<phantom CoinTypeA, phantom CoinTypeB> has store, key {
@@ -1518,7 +1526,7 @@ module distribution::gauge {
     ): u64 {
         let coin_type = type_name::get<RewardCoinType>();
         assert!(gauge.prev_reward_claimed<CoinTypeA, CoinTypeB>(pool, coin_type, position_id), EGetRewardPrevTokenNotClaimed);
-        
+        let gauge_id = object::id<Gauge<CoinTypeA, CoinTypeB>>(gauge);
         let current_time = clock.timestamp_ms() / 1000;
         let (amount_earned, growth_inside) = gauge.earned_internal<CoinTypeA, CoinTypeB>(pool, position_id, coin_type, current_time);
         
@@ -1531,6 +1539,15 @@ module distribution::gauge {
 
         let amount_to_pay = reward_profile.amount;
         reward_profile.growth_inside = growth_inside;
+        let update_reward_event = EventUpdateRewardPosition {
+            gauger_id: gauge_id,
+            pool_id: object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool),
+            position_id,
+            growth_inside: reward_profile.growth_inside,
+            amount: reward_profile.amount,
+        };
+        sui::event::emit<EventUpdateRewardPosition>(update_reward_event);
+
         reward_profile.amount = 0;
 
         amount_to_pay
