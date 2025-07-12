@@ -312,3 +312,101 @@ fun test_cannot_unlock_perpetual_lock() {
     clock::destroy_for_testing(clock);
     scenario.end();
 }
+
+#[test]
+fun test_perpetual_lock_for_power_does_not_decay() {
+    let mut scenario = test_scenario::begin(ADMIN);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    let recipient = @0x1337;
+    let five_years_in_ms: u64 = 5 * ONE_YEAR_MS;
+    let amount_to_lock = 1_000_000_000;
+
+    // 1. Setup
+    {
+        config::test_init(scenario.ctx());
+        setup::setup_distribution<SAIL>(&mut scenario, ADMIN, &clock);
+    };
+
+    // 2. Create a perpetual lock for another user
+    scenario.next_tx(ADMIN); // Admin creates the lock
+    {
+        setup::mint_and_create_perpetual_lock_for<SAIL>(
+            &mut scenario,
+            recipient,
+            amount_to_lock,
+            &clock
+        );
+    };
+
+    // 3. Check voting power after 5 years
+    scenario.next_tx(recipient); // Recipient checks their lock
+    {
+        let ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let lock = scenario.take_from_sender<Lock>();
+        let lock_id = object::id(&lock);
+        
+        let voting_power_initial = voting_escrow::balance_of_nft_at(&ve, lock_id, clock.timestamp_ms());
+        assert!(voting_power_initial == amount_to_lock, 1);
+
+        clock.increment_for_testing(five_years_in_ms);
+
+        let voting_power_after_5_years = voting_escrow::balance_of_nft_at(&ve, lock_id, clock.timestamp_ms());
+        assert!(voting_power_after_5_years == amount_to_lock, 2);
+
+        scenario.return_to_sender(lock);
+        test_scenario::return_shared(ve);
+    };
+    
+    // Cleanup
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+#[expected_failure(abort_code = voting_escrow::ELockPermanentAlreadyPermanent)]
+fun test_cannot_toggle_permanent_on_perpetual_lock() {
+    let mut scenario = test_scenario::begin(ADMIN);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    let amount_to_lock = 1_000_000_000;
+
+    // 1. Setup
+    {
+        config::test_init(scenario.ctx());
+        setup::setup_distribution<SAIL>(&mut scenario, ADMIN, &clock);
+    };
+
+    // 2. Create a perpetual lock
+    scenario.next_tx(USER);
+    {
+        setup::mint_and_create_perpetual_lock<SAIL>(
+            &mut scenario,
+            USER,
+            amount_to_lock,
+            &clock
+        );
+    };
+
+    // 3. Try to toggle permanent on - this must fail
+    scenario.next_tx(USER);
+    {
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let mut lock = scenario.take_from_sender<Lock>();
+
+        voting_escrow::lock_permanent<SAIL>(
+            &mut ve,
+            &mut lock,
+            &clock,
+            scenario.ctx()
+        );
+
+        // This code is unreachable
+        scenario.return_to_sender(lock);
+        test_scenario::return_shared(ve);
+    };
+    
+    // Cleanup
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
