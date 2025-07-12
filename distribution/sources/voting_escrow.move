@@ -52,6 +52,7 @@ module distribution::voting_escrow {
     const EMergeSamePosition: u64 = 922337608701247493;
     const EMergeSourcePermanent: u64 = 922337611707593526;
     const ESetManagedLockNotManagedType: u64 = 922337850078330884;
+    const EGrantTeamCapInvalidPublisher: u64 = 823241689916894800;
     const ESetManagedLockAlreadySet: u64 = 922337850507893150;
     const EUnlockPermanentNotNormalEscrow: u64 = 922337666683109378;
     const EUnlockPermanentPositionVoted: u64 = 922337667112619215;
@@ -2258,6 +2259,15 @@ module distribution::voting_escrow {
         };
         point_history.add(epoch, point);
     }
+
+
+    public fun create_team_cap<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>, publisher: &sui::package::Publisher, ctx: &mut TxContext): distribution::team_cap::TeamCap {
+        assert!(publisher.from_module<VOTING_ESCROW>(), EGrantTeamCapInvalidPublisher);
+        let team_cap = distribution::team_cap::create(object::id(voting_escrow), ctx);
+
+        team_cap
+    }
+
 
     /// Enables or disables the ability for an address to split locks.
     /// Split permission control is a governance feature that allows the team to regulate
