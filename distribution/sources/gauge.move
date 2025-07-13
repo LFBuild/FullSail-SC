@@ -115,6 +115,8 @@ module distribution::gauge {
 
     public struct EventNotifyEpochToken has copy, drop, store {
         sender: ID,
+        gauge_id: ID,
+        pool_id: ID,
         token: TypeName,
         prev_token: TypeName,
         growth_global_by_token: u128,
@@ -1133,6 +1135,8 @@ module distribution::gauge {
         let coin_type = type_name::get<NextRewardCoinType>();
         let mut event = EventNotifyEpochToken {
             sender: object::id_from_address(tx_context::sender(ctx)),
+            gauge_id: object::id<Gauge<CoinTypeA, CoinTypeB>>(gauge),
+            pool_id: object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool),
             token: coin_type,
             prev_token: coin_type,
             growth_global_by_token: 0,
