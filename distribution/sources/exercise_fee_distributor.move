@@ -88,3 +88,10 @@ public fun tokens_per_period<RewardCoinType>(
 ): u64 {
     reward_distributor::tokens_per_period(&self.reward_distributor, period_start_time)
 }
+
+#[test_only]
+public fun test_borrow_reward_distributor<RewardCoinType>(
+    self: &ExerciseFeeDistributor<RewardCoinType>,
+): &RewardDistributor<RewardCoinType> {
+    &self.reward_distributor
+}

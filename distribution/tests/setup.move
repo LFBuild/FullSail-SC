@@ -368,11 +368,22 @@ public fun activate_minter<SailCoinType, OSailCoinType>( // Changed to public
 public fun whitelist_usd<SailCoinType, UsdCoinType>(
     scenario: &mut test_scenario::Scenario,
     list: bool, 
+    clock: &Clock,
 ) {
     let mut minter = scenario.take_shared<Minter<SailCoinType>>();
     let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
     
     minter::whitelist_usd_test<SailCoinType, UsdCoinType>(&mut minter, &minter_admin_cap, list);
+
+    if (list) {
+        let exercise_fee_distributor = minter::create_exercise_fee_distributor<SailCoinType, UsdCoinType>(
+            &mut minter,
+            &minter_admin_cap,
+            clock,
+            scenario.ctx()
+        );
+        transfer::public_share_object(exercise_fee_distributor);
+    };
 
     test_scenario::return_shared(minter);
     scenario.return_to_sender(minter_admin_cap);

@@ -5,6 +5,7 @@ module distribution::reward_distributor {
     use sui::coin::{Self, Coin};
     use sui::table::{Self, Table};
     use sui::balance::{Self, Balance};
+    use sui::bag;
 
     /// Witness used for one-time witness pattern
     public struct REWARD_DISTRIBUTOR has drop {}
@@ -134,7 +135,10 @@ module distribution::reward_distributor {
                 reward_distributor.tokens_per_period.add(
                     last_token_period,
                     last_period_tokens + integer_mate::full_math_u64::mul_div_floor(
-                        balance_delta, time - last_token_time, token_time_delta)
+                        balance_delta,
+                         time - last_token_time,
+                         token_time_delta
+                        )
                 );
                 break
             };
@@ -144,12 +148,12 @@ module distribution::reward_distributor {
                     last_period_tokens + balance_delta
                 );
             } else {
-                let v9 = next_token_period - last_token_time;
+                let time_until_next_period = next_token_period - last_token_time;
                 reward_distributor.tokens_per_period.add(
                     last_token_period,
                     last_period_tokens + integer_mate::full_math_u64::mul_div_floor(
                         balance_delta,
-                        v9,
+                        time_until_next_period,
                         token_time_delta
                     )
                 );
@@ -327,9 +331,6 @@ module distribution::reward_distributor {
             epoch_end = epoch_end + distribution::common::epoch();
             i = i + 1;
         };
-        // TODO: in original smart contracts version it was (total_reward, epoch_end, epoch_start)
-        // but it seemed to be an error, so i changed it.
-        // We should revisit it when we have gathered more context
         (total_reward, epoch_start, epoch_end)
     }
 
@@ -376,6 +377,24 @@ module distribution::reward_distributor {
         period_start_time: u64
     ): u64 {
         *reward_distributor.tokens_per_period.borrow(period_start_time)
+    }
+
+    #[test_only]
+    public fun test_create_reward_distributor_cap<RewardCoinType>(
+        self: &RewardDistributor<RewardCoinType>,
+        ctx: &mut TxContext
+    ): distribution::reward_distributor_cap::RewardDistributorCap {
+        let reward_distributor_id = object::id(self);
+        distribution::reward_distributor_cap::create(reward_distributor_id, ctx)
+    }
+
+    #[test_only]
+    public fun total_length<RewardCoinType>(
+        reward_distributor: &RewardDistributor<RewardCoinType>
+    ): u64 {
+        reward_distributor.time_cursor_of.length() +
+        reward_distributor.tokens_per_period.length() +
+        reward_distributor.bag.length()
     }
 }
 
