@@ -377,10 +377,5 @@ module distribution::reward_distributor {
     ): u64 {
         *reward_distributor.tokens_per_period.borrow(period_start_time)
     }
-
-    #[test_only]
-    public fun test_init(ctx: &mut sui::tx_context::TxContext): sui::package::Publisher {
-        sui::package::claim<REWARD_DISTRIBUTOR>(REWARD_DISTRIBUTOR {}, ctx)
-    }
 }
 

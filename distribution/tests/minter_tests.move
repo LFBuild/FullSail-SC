@@ -20,7 +20,7 @@ use sui::test_utils;
 use distribution::common;
 use distribution::distribute_cap::{Self};
 use distribution::distribution_config::{Self, DistributionConfig};
-use distribution::reward_distributor::{Self,RewardDistributor};
+use distribution::rebase_distributor::{Self,RebaseDistributor};
 use distribution::gauge::{Self, Gauge, StakedPosition};
 use gauge_cap::gauge_cap::{Self, CreateCap};
 use distribution::minter::{AdminCap, Minter};
@@ -3120,7 +3120,7 @@ fun test_update_period_with_wrong_voter_fails() {
         let distribution_config = scenario.take_shared<DistributionConfig>();
         let distribute_governor_cap = scenario.take_from_sender<minter::DistributeGovernorCap>();
         let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
-        let mut reward_distributor = scenario.take_shared<RewardDistributor<SAIL>>();
+        let mut rebase_distributor = scenario.take_shared<RebaseDistributor<SAIL>>();
         let mut o_sail_cap_2 = coin::create_treasury_cap_for_testing<OSAIL2>(scenario.ctx());
         let initial_supply = o_sail_cap_2.mint(0, scenario.ctx());
         initial_supply.burn_for_testing();
@@ -3131,7 +3131,7 @@ fun test_update_period_with_wrong_voter_fails() {
             &distribution_config,
             &distribute_governor_cap,
             &voting_escrow,
-            &mut reward_distributor,
+            &mut rebase_distributor,
             o_sail_cap_2,
             &clock,
             scenario.ctx()
@@ -3143,7 +3143,7 @@ fun test_update_period_with_wrong_voter_fails() {
         test_scenario::return_shared(distribution_config);
         scenario.return_to_sender(distribute_governor_cap);
         test_scenario::return_shared(voting_escrow);
-        test_scenario::return_shared(reward_distributor);
+        test_scenario::return_shared(rebase_distributor);
     };
 
     // Cleanup
@@ -3196,7 +3196,7 @@ fun test_update_period_with_wrong_distribution_config_fails() {
         let wrong_distribution_config = scenario.take_shared<DistributionConfig>();
         let distribute_governor_cap = scenario.take_from_sender<minter::DistributeGovernorCap>();
         let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
-        let mut reward_distributor = scenario.take_shared<RewardDistributor<SAIL>>();
+        let mut rebase_distributor = scenario.take_shared<RebaseDistributor<SAIL>>();
         let mut o_sail_cap_2 = coin::create_treasury_cap_for_testing<OSAIL2>(scenario.ctx());
         let initial_supply = o_sail_cap_2.mint(0, scenario.ctx());
         initial_supply.burn_for_testing();
@@ -3207,7 +3207,7 @@ fun test_update_period_with_wrong_distribution_config_fails() {
             &wrong_distribution_config,
             &distribute_governor_cap,
             &voting_escrow,
-            &mut reward_distributor,
+            &mut rebase_distributor,
             o_sail_cap_2,
             &clock,
             scenario.ctx()
@@ -3219,7 +3219,7 @@ fun test_update_period_with_wrong_distribution_config_fails() {
         test_scenario::return_shared(wrong_distribution_config);
         scenario.return_to_sender(distribute_governor_cap);
         test_scenario::return_shared(voting_escrow);
-        test_scenario::return_shared(reward_distributor);
+        test_scenario::return_shared(rebase_distributor);
     };
 
     // Cleanup
@@ -3278,7 +3278,7 @@ fun test_update_period_with_revoked_governor_cap_fails() {
         let distribution_config = scenario.take_shared<DistributionConfig>();
         let distribute_governor_cap = scenario.take_from_sender<minter::DistributeGovernorCap>();
         let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
-        let mut reward_distributor = scenario.take_shared<RewardDistributor<SAIL>>();
+        let mut rebase_distributor = scenario.take_shared<RebaseDistributor<SAIL>>();
         let mut o_sail_cap_2 = coin::create_treasury_cap_for_testing<OSAIL2>(scenario.ctx());
         let initial_supply = o_sail_cap_2.mint(0, scenario.ctx());
         initial_supply.burn_for_testing();
@@ -3289,7 +3289,7 @@ fun test_update_period_with_revoked_governor_cap_fails() {
             &distribution_config,
             &distribute_governor_cap,
             &voting_escrow,
-            &mut reward_distributor,
+            &mut rebase_distributor,
             o_sail_cap_2,
             &clock,
             scenario.ctx()
@@ -3301,7 +3301,7 @@ fun test_update_period_with_revoked_governor_cap_fails() {
         test_scenario::return_shared(distribution_config);
         scenario.return_to_sender(distribute_governor_cap);
         test_scenario::return_shared(voting_escrow);
-        test_scenario::return_shared(reward_distributor);
+        test_scenario::return_shared(rebase_distributor);
     };
 
     // Cleanup
@@ -3352,14 +3352,14 @@ fun test_activate_with_wrong_voter_fails() {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
         let mut wrong_voter = scenario.take_shared_by_id<Voter>(wrong_voter_id);
         let admin_cap = scenario.take_from_sender<AdminCap>();
-        let mut rd = scenario.take_shared<RewardDistributor<SAIL>>();
+        let mut rebase_distributor = scenario.take_shared<RebaseDistributor<SAIL>>();
         let mut o_sail_cap = coin::create_treasury_cap_for_testing<OSAIL1>(scenario.ctx());
         o_sail_cap.mint(0, scenario.ctx()).burn_for_testing();
         
         minter.activate_test<SAIL, OSAIL1>(
             &mut wrong_voter,
             &admin_cap,
-            &mut rd,
+            &mut rebase_distributor,
             o_sail_cap,
             &clock,
             scenario.ctx()
@@ -3369,7 +3369,7 @@ fun test_activate_with_wrong_voter_fails() {
         test_scenario::return_shared(minter);
         test_scenario::return_shared(wrong_voter);
         scenario.return_to_sender(admin_cap);
-        test_scenario::return_shared(rd);
+        test_scenario::return_shared(rebase_distributor);
     };
 
     clock::destroy_for_testing(clock);
@@ -3410,14 +3410,14 @@ fun test_activate_with_revoked_admin_cap_fails() {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
         let mut voter = scenario.take_shared<Voter>();
         let admin_cap = scenario.take_from_sender<AdminCap>();
-        let mut rd = scenario.take_shared<RewardDistributor<SAIL>>();
+        let mut rebase_distributor = scenario.take_shared<RebaseDistributor<SAIL>>();
         let mut o_sail_cap = coin::create_treasury_cap_for_testing<OSAIL1>(scenario.ctx());
         o_sail_cap.mint(0, scenario.ctx()).burn_for_testing();
         
         minter.activate_test<SAIL, OSAIL1>(
             &mut voter,
             &admin_cap,
-            &mut rd,
+            &mut rebase_distributor,
             o_sail_cap,
             &clock,
             scenario.ctx()
@@ -3427,7 +3427,7 @@ fun test_activate_with_revoked_admin_cap_fails() {
         test_scenario::return_shared(minter);
         test_scenario::return_shared(voter);
         scenario.return_to_sender(admin_cap);
-        test_scenario::return_shared(rd);
+        test_scenario::return_shared(rebase_distributor);
     };
 
     clock::destroy_for_testing(clock);

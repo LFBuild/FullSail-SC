@@ -8,8 +8,12 @@ use distribution::voting_escrow;
 use distribution::reward_distributor_cap::RewardDistributorCap;
 use sui::coin;
 
-const EMinterNotActive: u64 = 0;
-const ELockedVotingEscrowCannotClaim: u64 = 1;
+const EMinterNotActive: u64 = 326677348800338700;
+const ELockedVotingEscrowCannotClaim: u64 = 27562280597090540;
+const ECreateRebaseDistributorInvalidPublisher: u64 = 208084867296439940;
+
+public struct REBASE_DISTRIBUTOR has drop {
+}
 
 public struct EventStart has copy, drop, store {
     minter_active_period: u64,
@@ -25,10 +29,22 @@ public struct RebaseDistributor<phantom SailCoinType> has key, store {
     minter_active_period: u64,
 }
 
-public(package) fun create<SailCoinType: store>(
+fun init(otw: REBASE_DISTRIBUTOR, ctx: &mut TxContext) {
+    sui::package::claim_and_keep<REBASE_DISTRIBUTOR>(otw, ctx);
+}
+
+#[test_only]
+public fun test_init(ctx: &mut sui::tx_context::TxContext): sui::package::Publisher {
+    sui::package::claim<REBASE_DISTRIBUTOR>(REBASE_DISTRIBUTOR {}, ctx)
+}
+
+public fun create<SailCoinType>(
+    publisher: &sui::package::Publisher,
     clock: &Clock,
     ctx: &mut TxContext
 ): (RebaseDistributor<SailCoinType>, RewardDistributorCap) {
+    assert!(publisher.from_module<REBASE_DISTRIBUTOR>(), ECreateRebaseDistributorInvalidPublisher);
+
     let (reward_distributor, cap) = reward_distributor::create<SailCoinType>(clock, ctx);
 
     (
