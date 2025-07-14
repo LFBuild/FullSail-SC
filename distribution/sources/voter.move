@@ -22,7 +22,6 @@ module distribution::voter {
 
     const ERevokeGaugeCreateCapAlreadyRevoked: u64 = 525186290931396700;
 
-    const EAlreadyVotedInCurrentEpoch: u64 = 922337332964170140;
     const EVotingNotStarted: u64 = 922337333393679977;
 
     const ECheckVoteSizesDoNotMatch: u64 = 922337416286430823;
@@ -144,8 +143,6 @@ module distribution::voter {
         gauge_to_fee: Table<GaugeID, distribution::fee_voting_reward::FeeVotingReward>,
         gauge_to_bribe_authorized_cap: distribution::reward_authorized_cap::RewardAuthorizedCap,
         gauge_to_bribe: Table<GaugeID, distribution::bribe_voting_reward::BribeVotingReward>,
-        exercise_fee_reward: distribution::exercise_fee_reward::ExerciseFeeReward,
-        exercise_fee_authorized_cap: distribution::reward_authorized_cap::RewardAuthorizedCap,
         // bag to be preapred for future updates
         bag: sui::bag::Bag,
     }
@@ -296,8 +293,6 @@ module distribution::voter {
             gauge_to_fee: table::new<GaugeID, distribution::fee_voting_reward::FeeVotingReward>(ctx),
             gauge_to_bribe_authorized_cap: distribution::reward_authorized_cap::create(id, ctx),
             gauge_to_bribe: table::new<GaugeID, distribution::bribe_voting_reward::BribeVotingReward>(ctx),
-            exercise_fee_reward: distribution::exercise_fee_reward::create(id, vector[], ctx),
-            exercise_fee_authorized_cap: distribution::reward_authorized_cap::create(id, ctx),
             // bag to be preapred for future updates
             bag: sui::bag::new(ctx),
         };
@@ -571,44 +566,6 @@ module distribution::voter {
         &voter.voter_cap
     }
 
-    public fun borrow_exercise_fee_reward(
-        voter: &Voter
-    ): &distribution::exercise_fee_reward::ExerciseFeeReward {
-        &voter.exercise_fee_reward
-    }
-
-    public fun borrow_exercise_fee_reward_mut(
-        voter: &mut Voter
-    ): &mut distribution::exercise_fee_reward::ExerciseFeeReward {
-        &mut voter.exercise_fee_reward
-    }
-
-    /// Notify the voter about the amount of exercise fee reward.
-    /// 
-    /// # Arguments
-    /// * `distribute_cap` - The distribute cap to validate the voter and permissions
-    /// * `voter` - The voter contract reference
-    /// * `reward` - The reward coin
-    /// * `clock` - The system clock
-    public fun notify_exercise_fee_reward_amount<RewardCoinType>(
-        voter: &mut Voter,
-        distribute_cap: &distribution::distribute_cap::DistributeCap,
-        reward: Coin<RewardCoinType>,
-        clock: &sui::clock::Clock,
-        ctx: &mut TxContext
-    ) {
-        distribute_cap.validate_distribute_voter_id(object::id(voter));
-        let exercise_fee_authorized_cap = &voter.exercise_fee_authorized_cap;
-        let exercise_fee_reward = &mut voter.exercise_fee_reward;
-        exercise_fee_reward
-            .notify_reward_amount(
-                exercise_fee_authorized_cap,
-                reward,
-                clock,
-                ctx
-            );
-    }
-
     /// Internal function to validate vote parameters.
     /// Checks that the pool IDs and weights arrays match in length,
     /// that the number of votes does not exceed the maximum allowed,
@@ -750,28 +707,6 @@ module distribution::voter {
         sui::event::emit<EventClaimVotingFeeReward>(claim_voting_fee_reward_event);
     }
 
-    public fun claim_exercise_fee_reward<SailCoinType, RewardCoinType>(
-        voter: &mut Voter,
-        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
-        lock: &distribution::voting_escrow::Lock,
-        clock: &sui::clock::Clock,
-        ctx: &mut TxContext
-    ) {
-        let amount = voter.exercise_fee_reward.get_reward<SailCoinType, RewardCoinType>(
-            voting_escrow,
-            lock,
-            clock,
-            ctx,
-        );
-        let claim_exercise_fee_reward_event = EventClaimExerciseFeeReward {
-            who: ctx.sender(),
-            amount,
-            token: type_name::get<RewardCoinType>(),
-            lock: into_lock_id(object::id(lock)).id,
-        };
-        sui::event::emit<EventClaimExerciseFeeReward>(claim_exercise_fee_reward_event);
-    }
-
     /// Calculates the amount of rewards earned for a specific coin type and lock by every voted pool.
     /// 
     /// # Arguments
@@ -816,20 +751,6 @@ module distribution::voter {
         voter
         .borrow_fee_voting_reward(voter.pool_to_gauge(pool_id))
         .earned<FeeCoinType>(lock_id, clock)
-    }
-
-    /// Calculates the amount of exercise oSAIL fee in the specified coin type earned by the lock.
-    /// 
-    /// # Arguments
-    /// * `voter` - The voter contract reference
-    /// * `lock_id` - The ID of the lock to check earnings for
-    /// * `clock` - The system clock
-    public fun earned_exercise_fee<ExerciseFeeCoinType>(
-        voter: &Voter,
-        lock_id: ID,
-        clock: &sui::clock::Clock
-    ): u64 {
-        voter.exercise_fee_reward.earned<ExerciseFeeCoinType>(lock_id, clock)
     }
 
     /// Returns the total voting fee rewards available for a specific epoch for a specific coin type.
@@ -1558,18 +1479,6 @@ module distribution::voter {
         ctx: &mut TxContext
     ) {
         let lock_id = into_lock_id(object::id(lock));
-        let exercise_fee_deposited_balance = voter.exercise_fee_reward
-            .borrow_reward()
-            .balance_of(object::id(lock), clock);
-        if (exercise_fee_deposited_balance > 0) {
-            voter.exercise_fee_reward.withdraw(
-            &voter.exercise_fee_authorized_cap,
-            exercise_fee_deposited_balance,
-                lock_id.id,
-                clock,
-                ctx
-            );
-        };
 
         let total_pools_count = if (voter.pool_vote.contains(lock_id)) {
             voter.pool_vote.borrow(lock_id).length()
@@ -1772,13 +1681,6 @@ module distribution::voter {
         let lock_id = into_lock_id(object::id<distribution::voting_escrow::Lock>(lock));
         voter.reset_internal(voting_escrow, distribution_config, lock, clock, ctx);
 
-        voter.exercise_fee_reward.deposit(
-            &voter.exercise_fee_authorized_cap,
-            voting_power,
-            lock_id.id,
-            clock,
-            ctx
-        );
         let mut input_total_weight = 0;
         let mut lock_used_weights = 0;
         let mut i = 0;

@@ -37,6 +37,7 @@ module distribution::minter {
     use sui::table::{Self, Table};
     use integer_mate::full_math_u128;
     use switchboard::aggregator::{Aggregator};
+    use distribution::exercise_fee_distributor::{Self, ExerciseFeeDistributor};
 
     const ECreateMinterInvalidPublisher: u64 = 695309471293028100;
     const ECreateMinterInvalidSailDecimals: u64 = 744215000566210300;
@@ -133,6 +134,9 @@ module distribution::minter {
 
     const EWhitelistPoolMinterPaused: u64 = 316161888154524900;
     const EWhitelistPoolInvalidUsdDecimals: u64 = 248951658954113400;
+
+    const ECreateExerciseFeeDistributorMinterPaused: u64 = 59297471025912430;
+    const ECreateExerciseFeeDistributorInvalidUsd: u64 = 291849308119121600;
 
     const EScheduleSailMintPublisherInvalid: u64 = 716204622969124700;
     const EScheduleSailMintMinterPaused: u64 = 849544693573603300;
@@ -252,6 +256,16 @@ module distribution::minter {
         o_sail_expired: bool,
         duration: u64,
         permanent: bool,
+    }
+
+    public struct EventWhitelistUSD has copy, drop, store {
+        usd_type: TypeName,
+        whitelisted: bool,
+    }
+
+    public struct EventCreateExerciseFeeDistributor has copy, drop, store {
+        usd_type: TypeName,
+        exercise_fee_distributor_id: ID,
     }
 
     public struct TimeLockedSailMint has key, store {
@@ -1658,8 +1672,8 @@ module distribution::minter {
     /// * `(usd_left, sail_received)` - The unused USD and the amount of SAIL received
     public fun exercise_o_sail<SailCoinType, USDCoinType, OSailCoinType>(
         minter: &mut Minter<SailCoinType>,
-        voter: &mut distribution::voter::Voter,
         distribution_config: &distribution::distribution_config::DistributionConfig,
+        exercise_fee_distributor: &mut ExerciseFeeDistributor<USDCoinType>,
         o_sail: Coin<OSailCoinType>,
         fee: Coin<USDCoinType>,
         usd_amount_limit: u64,
@@ -1698,7 +1712,7 @@ module distribution::minter {
 
         exercise_o_sail_process_payment(
             minter,
-            voter,
+            exercise_fee_distributor,
             o_sail,
             fee,
             usd_amount_to_pay,
@@ -1709,7 +1723,7 @@ module distribution::minter {
     /// withdraws SAIL from storage and burns oSAIL
     fun exercise_o_sail_process_payment<SailCoinType, USDCoinType, OSailCoinType>(
         minter: &mut Minter<SailCoinType>,
-        voter: &mut distribution::voter::Voter,
+        exercise_fee_distributor: &mut ExerciseFeeDistributor<USDCoinType>,
         o_sail: Coin<OSailCoinType>,
         mut usd_in: Coin<USDCoinType>,
         usd_amount_in: u64,
@@ -1738,14 +1752,8 @@ module distribution::minter {
             team_fee_balance.join(protocol_fee.into_balance());
         };
 
-        let distribute_cap = minter.distribute_cap.borrow();
-
-        voter.notify_exercise_fee_reward_amount(
-            distribute_cap,
-            usd_to_pay,
-            clock,
-            ctx
-        );
+        let reward_distributor_cap = minter.reward_distributor_caps.borrow(object::id(exercise_fee_distributor));
+        exercise_fee_distributor.checkpoint_token(reward_distributor_cap, usd_to_pay, clock);
 
         minter.burn_o_sail(o_sail);
         let sail_out = minter.mint_sail(sail_amount_out, ctx);
@@ -1870,7 +1878,41 @@ module distribution::minter {
             if (list) {
                 minter.whitelisted_usd.insert(usd_type)
             };
-        }
+        };
+
+        let event = EventWhitelistUSD {
+            usd_type,
+            whitelisted: list,
+        };
+        sui::event::emit<EventWhitelistUSD>(event);
+    }
+
+    public fun create_exercise_fee_distributor<SailCoinType, UsdCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        admin_cap: &AdminCap,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext,
+    ): ExerciseFeeDistributor<UsdCoinType> {
+        assert!(!minter.is_paused(), ECreateExerciseFeeDistributorMinterPaused);
+        minter.check_admin(admin_cap);
+        assert!(minter.is_whitelisted_usd<SailCoinType, UsdCoinType>(), ECreateExerciseFeeDistributorInvalidUsd);
+        let usd_type = type_name::get<UsdCoinType>();
+
+        let (mut exercise_fee_distributor, cap) = exercise_fee_distributor::create<UsdCoinType>(
+            clock,
+            ctx,
+        );
+        exercise_fee_distributor.start(&cap, clock);
+        let exercise_fee_distributor_id = object::id(&exercise_fee_distributor);
+        minter.reward_distributor_caps.add(exercise_fee_distributor_id, cap);
+
+        let event = EventCreateExerciseFeeDistributor {
+            usd_type,
+            exercise_fee_distributor_id,
+        };
+        sui::event::emit<EventCreateExerciseFeeDistributor>(event);
+
+        exercise_fee_distributor
     }
 
     public fun is_whitelisted_usd<SailCoinType, UsdCoinType>(

@@ -27,6 +27,8 @@ public struct RebaseDistributor<phantom SailCoinType> has key, store {
     id: UID,
     reward_distributor: RewardDistributor<SailCoinType>,
     minter_active_period: u64,
+    // bag to be prepared for future updates
+    bag: sui::bag::Bag,
 }
 
 fun init(otw: REBASE_DISTRIBUTOR, ctx: &mut TxContext) {
@@ -52,6 +54,7 @@ public fun create<SailCoinType>(
             id: object::new(ctx),
             reward_distributor,
             minter_active_period: 0,
+            bag: sui::bag::new(ctx),
         },
         cap,
     )
