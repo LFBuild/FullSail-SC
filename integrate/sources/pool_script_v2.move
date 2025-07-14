@@ -474,6 +474,49 @@ module integrate::pool_script_v2 {
         transfer::public_transfer<clmm_pool::position::Position>(position, tx_context::sender(ctx));
     }
 
+public fun open_position_with_liquidity_return<CoinTypeA, CoinTypeB>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        tick_lower: u32,
+        tick_upper: u32,
+        coin_a: sui::coin::Coin<CoinTypeA>,
+        coin_b: sui::coin::Coin<CoinTypeB>,
+        max_amount_a: u64,
+        max_amount_b: u64,
+        delta_liquidity: u128,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ): clmm_pool::position::Position {
+        let mut position = clmm_pool::pool::open_position<CoinTypeA, CoinTypeB>(
+            global_config,
+            pool,
+            tick_lower,
+            tick_upper,
+            ctx
+        );
+        let receipt = clmm_pool::pool::add_liquidity<CoinTypeA, CoinTypeB>(
+            global_config,
+            vault,
+            pool,
+            &mut position,
+            delta_liquidity,
+            clock
+        );
+        repay_add_liquidity<CoinTypeA, CoinTypeB>(
+            global_config,
+            pool,
+            receipt,
+            coin_a,
+            coin_b,
+            max_amount_a,
+            max_amount_b,
+            ctx
+        );
+        
+        position
+    }
+
     public entry fun open_position_with_liquidity_by_fix_coin<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
@@ -520,6 +563,99 @@ module integrate::pool_script_v2 {
             ctx
         );
         transfer::public_transfer<clmm_pool::position::Position>(position, tx_context::sender(ctx));
+    }
+
+    public fun open_position_with_liquidity_by_fix_coin_return<CoinTypeA, CoinTypeB>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        tick_lower: u32,
+        tick_upper: u32,
+        coin_a: sui::coin::Coin<CoinTypeA>,
+        coin_b: sui::coin::Coin<CoinTypeB>,
+        amount_a: u64,
+        amount_b: u64,
+        fix_amount_a: bool,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ): clmm_pool::position::Position {
+        let mut position = clmm_pool::pool::open_position<CoinTypeA, CoinTypeB>(
+            global_config,
+            pool,
+            tick_lower,
+            tick_upper,
+            ctx
+        );
+        let amount_to_add = if (fix_amount_a) {
+            amount_a
+        } else {
+            amount_b
+        };
+        let receipt = clmm_pool::pool::add_liquidity_fix_coin<CoinTypeA, CoinTypeB>(
+            global_config,
+            vault,
+            pool,
+            &mut position,
+            amount_to_add,
+            fix_amount_a,
+            clock
+        );
+        repay_add_liquidity<CoinTypeA, CoinTypeB>(
+            global_config,
+            pool,
+            receipt,
+            coin_a,
+            coin_b,
+            amount_a,
+            amount_b,
+            ctx
+        );
+        
+        position
+    }
+
+    public fun open_position_and_stake_with_liquidity_by_fix_coin<CoinTypeA, CoinTypeB>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        tick_lower: u32,
+        tick_upper: u32,
+        coin_a: sui::coin::Coin<CoinTypeA>,
+        coin_b: sui::coin::Coin<CoinTypeB>,
+        amount_a: u64,
+        amount_b: u64,
+        fix_amount_a: bool,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ): distribution::gauge::StakedPosition {
+        let mut position = open_position_with_liquidity_by_fix_coin_return<CoinTypeA, CoinTypeB>(
+            global_config,
+            vault,
+            pool,
+            tick_lower,
+            tick_upper,
+            coin_a,
+            coin_b,
+            amount_a,
+            amount_b,
+            fix_amount_a,
+            clock,
+            ctx
+        );
+        
+        let staked_position = distribution::gauge::deposit_position<CoinTypeA, CoinTypeB>(
+            global_config,
+            distribution_config,
+            gauge,
+            pool,
+            position,
+            clock,
+            ctx
+        );
+
+        staked_position
     }
 
     public entry fun open_position_and_lock_with_liquidity_by_fix_coin<CoinTypeA, CoinTypeB>(
@@ -625,6 +761,118 @@ module integrate::pool_script_v2 {
         let mut i = 0;
         while (i < len) {
             transfer::public_transfer<liquidity_locker::liquidity_lock_v1::LockedPosition<CoinTypeA, CoinTypeB>>(
+                lock_positions.pop_back(), 
+                tx_context::sender(ctx)
+            );
+            i = i + 1;
+        };
+        lock_positions.destroy_empty();
+    }
+
+    public fun open_position_and_stake_and_lock_v2<CoinTypeA, CoinTypeB>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        locker: &mut liquidity_locker::liquidity_lock_v2::Locker,
+        pool_tranche_manager: &mut liquidity_locker::pool_tranche::PoolTrancheManager,
+        tick_lower: u32,
+        tick_upper: u32,
+        coin_a: sui::coin::Coin<CoinTypeA>,
+        coin_b: sui::coin::Coin<CoinTypeB>,
+        amount_a: u64,
+        amount_b: u64,
+        fix_amount_a: bool,
+        block_period_index: u64,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        let mut position = open_position_with_liquidity_by_fix_coin_return<CoinTypeA, CoinTypeB>(
+            global_config,
+            vault,
+            pool,
+            tick_lower,
+            tick_upper,
+            coin_a,
+            coin_b,
+            amount_a,
+            amount_b,
+            fix_amount_a,
+            clock,
+            ctx
+        );
+        
+        let staked_position = distribution::gauge::deposit_position<CoinTypeA, CoinTypeB>(
+            global_config,
+            distribution_config,
+            gauge,
+            pool,
+            position,
+            clock,
+            ctx
+        );
+
+        let mut lock_positions = liquidity_locker::liquidity_lock_v2::lock_position<CoinTypeA, CoinTypeB>(
+            global_config,
+            vault,
+            distribution_config,
+            locker,
+            pool_tranche_manager,
+            gauge,
+            pool,
+            staked_position,
+            block_period_index,
+            clock,
+            ctx
+        );
+
+        let len = lock_positions.length();
+        let mut i = 0;
+        while (i < len) {
+            transfer::public_transfer<liquidity_locker::liquidity_lock_v2::LockedPosition<CoinTypeA, CoinTypeB>>(
+                lock_positions.pop_back(), 
+                tx_context::sender(ctx)
+            );
+            i = i + 1;
+        };
+        lock_positions.destroy_empty();
+    }
+
+    public entry fun lock_position_v2<CoinTypeA, CoinTypeB>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
+        locker: &mut liquidity_locker::liquidity_lock_v2::Locker,
+        pool_tranche_manager: &mut liquidity_locker::pool_tranche::PoolTrancheManager,
+        gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        staked_position: distribution::gauge::StakedPosition,
+        block_period_index: u64,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        
+        let mut lock_positions = liquidity_locker::liquidity_lock_v2::lock_position<CoinTypeA, CoinTypeB>(
+            global_config,
+            vault,
+            distribution_config,
+            locker,
+            pool_tranche_manager,
+            gauge,
+            pool,
+            staked_position,
+            block_period_index,
+            clock,
+            ctx
+        );
+
+        assert!(lock_positions.length() > 0, EFailedLockPosition);
+
+        let len = lock_positions.length();
+        let mut i = 0;
+        while (i < len) {
+            transfer::public_transfer<liquidity_locker::liquidity_lock_v2::LockedPosition<CoinTypeA, CoinTypeB>>(
                 lock_positions.pop_back(), 
                 tx_context::sender(ctx)
             );
