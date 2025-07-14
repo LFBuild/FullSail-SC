@@ -118,8 +118,10 @@ module distribution::gauge {
         gauge_id: ID,
         pool_id: ID,
         token: TypeName,
-        prev_token: TypeName,
-        growth_global_by_token: u128,
+        // prev token is none if it is the first notify epoch call
+        prev_token: Option<TypeName>,
+        // growth global of the prev token, 0 if prev token is none
+        growth_global_prev_token: u128,
     }
 
     public struct EventNotifyReward has copy, drop, store {
@@ -1138,8 +1140,8 @@ module distribution::gauge {
             gauge_id: object::id<Gauge<CoinTypeA, CoinTypeB>>(gauge),
             pool_id: object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool),
             token: coin_type,
-            prev_token: coin_type,
-            growth_global_by_token: 0,
+            prev_token: option::none(),
+            growth_global_prev_token: 0,
         };
         if (gauge.current_epoch_token.is_some()) {
             let prev_epoch_token = gauge.current_epoch_token.extract();
@@ -1148,8 +1150,8 @@ module distribution::gauge {
             // last growth_global that corresponds to the **previous** token.
             let growth_global = pool.get_fullsail_distribution_growth_global();
             gauge.growth_global_by_token.push_back(prev_epoch_token, growth_global);
-            event.prev_token = prev_epoch_token;
-            event.growth_global_by_token = growth_global;
+            event.prev_token.fill(prev_epoch_token);
+            event.growth_global_prev_token = growth_global;
         };
         // Update TokenName state
         gauge.current_epoch_token.fill(coin_type);

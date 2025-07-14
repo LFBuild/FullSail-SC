@@ -416,6 +416,53 @@ public fun mint_and_create_permanent_lock<SailCoinType>(
     // Lock is automatically transferred to the user (sender of this tx block)
 }
 
+public fun mint_and_create_perpetual_lock<SailCoinType>(
+    scenario: &mut test_scenario::Scenario,
+    _user: address,
+    amount_to_lock: u64,
+    clock: &Clock,
+) {
+    let sail_coin = coin::mint_for_testing<SailCoinType>(amount_to_lock, scenario.ctx());
+
+    let mut ve = scenario.take_shared<VotingEscrow<SailCoinType>>();
+
+    voting_escrow::create_lock_advanced<SailCoinType>(
+        &mut ve,
+        sail_coin,
+        182, // duration doesn't matter
+        true, // permanent
+        true, // perpetual
+        clock,
+        scenario.ctx()
+    );
+
+    test_scenario::return_shared(ve);
+}
+
+public fun mint_and_create_perpetual_lock_for<SailCoinType>(
+    scenario: &mut test_scenario::Scenario,
+    owner: address,
+    amount_to_lock: u64,
+    clock: &Clock,
+) {
+    let sail_coin = coin::mint_for_testing<SailCoinType>(amount_to_lock, scenario.ctx());
+
+    let mut ve = scenario.take_shared<VotingEscrow<SailCoinType>>();
+
+    voting_escrow::create_lock_for<SailCoinType>(
+        &mut ve,
+        owner,
+        sail_coin,
+        182, // duration doesn't matter
+        true, // permanent
+        true, // perpetual
+        clock,
+        scenario.ctx()
+    );
+
+    test_scenario::return_shared(ve);
+}
+
 #[test]
 fun test_mint_and_create_permanent_lock() {
     let admin = @0xA1; // Use a different address
@@ -879,6 +926,23 @@ public fun mint_and_create_lock<SailCoinType>(
     // Return shared objects
     test_scenario::return_shared(ve);
     // Lock is automatically transferred to the user (sender of this tx block)
+}
+
+public fun withdraw_lock<SailCoinType>(
+    scenario: &mut test_scenario::Scenario,
+    clock: &Clock,
+) {
+    let mut ve = scenario.take_shared<VotingEscrow<SailCoinType>>();
+    let lock = scenario.take_from_sender<Lock>();
+
+    voting_escrow::withdraw<SailCoinType>(
+        &mut ve,
+        lock,
+        clock,
+        scenario.ctx()
+    );
+
+    test_scenario::return_shared(ve);
 }
 
 public fun deposit_position<CoinTypeA, CoinTypeB>(
