@@ -19,7 +19,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
     use distribution::minter;
     use distribution::gauge;
     use distribution::common;
-    use distribution::reward_distributor;
+    use distribution::rebase_distributor;
     use sui::clock;
     use switchboard::aggregator;
     use switchboard::decimal;
@@ -1866,7 +1866,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
 
@@ -1952,7 +1951,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
         };
 
         // Advance to Epoch 2 (OSAIL2)
@@ -1988,7 +1986,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -2023,7 +2020,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
         };
         
         // Advance to Epoch 3 (OSAIL3)
@@ -2087,7 +2083,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let mut ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -2121,7 +2116,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
         };
 
         // CHECK SAIL LOCKED IN VOTING_ESCROW
@@ -2197,7 +2191,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -2231,7 +2224,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
         };
         
         clock::destroy_for_testing(clock);
@@ -2288,7 +2280,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
 
@@ -2342,7 +2333,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
         };
 
         clock::increment_for_testing(&mut clock, common::epoch_to_seconds(1)*9*1000/10);
@@ -2362,7 +2352,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
 
@@ -2412,7 +2401,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
         };
 
         // Advance to Epoch 2 (OSAIL2)
@@ -2448,7 +2436,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -2483,7 +2470,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
         };
         
         clock::destroy_for_testing(clock);
@@ -2542,7 +2528,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
 
@@ -2657,7 +2642,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
         };
 
         // Advance to Epoch 2 (OSAIL2)
@@ -2693,7 +2677,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -2754,7 +2737,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
         };
         
         clock::destroy_for_testing(clock);
@@ -2812,7 +2794,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
 
@@ -2898,7 +2879,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
         };
 
         // Advance to Epoch 2 (OSAIL2)
@@ -2934,7 +2914,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -2969,7 +2948,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
         };
         
         // Advance to Epoch 3 (OSAIL3)
@@ -3032,7 +3010,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let mut ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -3066,7 +3043,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
         };
 
         // CHECK SAIL LOCKED IN VOTING_ESCROW
@@ -3142,7 +3118,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -3176,7 +3151,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
         };
 
         // add reward to tranche for the first epoch in SAIL and claim it
@@ -3192,7 +3166,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let mut ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -3242,7 +3215,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
         };
 
         // add reward to tranche for the second epoch and claim it
@@ -3258,7 +3230,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -3309,7 +3280,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
         };
         
         clock::destroy_for_testing(clock);
@@ -3367,7 +3337,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
 
@@ -3453,7 +3422,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
         };
 
         // Advance to Epoch 2 (OSAIL2)
@@ -3489,7 +3457,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -3524,7 +3491,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
         };
 
         // split position in the middle of epoch 2
@@ -3664,7 +3630,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let mut ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -3711,7 +3676,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
         };
 
         // CHECK SAIL LOCKED IN VOTING_ESCROW
@@ -3792,7 +3756,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -3841,7 +3804,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
         };
         
         clock::destroy_for_testing(clock);
@@ -4367,7 +4329,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
 
@@ -4476,7 +4437,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
         };
 
         // Advance to Epoch 2 (OSAIL2)
@@ -4631,7 +4591,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let mut ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+            
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -4766,7 +4726,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
         };
 
         scenario.next_tx(admin);
@@ -4841,7 +4800,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+            
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
 
@@ -4950,7 +4909,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
+            
         };
 
         // Advance to Epoch 2 (OSAIL2)
@@ -5106,7 +5065,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let mut ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+            
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -5226,7 +5185,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
+            
         };
 
         scenario.next_tx(admin);
@@ -5390,7 +5349,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+            
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
 
@@ -5475,7 +5434,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
+            
         };
 
         // Advance to Epoch 2 (OSAIL2)
@@ -5584,7 +5543,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let mut ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+            
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -5685,7 +5644,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
+            
         };
 
         clock::destroy_for_testing(clock);
@@ -6237,7 +6196,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+            
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
 
@@ -6322,7 +6281,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
+            
         };
 
         scenario.next_tx(admin);
@@ -6337,7 +6296,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let mut ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+            
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -6370,7 +6329,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
+            
         };
 
         clock::destroy_for_testing(clock);
@@ -6575,7 +6534,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+            
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
 
@@ -6660,7 +6619,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
+            
         };
 
         // Advance to Epoch 2 (OSAIL2)
@@ -6768,7 +6727,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let mut ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+            
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -6823,7 +6782,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
+            
         };
 
         clock::destroy_for_testing(clock);
@@ -6880,7 +6839,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+            
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
 
@@ -6965,7 +6924,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
+            
         };
 
         scenario.next_tx(admin);
@@ -6980,7 +6939,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let mut ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+            
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -7013,7 +6972,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
+            
         };
 
         clock::destroy_for_testing(clock);
@@ -7070,7 +7029,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+            
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
 
@@ -7155,7 +7114,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
+            
         };
 
         scenario.next_tx(admin);
@@ -7170,7 +7129,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let mut ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+            
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -7201,7 +7160,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
+            
         };
 
         clock::destroy_for_testing(clock);
@@ -7258,7 +7217,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+            
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
 
@@ -7343,7 +7302,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
+            
         };
 
         scenario.next_tx(admin);
@@ -7358,7 +7317,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let mut ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+            
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -7391,7 +7350,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
+            
         };
 
         clock::destroy_for_testing(clock);
@@ -7448,7 +7407,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+            
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
 
@@ -7533,7 +7492,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
+            
         };
 
         scenario.next_tx(admin);
@@ -7549,7 +7508,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+            
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -7587,7 +7546,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
+            
         };
 
         clock::destroy_for_testing(clock);
@@ -7644,7 +7603,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+            
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
 
@@ -7729,7 +7688,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
+            
         };
 
         scenario.next_tx(admin);
@@ -7745,7 +7704,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+            
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -7781,7 +7740,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
+            
         };
 
         clock::destroy_for_testing(clock);
@@ -7838,7 +7797,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+            
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
 
@@ -7923,7 +7882,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
+            
         };
 
         scenario.next_tx(admin);
@@ -7939,7 +7898,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+            
             let  pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -7995,7 +7954,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
+            
         };
 
         clock::destroy_for_testing(clock);
@@ -8052,7 +8011,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+            
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
 
@@ -8161,7 +8120,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
+            
         };
 
         // Advance to Epoch 2 (OSAIL2)
@@ -8316,7 +8275,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let mut ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+            
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -8378,7 +8337,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
+            
         };
 
         clock::destroy_for_testing(clock);
@@ -8435,7 +8394,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+            
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
 
@@ -8544,7 +8503,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
+            
         };
 
         // Advance to Epoch 2 (OSAIL2)
@@ -8699,7 +8658,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let mut ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+            
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -8770,7 +8729,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
+            
         };
 
         clock::destroy_for_testing(clock);
@@ -9868,7 +9827,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+            
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
 
@@ -9979,7 +9938,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
+            
         };
 
         // Advance to Epoch 2 (OSAIL2)
@@ -10015,7 +9974,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+            
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -10050,7 +10009,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
+            
         };
 
         // change position in the 99/100 of epoch 2
@@ -10196,7 +10155,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let mut ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+            
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -10230,7 +10189,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
+            
         };
 
         // CHECK SAIL LOCKED IN VOTING_ESCROW
@@ -10389,7 +10348,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+            
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -10422,7 +10381,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
+            
         };
         
         clock::destroy_for_testing(clock);
@@ -12182,7 +12141,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+            
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
 
@@ -12305,7 +12264,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
+            
         };
 
         // Advance to Epoch 2 (OSAIL2)
@@ -12341,7 +12300,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+            
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -12376,7 +12335,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
+            
         };
 
         // change range position in the 10/100 of epoch 2
@@ -12888,7 +12847,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let mut ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+            
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -12966,7 +12925,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
+            
         };
 
         // CHECK SAIL LOCKED IN VOTING_ESCROW
@@ -13047,7 +13006,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+            
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
 
@@ -13170,7 +13129,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
+            
         };
 
         // Advance to Epoch 2 (OSAIL2)
@@ -13210,7 +13169,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let voter = scenario.take_shared<voter::Voter>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+            
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -13259,7 +13218,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
+            
         };
 
         // store position IDs to identify them in subsequent transactions
@@ -13416,7 +13375,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let mut ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
             let minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            let reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+            
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -13494,7 +13453,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
-            test_scenario::return_shared(reward_distributor);
+            
         };
 
         // CHECK SAIL LOCKED IN VOTING_ESCROW
@@ -13789,23 +13748,24 @@ module liquidity_locker::liquidity_lock_v2_tests {
             clock::destroy_for_testing(clock);
         };
 
-        // --- RewardDistributor Setup --- 
+        // --- RebaseDistributor Setup --- 
         scenario.next_tx(sender);
         {
             let clock = clock::create_for_testing(scenario.ctx());
-            let rd_publisher = reward_distributor::test_init(scenario.ctx());
-            let (rd_obj, rd_cap) = reward_distributor::create<SailCoinType>(
+            let rd_publisher = rebase_distributor::test_init(scenario.ctx());
+            let (rebase_distributor_obj, rebase_distributor_cap) = rebase_distributor::create<SailCoinType>(
                 &rd_publisher,
                 &clock,
                 scenario.ctx()
             );
             test_utils::destroy(rd_publisher);
-            transfer::public_share_object(rd_obj);
+            let rebase_distributor_id = object::id(&rebase_distributor_obj);
+            transfer::public_share_object(rebase_distributor_obj);
             clock::destroy_for_testing(clock);
             // --- Set Reward Distributor Cap ---
             let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            minter.set_reward_distributor_cap(&minter_admin_cap, rd_cap);
+            minter.set_reward_distributor_cap(&minter_admin_cap, rebase_distributor_id, rebase_distributor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
         };
@@ -13821,7 +13781,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
         let mut voter = scenario.take_shared<voter::Voter>();
         let voting_escrow = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
-        let mut reward_distributor = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+        let mut rebase_distributor = scenario.take_shared<rebase_distributor::RebaseDistributor<SailCoinType>>();
         let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
         let distribute_governor_cap = scenario.take_from_sender<minter::DistributeGovernorCap>(); // Correct cap for update_period
 
@@ -13835,7 +13795,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
             &distribution_config,
             &distribute_governor_cap, // Pass the correct DistributeGovernorCap
             &voting_escrow,
-            &mut reward_distributor,
+            &mut rebase_distributor,
             o_sail_cap, 
             clock,
             scenario.ctx()
@@ -13846,7 +13806,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         test_scenario::return_shared(voter);
         test_scenario::return_shared(voting_escrow);
         test_scenario::return_shared(distribution_config);
-        test_scenario::return_shared(reward_distributor);
+        test_scenario::return_shared(rebase_distributor);
         scenario.return_to_sender(distribute_governor_cap);    
 
         initial_supply
@@ -13865,21 +13825,21 @@ module liquidity_locker::liquidity_lock_v2_tests {
         // increment clock to make sure the activated_at field is not and epoch start is not 0
         let mut minter_obj = scenario.take_shared<minter::Minter<SailCoinType>>();
         let mut voter = scenario.take_shared<voter::Voter>();
-        let mut rd = scenario.take_shared<reward_distributor::RewardDistributor<SailCoinType>>();
+        let mut rebase_distributor = scenario.take_shared<rebase_distributor::RebaseDistributor<SailCoinType>>();
         let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
         let mut ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
         let o_sail_cap = sui::coin::create_treasury_cap_for_testing<OSailCoinType>(scenario.ctx());
 
         // increment clock to make sure the activated_at field is not 0 and epoch start is not 0
-    clock.increment_for_testing(7 * 24 * 60 * 60 * 1000 + 1000);
-    minter_obj.activate_test<SailCoinType, OSailCoinType>(
-        &mut voter,
-        &minter_admin_cap,
-        &mut rd,
-        o_sail_cap,
-        clock,
-        scenario.ctx()
-    );
+        clock.increment_for_testing(7 * 24 * 60 * 60 * 1000 + 1000);
+        minter_obj.activate_test<SailCoinType, OSailCoinType>(
+            &mut voter,
+            &minter_admin_cap,
+            &mut rebase_distributor,
+            o_sail_cap,
+            clock,
+            scenario.ctx()
+        );
 
         let sail_coin = sui::coin::mint_for_testing<SailCoinType>(amount_to_lock, scenario.ctx());
         // create_lock consumes the coin and transfers the lock to ctx.sender()
@@ -13894,7 +13854,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
         test_scenario::return_shared(minter_obj);
         test_scenario::return_shared(voter);
         test_scenario::return_shared(ve);
-        test_scenario::return_shared(rd);
+        test_scenario::return_shared(rebase_distributor);
         scenario.return_to_sender(minter_admin_cap);
     }
 
