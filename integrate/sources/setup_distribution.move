@@ -27,13 +27,13 @@ module integrate::setup_distribution {
             object::id(distribtuion_config),
             ctx
         );
-        let (reward_distributor, reward_distributor_cap) = distribution::reward_distributor::create<SailCoinType>(
+        let (rebase_distributor, reward_distributor_cap) = distribution::rebase_distributor::create<SailCoinType>(
             reward_distributor_publisher,
             clock,
             ctx
         );
         minter.set_distribute_cap(&admin_cap, distribute_cap);
-        minter.set_reward_distributor_cap(&admin_cap, reward_distributor_cap);
+        minter.set_reward_distributor_cap(&admin_cap, object::id(&rebase_distributor), reward_distributor_cap);
         minter.set_team_wallet(&admin_cap, team_wallet);
         minter.set_o_sail_price_aggregator(&admin_cap, distribtuion_config, aggregator);
         minter.set_sail_price_aggregator(&admin_cap, distribtuion_config, aggregator);
@@ -41,9 +41,7 @@ module integrate::setup_distribution {
             admin_cap,
             tx_context::sender(ctx)
         );
-        transfer::public_share_object<distribution::reward_distributor::RewardDistributor<SailCoinType>>(
-            reward_distributor
-        );
+        transfer::public_share_object(rebase_distributor);
         transfer::public_share_object<distribution::voting_escrow::VotingEscrow<SailCoinType>>(
             distribution::voting_escrow::create<SailCoinType>(
                 voting_escrow_publisher,
