@@ -177,6 +177,7 @@ module distribution::gauge {
         position_id: ID,
         growth_inside: u128,
         amount: u64,
+        token: TypeName,
     }
 
     public struct Locked has copy, drop, store {}
@@ -1558,6 +1559,7 @@ module distribution::gauge {
             position_id,
             growth_inside: reward_profile.growth_inside,
             amount: reward_profile.amount,
+            token: coin_type,
         };
         sui::event::emit<EventUpdateRewardPosition>(update_reward_event);
 
