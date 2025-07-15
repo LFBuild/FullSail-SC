@@ -2,6 +2,8 @@ module distribution::locked_managed_reward {
     public struct LockedManagedReward has store, key {
         id: UID,
         reward: distribution::reward::Reward,
+        // bag to be preapred for future updates
+        bag: sui::bag::Bag,
     }
 
     public(package) fun create(
@@ -22,6 +24,7 @@ module distribution::locked_managed_reward {
                 false,
                 ctx
             ),
+            bag: sui::bag::new(ctx),
         }
     }
 

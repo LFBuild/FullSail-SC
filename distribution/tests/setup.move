@@ -15,7 +15,7 @@ use distribution::voter::{Self, Voter};
 use sui::coin::{Self, Coin};
 use distribution::distribution_config::{Self, DistributionConfig};
 use distribution::voting_escrow::{Self, VotingEscrow, Lock};
-use distribution::reward_distributor::{Self, RewardDistributor};
+use distribution::rebase_distributor::{Self, RebaseDistributor};
 use clmm_pool::tick_math;
 use clmm_pool::rewarder;
 use distribution::gauge::{Self, Gauge, StakedPosition};
@@ -226,19 +226,20 @@ public fun setup_distribution<SailCoinType>(
     // --- RewardDistributor Setup --- 
     scenario.next_tx(sender);
     {
-        let rd_publisher = reward_distributor::test_init(scenario.ctx());
-        let (rd_obj, rd_cap) = reward_distributor::create<SailCoinType>(
+        let rd_publisher = rebase_distributor::test_init(scenario.ctx());
+        let (rebase_distributor, rd_cap) = rebase_distributor::create<SailCoinType>(
             &rd_publisher,
             clock,
             scenario.ctx()
         );
         test_utils::destroy(rd_publisher);
-        transfer::public_share_object(rd_obj);
+        let rebase_distributor_id = object::id(&rebase_distributor);
+        transfer::public_share_object(rebase_distributor);
         
         // --- Set Reward Distributor Cap ---
         let mut minter = scenario.take_shared<Minter<SailCoinType>>();
         let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-        minter.set_reward_distributor_cap(&minter_admin_cap, rd_cap);
+        minter.set_reward_distributor_cap(&minter_admin_cap, rebase_distributor_id, rd_cap);
         test_scenario::return_shared(minter);
         scenario.return_to_sender(minter_admin_cap);
     };
@@ -289,7 +290,7 @@ fun test_distribution_setup_utility() {
         let mut minter_obj = scenario.take_shared<Minter<SAIL>>();
         let voter_obj = scenario.take_shared<Voter>();
         let ve_obj = scenario.take_shared<VotingEscrow<SAIL>>();
-        let rd_obj = scenario.take_shared<RewardDistributor<SAIL>>();
+        let rd_obj = scenario.take_shared<RebaseDistributor<SAIL>>();
         let global_config_obj = scenario.take_shared<config::GlobalConfig>();
         let distribution_config_obj = scenario.take_shared<distribution_config::DistributionConfig>();
         let pool_obj = scenario.take_shared<Pool<USD1, SAIL>>(); // Take the pool
@@ -302,7 +303,7 @@ fun test_distribution_setup_utility() {
         assert!(minter::active_period(&minter_obj) == 0, 1);
         assert!(minter::activated_at(&minter_obj) == 0, 2);
         assert!(voting_escrow::total_locked(&ve_obj) == 0, 5);
-        assert!(reward_distributor::balance(&rd_obj) == 0, 6);
+        assert!(rebase_distributor::balance(&rd_obj) == 0, 6);
         // Pool
         assert!(pool::current_sqrt_price(&pool_obj) == pool_sqrt_price, 7);
         assert!(pool::tick_spacing(&pool_obj) == pool_tick_spacing, 8);
@@ -339,7 +340,7 @@ public fun activate_minter<SailCoinType, OSailCoinType>( // Changed to public
     clock.increment_for_testing(7 * 24 * 60 * 60 * 1000 + 1000);
     let mut minter_obj = scenario.take_shared<Minter<SailCoinType>>();
     let mut voter = scenario.take_shared<Voter>();
-    let mut rd = scenario.take_shared<RewardDistributor<SailCoinType>>();
+    let mut rebase_distributor = scenario.take_shared<RebaseDistributor<SailCoinType>>();
     let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
     // Create TreasuryCap for OSAIL2 for the next epoch
     let mut o_sail_cap = coin::create_treasury_cap_for_testing<OSailCoinType>(scenario.ctx());
@@ -348,7 +349,7 @@ public fun activate_minter<SailCoinType, OSailCoinType>( // Changed to public
     minter_obj.activate_test<SailCoinType, OSailCoinType>(
         &mut voter,
         &minter_admin_cap,
-        &mut rd,
+        &mut rebase_distributor,
         o_sail_cap,
         clock,
         scenario.ctx()
@@ -356,7 +357,7 @@ public fun activate_minter<SailCoinType, OSailCoinType>( // Changed to public
 
     test_scenario::return_shared(minter_obj);
     test_scenario::return_shared(voter);
-    test_scenario::return_shared(rd);
+    test_scenario::return_shared(rebase_distributor);
     scenario.return_to_sender(minter_admin_cap);
 
     initial_supply
@@ -367,11 +368,22 @@ public fun activate_minter<SailCoinType, OSailCoinType>( // Changed to public
 public fun whitelist_usd<SailCoinType, UsdCoinType>(
     scenario: &mut test_scenario::Scenario,
     list: bool, 
+    clock: &Clock,
 ) {
     let mut minter = scenario.take_shared<Minter<SailCoinType>>();
     let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
     
     minter::whitelist_usd_test<SailCoinType, UsdCoinType>(&mut minter, &minter_admin_cap, list);
+
+    if (list) {
+        let exercise_fee_distributor = minter::create_exercise_fee_distributor<SailCoinType, UsdCoinType>(
+            &mut minter,
+            &minter_admin_cap,
+            clock,
+            scenario.ctx()
+        );
+        transfer::public_share_object(exercise_fee_distributor);
+    };
 
     test_scenario::return_shared(minter);
     scenario.return_to_sender(minter_admin_cap);
@@ -402,6 +414,53 @@ public fun mint_and_create_permanent_lock<SailCoinType>(
     // Return shared objects
     test_scenario::return_shared(ve);
     // Lock is automatically transferred to the user (sender of this tx block)
+}
+
+public fun mint_and_create_perpetual_lock<SailCoinType>(
+    scenario: &mut test_scenario::Scenario,
+    _user: address,
+    amount_to_lock: u64,
+    clock: &Clock,
+) {
+    let sail_coin = coin::mint_for_testing<SailCoinType>(amount_to_lock, scenario.ctx());
+
+    let mut ve = scenario.take_shared<VotingEscrow<SailCoinType>>();
+
+    voting_escrow::create_lock_advanced<SailCoinType>(
+        &mut ve,
+        sail_coin,
+        182, // duration doesn't matter
+        true, // permanent
+        true, // perpetual
+        clock,
+        scenario.ctx()
+    );
+
+    test_scenario::return_shared(ve);
+}
+
+public fun mint_and_create_perpetual_lock_for<SailCoinType>(
+    scenario: &mut test_scenario::Scenario,
+    owner: address,
+    amount_to_lock: u64,
+    clock: &Clock,
+) {
+    let sail_coin = coin::mint_for_testing<SailCoinType>(amount_to_lock, scenario.ctx());
+
+    let mut ve = scenario.take_shared<VotingEscrow<SailCoinType>>();
+
+    voting_escrow::create_lock_for<SailCoinType>(
+        &mut ve,
+        owner,
+        sail_coin,
+        182, // duration doesn't matter
+        true, // permanent
+        true, // perpetual
+        clock,
+        scenario.ctx()
+    );
+
+    test_scenario::return_shared(ve);
 }
 
 #[test]
@@ -869,6 +928,23 @@ public fun mint_and_create_lock<SailCoinType>(
     // Lock is automatically transferred to the user (sender of this tx block)
 }
 
+public fun withdraw_lock<SailCoinType>(
+    scenario: &mut test_scenario::Scenario,
+    clock: &Clock,
+) {
+    let mut ve = scenario.take_shared<VotingEscrow<SailCoinType>>();
+    let lock = scenario.take_from_sender<Lock>();
+
+    voting_escrow::withdraw<SailCoinType>(
+        &mut ve,
+        lock,
+        clock,
+        scenario.ctx()
+    );
+
+    test_scenario::return_shared(ve);
+}
+
 public fun deposit_position<CoinTypeA, CoinTypeB>(
     scenario: &mut test_scenario::Scenario,
     clock: &Clock,
@@ -971,7 +1047,7 @@ public fun update_minter_period<SailCoinType, OSailCoinType>(
         let mut minter = scenario.take_shared<Minter<SailCoinType>>();
         let mut voter = scenario.take_shared<Voter>();
         let voting_escrow = scenario.take_shared<VotingEscrow<SailCoinType>>();
-        let mut reward_distributor = scenario.take_shared<RewardDistributor<SailCoinType>>();
+        let mut rebase_distributor = scenario.take_shared<RebaseDistributor<SailCoinType>>();
         let distribution_config = scenario.take_shared<DistributionConfig>();
         let distribute_governor_cap = scenario.take_from_sender<minter::DistributeGovernorCap>(); // Correct cap for update_period
 
@@ -985,7 +1061,7 @@ public fun update_minter_period<SailCoinType, OSailCoinType>(
             &distribution_config,
             &distribute_governor_cap, // Pass the correct DistributeGovernorCap
             &voting_escrow,
-            &mut reward_distributor,
+            &mut rebase_distributor,
             o_sail_cap, 
             clock,
             scenario.ctx()
@@ -996,7 +1072,7 @@ public fun update_minter_period<SailCoinType, OSailCoinType>(
         test_scenario::return_shared(voter);
         test_scenario::return_shared(voting_escrow);
         test_scenario::return_shared(distribution_config);
-        test_scenario::return_shared(reward_distributor);
+        test_scenario::return_shared(rebase_distributor);
         scenario.return_to_sender(distribute_governor_cap);    
 
         initial_supply

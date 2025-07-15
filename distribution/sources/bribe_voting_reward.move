@@ -321,5 +321,28 @@ module distribution::bribe_voting_reward {
         reward_balance_option.destroy_none();
         reward_balance
     }
+
+
+    public fun rewards_at_epoch<FeeCoinType>(
+        reward: &BribeVotingReward,
+        epoch_start: u64
+    ): u64 {
+        reward.reward.rewards_at_epoch<FeeCoinType>(epoch_start)
+    }
+
+    public fun rewards_this_epoch<FeeCoinType>(
+        reward: &BribeVotingReward,
+        clock: &sui::clock::Clock
+    ): u64 {
+        reward.reward.rewards_this_epoch<FeeCoinType>(clock)
+    }
+
+    public fun total_supply_at(reward: &BribeVotingReward, epoch_start: u64): u64 {
+        reward.reward.total_supply_at(epoch_start)
+    }
+
+    public fun total_supply(reward: &BribeVotingReward, clock: &sui::clock::Clock): u64 {
+        reward.reward.total_supply(clock)
+    }
 }
 

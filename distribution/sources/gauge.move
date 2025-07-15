@@ -115,7 +115,13 @@ module distribution::gauge {
 
     public struct EventNotifyEpochToken has copy, drop, store {
         sender: ID,
+        gauge_id: ID,
+        pool_id: ID,
         token: TypeName,
+        // prev token is none if it is the first notify epoch call
+        prev_token: Option<TypeName>,
+        // growth global of the prev token, 0 if prev token is none
+        growth_global_prev_token: u128,
     }
 
     public struct EventNotifyReward has copy, drop, store {
@@ -165,6 +171,14 @@ module distribution::gauge {
         voter_id: ID,
     }
 
+    public struct EventUpdateRewardPosition has copy, drop, store {
+        gauger_id: ID,
+        pool_id: ID,
+        position_id: ID,
+        growth_inside: u128,
+        amount: u64,
+    }
+
     public struct Locked has copy, drop, store {}
 
     public struct Gauge<phantom CoinTypeA, phantom CoinTypeB> has store, key {
@@ -195,6 +209,8 @@ module distribution::gauge {
         // growth_global_by_token.borrow(current_epoch_token) is always zero. This element is used to know order of tokens
         growth_global_by_token: LinkedTable<TypeName, u128>,
         rewards: Table<ID, RewardProfile>,
+        // bag to be preapred for future updates
+        bag: sui::bag::Bag,
     }
 
     /// Returns the pool ID associated with the gauge.
@@ -309,6 +325,7 @@ module distribution::gauge {
             last_distribution_reserve: 0,
             growth_global_by_token: linked_table::new<TypeName, u128>(ctx),
             rewards: table::new<ID, RewardProfile>(ctx),
+            bag: sui::bag::new(ctx),
         }
     }
 
@@ -1118,21 +1135,28 @@ module distribution::gauge {
         gauge.o_sail_emission_by_epoch.add(last_notified_period, ended_epoch_o_sail_emission);
 
         let coin_type = type_name::get<NextRewardCoinType>();
+        let mut event = EventNotifyEpochToken {
+            sender: object::id_from_address(tx_context::sender(ctx)),
+            gauge_id: object::id<Gauge<CoinTypeA, CoinTypeB>>(gauge),
+            pool_id: object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool),
+            token: coin_type,
+            prev_token: option::none(),
+            growth_global_prev_token: 0,
+        };
         if (gauge.current_epoch_token.is_some()) {
             let prev_epoch_token = gauge.current_epoch_token.extract();
             gauge.growth_global_by_token.remove(prev_epoch_token); // remove zero from the end
 
             // last growth_global that corresponds to the **previous** token.
-            gauge.growth_global_by_token.push_back(prev_epoch_token, pool.get_fullsail_distribution_growth_global());
+            let growth_global = pool.get_fullsail_distribution_growth_global();
+            gauge.growth_global_by_token.push_back(prev_epoch_token, growth_global);
+            event.prev_token.fill(prev_epoch_token);
+            event.growth_global_prev_token = growth_global;
         };
         // Update TokenName state
         gauge.current_epoch_token.fill(coin_type);
         gauge.growth_global_by_token.push_back(coin_type, 0); // add zero to the end
 
-        let event = EventNotifyEpochToken {
-            sender: object::id_from_address(tx_context::sender(ctx)),
-            token: coin_type,
-        };
         gauge.epoch_token_last_notified = current_time;
 
         sui::event::emit<EventNotifyEpochToken>(event);
@@ -1515,7 +1539,7 @@ module distribution::gauge {
     ): u64 {
         let coin_type = type_name::get<RewardCoinType>();
         assert!(gauge.prev_reward_claimed<CoinTypeA, CoinTypeB>(pool, coin_type, position_id), EGetRewardPrevTokenNotClaimed);
-        
+        let gauge_id = object::id<Gauge<CoinTypeA, CoinTypeB>>(gauge);
         let current_time = clock.timestamp_ms() / 1000;
         let (amount_earned, growth_inside) = gauge.earned_internal<CoinTypeA, CoinTypeB>(pool, position_id, coin_type, current_time);
         
@@ -1528,6 +1552,15 @@ module distribution::gauge {
 
         let amount_to_pay = reward_profile.amount;
         reward_profile.growth_inside = growth_inside;
+        let update_reward_event = EventUpdateRewardPosition {
+            gauger_id: gauge_id,
+            pool_id: object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool),
+            position_id,
+            growth_inside: reward_profile.growth_inside,
+            amount: reward_profile.amount,
+        };
+        sui::event::emit<EventUpdateRewardPosition>(update_reward_event);
+
         reward_profile.amount = 0;
 
         amount_to_pay

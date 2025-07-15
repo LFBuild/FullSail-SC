@@ -127,8 +127,8 @@ module integrate::voter {
         while (i < len) {
             let lock = locks.pop_back();
             voter.vote(voting_escrow, distribtuion_config, &lock, pools, weights, volumes, clock, ctx);
+            lock.transfer(voting_escrow, ctx.sender(), clock, ctx);
             i = i + 1;
-            public_transfer(lock, ctx.sender());
         };
         locks.destroy_empty()
     }
@@ -137,12 +137,13 @@ module integrate::voter {
         voter: &mut distribution::voter::Voter,
         voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
         mut locks: vector<distribution::voting_escrow::Lock>,
+        pool_id: ID,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
         let mut i = 0;
         while (i < locks.length()) {
-            voter.claim_voting_bribe<SailCoinType, BribeCoinType>(voting_escrow, locks.borrow(i), clock, ctx);
+            voter.claim_voting_bribe_by_pool<SailCoinType, BribeCoinType>(voting_escrow, locks.borrow(i), pool_id, clock, ctx);
             i = i + 1;
         };
         while (locks.length() > 0) {
@@ -155,14 +156,15 @@ module integrate::voter {
         voter: &mut distribution::voter::Voter,
         voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
         mut locks: vector<distribution::voting_escrow::Lock>,
+        pool_id: ID,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
         let mut i = 0;
         while (i < locks.length()) {
             let lock = locks.borrow(i);
-            voter.claim_voting_bribe<SailCoinType, BribeCoinType1>(voting_escrow, lock, clock, ctx);
-            voter.claim_voting_bribe<SailCoinType, BribeCoinType2>(voting_escrow, lock, clock, ctx);
+            voter.claim_voting_bribe_by_pool<SailCoinType, BribeCoinType1>(voting_escrow, lock, pool_id, clock, ctx);
+            voter.claim_voting_bribe_by_pool<SailCoinType, BribeCoinType2>(voting_escrow, lock, pool_id, clock, ctx);
             i = i + 1;
         };
         while (locks.length() > 0) {
@@ -175,15 +177,16 @@ module integrate::voter {
         voter: &mut distribution::voter::Voter,
         voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
         mut lock: vector<distribution::voting_escrow::Lock>,
+        pool_id: ID,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
         let mut i = 0;
         while (i < lock.length()) {
             let lock = lock.borrow(i);
-            voter.claim_voting_bribe<SailCoinType, BribeCoinType1>(voting_escrow, lock, clock, ctx);
-            voter.claim_voting_bribe<SailCoinType, BribeCoinType2>(voting_escrow, lock, clock, ctx);
-            voter.claim_voting_bribe<SailCoinType, BribeCoinType3>(voting_escrow, lock, clock, ctx);
+            voter.claim_voting_bribe_by_pool<SailCoinType, BribeCoinType1>(voting_escrow, lock, pool_id, clock, ctx);
+            voter.claim_voting_bribe_by_pool<SailCoinType, BribeCoinType2>(voting_escrow, lock, pool_id, clock, ctx);
+            voter.claim_voting_bribe_by_pool<SailCoinType, BribeCoinType3>(voting_escrow, lock, pool_id, clock, ctx);
             i = i + 1;
         };
         while (lock.length() > 0) {
@@ -192,18 +195,18 @@ module integrate::voter {
         lock.destroy_empty();
     }
 
-    public fun claim_voting_fee_rewards<SailCoinType, RewardCoinType1, RewardCoinType2>(
+    public fun claim_voting_fee_rewards<SailCoinType, CoinTypeA, CoinTypeB>(
         voter: &mut distribution::voter::Voter,
         voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
         mut locks: vector<distribution::voting_escrow::Lock>,
+        pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
         let mut i = 0;
         while (i < locks.length()) {
             let lock = locks.borrow(i);
-            voter.claim_voting_fee_reward<SailCoinType, RewardCoinType1>(voting_escrow, lock, clock, ctx);
-            voter.claim_voting_fee_reward<SailCoinType, RewardCoinType2>(voting_escrow, lock, clock, ctx);
+            voter.claim_voting_fee_by_pool<CoinTypeA, CoinTypeB, SailCoinType>(voting_escrow, lock, pool, clock, ctx);
             i = i + 1;
         };
         while (locks.length() > 0) {
@@ -212,15 +215,15 @@ module integrate::voter {
         locks.destroy_empty();
     }
 
-    public fun claim_voting_fee_rewards_single<SailCoinType, RewardCoinType1, RewardCoinType2>(
+    public fun claim_voting_fee_rewards_single<SailCoinType, CoinTypeA, CoinTypeB>(
         voter: &mut distribution::voter::Voter,
         voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
         lock: &distribution::voting_escrow::Lock,
+        pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        voter.claim_voting_fee_reward<SailCoinType, RewardCoinType1>(voting_escrow, lock, clock, ctx);
-        voter.claim_voting_fee_reward<SailCoinType, RewardCoinType2>(voting_escrow, lock, clock, ctx);
+        voter.claim_voting_fee_by_pool<CoinTypeA, CoinTypeB, SailCoinType>(voting_escrow, lock, pool, clock, ctx);
     }
 
     public fun claimable_voting_bribes<BribeCoinType>(

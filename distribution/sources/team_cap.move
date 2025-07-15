@@ -13,10 +13,9 @@ module distribution::team_cap {
         }
     }
 
-    public(package) fun validate(team_cap: &TeamCap, arg1: ID) {
-        assert!(team_cap.target == arg1, ETeamCapInvalid);
+    public(package) fun validate(team_cap: &TeamCap, target: ID) {
+        assert!(team_cap.target == target, ETeamCapInvalid);
     }
 
-    // decompiled from Move bytecode v6
 }
 

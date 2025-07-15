@@ -49,15 +49,16 @@ Use `sui client publish` command.
 
 ## Latest publication artifacts
 
-### Mainnet (test version)
+### Mainnet prediction competiton version (i.e. sandbox)
 
 #### Publication transactions
 
-- [locker_cap](https://suivision.xyz/txblock/6beJNe6xim5mW2yofXZYyarizeg2GMtYmZrw4BAfhJ1c)
-- [distribution](https://suivision.xyz/txblock/CCLQ3jyD6j9g5mVhvDq3RByffokctZpe9uKnNnrwZsDX)
-- [liquidity_locker](https://suivision.xyz/txblock/GH87ajY9LB1QXiF7Hm2FcUqt84m42eezqD8Vco8h3AS8)
-- [integrate](https://suivision.xyz/txblock/HaWZSzJGFNk5nUJbfUFv3JdW3i4KZEajYkZZNrUVUiRh)
+- [locker_cap](https://suivision.xyz/txblock/2WWwU828Ygq2ydij4p1Mpf8WZV9zhVDXssB8WHh4v83t)
+- [distribution](https://suivision.xyz/txblock/91NPAVHpY1Uqnt3F43spj8tNWTXaYrTDib5UWJnurKU1)
+- [sail_token](https://suivision.xyz/txblock/DxZRsJfddXhMCkvCSKG91qgBmdhgnSATgdqt6cSxL2JY)
+- [o_sail_token](https://suivision.xyz/txblock/9vLoyTPuDbpgSbhnBVjZWAdwQ9jtsixPd6JSc7STRYMF)
+- [liquidity_locker v1](https://suivision.xyz/txblock/Gzqz1ME5rqxpEua1fSNz6rnz9e3knuCuqZEVL963e7ND)
+- [integrate](https://suivision.xyz/txblock/CReixV83EcmgD2a3ijKG3iaqUC4BScd5UBQJ4nypuUHU)
 
-[Setup distribution tx](https://suivision.xyz/txblock/FndPvHwGpzeovWWyKiG3CFehSKH3JvV2WonwK8gC9ZeS)
-[Gauge create tx](https://suivision.xyz/txblock/GHRqUpRL3e5CkhjErEdGpPdzdEKsfFYedUkcKMSUTTz3?tab=Changes)
-[Gauge create tx 2](https://suivision.xyz/txblock/DcVYV7C4HbkUayhnr4xea3JonWAyCucbqJfXY13cAGLQ)
+- [setup distribtuion tx](https://suivision.xyz/txblock/Aes9DtQSi7sjSrpUqqNm7N9q4dsVQTUJ2MnSUgPX6Z7c)
+- [activate minter tx](https://suivision.xyz/txblock/6d7GhYiTYgTCrSg7UpmLk2J856rnLBPnbzyt5vchEtAE)

@@ -83,6 +83,7 @@ source = { local = "../liquidity_locker" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
+  { id = "Switchboard", name = "Switchboard" },
   { id = "clmm_pool", name = "clmm_pool" },
   { id = "distribution", name = "distribution" },
   { id = "gauge_cap", name = "gauge_cap" },
@@ -116,7 +117,7 @@ dependencies = [
 ]
 
 [move.toolchain-version]
-compiler-version = "1.49.1"
+compiler-version = "1.51.2"
 edition = "2024"
 flavor = "sui"
 
@@ -124,6 +125,6 @@ flavor = "sui"
 
 [env.mainnet]
 chain-id = "35834a8a"
-original-published-id = "0x8fb5c510c8f89ca02b63595b80eac234e34c00f66a3f128a44759c4cd4a93a80"
-latest-published-id = "0x8fb5c510c8f89ca02b63595b80eac234e34c00f66a3f128a44759c4cd4a93a80"
+original-published-id = "0xa60afe016bbab0d11b415111060643edc594654e8251e43c2f12fc96751279c4"
+latest-published-id = "0xa60afe016bbab0d11b415111060643edc594654e8251e43c2f12fc96751279c4"
 published-version = "1"

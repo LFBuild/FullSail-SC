@@ -21,6 +21,16 @@ module sail_test::sail_test {
         minter_cap.cap.mint(amount, ctx)
     }
 
+    public fun unpack_minter_cap<SailCoinType>(minter_cap: MinterCap<SailCoinType>): sui::coin::TreasuryCap<SailCoinType> {
+        let MinterCap{
+            id,
+            cap,
+        } = minter_cap;
+
+        object::delete(id);
+        cap
+    }
+
     public fun total_supply<SailCoinType>(minter_cap: &MinterCap<SailCoinType>): u64 {
         minter_cap.cap.total_supply()
     }

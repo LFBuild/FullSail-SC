@@ -4,6 +4,8 @@ module distribution::voting_dao {
         nonces: sui::table::Table<address, u64>,
         num_checkpoints: sui::table::Table<ID, u64>,
         checkpoints: sui::table::Table<ID, sui::table::Table<u64, Checkpoint>>,
+        // bag to be preapred for future updates
+        bag: sui::bag::Bag,
     }
 
     public struct Checkpoint has copy, drop, store {
@@ -127,6 +129,8 @@ module distribution::voting_dao {
             nonces: sui::table::new<address, u64>(arg0),
             num_checkpoints: sui::table::new<ID, u64>(arg0),
             checkpoints: sui::table::new<ID, sui::table::Table<u64, Checkpoint>>(arg0),
+            // bag to be preapred for future updates
+            bag: sui::bag::new(arg0),
         }
     }
 
