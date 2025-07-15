@@ -2,7 +2,7 @@ module integrate::setup_distribution {
     public entry fun create<SailCoinType>(
         minter_publisher: &sui::package::Publisher,
         voter_publisher: &sui::package::Publisher,
-        reward_distributor_publisher: &sui::package::Publisher,
+        rebase_distributor_publisher: &sui::package::Publisher,
         voting_escrow_publisher: &sui::package::Publisher,
         global_config: &clmm_pool::config::GlobalConfig,
         distribtuion_config: &mut distribution::distribution_config::DistributionConfig,
@@ -28,7 +28,7 @@ module integrate::setup_distribution {
             ctx
         );
         let (rebase_distributor, reward_distributor_cap) = distribution::rebase_distributor::create<SailCoinType>(
-            reward_distributor_publisher,
+            rebase_distributor_publisher,
             clock,
             ctx
         );
