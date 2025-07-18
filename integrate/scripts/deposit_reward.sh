@@ -1,5 +1,8 @@
 source ./export.sh
 
+export TOTAL_REWARD_AMOUNT=10000000000 # set the total reward amount
+export COIN_ID=0x0000000000000000000000000000000000000000000000000000000000000000
+
 sui client call \
   --package $PACKAGE \
   --module rewarder_script \
@@ -9,4 +12,4 @@ sui client call \
     $GLOBAL_CONFIG \
     $REWARDER_GLOBAL_VAULT \
     "[$COIN_ID]" \
-    10000000000
+    $TOTAL_REWARD_AMOUNT
