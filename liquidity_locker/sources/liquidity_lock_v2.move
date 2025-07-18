@@ -1146,7 +1146,6 @@ module liquidity_locker::liquidity_lock_v2 {
         checked_package_version(locker);
         assert!(!locker.pause, ELockManagerPaused);
 
-        // проверять, что клейм за текущую эпоху
         let reward_type = std::type_name::get<RewardCoinType>();
         let current_epoch_o_sail = minter.borrow_current_epoch_o_sail();
         if (reward_type == current_epoch_o_sail) {
@@ -1182,7 +1181,7 @@ module liquidity_locker::liquidity_lock_v2 {
     /// # Type Parameters
     /// * `CoinTypeA` - First coin type in the pool
     /// * `CoinTypeB` - Second coin type in the pool
-    /// * `RewardCoinType` - Reward type for staking positions
+    /// * `EpochOSail` - The OSail token of the epoch for which the reward is being claimed
     /// * `LockRewardCoinType` - Reward type for locked positions
     /// 
     /// # Returns
@@ -1191,7 +1190,7 @@ module liquidity_locker::liquidity_lock_v2 {
     /// # Aborts
     /// * If the gauge and pool do not match
     /// * If rewards have already been claimed for the current period
-    public fun collect_reward<CoinTypeA, CoinTypeB, RewardCoinType, LockRewardCoinType>(
+    public fun collect_reward<CoinTypeA, CoinTypeB, EpochOSail, LockRewardCoinType>(
         pool_tranche_manager: &mut pool_tranche::PoolTrancheManager,
         gauge: &mut gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
@@ -1202,7 +1201,7 @@ module liquidity_locker::liquidity_lock_v2 {
         assert!(gauge::check_gauger_pool(gauge, pool), EInvalidGaugePool);
 
         // Get reward balance based on profitability
-        let reward_balance = get_rewards_internal<CoinTypeA, CoinTypeB, RewardCoinType, LockRewardCoinType>(
+        let reward_balance = get_rewards_internal<CoinTypeA, CoinTypeB, EpochOSail, LockRewardCoinType>(
             pool_tranche_manager,
             gauge,
             pool,
@@ -1231,13 +1230,13 @@ module liquidity_locker::liquidity_lock_v2 {
     /// # Type Parameters
     /// * `CoinTypeA` - First coin type in the pool
     /// * `CoinTypeB` - Second coin type in the pool
-    /// * `RewardCoinType` - Reward type for staking positions
+    /// * `EpochOSail` - The OSail token of the epoch for which the reward is being claimed
     /// * `SailCoinType` - SAIL token type for locked rewards
     /// 
     /// # Aborts
     /// * If the gauge and pool do not match
     /// * If rewards have already been claimed for the current period
-    public fun collect_reward_sail<CoinTypeA, CoinTypeB, RewardCoinType, SailCoinType>(
+    public fun collect_reward_sail<CoinTypeA, CoinTypeB, EpochOSail, SailCoinType>(
         pool_tranche_manager: &mut pool_tranche::PoolTrancheManager,
         voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
         gauge: &mut gauge::Gauge<CoinTypeA, CoinTypeB>,
@@ -1249,7 +1248,7 @@ module liquidity_locker::liquidity_lock_v2 {
     ) {
         assert!(gauge::check_gauger_pool(gauge, pool), EInvalidGaugePool);
 
-        let reward_balance = get_rewards_internal<CoinTypeA, CoinTypeB, RewardCoinType, SailCoinType>(
+        let reward_balance = get_rewards_internal<CoinTypeA, CoinTypeB, EpochOSail, SailCoinType>(
             pool_tranche_manager,
             gauge,
             pool,
@@ -1287,7 +1286,7 @@ module liquidity_locker::liquidity_lock_v2 {
     /// # Type Parameters
     /// * `CoinTypeA` - First coin type in the pool
     /// * `CoinTypeB` - Second coin type in the pool
-    /// * `RewardCoinType` - Reward type for staking positions
+    /// * `EpochOSail` - The OSail token of the epoch for which the reward is being claimed
     /// * `LockRewardCoinType` - Reward type for locked positions
     /// 
     /// # Returns
@@ -1296,7 +1295,7 @@ module liquidity_locker::liquidity_lock_v2 {
     /// # Aborts
     /// * If incorrect claim_epoch
     /// * If no rewards are available to claim
-    fun get_rewards_internal<CoinTypeA, CoinTypeB, RewardCoinType, LockRewardCoinType>(
+    fun get_rewards_internal<CoinTypeA, CoinTypeB, EpochOSail, LockRewardCoinType>(
         pool_tranche_manager: &mut pool_tranche::PoolTrancheManager,
         gauge: &gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
@@ -1316,7 +1315,7 @@ module liquidity_locker::liquidity_lock_v2 {
             !locked_position.earned_epoch.contains(claim_epoch)) {  // first claim in epoch
 
             // Calculate rewards earned
-            let (mut earned_amount_calc, last_growth_inside) = gauge.full_earned_for_type<CoinTypeA, CoinTypeB, RewardCoinType>(
+            let (mut earned_amount_calc, last_growth_inside) = gauge.full_earned_for_type<CoinTypeA, CoinTypeB, EpochOSail>(
                 pool, 
                 locked_position.position_id, 
                 locked_position.last_growth_inside,
