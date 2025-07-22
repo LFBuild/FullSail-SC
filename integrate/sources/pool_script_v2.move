@@ -474,7 +474,7 @@ module integrate::pool_script_v2 {
         transfer::public_transfer<clmm_pool::position::Position>(position, tx_context::sender(ctx));
     }
 
-public fun open_position_with_liquidity_return<CoinTypeA, CoinTypeB>(
+    public fun open_position_with_liquidity_return<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
