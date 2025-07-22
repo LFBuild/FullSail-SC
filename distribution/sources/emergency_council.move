@@ -53,6 +53,20 @@ module distribution::emergency_council {
         package::claim_and_keep<EMERGENCY_COUNCIL>(otw, ctx);
     }
 
+    public fun create_cap( // TODO
+        voter_id: ID,
+        minter_id: ID,
+        ctx: &mut TxContext
+    ) {
+        let emergency_council_cap = EmergencyCouncilCap {
+            id: object::new(ctx),
+            voter: voter_id,
+            minter: minter_id,
+        };
+        
+        transfer::public_transfer<EmergencyCouncilCap>(emergency_council_cap, tx_context::sender(ctx));
+    }
+
     #[test_only]
     public fun create_for_testing(
         voter_id: ID,
