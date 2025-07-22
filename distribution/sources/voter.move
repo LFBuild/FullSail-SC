@@ -106,9 +106,6 @@ module distribution::voter {
         votes: u64, // according to the voting power of the lock and the weight of the pool
     }
 
-    /// The main Voter contract that handles voting for liquidity pools
-    /// and distribution of rewards in a ve(3,3) system.
-    /// SailCoinType is the governance token for the system.
     public struct Voter has store, key {
         id: UID,
         global_config: ID,
@@ -1590,7 +1587,6 @@ module distribution::voter {
     }
 
     /// Casts votes for pools using a lock's voting power.
-    /// This is the main function for participating in the ve(3,3) voting system.
     ///
     /// # Arguments
     /// * `voter` - The voter contract reference

@@ -1,33 +1,4 @@
 module distribution::minter {
-    /**
-    * @title Minter Module
-    * @notice This module manages the tokenomics and emission schedule for the FullSail protocol.
-    *
-    * The Minter is a core component of the FullSail protocol responsible for:
-    * 1. Token Emission Control - Implements a sophisticated three-phase emission schedule:
-    *    - Take-off phase: Starting at 10M tokens/epoch with 3% weekly increase for 14 weeks
-    *    - Cruise phase: 1% weekly decay until emissions fall below 9M tokens
-    *    - Tail emission phase: Stabilized at 0.67% of total supply per epoch
-    * 
-    * 2. Reward Distribution - Mints and distributes tokens to:
-    *    - Stakers/voters through the reward distributor
-    *    - Team allocation (configurable percentage)
-    *    - Rebase growth calculations based on locked vs circulating supply
-    * 
-    * 3. Governance Control - Administrative functions for:
-    *    - Pausing/unpausing emissions during emergencies
-    *    - Setting team emission rates and wallet addresses
-    *    - Managing admin capabilities with revocation options
-    * 
-    * The minter interacts with several other components of the ecosystem:
-    * - Voting/staking mechanisms (Voter, VotingEscrow)
-    * - Reward distribution systems
-    * - Token management (via TreasuryCap)
-    *
-    * Epochs progress on a weekly basis, with each epoch potentially adjusting emission rates
-    * according to the predefined schedule. This controlled emission approach ensures
-    * sustainable tokenomics while incentivizing protocol participation.
-    */
 
     use std::type_name::{Self, TypeName};
     use sui::coin::{Self, TreasuryCap, Coin, CoinMetadata};
@@ -444,19 +415,6 @@ module distribution::minter {
         minter.active_period
     }
 
-    /// Calculates the rebase growth amount based on the relationship between
-    /// locked tokens and total supply, following the ve(3,3) model.
-    ///
-    /// The rebase growth is proportional to the square of the ratio of circulating tokens
-    /// to total supply, ensuring that higher lock rates lead to lower inflation.
-    ///
-    /// # Arguments
-    /// * `epoch_emissions` - Current epoch's emission amount
-    /// * `total_supply` - Total supply of SailCoin
-    /// * `total_locked` - Amount of SailCoin locked in voting escrow
-    ///
-    /// # Returns
-    /// The calculated rebase growth amount
     public fun calculate_rebase_growth(epoch_emissions: u64, total_supply: u64, total_locked: u64): u64 {
         if (total_supply == 0) {
             return 0
