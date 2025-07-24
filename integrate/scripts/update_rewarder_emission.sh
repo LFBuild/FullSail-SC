@@ -3,38 +3,38 @@ source ./export.sh
 export POOL1=0x195fa451874754e5f14f88040756d4897a5fe4b872dffc4e451d80376fa7c858 # USDC/BTC 
 export COIN_A_1=0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC
 export COIN_B_1=0xaafb102dd0902f5055cadecd687fb5b71ca82ef0e0285d90afde828ec58ca96b::btc::BTC
-export TOTAL_REWARD_AMOUNT1=280052000000 # set the total reward amount for the pool
-export DISTRIBUTION_PERIOD_SECONDS1=172800 # set the distribution period in seconds
+export TOTAL_REWARD_AMOUNT1=193824000000 # set the total reward amount for the pool
+export DISTRIBUTION_PERIOD_SECONDS1=604800 # set the distribution period in seconds
 
 export POOL2=0xb41cf6d7b9dfdf21279571a1128292b56b70ad5e0106243db102a8e4aea842c7 # USDC/USDT
 export COIN_A_2=0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC
 export COIN_B_2=0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT
-export TOTAL_REWARD_AMOUNT2=451620000000 # set the total reward amount for the pool
-export DISTRIBUTION_PERIOD_SECONDS2=172800 # set the distribution period in seconds
+export TOTAL_REWARD_AMOUNT2=866776000000 # set the total reward amount for the pool
+export DISTRIBUTION_PERIOD_SECONDS2=604800 # set the distribution period in seconds
 
 export POOL3=0x20e2f4d32c633be7eac9cba3b2d18b8ae188c0b639f3028915afe2af7ed7c89f # WAL/SUI
 export COIN_A_3=0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59::wal::WAL
 export COIN_B_3=0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI
-export TOTAL_REWARD_AMOUNT3=31430000000 # set the total reward amount for the pool
-export DISTRIBUTION_PERIOD_SECONDS3=172800 # set the distribution period in seconds
+export TOTAL_REWARD_AMOUNT3=362238000000 # set the total reward amount for the pool
+export DISTRIBUTION_PERIOD_SECONDS3=604800 # set the distribution period in seconds
 
 export POOL4=0xd0dd3d7ae05c22c80e1e16639fb0d4334372a8a45a8f01c85dac662cc8850b60 # DEEP/SUI
 export COIN_A_4=0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP
 export COIN_B_4=0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI
-export TOTAL_REWARD_AMOUNT4=150981000000 # set the total reward amount for the pool
-export DISTRIBUTION_PERIOD_SECONDS4=172800 # set the distribution period in seconds
+export TOTAL_REWARD_AMOUNT4=320482000000 # set the total reward amount for the pool
+export DISTRIBUTION_PERIOD_SECONDS4=604800 # set the distribution period in seconds
 
 export POOL5=0x7fc2f2f3807c6e19f0d418d1aaad89e6f0e866b5e4ea10b295ca0b686b6c4980 # USDC/SUI
 export COIN_A_5=0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC
 export COIN_B_5=0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI
-export TOTAL_REWARD_AMOUNT5=509300000000 # set the total reward amount for the pool
-export DISTRIBUTION_PERIOD_SECONDS5=172800 # set the distribution period in seconds
+export TOTAL_REWARD_AMOUNT5=1605052000000 # set the total reward amount for the pool
+export DISTRIBUTION_PERIOD_SECONDS5=604800 # set the distribution period in seconds
 
 export POOL6=0x90ad474a2b0e4512e953dbe9805eb233ffe5659b93b4bb71ce56bd4110b38c91 # USDC/ETH
 export COIN_A_6=0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC
 export COIN_B_6=0xd0e89b2af5e4910726fbcd8b8dd37bb79b29e5f83f7491bca830e94f7f226d29::eth::ETH
-export TOTAL_REWARD_AMOUNT6=78018000000 # set the total reward amount for the pool
-export DISTRIBUTION_PERIOD_SECONDS6=172800 # set the distribution period in seconds
+export TOTAL_REWARD_AMOUNT6=151628000000 # set the total reward amount for the pool
+export DISTRIBUTION_PERIOD_SECONDS6=604800 # set the distribution period in seconds
 
 sui client ptb \
 --move-call $PACKAGE::pool_script_v3::update_rewarder_emission "<$COIN_A_1,$COIN_B_1,$REWARD_TOKEN_TYPE>" @$GLOBAL_CONFIG @$POOL1 @$REWARDER_GLOBAL_VAULT $TOTAL_REWARD_AMOUNT1 $DISTRIBUTION_PERIOD_SECONDS1 @$CLOCK \
