@@ -266,24 +266,6 @@ module liquidity_locker::liquidity_lock_v1_tests {
                 minimum_remaining_volume, // minimum_remaining_volume
                 scenario.ctx()
             );
-            let tranches = pool_tranche::get_tranches(
-                tranche_manager, 
-                sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(pool)
-            );
-            let new_tranche = tranches.borrow(tranches.length() - 1);
-            // add reward
-            let tranche_id = sui::object::id<pool_tranche::PoolTranche>(new_tranche);
-            let reward = sui::coin::mint_for_testing<RewardCoinType>(reward_value, scenario.ctx());
-
-            pool_tranche::set_total_incomed_and_add_reward<RewardCoinType>(
-                tranche_manager,
-                sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(pool),
-                tranche_id,
-                epoch,
-                reward.into_balance(),
-                total_income,
-                scenario.ctx()
-            );
     }
 
     #[test_only]

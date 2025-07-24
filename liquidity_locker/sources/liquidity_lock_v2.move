@@ -31,6 +31,7 @@ module liquidity_locker::liquidity_lock_v2 {
     use liquidity_locker::locker_utils;
     use distribution::common;
     use distribution::gauge;
+    use std::string;
     
     // Bump the `VERSION` of the package.
     const VERSION: u64 = 1;
@@ -42,6 +43,7 @@ module liquidity_locker::liquidity_lock_v2 {
     const EInvalidBlockPeriodIndex: u64 = 938724654546442874;
     const ELockPeriodEnded: u64 = 99423692832693454;
     const EFullLockPeriodNotEnded: u64 = 98923745837578344;
+    const EFullLockPeriodEnded: u64 = 93297692597493433;
     const EPositionAlreadyLocked: u64 = 9387246576346433;
     const ENoTranches: u64 = 9823742374723842;
     const ERewardsNotCollected: u64 = 912944864567454;
@@ -63,6 +65,7 @@ module liquidity_locker::liquidity_lock_v2 {
     const EInsufficientBalanceBOutput: u64 = 9247240362830633;
     const EAdminNotWhitelisted: u64 = 9389469239702349;
     const EAddressNotAdmin: u64 = 9630793046376343;
+    const EInvalidEpochOSailToken: u64 = 9435974578489789;
 
     /// Capability for administrative functions in the protocol.
     /// This capability is required for managing global settings and protocol parameters.
@@ -94,6 +97,8 @@ module liquidity_locker::liquidity_lock_v2 {
         periods_blocking: vector<u64>,
         periods_post_lockdown: vector<u64>,
         pause: bool,
+        // bag to be preapred for future updates
+        bag: sui::bag::Bag,
     }
 
     /// Structure representing a locked liquidity position that is returned to the user as proof of ownership.
@@ -345,6 +350,7 @@ module liquidity_locker::liquidity_lock_v2 {
             periods_blocking: periods_blocking,
             periods_post_lockdown: periods_post_lockdown,
             pause: locker_v1.pause(),
+            bag: sui::bag::new(ctx),
         };
 
         let locker_id = sui::object::id<Locker>(&locker);
@@ -831,7 +837,10 @@ module liquidity_locker::liquidity_lock_v2 {
     /// 
     /// # Arguments
     /// * `global_config` - Global configuration for the CLMM pool
+    /// * `distribution_config` - Distribution configuration
+    /// * `minter` - Minter object
     /// * `vault` - Global reward vault
+    /// * `voter` - Voter object
     /// * `locker` - The locker instance
     /// * `gauge` - Gauge for the pool
     /// * `pool` - The pool containing the position
@@ -840,6 +849,12 @@ module liquidity_locker::liquidity_lock_v2 {
     /// * `min_amount_b` - Minimum amount of CoinTypeB to remove
     /// * `clock` - Clock for time-based operations
     /// * `ctx` - Transaction context
+    /// 
+    /// # Type Parameters
+    /// * `CoinTypeA` - First coin type in the pool
+    /// * `CoinTypeB` - Second coin type in the pool
+    /// * `SailCoinType` - SAIL token type
+    /// * `EpochOSail` - The OSail token of the current epoch
     /// 
     /// # Returns
     /// Tuple of (Balance<CoinTypeA>, Balance<CoinTypeB>) containing the removed liquidity
@@ -852,10 +867,12 @@ module liquidity_locker::liquidity_lock_v2 {
     /// * `ENoLiquidityToRemove` - If there is no liquidity available to remove
     /// * `EInsufficientBalanceAOutput` - If the amount of CoinTypeA to remove is less than the minimum amount min_amount_a
     /// * `EInsufficientBalanceBOutput` - If the amount of CoinTypeB to remove is less than the minimum amount min_amount_b
-    public fun remove_lock_liquidity_save<CoinTypeA, CoinTypeB>(
+    public fun remove_lock_liquidity_save<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
         global_config: &clmm_pool::config::GlobalConfig,
         distribution_config: &distribution::distribution_config::DistributionConfig,
+        minter: &mut distribution::minter::Minter<SailCoinType>,
         vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
+        voter: &distribution::voter::Voter,
         locker: &mut Locker,
         gauge: &mut gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
@@ -864,11 +881,13 @@ module liquidity_locker::liquidity_lock_v2 {
         min_amount_b: u64,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
-    ): (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>) {
-        let (removed_a, removed_b) = remove_lock_liquidity<CoinTypeA, CoinTypeB>(
+    ): (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>, sui::coin::Coin<EpochOSail>) {
+        let (removed_a, removed_b, staking_reward) = remove_lock_liquidity<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
             global_config,
             distribution_config,
+            minter,
             vault,
+            voter,
             locker,
             gauge,
             pool,
@@ -880,7 +899,7 @@ module liquidity_locker::liquidity_lock_v2 {
         assert!(removed_a.value<CoinTypeA>() >= min_amount_a, EInsufficientBalanceAOutput);
         assert!(removed_b.value<CoinTypeB>() >= min_amount_b, EInsufficientBalanceBOutput);
         
-        (removed_a, removed_b)
+        (removed_a, removed_b, staking_reward)
     }
             
     /// Removes liquidity from a locked position. 
@@ -891,13 +910,22 @@ module liquidity_locker::liquidity_lock_v2 {
     /// 
     /// # Arguments
     /// * `global_config` - Global configuration for the CLMM pool
+    /// * `distribution_config` - Distribution configuration
+    /// * `minter` - Minter object
     /// * `vault` - Global reward vault
+    /// * `voter` - Voter object
     /// * `locker` - The locker instance
     /// * `gauge` - Gauge for the pool
     /// * `pool` - The pool containing the position
     /// * `lock_position` - The locked position to remove liquidity from
     /// * `clock` - Clock for time-based operations
     /// * `ctx` - Transaction context
+    /// 
+    /// # Type Parameters
+    /// * `CoinTypeA` - First coin type in the pool
+    /// * `CoinTypeB` - Second coin type in the pool
+    /// * `SailCoinType` - SAIL token type
+    /// * `EpochOSail` - The OSail token of the current epoch
     /// 
     /// # Returns
     /// Tuple of (Balance<CoinTypeA>, Balance<CoinTypeB>) containing the removed liquidity
@@ -908,17 +936,19 @@ module liquidity_locker::liquidity_lock_v2 {
     /// * `EInvalidGaugePool` - If the gauge pool is invalid
     /// * `ERewardsNotCollected` - If rewards have not been collected
     /// * `ENoLiquidityToRemove` - If there is no liquidity available to remove
-    public fun remove_lock_liquidity<CoinTypeA, CoinTypeB>(
+    public fun remove_lock_liquidity<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
         global_config: &clmm_pool::config::GlobalConfig,
         distribution_config: &distribution::distribution_config::DistributionConfig,
+        minter: &mut distribution::minter::Minter<SailCoinType>,
         vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
+        voter: &distribution::voter::Voter,
         locker: &mut Locker,
         gauge: &mut gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         mut lock_position: LockedPosition<CoinTypeA, CoinTypeB>,
         clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext,
-    ): (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>) {
+    ): (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>, sui::coin::Coin<EpochOSail>) {
         checked_package_version(locker);
         let current_time = clock.timestamp_ms() / 1000;
         assert!(!locker.pause, ELockManagerPaused);
@@ -926,8 +956,9 @@ module liquidity_locker::liquidity_lock_v2 {
         assert!(gauge::check_gauger_pool(gauge, pool), EInvalidGaugePool);
 
         // Claim all rewards before removing liquidity (as rewards depend on liquidity)
-        assert!(lock_position.last_reward_claim_epoch >= current_time || 
-            lock_position.last_reward_claim_epoch >= lock_position.expiration_time, ERewardsNotCollected);
+        assert!(lock_position.last_reward_claim_epoch >= common::epoch_start(current_time) || 
+            lock_position.last_reward_claim_epoch >= lock_position.full_unlocking_time, ERewardsNotCollected);
+        assert!(std::type_name::get<EpochOSail>() == minter.borrow_current_epoch_o_sail(), EInvalidEpochOSailToken);
 
         let full_remove = if (current_time >= lock_position.full_unlocking_time) {
             true
@@ -956,6 +987,31 @@ module liquidity_locker::liquidity_lock_v2 {
         if (remove_liquidity_amount > lock_position.lock_liquidity_info.current_lock_liquidity) {
             remove_liquidity_amount = lock_position.lock_liquidity_info.current_lock_liquidity;
         };
+
+        // calculate current reward before liquidity removal
+        if (!full_remove) {
+            let (current_earned, last_growth_inside) = gauge.full_earned_for_type<CoinTypeA, CoinTypeB, EpochOSail>(
+                pool, 
+                lock_position.position_id, 
+                lock_position.last_growth_inside,
+                clock
+            );
+            lock_position.last_growth_inside = last_growth_inside;
+            lock_position.accumulated_amount_earned = lock_position.accumulated_amount_earned + current_earned;
+        };
+
+        // claim rewards for staked position
+        let staking_reward = claim_position_reward_for_staking<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
+            locker,
+            minter,
+            voter,
+            distribution_config,
+            gauge,
+            pool,
+            &mut lock_position, 
+            clock, 
+            ctx
+        );
 
         let old_staked_position = locker.staked_positions.remove(lock_position.position_id);
 
@@ -1009,7 +1065,7 @@ module liquidity_locker::liquidity_lock_v2 {
             transfer::public_transfer<LockedPosition<CoinTypeA, CoinTypeB>>(lock_position, sui::tx_context::sender(ctx));
         };
 
-        (removed_a, removed_b)
+        (removed_a, removed_b, staking_reward)
     }
 
     /// Completely unlocks a position and destroys the LockedPosition object.
@@ -1019,34 +1075,64 @@ module liquidity_locker::liquidity_lock_v2 {
     /// # Arguments
     /// * `locker` - The locker object containing the position
     /// * `lock_position` - The locked position to unlock
+    /// * `distribution_config` - Distribution configuration
+    /// * `minter` - Minter object
+    /// * `voter` - Voter object
     /// * `gauge` - The gauge associated with the position
+    /// * `pool` - The pool containing the position
     /// * `clock` - Clock object for timestamp verification
+    /// * `ctx` - Transaction context
+    /// 
+    /// # Type Parameters
+    /// * `CoinTypeA` - First coin type in the pool
+    /// * `CoinTypeB` - Second coin type in the pool
+    /// * `SailCoinType` - SAIL token type
+    /// * `EpochOSail` - The OSail token of the current epoch
     /// 
     /// # Returns
-    /// Tuple of (StakedPosition, Balance<CoinTypeA>, Balance<CoinTypeB>) containing the staked position that was unlocked and the remaining coins
+    /// Tuple of (StakedPosition, Balance<CoinTypeA>, Balance<CoinTypeB>, sui::coin::Coin<EpochOSail>) containing the staked position that was unlocked and the remaining coins
+    /// sui::coin::Coin<EpochOSail> is the last rewards for the staked position
     /// 
     /// # Aborts
     /// * If the locker is paused
     /// * If the full unlocking time has not been reached
     /// * If rewards have not been collected
-    public fun unlock_position<CoinTypeA, CoinTypeB>(
+    public fun unlock_position<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
         locker: &mut Locker,
-        lock_position: LockedPosition<CoinTypeA, CoinTypeB>,
+        mut lock_position: LockedPosition<CoinTypeA, CoinTypeB>,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
+        minter: &mut distribution::minter::Minter<SailCoinType>,
+        voter: &distribution::voter::Voter,
         gauge: &mut gauge::Gauge<CoinTypeA, CoinTypeB>,
-        clock: &sui::clock::Clock
-    ): (distribution::gauge::StakedPosition, sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>) {
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ): (distribution::gauge::StakedPosition, sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>, sui::coin::Coin<EpochOSail>) {
         checked_package_version(locker);
         assert!(!locker.pause, ELockManagerPaused);
         // Verify that the full lock period has ended
         assert!(clock.timestamp_ms()/1000 >= lock_position.full_unlocking_time, EFullLockPeriodNotEnded);
 
-        assert!(lock_position.last_reward_claim_epoch >= lock_position.expiration_time, ERewardsNotCollected);
+        assert!(lock_position.last_reward_claim_epoch >= lock_position.full_unlocking_time, ERewardsNotCollected);
+        assert!(std::type_name::get<EpochOSail>() == minter.borrow_current_epoch_o_sail(), EInvalidEpochOSailToken);
+        // claim last rewards for staked position
+        let staking_reward = claim_position_reward_for_staking<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
+            locker,
+            minter,
+            voter,
+            distribution_config,
+            gauge,
+            pool,
+            &mut lock_position,
+            clock,
+            ctx
+        );
 
         let position_id = lock_position.position_id;
 
         let (coin_a, coin_b) = unlock_position_internal(locker, lock_position, gauge);
 
-        (locker.staked_positions.remove(position_id), coin_a, coin_b)
+        (locker.staked_positions.remove(position_id), coin_a, coin_b, staking_reward)
     }
 
     /// Unlocks a position internally
@@ -1146,14 +1232,6 @@ module liquidity_locker::liquidity_lock_v2 {
         checked_package_version(locker);
         assert!(!locker.pause, ELockManagerPaused);
 
-        let reward_type = std::type_name::get<RewardCoinType>();
-        let current_epoch_o_sail = minter.borrow_current_epoch_o_sail();
-        if (reward_type == current_epoch_o_sail) {
-            let (current_earned, growth_inside) = gauge.earned_by_position<CoinTypeA, CoinTypeB, RewardCoinType>(pool, locked_position.position_id, clock);
-            locked_position.last_growth_inside = growth_inside;
-            locked_position.accumulated_amount_earned = locked_position.accumulated_amount_earned + current_earned;
-        };
-
         distribution::minter::get_position_reward<CoinTypeA, CoinTypeB, SailCoinType, RewardCoinType>(
             minter,
             voter,
@@ -1191,13 +1269,17 @@ module liquidity_locker::liquidity_lock_v2 {
     /// * If the gauge and pool do not match
     /// * If rewards have already been claimed for the current period
     public fun collect_reward<CoinTypeA, CoinTypeB, EpochOSail, LockRewardCoinType>(
+        locker: &Locker,
         pool_tranche_manager: &mut pool_tranche::PoolTrancheManager,
         gauge: &mut gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         locked_position: &mut LockedPosition<CoinTypeA, CoinTypeB>,
         claim_epoch: u64,
+        clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext
     ): sui::balance::Balance<LockRewardCoinType> {
+        checked_package_version(locker);
+        assert!(!locker.pause, ELockManagerPaused);
         assert!(gauge::check_gauger_pool(gauge, pool), EInvalidGaugePool);
 
         // Get reward balance based on profitability
@@ -1207,7 +1289,8 @@ module liquidity_locker::liquidity_lock_v2 {
             pool,
             locked_position,
             claim_epoch,
-            ctx,
+            clock,
+            ctx
         );
 
         reward_balance
@@ -1237,6 +1320,7 @@ module liquidity_locker::liquidity_lock_v2 {
     /// * If the gauge and pool do not match
     /// * If rewards have already been claimed for the current period
     public fun collect_reward_sail<CoinTypeA, CoinTypeB, EpochOSail, SailCoinType>(
+        locker: &Locker,
         pool_tranche_manager: &mut pool_tranche::PoolTrancheManager,
         voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
         gauge: &mut gauge::Gauge<CoinTypeA, CoinTypeB>,
@@ -1246,6 +1330,8 @@ module liquidity_locker::liquidity_lock_v2 {
         clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext,
     ) {
+        checked_package_version(locker);
+        assert!(!locker.pause, ELockManagerPaused);
         assert!(gauge::check_gauger_pool(gauge, pool), EInvalidGaugePool);
 
         let reward_balance = get_rewards_internal<CoinTypeA, CoinTypeB, EpochOSail, SailCoinType>(
@@ -1254,7 +1340,8 @@ module liquidity_locker::liquidity_lock_v2 {
             pool,
             locked_position,
             claim_epoch,
-            ctx,
+            clock,
+            ctx
         );
 
         voting_escrow.create_lock(
@@ -1301,13 +1388,17 @@ module liquidity_locker::liquidity_lock_v2 {
         pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         locked_position: &mut LockedPosition<CoinTypeA, CoinTypeB>,
         mut claim_epoch: u64,
+        clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext
     ): sui::balance::Balance<LockRewardCoinType> {
         claim_epoch = common::epoch_start(claim_epoch);
 
+        let osail_epoch = std::type_name::get<EpochOSail>();
+        assert!(osail_epoch == pool_tranche_manager.get_osail_epoch(claim_epoch), EInvalidEpochOSailToken);
+
         assert!(claim_epoch >= common::epoch_start(locked_position.start_lock_time) &&
             claim_epoch <= locked_position.last_reward_claim_epoch &&
-            claim_epoch < common::epoch_next(locked_position.expiration_time), EClaimEpochIncorrect); 
+            claim_epoch < common::epoch_start(locked_position.full_unlocking_time), EClaimEpochIncorrect); 
 
         let next_reward_claim_epoch = common::epoch_next(claim_epoch);
 
@@ -1319,6 +1410,7 @@ module liquidity_locker::liquidity_lock_v2 {
                 pool, 
                 locked_position.position_id, 
                 locked_position.last_growth_inside,
+                clock
             );
 
             earned_amount_calc = earned_amount_calc + locked_position.accumulated_amount_earned;
@@ -1334,6 +1426,7 @@ module liquidity_locker::liquidity_lock_v2 {
                 last_reward_claim_epoch: locked_position.last_reward_claim_epoch,
                 next_reward_claim_epoch,
             };
+            
             locked_position.last_reward_claim_epoch = next_reward_claim_epoch;
 
             sui::event::emit<FirstClaimInEpochEvent>(event);
@@ -1384,8 +1477,10 @@ module liquidity_locker::liquidity_lock_v2 {
     /// 
     /// # Arguments
     /// * `global_config` - Global configuration for the pool
-    /// * `vault` - Global vault for rewards
     /// * `distribution_config` - Configuration for reward distribution
+    /// * `minter` - Minter object
+    /// * `vault` - Global vault for rewards
+    /// * `voter` - Voter object
     /// * `locker` - The locker containing the position
     /// * `gauge` - Gauge associated with the position
     /// * `pool` - The pool containing the position
@@ -1394,8 +1489,15 @@ module liquidity_locker::liquidity_lock_v2 {
     /// * `clock` - Clock object for timestamp verification
     /// * `ctx` - Transaction context
     /// 
+    /// # Type Parameters
+    /// * `CoinTypeA` - First coin type in the pool
+    /// * `CoinTypeB` - Second coin type in the pool
+    /// * `SailCoinType` - SAIL token type
+    /// * `EpochOSail` - The OSail token of the current epoch
+    /// 
     /// # Returns
     /// Tuple of two LockedPosition objects representing the split positions
+    /// sui::coin::Coin<EpochOSail> is the last rewards for the staked position
     /// 
     /// # Aborts
     /// * If the locker is paused
@@ -1403,10 +1505,12 @@ module liquidity_locker::liquidity_lock_v2 {
     /// * If the lock period has ended
     /// * If rewards have not been collected
     /// * If share_first_part is invalid
-    public fun split_position<CoinTypeA, CoinTypeB, EpochOSail>(
+    public fun split_position<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
         global_config: &clmm_pool::config::GlobalConfig,
-        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         distribution_config: &distribution::distribution_config::DistributionConfig,
+        minter: &mut distribution::minter::Minter<SailCoinType>,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
+        voter: &distribution::voter::Voter,
         locker: &mut Locker,
         gauge: &mut gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
@@ -1414,20 +1518,40 @@ module liquidity_locker::liquidity_lock_v2 {
         share_first_part: u64,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
-    ): (LockedPosition<CoinTypeA, CoinTypeB>, LockedPosition<CoinTypeA, CoinTypeB>) {
+    ): (LockedPosition<CoinTypeA, CoinTypeB>, LockedPosition<CoinTypeA, CoinTypeB>, sui::coin::Coin<EpochOSail>) {
         checked_package_version(locker);
         let current_time = clock.timestamp_ms() / 1000;
         assert!(!locker.pause, ELockManagerPaused);
         assert!(gauge::check_gauger_pool(gauge, pool), EInvalidGaugePool);
-        assert!(current_time < lock_position.expiration_time, ELockPeriodEnded);
+        assert!(current_time < lock_position.full_unlocking_time, EFullLockPeriodEnded);
 
         // Ensure all rewards are collected before splitting
         assert!(lock_position.last_reward_claim_epoch >= common::epoch_start(current_time) || 
-            lock_position.last_reward_claim_epoch >= lock_position.expiration_time, ERewardsNotCollected);
+            lock_position.last_reward_claim_epoch >= lock_position.full_unlocking_time, ERewardsNotCollected);
         assert!(share_first_part <= consts::lock_liquidity_share_denom() && share_first_part > 0, EInvalidShareLiquidityToFill);
+        assert!(std::type_name::get<EpochOSail>() == minter.borrow_current_epoch_o_sail(), EInvalidEpochOSailToken);
 
         // calculate current reward before split
-        let (current_earned, growth_inside) = gauge.earned_by_position<CoinTypeA, CoinTypeB, EpochOSail>(pool, lock_position.position_id, clock);
+        // let (current_earned, growth_inside) = gauge.earned_by_position<CoinTypeA, CoinTypeB, EpochOSail>(pool, lock_position.position_id, clock);
+        let (current_earned, last_growth_inside) = gauge.full_earned_for_type<CoinTypeA, CoinTypeB, EpochOSail>(
+            pool, 
+            lock_position.position_id, 
+            lock_position.last_growth_inside,
+            clock
+        );
+
+        // claim last rewards for staked position
+        let staking_reward = claim_position_reward_for_staking<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
+            locker,
+            minter,
+            voter,
+            distribution_config,
+            gauge,
+            pool,
+            &mut lock_position,
+            clock,
+            ctx
+        );
 
         // Remove position from locker and gauge
         gauge.unlock_position(locker.locker_cap.borrow(), lock_position.position_id);
@@ -1457,7 +1581,7 @@ module liquidity_locker::liquidity_lock_v2 {
         lock_position.position_id = staked_position_1.position_id(); // remains unchanged
         lock_position.lock_liquidity_info.total_lock_liquidity = liquidity_1;
         lock_position.lock_liquidity_info.current_lock_liquidity = liquidity_1;
-        lock_position.last_growth_inside = growth_inside;
+        lock_position.last_growth_inside = last_growth_inside;
 
         let current_accumulated_amount_earned = lock_position.accumulated_amount_earned + current_earned;
         lock_position.accumulated_amount_earned = integer_mate::full_math_u128::mul_div_floor(
@@ -1488,7 +1612,7 @@ module liquidity_locker::liquidity_lock_v2 {
             expiration_time: lock_position.expiration_time,
             full_unlocking_time: lock_position.full_unlocking_time,
             profitability: lock_position.profitability,
-            last_growth_inside: growth_inside,
+            last_growth_inside: lock_position.last_growth_inside,
             accumulated_amount_earned: current_accumulated_amount_earned - lock_position.accumulated_amount_earned,
             earned_epoch: sui::table::new(ctx),
             last_reward_claim_epoch: lock_position.last_reward_claim_epoch,
@@ -1532,7 +1656,7 @@ module liquidity_locker::liquidity_lock_v2 {
         };
         sui::event::emit<CreateLockPositionEvent>(event);
 
-        (lock_position, new_lock_position)
+        (lock_position, new_lock_position, staking_reward)
     }
     
     /// Internal function to split a position into two parts with specified liquidity share.
@@ -1763,7 +1887,9 @@ module liquidity_locker::liquidity_lock_v2 {
     /// # Arguments
     /// * `global_config` - Global configuration for the pool
     /// * `distribution_config` - Distribution configuration for rewards
+    /// * `minter` - Minter object
     /// * `vault` - Global vault for rewards
+    /// * `voter` - Voter object
     /// * `locker` - Locker instance managing the position
     /// * `lock_position` - The locked position to modify
     /// * `gauge` - Gauge instance for the pool
@@ -1775,6 +1901,15 @@ module liquidity_locker::liquidity_lock_v2 {
     /// * `clock` - Clock object for timestamp verification
     /// * `ctx` - Transaction context
     /// 
+    /// # Type Parameters
+    /// * `CoinTypeA` - First coin type in the pool
+    /// * `CoinTypeB` - Second coin type in the pool
+    /// * `SailCoinType` - SAIL token type
+    /// * `EpochOSail` - The OSail token of the current epoch
+    /// 
+    /// # Returns
+    /// sui::coin::Coin<EpochOSail> is the last rewards for the staked position
+    /// 
     /// # Aborts
     /// * If the locker is paused
     /// * If the gauge pool is invalid
@@ -1783,10 +1918,12 @@ module liquidity_locker::liquidity_lock_v2 {
     /// * If the new tick range is the same as the current range
     /// * If token swap results are incorrect
     /// * If liquidity distribution is incorrect
-    public fun change_tick_range<CoinTypeA, CoinTypeB, EpochOSail>(
+    public fun change_tick_range<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
         global_config: &clmm_pool::config::GlobalConfig,
         distribution_config: &distribution::distribution_config::DistributionConfig,
+        minter: &mut distribution::minter::Minter<SailCoinType>,
         vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
+        voter: &distribution::voter::Voter,
         locker: &mut Locker,
         lock_position: &mut LockedPosition<CoinTypeA, CoinTypeB>,
         gauge: &mut gauge::Gauge<CoinTypeA, CoinTypeB>,
@@ -1797,19 +1934,40 @@ module liquidity_locker::liquidity_lock_v2 {
         new_tick_upper: integer_mate::i32::I32,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
-    ) {
+    ): sui::coin::Coin<EpochOSail> {
         checked_package_version(locker);
         let current_time = clock.timestamp_ms()/1000;
         assert!(!locker.pause, ELockManagerPaused);
         assert!(gauge::check_gauger_pool(gauge, pool), EInvalidGaugePool);
-        assert!(current_time < lock_position.expiration_time, ELockPeriodEnded);
+        assert!(current_time < lock_position.full_unlocking_time, EFullLockPeriodEnded);
 
         // Ensure rewards are collected before modifying position
         assert!(lock_position.last_reward_claim_epoch >= common::epoch_start(current_time) || 
-            lock_position.last_reward_claim_epoch >= lock_position.expiration_time, ERewardsNotCollected);
+            lock_position.last_reward_claim_epoch >= lock_position.full_unlocking_time, ERewardsNotCollected);
+
+        assert!(std::type_name::get<EpochOSail>() == minter.borrow_current_epoch_o_sail(), EInvalidEpochOSailToken);
 
         // calculate current reward before change tick range
-        let (current_earned, _) = gauge.earned_by_position<CoinTypeA, CoinTypeB, EpochOSail>(pool, lock_position.position_id, clock);
+        // let (current_earned, _) = gauge.earned_by_position<CoinTypeA, CoinTypeB, EpochOSail>(pool, lock_position.position_id, clock);
+        let (current_earned, _) = gauge.full_earned_for_type<CoinTypeA, CoinTypeB, EpochOSail>(
+            pool, 
+            lock_position.position_id, 
+            lock_position.last_growth_inside,
+            clock
+        );
+
+        // claim last rewards for staked position
+        let staking_reward = claim_position_reward_for_staking<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
+            locker,
+            minter,
+            voter,
+            distribution_config,
+            gauge,
+            pool,
+            lock_position,
+            clock,
+            ctx
+        );
 
         // Unlock position from gauge and remove from locker
         gauge.unlock_position(locker.locker_cap.borrow(), lock_position.position_id);
@@ -2065,7 +2223,13 @@ module liquidity_locker::liquidity_lock_v2 {
         lock_position.lock_liquidity_info.current_lock_liquidity = new_position_liquidity;
 
         // get growth_inside for new range
-        let (_, growth_inside) = gauge.earned_by_position<CoinTypeA, CoinTypeB, EpochOSail>(pool, lock_position.position_id, clock);
+        // let (_, growth_inside) = gauge.earned_by_position<CoinTypeA, CoinTypeB, EpochOSail>(pool, lock_position.position_id, clock);
+        let (_, growth_inside) = gauge.full_earned_for_type<CoinTypeA, CoinTypeB, EpochOSail>(
+            pool, 
+            lock_position.position_id, 
+            0,
+            clock
+        );
         lock_position.last_growth_inside = growth_inside;
         lock_position.accumulated_amount_earned = lock_position.accumulated_amount_earned + current_earned;
        
@@ -2083,6 +2247,8 @@ module liquidity_locker::liquidity_lock_v2 {
         locker.staked_positions.add(new_position_id, staked_position);
 
         sui::event::emit<ChangeRangePositionEvent>(event);
+
+        staking_reward
     }
 
     fun get_liquidity_by_amount_by_lock_position<CoinTypeA, CoinTypeB>(
@@ -2437,6 +2603,7 @@ module liquidity_locker::liquidity_lock_v2 {
     /// * If the locker is paused
     /// * If the gauge is invalid
     /// * If the position is already locked
+    /// * If the lock period has ended
     public fun lock_position_migrate<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         distribution_config: &distribution::distribution_config::DistributionConfig,
@@ -2447,7 +2614,7 @@ module liquidity_locker::liquidity_lock_v2 {
         mut lock_position_v1: liquidity_locker::liquidity_lock_v1::LockedPosition<CoinTypeA, CoinTypeB>,
         clock: &sui::clock::Clock,
         ctx: &mut sui::tx_context::TxContext
-    ) {
+    ): LockedPosition<CoinTypeA, CoinTypeB> {
         checked_package_version(locker_v2);
         assert!(!locker_v2.pause, ELockManagerPaused);
         assert!(gauge::check_gauger_pool(gauge, pool), EInvalidGaugePool);
@@ -2523,7 +2690,7 @@ module liquidity_locker::liquidity_lock_v2 {
         };
         sui::event::emit<MigrateLockPositionEvent>(event);
 
-        transfer::transfer(lock_position_v2, sui::tx_context::sender(ctx));
+        lock_position_v2
     }
 
     #[test_only]
@@ -2537,6 +2704,7 @@ module liquidity_locker::liquidity_lock_v2 {
             periods_blocking: std::vector::empty<u64>(),
             periods_post_lockdown: std::vector::empty<u64>(),
             pause: false,
+            bag: sui::bag::new(ctx),
         };
         locker.admins.insert(sui::tx_context::sender(ctx));
 
