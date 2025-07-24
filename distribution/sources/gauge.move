@@ -853,6 +853,7 @@ module distribution::gauge {
         pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         position_id: ID,
         last_growth_inside: u128,
+        clock: &sui::clock::Clock,
     ): (u64, u128) {
         assert!(
             gauge.check_gauger_pool(pool),
@@ -860,7 +861,6 @@ module distribution::gauge {
         );
 
         let coin_type = type_name::get<RewardCoinType>();
-        assert!(&coin_type != gauge.borrow_epoch_token(), EFullEarnedForTypeEpochToken);
         assert!(gauge.growth_global_by_token.contains(coin_type), EFullEarnedForTypeNoGrowthGlobalByToken);
         assert!(
             gauge.staked_positions.contains(position_id),
@@ -870,7 +870,11 @@ module distribution::gauge {
         let position = gauge.staked_positions.borrow(position_id);
         let (lower_tick, upper_tick) = position.tick_range();
         
-        let current_growth_global = *gauge.growth_global_by_token.borrow(coin_type);
+        let current_growth_global = if (&coin_type == gauge.borrow_epoch_token()) {
+            get_current_growth_global(gauge, pool, clock.timestamp_ms() / 1000)
+        } else {
+            *gauge.growth_global_by_token.borrow(coin_type)
+        };
 
         let new_growth_inside = pool.get_fullsail_distribution_growth_inside(
             lower_tick,

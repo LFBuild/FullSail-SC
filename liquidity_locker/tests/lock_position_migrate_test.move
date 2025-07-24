@@ -220,7 +220,7 @@ module liquidity_locker::lock_position_migrate_test {
         };
 
         // migrate lock position from v1 to v2
-               scenario.next_tx(admin);
+        scenario.next_tx(admin);
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
@@ -258,7 +258,7 @@ module liquidity_locker::lock_position_migrate_test {
                 scenario.ctx()
             );
 
-            liquidity_lock_v2::lock_position_migrate<TestCoinB, TestCoinA>(
+            let locked_position_v2 = liquidity_lock_v2::lock_position_migrate<TestCoinB, TestCoinA>(
                 &global_config,
                 &distribution_config,
                 &mut locker_v1,
@@ -270,6 +270,7 @@ module liquidity_locker::lock_position_migrate_test {
                 scenario.ctx()
             );
 
+            transfer::public_transfer(locked_position_v2, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
@@ -341,7 +342,7 @@ module liquidity_locker::lock_position_migrate_test {
             );
 
             let reward2 = sui::coin::mint_for_testing<SailCoinType>(10000000, scenario.ctx());
-            pool_tranche::set_total_incomed_and_add_reward<SailCoinType>(
+            pool_tranche::set_total_incomed_and_add_reward<OSAIL2, SailCoinType>(
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 sui::object::id<pool_tranche::PoolTranche>(tranche1),
@@ -377,6 +378,7 @@ module liquidity_locker::lock_position_migrate_test {
 
             // Claim rewards for the second epoch lock
             liquidity_lock_v2::collect_reward_sail<TestCoinB, TestCoinA, OSAIL2, SailCoinType>(
+                &locker,
                 &mut tranche_manager,
                 &mut ve,
                 &mut gauge,
@@ -600,7 +602,7 @@ module liquidity_locker::lock_position_migrate_test {
 
             liquidity_lock_v2::locker_pause(&mut locker_v2, true, scenario.ctx());
 
-            liquidity_lock_v2::lock_position_migrate<TestCoinB, TestCoinA>(
+            let locked_position_v2 = liquidity_lock_v2::lock_position_migrate<TestCoinB, TestCoinA>(
                 &global_config,
                 &distribution_config,
                 &mut locker_v1,
@@ -611,7 +613,8 @@ module liquidity_locker::lock_position_migrate_test {
                 &clock,
                 scenario.ctx()
             );
-            
+
+            transfer::public_transfer(locked_position_v2, admin);            
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
@@ -827,7 +830,7 @@ module liquidity_locker::lock_position_migrate_test {
 
             liquidity_lock_v1::locker_pause(&mut locker_v1, true, scenario.ctx());
 
-            liquidity_lock_v2::lock_position_migrate<TestCoinB, TestCoinA>(
+            let locked_position_v2 = liquidity_lock_v2::lock_position_migrate<TestCoinB, TestCoinA>(
                 &global_config,
                 &distribution_config,
                 &mut locker_v1,
@@ -838,7 +841,8 @@ module liquidity_locker::lock_position_migrate_test {
                 &clock,
                 scenario.ctx()
             );
-            
+
+            transfer::public_transfer(locked_position_v2, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
             transfer::public_transfer(locker_v1_admin_cap, admin);
@@ -1068,7 +1072,7 @@ module liquidity_locker::lock_position_migrate_test {
                 scenario.ctx()
             );
 
-            liquidity_lock_v2::lock_position_migrate<TestCoinB, TestCoinA>(
+            let locked_position_v2 = liquidity_lock_v2::lock_position_migrate<TestCoinB, TestCoinA>(
                 &global_config,
                 &distribution_config,
                 &mut locker_v1,
@@ -1079,7 +1083,8 @@ module liquidity_locker::lock_position_migrate_test {
                 &clock,
                 scenario.ctx()
             );
-            
+
+            transfer::public_transfer(locked_position_v2, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(pool_2, admin);
             transfer::public_transfer(admin_cap, admin);
@@ -1296,7 +1301,7 @@ module liquidity_locker::lock_position_migrate_test {
 
             clock::increment_for_testing(&mut clock, common::epoch_to_seconds(4)*1000);
 
-            liquidity_lock_v2::lock_position_migrate<TestCoinB, TestCoinA>(
+            let locked_position_v2 = liquidity_lock_v2::lock_position_migrate<TestCoinB, TestCoinA>(
                 &global_config,
                 &distribution_config,
                 &mut locker_v1,
@@ -1307,7 +1312,8 @@ module liquidity_locker::lock_position_migrate_test {
                 &clock,
                 scenario.ctx()
             );
-            
+
+            transfer::public_transfer(locked_position_v2, admin);
             transfer::public_transfer(pool, admin);
             transfer::public_transfer(admin_cap, admin);
             transfer::public_transfer(locker_create_cap, admin);
@@ -1370,7 +1376,7 @@ module liquidity_locker::lock_position_migrate_test {
             let tranche_id = sui::object::id<pool_tranche::PoolTranche>(new_tranche);
             let reward = sui::coin::mint_for_testing<RewardCoinType>(reward_value, scenario.ctx());
 
-            pool_tranche::set_total_incomed_and_add_reward<RewardCoinType>(
+            pool_tranche::set_total_incomed_and_add_reward<OSAIL1, RewardCoinType>(
                 tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(pool),
                 tranche_id,

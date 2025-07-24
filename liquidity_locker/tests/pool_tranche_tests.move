@@ -19,6 +19,8 @@ module liquidity_locker::pool_tranche_tests {
     public struct RewardCoinType1 has drop {}
     public struct RewardCoinType2 has drop {}
     public struct RewardCoinType3 has drop {}
+    #[test_only]
+    public struct OSAIL1 has drop {}
 
     #[test]
     fun test_pool_tranche() {
@@ -168,7 +170,7 @@ module liquidity_locker::pool_tranche_tests {
             let tranche2_id = sui::object::id<pool_tranche::PoolTranche>(tranche_2);
 
             let reward = sui::coin::mint_for_testing<RewardCoinType1>(10000000, scenario.ctx());
-            let after_reward = pool_tranche::set_total_incomed_and_add_reward<RewardCoinType1>(
+            let after_reward = pool_tranche::set_total_incomed_and_add_reward<OSAIL1, RewardCoinType1>(
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 tranche_id,
@@ -718,7 +720,7 @@ module liquidity_locker::pool_tranche_tests {
             
             // add first reward
             let reward = sui::coin::mint_for_testing<RewardCoinType1>(10000000, scenario.ctx());
-            pool_tranche::set_total_incomed_and_add_reward<RewardCoinType1>(
+            pool_tranche::set_total_incomed_and_add_reward<OSAIL1, RewardCoinType1>(
                 &mut tranche_manager,
                 pool_id,
                 tranche_id,
@@ -863,7 +865,7 @@ module liquidity_locker::pool_tranche_tests {
             
             // add first reward
             let reward = sui::coin::mint_for_testing<RewardCoinType1>(10000000, scenario.ctx());
-            pool_tranche::set_total_incomed_and_add_reward<RewardCoinType1>(
+            pool_tranche::set_total_incomed_and_add_reward<OSAIL1, RewardCoinType1>(
                 &mut tranche_manager,
                 pool_id,
                 tranche_id,
@@ -874,7 +876,7 @@ module liquidity_locker::pool_tranche_tests {
             );
 
             let reward = sui::coin::mint_for_testing<RewardCoinType1>(10000000, scenario.ctx());
-            pool_tranche::set_total_incomed_and_add_reward<RewardCoinType1>(
+            pool_tranche::set_total_incomed_and_add_reward<OSAIL1, RewardCoinType1>(
                 &mut tranche_manager,
                 pool_id,
                 tranche_id,
@@ -1000,7 +1002,7 @@ module liquidity_locker::pool_tranche_tests {
             {
                 // add first reward
                 let reward = sui::coin::mint_for_testing<RewardCoinType1>(10000000, scenario.ctx());
-                pool_tranche::set_total_incomed_and_add_reward<RewardCoinType1>(
+                pool_tranche::set_total_incomed_and_add_reward<OSAIL1, RewardCoinType1>(
                     &mut tranche_manager,
                     pool_id,
                     tranche_id,
@@ -1113,7 +1115,7 @@ module liquidity_locker::pool_tranche_tests {
             // Trying to add reward for non-existent tranche
             let reward = sui::coin::mint_for_testing<RewardCoinType1>(10000000, scenario.ctx());
             let pool_id = sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool);
-            pool_tranche::set_total_incomed_and_add_reward<RewardCoinType1>(
+            pool_tranche::set_total_incomed_and_add_reward<OSAIL1, RewardCoinType1>(
                 &mut tranche_manager,
                 pool_id,
                 pool_id,
@@ -1233,7 +1235,7 @@ module liquidity_locker::pool_tranche_tests {
             let reward = sui::coin::mint_for_testing<RewardCoinType1>(10000000, scenario.ctx());
 
             
-            pool_tranche::set_total_incomed_and_add_reward<RewardCoinType1>(
+            pool_tranche::set_total_incomed_and_add_reward<OSAIL1, RewardCoinType1>(
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 tranche_id,
@@ -1269,8 +1271,8 @@ module liquidity_locker::pool_tranche_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = pool_tranche::ERewardNotEnough)]
-    fun test_reward_not_enough() {
+    #[expected_failure(abort_code = pool_tranche::EInvalidTotalIncome)]
+    fun test_incorrect_total_income() {
         let admin = @0x1;
         let mut scenario = test_scenario::begin(admin);
         
@@ -1363,7 +1365,7 @@ module liquidity_locker::pool_tranche_tests {
             let tranche_id = sui::object::id<pool_tranche::PoolTranche>(tranches.borrow(0));
             let reward = sui::coin::mint_for_testing<RewardCoinType1>(10000000, scenario.ctx());
             
-            pool_tranche::set_total_incomed_and_add_reward<RewardCoinType1>(
+            pool_tranche::set_total_incomed_and_add_reward<OSAIL1, RewardCoinType1>(
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 tranche_id,
@@ -1495,7 +1497,7 @@ module liquidity_locker::pool_tranche_tests {
             let reward = sui::coin::mint_for_testing<RewardCoinType1>(10000000, scenario.ctx());
 
             
-            pool_tranche::set_total_incomed_and_add_reward<RewardCoinType1>(
+            pool_tranche::set_total_incomed_and_add_reward<OSAIL1, RewardCoinType1>(
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 tranche_id,
@@ -1627,7 +1629,7 @@ module liquidity_locker::pool_tranche_tests {
             let reward = sui::coin::mint_for_testing<RewardCoinType1>(10000000, scenario.ctx());
 
             
-            pool_tranche::set_total_incomed_and_add_reward<RewardCoinType1>(
+            pool_tranche::set_total_incomed_and_add_reward<OSAIL1, RewardCoinType1>(
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 tranche_id,
@@ -2184,7 +2186,7 @@ module liquidity_locker::pool_tranche_tests {
             
             // add first reward
             let reward = sui::coin::mint_for_testing<RewardCoinType1>(10000000, scenario.ctx());
-            pool_tranche::set_total_incomed_and_add_reward<RewardCoinType1>(
+            pool_tranche::set_total_incomed_and_add_reward<OSAIL1, RewardCoinType1>(
                 &mut tranche_manager,
                 pool_id,
                 tranche_id,
@@ -2426,7 +2428,7 @@ module liquidity_locker::pool_tranche_tests {
             
             // add reward
             let reward = sui::coin::mint_for_testing<RewardCoinType1>(10000000, scenario.ctx());
-            pool_tranche::set_total_incomed_and_add_reward<RewardCoinType1>(
+            pool_tranche::set_total_incomed_and_add_reward<OSAIL1, RewardCoinType1>(
                 &mut tranche_manager,
                 pool_id,
                 tranche_id,
@@ -2547,7 +2549,7 @@ module liquidity_locker::pool_tranche_tests {
             
             // add reward
             let reward = sui::coin::mint_for_testing<RewardCoinType1>(10000000, scenario.ctx());
-            pool_tranche::set_total_incomed_and_add_reward<RewardCoinType1>(
+            pool_tranche::set_total_incomed_and_add_reward<OSAIL1, RewardCoinType1>(
                 &mut tranche_manager,
                 pool_id,
                 tranche_id,

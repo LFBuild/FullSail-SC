@@ -1895,6 +1895,7 @@ module liquidity_locker::liquidity_lock_v1 {
         lock_position: &LockedPosition<CoinTypeA, CoinTypeB>
     ): (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>) {
         checked_package_version(locker);
+        assert!(!locker.pause, ELockManagerPaused);
         let position = locker.positions.remove(lock_position.position_id);
 
         let (collected_fee_a, collected_fee_b) = clmm_pool::pool::collect_fee<CoinTypeA, CoinTypeB>(
