@@ -35,6 +35,7 @@ module liquidity_locker::liquidity_lock_v1 {
     const EInvalidBlockPeriodIndex: u64 = 938724654546442874;
     const ELockPeriodEnded: u64 = 99423692832693454;
     const EFullLockPeriodNotEnded: u64 = 98923745837578344;
+    const EFullLockPeriodEnded: u64 = 93297692597493433;
     const EPositionAlreadyLocked: u64 = 9387246576346433;
     const ENoTranches: u64 = 9823742374723842;
     const ELockPeriodNotEnded: u64 = 91204958347574966;
@@ -53,7 +54,6 @@ module liquidity_locker::liquidity_lock_v1 {
     const EInsufficientBalanceBOutput: u64 = 9247240362830633;
     const EAdminNotWhitelisted: u64 = 9389469239702349;
     const EAddressNotAdmin: u64 = 9630793046376343;
-    const ECalculationLiquidityOverflow: u64 = 9237457234734723;
 
     /// Capability for administrative functions in the protocol.
     /// This capability is required for managing global settings and protocol parameters.
@@ -1080,7 +1080,7 @@ module liquidity_locker::liquidity_lock_v1 {
 
             sui::event::emit<UnlockPositionEvent>(event);
 
-            transfer::public_transfer<clmm_pool::position::Position>(position, sui::tx_context::sender(ctx));
+            clmm_pool::pool::close_position<CoinTypeA, CoinTypeB>(global_config, pool, position);
         } else {
             locker.positions.add(lock_position.position_id, position);
 
@@ -1212,7 +1212,7 @@ module liquidity_locker::liquidity_lock_v1 {
         checked_package_version(locker);
         let current_time = clock.timestamp_ms() / 1000;
         assert!(!locker.pause, ELockManagerPaused);
-        assert!(current_time < lock_position.expiration_time, ELockPeriodEnded);
+        assert!(current_time < lock_position.full_unlocking_time, EFullLockPeriodEnded);
 
         assert!(share_first_part <= consts::lock_liquidity_share_denom() && share_first_part > 0, EInvalidShareLiquidityToFill);
 
@@ -1539,7 +1539,7 @@ module liquidity_locker::liquidity_lock_v1 {
         checked_package_version(locker);
         let current_time = clock.timestamp_ms()/1000;
         assert!(!locker.pause, ELockManagerPaused);
-        assert!(current_time < lock_position.expiration_time, ELockPeriodEnded);        
+        assert!(current_time < lock_position.full_unlocking_time, EFullLockPeriodEnded);        
         
         let mut position = locker.positions.remove(lock_position.position_id);
 
@@ -2037,7 +2037,7 @@ module liquidity_locker::liquidity_lock_v1 {
         checked_package_version(locker);
         let current_time = clock.timestamp_ms()/1000;
         assert!(!locker.pause, ELockManagerPaused);
-        assert!(current_time < lock_position.expiration_time, ELockPeriodEnded); 
+        assert!(current_time < lock_position.full_unlocking_time, EFullLockPeriodEnded); 
 
         let mut position = locker.positions.remove(lock_position.position_id);
 
