@@ -50,3 +50,6 @@ override = true
 
 [dependencies.liquidity_locker]
 local = "../liquidity_locker"
+
+[dependencies.liquidity_soft_locker]
+local = "../liquidity_soft_locker"
