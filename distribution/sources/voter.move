@@ -1324,23 +1324,6 @@ module distribution::voter {
         (pool_ids, gauge_ids)
     }
 
-
-    /// Proves that a pair of tokens is whitelisted in the system.
-    /// Used to verify token pairs for pools and other operations.
-    ///
-    /// # Arguments
-    /// * `voter` - The voter contract reference
-    ///
-    /// # Returns
-    /// A capability proving that both tokens are whitelisted
-    public fun prove_pair_whitelisted<CoinTypeA, CoinTypeB>(
-        voter: &Voter
-    ): distribution::whitelisted_tokens::WhitelistedTokenPair {
-        assert!(voter.is_whitelisted_token<CoinTypeA>(), EFirstTokenNotWhitelisted);
-        assert!(voter.is_whitelisted_token<CoinTypeB>(), ESecondTokenNotWhitelisted);
-        distribution::whitelisted_tokens::create_pair<CoinTypeA, CoinTypeB>(object::id<Voter>(voter))
-    }
-
     /// Proves that a specific token is whitelisted in the system.
     /// Used to verify tokens for various operations.
     ///
