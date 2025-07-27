@@ -852,6 +852,7 @@ fun test_create_gauge_after_kill() {
     {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
         let mut voter = scenario.take_shared<Voter>();
+        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
         let mut dist_config = scenario.take_shared<DistributionConfig>();
         let gauge = scenario.take_shared<Gauge<USD1, AUSD>>();
         let gauge_id = object::id(&gauge);
@@ -859,6 +860,7 @@ fun test_create_gauge_after_kill() {
         let emergency_cap = emergency_council::create_for_testing(
             object::id(&voter),
             object::id(&minter),
+            object::id(&voting_escrow),
             scenario.ctx()
         );
         minter::kill_gauge<SAIL>(
@@ -870,6 +872,7 @@ fun test_create_gauge_after_kill() {
         
         test_scenario::return_shared(minter);
         test_scenario::return_shared(voter);
+        test_scenario::return_shared(voting_escrow);
         test_scenario::return_shared(dist_config);
         test_scenario::return_shared(gauge);
         transfer::public_transfer(emergency_cap, admin);
@@ -1571,6 +1574,7 @@ fun test_distribute_killed_gauge_fails() {
     {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
         let mut voter = scenario.take_shared<Voter>();
+        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
         let mut dist_config = scenario.take_shared<DistributionConfig>();
         let gauge = scenario.take_shared<Gauge<USD1, AUSD>>();
         let gauge_id = object::id(&gauge);
@@ -1578,6 +1582,7 @@ fun test_distribute_killed_gauge_fails() {
         let emergency_cap = emergency_council::create_for_testing(
             object::id(&voter),
             object::id(&minter),
+            object::id(&voting_escrow),
             scenario.ctx()
         );
         minter::kill_gauge<SAIL>(
@@ -1589,6 +1594,7 @@ fun test_distribute_killed_gauge_fails() {
         
         test_scenario::return_shared(minter);
         test_scenario::return_shared(voter);
+        test_scenario::return_shared(voting_escrow);
         test_scenario::return_shared(dist_config);
         test_scenario::return_shared(gauge);
         transfer::public_transfer(emergency_cap, admin);
@@ -1655,6 +1661,7 @@ fun test_distribute_revived_gauge_succeeds() {
     {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
         let voter = scenario.take_shared<Voter>();
+        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
         let mut dist_config = scenario.take_shared<DistributionConfig>();
         let gauge = scenario.take_shared<Gauge<USD1, AUSD>>();
         gauge_id = object::id(&gauge);
@@ -1662,6 +1669,7 @@ fun test_distribute_revived_gauge_succeeds() {
         let emergency_cap = emergency_council::create_for_testing(
             object::id(&voter),
             object::id(&minter),
+            object::id(&voting_escrow),
             scenario.ctx()
         );
         minter::kill_gauge<SAIL>(
@@ -1673,6 +1681,7 @@ fun test_distribute_revived_gauge_succeeds() {
         
         test_scenario::return_shared(minter);
         test_scenario::return_shared(voter);
+        test_scenario::return_shared(voting_escrow);
         test_scenario::return_shared(dist_config);
         test_scenario::return_shared(gauge);
         transfer::public_transfer(emergency_cap, admin);
@@ -1765,9 +1774,11 @@ fun test_revive_undistributed_gauge_fails() {
         gauge_id = object::id(&gauge);
 
         let voter = scenario.take_shared<Voter>();
+        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
         let emergency_cap = emergency_council::create_for_testing(
             object::id(&voter),
             object::id(&minter),
+            object::id(&voting_escrow),
             scenario.ctx()
         );
         
@@ -1782,6 +1793,7 @@ fun test_revive_undistributed_gauge_fails() {
         test_scenario::return_shared(dist_config);
         test_scenario::return_shared(gauge);
         test_scenario::return_shared(voter);
+        test_scenario::return_shared(voting_escrow);
         transfer::public_transfer(emergency_cap, admin);
     };
 
@@ -1868,9 +1880,11 @@ fun test_kill_revive_in_same_epoch_rewards() {
         gauge_id = object::id(&gauge);
 
         let voter = scenario.take_shared<Voter>();
+        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
         let emergency_cap = emergency_council::create_for_testing(
             object::id(&voter),
             object::id(&minter),
+            object::id(&voting_escrow),
             scenario.ctx()
         );
         
@@ -1885,6 +1899,7 @@ fun test_kill_revive_in_same_epoch_rewards() {
         test_scenario::return_shared(dist_config);
         test_scenario::return_shared(gauge);
         test_scenario::return_shared(voter);
+        test_scenario::return_shared(voting_escrow);
         transfer::public_transfer(emergency_cap, admin);
     };
 
@@ -1971,9 +1986,11 @@ fun test_revive_gauge_in_next_epoch_fails() {
         gauge_id = object::id(&gauge);
 
         let voter = scenario.take_shared<Voter>();
+        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
         let emergency_cap = emergency_council::create_for_testing(
             object::id(&voter),
             object::id(&minter),
+            object::id(&voting_escrow),
             scenario.ctx()
         );
         
@@ -1988,6 +2005,7 @@ fun test_revive_gauge_in_next_epoch_fails() {
         test_scenario::return_shared(dist_config);
         test_scenario::return_shared(gauge);
         test_scenario::return_shared(voter);
+        test_scenario::return_shared(voting_escrow);
         transfer::public_transfer(emergency_cap, admin);
     };
 
@@ -2064,9 +2082,11 @@ fun test_reset_gauge_in_same_epoch_fails() {
         gauge_id = object::id(&gauge);
 
         let voter = scenario.take_shared<Voter>();
+        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
         let emergency_cap = emergency_council::create_for_testing(
             object::id(&voter),
             object::id(&minter),
+            object::id(&voting_escrow),
             scenario.ctx()
         );
         
@@ -2081,6 +2101,7 @@ fun test_reset_gauge_in_same_epoch_fails() {
         test_scenario::return_shared(dist_config);
         test_scenario::return_shared(gauge);
         test_scenario::return_shared(voter);
+        test_scenario::return_shared(voting_escrow);
         transfer::public_transfer(emergency_cap, admin);
     };
 
@@ -2146,9 +2167,11 @@ fun test_reset_and_distribute_undistributed_killed_gauge() {
         let gauge_id = object::id(&gauge);
 
         let voter = scenario.take_shared<Voter>();
+        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
         let emergency_cap = emergency_council::create_for_testing(
             object::id(&voter),
             object::id(&minter),
+            object::id(&voting_escrow),
             scenario.ctx()
         );
 
@@ -2163,6 +2186,7 @@ fun test_reset_and_distribute_undistributed_killed_gauge() {
         test_scenario::return_shared(dist_config);
         test_scenario::return_shared(gauge);
         test_scenario::return_shared(voter);
+        test_scenario::return_shared(voting_escrow);
         transfer::public_transfer(emergency_cap, admin);
     };
 
@@ -2250,9 +2274,11 @@ fun test_kill_already_killed_gauge_fails() {
         gauge_id = object::id(&gauge);
 
         let voter = scenario.take_shared<Voter>();
+        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
         let emergency_cap = emergency_council::create_for_testing(
             object::id(&voter),
             object::id(&minter),
+            object::id(&voting_escrow),
             scenario.ctx()
         );
 
@@ -2267,6 +2293,7 @@ fun test_kill_already_killed_gauge_fails() {
         test_scenario::return_shared(dist_config);
         test_scenario::return_shared(gauge);
         test_scenario::return_shared(voter);
+        test_scenario::return_shared(voting_escrow);
         transfer::public_transfer(emergency_cap, admin);
     };
 
@@ -2333,9 +2360,11 @@ fun test_revive_already_alive_gauge_fails() {
         gauge_id = object::id(&gauge);
 
         let voter = scenario.take_shared<Voter>();
+        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
         let emergency_cap = emergency_council::create_for_testing(
             object::id(&voter),
             object::id(&minter),
+            object::id(&voting_escrow),
             scenario.ctx()
         );
 
@@ -2350,6 +2379,7 @@ fun test_revive_already_alive_gauge_fails() {
         test_scenario::return_shared(dist_config);
         test_scenario::return_shared(gauge);
         test_scenario::return_shared(voter);
+        test_scenario::return_shared(voting_escrow);
         transfer::public_transfer(emergency_cap, admin);
     };
 
@@ -2429,9 +2459,11 @@ fun test_reset_already_alive_gauge_fails() {
         gauge_id = object::id(&gauge);
 
         let voter = scenario.take_shared<Voter>();
+        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
         let emergency_cap = emergency_council::create_for_testing(
             object::id(&voter),
             object::id(&minter),
+            object::id(&voting_escrow),
             scenario.ctx()
         );
 
@@ -2446,6 +2478,7 @@ fun test_reset_already_alive_gauge_fails() {
         test_scenario::return_shared(dist_config);
         test_scenario::return_shared(gauge);
         test_scenario::return_shared(voter);
+        test_scenario::return_shared(voting_escrow);
         transfer::public_transfer(emergency_cap, admin);
     };
 
@@ -2537,12 +2570,14 @@ fun test_kill_gauge_with_invalid_emergency_cap_fails() {
         let gauge = scenario.take_shared<Gauge<USD1, AUSD>>();
         let gauge_id = object::id(&gauge);
         let voter = scenario.take_shared<Voter>();
+        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
 
         // Create an emergency cap with a fake minter ID
         let invalid_minter_id = object::id_from_address(@0xDEADBEEF);
         let emergency_cap = emergency_council::create_for_testing(
             object::id(&voter),
             invalid_minter_id,
+            object::id(&voting_escrow),
             scenario.ctx()
         );
 
@@ -2559,6 +2594,7 @@ fun test_kill_gauge_with_invalid_emergency_cap_fails() {
         test_scenario::return_shared(dist_config);
         test_scenario::return_shared(gauge);
         test_scenario::return_shared(voter);
+        test_scenario::return_shared(voting_escrow);
         transfer::public_transfer(emergency_cap, admin);
     };
 
@@ -2606,9 +2642,11 @@ fun test_revive_gauge_with_invalid_emergency_cap_fails() {
         gauge_id = object::id(&gauge);
 
         let voter = scenario.take_shared<Voter>();
+        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
         let emergency_cap = emergency_council::create_for_testing(
             object::id(&voter),
             object::id(&minter),
+            object::id(&voting_escrow),
             scenario.ctx()
         );
 
@@ -2623,6 +2661,7 @@ fun test_revive_gauge_with_invalid_emergency_cap_fails() {
         test_scenario::return_shared(dist_config);
         test_scenario::return_shared(gauge);
         test_scenario::return_shared(voter);
+        test_scenario::return_shared(voting_escrow);
         transfer::public_transfer(emergency_cap, admin);
     };
 
@@ -2632,12 +2671,14 @@ fun test_revive_gauge_with_invalid_emergency_cap_fails() {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
         let mut dist_config = scenario.take_shared<DistributionConfig>();
         let voter = scenario.take_shared<Voter>();
+        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
 
         // Create an invalid cap with a fake minter ID
         let invalid_minter_id = object::id_from_address(@0xDEADBEEF);
         let invalid_emergency_cap = emergency_council::create_for_testing(
             object::id(&voter),
             invalid_minter_id,
+            object::id(&voting_escrow),
             scenario.ctx()
         );
 
@@ -2653,6 +2694,7 @@ fun test_revive_gauge_with_invalid_emergency_cap_fails() {
         test_scenario::return_shared(minter);
         test_scenario::return_shared(dist_config);
         test_scenario::return_shared(voter);
+        test_scenario::return_shared(voting_escrow);
         transfer::public_transfer(invalid_emergency_cap, admin);
     };
 
@@ -2693,9 +2735,11 @@ fun test_reset_gauge_with_invalid_emergency_cap_fails() {
         let gauge_id = object::id(&gauge);
 
         let voter = scenario.take_shared<Voter>();
+        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
         let emergency_cap = emergency_council::create_for_testing(
             object::id(&voter),
             object::id(&minter),
+            object::id(&voting_escrow),
             scenario.ctx()
         );
 
@@ -2710,6 +2754,7 @@ fun test_reset_gauge_with_invalid_emergency_cap_fails() {
         test_scenario::return_shared(dist_config);
         test_scenario::return_shared(gauge);
         test_scenario::return_shared(voter);
+        test_scenario::return_shared(voting_escrow);
         transfer::public_transfer(emergency_cap, admin);
     };
 
@@ -2722,12 +2767,14 @@ fun test_reset_gauge_with_invalid_emergency_cap_fails() {
         let mut dist_config = scenario.take_shared<DistributionConfig>();
         let mut gauge = scenario.take_shared<Gauge<USD1, AUSD>>();
         let voter = scenario.take_shared<Voter>();
+        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
 
         // Create an invalid cap with a fake minter ID
         let invalid_minter_id = object::id_from_address(@0xDEADBEEF);
         let invalid_emergency_cap = emergency_council::create_for_testing(
             object::id(&voter),
             invalid_minter_id,
+            object::id(&voting_escrow),
             scenario.ctx()
         );
 
@@ -2745,6 +2792,7 @@ fun test_reset_gauge_with_invalid_emergency_cap_fails() {
         test_scenario::return_shared(dist_config);
         test_scenario::return_shared(gauge);
         test_scenario::return_shared(voter);
+        test_scenario::return_shared(voting_escrow);
         transfer::public_transfer(invalid_emergency_cap, admin);
     };
 

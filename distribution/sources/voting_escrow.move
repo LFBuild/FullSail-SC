@@ -2250,10 +2250,11 @@ module distribution::voting_escrow {
     /// * If the lock is already in the requested activation state
     public fun set_managed_lock_deactivated<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
-        _emergency_council_cap: &distribution::emergency_council::EmergencyCouncilCap,
+        emergency_council_cap: &distribution::emergency_council::EmergencyCouncilCap,
         lock_id: ID,
         deactivated: bool
     ) {
+        emergency_council_cap.validate_emergency_council_voting_escrow_id(object::id(voting_escrow));
         assert!(voting_escrow.escrow_type(lock_id) == EscrowType::MANAGED, ESetManagedLockNotManagedType);
         assert!(
             !voting_escrow.deactivated.contains(lock_id) || voting_escrow.deactivated.borrow(lock_id) != &deactivated,
