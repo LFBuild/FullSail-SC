@@ -341,7 +341,12 @@ module distribution::reward {
         ) - latest_epoch_time) / distribution::common::epoch();
         if (epochs_until_now > 0) {
             let mut i = 0;
-            while (i < epochs_until_now) {
+            // limit the number of iterations to prevent denial of service.
+            // sui move test --gas-limit 50000000 (i.e. 0.05 SUI) successfully runs this
+            // claim function even with 1000 epochs (i.e 1000 iterations).
+            // So 100 iterations seems to be a safe limit.
+            let max_num_iterations = 100;
+            while (i < epochs_until_now && i < max_num_iterations) {
                 // stop when we encounter epoch that is not final and reward is configured to wait for balance update.
                 if (
                     reward.balance_update_enabled && (
