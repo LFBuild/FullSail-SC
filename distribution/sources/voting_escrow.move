@@ -24,6 +24,7 @@ module distribution::voting_escrow {
     const ECreateLockOwnerExists: u64 = 922337417145352191;
     const ECreateLockLockedExists: u64 = 922337417574848921;
     const ECreateManagedNotAllowedManager: u64 = 922337773627768834;
+    const EDepositForDeactivatedLock: u64 = 422370226116838300;
     const EDelegateNotPermanent: u64 = 922337565751338600;
     const EDelegateInvalidDelegatee: u64 = 922337566180861544;
     const EDelegateOwnershipChangeTooRecent: u64 = 922337568328410729;
@@ -32,6 +33,7 @@ module distribution::voting_escrow {
     const EDepositManagedDeactivated: u64 = 922337785224429573;
     const EDepositManagedNotNormalEscrow: u64 = 922337785653703477;
     const EDepositManagedNoBalance: u64 = 922337786512565862;
+    const EIncreaseAmountDeactivatedLock: u64 = 686510248139248600;
     const EIncreaseAmountZero: u64 = 922337446351156019;
     const EIncreaseAmountLockedEscrow: u64 = 922337447210215015;
     const EIncreaseAmountNotExists: u64 = 922337448498613452;
@@ -1372,10 +1374,12 @@ module distribution::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        let lock_id = object::id(lock);
+        assert!(!voting_escrow.deactivated(lock_id), EDepositForDeactivatedLock);
         let deposit_amount = coin.value<SailCoinType>();
         voting_escrow.balance.join<SailCoinType>(coin.into_balance());
         voting_escrow.increase_amount_for_internal(
-            object::id<Lock>(lock),
+            lock_id,
             deposit_amount,
             DepositType::DEPOSIT_FOR_TYPE,
             clock,
@@ -1755,10 +1759,12 @@ module distribution::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        let lock_id = object::id(lock);
+        assert!(voting_escrow.deactivated(lock_id), EIncreaseAmountDeactivatedLock);
         let amount = coin.value();
         voting_escrow.balance.join(coin.into_balance());
         voting_escrow.increase_amount_for_internal(
-            object::id<Lock>(lock),
+            lock_id,
             amount,
             DepositType::INCREASE_LOCK_AMOUNT,
             clock,
