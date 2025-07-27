@@ -1000,7 +1000,7 @@ module distribution::minter {
             let team_emissions = integer_mate::full_math_u64::mul_div_floor(
                 minter.team_emission_rate,
                 rebase_growth + prev_prev_epoch_emissions,
-                RATE_DENOM - minter.team_emission_rate
+                RATE_DENOM
             );
             transfer::public_transfer<Coin<SailCoinType>>(
                 minter.mint_sail(team_emissions, ctx),
