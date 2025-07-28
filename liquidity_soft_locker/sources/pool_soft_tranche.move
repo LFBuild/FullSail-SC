@@ -585,7 +585,7 @@ module liquidity_soft_locker::pool_soft_tranche {
 
         let tranche = get_tranche_by_id(manager, pool_id, tranche_id);
 
-        assert!(tranche.current_volume == 0, ETrancheActive);
+        assert!(!tranche.filled, ETrancheActive);
 
         tranche.volume_in_coin_a = volume_in_coin_a;
         tranche.total_volume = total_volume;
