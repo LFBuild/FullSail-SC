@@ -322,7 +322,7 @@ module integrate::pool_script_v2 {
         );
     }
 
-    fun repay_add_liquidity<CoinTypeA, CoinTypeB>(
+    public(package) fun repay_add_liquidity<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         receipt: clmm_pool::pool::AddLiquidityReceipt<CoinTypeA, CoinTypeB>,

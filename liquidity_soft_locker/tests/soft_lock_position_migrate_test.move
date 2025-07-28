@@ -1,11 +1,11 @@
 #[test_only]
-module liquidity_locker::lock_position_migrate_test {
+module liquidity_soft_locker::soft_lock_position_migrate_test {
     use sui::test_scenario;
     use sui::test_utils;
 
-    use liquidity_locker::liquidity_lock_v1;
-    use liquidity_locker::liquidity_lock_v2;
-    use liquidity_locker::pool_tranche;
+    use liquidity_soft_locker::liquidity_soft_lock_v1;
+    use liquidity_soft_locker::liquidity_soft_lock_v2;
+    use liquidity_soft_locker::pool_soft_tranche;
     use locker_cap::locker_cap;
     use clmm_pool::position;
     use clmm_pool::pool;
@@ -47,6 +47,10 @@ module liquidity_locker::lock_position_migrate_test {
     public struct OSAIL3 has drop {}
     #[test_only]
     public struct OSAIL4 has drop {}
+    #[test_only]
+    public struct OSAIL5 has drop {}
+    #[test_only]
+    public struct OSAIL6 has drop {}
 
     #[test]
     fun test_lock_position_migrate() {
@@ -56,8 +60,8 @@ module liquidity_locker::lock_position_migrate_test {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
-            pool_tranche::test_init(scenario.ctx());
+            liquidity_soft_lock_v1::test_init(scenario.ctx());
+            pool_soft_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
             distribution_config::test_init(scenario.ctx());
@@ -89,9 +93,9 @@ module liquidity_locker::lock_position_migrate_test {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
-            let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
+            let admin_cap = scenario.take_from_sender<liquidity_soft_lock_v1::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_soft_lock_v1::SoftLocker>();
+            let mut tranche_manager = scenario.take_shared<pool_soft_tranche::PoolSoftTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -112,7 +116,7 @@ module liquidity_locker::lock_position_migrate_test {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_soft_lock_v1::init_locker(
                 &admin_cap,
                 &locker_create_cap,
                 &mut locker,
@@ -121,7 +125,7 @@ module liquidity_locker::lock_position_migrate_test {
                 scenario.ctx()
             );
 
-            liquidity_lock_v1::set_ignore_whitelist(
+            liquidity_soft_lock_v1::set_ignore_whitelist(
                 &mut locker,
                 true,
                 scenario.ctx()
@@ -156,7 +160,7 @@ module liquidity_locker::lock_position_migrate_test {
                 &clock
             );
 
-            let mut locked_positions = liquidity_lock_v1::lock_position<TestCoinB, TestCoinA>(
+            let mut locked_positions = liquidity_soft_lock_v1::lock_position<TestCoinB, TestCoinA>(
                 &global_config,
                 &mut vault,
                 &mut locker,
@@ -213,10 +217,10 @@ module liquidity_locker::lock_position_migrate_test {
             );
         };
 
-        // init  liquidity_lock_v2
+        // init  liquidity_soft_lock_v2
         scenario.next_tx(admin);
         {
-            liquidity_lock_v2::test_init(scenario.ctx());
+            liquidity_soft_lock_v2::test_init(scenario.ctx());
         };
 
         // migrate lock position from v1 to v2
@@ -225,8 +229,8 @@ module liquidity_locker::lock_position_migrate_test {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
             let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
-            let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
+            let admin_cap = scenario.take_from_sender<liquidity_soft_lock_v2::SuperAdminCap>();
+            let mut tranche_manager = scenario.take_shared<pool_soft_tranche::PoolSoftTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -237,9 +241,9 @@ module liquidity_locker::lock_position_migrate_test {
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
-            let mut locker_v1 = scenario.take_shared<liquidity_lock_v1::Locker>();
-            let mut locker_v2 = scenario.take_shared<liquidity_lock_v2::Locker>();
-            let locked_position_v1 = scenario.take_from_sender<liquidity_lock_v1::LockedPosition<TestCoinB, TestCoinA>>();
+            let mut locker_v1 = scenario.take_shared<liquidity_soft_lock_v1::SoftLocker>();
+            let mut locker_v2 = scenario.take_shared<liquidity_soft_lock_v2::SoftLocker>();
+            let locked_position_v1 = scenario.take_from_sender<liquidity_soft_lock_v1::SoftLockedPosition<TestCoinB, TestCoinA>>();
 
             let mut periods_blocking = std::vector::empty();
             std::vector::push_back(&mut periods_blocking, 3);
@@ -249,7 +253,7 @@ module liquidity_locker::lock_position_migrate_test {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v2::init_locker(
+            liquidity_soft_lock_v2::init_locker(
                 &admin_cap,
                 &locker_create_cap,
                 &mut locker_v2,
@@ -258,7 +262,7 @@ module liquidity_locker::lock_position_migrate_test {
                 scenario.ctx()
             );
 
-            let locked_position_v2 = liquidity_lock_v2::lock_position_migrate<TestCoinB, TestCoinA>(
+            let locked_position_v2 = liquidity_soft_lock_v2::lock_position_migrate<TestCoinB, TestCoinA>(
                 &global_config,
                 &distribution_config,
                 &mut locker_v1,
@@ -293,7 +297,7 @@ module liquidity_locker::lock_position_migrate_test {
         // ckeck new lock position v2
         scenario.next_tx(admin);
         {
-            let locked_position_v2 = scenario.take_from_sender<liquidity_lock_v2::LockedPosition<TestCoinB, TestCoinA>>();
+            let locked_position_v2 = scenario.take_from_sender<liquidity_soft_lock_v2::SoftLockedPosition<TestCoinB, TestCoinA>>();
 
             assert!(locked_position_v2.get_profitability() == 1000, 9342745072243);
             let (expiration_time_v2, full_unlocking_time_v2) = locked_position_v2.get_unlock_time();
@@ -329,10 +333,79 @@ module liquidity_locker::lock_position_migrate_test {
             );
         };
 
-        // Add reward to the SECOND epoch
+        // Advance to Epoch 4 (OSAIL4)
+        clock::increment_for_testing(&mut clock, common::epoch_to_seconds(1)*1000); // next epoch (4)
+
+        // Update Minter Period to OSAIL4
         scenario.next_tx(admin);
         {
-            let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
+            let initial_o_sail4_supply = update_minter_period<SailCoinType, OSAIL4>(
+                &mut scenario,
+                1_000_000, // Arbitrary supply for OSAIL4
+                &clock
+            );
+            sui::coin::burn_for_testing(initial_o_sail4_supply); // Burn OSAIL4
+        };
+
+        // Distribute gauge emissions for epoch 4
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_3<SailCoinType, OSAIL4>(
+                &mut scenario,
+                &clock
+            );
+        };
+
+        // Advance to Epoch 5 (OSAIL5)
+        clock::increment_for_testing(&mut clock, common::epoch_to_seconds(1)*1000); // next epoch (5)
+
+        // Update Minter Period to OSAIL5
+        scenario.next_tx(admin);
+        {
+            let initial_o_sail5_supply = update_minter_period<SailCoinType, OSAIL5>(
+                &mut scenario,
+                1_000_000, // Arbitrary supply for OSAIL5
+                &clock
+            );
+            sui::coin::burn_for_testing(initial_o_sail5_supply); // Burn OSAIL5
+        };
+
+        // Distribute gauge emissions for epoch 5
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_3<SailCoinType, OSAIL5>(
+                &mut scenario,
+                &clock
+            );
+        };
+
+        // Advance to Epoch 6 (OSAIL6)
+        clock::increment_for_testing(&mut clock, common::epoch_to_seconds(1)*1000); // next epoch (6)
+
+        // Update Minter Period to OSAIL6
+        scenario.next_tx(admin);
+        {
+            let initial_o_sail6_supply = update_minter_period<SailCoinType, OSAIL6>(
+                &mut scenario,
+                1_000_000, // Arbitrary supply for OSAIL6
+                &clock
+            );
+            sui::coin::burn_for_testing(initial_o_sail6_supply); // Burn OSAIL6
+        };
+
+        // Distribute gauge emissions for epoch 6
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_3<SailCoinType, OSAIL6>(
+                &mut scenario,
+                &clock
+            );
+        };
+
+        // Add reward to the 5 epoch
+        scenario.next_tx(admin);
+        {
+            let mut tranche_manager = scenario.take_shared<pool_soft_tranche::PoolSoftTrancheManager>();
             let pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
             let tranche1 = get_tranche_by_index(
@@ -341,13 +414,13 @@ module liquidity_locker::lock_position_migrate_test {
                 0
             );
 
-            let reward2 = sui::coin::mint_for_testing<SailCoinType>(10000000, scenario.ctx());
-            pool_tranche::set_total_incomed_and_add_reward<OSAIL2, SailCoinType>(
+            let reward5 = sui::coin::mint_for_testing<SailCoinType>(10000000, scenario.ctx());
+            pool_soft_tranche::set_total_incomed_and_add_reward<OSAIL5, SailCoinType>(
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
-                sui::object::id<pool_tranche::PoolTranche>(tranche1),
-                common::epoch_start(common::epoch_to_seconds(2)),
-                reward2.into_balance(),
+                sui::object::id<pool_soft_tranche::PoolSoftTranche>(tranche1),
+                common::epoch_start(common::epoch_to_seconds(5)),
+                reward5.into_balance(),
                 10300000000000,
                 scenario.ctx()
             );
@@ -361,8 +434,8 @@ module liquidity_locker::lock_position_migrate_test {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
-            let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
+            let admin_cap = scenario.take_from_sender<liquidity_soft_lock_v2::SuperAdminCap>();
+            let mut tranche_manager = scenario.take_shared<pool_soft_tranche::PoolSoftTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -373,18 +446,17 @@ module liquidity_locker::lock_position_migrate_test {
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
-            let locker = scenario.take_shared<liquidity_lock_v2::Locker>();
-            let mut locked_position = scenario.take_from_sender<liquidity_lock_v2::LockedPosition<TestCoinB, TestCoinA>>();
+            let locker = scenario.take_shared<liquidity_soft_lock_v2::SoftLocker>();
+            let mut locked_position = scenario.take_from_sender<liquidity_soft_lock_v2::SoftLockedPosition<TestCoinB, TestCoinA>>();
 
             // Claim rewards for the second epoch lock
-            liquidity_lock_v2::collect_reward_sail<TestCoinB, TestCoinA, OSAIL2, SailCoinType>(
+            liquidity_soft_lock_v2::collect_reward_sail<TestCoinB, TestCoinA, OSAIL5, SailCoinType>(
                 &locker,
                 &mut tranche_manager,
                 &mut ve,
                 &mut gauge,
                 &mut pool,
                 &mut locked_position,
-                common::epoch_start(common::epoch_to_seconds(2)),
                 &clock,
                 scenario.ctx()
             );
@@ -412,7 +484,7 @@ module liquidity_locker::lock_position_migrate_test {
     }
 
     #[test]
-    #[expected_failure(abort_code = liquidity_lock_v2::ELockManagerPaused)]
+    #[expected_failure(abort_code = liquidity_soft_lock_v2::ELockManagerPaused)]
     fun test_pause_v2_when_lock_position_migrate() {
         let admin = @0x1;
         let mut scenario = test_scenario::begin(admin);
@@ -420,8 +492,8 @@ module liquidity_locker::lock_position_migrate_test {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
-            pool_tranche::test_init(scenario.ctx());
+            liquidity_soft_lock_v1::test_init(scenario.ctx());
+            pool_soft_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
             distribution_config::test_init(scenario.ctx());
@@ -453,9 +525,9 @@ module liquidity_locker::lock_position_migrate_test {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
-            let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
+            let admin_cap = scenario.take_from_sender<liquidity_soft_lock_v1::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_soft_lock_v1::SoftLocker>();
+            let mut tranche_manager = scenario.take_shared<pool_soft_tranche::PoolSoftTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -476,7 +548,7 @@ module liquidity_locker::lock_position_migrate_test {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_soft_lock_v1::init_locker(
                 &admin_cap,
                 &locker_create_cap,
                 &mut locker,
@@ -485,7 +557,7 @@ module liquidity_locker::lock_position_migrate_test {
                 scenario.ctx()
             );
 
-            liquidity_lock_v1::set_ignore_whitelist(
+            liquidity_soft_lock_v1::set_ignore_whitelist(
                 &mut locker,
                 true,
                 scenario.ctx()
@@ -520,7 +592,7 @@ module liquidity_locker::lock_position_migrate_test {
                 &clock
             );
 
-            let mut locked_positions = liquidity_lock_v1::lock_position<TestCoinB, TestCoinA>(
+            let mut locked_positions = liquidity_soft_lock_v1::lock_position<TestCoinB, TestCoinA>(
                 &global_config,
                 &mut vault,
                 &mut locker,
@@ -555,10 +627,10 @@ module liquidity_locker::lock_position_migrate_test {
             
         };
 
-        // init  liquidity_lock_v2
+        // init  liquidity_soft_lock_v2
         scenario.next_tx(admin);
         {
-            liquidity_lock_v2::test_init(scenario.ctx());
+            liquidity_soft_lock_v2::test_init(scenario.ctx());
         };
 
         // migrate lock position from v1 to v2
@@ -567,8 +639,8 @@ module liquidity_locker::lock_position_migrate_test {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
             let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
-            let tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
+            let admin_cap = scenario.take_from_sender<liquidity_soft_lock_v2::SuperAdminCap>();
+            let tranche_manager = scenario.take_shared<pool_soft_tranche::PoolSoftTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -579,9 +651,9 @@ module liquidity_locker::lock_position_migrate_test {
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
-            let mut locker_v1 = scenario.take_shared<liquidity_lock_v1::Locker>();
-            let mut locker_v2 = scenario.take_shared<liquidity_lock_v2::Locker>();
-            let locked_position_v1 = scenario.take_from_sender<liquidity_lock_v1::LockedPosition<TestCoinB, TestCoinA>>();
+            let mut locker_v1 = scenario.take_shared<liquidity_soft_lock_v1::SoftLocker>();
+            let mut locker_v2 = scenario.take_shared<liquidity_soft_lock_v2::SoftLocker>();
+            let locked_position_v1 = scenario.take_from_sender<liquidity_soft_lock_v1::SoftLockedPosition<TestCoinB, TestCoinA>>();
 
             let mut periods_blocking = std::vector::empty();
             std::vector::push_back(&mut periods_blocking, 3);
@@ -591,7 +663,7 @@ module liquidity_locker::lock_position_migrate_test {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v2::init_locker(
+            liquidity_soft_lock_v2::init_locker(
                 &admin_cap,
                 &locker_create_cap,
                 &mut locker_v2,
@@ -600,9 +672,9 @@ module liquidity_locker::lock_position_migrate_test {
                 scenario.ctx()
             );
 
-            liquidity_lock_v2::locker_pause(&mut locker_v2, true, scenario.ctx());
+            liquidity_soft_lock_v2::locker_pause(&mut locker_v2, true, scenario.ctx());
 
-            let locked_position_v2 = liquidity_lock_v2::lock_position_migrate<TestCoinB, TestCoinA>(
+            let locked_position_v2 = liquidity_soft_lock_v2::lock_position_migrate<TestCoinB, TestCoinA>(
                 &global_config,
                 &distribution_config,
                 &mut locker_v1,
@@ -639,7 +711,7 @@ module liquidity_locker::lock_position_migrate_test {
     }
 
     #[test]
-    #[expected_failure(abort_code = liquidity_lock_v1::ELockManagerPaused)]
+    #[expected_failure(abort_code = liquidity_soft_lock_v1::ELockManagerPaused)]
     fun test_pause_v1_when_lock_position_migrate() {
         let admin = @0x1;
         let mut scenario = test_scenario::begin(admin);
@@ -647,8 +719,8 @@ module liquidity_locker::lock_position_migrate_test {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
-            pool_tranche::test_init(scenario.ctx());
+            liquidity_soft_lock_v1::test_init(scenario.ctx());
+            pool_soft_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
             distribution_config::test_init(scenario.ctx());
@@ -680,9 +752,9 @@ module liquidity_locker::lock_position_migrate_test {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
-            let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
+            let admin_cap = scenario.take_from_sender<liquidity_soft_lock_v1::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_soft_lock_v1::SoftLocker>();
+            let mut tranche_manager = scenario.take_shared<pool_soft_tranche::PoolSoftTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -703,7 +775,7 @@ module liquidity_locker::lock_position_migrate_test {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_soft_lock_v1::init_locker(
                 &admin_cap,
                 &locker_create_cap,
                 &mut locker,
@@ -712,7 +784,7 @@ module liquidity_locker::lock_position_migrate_test {
                 scenario.ctx()
             );
 
-            liquidity_lock_v1::set_ignore_whitelist(
+            liquidity_soft_lock_v1::set_ignore_whitelist(
                 &mut locker,
                 true,
                 scenario.ctx()
@@ -747,7 +819,7 @@ module liquidity_locker::lock_position_migrate_test {
                 &clock
             );
 
-            let mut locked_positions = liquidity_lock_v1::lock_position<TestCoinB, TestCoinA>(
+            let mut locked_positions = liquidity_soft_lock_v1::lock_position<TestCoinB, TestCoinA>(
                 &global_config,
                 &mut vault,
                 &mut locker,
@@ -782,10 +854,10 @@ module liquidity_locker::lock_position_migrate_test {
             
         };
 
-        // init  liquidity_lock_v2
+        // init  liquidity_soft_lock_v2
         scenario.next_tx(admin);
         {
-            liquidity_lock_v2::test_init(scenario.ctx());
+            liquidity_soft_lock_v2::test_init(scenario.ctx());
         };
 
         // migrate lock position from v1 to v2
@@ -794,9 +866,9 @@ module liquidity_locker::lock_position_migrate_test {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
             let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
-            let locker_v1_admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
+            let admin_cap = scenario.take_from_sender<liquidity_soft_lock_v2::SuperAdminCap>();
+            let locker_v1_admin_cap = scenario.take_from_sender<liquidity_soft_lock_v1::SuperAdminCap>();
+            let tranche_manager = scenario.take_shared<pool_soft_tranche::PoolSoftTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -807,9 +879,9 @@ module liquidity_locker::lock_position_migrate_test {
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
-            let mut locker_v1 = scenario.take_shared<liquidity_lock_v1::Locker>();
-            let mut locker_v2 = scenario.take_shared<liquidity_lock_v2::Locker>();
-            let locked_position_v1 = scenario.take_from_sender<liquidity_lock_v1::LockedPosition<TestCoinB, TestCoinA>>();
+            let mut locker_v1 = scenario.take_shared<liquidity_soft_lock_v1::SoftLocker>();
+            let mut locker_v2 = scenario.take_shared<liquidity_soft_lock_v2::SoftLocker>();
+            let locked_position_v1 = scenario.take_from_sender<liquidity_soft_lock_v1::SoftLockedPosition<TestCoinB, TestCoinA>>();
 
             let mut periods_blocking = std::vector::empty();
             std::vector::push_back(&mut periods_blocking, 3);
@@ -819,7 +891,7 @@ module liquidity_locker::lock_position_migrate_test {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v2::init_locker(
+            liquidity_soft_lock_v2::init_locker(
                 &admin_cap,
                 &locker_create_cap,
                 &mut locker_v2,
@@ -828,9 +900,9 @@ module liquidity_locker::lock_position_migrate_test {
                 scenario.ctx()
             );
 
-            liquidity_lock_v1::locker_pause(&mut locker_v1, true, scenario.ctx());
+            liquidity_soft_lock_v1::locker_pause(&mut locker_v1, true, scenario.ctx());
 
-            let locked_position_v2 = liquidity_lock_v2::lock_position_migrate<TestCoinB, TestCoinA>(
+            let locked_position_v2 = liquidity_soft_lock_v2::lock_position_migrate<TestCoinB, TestCoinA>(
                 &global_config,
                 &distribution_config,
                 &mut locker_v1,
@@ -868,7 +940,7 @@ module liquidity_locker::lock_position_migrate_test {
     }
 
     #[test]
-    #[expected_failure(abort_code = liquidity_lock_v2::EInvalidGaugePool)]
+    #[expected_failure(abort_code = liquidity_soft_lock_v2::EInvalidGaugePool)]
     fun test_invalid_gauge_pool_when_lock_position_migrate() {
         let admin = @0x1;
         let mut scenario = test_scenario::begin(admin);
@@ -876,8 +948,8 @@ module liquidity_locker::lock_position_migrate_test {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
-            pool_tranche::test_init(scenario.ctx());
+            liquidity_soft_lock_v1::test_init(scenario.ctx());
+            pool_soft_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
             distribution_config::test_init(scenario.ctx());
@@ -909,9 +981,9 @@ module liquidity_locker::lock_position_migrate_test {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
-            let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
+            let admin_cap = scenario.take_from_sender<liquidity_soft_lock_v1::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_soft_lock_v1::SoftLocker>();
+            let mut tranche_manager = scenario.take_shared<pool_soft_tranche::PoolSoftTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -932,7 +1004,7 @@ module liquidity_locker::lock_position_migrate_test {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_soft_lock_v1::init_locker(
                 &admin_cap,
                 &locker_create_cap,
                 &mut locker,
@@ -941,7 +1013,7 @@ module liquidity_locker::lock_position_migrate_test {
                 scenario.ctx()
             );
 
-            liquidity_lock_v1::set_ignore_whitelist(
+            liquidity_soft_lock_v1::set_ignore_whitelist(
                 &mut locker,
                 true,
                 scenario.ctx()
@@ -976,7 +1048,7 @@ module liquidity_locker::lock_position_migrate_test {
                 &clock
             );
 
-            let mut locked_positions = liquidity_lock_v1::lock_position<TestCoinB, TestCoinA>(
+            let mut locked_positions = liquidity_soft_lock_v1::lock_position<TestCoinB, TestCoinA>(
                 &global_config,
                 &mut vault,
                 &mut locker,
@@ -1011,10 +1083,10 @@ module liquidity_locker::lock_position_migrate_test {
             
         };
 
-        // init  liquidity_lock_v2
+        // init  liquidity_soft_lock_v2
         scenario.next_tx(admin);
         {
-            liquidity_lock_v2::test_init(scenario.ctx());
+            liquidity_soft_lock_v2::test_init(scenario.ctx());
         };
 
         // migrate lock position from v1 to v2
@@ -1023,8 +1095,8 @@ module liquidity_locker::lock_position_migrate_test {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
             let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
-            let tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
+            let admin_cap = scenario.take_from_sender<liquidity_soft_lock_v2::SuperAdminCap>();
+            let tranche_manager = scenario.take_shared<pool_soft_tranche::PoolSoftTrancheManager>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -1035,9 +1107,9 @@ module liquidity_locker::lock_position_migrate_test {
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
-            let mut locker_v1 = scenario.take_shared<liquidity_lock_v1::Locker>();
-            let mut locker_v2 = scenario.take_shared<liquidity_lock_v2::Locker>();
-            let locked_position_v1 = scenario.take_from_sender<liquidity_lock_v1::LockedPosition<TestCoinB, TestCoinA>>();
+            let mut locker_v1 = scenario.take_shared<liquidity_soft_lock_v1::SoftLocker>();
+            let mut locker_v2 = scenario.take_shared<liquidity_soft_lock_v2::SoftLocker>();
+            let locked_position_v1 = scenario.take_from_sender<liquidity_soft_lock_v1::SoftLockedPosition<TestCoinB, TestCoinA>>();
             let mut pools = scenario.take_shared<Pools>();
 
             config::add_fee_tier(&mut global_config, 2, 1000, scenario.ctx());
@@ -1050,7 +1122,7 @@ module liquidity_locker::lock_position_migrate_test {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v2::init_locker(
+            liquidity_soft_lock_v2::init_locker(
                 &admin_cap,
                 &locker_create_cap,
                 &mut locker_v2,
@@ -1072,7 +1144,7 @@ module liquidity_locker::lock_position_migrate_test {
                 scenario.ctx()
             );
 
-            let locked_position_v2 = liquidity_lock_v2::lock_position_migrate<TestCoinB, TestCoinA>(
+            let locked_position_v2 = liquidity_soft_lock_v2::lock_position_migrate<TestCoinB, TestCoinA>(
                 &global_config,
                 &distribution_config,
                 &mut locker_v1,
@@ -1111,7 +1183,7 @@ module liquidity_locker::lock_position_migrate_test {
     }
 
     #[test]
-    #[expected_failure(abort_code = liquidity_lock_v1::ELockPeriodEnded)]
+    #[expected_failure(abort_code = liquidity_soft_lock_v1::ELockPeriodEnded)]
     fun test_lock_period_ended_when_lock_position_migrate() {
         let admin = @0x1;
         let mut scenario = test_scenario::begin(admin);
@@ -1119,8 +1191,8 @@ module liquidity_locker::lock_position_migrate_test {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
-            pool_tranche::test_init(scenario.ctx());
+            liquidity_soft_lock_v1::test_init(scenario.ctx());
+            pool_soft_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
             distribution_config::test_init(scenario.ctx());
@@ -1152,9 +1224,9 @@ module liquidity_locker::lock_position_migrate_test {
         {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
-            let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
+            let admin_cap = scenario.take_from_sender<liquidity_soft_lock_v1::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_soft_lock_v1::SoftLocker>();
+            let mut tranche_manager = scenario.take_shared<pool_soft_tranche::PoolSoftTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -1175,7 +1247,7 @@ module liquidity_locker::lock_position_migrate_test {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_soft_lock_v1::init_locker(
                 &admin_cap,
                 &locker_create_cap,
                 &mut locker,
@@ -1184,7 +1256,7 @@ module liquidity_locker::lock_position_migrate_test {
                 scenario.ctx()
             );
 
-            liquidity_lock_v1::set_ignore_whitelist(
+            liquidity_soft_lock_v1::set_ignore_whitelist(
                 &mut locker,
                 true,
                 scenario.ctx()
@@ -1219,7 +1291,7 @@ module liquidity_locker::lock_position_migrate_test {
                 &clock
             );
 
-            let mut locked_positions = liquidity_lock_v1::lock_position<TestCoinB, TestCoinA>(
+            let mut locked_positions = liquidity_soft_lock_v1::lock_position<TestCoinB, TestCoinA>(
                 &global_config,
                 &mut vault,
                 &mut locker,
@@ -1254,10 +1326,10 @@ module liquidity_locker::lock_position_migrate_test {
             
         };
 
-        // init  liquidity_lock_v2
+        // init  liquidity_soft_lock_v2
         scenario.next_tx(admin);
         {
-            liquidity_lock_v2::test_init(scenario.ctx());
+            liquidity_soft_lock_v2::test_init(scenario.ctx());
         };
 
         // migrate lock position from v1 to v2
@@ -1266,8 +1338,8 @@ module liquidity_locker::lock_position_migrate_test {
             let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
             let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
             let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
-            let tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
+            let admin_cap = scenario.take_from_sender<liquidity_soft_lock_v2::SuperAdminCap>();
+            let tranche_manager = scenario.take_shared<pool_soft_tranche::PoolSoftTrancheManager>();
             let global_config = scenario.take_shared<config::GlobalConfig>();
             let voter = scenario.take_shared<voter::Voter>();
             let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
@@ -1278,9 +1350,9 @@ module liquidity_locker::lock_position_migrate_test {
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
-            let mut locker_v1 = scenario.take_shared<liquidity_lock_v1::Locker>();
-            let mut locker_v2 = scenario.take_shared<liquidity_lock_v2::Locker>();
-            let locked_position_v1 = scenario.take_from_sender<liquidity_lock_v1::LockedPosition<TestCoinB, TestCoinA>>();
+            let mut locker_v1 = scenario.take_shared<liquidity_soft_lock_v1::SoftLocker>();
+            let mut locker_v2 = scenario.take_shared<liquidity_soft_lock_v2::SoftLocker>();
+            let locked_position_v1 = scenario.take_from_sender<liquidity_soft_lock_v1::SoftLockedPosition<TestCoinB, TestCoinA>>();
 
             let mut periods_blocking = std::vector::empty();
             std::vector::push_back(&mut periods_blocking, 3);
@@ -1290,7 +1362,7 @@ module liquidity_locker::lock_position_migrate_test {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v2::init_locker(
+            liquidity_soft_lock_v2::init_locker(
                 &admin_cap,
                 &locker_create_cap,
                 &mut locker_v2,
@@ -1301,7 +1373,7 @@ module liquidity_locker::lock_position_migrate_test {
 
             clock::increment_for_testing(&mut clock, common::epoch_to_seconds(4)*1000);
 
-            let locked_position_v2 = liquidity_lock_v2::lock_position_migrate<TestCoinB, TestCoinA>(
+            let locked_position_v2 = liquidity_soft_lock_v2::lock_position_migrate<TestCoinB, TestCoinA>(
                 &global_config,
                 &distribution_config,
                 &mut locker_v1,
@@ -1340,7 +1412,7 @@ module liquidity_locker::lock_position_migrate_test {
     #[test_only]
     fun create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType>(
         scenario: &mut test_scenario::Scenario,
-        tranche_manager: &mut pool_tranche::PoolTrancheManager,
+        tranche_manager: &mut pool_soft_tranche::PoolSoftTrancheManager,
         pool: &pool::Pool<TestCoinB, TestCoinA>,
         volume_in_coin_a: bool,
         total_volume: u128, // Q64.64
@@ -1352,13 +1424,13 @@ module liquidity_locker::lock_position_migrate_test {
     ) {
 
             // set ignore_whitelist to true
-            pool_tranche::set_ignore_whitelist(
+            pool_soft_tranche::set_ignore_whitelist(
                 tranche_manager,
                 true,
                 scenario.ctx()
             );
 
-            pool_tranche::new(
+            pool_soft_tranche::new(
                 tranche_manager,
                 pool,
                 volume_in_coin_a,
@@ -1367,16 +1439,16 @@ module liquidity_locker::lock_position_migrate_test {
                 minimum_remaining_volume, // minimum_remaining_volume
                 scenario.ctx()
             );
-            let tranches = pool_tranche::get_tranches(
+            let tranches = pool_soft_tranche::get_tranches(
                 tranche_manager, 
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(pool)
             );
             let new_tranche = tranches.borrow(tranches.length() - 1);
             // add reward
-            let tranche_id = sui::object::id<pool_tranche::PoolTranche>(new_tranche);
+            let tranche_id = sui::object::id<pool_soft_tranche::PoolSoftTranche>(new_tranche);
             let reward = sui::coin::mint_for_testing<RewardCoinType>(reward_value, scenario.ctx());
 
-            pool_tranche::set_total_incomed_and_add_reward<OSAIL1, RewardCoinType>(
+            pool_soft_tranche::set_total_incomed_and_add_reward<OSAIL1, RewardCoinType>(
                 tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(pool),
                 tranche_id,
@@ -1911,11 +1983,11 @@ module liquidity_locker::lock_position_migrate_test {
 
     #[test_only]
     fun get_tranche_by_index(
-        tranche_manager: &mut pool_tranche::PoolTrancheManager,
+        tranche_manager: &mut pool_soft_tranche::PoolSoftTrancheManager,
         pool_id: sui::object::ID,
         index: u64
-    ): &mut pool_tranche::PoolTranche {
-        let tranches = pool_tranche::get_tranches(
+    ): &mut pool_soft_tranche::PoolSoftTranche {
+        let tranches = pool_soft_tranche::get_tranches(
             tranche_manager, 
             pool_id
         );

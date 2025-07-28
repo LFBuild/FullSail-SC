@@ -2,8 +2,8 @@
 
 [move]
 version = 3
-manifest_digest = "768F818D9ACB2E6A0F3384FB316FE92240CA0EF8FCA0921487E5D309E529C0E0"
-deps_digest = "04732BFEF428F74DE262001DC455D76B909EBC394B034A9A15CC095E4BDD9CEF"
+manifest_digest = "CC40929016FCBFBDA86B2FFBB9C3137A0338EECEB4FCED5FC5CA0C56E1A59969"
+deps_digest = "8227D341C0550A37580C10FA45FE148A465225149C69D179737E0FE454AD6AEC"
 dependencies = [
   { id = "Sui", name = "Sui" },
   { id = "clmm_pool", name = "clmm_pool" },
@@ -11,6 +11,7 @@ dependencies = [
   { id = "gauge_cap", name = "gauge_cap" },
   { id = "integer_mate", name = "integer_mate" },
   { id = "liquidity_locker", name = "liquidity_locker" },
+  { id = "liquidity_soft_locker", name = "liquidity_soft_locker" },
   { id = "move_stl", name = "move_stl" },
   { id = "price_provider", name = "price_provider" },
 ]
@@ -93,6 +94,21 @@ dependencies = [
 ]
 
 [[move.package]]
+id = "liquidity_soft_locker"
+source = { local = "../liquidity_soft_locker" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+  { id = "Switchboard", name = "Switchboard" },
+  { id = "clmm_pool", name = "clmm_pool" },
+  { id = "distribution", name = "distribution" },
+  { id = "gauge_cap", name = "gauge_cap" },
+  { id = "integer_mate", name = "integer_mate" },
+  { id = "locker_cap", name = "locker_cap" },
+  { id = "price_provider", name = "price_provider" },
+]
+
+[[move.package]]
 id = "locker_cap"
 source = { local = "../locker_cap" }
 
@@ -117,7 +133,7 @@ dependencies = [
 ]
 
 [move.toolchain-version]
-compiler-version = "1.50.1"
+compiler-version = "1.52.1"
 edition = "2024"
 flavor = "sui"
 
