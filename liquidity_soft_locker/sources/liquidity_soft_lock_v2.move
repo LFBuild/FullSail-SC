@@ -195,6 +195,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2 {
     /// * `profitability` - Profitability rate for this locked position
     /// * `last_reward_claim_epoch` - Epoch of the last reward claim
     /// * `last_growth_inside` - Last recorded growth inside the position's range
+    /// * `remainder_a` - Remaining amount of the first token after rebalancing
+    /// * `remainder_b` - Remaining amount of the second token after rebalancing
     public struct CreateLockPositionEvent has copy, drop {
         lock_position_id: sui::object::ID,
         position_id: sui::object::ID,
@@ -206,7 +208,10 @@ module liquidity_soft_locker::liquidity_soft_lock_v2 {
         profitability: u64,
         last_reward_claim_epoch: u64,
         last_growth_inside: u128,
+        remainder_a: u64,
+        remainder_b: u64,
     }
+
 
     /// Event emitted when a locked position is unlocked.
     /// 
@@ -247,6 +252,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2 {
     /// * `new_last_growth_inside` - Last recorded growth inside the new position's range
     /// * `new_accumulated_amount_earned` - Accumulated rewards from the last unclaimed epoch. 
     /// These rewards are stored during position rebalancing to account for liquidity changes. Reset after each reward claim.
+    /// * `remainder_a` - Remaining amount of the first token after rebalancing
+    /// * `remainder_b` - Remaining amount of the second token after rebalancing
     public struct SplitPositionEvent has copy, drop {
         lock_position_id: sui::object::ID,
         new_lock_position_id: sui::object::ID,
@@ -254,7 +261,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2 {
         new_total_lock_liquidity: u128,
         new_current_lock_liquidity: u128,
         new_last_growth_inside: u128,
-        new_accumulated_amount_earned: u64, 
+        new_accumulated_amount_earned: u64,
+        remainder_a: u64,
+        remainder_b: u64,
     }
 
     /// Event emitted when the tick range of a locked position is changed.
@@ -267,6 +276,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2 {
     /// * `new_tick_upper` - New upper tick boundary of the position
     /// * `new_last_growth_inside` - New last recorded growth inside the position's range
     /// * `new_accumulated_amount_earned` - New accumulated rewards from the last unclaimed epoch. 
+    /// * `remainder_a` - Remaining amount of the first token after rebalancing
+    /// * `remainder_b` - Remaining amount of the second token after rebalancing
     public struct ChangeRangePositionEvent has copy, drop {
         lock_position_id: sui::object::ID,
         new_position_id: sui::object::ID,
@@ -275,6 +286,10 @@ module liquidity_soft_locker::liquidity_soft_lock_v2 {
         new_tick_upper: integer_mate::i32::I32,
         new_last_growth_inside: u128,
         new_accumulated_amount_earned: u64,
+        new_total_lock_liquidity: u128,
+        new_current_lock_liquidity: u128,
+        remainder_a: u64,
+        remainder_b: u64,
     }
 
     /// Event emitted when rewards are collected from a locked position.
@@ -765,6 +780,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2 {
                 profitability: lock_position.profitability,
                 last_reward_claim_epoch: lock_position.last_reward_claim_epoch,
                 last_growth_inside: lock_position.last_growth_inside,
+                remainder_a: lock_position.coin_a.value(),
+                remainder_b: lock_position.coin_b.value(),
             };
             sui::event::emit<CreateLockPositionEvent>(event);
 
@@ -1785,11 +1802,13 @@ module liquidity_soft_locker::liquidity_soft_lock_v2 {
             lock_position_id: sui::object::id<SoftLockedPosition<CoinTypeA, CoinTypeB>>(&lock_position),
             new_lock_position_id: new_lock_position_id,
             share_first_part,
-            new_total_lock_liquidity: new_lock_position.lock_liquidity_info.total_lock_liquidity,
-            new_current_lock_liquidity: new_lock_position.lock_liquidity_info.current_lock_liquidity,
-            new_last_growth_inside: new_lock_position.last_growth_inside,
-            new_accumulated_amount_earned: new_lock_position.accumulated_amount_earned,
-        };
+            new_total_lock_liquidity: lock_position.lock_liquidity_info.total_lock_liquidity,
+            new_current_lock_liquidity: lock_position.lock_liquidity_info.current_lock_liquidity,
+            new_last_growth_inside: lock_position.last_growth_inside,
+            new_accumulated_amount_earned: lock_position.accumulated_amount_earned,
+            remainder_a: lock_position.coin_a.value(),
+            remainder_b: lock_position.coin_b.value(),
+            };
         sui::event::emit<SplitPositionEvent>(split_event);
 
         let event = CreateLockPositionEvent {
@@ -1803,6 +1822,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2 {
             profitability: new_lock_position.profitability,
             last_reward_claim_epoch: new_lock_position.last_reward_claim_epoch,
             last_growth_inside: new_lock_position.last_growth_inside,
+            remainder_a: new_lock_position.coin_a.value(),
+            remainder_b: new_lock_position.coin_b.value(),
         };
         sui::event::emit<CreateLockPositionEvent>(event);
 
@@ -2386,6 +2407,10 @@ module liquidity_soft_locker::liquidity_soft_lock_v2 {
             new_tick_upper: new_tick_upper,
             new_last_growth_inside: lock_position.last_growth_inside,
             new_accumulated_amount_earned: lock_position.accumulated_amount_earned,
+            new_total_lock_liquidity: lock_position.lock_liquidity_info.total_lock_liquidity,
+            new_current_lock_liquidity: lock_position.lock_liquidity_info.current_lock_liquidity,
+            remainder_a: lock_position.coin_a.value(),
+            remainder_b: lock_position.coin_b.value(),
         };
 
         gauge.lock_position(locker.locker_cap.borrow(), new_position_id);

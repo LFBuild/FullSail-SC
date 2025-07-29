@@ -592,7 +592,7 @@ module liquidity_locker::pool_tranche_tests {
             let tranche_1 = tranches.borrow_mut(0);
             pool_tranche::fill_tranches(
                 tranche_1,
-                1 << 64
+                10000000 << 64
             );
 
             pool_tranche::update_tranche(
