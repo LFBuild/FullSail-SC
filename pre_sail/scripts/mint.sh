@@ -1,11 +1,9 @@
-export TOKEN_TYPE=0x0::pre_sail::PRE_SAIL?
-export TREASURY_CAP=0x0?
+export TOKEN_TYPE=0x55385931b718c0d5a2f6126eb1c265277d548da811e820710a479821ed415914::pre_sail::PRE_SAIL
+export TREASURY_CAP=0x64d5e6f0a934cefd8d63828f8b776be9f2c94884c72ca87543e83200c6860906
 export AMOUNT=1000000000000
-export RECIPIENT=0x0?
-export GAS=0x0?
+export RECIPIENT=0xc3c7b01f09bfb204f93de85afa0a271e5bfabac31e566f7e997b9a8685f18967
 
 sui client ptb \
 --move-call 0x2::coin::mint "<$TOKEN_TYPE>" @$TREASURY_CAP $AMOUNT \
---transfer-objects '[coin]' @$RECIPIENT \
---gas $GAS \
---serialize-unsigned-transaction \
+--assign coin \
+--transfer-objects '[coin]' @$RECIPIENT 
