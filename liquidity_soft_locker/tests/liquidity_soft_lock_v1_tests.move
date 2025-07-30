@@ -5776,8 +5776,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v1_tests {
             let admin_cap = scenario.take_from_sender<liquidity_soft_lock_v1::SuperAdminCap>();
             let mut locker = scenario.take_shared<liquidity_soft_lock_v1::SoftLocker>();
 
-            let empty_whitelisted_providers = locker.get_whitelisted_providers();
-            assert!(empty_whitelisted_providers.length() == 0, 928254);
+            let empty_whitelisted_providers = locker.is_provider_whitelisted(@0x1);
+            assert!(!empty_whitelisted_providers, 928254);
 
             liquidity_soft_lock_v1::add_addresses_to_whitelist(
                 &mut locker,
@@ -5785,11 +5785,14 @@ module liquidity_soft_locker::liquidity_soft_lock_v1_tests {
                 scenario.ctx()
             );
 
-            let whitelisted_addresses = locker.get_whitelisted_providers();
-            assert!(whitelisted_addresses.length() == 3, 932469);
-            assert!(whitelisted_addresses[0] == @0x1, 932470);
-            assert!(whitelisted_addresses[1] == @0x2, 932471);
-            assert!(whitelisted_addresses[2] == @0x3, 932472);
+            let whitelisted_addresses = locker.is_provider_whitelisted(@0x1);
+            assert!(whitelisted_addresses, 932469);
+
+            let whitelisted_addresses = locker.is_provider_whitelisted(@0x2);
+            assert!(whitelisted_addresses, 932469);
+
+            let whitelisted_addresses = locker.is_provider_whitelisted(@0x3);
+            assert!(whitelisted_addresses, 932469);
 
             liquidity_soft_lock_v1::remove_addresses_from_whitelist(
                 &mut locker,
@@ -5797,9 +5800,14 @@ module liquidity_soft_locker::liquidity_soft_lock_v1_tests {
                 scenario.ctx()
             );
 
-            let whitelisted_addresses = locker.get_whitelisted_providers();
-            assert!(whitelisted_addresses.length() == 1, 932469);
-            assert!(whitelisted_addresses[0] == @0x3, 932473);
+            let whitelisted_addresses = locker.is_provider_whitelisted(@0x1);
+            assert!(!whitelisted_addresses, 932473);
+
+            let whitelisted_addresses = locker.is_provider_whitelisted(@0x2);
+            assert!(!whitelisted_addresses, 932473);
+
+            let whitelisted_addresses = locker.is_provider_whitelisted(@0x3);
+            assert!(whitelisted_addresses, 932473);
 
             assert!(locker.get_ignore_whitelist_flag() == false, 932474);
 

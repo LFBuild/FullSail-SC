@@ -88,7 +88,6 @@ module distribution::gauge {
     const EWithdrawPositionInvalidPool: u64 = 496532944256373500;
 
     const EFullEarnedForTypeGaugeDoesNotMatchPool: u64 = 266845958013316900;
-    const EFullEarnedForTypeEpochToken: u64 = 932952345345345345;
     const EFullEarnedForTypeNoGrowthGlobalByToken: u64 = 923483942940234034;
 
     public struct AdminCap has store, key {
@@ -1057,6 +1056,41 @@ module distribution::gauge {
         reward_amount
     }
 
+    /// Collects rewards for a specific pool position.
+    /// 
+    /// # Arguments
+    /// * `global_config` - The global configuration
+    /// * `rewarder_vault` - The rewarder vault
+    /// * `gauge` - The gauge instance
+    /// * `pool` - The associated pool
+    /// * `staked_position` - The staked position
+    /// * `clock` - The system clock
+    ///
+    /// # Returns
+    /// Balance of the collected rewards
+    public fun get_pool_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        rewarder_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
+        gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        staked_position: &StakedPosition,
+        clock: &sui::clock::Clock
+    ): sui::balance::Balance<RewardCoinType> {
+        assert!(
+            gauge.check_gauger_pool(pool),
+            EGetPositionRewardGaugeDoesNotMatchPool
+        );
+
+        let position = gauge.staked_positions.borrow(staked_position.position_id);
+        clmm_pool::pool::collect_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
+            global_config,
+            pool,
+            position,
+            rewarder_vault,
+            true,
+            clock
+        )
+    }
 
     /// Sets current_epoch_token. Only current_epoch_token can be distributed in current epoch via Gauge.
     /// After this function is called all notify_reward calls will check that coin is allowed to be distributed.

@@ -1402,6 +1402,47 @@ module liquidity_soft_locker::liquidity_soft_lock_v2 {
         )
     }
 
+    /// Collects rewards for a locked position.
+    /// 
+    /// # Arguments
+    /// * `locker` - Locker object
+    /// * `global_config` - Global configuration for the pool
+    /// * `rewarder_vault` - Global vault for rewards
+    /// * `gauge` - Gauge for the pool
+    /// * `pool` - The pool containing the position
+    /// * `lock_position` - The locked position to collect rewards from
+    /// * `clock` - Clock object for timestamp verification
+    /// 
+    /// # Type Parameters
+    /// * `CoinTypeA` - First coin type in the pool
+    /// * `CoinTypeB` - Second coin type in the pool
+    /// * `RewardCoinType` - Reward type for locked positions
+    /// 
+    /// # Returns
+    /// Balance of rewards collected for the locked position
+    public fun get_pool_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
+        locker: &SoftLocker,
+        global_config: &clmm_pool::config::GlobalConfig,
+        rewarder_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
+        gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        lock_position: &SoftLockedPosition<CoinTypeA, CoinTypeB>,
+        clock: &sui::clock::Clock
+    ): sui::balance::Balance<RewardCoinType> {
+        checked_package_version(locker);
+        assert!(!locker.pause, ELockManagerPaused);
+        
+        let staked_position = locker.staked_positions.borrow(lock_position.position_id);
+
+        distribution::gauge::get_pool_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
+            global_config,
+            rewarder_vault,
+            gauge,
+            pool,
+            staked_position,
+            clock
+        )
+    }
 
     /// Collects rewards for a locked position.
     /// Rewards can only be claimed in the epoch following the last reward claim and not in the current epoch.

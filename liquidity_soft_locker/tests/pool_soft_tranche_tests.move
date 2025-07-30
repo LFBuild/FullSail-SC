@@ -2050,8 +2050,8 @@ module liquidity_soft_locker::pool_soft_tranche_tests {
             let mut tranche_manager = scenario.take_shared<pool_soft_tranche::PoolSoftTrancheManager>();
             let clock = clock::create_for_testing(scenario.ctx());
 
-            let empty_whitelisted_tokens = tranche_manager.get_whitelisted_tokens();
-            assert!(empty_whitelisted_tokens.length() == 0, 928254);
+            let empty_whitelisted_tokens = tranche_manager.is_token_whitelisted(type_name::get<RewardCoinType1>());
+            assert!(!empty_whitelisted_tokens, 928254);
 
             pool_soft_tranche::add_token_types_to_whitelist(
                 &mut tranche_manager,
@@ -2059,11 +2059,14 @@ module liquidity_soft_locker::pool_soft_tranche_tests {
                 scenario.ctx()
             );
 
-            let whitelisted_tokens = tranche_manager.get_whitelisted_tokens();
-            assert!(whitelisted_tokens.length() == 3, 932469);
-            assert!(whitelisted_tokens[0] == type_name::get<RewardCoinType1>(), 932470);
-            assert!(whitelisted_tokens[1] == type_name::get<RewardCoinType2>(), 932471);
-            assert!(whitelisted_tokens[2] == type_name::get<RewardCoinType3>(), 932472);
+            let whitelisted_tokens = tranche_manager.is_token_whitelisted(type_name::get<RewardCoinType1>());
+            assert!(whitelisted_tokens, 932469);
+
+            let whitelisted_tokens = tranche_manager.is_token_whitelisted(type_name::get<RewardCoinType2>());
+            assert!(whitelisted_tokens, 932469);
+
+            let whitelisted_tokens = tranche_manager.is_token_whitelisted(type_name::get<RewardCoinType3>());
+            assert!(whitelisted_tokens, 932469);
 
             pool_soft_tranche::remove_token_types_from_whitelist(
                 &mut tranche_manager,
@@ -2071,9 +2074,14 @@ module liquidity_soft_locker::pool_soft_tranche_tests {
                 scenario.ctx()
             );
 
-            let whitelisted_tokens = tranche_manager.get_whitelisted_tokens();
-            assert!(whitelisted_tokens.length() == 1, 932469);
-            assert!(whitelisted_tokens[0] == type_name::get<RewardCoinType3>(), 932473);
+            let whitelisted_tokens = tranche_manager.is_token_whitelisted(type_name::get<RewardCoinType1>());
+            assert!(!whitelisted_tokens, 932473);
+
+            let whitelisted_tokens = tranche_manager.is_token_whitelisted(type_name::get<RewardCoinType2>());
+            assert!(!whitelisted_tokens, 932473);
+
+            let whitelisted_tokens = tranche_manager.is_token_whitelisted(type_name::get<RewardCoinType3>());
+            assert!(whitelisted_tokens, 932473);
 
             assert!(tranche_manager.get_ignore_whitelist_flag() == false, 932474);
 

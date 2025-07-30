@@ -101,7 +101,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v1 {
     /// * `periods_blocking` - Vector of lock periods measured in epochs
     /// * `periods_post_lockdown` - Vector of post-lock periods in epochs (must match length of periods_blocking)
     /// * `pause` - Flag indicating if the locker is paused
-    /// * `whitelisted_providers` - Vector of provider addresses that are allowed to lock liquidity
+    /// * `whitelisted_providers` - Table of provider addresses that are allowed to lock liquidity
     /// * `ignore_whitelist_providers` - Flag indicating if the whitelist should be ignored for providers
     public struct SoftLocker has store, key {
         id: sui::object::UID,
@@ -112,7 +112,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v1 {
         periods_blocking: vector<u64>,
         periods_post_lockdown: vector<u64>,
         pause: bool,
-        whitelisted_providers: sui::vec_set::VecSet<address>,
+        whitelisted_providers: sui::table::Table<address, bool>,
         ignore_whitelist_providers: bool
     }
 
@@ -364,7 +364,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v1 {
             periods_blocking: std::vector::empty<u64>(),
             periods_post_lockdown: std::vector::empty<u64>(),
             pause: false,
-            whitelisted_providers: sui::vec_set::empty<address>(),
+            whitelisted_providers: sui::table::new(ctx),
             ignore_whitelist_providers: false,
         };
         locker.admins.insert(sui::tx_context::sender(ctx));
@@ -668,8 +668,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v1 {
         let mut i = 0;
         while (i < addresses.length()) {
             let address = *addresses.borrow(i);
-            if (!locker.whitelisted_providers.contains(&address)) {
-                locker.whitelisted_providers.insert(address);
+            if (!locker.whitelisted_providers.contains(address)) {
+                locker.whitelisted_providers.add(address, true);
 
                 let event = AddAddressToWhitelistProvidersEvent {
                     address,
@@ -700,8 +700,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v1 {
         let mut i = 0;
         while (i < addresses.length()) {
             let address = *addresses.borrow(i);
-            if (locker.whitelisted_providers.contains(&address)) {
-                locker.whitelisted_providers.remove(&address);
+            if (locker.whitelisted_providers.contains(address)) {
+                locker.whitelisted_providers.remove(address);
 
                 let event = RemoveAddressFromWhitelistProvidersEvent {
                     address,
@@ -713,15 +713,16 @@ module liquidity_soft_locker::liquidity_soft_lock_v1 {
         }
     }
 
-    /// Returns the vector of whitelisted providers.
+    /// Checks if the provided address is whitelisted as a provider.
     /// 
     /// # Arguments
     /// * `locker` - The locker object to query
+    /// * `provider_address` - The address to check
     /// 
     /// # Returns
-    /// Vector of whitelisted providers
-    public fun get_whitelisted_providers(locker: &SoftLocker): vector<address> {
-        locker.whitelisted_providers.into_keys()
+    /// True if the address is whitelisted, false otherwise
+    public fun is_provider_whitelisted(locker: &SoftLocker, provider_address: address): bool {
+        locker.whitelisted_providers.contains(provider_address)
     }
     
     /// Locks a position in the locker by distributing it across available tranches.
@@ -761,7 +762,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v1 {
     ): vector<SoftLockedPosition<CoinTypeA, CoinTypeB>> {
         checked_package_version(locker);
         assert!(!locker.pause, ELockManagerPaused);
-        assert!(locker.ignore_whitelist_providers || locker.whitelisted_providers.contains(&sui::tx_context::sender(ctx)), EProviderNotWhitelisted);
+        assert!(locker.ignore_whitelist_providers || locker.whitelisted_providers.contains(sui::tx_context::sender(ctx)), EProviderNotWhitelisted);
         let position_id = sui::object::id<clmm_pool::position::Position>(&position);
         assert!(!locker.positions.contains(position_id), EPositionAlreadyLocked);
         assert!(block_period_index < locker.periods_blocking.length(), EInvalidBlockPeriodIndex);
@@ -1974,6 +1975,40 @@ module liquidity_soft_locker::liquidity_soft_lock_v1 {
         (collected_fee_a, collected_fee_b)
     }
 
+    /// Collects rewards for a locked position.
+    /// 
+    /// # Arguments
+    /// * `locker` - Locker object
+    /// * `global_config` - Global configuration for the pool
+    /// * `rewarder_vault` - Global vault for rewards
+    /// * `pool` - The pool containing the position
+    /// * `lock_position` - Locked position to collect rewards from
+    /// * `clock` - Clock object for timestamp verification
+    /// 
+    /// # Returns
+    /// Balance of the collected rewards
+    public fun get_pool_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
+        locker: &SoftLocker,
+        global_config: &clmm_pool::config::GlobalConfig,
+        rewarder_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        lock_position: &SoftLockedPosition<CoinTypeA, CoinTypeB>,
+        clock: &sui::clock::Clock
+    ): sui::balance::Balance<RewardCoinType> {
+        checked_package_version(locker);
+        assert!(!locker.pause, ELockManagerPaused);
+
+        let position = locker.positions.borrow(lock_position.position_id);
+        clmm_pool::pool::collect_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
+            global_config,
+            pool,
+            position,
+            rewarder_vault,
+            true,
+            clock
+        )
+    }
+
     /// Attempts to add remaining token balances from a locked position back as liquidity.
     /// 
     /// This function checks if there are any remaining token balances in the SoftLockedPosition
@@ -2356,7 +2391,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v1 {
             periods_blocking: std::vector::empty<u64>(),
             periods_post_lockdown: std::vector::empty<u64>(),
             pause: false,
-            whitelisted_providers: sui::vec_set::empty<address>(),
+            whitelisted_providers: sui::table::new(ctx),
             ignore_whitelist_providers: false,
         };
         locker.admins.insert(sui::tx_context::sender(ctx));

@@ -78,7 +78,7 @@ module liquidity_locker::pool_tranche {
         version: u64,
         admins: sui::vec_set::VecSet<address>,
         pool_tranches: sui::table::Table<ID, vector<PoolTranche>>,
-        whitelisted_tokens: sui::vec_set::VecSet<TypeName>,
+        whitelisted_tokens: sui::table::Table<TypeName, bool>,
         ignore_whitelist: bool,
         osail_epoch: sui::table::Table<u64, type_name::TypeName>,
         // bag to be preapred for future updates
@@ -278,7 +278,7 @@ module liquidity_locker::pool_tranche {
             version: VERSION,
             admins: sui::vec_set::empty<address>(),
             pool_tranches: sui::table::new(ctx),
-            whitelisted_tokens: sui::vec_set::empty<TypeName>(),
+            whitelisted_tokens: sui::table::new(ctx),
             ignore_whitelist: false,
             osail_epoch: sui::table::new(ctx),
             bag: sui::bag::new(ctx),
@@ -434,8 +434,8 @@ module liquidity_locker::pool_tranche {
         let mut i = 0;
         while (i < token_types.length()) {
             let token_type = *token_types.borrow(i);
-            if (!manager.whitelisted_tokens.contains(&token_type)) {
-                manager.whitelisted_tokens.insert(token_type);
+            if (!manager.whitelisted_tokens.contains(token_type)) {
+                manager.whitelisted_tokens.add(token_type, true);
 
                 let event = AddTokenTypeToWhitelistEvent {
                     token_type,
@@ -467,8 +467,8 @@ module liquidity_locker::pool_tranche {
         let mut i = 0;
         while (i < token_types.length()) {
             let token_type = *token_types.borrow(i);
-            if (manager.whitelisted_tokens.contains(&token_type)) {
-                manager.whitelisted_tokens.remove(&token_type);
+            if (manager.whitelisted_tokens.contains(token_type)) {
+                manager.whitelisted_tokens.remove(token_type);
 
                 let event = RemoveTokenTypeFromWhitelistEvent {
                     token_type,
@@ -480,15 +480,16 @@ module liquidity_locker::pool_tranche {
         }
     }
 
-    /// Returns the vector of whitelisted token types.
+    /// Checks if the provided token type is whitelisted.
     /// 
     /// # Arguments
     /// * `manager` - The pool tranche manager instance
+    /// * `token_type` - The token type to check
     /// 
     /// # Returns
-    /// Vector of whitelisted token types
-    public fun get_whitelisted_tokens(manager: &PoolTrancheManager): vector<TypeName> {
-        manager.whitelisted_tokens.into_keys()
+    /// True if the address is whitelisted, false otherwise
+    public fun is_token_whitelisted(manager: &PoolTrancheManager, token_type: TypeName): bool {
+        manager.whitelisted_tokens.contains(token_type)
     }
 
     /// Creates a new pool tranche.
@@ -643,7 +644,7 @@ module liquidity_locker::pool_tranche {
         };
 
         let reward_type = type_name::get<RewardCoinType>();
-        assert!(manager.ignore_whitelist || manager.whitelisted_tokens.contains(&reward_type), ETokenNotWhitelisted);
+        assert!(manager.ignore_whitelist || manager.whitelisted_tokens.contains(reward_type), ETokenNotWhitelisted);
 
         let tranche = get_tranche_by_id(manager, pool_id, tranche_id);
 
@@ -770,7 +771,7 @@ module liquidity_locker::pool_tranche {
         check_admin(manager, sui::tx_context::sender(ctx));
 
         let reward_type = type_name::get<RewardCoinType>();
-        assert!(manager.ignore_whitelist || manager.whitelisted_tokens.contains(&reward_type), ETokenNotWhitelisted);
+        assert!(manager.ignore_whitelist || manager.whitelisted_tokens.contains(reward_type), ETokenNotWhitelisted);
 
         let tranche = get_tranche_by_id(manager, pool_id, tranche_id);
 
@@ -1060,7 +1061,7 @@ module liquidity_locker::pool_tranche {
             version: VERSION,
             admins: sui::vec_set::empty<address>(),
             pool_tranches: sui::table::new(ctx),
-            whitelisted_tokens: sui::vec_set::empty<TypeName>(),
+            whitelisted_tokens: sui::table::new(ctx),
             ignore_whitelist: false,
             osail_epoch: sui::table::new(ctx),
             bag: sui::bag::new(ctx),
