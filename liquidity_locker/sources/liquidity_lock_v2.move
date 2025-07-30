@@ -318,11 +318,13 @@ module liquidity_locker::liquidity_lock_v2 {
     /// # Fields
     /// * `lock_position_id` - Unique identifier of the migrated position
     /// * `position_id` - Unique identifier of the underlying liquidity position
+    /// * `total_lock_liquidity` - Total amount of liquidity locked in the position
     /// * `last_growth_inside` - Last growth inside value
     public struct MigrateLockPositionEvent has copy, drop {
         lock_position_id_v1: sui::object::ID,
         lock_position_id_v2: sui::object::ID,
         position_id: sui::object::ID,
+        total_lock_liquidity: u128,
         last_growth_inside: u128,
     }
 
@@ -2712,6 +2714,7 @@ module liquidity_locker::liquidity_lock_v2 {
             lock_position_id_v1: lock_position_id_v1,
             lock_position_id_v2: object::id<LockedPosition<CoinTypeA, CoinTypeB>>(&lock_position_v2),
             position_id: position_id,
+            total_lock_liquidity: lock_position_v2.lock_liquidity_info.total_lock_liquidity,
             last_growth_inside: lock_position_v2.last_growth_inside,
         };
         sui::event::emit<MigrateLockPositionEvent>(event);
