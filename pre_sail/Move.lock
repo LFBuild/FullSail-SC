@@ -46,3 +46,11 @@ dependencies = [
 compiler-version = "1.52.2"
 edition = "2024.beta"
 flavor = "sui"
+
+[env]
+
+[env.mainnet]
+chain-id = "35834a8a"
+original-published-id = "0x55385931b718c0d5a2f6126eb1c265277d548da811e820710a479821ed415914"
+latest-published-id = "0x55385931b718c0d5a2f6126eb1c265277d548da811e820710a479821ed415914"
+published-version = "1"
