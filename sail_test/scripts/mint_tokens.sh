@@ -9,6 +9,6 @@ export MINTER='0xb145981a29c220d8ac1523a512f423eeedce0b71279c7aca0ec005642a1f743
 export CLOCK=0x6
 
 sui client ptb \
---move-call $METHOD "<$TOKEN_TYPE>" @$MINTER @$PUBLISHER 501404000000 @$CLOCK \
+--move-call $METHOD "<$TOKEN_TYPE>" @$MINTER @$PUBLISHER 3500000000000 @$CLOCK \
 --assign coin0 \
 --transfer-objects '[coin0]' @0xc3c7b01f09bfb204f93de85afa0a271e5bfabac31e566f7e997b9a8685f18967
