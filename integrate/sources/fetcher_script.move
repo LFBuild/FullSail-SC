@@ -97,7 +97,8 @@ module integrate::fetcher_script {
     public entry fun fetch_position_fullsail_distribution<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        position_id: ID
+        position_id: ID,
+        clock: &sui::clock::Clock 
     ) {
         let distribution = clmm_pool::pool::calculate_and_update_fullsail_distribution<CoinTypeA, CoinTypeB>(
             global_config,
