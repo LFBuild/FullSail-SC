@@ -2,6 +2,7 @@ module liquidity_locker::time_manager {
     const HOUR: u64 = 3600;
     const DAY: u64 = 24 * HOUR;
     const WEEK: u64 = 7 * DAY;
+    const EPOCH_DURATION: u64 = WEEK;
 
     /// Returns the current period based on the system time
     /// 
@@ -9,7 +10,7 @@ module liquidity_locker::time_manager {
     /// * `clock` - The system clock
     /// 
     /// # Returns
-    /// The current period timestamp (rounded down to the start of the week)
+    /// The current period timestamp (rounded down to the start of the epoch)
     public fun current_period(clock: &sui::clock::Clock): u64 {
         to_period(current_timestamp(clock))
     }
@@ -33,7 +34,7 @@ module liquidity_locker::time_manager {
         DAY
     }
 
-    /// Calculates the start timestamp of the next epoch (week)
+    /// Calculates the start timestamp of the next epoch
     /// 
     /// # Arguments
     /// * `timestamp` - The current timestamp in seconds
@@ -41,10 +42,10 @@ module liquidity_locker::time_manager {
     /// # Returns
     /// The timestamp of the start of the next epoch
     public fun epoch_next(timestamp: u64): u64 {
-        timestamp - (timestamp % WEEK) + WEEK
+        timestamp - (timestamp % EPOCH_DURATION) + EPOCH_DURATION
     }
 
-    /// Calculates the start timestamp of the previous epoch (week)
+    /// Calculates the start timestamp of the previous epoch
     /// 
     /// # Arguments
     /// * `timestamp` - The current timestamp in seconds
@@ -52,9 +53,9 @@ module liquidity_locker::time_manager {
     /// # Returns
     /// The timestamp of the start of the previous epoch
     public fun epoch_prev(timestamp: u64): u64 {
-        timestamp - (timestamp % WEEK) - WEEK
+        timestamp - (timestamp % EPOCH_DURATION) - EPOCH_DURATION
     }
-    /// Calculates the start timestamp of the current epoch (week)
+    /// Calculates the start timestamp of the current epoch
     /// 
     /// # Arguments
     /// * `timestamp` - The current timestamp in seconds
@@ -62,7 +63,7 @@ module liquidity_locker::time_manager {
     /// # Returns
     /// The timestamp of the start of the current epoch
     public fun epoch_start(timestamp: u64): u64 {
-        timestamp - (timestamp % WEEK)
+        timestamp - (timestamp % EPOCH_DURATION)
     }
 
     /// Calculates the end timestamp of the voting period in the current epoch
@@ -74,7 +75,7 @@ module liquidity_locker::time_manager {
     /// # Returns
     /// The timestamp when voting ends in the current epoch
     public fun epoch_vote_end(timestamp: u64): u64 {
-        timestamp - (timestamp % WEEK) + WEEK - HOUR
+        timestamp - (timestamp % EPOCH_DURATION) + EPOCH_DURATION - HOUR
     }
 
     /// Calculates the start timestamp of the voting period in the current epoch
@@ -86,14 +87,14 @@ module liquidity_locker::time_manager {
     /// # Returns
     /// The timestamp when voting starts in the current epoch
     public fun epoch_vote_start(timestamp: u64): u64 {
-        timestamp - timestamp % WEEK + HOUR
+        timestamp - timestamp % EPOCH_DURATION + HOUR
     }
 
     /// Returns the time required for transaction finality
     /// 
     /// # Returns
-    /// The time in seconds required for transaction finality (500)
-    public fun get_time_to_finality(): u64 {
+    /// The time in milliseconds required for transaction finality (500)
+    public fun get_time_to_finality_ms(): u64 {
         500
     }
 
@@ -116,20 +117,20 @@ module liquidity_locker::time_manager {
     /// Returns the minimum allowed lock time for token locking
     /// 
     /// # Returns
-    /// The minimum lock time in seconds (604800 - 1 week)
+    /// The minimum lock time in seconds
     public fun min_lock_time(): u64 {
-        WEEK
+        EPOCH_DURATION
     }
 
-    /// Converts a timestamp to its corresponding period by rounding down to the start of the week
+    /// Converts a timestamp to its corresponding period by rounding down to the start of the epoch
     /// 
     /// # Arguments
     /// * `timestamp` - The timestamp in seconds to convert
     /// 
     /// # Returns
-    /// The timestamp of the start of the week containing the input timestamp
+    /// The timestamp of the start of the epoch containing the input timestamp
     public fun to_period(timestamp: u64): u64 {
-        timestamp / WEEK * WEEK
+        timestamp / EPOCH_DURATION * EPOCH_DURATION
     }
 
     /// Returns the number of seconds in a week
@@ -140,6 +141,13 @@ module liquidity_locker::time_manager {
         WEEK
     }
 
+    /// Returns the number of seconds in an epoch
+    /// 
+    /// # Returns
+    /// The number of seconds in an epoch
+    public fun epoch(): u64 {
+        EPOCH_DURATION
+    }
 
     /// Converts an epoch to seconds
     /// 
@@ -149,7 +157,7 @@ module liquidity_locker::time_manager {
     /// # Returns
     /// The epoch in seconds
     public fun epoch_to_seconds(epoch: u64): u64 {
-        epoch * WEEK
+        epoch * EPOCH_DURATION
     }
 
     /// Returns the number of complete epochs contained in the timestamp
@@ -160,7 +168,7 @@ module liquidity_locker::time_manager {
     /// # Returns
     /// The number of complete epochs contained in the timestamp
     public fun number_epochs_in_timestamp(timestamp: u64): u64 {
-        timestamp / WEEK
+        timestamp / EPOCH_DURATION
     }
 }
 

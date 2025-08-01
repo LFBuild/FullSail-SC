@@ -71,15 +71,12 @@ Use `sui client publish` command.
 
 #### Publication transactions
 
-- [move_stl](https://suivision.xyz/txblock/D5d6rSAqCjEVm3v58sksyTRFMbDfUfHh6esgwsAivWTw)
-- [integer_mate](https://suivision.xyz/txblock/FPsTPKvEpKLB7huuvgxmDetSdUxUwUb6ZQTV6CwULHCp)
-- [gauge_cap](https://suivision.xyz/txblock/3zp6J98rVv9c6pDae4gHoRA1kyEeEg9c6w2X5Xqj9EK3)
-- [price_provider](https://suivision.xyz/txblock/J2hrKfrUhnmKJTAcWDrCF5B6VfHHaKZcDhXAnaXgEgiL)
-- [clmm_pool](https://suivision.xyz/txblock/5WincqGA4JxVFrx4jZLi2pJAGcDNwVfdPxVkKkPgLf4e)
-- [distribution](https://suivision.xyz/txblock/AbURt8dazp7U7pd84froyMREqzyg1pzURcYQtzHuqcvC)
-- [integrate](https://suivision.xyz/txblock/5oGNpGb5CfM1wFnmaoLovNsMDFjhX5sMQtBG3wjABEjd), [upgrade integrate](https://suivision.xyz/txblock/8YboNNJfhMPVVDshfDmCL6hc4P7nS2YorrY9CzzKkvzU)
+- [locker_cap](https://suivision.xyz/txblock/2WWwU828Ygq2ydij4p1Mpf8WZV9zhVDXssB8WHh4v83t)
+- [distribution](https://suivision.xyz/txblock/91NPAVHpY1Uqnt3F43spj8tNWTXaYrTDib5UWJnurKU1)
+- [sail_token](https://suiscan.xyz/mainnet/tx/GFBK3hRYE5tvXLUjSfJdLj625Ygj4Q69ShzxcjHMU1Rf)
+- [o_sail_token](https://suiscan.xyz/mainnet/tx/EioxqVFmWPxW1UDXWbYHcesjREk7ocG1iK26pDmgHKsY)
+- [liquidity_locker v1](https://suivision.xyz/txblock/Gzqz1ME5rqxpEua1fSNz6rnz9e3knuCuqZEVL963e7ND)
+- [integrate](https://suivision.xyz/txblock/CReixV83EcmgD2a3ijKG3iaqUC4BScd5UBQJ4nypuUHU)
 
-[Setup distribution tx](https://suivision.xyz/txblock/31N5n7ZHB5X6K1ZPaAtJUny4eEZUYbZJGbFoEqbSnVas)
-[Create gauge tx](https://suivision.xyz/txblock/2uLEzLu2JYCM2qqCbCNMgqayVCiT43tNEvbK4pPc425U)
-[Create gauge tx2](https://suivision.xyz/txblock/D3vc98r73mvJ7mmsPE2ucsARs8QqA2v5A6aTiy6q4a2H)
-[Activate minter tx](https://suivision.xyz/txblock/A6BNVhv4GG7AkniPBinLtrDak7y4um3CcX6ejAe3z7NK)
+- [setup distribtuion tx](https://suiscan.xyz/mainnet/tx/7ToUiNQeX1rwtmrLkgBGHvcUjBYYh5ogsc9J11Z4VyEZ)
+- [activate minter tx](https://suiscan.xyz/mainnet/tx/62CQswg1EmVcyfrA2FGgSMGgTHQsYZJJtq9PChhnqbmL)

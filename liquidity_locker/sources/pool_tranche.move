@@ -45,6 +45,12 @@ module liquidity_locker::pool_tranche {
     const ETotalIncomeAlreadyExists: u64 = 932078340620346346;
     const ERewardAlreadyClaimed: u64 = 930267340729430623;
     const ETokenNotWhitelisted: u64 = 932069230794534963;
+    const EAdminNotWhitelisted: u64 = 9389469239702349;
+    const EAddressNotAdmin: u64 = 913497842032463613;
+    const ETrancheActive: u64 = 909797676721269952;
+    const EPackageVersionMismatch: u64 = 945973054793406234;
+    const EEmptyEpochOSailToken: u64 = 940709547884708027;
+    const EInvalidTotalIncome: u64 = 93976047920347034;
 
     // `VERSION` of the package.
     const VERSION: u64 = 1;
@@ -54,7 +60,7 @@ module liquidity_locker::pool_tranche {
     /// 
     /// # Fields
     /// * `id` - Unique identifier for the capability
-    public struct AdminCap has store, key {
+    public struct SuperAdminCap has store, key {
         id: sui::object::UID,
     }
 
@@ -66,12 +72,17 @@ module liquidity_locker::pool_tranche {
     /// * `pool_tranches` - Table mapping pool IDs to their tranche vectors
     /// * `whitelisted_tokens` - Vector of whitelisted token types that are allowed to be used as rewards in the tranches
     /// * `ignore_whitelist` - Flag indicating if the whitelist should be ignored
+    /// * `osail_epoch` - Table mapping epoch to OSAIL token type
     public struct PoolTrancheManager has store, key {
         id: UID,
         version: u64,
+        admins: sui::vec_set::VecSet<address>,
         pool_tranches: sui::table::Table<ID, vector<PoolTranche>>,
-        whitelisted_tokens: sui::vec_set::VecSet<TypeName>,
-        ignore_whitelist: bool
+        whitelisted_tokens: sui::table::Table<TypeName, bool>,
+        ignore_whitelist: bool,
+        osail_epoch: sui::table::Table<u64, type_name::TypeName>,
+        // bag to be preapred for future updates
+        bag: sui::bag::Bag,
     }
 
     /// Represents a tranche within a pool that defines profitability multipliers for positions.
@@ -104,6 +115,8 @@ module liquidity_locker::pool_tranche {
         filled: bool,
         minimum_remaining_volume_percentage: u64,
         duration_profitabilities: vector<u64>,
+        // bag to be preapred for future updates
+        bag: sui::bag::Bag,
     }
 
     /// Event emitted when a new tranche manager is initialized.
@@ -122,8 +135,19 @@ module liquidity_locker::pool_tranche {
         ignore_whitelist: bool,
     }
 
-    /// Event emitted when a token type is added to the whitelist.
+    /// Event emitted when the total income is updated for a tranche.
+    /// 
+    /// # Fields
+    /// * `tranche_id` - ID of the tranche being updated
+    /// * `epoch_start` - Start time of the epoch when the total income was updated
+    public struct UpdateTotalIncomeEpochEvent has copy, drop {
+        tranche_id: ID,
+        epoch_start: u64,
+        total_income: u64,
+    }
 
+    /// Event emitted when a token type is added to the whitelist.
+    /// 
     /// # Fields
     /// * `token_type` - The token type that was added to the whitelist
     public struct AddTokenTypeToWhitelistEvent has copy, drop {
@@ -146,6 +170,7 @@ module liquidity_locker::pool_tranche {
     /// * `volume_in_coin_a` - Flag indicating if volume is measured in coin A (true) or coin B (false)
     /// * `total_volume` - Maximum volume capacity of the tranche (Q64.64 format)
     /// * `duration_profitabilities` - Vector of profitability rates for different lock durations
+    /// * `minimum_remaining_volume_percentage` - Minimum volume percentage threshold for tranche closure (in shares with minimum_remaining_volume_denom)
     /// * `index` - Index of the tranche in the pool
     public struct CreatePoolTrancheEvent has copy, drop {
         tranche_id: ID,
@@ -155,6 +180,22 @@ module liquidity_locker::pool_tranche {
         duration_profitabilities: vector<u64>,
         minimum_remaining_volume_percentage: u64,
         index: u64
+    }
+
+    /// Event emitted when a tranche is updated.
+    /// 
+    /// # Fields
+    /// * `tranche_id` - ID of the tranche being updated
+    /// * `volume_in_coin_a` - Flag indicating if volume is measured in coin A (true) or coin B (false)
+    /// * `total_volume` - Maximum volume capacity of the tranche (Q64.64 format)
+    /// * `duration_profitabilities` - Vector of profitability rates for different lock durations
+    /// * `minimum_remaining_volume_percentage` - Minimum volume percentage threshold for tranche closure (in shares with minimum_remaining_volume_denom)
+    public struct UpdateTrancheEvent has copy, drop {
+        tranche_id: ID,
+        volume_in_coin_a: bool,
+        total_volume: u128,
+        duration_profitabilities: vector<u64>,
+        minimum_remaining_volume_percentage: u64,
     }
 
     /// Event emitted when a tranche's volume is updated.
@@ -190,10 +231,22 @@ module liquidity_locker::pool_tranche {
     /// * `tranche_id` - ID of the tranche
     /// * `epoch_start` - Start time of the epoch
     /// * `total_income` - Total income accumulated in the tranche
+    /// * `osail_epoch` - OSail token of the epoch for which the reward is being distributed
     public struct SetIncomeEvent has copy, drop {
         tranche_id: ID,
         epoch_start: u64,
         total_income: u64,
+        osail_epoch: TypeName,
+    }
+
+    /// Event emitted when the OSail epoch is updated.
+    /// 
+    /// # Fields
+    /// * `epoch_start` - Start time of the epoch
+    /// * `osail_epoch` - OSail token of the epoch for which the reward is being distributed
+    public struct UpdateOSailEpochEvent has copy, drop {
+        epoch_start: u64,
+        osail_epoch: TypeName,
     }
 
     /// Event emitted when rewards are claimed from a tranche.
@@ -220,16 +273,20 @@ module liquidity_locker::pool_tranche {
     /// # Events
     /// Emits `InitTrancheManagerEvent` with the ID of the created manager
     fun init(ctx: &mut sui::tx_context::TxContext) {
-        let tranche_manager = PoolTrancheManager {
+        let mut tranche_manager = PoolTrancheManager {
             id: sui::object::new(ctx),
             version: VERSION,
+            admins: sui::vec_set::empty<address>(),
             pool_tranches: sui::table::new(ctx),
-            whitelisted_tokens: sui::vec_set::empty<TypeName>(),
-            ignore_whitelist: false
+            whitelisted_tokens: sui::table::new(ctx),
+            ignore_whitelist: false,
+            osail_epoch: sui::table::new(ctx),
+            bag: sui::bag::new(ctx),
         };
+        tranche_manager.admins.insert(sui::tx_context::sender(ctx));
 
-        let admin_cap = AdminCap { id: sui::object::new(ctx) };
-        sui::transfer::transfer<AdminCap>(admin_cap, sui::tx_context::sender(ctx));
+        let admin_cap = SuperAdminCap { id: sui::object::new(ctx) };
+        sui::transfer::transfer<SuperAdminCap>(admin_cap, sui::tx_context::sender(ctx));
 
         let tranche_manager_id = sui::object::id<PoolTrancheManager>(&tranche_manager);
         sui::transfer::share_object<PoolTrancheManager>(tranche_manager);
@@ -238,19 +295,108 @@ module liquidity_locker::pool_tranche {
         sui::event::emit<InitTrancheManagerEvent>(event);
     }
 
+    /// Checks if the package version matches the expected version.
+    /// 
+    /// # Arguments
+    /// * `tranche_manager` - The tranche manager object to check
+    /// 
+    /// # Abort Conditions
+    /// * If the package version is not a version of pool_tranche (error code: EPackageVersionMismatch)
+    public fun checked_package_version(tranche_manager: &PoolTrancheManager) {
+        assert!(tranche_manager.version == VERSION, EPackageVersionMismatch);
+    }
+
+    /// Checks if the provided admin is whitelisted in the tranche manager.
+    /// 
+    /// # Arguments
+    /// * `tranche_manager` - The tranche manager object to check
+    /// * `admin` - The address of the admin to check
+    /// 
+    /// # Abort Conditions
+    /// * If the admin is not whitelisted (error code: EAdminNotWhitelisted)
+    public fun check_admin(tranche_manager: &PoolTrancheManager, admin: address) {
+        assert!(tranche_manager.admins.contains<address>(&admin), EAdminNotWhitelisted);
+    }
+
+    /// Adds an admin to the tranche manager.
+    /// 
+    /// # Arguments
+    /// * `_admin_cap` - Administrative capability for authorization
+    /// * `tranche_manager` - The tranche manager object to add the admin to
+    /// * `new_admin` - The address of the admin to add
+    /// * `ctx` - The transaction context
+    /// 
+    /// # Aborts
+    /// * If the admin is not whitelisted (error code: EAdminNotWhitelisted)
+    /// * If the new_admin address is already an admin (error code: EAddressNotAdmin)
+    public fun add_admin(
+        _admin_cap: &SuperAdminCap,
+        tranche_manager: &mut PoolTrancheManager, 
+        new_admin: address, 
+        ctx: &mut sui::tx_context::TxContext
+    ) {
+        checked_package_version(tranche_manager);
+        check_admin(tranche_manager, sui::tx_context::sender(ctx));
+
+        assert!(!tranche_manager.admins.contains(&new_admin), EAddressNotAdmin);
+        tranche_manager.admins.insert(new_admin);
+    }
+
+    /// Checks if the provided admin is whitelisted in the tranche manager.
+    /// 
+    /// # Arguments
+    /// * `tranche_manager` - The tranche manager object to check
+    /// * `admin` - The address of the admin to check
+    /// 
+    /// # Returns
+    /// Boolean indicating if the admin is whitelisted (true) or not (false)
+    public fun is_admin(tranche_manager: &PoolTrancheManager, admin: address): bool {
+        tranche_manager.admins.contains(&admin)
+    }
+
+    /// Revokes an admin from the tranche manager.
+    /// 
+    /// # Arguments
+    /// * `_admin_cap` - Administrative capability for authorization
+    /// * `tranche_manager` - The tranche manager object to revoke the admin from
+    /// * `who` - The address of the admin to revoke
+    /// * `ctx` - The transaction context
+    /// 
+    /// # Aborts
+    /// * If the admin is not whitelisted (error code: EAdminNotWhitelisted)
+    /// * If the who address is not an admin (error code: EAddressNotAdmin)
+    public fun revoke_admin(
+        _admin_cap: &SuperAdminCap,
+        tranche_manager: &mut PoolTrancheManager,
+        who: address,
+        ctx: &mut sui::tx_context::TxContext,
+    ) {
+        checked_package_version(tranche_manager);
+        check_admin(tranche_manager, sui::tx_context::sender(ctx));
+
+        assert!(tranche_manager.admins.contains(&who), EAddressNotAdmin);
+        tranche_manager.admins.remove(&who); 
+    }
+
     /// Sets the ignore_whitelist flag in the pool tranche manager.
     /// This function allows administrators to control whether token whitelist checks should be ignored.
     /// 
     /// # Arguments
-    /// * `_admin_cap` - Administrative capability required for modifying manager settings
-    /// * `manager` - The pool tranche manager instance to modify
+    /// * `tranche_manager` - The pool tranche manager instance to modify
     /// * `ignore` - Boolean value to set for the ignore_whitelist flag
+    /// * `ctx` - Transaction context
+    /// 
+    /// # Aborts
+    /// * If the admin is not whitelisted (error code: EAdminNotWhitelisted)
     public fun set_ignore_whitelist(
-        _admin_cap: &AdminCap,
-        manager: &mut PoolTrancheManager,
-        ignore: bool
+        tranche_manager: &mut PoolTrancheManager,
+        ignore: bool,
+        ctx: &mut sui::tx_context::TxContext
     ) {
-        manager.ignore_whitelist = ignore;
+        checked_package_version(tranche_manager);
+        check_admin(tranche_manager, sui::tx_context::sender(ctx));
+
+        tranche_manager.ignore_whitelist = ignore;
 
         let event = SetIgnoreWhitelistEvent {
             ignore_whitelist: ignore,
@@ -271,19 +417,25 @@ module liquidity_locker::pool_tranche {
     /// Adds a token types to the whitelist of allowed reward tokens.
     /// 
     /// # Arguments
-    /// * `_admin_cap` - Administrative capability required for modifying manager settings
     /// * `manager` - The pool tranche manager instance
     /// * `token_types` - Vector of token types to add to the whitelist
+    /// * `ctx` - Transaction context
+    /// 
+    /// # Aborts
+    /// * If the admin is not whitelisted (error code: EAdminNotWhitelisted)
     public fun add_token_types_to_whitelist(
-        _admin_cap: &AdminCap,
         manager: &mut PoolTrancheManager,
-        token_types: vector<TypeName>
+        token_types: vector<TypeName>,
+        ctx: &mut sui::tx_context::TxContext
     ) {
+        checked_package_version(manager);
+        check_admin(manager, sui::tx_context::sender(ctx));
+
         let mut i = 0;
         while (i < token_types.length()) {
             let token_type = *token_types.borrow(i);
-            if (!manager.whitelisted_tokens.contains(&token_type)) {
-                manager.whitelisted_tokens.insert(token_type);
+            if (!manager.whitelisted_tokens.contains(token_type)) {
+                manager.whitelisted_tokens.add(token_type, true);
 
                 let event = AddTokenTypeToWhitelistEvent {
                     token_type,
@@ -298,19 +450,25 @@ module liquidity_locker::pool_tranche {
     /// Removes a token types from the whitelist of allowed reward tokens.
     /// 
     /// # Arguments
-    /// * `_admin_cap` - Administrative capability required for modifying manager settings
     /// * `manager` - The pool tranche manager instance
     /// * `token_types` - Vector of token types to remove from the whitelist
+    /// * `ctx` - Transaction context
+    /// 
+    /// # Aborts
+    /// * If the admin is not whitelisted (error code: EAdminNotWhitelisted)
     public fun remove_token_types_from_whitelist(
-        _admin_cap: &AdminCap,
         manager: &mut PoolTrancheManager,
-        token_types: vector<TypeName>
+        token_types: vector<TypeName>,
+        ctx: &mut sui::tx_context::TxContext
     ) {
+        checked_package_version(manager);
+        check_admin(manager, sui::tx_context::sender(ctx));
+
         let mut i = 0;
         while (i < token_types.length()) {
             let token_type = *token_types.borrow(i);
-            if (manager.whitelisted_tokens.contains(&token_type)) {
-                manager.whitelisted_tokens.remove(&token_type);
+            if (manager.whitelisted_tokens.contains(token_type)) {
+                manager.whitelisted_tokens.remove(token_type);
 
                 let event = RemoveTokenTypeFromWhitelistEvent {
                     token_type,
@@ -322,15 +480,16 @@ module liquidity_locker::pool_tranche {
         }
     }
 
-    /// Returns the vector of whitelisted token types.
+    /// Checks if the provided token type is whitelisted.
     /// 
     /// # Arguments
     /// * `manager` - The pool tranche manager instance
+    /// * `token_type` - The token type to check
     /// 
     /// # Returns
-    /// Vector of whitelisted token types
-    public fun get_whitelisted_tokens(manager: &PoolTrancheManager): vector<TypeName> {
-        manager.whitelisted_tokens.into_keys()
+    /// True if the address is whitelisted, false otherwise
+    public fun is_token_whitelisted(manager: &PoolTrancheManager, token_type: TypeName): bool {
+        manager.whitelisted_tokens.contains(token_type)
     }
 
     /// Creates a new pool tranche.
@@ -338,7 +497,6 @@ module liquidity_locker::pool_tranche {
     /// and associates it with a specific pool.
     /// 
     /// # Arguments
-    /// * `_admin_cap` - Administrative capability required for creating tranches
     /// * `manager` - The pool tranche manager instance
     /// * `pool` - The CLMM pool associated with this tranche
     /// * `volume_in_coin_a` - Flag indicating if volume is measured in terms of coin A
@@ -350,7 +508,6 @@ module liquidity_locker::pool_tranche {
     /// # Events
     /// Emits `CreatePoolTrancheEvent` with details of the created tranche
     public fun new<CoinTypeA, CoinTypeB>(
-        _admin_cap: &AdminCap,
         manager: &mut PoolTrancheManager,
         pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         volume_in_coin_a: bool,
@@ -359,7 +516,8 @@ module liquidity_locker::pool_tranche {
         minimum_remaining_volume_percentage: u64,
         ctx: &mut sui::tx_context::TxContext
     ) {
-        // TODO assert!(duration_profitabilities.length() == locker.periods_blocking.length(), EInvalidProfitabilitiesLength);
+        checked_package_version(manager);
+        check_admin(manager, sui::tx_context::sender(ctx));
 
         let pool_id = sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool);
         let pool_tranche = PoolTranche {
@@ -375,6 +533,7 @@ module liquidity_locker::pool_tranche {
             filled: false,
             duration_profitabilities,
             minimum_remaining_volume_percentage,
+            bag: sui::bag::new(ctx),
         };
 
         let tranche_id = sui::object::id<PoolTranche>(&pool_tranche);
@@ -397,10 +556,56 @@ module liquidity_locker::pool_tranche {
         sui::event::emit<CreatePoolTrancheEvent>(event);
     }
 
+    /// Updates a tranche with new parameters.
+    /// 
+    /// # Arguments
+    /// * `manager` - The pool tranche manager instance
+    /// * `pool_id` - ID of the pool containing the tranche
+    /// * `tranche_id` - ID of the tranche to update
+    /// * `volume_in_coin_a` - Flag indicating if volume is measured in coin A (true) or coin B (false)
+    /// * `total_volume` - Maximum volume capacity of the tranche (Q64.64 format)
+    /// * `duration_profitabilities` - Vector of profitability rates for different lock durations
+    /// * `minimum_remaining_volume_percentage` - Minimum volume percentage threshold for tranche closure (in shares with minimum_remaining_volume_denom)
+    /// * `ctx` - Transaction context
+    /// 
+    /// # Aborts
+    /// * If the admin is not whitelisted (error code: EAdminNotWhitelisted)
+    /// * If the tranche is active (error code: ETrancheActive)
+    public fun update_tranche(
+        manager: &mut PoolTrancheManager,
+        pool_id: sui::object::ID,
+        tranche_id: sui::object::ID,
+        volume_in_coin_a: bool,
+        total_volume: u128, // Q64.64
+        duration_profitabilities: vector<u64>,
+        minimum_remaining_volume_percentage: u64,
+        ctx: &mut sui::tx_context::TxContext
+    ) {
+        checked_package_version(manager);
+        check_admin(manager, sui::tx_context::sender(ctx));
+
+        let tranche = get_tranche_by_id(manager, pool_id, tranche_id);
+
+        assert!(!tranche.filled, ETrancheActive);
+
+        tranche.volume_in_coin_a = volume_in_coin_a;
+        tranche.total_volume = total_volume;
+        tranche.duration_profitabilities = duration_profitabilities;
+        tranche.minimum_remaining_volume_percentage = minimum_remaining_volume_percentage;
+
+        let event = UpdateTrancheEvent {    
+            tranche_id,
+            volume_in_coin_a,
+            total_volume,
+            duration_profitabilities,
+            minimum_remaining_volume_percentage,
+        };
+        sui::event::emit<UpdateTrancheEvent>(event);
+    }
+
     /// Sets total_income_epoch and adds a reward for a specific tranche in the pool.
     /// 
     /// # Arguments
-    /// * `_admin_cap` - Admin capability for authorization
     /// * `manager` - Reference to the pool tranche manager
     /// * `pool_id` - ID of the pool containing the tranche
     /// * `tranche_id` - ID of the tranche to add reward to
@@ -409,6 +614,10 @@ module liquidity_locker::pool_tranche {
     /// * `total_income` - Total income for the epoch
     /// * `ctx` - Transaction context
     /// 
+    /// # Type Parameters
+    /// * `EpochOSail` - The OSail token of the epoch for which the reward is being distributed
+    /// * `RewardCoinType` - Reward that is distributed in the epoch_start
+    /// 
     /// # Returns
     /// The total balance after adding the reward
     /// 
@@ -416,8 +625,7 @@ module liquidity_locker::pool_tranche {
     /// * If the reward token is not whitelisted and the ignore_whitelist flag is not set
     /// * If income for this epoch already exists
     /// * If tranche is not found
-    public fun set_total_incomed_and_add_reward<RewardCoinType>(
-        _admin_cap: &AdminCap,
+    public fun set_total_incomed_and_add_reward<EpochOSail, RewardCoinType>(
         manager: &mut PoolTrancheManager,
         pool_id: sui::object::ID,
         tranche_id: sui::object::ID,
@@ -426,12 +634,20 @@ module liquidity_locker::pool_tranche {
         total_income: u64,
         ctx: &mut sui::tx_context::TxContext
     ): u64 {
+        checked_package_version(manager);
+        check_admin(manager, sui::tx_context::sender(ctx));
+        let epoch_start = time_manager::epoch_start(epoch_start);
+
+        let osail_epoch = type_name::get<EpochOSail>();
+        if (!manager.osail_epoch.contains(epoch_start)) {
+            manager.osail_epoch.add(epoch_start, osail_epoch);
+        };
+
         let reward_type = type_name::get<RewardCoinType>();
-        assert!(manager.ignore_whitelist || manager.whitelisted_tokens.contains(&reward_type), ETokenNotWhitelisted);
+        assert!(manager.ignore_whitelist || manager.whitelisted_tokens.contains(reward_type), ETokenNotWhitelisted);
 
         let tranche = get_tranche_by_id(manager, pool_id, tranche_id);
 
-        let epoch_start = time_manager::epoch_start(epoch_start);
         assert!(!tranche.total_income_epoch.contains(epoch_start), ETotalIncomeAlreadyExists);
 
         tranche.total_income_epoch.add(epoch_start, total_income);
@@ -440,16 +656,96 @@ module liquidity_locker::pool_tranche {
             tranche_id,
             epoch_start,
             total_income,
+            osail_epoch,
         };
         sui::event::emit<SetIncomeEvent>(event);
 
         add_reward_internal(tranche, epoch_start, balance, ctx)
     }
 
+    /// Updates the total income for a specific tranche in the pool for the epoch.
+    /// 
+    /// # Arguments
+    /// * `manager` - Reference to the pool tranche manager
+    /// * `pool_id` - ID of the pool containing the tranche
+    /// * `tranche_id` - ID of the tranche to update total income for
+    /// * `epoch_start` - Start time of the epoch in seconds
+    /// * `total_income` - Total income for the epoch
+    /// * `ctx` - Transaction context
+    /// 
+    /// # Aborts
+    /// * If the admin is not whitelisted (error code: EAdminNotWhitelisted)
+    /// * If tranche is not found
+    public fun update_total_income_epoch(
+        manager: &mut PoolTrancheManager,
+        pool_id: sui::object::ID,
+        tranche_id: sui::object::ID,
+        epoch_start: u64,
+        total_income: u64,
+        ctx: &mut sui::tx_context::TxContext
+    ) {
+        checked_package_version(manager);
+        check_admin(manager, sui::tx_context::sender(ctx));
+        let epoch_start = time_manager::epoch_start(epoch_start);
+        
+        let tranche = get_tranche_by_id(manager, pool_id, tranche_id);
+
+        if (tranche.total_income_epoch.contains(epoch_start)) {
+            tranche.total_income_epoch.remove(epoch_start);
+        };
+
+        tranche.total_income_epoch.add(epoch_start, total_income);
+
+        let event = UpdateTotalIncomeEpochEvent {
+            tranche_id,
+            epoch_start,
+            total_income,
+        };
+        sui::event::emit<UpdateTotalIncomeEpochEvent>(event);
+    }
+
+    public fun get_osail_epoch(manager: &PoolTrancheManager, epoch_start: u64): &type_name::TypeName {
+        assert!(manager.osail_epoch.contains(epoch_start), EEmptyEpochOSailToken);
+        manager.osail_epoch.borrow(epoch_start)
+    }
+
+    /// Updates the OSail epoch for a specific epoch.
+    /// 
+    /// # Arguments
+    /// * `manager` - Reference to the pool tranche manager
+    /// * `epoch_start` - Start time of the epoch
+    /// * `ctx` - Transaction context
+    /// 
+    /// # Type Parameters
+    /// * `EpochOSail` - The OSail token of the epoch for which the reward is being distributed
+    /// 
+    /// # Events
+    /// Emits `UpdateOSailEpochEvent` with details of the updated OSail epoch
+    public fun update_osail_epoch<EpochOSail>(
+        manager: &mut PoolTrancheManager, 
+        epoch_start: u64,
+        ctx: &mut sui::tx_context::TxContext
+    ) {
+        checked_package_version(manager);
+        check_admin(manager, sui::tx_context::sender(ctx));
+
+        let osail_epoch = type_name::get<EpochOSail>();
+        if (manager.osail_epoch.contains(epoch_start)) {
+            manager.osail_epoch.remove(epoch_start);
+        };
+
+        manager.osail_epoch.add(epoch_start, osail_epoch);
+
+        let event = UpdateOSailEpochEvent {
+            epoch_start,
+            osail_epoch,
+        };
+        sui::event::emit<UpdateOSailEpochEvent>(event);
+    }
+
     /// Adds a reward to a specific tranche in the pool for the epoch.
     /// 
     /// # Arguments
-    /// * `_admin_cap` - Admin capability for authorization
     /// * `manager` - Reference to the pool tranche manager
     /// * `pool_id` - ID of the pool containing the tranche
     /// * `tranche_id` - ID of the tranche to add reward to
@@ -464,7 +760,6 @@ module liquidity_locker::pool_tranche {
     /// * If the reward token is not whitelisted and the ignore_whitelist flag is not set
     /// * If tranche is not found
     public fun add_reward<RewardCoinType>(
-        _admin_cap: &AdminCap,
         manager: &mut PoolTrancheManager,
         pool_id: sui::object::ID,
         tranche_id: sui::object::ID,
@@ -472,8 +767,11 @@ module liquidity_locker::pool_tranche {
         balance: sui::balance::Balance<RewardCoinType>,
         ctx: &mut sui::tx_context::TxContext
     ): u64 {
+        checked_package_version(manager);
+        check_admin(manager, sui::tx_context::sender(ctx));
+
         let reward_type = type_name::get<RewardCoinType>();
-        assert!(manager.ignore_whitelist || manager.whitelisted_tokens.contains(&reward_type), ETokenNotWhitelisted);
+        assert!(manager.ignore_whitelist || manager.whitelisted_tokens.contains(reward_type), ETokenNotWhitelisted);
 
         let tranche = get_tranche_by_id(manager, pool_id, tranche_id);
 
@@ -577,7 +875,7 @@ module liquidity_locker::pool_tranche {
     /// * Remaining volume (Q64.64 fixed-point format)
     /// * Boolean indicating if volume is in token A (true) or token B (false)
     public fun get_free_volume(tranche: &PoolTranche): (u128, bool) {
-            (tranche.total_volume - tranche.current_volume, tranche.volume_in_coin_a)
+        (tranche.total_volume - tranche.current_volume, tranche.volume_in_coin_a)
     }
 
     /// Returns the balance of a specific tranche for a given reward type.
@@ -673,7 +971,7 @@ module liquidity_locker::pool_tranche {
         epoch_start: u64,
         ctx: &mut sui::tx_context::TxContext
     ): sui::balance::Balance<RewardCoinType> {
-        
+        checked_package_version(manager);
         let tranche = get_tranche_by_id(manager, pool_id, tranche_id);
 
         let epoch_start = time_manager::epoch_start(epoch_start);
@@ -688,6 +986,7 @@ module liquidity_locker::pool_tranche {
             *tranche.total_balance_epoch.borrow(epoch_start).borrow(reward_type) > 0 &&
             tranche.rewards_balance.borrow<type_name::TypeName, sui::balance::Balance<RewardCoinType>>(reward_type).value() > 0, ERewardNotFound);
 
+        assert!(*tranche.total_income_epoch.borrow(epoch_start) >= income, EInvalidTotalIncome);
         // Calculate reward amount based on the ratio of income to total income
         let reward_amount = integer_mate::full_math_u64::mul_div_floor(
             *tranche.total_balance_epoch.borrow(epoch_start).borrow(reward_type),
@@ -757,15 +1056,20 @@ module liquidity_locker::pool_tranche {
 
     #[test_only]
     public fun test_init(ctx: &mut sui::tx_context::TxContext) {
-        let tranche_manager = PoolTrancheManager {
+        let mut tranche_manager = PoolTrancheManager {
             id: sui::object::new(ctx),
             version: VERSION,
+            admins: sui::vec_set::empty<address>(),
             pool_tranches: sui::table::new(ctx),
-            whitelisted_tokens: sui::vec_set::empty<TypeName>(),
-            ignore_whitelist: false
+            whitelisted_tokens: sui::table::new(ctx),
+            ignore_whitelist: false,
+            osail_epoch: sui::table::new(ctx),
+            bag: sui::bag::new(ctx),
         };
-        let admin_cap = AdminCap { id: sui::object::new(ctx) };
-        sui::transfer::transfer<AdminCap>(admin_cap, sui::tx_context::sender(ctx));
+        tranche_manager.admins.insert(sui::tx_context::sender(ctx));
+
+        let admin_cap = SuperAdminCap { id: sui::object::new(ctx) };
+        sui::transfer::transfer<SuperAdminCap>(admin_cap, sui::tx_context::sender(ctx));
         sui::transfer::share_object<PoolTrancheManager>(tranche_manager);
     }
 }
