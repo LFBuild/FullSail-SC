@@ -60,8 +60,8 @@ Use `sui client publish` command.
     - pool_tranche::SuperAdminCap `0x24a8efa0de9979d14a8551968f85163506390d0ff5e6b1d44855e62b89f33e4a`
     - liquidity_lock_v1::SuperAdminCap `0xbdec146df21fafb6b08fa1755a55ad37b07ad4c092536007ea4068c479c13034`
     - Locker `0xddada1cefdef0bf2422fe6e1935d08fc077ee04e73cc2dfadd21788191f795f4`
-- [integrate](https://suivision.xyz/txblock/6u5McVLD4EjrUMWPEm86PhSTDPS5CjeqbX9xe9YE1V9n)
-    - package: `0xe1b7d5fd116fea5a8f8e85c13754248d56626a8d0a614b7d916c2348d8323149`
+- [integrate](https://suivision.xyz/txblock/9sT6cWBdH1FyaQ6QuXkmJdJfJ5GspkRkLCr4pnT14bPs)
+    - package: `0x8378a2bfe6f2febf5fe0e081d7f10f95bc1dc16033ec4662a694351c951baf63`
 
 ### Testnet
 
