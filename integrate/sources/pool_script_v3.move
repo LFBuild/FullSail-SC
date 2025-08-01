@@ -39,12 +39,31 @@ module integrate::pool_script_v3 {
         ));
     }
 
+    /// Updates the reward emission rate for a pool.
+    /// 
+    /// # Arguments
+    /// * `global_config` - Global configuration for the pool
+    /// * `pool` - The pool to update emission for
+    /// * `rewarder_vault` - Global vault for rewards
+    /// * `total_reward_amount` - Total amount of reward tokens to distribute
+    /// * `distribution_period_seconds` - Time period in seconds over which to distribute the rewards
+    /// * `clock` - Clock object for timestamp verification
+    /// * `ctx` - Transaction context
+    /// 
+    /// # Type Parameters
+    /// * `CoinTypeA` - First coin type in the pool
+    /// * `CoinTypeB` - Second coin type in the pool
+    /// * `RewardCoinType` - Type of reward token to emit
+    /// 
+    /// # Formula
+    /// emissions_per_second = (total_reward_amount * 2^64) / distribution_period_seconds
+    /// This calculates the emission rate in Q64.64 format for the CLMM pool.
     public entry fun update_rewarder_emission<CoinTypeA, CoinTypeB, RewardCoinType>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         rewarder_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
-        fee_numerator: u64,
-        fee_denominator: u64,
+        total_reward_amount: u64,
+        distribution_period_seconds: u64,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
@@ -52,7 +71,7 @@ module integrate::pool_script_v3 {
             global_config,
             pool,
             rewarder_vault,
-            integer_mate::full_math_u128::mul_div_floor((fee_numerator as u128), 18446744073709551616, (fee_denominator as u128)),
+            integer_mate::full_math_u128::mul_div_floor((total_reward_amount as u128), 18446744073709551616, (distribution_period_seconds as u128)),
             clock,
             ctx
         );
