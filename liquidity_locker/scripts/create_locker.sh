@@ -1,0 +1,9 @@
+source ./export.sh
+
+export PACKAGE=0x99001472f26abd7e5e7c02624d0e92840dd568b72816db01c1cc1a73426bc431
+export ADMIN_CAP=0x246790259c82f1b4d87209c9c7b88646b75c3a5df6d48b92384be3e0c3b4c623
+export LOCKER_V1=0xdef0321cee5329f9cd915a4603bb62363931341cef6a557ee53b274034b2da47
+export CREATE_LOCKER_CAP=0xa235d554abd84c35b1d1032b7190e0bedf137e862c0bff1eda6d356aaaadce4d
+
+sui client ptb \
+--move-call $PACKAGE::liquidity_lock_v2::create_locker @$ADMIN_CAP @$LOCKER_V1 @$CREATE_LOCKER_CAP 

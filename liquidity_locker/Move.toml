@@ -1,0 +1,49 @@
+[package]
+name = "liquidity_locker"
+edition = "2024.beta"
+
+[addresses]
+liquidity_locker = "0x0"
+
+[dependencies.Sui]
+git = "https://github.com/MystenLabs/sui.git"
+subdir = "crates/sui-framework/packages/sui-framework"
+rev = "framework/mainnet"
+override = true
+
+[dependencies.clmm_pool]
+git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
+subdir = "clmm_pool"
+rev = "main"
+override = true
+
+[dependencies.integer_mate]
+git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
+subdir = "integer_mate"
+rev = "main"
+override = true
+
+[dependencies.gauge_cap]
+git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
+subdir = "gauge_cap"
+rev = "main"
+override = true
+
+[dependencies.price_provider]
+git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
+subdir = "price_provider"
+rev = "main"
+override = true
+
+[dependencies.locker_cap]
+git = "https://github.com/LFBuild/FullSail-SC.git"
+subdir = "locker_cap"
+rev = "main"
+override = true
+
+## TODO
+## [dependencies.distribution]
+## git = "https://github.com/LFBuild/FullSail-SC.git"
+## subdir = "distribution"
+## rev = "main"
+## override = true
