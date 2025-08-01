@@ -113,7 +113,8 @@ module liquidity_locker::liquidity_lock_v1 {
         periods_post_lockdown: vector<u64>,
         pause: bool,
         whitelisted_providers: sui::table::Table<address, bool>,
-        ignore_whitelist_providers: bool
+        ignore_whitelist_providers: bool,
+        bag: sui::bag::Bag
     }
 
     /// Structure representing a locked liquidity position that is returned to the user as proof of ownership.
@@ -357,6 +358,7 @@ module liquidity_locker::liquidity_lock_v1 {
             pause: false,
             whitelisted_providers: sui::table::new(ctx),
             ignore_whitelist_providers: false,
+            bag: sui::bag::new(ctx),
         };
         locker.admins.insert(sui::tx_context::sender(ctx));
 
@@ -2353,6 +2355,7 @@ module liquidity_locker::liquidity_lock_v1 {
             pause: false,
             whitelisted_providers: sui::table::new(ctx),
             ignore_whitelist_providers: false,
+            bag: sui::bag::new(ctx),
         };
         locker.admins.insert(sui::tx_context::sender(ctx));
 
