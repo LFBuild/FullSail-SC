@@ -2,7 +2,7 @@
 
 [move]
 version = 3
-manifest_digest = "F5488C1D392E2A46300340F67F09FC5EB2C41C0CF55BB124227A4B171AF15F49"
+manifest_digest = "83729AF2CC1DFCE146B9E91C0C721B786E579C72F1F089AB88BCBC69C526CD75"
 deps_digest = "52B406A7A21811BEF51751CF88DA0E76DAEFFEAC888D4F4060B1A72BBE7D8D35"
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -55,7 +55,7 @@ dependencies = [
 
 [[move.package]]
 id = "locker_cap"
-source = { git = "https://github.com/LFBuild/FullSail-SC.git", rev = "main", subdir = "locker_cap" }
+source = { local = "../locker_cap" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -86,6 +86,6 @@ flavor = "sui"
 
 [env.mainnet]
 chain-id = "35834a8a"
-original-published-id = "0x2aaaf44f568c60b8add5a39e5e0e168b9bbb7455e5164638dbc55527918a22c2"
-latest-published-id = "0x2aaaf44f568c60b8add5a39e5e0e168b9bbb7455e5164638dbc55527918a22c2"
+original-published-id = "0x0e84a5a2159c893e3a4ee741205133bf08c210b06a2a2a7981c1feeaed399495"
+latest-published-id = "0x0e84a5a2159c893e3a4ee741205133bf08c210b06a2a2a7981c1feeaed399495"
 published-version = "1"

@@ -36,14 +36,8 @@ rev = "main"
 override = true
 
 [dependencies.locker_cap]
-git = "https://github.com/LFBuild/FullSail-SC.git"
-subdir = "locker_cap"
-rev = "main"
-override = true
+local = "../locker_cap"
 
 ## TODO
 ## [dependencies.distribution]
-## git = "https://github.com/LFBuild/FullSail-SC.git"
-## subdir = "distribution"
-## rev = "main"
-## override = true
+## local = "../distribution"

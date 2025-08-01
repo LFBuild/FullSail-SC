@@ -51,6 +51,15 @@ Use `sui client publish` command.
 
 ### Mainnet
 
+- [locker_cap](https://suivision.xyz/txblock/B9mVEC18ZYj4SMgkeYn8DN2u9m7hmTcb9SiDQ73t381b)
+    - package `0xa5b0b900f2b1eb1270595e813a0455de9fb91d77f66fb21d8d9f83ef7d90a678`
+    - locker_cap::CreateCap `0xf4c41408b5531c15bb6d11c10626db37701c31ec8fd620fd5c881edd92e0d040`
+- [liquidity_locker](https://suivision.xyz/txblock/2A2rwHzcHiynEUarnaVzEchx9CXxWUGBLzKN9zsENSYf)
+    - package `0x0e84a5a2159c893e3a4ee741205133bf08c210b06a2a2a7981c1feeaed399495`
+    - PoolTrancheManager `0x0eee28f8ad9e190ab12348bd8b87c9dc0b9280eaab3bf745fdc0ea2fe962a96a`
+    - pool_tranche::SuperAdminCap `0x24a8efa0de9979d14a8551968f85163506390d0ff5e6b1d44855e62b89f33e4a`
+    - liquidity_lock_v1::SuperAdminCap `0xbdec146df21fafb6b08fa1755a55ad37b07ad4c092536007ea4068c479c13034`
+    - Locker `0xddada1cefdef0bf2422fe6e1935d08fc077ee04e73cc2dfadd21788191f795f4`
 - [integrate](https://suivision.xyz/txblock/6u5McVLD4EjrUMWPEm86PhSTDPS5CjeqbX9xe9YE1V9n)
     - package: `0xe1b7d5fd116fea5a8f8e85c13754248d56626a8d0a614b7d916c2348d8323149`
 
