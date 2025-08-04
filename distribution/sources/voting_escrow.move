@@ -1727,10 +1727,9 @@ module distribution::voting_escrow {
 
     public fun get_voting_power<SailCoinType>(
         voting_escrow: &VotingEscrow<SailCoinType>,
-        lock: &Lock,
+        lock_id: ID,
         clock: &sui::clock::Clock
     ): u64 {
-        let lock_id = object::id<Lock>(lock);
         assert!(
             clock.timestamp_ms() - *voting_escrow.ownership_change_at.borrow(
                 lock_id
