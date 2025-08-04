@@ -805,7 +805,7 @@ module distribution::minter {
         metadata: &CoinMetadata<SailCoinType>
     ) {
         assert!(metadata.get_decimals() == distribution::common::sail_decimals(), ESetTreasuryCapInvalidSailDecimals);
-        minter.set_treasury_cap_internal(admin_cap, treasury_cap, metadata);
+        minter.set_treasury_cap_internal(admin_cap, treasury_cap);
     }
 
     /// Test only method without metadata check as it is impossible to create metadata in test environment.
@@ -814,16 +814,14 @@ module distribution::minter {
         minter: &mut Minter<SailCoinType>,
         admin_cap: &AdminCap,
         treasury_cap: TreasuryCap<SailCoinType>,
-        metadata: &CoinMetadata<SailCoinType>
     ) {
-        minter.set_treasury_cap_internal(admin_cap, treasury_cap, metadata);
+        minter.set_treasury_cap_internal(admin_cap, treasury_cap);
     }
 
     fun set_treasury_cap_internal<SailCoinType>(
         minter: &mut Minter<SailCoinType>,
         admin_cap: &AdminCap,
-        treasury_cap: TreasuryCap<SailCoinType>,
-        metadata: &CoinMetadata<SailCoinType>
+        treasury_cap: TreasuryCap<SailCoinType>
     ) {
         assert!(!minter.is_paused(), ESetTreasuryCapMinterPaused);
         minter.check_admin(admin_cap);
@@ -831,7 +829,6 @@ module distribution::minter {
             option::is_none<TreasuryCap<SailCoinType>>(&minter.sail_cap),
             EMinterCapAlreadySet
         );
-        assert!(metadata.get_decimals() == distribution::common::sail_decimals(), ESetTreasuryCapInvalidSailDecimals);
         let treasury_cap_id = object::id(&treasury_cap);
         option::fill<TreasuryCap<SailCoinType>>(&mut minter.sail_cap, treasury_cap);
 
