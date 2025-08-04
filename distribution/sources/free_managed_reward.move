@@ -136,7 +136,7 @@ module distribution::free_managed_reward {
     }
 
     public fun get_prior_supply_index(reward: &FreeManagedReward, time: u64): u64 {
-        reward.get_prior_supply_index(time)
+        reward.reward.get_prior_supply_index(time)
     }
 
     /// Claims rewards for a specific token type.
