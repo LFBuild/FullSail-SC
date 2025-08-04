@@ -186,12 +186,18 @@ module distribution::minter {
         new_period: u64,
         updated_at: u64,
         prev_prev_epoch_o_sail_emissions: u64,
+        team_emissions: u64,
         finished_epoch_growth_rebase: u64,
         epoch_o_sail_type: TypeName,
     }
 
     public struct EventReviveGauge has copy, drop, store {
         id: ID,
+    }
+
+    public struct EventResetGauge has copy, drop, store {
+        id: ID,
+        gauge_base_emissions: u64,
     }
 
     public struct EventKillGauge has copy, drop, store {
@@ -207,9 +213,58 @@ module distribution::minter {
         admin_cap: ID,
     }
 
+    public struct EventRevokeAdmin has copy, drop, store {
+        admin_cap: ID,
+    }
+
     public struct EventGrantDistributeGovernor has copy, drop, store {
         who: address,
         distribute_governor_cap: ID,
+    }
+
+    public struct EventRevokeDistributeGovernor has copy, drop, store {
+        distribute_governor_cap: ID,
+    }
+
+    public struct EventSetTreasuryCap has copy, drop, store {
+        treasury_cap: ID,
+        token_type: TypeName,
+    }
+
+    public struct EventSetRewardDistributorCap has copy, drop, store {
+        reward_distributor_cap: ID,
+        reward_distributor_id: ID,
+    }
+
+    public struct EventRevokeRewardDistributorCap has copy, drop, store {
+        reward_distributor_cap: ID,
+        reward_distributor_id: ID,
+    }
+
+    public struct EventSetDistributeCap has copy, drop, store {
+        admin_cap: ID,
+        distribute_cap: ID,
+    }
+
+    public struct EventUpdateTeamEmissionRate has copy, drop, store {
+        admin_cap: ID,
+        team_emission_rate: u64,
+    }
+
+    public struct EventUpdateProtocolFeeRate has copy, drop, store {
+        admin_cap: ID,
+        protocol_fee_rate: u64,
+    }
+
+    public struct EventSetTeamWallet has copy, drop, store {
+        admin_cap: ID,
+        team_wallet: address,
+    }
+
+    public struct EventDistributeTeam has copy, drop, store {
+        team_wallet: address,
+        amount: u64,
+        token_type: TypeName,
     }
 
     public struct EventDistributeGauge has copy, drop, store {
@@ -229,6 +284,17 @@ module distribution::minter {
         permanent: bool,
     }
 
+    public struct EventExerciseOSail has copy, drop, store {
+        o_sail_amount_in: u64,
+        sail_amount_out: u64,
+        o_sail_type: TypeName,
+        exercise_fee_token_type: TypeName,
+        exercise_fee_amount: u64,
+        // protocol fee amount + fee to distribute = exercise fee amount
+        protocol_fee_amount: u64,
+        fee_to_distribute: u64,
+    }
+
     public struct EventWhitelistUSD has copy, drop, store {
         usd_type: TypeName,
         whitelisted: bool,
@@ -237,6 +303,40 @@ module distribution::minter {
     public struct EventCreateExerciseFeeDistributor has copy, drop, store {
         usd_type: TypeName,
         exercise_fee_distributor_id: ID,
+    }
+
+    public struct EventSetOSailPriceAggregator has copy, drop, store {
+        price_aggregator: ID,
+    }
+
+    public struct EventSetSailPriceAggregator has copy, drop, store {
+        price_aggregator: ID,
+    }
+
+    public struct EventScheduleTimeLockedMint has copy, drop, store {
+        amount: u64,
+        unlock_time: u64,
+        is_osail: bool,
+        token_type: TypeName,
+    }
+
+    public struct EventCancelTimeLockedMint has copy, drop, store {
+        id: ID,
+        amount: u64,
+        token_type: TypeName,
+        is_osail: bool,
+    }
+
+    public struct EventMint has copy, drop, store {
+        amount: u64,
+        token_type: TypeName,
+        is_osail: bool,
+    }
+
+    public struct EventBurn has copy, drop, store {
+        amount: u64,
+        token_type: TypeName,
+        is_osail: bool,
     }
 
     public struct TimeLockedSailMint has key, store {
@@ -665,6 +765,11 @@ module distribution::minter {
     ) {
         assert!(publisher.from_module<MINTER>(), ERevokeAdminInvalidPublisher);
         minter.revoked_admins.insert(cap_id);
+
+        let revoke_admin_event = EventRevokeAdmin {
+            admin_cap: cap_id,
+        };
+        sui::event::emit<EventRevokeAdmin>(revoke_admin_event);
     }
 
     /// Revokes distribute governor capabilities for a specific distribute governor.
@@ -675,6 +780,11 @@ module distribution::minter {
     ) {
         assert!(publisher.from_module<MINTER>(), ERevokeDistributeGovernorInvalidPublisher);
         minter.revoked_distribute_governors.insert(cap_id);
+
+        let revoke_distribute_governor_event = EventRevokeDistributeGovernor {
+            distribute_governor_cap: cap_id,
+        };
+        sui::event::emit<EventRevokeDistributeGovernor>(revoke_distribute_governor_event);
     }
 
 
@@ -722,7 +832,14 @@ module distribution::minter {
             EMinterCapAlreadySet
         );
         assert!(metadata.get_decimals() == distribution::common::sail_decimals(), ESetTreasuryCapInvalidSailDecimals);
+        let treasury_cap_id = object::id(&treasury_cap);
         option::fill<TreasuryCap<SailCoinType>>(&mut minter.sail_cap, treasury_cap);
+
+        let set_treasury_cap_event = EventSetTreasuryCap {
+            treasury_cap: treasury_cap_id,
+            token_type: type_name::get<SailCoinType>(),
+        };
+        sui::event::emit<EventSetTreasuryCap>(set_treasury_cap_event);
     }
 
     /// Sets the reward distributor capability for the minter.
@@ -733,7 +850,14 @@ module distribution::minter {
         reward_distributor_cap: distribution::reward_distributor_cap::RewardDistributorCap
     ) {
         minter.check_admin(admin_cap);
+        let reward_distributor_cap_id = object::id(&reward_distributor_cap);
         minter.reward_distributor_caps.add(reward_distributor_id, reward_distributor_cap);
+
+        let set_reward_distributor_cap_event = EventSetRewardDistributorCap {
+            reward_distributor_cap: reward_distributor_cap_id,
+            reward_distributor_id,
+        };
+        sui::event::emit<EventSetRewardDistributorCap>(set_reward_distributor_cap_event);
     }
 
     /// Removes the reward distributor capability.
@@ -743,7 +867,16 @@ module distribution::minter {
         reward_distributor_id: ID
     ): distribution::reward_distributor_cap::RewardDistributorCap {
         minter.check_admin(admin_cap);
-        minter.reward_distributor_caps.remove(reward_distributor_id)
+        let reward_distributor_cap = minter.reward_distributor_caps.remove(reward_distributor_id);
+        let reward_distributor_cap_id = object::id(&reward_distributor_cap);
+
+        let revoke_reward_distributor_cap_event = EventRevokeRewardDistributorCap {
+            reward_distributor_cap: reward_distributor_cap_id,
+            reward_distributor_id,
+        };
+        sui::event::emit<EventRevokeRewardDistributorCap>(revoke_reward_distributor_cap_event);
+
+        reward_distributor_cap
     }
 
     /// Sets the distribute capability for the minter.
@@ -754,10 +887,17 @@ module distribution::minter {
     ) {
         assert!(!minter.is_paused(), ESetDistributeCapMinterPaused);
         minter.check_admin(admin_cap);
+        let distribute_cap_id = object::id(&distribute_cap);
         option::fill<distribution::distribute_cap::DistributeCap>(
             &mut minter.distribute_cap,
             distribute_cap
         );
+
+        let set_distribute_cap_event = EventSetDistributeCap {
+            admin_cap: object::id(admin_cap),
+            distribute_cap: distribute_cap_id,
+        };
+        sui::event::emit<EventSetDistributeCap>(set_distribute_cap_event);
     }
 
     /// Sets the team emission rate, which determines what percentage of emissions
@@ -779,6 +919,12 @@ module distribution::minter {
         assert!(!minter.is_paused(), ESetTeamEmissionRateMinterPaused);
         assert!(team_emission_rate <= MAX_TEAM_EMISSIONS_RATE, ESetTeamEmissionRateTooBigRate);
         minter.team_emission_rate = team_emission_rate;
+
+        let update_team_emission_rate_event = EventUpdateTeamEmissionRate {
+            admin_cap: object::id(admin_cap),
+            team_emission_rate,
+        };
+        sui::event::emit<EventUpdateTeamEmissionRate>(update_team_emission_rate_event);
     }
 
     public fun set_protocol_fee_rate<SailCoinType>(
@@ -790,6 +936,12 @@ module distribution::minter {
         assert!(!minter.is_paused(), ESetProtocolFeeRateMinterPaused);
         assert!(protocol_fee_rate <= MAX_PROTOCOL_FEE_RATE, ESetProtocolFeeRateTooBigRate);
         minter.protocol_fee_rate = protocol_fee_rate;
+
+        let update_protocol_fee_rate_event = EventUpdateProtocolFeeRate {
+            admin_cap: object::id(admin_cap),
+            protocol_fee_rate,
+        };
+        sui::event::emit<EventUpdateProtocolFeeRate>(update_protocol_fee_rate_event);
     }
 
     /// Sets the team wallet address that will receive team emissions.
@@ -806,6 +958,12 @@ module distribution::minter {
         minter.check_admin(admin_cap);
         assert!(!minter.is_paused(), ESetTeamWalletMinterPaused);
         minter.team_wallet = team_wallet;
+
+        let set_team_wallet_event = EventSetTeamWallet {
+            admin_cap: object::id(admin_cap),
+            team_wallet,
+        };
+        sui::event::emit<EventSetTeamWallet>(set_team_wallet_event);
     }
 
     /// Distributes the protocol exercise oSAIL fee to the team wallet.
@@ -820,10 +978,18 @@ module distribution::minter {
         let coin_type = type_name::get<ExerciseFeeCoinType>();
         assert!(minter.exercise_fee_team_balances.contains(coin_type), EDistributeTeamTokenNotFound);
         let balance = minter.exercise_fee_team_balances.remove<TypeName, Balance<ExerciseFeeCoinType>>(coin_type);
+        let amount = balance.value();
         transfer::public_transfer<Coin<ExerciseFeeCoinType>>(
             coin::from_balance(balance, ctx), 
             minter.team_wallet
         );
+
+        let distribute_team_event = EventDistributeTeam {
+            team_wallet: minter.team_wallet,
+            amount,
+            token_type: coin_type,
+        };
+        sui::event::emit<EventDistributeTeam>(distribute_team_event);
     }
 
     /// Returns the current team emission rate.
@@ -996,8 +1162,9 @@ module distribution::minter {
             minter.total_supply(),
             voting_escrow.total_locked()
         );
+        let mut team_emissions = 0;
         if (minter.team_emission_rate > 0 && minter.team_wallet != @0x0) {
-            let team_emissions = integer_mate::full_math_u64::mul_div_floor(
+            team_emissions = integer_mate::full_math_u64::mul_div_floor(
                 minter.team_emission_rate,
                 rebase_growth + prev_prev_epoch_emissions,
                 RATE_DENOM
@@ -1031,6 +1198,7 @@ module distribution::minter {
             new_period: minter.active_period,
             updated_at: current_time,
             prev_prev_epoch_o_sail_emissions: prev_prev_epoch_emissions,
+            team_emissions,
             finished_epoch_growth_rebase: rebase_growth,
             epoch_o_sail_type: type_name::get<EpochOSail>(),
         };
@@ -1401,6 +1569,12 @@ module distribution::minter {
         minter.gauge_epoch_emissions_usd.add(gauge_id, gauge_base_emissions);
 
         revive_gauge_internal(distribution_config, gauge_id);
+
+        let reset_gauge_event = EventResetGauge {
+            id: gauge_id,
+            gauge_base_emissions,
+        };
+        sui::event::emit<EventResetGauge>(reset_gauge_event);
     }
 
     /// Borrows current epoch oSAIL token
@@ -1453,6 +1627,13 @@ module distribution::minter {
         minter.o_sail_minted_supply = minter.o_sail_minted_supply + amount;
         let cap = minter.borrow_mut_o_sail_cap<SailCoinType, OSailCoinType>();
 
+        let event = EventMint {
+            amount,
+            token_type: type_name::get<OSailCoinType>(),
+            is_osail: true,
+        };
+        sui::event::emit<EventMint>(event);
+
         cap.mint(amount, ctx)
     }
 
@@ -1467,6 +1648,13 @@ module distribution::minter {
         let cap = minter.borrow_mut_o_sail_cap<SailCoinType, OSailCoinType>();
         let burnt = cap.burn(coin);
         minter.o_sail_minted_supply = minter.o_sail_minted_supply - burnt;
+
+        let event = EventBurn {
+            amount: burnt,
+            token_type: type_name::get<OSailCoinType>(),
+            is_osail: true,
+        };
+        sui::event::emit<EventBurn>(event);
 
         burnt
     }
@@ -1487,6 +1675,13 @@ module distribution::minter {
         ctx: &mut TxContext
     ): Coin<SailCoinType> {
         let cap = minter.sail_cap.borrow_mut();
+
+        let event = EventMint {
+            amount,
+            token_type: type_name::get<SailCoinType>(),
+            is_osail: false,
+        };
+        sui::event::emit<EventMint>(event);
 
         cap.mint(amount, ctx)
     }
@@ -1691,8 +1886,9 @@ module distribution::minter {
         let sail_amount_out = o_sail.value();
         let mut usd_to_pay = usd_in.split(usd_amount_in, ctx);
 
+        let mut protocol_fee_amount = 0;
         if (minter.protocol_fee_rate > 0 && minter.team_wallet != @0x0) {
-            let protocol_fee_amount = integer_mate::full_math_u64::mul_div_floor(
+            protocol_fee_amount = integer_mate::full_math_u64::mul_div_floor(
                 usd_to_pay.value(),
                 minter.protocol_fee_rate,
                 RATE_DENOM,
@@ -1711,10 +1907,22 @@ module distribution::minter {
         };
 
         let reward_distributor_cap = minter.reward_distributor_caps.borrow(object::id(exercise_fee_distributor));
+        let fee_to_distribute = usd_to_pay.value();
         exercise_fee_distributor.checkpoint_token(reward_distributor_cap, usd_to_pay, clock);
 
         minter.burn_o_sail(o_sail);
         let sail_out = minter.mint_sail(sail_amount_out, ctx);
+
+        let event = EventExerciseOSail {
+            o_sail_amount_in: sail_amount_out,
+            sail_amount_out: sail_amount_out,
+            o_sail_type: type_name::get<OSailCoinType>(),
+            exercise_fee_token_type: type_name::get<USDCoinType>(),
+            exercise_fee_amount: usd_amount_in,
+            protocol_fee_amount,
+            fee_to_distribute: fee_to_distribute,
+        };
+        sui::event::emit<EventExerciseOSail>(event);
 
         // remaining usd and sail
         (usd_in, sail_out)
@@ -1899,6 +2107,14 @@ module distribution::minter {
         
         let id = object::new(ctx);
         let unlock_time = clock.timestamp_ms() + MINT_LOCK_TIME_MS;
+        let event = EventScheduleTimeLockedMint {
+            amount,
+            unlock_time,
+            is_osail: false,
+            token_type: type_name::get<SailCoinType>(),
+        };
+        sui::event::emit<EventScheduleTimeLockedMint>(event);
+
         TimeLockedSailMint {
             id,
             amount,
@@ -1921,10 +2137,19 @@ module distribution::minter {
         minter.mint_sail(amount, ctx)
     }
 
-    public fun cancel_sail_mint(
+    public fun cancel_sail_mint<SailCoinType>(
+        _: &Minter<SailCoinType>, // minter is needed to make sure the coin type is valid
         mint: TimeLockedSailMint,
     ) {
-        let TimeLockedSailMint {id, amount: _, unlock_time: _} = mint;
+        let TimeLockedSailMint {id, amount, unlock_time: _} = mint;
+        let inner_id = id.uid_to_inner();
+        let event = EventCancelTimeLockedMint {
+            id: inner_id,
+            amount,
+            token_type: type_name::get<SailCoinType>(),
+            is_osail: false,
+        };
+        sui::event::emit<EventCancelTimeLockedMint>(event);
         object::delete(id);
     }
 
@@ -1942,6 +2167,14 @@ module distribution::minter {
 
         let id = object::new(ctx);
         let unlock_time = clock.timestamp_ms() + MINT_LOCK_TIME_MS;
+        let event = EventScheduleTimeLockedMint {
+            amount,
+            unlock_time,
+            is_osail: true,
+            token_type: type_name::get<OSailCoinType>(),
+        };
+        sui::event::emit<EventScheduleTimeLockedMint>(event);
+
         TimeLockedOSailMint<OSailCoinType> {
             id,
             amount,
@@ -1968,7 +2201,15 @@ module distribution::minter {
     public fun cancel_o_sail_mint<OSailCoinType>(
         mint: TimeLockedOSailMint<OSailCoinType>,
     ) {
-        let TimeLockedOSailMint {id, amount: _, unlock_time: _} = mint;
+        let TimeLockedOSailMint {id, amount, unlock_time: _} = mint;
+        let inner_id = id.uid_to_inner();
+        let event = EventCancelTimeLockedMint {
+            id: inner_id,
+            amount,
+            token_type: type_name::get<OSailCoinType>(),
+            is_osail: true,
+        };
+        sui::event::emit<EventCancelTimeLockedMint>(event);
         object::delete(id);
     }
 
@@ -1983,6 +2224,11 @@ module distribution::minter {
         minter.check_admin(admin_cap);
         assert!(minter.is_valid_distribution_config(distribution_config), ESetOsailPriceAggregatorInvalidDistrConfig);
         distribution_config.set_o_sail_price_aggregator(aggregator);
+
+        let event = EventSetOSailPriceAggregator {
+            price_aggregator: object::id(aggregator),
+        };
+        sui::event::emit<EventSetOSailPriceAggregator>(event);
     }
 
     /// Sets the aggregator that is used to calculate the price of SAIL in USD
@@ -1995,6 +2241,11 @@ module distribution::minter {
         minter.check_admin(admin_cap);
         assert!(minter.is_valid_distribution_config(distribution_config), ESetSailPriceAggregatorInvalidDistrConfig);
         distribution_config.set_sail_price_aggregator(aggregator);
+
+        let event = EventSetSailPriceAggregator {
+            price_aggregator: object::id(aggregator),
+        };
+        sui::event::emit<EventSetSailPriceAggregator>(event);
     }
 
         /// Proxy method to be called via Minter

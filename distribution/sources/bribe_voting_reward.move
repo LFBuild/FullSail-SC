@@ -54,8 +54,9 @@ module distribution::bribe_voting_reward {
         ctx: &mut TxContext
     ): BribeVotingReward {
         let id = object::new(ctx);
+        let inner_id = id.uid_to_inner();
         let bribe_voting_reward_created_event = EventBribeVotingRewardCreated {
-            id: object::uid_to_inner(&id),
+            id: inner_id,
             gauge_id,
         };
         sui::event::emit<EventBribeVotingRewardCreated>(bribe_voting_reward_created_event);
@@ -63,6 +64,7 @@ module distribution::bribe_voting_reward {
             id,
             gauge: gauge_id,
             reward: distribution::reward::create(
+                inner_id,
                 voter,
                 option::some(ve),
                 voter,

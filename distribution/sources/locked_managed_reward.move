@@ -14,9 +14,12 @@ module distribution::locked_managed_reward {
     ): LockedManagedReward {
         let mut coin_types_vec = std::vector::empty<std::type_name::TypeName>();
         coin_types_vec.push_back(reward_coin_type);
+        let id = object::new(ctx);
+        let inner_id = id.uid_to_inner();
         LockedManagedReward {
-            id: object::new(ctx),
+            id,
             reward: distribution::reward::create(
+                inner_id,
                 voter,
                 option::some(ve),
                 ve,

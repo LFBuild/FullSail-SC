@@ -3966,9 +3966,12 @@ fun test_cancel_sail_mint_no_tokens_minted() {
     scenario.next_tx(admin);
     {
         let time_locked_mint = scenario.take_from_sender<minter::TimeLockedSailMint>();
+        let minter = scenario.take_shared<Minter<SAIL>>();
         
         // Cancel the mint - this should not mint any tokens
-        minter::cancel_sail_mint(time_locked_mint);
+        minter::cancel_sail_mint<SAIL>(&minter, time_locked_mint);
+
+        test_scenario::return_shared(minter);
     };
 
     // Verify SAIL total supply hasn't changed
