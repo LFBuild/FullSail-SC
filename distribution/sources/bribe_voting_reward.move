@@ -287,43 +287,6 @@ module distribution::bribe_voting_reward {
         reward.reward.notify_reward_amount_internal(reward_coin.into_balance(), clock, ctx);
     }
 
-    /// Allows a voter to claim rewards for a specific lock, returning the balance instead
-    /// of automatically transferring it.
-    /// 
-    /// # Arguments
-    /// * `reward` - The BribeVotingReward to claim from
-    /// * `reward_authorized_cap` - Capability proving authorization to claim
-    /// * `voting_escrow` - The voting escrow instance
-    /// * `lock_id` - The ID of the lock to claim rewards for
-    /// * `clock` - The system clock
-    /// * `ctx` - The transaction context
-    /// 
-    /// # Returns
-    /// The balance of rewards claimed
-    public fun voter_get_reward<SailCoinType, BribeCoinType>(
-        reward: &mut BribeVotingReward,
-        reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
-        voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
-        lock_id: ID,
-        clock: &sui::clock::Clock,
-        ctx: &mut TxContext
-    ): sui::balance::Balance<BribeCoinType> {
-        reward_authorized_cap.validate(reward.reward.authorized());
-        let mut reward_balance_option = reward.reward.get_reward_internal<BribeCoinType>(
-            voting_escrow.owner_of(lock_id),
-            lock_id,
-            clock,
-            ctx
-        );
-        let reward_balance = if (reward_balance_option.is_some()) {
-            reward_balance_option.extract()
-        } else {
-            sui::balance::zero<BribeCoinType>()
-        };
-        reward_balance_option.destroy_none();
-        reward_balance
-    }
-
 
     public fun rewards_at_epoch<FeeCoinType>(
         reward: &BribeVotingReward,
