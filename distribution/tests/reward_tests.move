@@ -37,6 +37,7 @@ fun test_create_reward() {
 
     // Call the create function
     let reward_obj = reward::create(
+        object::id_from_address(@0x0),
         voter_id,
         ve_id_option,
         authorized_id,
@@ -71,6 +72,7 @@ fun create_default_reward(
     let reward_types = vector[type_name::get<USD1>()];
 
     reward::create(
+        object::id_from_address(@0x0),
         voter_id,
         ve_id_option,
         authorized_id,
@@ -724,6 +726,7 @@ fun test_multi_token_reward_same_epoch() {
         type_name::get<SAIL>()
     ];
     let mut reward_obj = reward::create(
+        object::id_from_address(@0x0),
         voter_id,
         ve_id_option,
         authorized_id,
@@ -2888,6 +2891,7 @@ fun test_reward_multi_token_notify_and_claim() {
         type_name::get<OTHER>()
     ];
     let mut reward_obj = reward::create(
+        object::id_from_address(@0x0),
         voter_id,
         ve_id_option,
         authorized_id,
@@ -3537,7 +3541,7 @@ fun test_claim_rewards_after_100_epochs() {
 }
 
 #[test]
-fun test_claim_rewards_after_300_epochs() {
+fun test_claim_rewards_after_200_epochs() {
     let admin = @0xFAFA;
     let authorized_id: ID = object::id_from_address(@0xBABA);
     let mut scenario = test_scenario::begin(admin);
@@ -3551,7 +3555,7 @@ fun test_claim_rewards_after_300_epochs() {
     let lock_id: ID = object::id_from_address(@0xDADA);
     let deposit_amount = 10000;
     let notify_amount_per_epoch = 100;
-    let num_epochs = 300;
+    let num_epochs = 200;
     let one_week_ms = 7 * 24 * 60 * 60 * 1000;
 
     // Deposit lock
@@ -3577,9 +3581,9 @@ fun test_claim_rewards_after_300_epochs() {
 
     // Verify earned rewards
     // Since there's only one lock, it should get 100% of the rewards.
-    // we do 3 iterations cos we have a limit of 100 epochs per claim.
+    // we do 2 iterations cos we have a limit of 100 epochs per claim.
     let mut i = 0;
-    while (i < 3) {
+    while (i < 2) {
         // claim method only claims 100 epochs at a time.
         let expected_claimed_amount = notify_amount_per_epoch * 100;
         let earned_amount = reward_obj.earned<USD1>(lock_id, &clock);

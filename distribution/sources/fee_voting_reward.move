@@ -55,10 +55,13 @@ module distribution::fee_voting_reward {
         reward_coin_types: vector<std::type_name::TypeName>,
         ctx: &mut TxContext
     ): FeeVotingReward {
+        let id = object::new(ctx);
+        let inner_id = id.uid_to_inner();
         FeeVotingReward {
-            id: object::new(ctx),
+            id,
             gauge: authorized,
             reward: distribution::reward::create(
+                inner_id,
                 voter,
                 option::some(ve),
                 voter,

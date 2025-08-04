@@ -11,18 +11,21 @@ module distribution::reward {
 
 
     public struct EventDeposit has copy, drop, store {
+        wrapper_reward_id: ID,
         sender: address,
         lock_id: ID,
         amount: u64,
     }
 
     public struct EventWithdraw has copy, drop, store {
+        wrapper_reward_id: ID,
         sender: address,
         lock_id: ID,
         amount: u64,
     }
 
     public struct EventClaimRewards has copy, drop, store {
+        wrapper_reward_id: ID,
         recipient: address,
         token_name: std::type_name::TypeName,
         reward_amount: u64,
@@ -30,10 +33,30 @@ module distribution::reward {
     }
 
     public struct EventNotifyReward has copy, drop, store {
+        wrapper_reward_id: ID,
         sender: address,
         token_name: std::type_name::TypeName,
         epoch_start: u64,
         amount: u64,
+    }
+
+
+    public struct EventEpochFinalized has copy, drop, store {
+        // FeeVotingReward, BribeVotingReward or FreeManagedReward id. Supposed to be used to track for which exactly reward this event is.
+        wrapper_reward_id: ID,
+        // Reward id. Usually this reward is unaccessible cos it is wrapped in other object.
+        internal_reward_id: ID,
+        epoch_start: u64,
+    }
+
+    public struct EventUpdateBalances has copy, drop, store {
+        // FeeVotingReward, BribeVotingReward or FreeManagedReward id. Supposed to be used to track for which exactly reward this event is.
+        wrapper_reward_id: ID,
+        // Reward id. Usually this reward is unaccessible cos it is wrapped in other object.
+        internal_reward_id: ID,
+        epoch_start: u64,
+        balances: vector<u64>,
+        lock_ids: vector<ID>,
     }
 
     public struct Checkpoint has drop, store {
@@ -48,6 +71,8 @@ module distribution::reward {
 
     public struct Reward has store, key {
         id: UID,
+        // FeeVotingReward, BribeVotingReward or FreeManagedReward id
+        wrapper_reward_id: ID,
         voter: ID,
         ve: Option<ID>,
         authorized: ID,
@@ -158,6 +183,7 @@ module distribution::reward {
     /// # Returns
     /// A new Reward object with initialized data structures
     public(package) fun create(
+        wrapper_reward_id: ID,
         voter: ID,
         ve: Option<ID>,
         authorized: ID,
@@ -167,6 +193,7 @@ module distribution::reward {
     ): Reward {
         let mut reward = Reward {
             id: object::new(ctx),
+            wrapper_reward_id,
             voter,
             ve,
             authorized,
@@ -231,6 +258,7 @@ module distribution::reward {
         reward.write_supply_checkpoint_internal(current_time, new_total_supply);
 
         let deposit_event = EventDeposit {
+            wrapper_reward_id: reward.wrapper_reward_id,
             sender: tx_context::sender(ctx),
             lock_id,
             amount,
@@ -292,8 +320,23 @@ module distribution::reward {
         };
 
         reward.write_supply_checkpoint_internal(for_epoch_start, total_supply);
+        let internal_reward_id = object::id(reward);
+        let event = EventUpdateBalances {
+            wrapper_reward_id: reward.wrapper_reward_id,
+            internal_reward_id,
+            epoch_start: for_epoch_start,
+            balances,
+            lock_ids,
+        };
+        sui::event::emit<EventUpdateBalances>(event);
         if (final) {
             reward.epoch_updates_finalized.add(for_epoch_start, true);
+            let event = EventEpochFinalized {
+                wrapper_reward_id: reward.wrapper_reward_id,
+                internal_reward_id,
+                epoch_start: for_epoch_start,
+            };
+            sui::event::emit<EventEpochFinalized>(event);
         };
     }
 
@@ -507,6 +550,7 @@ module distribution::reward {
         };
         last_earned_times.add(lock_id, first_non_earned_epoch);
         let claim_rewards_event = EventClaimRewards {
+            wrapper_reward_id: reward.wrapper_reward_id,
             recipient,
             token_name: coin_type_name,
             reward_amount,
@@ -558,6 +602,7 @@ module distribution::reward {
             ).join<CoinType>(balance);
         };
         let notify_reward_event = EventNotifyReward {
+            wrapper_reward_id: reward.wrapper_reward_id,
             sender: tx_context::sender(ctx),
             token_name: reward_type_name,
             epoch_start,
@@ -753,6 +798,7 @@ module distribution::reward {
         reward.write_supply_checkpoint_internal(current_time, new_total_supply);
 
         let withdraw_event = EventWithdraw {
+            wrapper_reward_id: reward.wrapper_reward_id,
             sender: tx_context::sender(ctx),
             lock_id,
             amount,
@@ -892,6 +938,10 @@ module distribution::reward {
                 reward.supply_num_checkpoints = num_of_checkpoints + 1;
             }
         };
+    }
+
+    public fun wrapper_reward_id(reward: &Reward): ID {
+        reward.wrapper_reward_id
     }
 
     #[test_only]

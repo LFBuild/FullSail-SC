@@ -47,9 +47,12 @@ module distribution::free_managed_reward {
     ): FreeManagedReward {
         let mut type_name_vec = std::vector::empty<std::type_name::TypeName>();
         type_name_vec.push_back(reward_coin_type);
+        let id = object::new(ctx);
+        let inner_id = id.uid_to_inner();
         FreeManagedReward {
-            id: object::new(ctx),
+            id,
             reward: distribution::reward::create(
+                inner_id,
                 voter,
                 option::some(ve),
                 ve,

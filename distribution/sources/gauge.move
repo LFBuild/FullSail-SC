@@ -116,6 +116,14 @@ module distribution::gauge {
         usd_amount: u64,
     }
 
+    public struct EventSyncOSailDistributionPrice has copy, drop, store {
+        gauge_id: ID,
+        pool_id: ID,
+        price_q64: u128,
+        remaining_o_sail_q64: u128,
+        remaining_usd_q64: u128,
+    }
+
     public struct EventClaimFees has copy, drop, store {
         amount_a: u64,
         amount_b: u64,
@@ -1341,6 +1349,15 @@ module distribution::gauge {
             next_epoch_time,
             clock
         );
+
+        let sync_o_sail_distribution_price_event = EventSyncOSailDistributionPrice {
+            gauge_id: object::id<Gauge<CoinTypeA, CoinTypeB>>(gauge),
+            pool_id: object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool),
+            price_q64,
+            remaining_o_sail_q64: remaining_o_sail_amount_q64,
+            remaining_usd_q64: remaining_usd_amount_q64,
+        };
+        sui::event::emit<EventSyncOSailDistributionPrice>(sync_o_sail_distribution_price_event);
     }
 
     /// Updates the oSAIL distribution rate based on the current price of the oSAIL token.
