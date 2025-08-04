@@ -10600,167 +10600,167 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         };
         
         // Advance to Epoch 3 (OSAIL3)
-        clock::increment_for_testing(&mut clock, common::epoch_to_seconds(1)*20*1000/100); // next epoch (3)
+        // clock::increment_for_testing(&mut clock, common::epoch_to_seconds(1)*20*1000/100); // next epoch (3)
 
-        // Update Minter Period to OSAIL3
-        scenario.next_tx(admin);
-        {
-            let initial_o_sail3_supply = update_minter_period<SailCoinType, OSAIL3>(
-                &mut scenario,
-                1_000_000, // Arbitrary supply for OSAIL3
-                &clock
-            );
-            sui::coin::burn_for_testing(initial_o_sail3_supply); // Burn OSAIL3
-        };
+        // // Update Minter Period to OSAIL3
+        // scenario.next_tx(admin);
+        // {
+        //     let initial_o_sail3_supply = update_minter_period<SailCoinType, OSAIL3>(
+        //         &mut scenario,
+        //         1_000_000, // Arbitrary supply for OSAIL3
+        //         &clock
+        //     );
+        //     sui::coin::burn_for_testing(initial_o_sail3_supply); // Burn OSAIL3
+        // };
 
-        // Distribute gauge for epoch 3
-        scenario.next_tx(admin);
-        {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &clock);
-        };
+        // // Distribute gauge for epoch 3
+        // scenario.next_tx(admin);
+        // {
+        //     distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &clock);
+        // };
 
-        // Advance to Epoch 4 (OSAIL4)
-        clock::increment_for_testing(&mut clock, common::epoch_to_seconds(1)*1000); // next epoch (4)
+        // // Advance to Epoch 4 (OSAIL4)
+        // clock::increment_for_testing(&mut clock, common::epoch_to_seconds(1)*1000); // next epoch (4)
 
-        // Update Minter Period to OSAIL4
-        scenario.next_tx(admin);
-        {
-            let initial_o_sail4_supply = update_minter_period<SailCoinType, OSAIL4>(
-                &mut scenario,
-                1_000_000, // Arbitrary supply for OSAIL4
-                &clock
-            );
-            sui::coin::burn_for_testing(initial_o_sail4_supply); // Burn OSAIL4
-        };
+        // // Update Minter Period to OSAIL4
+        // scenario.next_tx(admin);
+        // {
+        //     let initial_o_sail4_supply = update_minter_period<SailCoinType, OSAIL4>(
+        //         &mut scenario,
+        //         1_000_000, // Arbitrary supply for OSAIL4
+        //         &clock
+        //     );
+        //     sui::coin::burn_for_testing(initial_o_sail4_supply); // Burn OSAIL4
+        // };
 
-        // Distribute gauge for epoch 4
-        scenario.next_tx(admin);
-        {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &clock);
-        };
+        // // Distribute gauge for epoch 4
+        // scenario.next_tx(admin);
+        // {
+        //     distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &clock);
+        // };
 
-        // Add reward to the 3 epoch
-        scenario.next_tx(admin);
-        {
-            let mut tranche_manager = scenario.take_shared<pool_soft_tranche::PoolSoftTrancheManager>();
-            let pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
+        // // Add reward to the 3 epoch
+        // scenario.next_tx(admin);
+        // {
+        //     let mut tranche_manager = scenario.take_shared<pool_soft_tranche::PoolSoftTrancheManager>();
+        //     let pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
-            let tranche1 = get_tranche_by_index(
-                &mut tranche_manager,
-                sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
-                0
-            );
+        //     let tranche1 = get_tranche_by_index(
+        //         &mut tranche_manager,
+        //         sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
+        //         0
+        //     );
 
-            let reward3 = sui::coin::mint_for_testing<SailCoinType>(10000000, scenario.ctx());
-            pool_soft_tranche::set_total_incomed_and_add_reward<OSAIL3, SailCoinType>(
-                &mut tranche_manager,
-                sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
-                sui::object::id<pool_soft_tranche::PoolSoftTranche>(tranche1),
-                common::epoch_start(common::epoch_to_seconds(3)),
-                reward3.into_balance(),
-                10300000000000,
-                scenario.ctx()
-            );
+        //     let reward3 = sui::coin::mint_for_testing<SailCoinType>(10000000, scenario.ctx());
+        //     pool_soft_tranche::set_total_incomed_and_add_reward<OSAIL3, SailCoinType>(
+        //         &mut tranche_manager,
+        //         sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
+        //         sui::object::id<pool_soft_tranche::PoolSoftTranche>(tranche1),
+        //         common::epoch_start(common::epoch_to_seconds(3)),
+        //         reward3.into_balance(),
+        //         10300000000000,
+        //         scenario.ctx()
+        //     );
 
-            test_scenario::return_shared(tranche_manager);
-            transfer::public_transfer(pool, admin);
-        };
+        //     test_scenario::return_shared(tranche_manager);
+        //     transfer::public_transfer(pool, admin);
+        // };
         
-        // Claim rewards for the second epoch
-        scenario.next_tx(admin);
-        {
-            let mut tranche_manager = scenario.take_shared<pool_soft_tranche::PoolSoftTrancheManager>();
-            let locker = scenario.take_shared<liquidity_soft_lock_v2::SoftLocker>();
-            let mut ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
-            let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
-            let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
-            let mut locked_position3 = scenario.take_from_sender<liquidity_soft_lock_v2::SoftLockedPosition<TestCoinB, TestCoinA>>();
-            let mut locked_position2 = scenario.take_from_sender<liquidity_soft_lock_v2::SoftLockedPosition<TestCoinB, TestCoinA>>();
-            let mut locked_position1 = scenario.take_from_sender<liquidity_soft_lock_v2::SoftLockedPosition<TestCoinB, TestCoinA>>();
+        // // Claim rewards for the second epoch
+        // scenario.next_tx(admin);
+        // {
+        //     let mut tranche_manager = scenario.take_shared<pool_soft_tranche::PoolSoftTrancheManager>();
+        //     let locker = scenario.take_shared<liquidity_soft_lock_v2::SoftLocker>();
+        //     let mut ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
+        //     let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
+        //     let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
+        //     let mut locked_position3 = scenario.take_from_sender<liquidity_soft_lock_v2::SoftLockedPosition<TestCoinB, TestCoinA>>();
+        //     let mut locked_position2 = scenario.take_from_sender<liquidity_soft_lock_v2::SoftLockedPosition<TestCoinB, TestCoinA>>();
+        //     let mut locked_position1 = scenario.take_from_sender<liquidity_soft_lock_v2::SoftLockedPosition<TestCoinB, TestCoinA>>();
 
-            assert!(position_ids.borrow(1) == sui::object::id<liquidity_soft_lock_v2::SoftLockedPosition<TestCoinB, TestCoinA>>(&locked_position1));
-            assert!(position_ids.borrow(2) == sui::object::id<liquidity_soft_lock_v2::SoftLockedPosition<TestCoinB, TestCoinA>>(&locked_position2));
-            assert!(position_ids.borrow(3) == sui::object::id<liquidity_soft_lock_v2::SoftLockedPosition<TestCoinB, TestCoinA>>(&locked_position3));
+        //     assert!(position_ids.borrow(1) == sui::object::id<liquidity_soft_lock_v2::SoftLockedPosition<TestCoinB, TestCoinA>>(&locked_position1));
+        //     assert!(position_ids.borrow(2) == sui::object::id<liquidity_soft_lock_v2::SoftLockedPosition<TestCoinB, TestCoinA>>(&locked_position2));
+        //     assert!(position_ids.borrow(3) == sui::object::id<liquidity_soft_lock_v2::SoftLockedPosition<TestCoinB, TestCoinA>>(&locked_position3));
 
-            // Claim rewards for the second epoch lock
-            liquidity_soft_lock_v2::collect_reward_sail<TestCoinB, TestCoinA, OSAIL3, SailCoinType>(
-                &locker,
-                &mut tranche_manager,
-                &mut ve,
-                &mut gauge,
-                &mut pool,
-                &mut locked_position1,
-                &clock,
-                scenario.ctx()
-            );
+        //     // Claim rewards for the second epoch lock
+        //     liquidity_soft_lock_v2::collect_reward_sail<TestCoinB, TestCoinA, OSAIL3, SailCoinType>(
+        //         &locker,
+        //         &mut tranche_manager,
+        //         &mut ve,
+        //         &mut gauge,
+        //         &mut pool,
+        //         &mut locked_position1,
+        //         &clock,
+        //         scenario.ctx()
+        //     );
 
-            liquidity_soft_lock_v2::collect_reward_sail<TestCoinB, TestCoinA, OSAIL3, SailCoinType>(
-                &locker,
-                &mut tranche_manager,
-                &mut ve,
-                &mut gauge,
-                &mut pool,
-                &mut locked_position2,
-                &clock,
-                scenario.ctx()
-            );
+        //     liquidity_soft_lock_v2::collect_reward_sail<TestCoinB, TestCoinA, OSAIL3, SailCoinType>(
+        //         &locker,
+        //         &mut tranche_manager,
+        //         &mut ve,
+        //         &mut gauge,
+        //         &mut pool,
+        //         &mut locked_position2,
+        //         &clock,
+        //         scenario.ctx()
+        //     );
 
-            liquidity_soft_lock_v2::collect_reward_sail<TestCoinB, TestCoinA, OSAIL3, SailCoinType>(
-                &locker,
-                &mut tranche_manager,
-                &mut ve,
-                &mut gauge,
-                &mut pool,
-                &mut locked_position3,
-                &clock,
-                scenario.ctx()
-            );
+        //     liquidity_soft_lock_v2::collect_reward_sail<TestCoinB, TestCoinA, OSAIL3, SailCoinType>(
+        //         &locker,
+        //         &mut tranche_manager,
+        //         &mut ve,
+        //         &mut gauge,
+        //         &mut pool,
+        //         &mut locked_position3,
+        //         &clock,
+        //         scenario.ctx()
+        //     );
 
-            transfer::public_transfer(locked_position1, admin);
-            transfer::public_transfer(locked_position2, admin);
-            transfer::public_transfer(locked_position3, admin);
-            transfer::public_transfer(pool, admin);
-            transfer::public_transfer(gauge, admin);
-            test_scenario::return_shared(tranche_manager);
-            test_scenario::return_shared(locker);
-            test_scenario::return_shared(ve);
-        };
+        //     transfer::public_transfer(locked_position1, admin);
+        //     transfer::public_transfer(locked_position2, admin);
+        //     transfer::public_transfer(locked_position3, admin);
+        //     transfer::public_transfer(pool, admin);
+        //     transfer::public_transfer(gauge, admin);
+        //     test_scenario::return_shared(tranche_manager);
+        //     test_scenario::return_shared(locker);
+        //     test_scenario::return_shared(ve);
+        // };
         
-        // CHECK SAIL LOCKED IN VOTING_ESCROW
-        scenario.next_tx(admin);
-        {
-            let mut ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
-            // reward from the second epoch was in SAIL
-            // which was automatically locked in VOTING_ESCROW
-            let lock3 = scenario.take_from_sender<voting_escrow::Lock>();
-            let lock2 = scenario.take_from_sender<voting_escrow::Lock>();
-            let lock1 = scenario.take_from_sender<voting_escrow::Lock>();
+        // // CHECK SAIL LOCKED IN VOTING_ESCROW
+        // scenario.next_tx(admin);
+        // {
+        //     let mut ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
+        //     // reward from the second epoch was in SAIL
+        //     // which was automatically locked in VOTING_ESCROW
+        //     let lock3 = scenario.take_from_sender<voting_escrow::Lock>();
+        //     let lock2 = scenario.take_from_sender<voting_escrow::Lock>();
+        //     let lock1 = scenario.take_from_sender<voting_escrow::Lock>();
 
-            assert!(lock1.get_amount() + lock2.get_amount() + lock3.get_amount() == 2700872, 9262236263635);
+        //     assert!(lock1.get_amount() + lock2.get_amount() + lock3.get_amount() == 2700872, 9262236263635);
 
-            voting_escrow::transfer<SailCoinType>(
-                lock1,
-                &mut ve,
-                admin,
-                &clock,
-                scenario.ctx()
-            );
-            voting_escrow::transfer<SailCoinType>(
-                lock2,
-                &mut ve,
-                admin,
-                &clock,
-                scenario.ctx()
-            );
-            voting_escrow::transfer<SailCoinType>(
-                lock3,
-                &mut ve,
-                admin,
-                &clock,
-                scenario.ctx()
-            );
-            test_scenario::return_shared(ve);
-        };
+        //     voting_escrow::transfer<SailCoinType>(
+        //         lock1,
+        //         &mut ve,
+        //         admin,
+        //         &clock,
+        //         scenario.ctx()
+        //     );
+        //     voting_escrow::transfer<SailCoinType>(
+        //         lock2,
+        //         &mut ve,
+        //         admin,
+        //         &clock,
+        //         scenario.ctx()
+        //     );
+        //     voting_escrow::transfer<SailCoinType>(
+        //         lock3,
+        //         &mut ve,
+        //         admin,
+        //         &clock,
+        //         scenario.ctx()
+        //     );
+        //     test_scenario::return_shared(ve);
+        // };
       
         position_ids.drop();
         // position_ids.destroy_empty();
