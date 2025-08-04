@@ -978,11 +978,16 @@ module distribution::voting_escrow {
         assert!(lock_amount > 0, ECreateLockAmountZero);
         let current_time = distribution::common::current_timestamp(clock);
         let sender = tx_context::sender(ctx);
+        let end_time = if (permanent || perpetual) {
+            0
+        } else {
+            distribution::common::to_period(current_time + lock_duration_days * distribution::common::day())
+        };
         let (lock_immut, create_lock_receipt) = voting_escrow.create_lock_internal(
             sender,
             lock_amount,
             current_time,
-            distribution::common::to_period(current_time + lock_duration_days * distribution::common::day()),
+            end_time,
             permanent,
             perpetual,
             clock,
@@ -1030,11 +1035,16 @@ module distribution::voting_escrow {
         let lock_amount = coin.value();
         assert!(lock_amount > 0, ECreateLockForAmountZero);
         let start_time = distribution::common::current_timestamp(clock);
+        let end_time = if (permanent || perpetual) {
+            0
+        } else {
+            distribution::common::to_period(start_time + duration_days * distribution::common::day())
+        };
         let (lock_immut, create_lock_receipt) = voting_escrow.create_lock_internal(
             owner,
             lock_amount,
             start_time,
-            distribution::common::to_period(start_time + duration_days * distribution::common::day()),
+            end_time,
             permanent,
             perpetual,
             clock,
