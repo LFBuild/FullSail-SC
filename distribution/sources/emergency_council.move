@@ -22,6 +22,7 @@ module distribution::emergency_council {
     const EEmergencyCouncilDoesNotMatchVoter: u64 = 370065501622769400;
     const EEmergencyCouncilDoesNotMatchMinter: u64 = 715059658219014000;
     const EEmergencyCouncilDoesNotMatchVotingEscrow: u64 = 623276780904261200;
+    const ECreateEmergencyCouncilCapInvalidPublisher: u64 = 652407077368530000;
 
     /// The Emergency Council Capability (EmergencyCouncilCap) is a privileged object that 
     /// grants special administrative powers to address emergency situations in the protocol.
@@ -59,12 +60,14 @@ module distribution::emergency_council {
         package::claim_and_keep<EMERGENCY_COUNCIL>(otw, ctx);
     }
 
-    public fun create_cap( // TODO
+    public fun create_cap(
+        publisher: &sui::package::Publisher,
         voter_id: ID,
         minter_id: ID,
         voting_escrow_id: ID,
         ctx: &mut TxContext
     ) {
+        assert!(publisher.from_module<EMERGENCY_COUNCIL>(), ECreateEmergencyCouncilCapInvalidPublisher);
         let emergency_council_cap = EmergencyCouncilCap {
             id: object::new(ctx),
             voter: voter_id,
