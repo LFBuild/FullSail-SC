@@ -1,4 +1,9 @@
+/// © 2025 Metabyte Labs, Inc.  All Rights Reserved.
+
 module distribution::reward_authorized_cap {
+
+    #[allow(unused_const)]
+    const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
 
     const ERewardAuthorizedCapInvalid: u64 = 9223372109869219839;
 

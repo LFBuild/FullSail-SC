@@ -1,4 +1,8 @@
+/// © 2025 Metabyte Labs, Inc.  All Rights Reserved.
 module distribution::minter {
+
+    #[allow(unused_const)]
+    const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
 
     use std::type_name::{Self, TypeName};
     use sui::coin::{Self, TreasuryCap, Coin, CoinMetadata};

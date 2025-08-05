@@ -1,4 +1,8 @@
+/// © 2025 Metabyte Labs, Inc.  All Rights Reserved.
 module distribution::reward {
+
+    #[allow(unused_const)]
+    const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
 
     const EUpdateBalancesDisabled: u64 = 931921756019291001;
     const EUpdateBalancesEpochStartInvalid: u64 = 97211664930268266;

@@ -1,3 +1,5 @@
+/// © 2025 Metabyte Labs, Inc.  All Rights Reserved.
+
 module distribution::exercise_fee_distributor;
 
 use sui::clock::Clock;
@@ -5,6 +7,9 @@ use sui::coin::{Coin};
 use distribution::reward_distributor::{Self, RewardDistributor};
 use distribution::reward_distributor_cap::RewardDistributorCap;
 use distribution::voting_escrow;
+
+#[allow(unused_const)]
+const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
 
 
 public struct ExerciseFeeDistributor<phantom RewardCoinType> has key, store {

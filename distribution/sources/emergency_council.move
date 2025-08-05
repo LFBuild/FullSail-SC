@@ -1,3 +1,5 @@
+/// © 2025 Metabyte Labs, Inc.  All Rights Reserved.
+/// 
 /// The emergency_council module provides a safety mechanism for the ve(3,3) DEX system.
 /// In a ve(3,3) decentralized exchange, governance is primarily controlled by token holders
 /// who lock their tokens to gain voting power. However, emergency situations may arise that 
@@ -18,6 +20,9 @@
 /// governance for routine protocol decisions.
 module distribution::emergency_council {
     use sui::package;
+
+    #[allow(unused_const)]
+    const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
 
     const EEmergencyCouncilDoesNotMatchVoter: u64 = 370065501622769400;
     const EEmergencyCouncilDoesNotMatchMinter: u64 = 715059658219014000;

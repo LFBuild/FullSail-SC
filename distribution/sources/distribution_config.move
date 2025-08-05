@@ -1,6 +1,11 @@
+/// © 2025 Metabyte Labs, Inc.  All Rights Reserved.
+/// 
 /// The distribution_config module manages the tracking of active gauges in the ve(3,3) DEX system.
 /// It maintains a list of active gauges that participate in token distribution and rewards.
 module distribution::distribution_config {
+
+    #[allow(unused_const)]
+    const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
 
     use sui::vec_set::{Self, VecSet};
     use switchboard::aggregator::{Aggregator};

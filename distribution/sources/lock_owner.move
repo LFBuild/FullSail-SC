@@ -1,4 +1,9 @@
+/// © 2025 Metabyte Labs, Inc.  All Rights Reserved.
+
 module distribution::lock_owner {
+    #[allow(unused_const)]
+    const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
+
     public struct OwnerProof {
         prover: ID,
         lock: ID,

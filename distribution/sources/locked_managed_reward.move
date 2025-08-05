@@ -1,4 +1,9 @@
+/// © 2025 Metabyte Labs, Inc.  All Rights Reserved.
+
 module distribution::locked_managed_reward {
+    #[allow(unused_const)]
+    const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
+
     public struct LockedManagedReward has store, key {
         id: UID,
         reward: distribution::reward::Reward,

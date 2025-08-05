@@ -1,3 +1,5 @@
+/// © 2025 Metabyte Labs, Inc.  All Rights Reserved.
+/// 
 /// This module defines a Distribute capability
 /// which grants the owner ability to call methods
 /// that related to the flow of new tokens, i.e.
@@ -6,6 +8,9 @@
 
 module distribution::distribute_cap;
 use sui::package;
+
+#[allow(unused_const)]
+const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
 
 const EValidateDistributeInvalidVoter: u64 = 421990001503268030;
 const ECreateDistributeCapInvalidPublisher: u64 = 43646573017044340;

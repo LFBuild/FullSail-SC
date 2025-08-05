@@ -1,4 +1,9 @@
+/// © 2025 Metabyte Labs, Inc.  All Rights Reserved.
+
 module distribution::voting_dao {
+    #[allow(unused_const)]
+    const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
+
     public struct VotingDAO has store {
         delegates: sui::table::Table<ID, ID>,
         nonces: sui::table::Table<address, u64>,
