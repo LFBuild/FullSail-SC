@@ -452,7 +452,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2 {
     /// * First vector contains the blocking periods in epochs
     /// * Second vector contains the post-lockdown periods in epochs
     public fun get_lock_periods(
-        locker: &mut SoftLocker,
+        locker: &SoftLocker,
     ): (vector<u64>, vector<u64>) {
         (locker.periods_blocking, locker.periods_post_lockdown)
     }
