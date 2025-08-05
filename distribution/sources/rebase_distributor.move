@@ -47,11 +47,13 @@ public fun create<SailCoinType>(
 ): (RebaseDistributor<SailCoinType>, RewardDistributorCap) {
     assert!(publisher.from_module<REBASE_DISTRIBUTOR>(), ECreateRebaseDistributorInvalidPublisher);
 
-    let (reward_distributor, cap) = reward_distributor::create<SailCoinType>(clock, ctx);
+    let id = object::new(ctx);
+    let inner_id = id.uid_to_inner();
+    let (reward_distributor, cap) = reward_distributor::create<SailCoinType>(inner_id, clock, ctx);
 
     (
         RebaseDistributor {
-            id: object::new(ctx),
+            id,
             reward_distributor,
             minter_active_period: 0,
             bag: sui::bag::new(ctx),

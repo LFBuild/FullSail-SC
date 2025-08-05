@@ -37,6 +37,7 @@ fun test_create_reward() {
 
     // Call the create function
     let reward_obj = reward::create(
+        object::id_from_address(@0x0),
         voter_id,
         ve_id_option,
         authorized_id,
@@ -71,6 +72,7 @@ fun create_default_reward(
     let reward_types = vector[type_name::get<USD1>()];
 
     reward::create(
+        object::id_from_address(@0x0),
         voter_id,
         ve_id_option,
         authorized_id,
@@ -724,6 +726,7 @@ fun test_multi_token_reward_same_epoch() {
         type_name::get<SAIL>()
     ];
     let mut reward_obj = reward::create(
+        object::id_from_address(@0x0),
         voter_id,
         ve_id_option,
         authorized_id,
@@ -2888,6 +2891,7 @@ fun test_reward_multi_token_notify_and_claim() {
         type_name::get<OTHER>()
     ];
     let mut reward_obj = reward::create(
+        object::id_from_address(@0x0),
         voter_id,
         ve_id_option,
         authorized_id,
@@ -3460,6 +3464,148 @@ fun test_double_claim_with_balance_updates_is_zero() {
 
     let earned_after_second_try = reward_obj.earned<USD1>(lock_id1, &clock);
     assert!(earned_after_second_try == 0, 6);
+
+    // Cleanup
+    test_utils::destroy(reward_cap);
+    test_utils::destroy(reward_obj);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_claim_rewards_after_100_epochs() {
+    let admin = @0xFAFA;
+    let authorized_id: ID = object::id_from_address(@0xBABA);
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Create Reward object and Cap
+    let mut reward_obj = create_default_reward(&mut scenario, authorized_id, false);
+    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx());
+
+    // Define details
+    let lock_id: ID = object::id_from_address(@0xDADA);
+    let deposit_amount = 10000;
+    let notify_amount_per_epoch = 100;
+    let num_epochs = 100;
+    let one_week_ms = 7 * 24 * 60 * 60 * 1000;
+
+    // Deposit lock
+    reward_obj.deposit(&reward_cap, deposit_amount, lock_id, &clock, scenario.ctx());
+    assert!(reward_obj.balance_of(lock_id, &clock) == deposit_amount, 0);
+
+    // Loop 100 times: notify reward and advance epoch
+    let mut i = 0;
+    while (i < num_epochs) {
+        // Notify reward
+        let reward_coin = coin::mint_for_testing<USD1>(notify_amount_per_epoch, scenario.ctx());
+        reward::notify_reward_amount_internal<USD1>(
+            &mut reward_obj,
+            reward_coin.into_balance(),
+            &clock,
+            scenario.ctx()
+        );
+
+        // Advance to next epoch
+        clock.increment_for_testing(one_week_ms);
+        i = i + 1;
+    };
+
+    // Verify earned rewards
+    // Since there's only one lock, it should get 100% of the rewards.
+    let total_notified_reward = notify_amount_per_epoch * num_epochs;
+    let earned_amount = reward_obj.earned<USD1>(lock_id, &clock);
+    assert!(earned_amount == total_notified_reward, 1);
+
+    // Claim rewards
+    let balance_opt = reward::get_reward_internal<USD1>(
+        &mut reward_obj,
+        admin,
+        lock_id,
+        &clock,
+        scenario.ctx()
+    );
+    assert!(option::is_some(&balance_opt), 2);
+    let claimed_balance = option::destroy_some(balance_opt);
+    assert!(claimed_balance.value() == total_notified_reward, 3);
+    sui::balance::destroy_for_testing(claimed_balance);
+
+    // Verify earned is 0 after claim
+    assert!(reward_obj.earned<USD1>(lock_id, &clock) == 0, 4);
+
+    // Cleanup
+    test_utils::destroy(reward_cap);
+    test_utils::destroy(reward_obj);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_claim_rewards_after_200_epochs() {
+    let admin = @0xFAFA;
+    let authorized_id: ID = object::id_from_address(@0xBABA);
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Create Reward object and Cap
+    let mut reward_obj = create_default_reward(&mut scenario, authorized_id, false);
+    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx());
+
+    // Define details
+    let lock_id: ID = object::id_from_address(@0xDADA);
+    let deposit_amount = 10000;
+    let notify_amount_per_epoch = 100;
+    let num_epochs = 200;
+    let one_week_ms = 7 * 24 * 60 * 60 * 1000;
+
+    // Deposit lock
+    reward_obj.deposit(&reward_cap, deposit_amount, lock_id, &clock, scenario.ctx());
+    assert!(reward_obj.balance_of(lock_id, &clock) == deposit_amount, 0);
+
+    // Loop 100 times: notify reward and advance epoch
+    let mut i = 0;
+    while (i < num_epochs) {
+        // Notify reward
+        let reward_coin = coin::mint_for_testing<USD1>(notify_amount_per_epoch, scenario.ctx());
+        reward::notify_reward_amount_internal<USD1>(
+            &mut reward_obj,
+            reward_coin.into_balance(),
+            &clock,
+            scenario.ctx()
+        );
+
+        // Advance to next epoch
+        clock.increment_for_testing(one_week_ms);
+        i = i + 1;
+    };
+
+    // Verify earned rewards
+    // Since there's only one lock, it should get 100% of the rewards.
+    // we do 2 iterations cos we have a limit of 100 epochs per claim.
+    let mut i = 0;
+    while (i < 2) {
+        // claim method only claims 100 epochs at a time.
+        let expected_claimed_amount = notify_amount_per_epoch * 100;
+        let earned_amount = reward_obj.earned<USD1>(lock_id, &clock);
+        assert!(earned_amount == expected_claimed_amount, 1);
+
+        // Claim rewards
+        let balance_opt = reward::get_reward_internal<USD1>(
+            &mut reward_obj,
+            admin,
+            lock_id,
+            &clock,
+            scenario.ctx()
+        );
+        assert!(option::is_some(&balance_opt), 2);
+        let claimed_balance = option::destroy_some(balance_opt);
+        assert!(claimed_balance.value() == expected_claimed_amount, 3);
+        sui::balance::destroy_for_testing(claimed_balance);
+        i = i + 1;
+    };
+
+    // Verify earned is 0 after claim
+    assert!(reward_obj.earned<USD1>(lock_id, &clock) == 0, 4);
 
     // Cleanup
     test_utils::destroy(reward_cap);

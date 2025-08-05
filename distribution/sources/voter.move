@@ -113,7 +113,6 @@ module distribution::voter {
         revoked_gauge_create_caps: VecSet<ID>,
         governors: VecSet<ID>,
         epoch_governors: VecSet<ID>,
-        emergency_council: ID,
         used_weights: Table<LockID, u64>,
         pools: vector<PoolID>,
         pool_to_gauger: Table<PoolID, GaugeID>,
@@ -269,7 +268,6 @@ module distribution::voter {
             revoked_gauge_create_caps: vec_set::empty<ID>(),
             governors: vec_set::empty<ID>(),
             epoch_governors: vec_set::empty<ID>(),
-            emergency_council: object::id_from_address(@0x0),
             used_weights: table::new<LockID, u64>(ctx),
             pools: std::vector::empty<PoolID>(),
             pool_to_gauger: table::new<PoolID, GaugeID>(ctx),
@@ -332,7 +330,8 @@ module distribution::voter {
         voter.last_voted.add(lock_id, current_time);
         voting_escrow.deposit_managed(&voter.voter_cap, lock, managed_lock, clock, ctx);
         let balance = voting_escrow.balance_of_nft_at(lock_id.id, current_time);
-        voter.poke_internal(voting_escrow, distribution_config, managed_lock, balance, clock, ctx);
+        let managed_lock_id = into_lock_id(object::id(managed_lock));
+        voter.poke_internal(voting_escrow, distribution_config, managed_lock_id, balance, clock, ctx);
     }
 
     /// Withdraws a previously deposited managed lock from the voting escrow system.
@@ -372,13 +371,14 @@ module distribution::voter {
             managedd_lock_id,
             distribution::common::current_timestamp(clock)
         );
+        let managed_lock_id = into_lock_id(object::id(managed_lock));
         if (balance_of_nft == 0) {
-            voter.reset_internal(voting_escrow, distribution_config, managed_lock, clock, ctx);
+            voter.reset_internal(voting_escrow, distribution_config, managed_lock_id, clock, ctx);
             if (voter.last_voted.contains(into_lock_id(managedd_lock_id))) {
                 voter.last_voted.remove(into_lock_id(managedd_lock_id));
             };
         } else {
-            voter.poke_internal(voting_escrow, distribution_config, managed_lock, balance_of_nft, clock, ctx);
+            voter.poke_internal(voting_escrow, distribution_config, managed_lock_id, balance_of_nft, clock, ctx);
         };
     }
 
@@ -1219,14 +1219,15 @@ module distribution::voter {
         voter: &mut Voter,
         voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
         distribution_config: &distribution::distribution_config::DistributionConfig,
-        lock: &distribution::voting_escrow::Lock,
+        lock_id: ID,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
         let current_time = distribution::common::current_timestamp(clock);
         assert!(current_time > distribution::common::epoch_vote_start(current_time), EPokeVotingNotStartedYet);
-        let voting_power = voting_escrow.get_voting_power(lock, clock);
-        voter.poke_internal(voting_escrow, distribution_config, lock, voting_power, clock, ctx);
+        let voting_power = voting_escrow.get_voting_power(lock_id, clock);
+        let lock_id_obj = into_lock_id(lock_id);
+        voter.poke_internal(voting_escrow, distribution_config, lock_id_obj, voting_power, clock, ctx);
     }
 
     /// Internal function to update a lock's votes based on its current voting power.
@@ -1243,12 +1244,11 @@ module distribution::voter {
         voter: &mut Voter,
         voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
         distribution_config: &distribution::distribution_config::DistributionConfig,
-        lock: &distribution::voting_escrow::Lock,
+        lock_id: LockID,
         voting_power: u64,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        let lock_id = into_lock_id(object::id<distribution::voting_escrow::Lock>(lock));
         let pool_vote_count = if (voter.pool_vote.contains(lock_id)) {
             voter.pool_vote.borrow(lock_id).length()
         } else {
@@ -1279,7 +1279,7 @@ module distribution::voter {
             voter.vote_internal(
                 voting_escrow,
                 distribution_config,
-                lock,
+                lock_id,
                 voting_power,
                 pools_voted_ids,
                 weights,
@@ -1322,23 +1322,6 @@ module distribution::voter {
             i = i + 1;
         };
         (pool_ids, gauge_ids)
-    }
-
-
-    /// Proves that a pair of tokens is whitelisted in the system.
-    /// Used to verify token pairs for pools and other operations.
-    ///
-    /// # Arguments
-    /// * `voter` - The voter contract reference
-    ///
-    /// # Returns
-    /// A capability proving that both tokens are whitelisted
-    public fun prove_pair_whitelisted<CoinTypeA, CoinTypeB>(
-        voter: &Voter
-    ): distribution::whitelisted_tokens::WhitelistedTokenPair {
-        assert!(voter.is_whitelisted_token<CoinTypeA>(), EFirstTokenNotWhitelisted);
-        assert!(voter.is_whitelisted_token<CoinTypeB>(), ESecondTokenNotWhitelisted);
-        distribution::whitelisted_tokens::create_pair<CoinTypeA, CoinTypeB>(object::id<Voter>(voter))
     }
 
     /// Proves that a specific token is whitelisted in the system.
@@ -1453,8 +1436,9 @@ module distribution::voter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        voter.assert_only_new_epoch(into_lock_id(object::id<distribution::voting_escrow::Lock>(lock)), clock);
-        voter.reset_internal(voting_escrow, distribution_config, lock, clock, ctx);
+        let lock_id = into_lock_id(object::id(lock));
+        voter.assert_only_new_epoch(lock_id, clock);
+        voter.reset_internal(voting_escrow, distribution_config, lock_id, clock, ctx);
     }
 
     /// Internal function to reset votes for a lock.
@@ -1464,19 +1448,17 @@ module distribution::voter {
     /// * `voter` - The voter contract reference
     /// * `voting_escrow` - The voting escrow reference
     /// * `distribution_config` - The distribution configuration
-    /// * `lock` - The lock to reset votes for
+    /// * `lock_id` - The lock id to reset votes for
     /// * `clock` - The system clock
     /// * `ctx` - The transaction context
     fun reset_internal<SailCoinType>(
         voter: &mut Voter,
         voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
         _: &distribution::distribution_config::DistributionConfig,
-        lock: &distribution::voting_escrow::Lock,
+        lock_id: LockID,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        let lock_id = into_lock_id(object::id(lock));
-
         let total_pools_count = if (voter.pool_vote.contains(lock_id)) {
             voter.pool_vote.borrow(lock_id).length()
         } else {
@@ -1615,7 +1597,7 @@ module distribution::voter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        let lock_id = into_lock_id(object::id<distribution::voting_escrow::Lock>(lock));
+        let lock_id = into_lock_id(object::id(lock));
         voter.assert_only_new_epoch(lock_id, clock);
         voter.check_vote(&pools, &weights, &volumes);
         assert!(
@@ -1634,9 +1616,9 @@ module distribution::voter {
             voter.last_voted.remove(lock_id);
         };
         voter.last_voted.add(lock_id, current_time);
-        let voting_power = voting_escrow.get_voting_power(lock, clock);
+        let voting_power = voting_escrow.get_voting_power(lock_id.id, clock);
         assert!(voting_power > 0, EVoteNoVotingPower);
-        voter.vote_internal(voting_escrow, distribution_config, lock, voting_power, pools, weights, volumes, clock, ctx);
+        voter.vote_internal(voting_escrow, distribution_config, lock_id, voting_power, pools, weights, volumes, clock, ctx);
     }
 
     /// Internal function to implement the voting logic.
@@ -1666,7 +1648,7 @@ module distribution::voter {
         voter: &mut Voter,
         voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
         distribution_config: &distribution::distribution_config::DistributionConfig,
-        lock: &distribution::voting_escrow::Lock,
+        lock_id: LockID,
         voting_power: u64,
         pools: vector<ID>,
         weights: vector<u64>,
@@ -1674,8 +1656,7 @@ module distribution::voter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        let lock_id = into_lock_id(object::id<distribution::voting_escrow::Lock>(lock));
-        voter.reset_internal(voting_escrow, distribution_config, lock, clock, ctx);
+        voter.reset_internal(voting_escrow, distribution_config, lock_id, clock, ctx);
 
         let mut input_total_weight = 0;
         let mut lock_used_weights = 0;

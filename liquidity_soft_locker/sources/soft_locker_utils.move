@@ -48,7 +48,7 @@ module liquidity_soft_locker::soft_locker_utils {
         let (amount_a, amount_b) = clmm_pool::pool::get_position_amounts(pool, position_id);
 
         // Convert balance_b to tokenA equivalent
-        let amount_b_in_a = ((((amount_b as u256) << 64) << 64) << 64) / price; // Q64.64
+        let amount_b_in_a = ((amount_b as u256) << 192) / price; // Q64.64
 
         let (result, overflow) = integer_mate::math_u128::overflowing_add((amount_a as u128) << 64, amount_b_in_a as u128);
         assert!(!overflow, EOverflow);
@@ -112,6 +112,6 @@ module liquidity_soft_locker::soft_locker_utils {
         let price = integer_mate::full_math_u128::full_mul(sqrt_price, sqrt_price); // Q128.128
         assert!(price > 0, EZeroPrice);
 
-        ((((amount_a as u256) * price) >> 64) >> 64) as u64
+        (((amount_a as u256) * price) >> 128) as u64
     }
 }

@@ -55,10 +55,13 @@ module distribution::fee_voting_reward {
         reward_coin_types: vector<std::type_name::TypeName>,
         ctx: &mut TxContext
     ): FeeVotingReward {
+        let id = object::new(ctx);
+        let inner_id = id.uid_to_inner();
         FeeVotingReward {
-            id: object::new(ctx),
+            id,
             gauge: authorized,
             reward: distribution::reward::create(
+                inner_id,
                 voter,
                 option::some(ve),
                 voter,
@@ -270,48 +273,6 @@ module distribution::fee_voting_reward {
             ENotifyRewardAmountTokenNotWhitelisted
         );
         reward.reward.notify_reward_amount_internal(coin.into_balance(), clock, ctx);
-    }
-
-    /// Allows a voter to claim rewards for a specific lock
-    ///
-    /// # Arguments
-    /// * `reward` - The fee voting reward instance
-    /// * `voter_cap` - The voter capability proving authority
-    /// * `voting_escrow` - The voting escrow instance
-    /// * `lock_id` - The ID of the lock to claim rewards for
-    /// * `clock` - The system clock
-    /// * `ctx` - The transaction context
-    ///
-    /// # Returns
-    /// A balance containing the claimed rewards
-    ///
-    /// # Aborts
-    /// * If the voter is not authorized to claim the rewards
-    public fun voter_get_reward<SailCoinType, FeeCoinType>(
-        reward: &mut FeeVotingReward,
-        voter_cap: &distribution::voter_cap::VoterCap,
-        voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
-        lock_id: ID,
-        clock: &sui::clock::Clock,
-        ctx: &mut TxContext
-    ): sui::balance::Balance<FeeCoinType> {
-        assert!(
-            voter_cap.get_voter_id() == reward.reward.voter(),
-            EVoterGetRewardInvalidVoter
-        );
-        let mut reward_balance_option = reward.reward.get_reward_internal<FeeCoinType>(
-            voting_escrow.owner_of(lock_id),
-            lock_id,
-            clock,
-            ctx
-        );
-        let reward_balance = if (reward_balance_option.is_some()) {
-            reward_balance_option.extract()
-        } else {
-            sui::balance::zero<FeeCoinType>()
-        };
-        reward_balance_option.destroy_none();
-        reward_balance
     }
 
     public fun rewards_at_epoch<FeeCoinType>(

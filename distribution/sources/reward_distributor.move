@@ -5,8 +5,7 @@ module distribution::reward_distributor {
     use sui::coin::{Self, Coin};
     use sui::table::{Self, Table};
     use sui::balance::{Self, Balance};
-    use sui::bag;
-
+    use std::type_name::{Self, TypeName};
     /// Witness used for one-time witness pattern
     public struct REWARD_DISTRIBUTOR has drop {}
 
@@ -14,21 +13,27 @@ module distribution::reward_distributor {
     }
 
     public struct EventCheckpointToken has copy, drop, store {
+        wrapper_distributor_id: ID,
         to_distribute: u64,
         timestamp: u64,
+        token_type: TypeName,
     }
 
     public struct EventClaimed has copy, drop, store {
+        wrapper_distributor_id: ID,
         id: ID,
         epoch_start: u64,
         epoch_end: u64,
         amount: u64,
+        token_type: TypeName,
     }
 
     /// The RewardDistributor manages the distribution of rewards to users based on their voting power.
     /// It tracks token distribution across time periods and handles the claiming process.
     public struct RewardDistributor<phantom RewardCoinType> has store, key {
         id: UID,
+        /// ExerciseFeeDistributor or RebaseDistributor id
+        wrapper_distributor_id: ID,
         /// The timestamp when reward distribution was started
         start_time: u64,
         /// Maps lock IDs to their last checkpoint time
@@ -66,12 +71,14 @@ module distribution::reward_distributor {
     /// # Returns
     /// A tuple containing the new reward distributor and its capability
     public(package) fun create<RewardCoinType>(
+        wrapper_distributor_id: ID,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): (RewardDistributor<RewardCoinType>, distribution::reward_distributor_cap::RewardDistributorCap) {
         let uid = object::new(ctx);
         let reward_distributor = RewardDistributor<RewardCoinType> {
             id: uid,
+            wrapper_distributor_id,
             start_time: distribution::common::current_timestamp(clock),
             time_cursor_of: table::new<ID, u64>(ctx),
             last_token_time: distribution::common::current_timestamp(clock),
@@ -164,7 +171,12 @@ module distribution::reward_distributor {
         };
         reward_distributor.token_last_balance = current_balance;
         reward_distributor.last_token_time = time;
-        let checkpoint_token_event = EventCheckpointToken { to_distribute: balance_delta, timestamp: time };
+        let checkpoint_token_event = EventCheckpointToken {
+            wrapper_distributor_id: reward_distributor.wrapper_distributor_id,
+            to_distribute: balance_delta,
+            timestamp: time,
+            token_type: type_name::get<RewardCoinType>(),
+        };
         sui::event::emit<EventCheckpointToken>(checkpoint_token_event);
     }
 
@@ -183,7 +195,7 @@ module distribution::reward_distributor {
     /// 
     /// # Aborts
     /// * If the minter is not active for the current period
-    /// * If the voting escrow is not locked
+    /// * If the voting escrow is of type locked
     public(package) fun claim<SailCoinType, RewardCoinType>(
         reward_distributor: &mut RewardDistributor<RewardCoinType>,
         voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
@@ -231,10 +243,12 @@ module distribution::reward_distributor {
             return 0
         };
         let claimed_event = EventClaimed {
+            wrapper_distributor_id: reward_distributor.wrapper_distributor_id,
             id: lock_id,
             epoch_start,
             epoch_end,
             amount: reward,
+            token_type: type_name::get<RewardCoinType>(),
         };
         sui::event::emit<EventClaimed>(claimed_event);
         reward

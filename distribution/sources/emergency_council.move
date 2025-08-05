@@ -21,6 +21,8 @@ module distribution::emergency_council {
 
     const EEmergencyCouncilDoesNotMatchVoter: u64 = 370065501622769400;
     const EEmergencyCouncilDoesNotMatchMinter: u64 = 715059658219014000;
+    const EEmergencyCouncilDoesNotMatchVotingEscrow: u64 = 623276780904261200;
+    const ECreateEmergencyCouncilCapInvalidPublisher: u64 = 652407077368530000;
 
     /// The Emergency Council Capability (EmergencyCouncilCap) is a privileged object that 
     /// grants special administrative powers to address emergency situations in the protocol.
@@ -37,6 +39,7 @@ module distribution::emergency_council {
         id: UID,
         voter: ID,
         minter: ID,
+        voting_escrow: ID,
     }
 
     public struct EMERGENCY_COUNCIL has drop {}
@@ -49,19 +52,27 @@ module distribution::emergency_council {
         assert!(emergency_council_cap.minter == minter_id, EEmergencyCouncilDoesNotMatchMinter);
     }
 
+    public fun validate_emergency_council_voting_escrow_id(emergency_council_cap: &EmergencyCouncilCap, voting_escrow_id: ID) {
+        assert!(emergency_council_cap.voting_escrow == voting_escrow_id, EEmergencyCouncilDoesNotMatchVotingEscrow);
+    }
+
     fun init(otw: EMERGENCY_COUNCIL, ctx: &mut TxContext) {
         package::claim_and_keep<EMERGENCY_COUNCIL>(otw, ctx);
     }
 
-    public fun create_cap( // TODO
+    public fun create_cap(
+        publisher: &sui::package::Publisher,
         voter_id: ID,
         minter_id: ID,
+        voting_escrow_id: ID,
         ctx: &mut TxContext
     ) {
+        assert!(publisher.from_module<EMERGENCY_COUNCIL>(), ECreateEmergencyCouncilCapInvalidPublisher);
         let emergency_council_cap = EmergencyCouncilCap {
             id: object::new(ctx),
             voter: voter_id,
             minter: minter_id,
+            voting_escrow: voting_escrow_id,
         };
         
         transfer::public_transfer<EmergencyCouncilCap>(emergency_council_cap, tx_context::sender(ctx));
@@ -71,12 +82,14 @@ module distribution::emergency_council {
     public fun create_for_testing(
         voter_id: ID,
         minter_id: ID,
+        voting_escrow_id: ID,
         ctx: &mut sui::tx_context::TxContext
     ): EmergencyCouncilCap {
         EmergencyCouncilCap {
             id: object::new(ctx),
             voter: voter_id,
             minter: minter_id,
+            voting_escrow: voting_escrow_id,
         }
     }
 }

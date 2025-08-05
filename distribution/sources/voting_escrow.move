@@ -24,6 +24,7 @@ module distribution::voting_escrow {
     const ECreateLockOwnerExists: u64 = 922337417145352191;
     const ECreateLockLockedExists: u64 = 922337417574848921;
     const ECreateManagedNotAllowedManager: u64 = 922337773627768834;
+    const EDepositForDeactivatedLock: u64 = 422370226116838300;
     const EDelegateNotPermanent: u64 = 922337565751338600;
     const EDelegateInvalidDelegatee: u64 = 922337566180861544;
     const EDelegateOwnershipChangeTooRecent: u64 = 922337568328410729;
@@ -32,6 +33,7 @@ module distribution::voting_escrow {
     const EDepositManagedDeactivated: u64 = 922337785224429573;
     const EDepositManagedNotNormalEscrow: u64 = 922337785653703477;
     const EDepositManagedNoBalance: u64 = 922337786512565862;
+    const EIncreaseAmountDeactivatedLock: u64 = 686510248139248600;
     const EIncreaseAmountZero: u64 = 922337446351156019;
     const EIncreaseAmountLockedEscrow: u64 = 922337447210215015;
     const EIncreaseAmountNotExists: u64 = 922337448498613452;
@@ -976,11 +978,16 @@ module distribution::voting_escrow {
         assert!(lock_amount > 0, ECreateLockAmountZero);
         let current_time = distribution::common::current_timestamp(clock);
         let sender = tx_context::sender(ctx);
+        let end_time = if (permanent || perpetual) {
+            0
+        } else {
+            distribution::common::to_period(current_time + lock_duration_days * distribution::common::day())
+        };
         let (lock_immut, create_lock_receipt) = voting_escrow.create_lock_internal(
             sender,
             lock_amount,
             current_time,
-            distribution::common::to_period(current_time + lock_duration_days * distribution::common::day()),
+            end_time,
             permanent,
             perpetual,
             clock,
@@ -1028,11 +1035,16 @@ module distribution::voting_escrow {
         let lock_amount = coin.value();
         assert!(lock_amount > 0, ECreateLockForAmountZero);
         let start_time = distribution::common::current_timestamp(clock);
+        let end_time = if (permanent || perpetual) {
+            0
+        } else {
+            distribution::common::to_period(start_time + duration_days * distribution::common::day())
+        };
         let (lock_immut, create_lock_receipt) = voting_escrow.create_lock_internal(
             owner,
             lock_amount,
             start_time,
-            distribution::common::to_period(start_time + duration_days * distribution::common::day()),
+            end_time,
             permanent,
             perpetual,
             clock,
@@ -1372,10 +1384,12 @@ module distribution::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        let lock_id = object::id(lock);
+        assert!(!voting_escrow.deactivated(lock_id), EDepositForDeactivatedLock);
         let deposit_amount = coin.value<SailCoinType>();
         voting_escrow.balance.join<SailCoinType>(coin.into_balance());
         voting_escrow.increase_amount_for_internal(
-            object::id<Lock>(lock),
+            lock_id,
             deposit_amount,
             DepositType::DEPOSIT_FOR_TYPE,
             clock,
@@ -1723,10 +1737,9 @@ module distribution::voting_escrow {
 
     public fun get_voting_power<SailCoinType>(
         voting_escrow: &VotingEscrow<SailCoinType>,
-        lock: &Lock,
+        lock_id: ID,
         clock: &sui::clock::Clock
     ): u64 {
-        let lock_id = object::id<Lock>(lock);
         assert!(
             clock.timestamp_ms() - *voting_escrow.ownership_change_at.borrow(
                 lock_id
@@ -1755,10 +1768,12 @@ module distribution::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        let lock_id = object::id(lock);
+        assert!(voting_escrow.deactivated(lock_id), EIncreaseAmountDeactivatedLock);
         let amount = coin.value();
         voting_escrow.balance.join(coin.into_balance());
         voting_escrow.increase_amount_for_internal(
-            object::id<Lock>(lock),
+            lock_id,
             amount,
             DepositType::INCREASE_LOCK_AMOUNT,
             clock,
@@ -2250,10 +2265,11 @@ module distribution::voting_escrow {
     /// * If the lock is already in the requested activation state
     public fun set_managed_lock_deactivated<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
-        _emergency_council_cap: &distribution::emergency_council::EmergencyCouncilCap,
+        emergency_council_cap: &distribution::emergency_council::EmergencyCouncilCap,
         lock_id: ID,
         deactivated: bool
     ) {
+        emergency_council_cap.validate_emergency_council_voting_escrow_id(object::id(voting_escrow));
         assert!(voting_escrow.escrow_type(lock_id) == EscrowType::MANAGED, ESetManagedLockNotManagedType);
         assert!(
             !voting_escrow.deactivated.contains(lock_id) || voting_escrow.deactivated.borrow(lock_id) != &deactivated,

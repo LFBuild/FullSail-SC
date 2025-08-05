@@ -18,11 +18,13 @@ public(package) fun create<RewardCoinType>(
     clock: &Clock,
     ctx: &mut TxContext
 ): (ExerciseFeeDistributor<RewardCoinType>, RewardDistributorCap) {
-    let (reward_distributor, cap) = reward_distributor::create<RewardCoinType>(clock, ctx);
+    let id = object::new(ctx);
+    let inner_id = id.uid_to_inner();
+    let (reward_distributor, cap) = reward_distributor::create<RewardCoinType>(inner_id, clock, ctx);
 
     (
         ExerciseFeeDistributor {
-            id: object::new(ctx),
+            id,
             reward_distributor,
             bag: sui::bag::new(ctx),
         },

@@ -2,7 +2,7 @@ module liquidity_locker::time_manager {
     const HOUR: u64 = 3600;
     const DAY: u64 = 24 * HOUR;
     const WEEK: u64 = 7 * DAY;
-    const EPOCH_DURATION: u64 = DAY / 4;
+    const EPOCH_DURATION: u64 = WEEK;
 
     /// Returns the current period based on the system time
     /// 
