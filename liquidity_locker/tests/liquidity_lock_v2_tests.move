@@ -7239,6 +7239,358 @@ module liquidity_locker::liquidity_lock_v2_tests {
         test_scenario::end(scenario);
     }
 
+        #[test]
+    fun test_unlock_position_without_linear_unlock(){
+        let admin = @0x1;
+        let mut scenario = test_scenario::begin(admin);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        
+        // Initialize
+        {
+            liquidity_lock_v2::test_init(scenario.ctx());
+            pool_tranche::test_init(scenario.ctx());
+            locker_cap::init_test(scenario.ctx());
+            config::test_init(scenario.ctx());
+            distribution_config::test_init(scenario.ctx());
+            factory::test_init(scenario.ctx());
+            gauge_cap::gauge_cap::init_test(scenario.ctx());
+            stats::init_test(scenario.ctx());
+            price_provider::init_test(scenario.ctx());
+            rewarder::test_init(scenario.ctx());
+        };
+
+        scenario.next_tx(admin);
+        {
+            full_setup_with_osail(
+                &mut scenario, 
+                admin, 
+                1000, 
+                182, 
+                18584142135623730951, 
+                10_000_000_000_000,
+                &mut clock
+            );
+        };
+
+        scenario.next_tx(admin);
+        {
+            let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
+            let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
+            let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
+            let global_config = scenario.take_shared<config::GlobalConfig>();
+            let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
+            let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
+            let voter = scenario.take_shared<voter::Voter>();
+            let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
+            let ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
+            let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
+            let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
+            
+            let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
+            let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
+
+            let mut periods_blocking = std::vector::empty();
+            std::vector::push_back(&mut periods_blocking, 1);
+            std::vector::push_back(&mut periods_blocking, 5);
+            std::vector::push_back(&mut periods_blocking, 6);
+            let mut periods_post_lockdown = std::vector::empty();
+            std::vector::push_back(&mut periods_post_lockdown, 0);
+            std::vector::push_back(&mut periods_post_lockdown, 0);
+            std::vector::push_back(&mut periods_post_lockdown, 0);
+            liquidity_lock_v2::init_locker(
+                &admin_cap,
+                &locker_create_cap,
+                &mut locker,
+                periods_blocking,
+                periods_post_lockdown,
+                scenario.ctx()
+            );
+
+            let mut duration_profitabilities = std::vector::empty();
+            std::vector::push_back(&mut duration_profitabilities, 1000);
+            std::vector::push_back(&mut duration_profitabilities, 2000);
+            std::vector::push_back(&mut duration_profitabilities, 3000);
+
+            create_trance_and_add_reward<TestCoinB, TestCoinA, RewardCoinType1>(
+                &mut scenario,
+                &mut tranche_manager,
+                &pool,
+                true,
+                9000000000000000000 << 64,  // total_volume
+                duration_profitabilities, // duration_profitabilities
+                100, // 1%
+                10000000, // reward_value
+                1000000000000, // total_income,
+                clock.timestamp_ms()/1000
+            );
+
+            let (staked_position) = create_and_deposit_position<TestCoinB, TestCoinA>(
+                &mut scenario,
+                &global_config,
+                &distribution_config,
+                &mut gauge,
+                &mut vault,
+                &mut pool,
+                100,
+                500,
+                3<<64,
+                &clock
+            );
+
+            let mut locked_positions = liquidity_lock_v2::lock_position<TestCoinB, TestCoinA>(
+                &global_config,
+                &mut vault,
+                &distribution_config,
+                &mut locker,
+                &mut tranche_manager,
+                &mut gauge,
+                &mut pool,
+                staked_position,
+                0,
+                &clock,
+                scenario.ctx()
+            );
+            assert!(locked_positions.length() == 1);
+            let locked_position_1 = locked_positions.pop_back();
+            locked_positions.destroy_empty();
+
+            transfer::public_transfer(locked_position_1, admin);
+            transfer::public_transfer(pool, admin);
+            transfer::public_transfer(admin_cap, admin);
+            transfer::public_transfer(locker_create_cap, admin);
+            transfer::public_transfer(gauge_create_cap, admin);
+            transfer::public_transfer(gauge, admin);
+            test_scenario::return_shared(tranche_manager);
+            test_scenario::return_shared(global_config);
+            test_scenario::return_shared(distribution_config);
+            test_scenario::return_shared(locker);
+            test_scenario::return_shared(vault);
+            test_scenario::return_shared(voter);
+            test_scenario::return_shared(ve);
+            scenario.return_to_sender(governor_cap);
+            test_scenario::return_shared(minter);
+            scenario.return_to_sender(minter_admin_cap);
+            
+        };
+
+        // Advance to Epoch 2 (OSAIL2)
+        clock::increment_for_testing(&mut clock, common::epoch_to_seconds(1)*1000); // next epoch (2)
+
+        // Update Minter Period to OSAIL2
+        scenario.next_tx(admin);
+        {
+            let initial_o_sail2_supply = update_minter_period<SailCoinType, OSAIL2>(
+                &mut scenario,
+                1_000_000, // Arbitrary supply for OSAIL2
+                &clock
+            );
+            sui::coin::burn_for_testing(initial_o_sail2_supply); // Burn OSAIL2
+        };
+
+        // Distribute gauge for epoch 2
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &clock);
+        };
+
+        // adding reward to the first tranche
+        scenario.next_tx(admin);
+        {
+            let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
+            let pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
+
+            let tranche1 = get_tranche_by_index(
+                &mut tranche_manager,
+                sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
+                0
+            );
+
+            let reward1 = sui::coin::mint_for_testing<SailCoinType>(10000000, scenario.ctx());
+            pool_tranche::set_total_incomed_and_add_reward<OSAIL2, SailCoinType>(
+                &mut tranche_manager,
+                sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
+                sui::object::id<pool_tranche::PoolTranche>(tranche1),
+                clock.timestamp_ms()/1000,
+                reward1.into_balance(),
+                1050000000000,
+                scenario.ctx()
+            );
+
+            test_scenario::return_shared(tranche_manager);
+            transfer::public_transfer(pool, admin);
+        };
+
+        // Advance to Epoch 3 (OSAIL3)
+        clock::increment_for_testing(&mut clock, common::epoch_to_seconds(1)*1000); // next epoch (3)
+
+        // Update Minter Period to OSAIL3
+        scenario.next_tx(admin);
+        {
+            let initial_o_sail3_supply = update_minter_period<SailCoinType, OSAIL3>(
+                &mut scenario,
+                1_000_000, // Arbitrary supply for OSAIL3
+                &clock
+            );
+            sui::coin::burn_for_testing(initial_o_sail3_supply); // Burn OSAIL3
+        };
+
+        // Distribute gauge for epoch 3
+        scenario.next_tx(admin);
+        {
+            distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &clock);
+        };
+
+        // set_total_incomed_and_add_reward
+        scenario.next_tx(admin);
+        {
+            let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
+            let pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
+
+            let tranche1 = get_tranche_by_index(
+                &mut tranche_manager,
+                sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
+                0
+            );
+
+            let reward2 = sui::coin::mint_for_testing<RewardCoinType2>(10000000, scenario.ctx());
+            pool_tranche::set_total_incomed_and_add_reward<OSAIL3, RewardCoinType2>(
+                &mut tranche_manager,
+                sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
+                sui::object::id<pool_tranche::PoolTranche>(tranche1),
+                clock.timestamp_ms()/1000,
+                reward2.into_balance(),
+                2000000000000,
+                scenario.ctx()
+            );
+
+            test_scenario::return_shared(tranche_manager);
+            transfer::public_transfer(pool, admin);
+        };
+
+        scenario.next_tx(admin);
+        {
+            let locker_create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
+            let gauge_create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
+            let global_config = scenario.take_shared<config::GlobalConfig>();
+            let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
+            let voter = scenario.take_shared<voter::Voter>();
+            let governor_cap = scenario.take_from_sender<distribution::voter_cap::GovernorCap>();
+            let mut ve = scenario.take_shared<voting_escrow::VotingEscrow<SailCoinType>>();
+            let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
+            let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
+            
+            let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
+            let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
+            let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
+            let mut locked_position_1 = scenario.take_from_sender<liquidity_lock_v2::LockedPosition<TestCoinB, TestCoinA>>();
+
+            let reward1 = liquidity_lock_v2::collect_reward<TestCoinB, TestCoinA, OSAIL1, SailCoinType, RewardCoinType1>(
+                &locker,
+                &mut tranche_manager,
+                &ve,
+                &mut gauge,
+                &mut pool,
+                &mut locked_position_1,
+                common::epoch_start(common::epoch_to_seconds(1)),
+                &clock,
+                scenario.ctx()
+            );
+
+            transfer::public_transfer(sui::coin::from_balance(reward1, scenario.ctx()), admin);
+
+            liquidity_lock_v2::collect_reward_sail<TestCoinB, TestCoinA, OSAIL2, SailCoinType>(
+                &locker,
+                &mut tranche_manager,
+                &mut ve,
+                &mut gauge,
+                &mut pool,
+                &mut locked_position_1,
+                common::epoch_start(common::epoch_to_seconds(2)),
+                &clock,
+                scenario.ctx()
+            );
+
+            // claim all rewards
+            let reward1 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
+                &locker,
+                &mut minter,
+                &voter,
+                &distribution_config,
+                &mut gauge,
+                &mut pool,
+                &mut locked_position_1,
+                &clock,
+                scenario.ctx()
+            );
+            transfer::public_transfer(reward1, scenario.sender());
+            let reward2 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL2>(
+                &locker,
+                &mut minter,
+                &voter,
+                &distribution_config,
+                &mut gauge,
+                &mut pool,
+                &mut locked_position_1,
+                &clock,
+                scenario.ctx()
+            );
+            transfer::public_transfer(reward2, scenario.sender());
+
+            let reward3 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL3>(
+                &locker,
+                &mut minter,
+                &voter,
+                &distribution_config,
+                &mut gauge,
+                &mut pool,
+                &mut locked_position_1,
+                &clock,
+                scenario.ctx()
+            );
+            transfer::public_transfer(reward3, scenario.sender());
+
+            let position_id = locked_position_1.get_locked_position_id();
+            assert!(locker.is_position_locked(position_id), 9234887456443);
+
+            // full unlock without unlock period
+            let (staked_position, balance_a, balance_b) = liquidity_lock_v2::unlock_position<TestCoinB, TestCoinA>(
+                &mut locker,
+                locked_position_1,
+                &mut gauge,
+                &clock
+            );
+            
+            assert!(!locker.is_position_locked(position_id), 9234887456444);
+            transfer::public_transfer(sui::coin::from_balance(balance_a, scenario.ctx()), scenario.sender());
+            transfer::public_transfer(sui::coin::from_balance(balance_b, scenario.ctx()), scenario.sender());
+
+            transfer::public_transfer(staked_position, admin);
+            transfer::public_transfer(pool, admin);
+            transfer::public_transfer(admin_cap, admin);
+            transfer::public_transfer(locker_create_cap, admin);
+            transfer::public_transfer(gauge_create_cap, admin);
+            transfer::public_transfer(gauge, admin);
+            test_scenario::return_shared(vault);
+            test_scenario::return_shared(tranche_manager);
+            test_scenario::return_shared(global_config);
+            test_scenario::return_shared(distribution_config);
+            test_scenario::return_shared(voter);
+            test_scenario::return_shared(locker);
+            test_scenario::return_shared(ve);
+            scenario.return_to_sender(governor_cap);
+            test_scenario::return_shared(minter);
+            scenario.return_to_sender(minter_admin_cap);
+        };
+
+        clock::destroy_for_testing(clock);
+        test_scenario::end(scenario);
+    }
+
     #[test]
     #[expected_failure(abort_code = liquidity_lock_v2::ERewardsNotCollected)]
     fun test_remove_lock_liquidity_not_collect_rewards(){
