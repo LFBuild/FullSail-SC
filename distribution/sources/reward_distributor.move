@@ -195,7 +195,7 @@ module distribution::reward_distributor {
     /// 
     /// # Aborts
     /// * If the minter is not active for the current period
-    /// * If the voting escrow is not locked
+    /// * If the voting escrow is of type locked
     public(package) fun claim<SailCoinType, RewardCoinType>(
         reward_distributor: &mut RewardDistributor<RewardCoinType>,
         voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
