@@ -116,7 +116,6 @@ module distribution::voter {
         used_weights: Table<LockID, u64>,
         pools: vector<PoolID>,
         pool_to_gauger: Table<PoolID, GaugeID>,
-        gauge_represents: Table<GaugeID, GaugeRepresent>,
         votes: Table<LockID, Table<PoolID, VolumeVote>>,
         weights: Table<GaugeID, u64>,
         epoch: u64,
@@ -271,7 +270,6 @@ module distribution::voter {
             used_weights: table::new<LockID, u64>(ctx),
             pools: std::vector::empty<PoolID>(),
             pool_to_gauger: table::new<PoolID, GaugeID>(ctx),
-            gauge_represents: table::new<GaugeID, GaugeRepresent>(ctx),
             votes: table::new<LockID, Table<PoolID, VolumeVote>>(ctx),
             weights: table::new<GaugeID, u64>(ctx),
             epoch: 0,
@@ -897,13 +895,6 @@ module distribution::voter {
         assert!(distribution_config.is_gauge_alive(object::id(gauge)), EDistributeGaugeGaugeIsKilled);
 
         let gauge_id = into_gauge_id(object::id(gauge));
-        let gauge_represent = voter.gauge_represents.borrow(gauge_id);
-        assert!(
-            gauge_represent.pool_id == object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(
-                pool
-            ) && gauge_represent.gauger_id == gauge_id.id,
-            EDistributeGaugeInvalidGaugeRepresent
-        );
         let ended_epoch_o_sail_emission = gauge.notify_epoch_token<CoinTypeA, CoinTypeB, NextEpochOSail>(
             distribution_config,
             pool,
@@ -947,6 +938,46 @@ module distribution::voter {
 
         ended_epoch_o_sail_emission
     }
+
+    /// Notifies additional reward amount to the gauge without claiming accumulated fees.
+    /// Supposed to be used to increase gauge emissions in the middle of the epoch.
+    /// 
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `distribute_cap` - The distribute capability for authorization
+    /// * `distribution_config` - The distribution configuration
+    /// * `gauge` - The gauge to notify reward to
+    /// * `pool` - The pool to notify reward to
+    /// * `usd_reward_amount` - The amount of reward to notify in usd, decimals 6
+    /// * `aggregator` - The aggregator to get o-sail price
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
+    public fun notify_gauge_reward_without_claim<CoinTypeA, CoinTypeB, SailCoinType>(
+        voter: &mut Voter,
+        distribute_cap: &distribution::distribute_cap::DistributeCap,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
+        gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        usd_reward_amount: u64,
+        aggregator: &Aggregator,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
+        assert!(voter.is_valid_epoch_token<NextEpochOSail>(), EAdjustGaugeInvalidToken);
+        assert!(distribution_config.is_gauge_alive(object::id(gauge)), EAdjustGaugeGaugeIsKilled);
+
+        gauge.notify_reward_without_claim(
+            distribution_config,
+            &voter.voter_cap,
+            pool,
+            usd_reward_amount,
+            aggregator,
+            clock,
+            ctx
+        );
+    }
+
 
     public fun inject_voting_fee_reward<FeeCoinType>(
         voter: &mut Voter,
@@ -1360,20 +1391,9 @@ module distribution::voter {
         );
         let pool_id = into_pool_id(gauge.pool_id());
         assert!(
-            !voter.gauge_represents.contains(gauge_id),
-            EReceiveGaugeAlreadyHasRepresent
-        );
-        assert!(
             !voter.pool_to_gauger.contains(pool_id),
             EReceiveGaugePoolAreadyHasGauge
         );
-        let gauge_represent = GaugeRepresent {
-            gauger_id: object::id<distribution::gauge::Gauge<CoinTypeA, CoinTypeB>>(gauge),
-            pool_id: gauge.pool_id(),
-            weight: 0,
-            last_reward_time: clock.timestamp_ms(),
-        };
-        voter.gauge_represents.add(gauge_id, gauge_represent);
         voter.weights.add(gauge_id, 0);
         voter.pools.push_back(pool_id);
         voter.pool_to_gauger.add(pool_id, gauge_id);

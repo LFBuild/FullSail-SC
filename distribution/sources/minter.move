@@ -275,6 +275,13 @@ module distribution::minter {
         ended_epoch_o_sail_emission: u64,
     }
 
+    public struct EventIncreaseGaugeEmissions has copy, drop, store {
+        gauge_id: ID,
+        pool_id: ID,
+        emissions_increase_usd: u64,
+        o_sail_type: TypeName,
+    }
+
     public struct EventCreateLockFromOSail has copy, drop, store {
         o_sail_amount_in: u64,
         o_sail_type: TypeName,
@@ -1363,6 +1370,23 @@ module distribution::minter {
         next_epoch_emissions_usd
     }
 
+    public fun gauge_distributed<SailCoinType>(
+        minter: &Minter<SailCoinType>,
+        gauge_id: ID,
+    ): bool {
+        let gauge_active_period = if (minter.gauge_active_period.contains(gauge_id)) {
+            *minter.gauge_active_period.borrow(gauge_id)
+        } else {
+            0
+        };
+
+        if (gauge_active_period == 0 || minter.active_period > gauge_active_period) {
+            return false;
+        };
+
+        true
+    }
+
     public fun all_gauges_distributed<SailCoinType>(
         minter: &Minter<SailCoinType>,
         distribution_config: &distribution::distribution_config::DistributionConfig,
@@ -1372,19 +1396,59 @@ module distribution::minter {
         let alive_gauges_len = alive_gauges.length();
         while (i < alive_gauges_len) {
             let gauge_id = *alive_gauges.borrow(i);
-            let gauge_active_period = if (minter.gauge_active_period.contains(gauge_id)) {
-                *minter.gauge_active_period.borrow(gauge_id)
-            } else {
-                0
-            };
-
-            if (minter.active_period > gauge_active_period) {
-                return false
+            if (!gauge_distributed(minter, gauge_id)) {
+                return false;
             };
             i = i + 1;
         };
 
         true
+    }
+
+    public fun increase_gauge_emissions<CoinTypeA, CoinTypeB, SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        voter: &mut distribution::voter::Voter,
+        distribution_config: &mut distribution::distribution_config::DistributionConfig,
+        admin_cap: &AdminCap,
+        gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        emissions_increase_usd: u64,
+        aggregator: &Aggregator,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        minter.check_admin(admin_cap);
+        let gauge_id = object::id(gauge);
+        assert!(gauge_distributed(minter, gauge_id), EAdjustGaugeNotDistributed);
+        assert!(minter.is_valid_distribution_config(distribution_config), EAdjustGaugeDistributionConfigInvalid);
+        assert!(minter.is_active(clock), EAdjustGaugeMinterNotActive);
+        assert!(!minter.is_paused(), EAdjustGaugeMinterPaused);
+
+        let old_gauge_epoch_emissions_usd = minter.gauge_epoch_emissions_usd.remove(gauge_id);
+        minter.gauge_epoch_emissions_usd.add(gauge_id, old_gauge_epoch_emissions_usd + emissions_increase_usd);
+
+        let old_total_epoch_emissions = minter.total_epoch_emissions_usd.remove(minter.active_period);
+        minter.total_epoch_emissions_usd.add(minter.active_period, old_total_epoch_emissions + emissions_increase_usd);
+
+        let distribute_cap = minter.distribute_cap.borrow();
+        voter.notify_gauge_reward_without_claim(
+            distribute_cap,
+            distribution_config,
+            gauge,
+            pool,
+            emissions_increase_usd,
+            aggregator,
+            clock,
+            ctx
+        );
+
+        let event = EventIncreaseGaugeEmissions {
+            gauge_id,
+            pool_id: object::id(pool),
+            emissions_increase_usd,
+            o_sail_type: *minter.current_epoch_o_sail.borrow(),
+        };
+        sui::event::emit<EventIncreaseGaugeEmissions>(event);
     }
 
     
