@@ -694,8 +694,6 @@ fun full_setup_with_two_positions(
     clock: &mut Clock,
 ): (u64, ID, ID) {
 
-    let ms_in_week = 7 * 24 * 60 * 60 * 1000;
-
     let lock_amount = 50_000;
     let lock_duration = 182; // ~6 months
 
@@ -1758,6 +1756,416 @@ fun test_increase_time_after_distribute() {
 
 
 #[test]
+#[expected_failure(abort_code = minter::EIncreaseEmissionsNotDistributed)]
+fun test_increase_gauge_emissions_before_distribution_fails() {
+    let admin = @0xD1;
+    let user = @0xD2;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    let initial_emissions = 1_000_000;
+    let increase_emissions_by = 2_000_000;
+
+    setup::full_setup_with_lock<USD1, SAIL, SAIL, OSAIL1>(
+        &mut scenario,
+        admin,
+        user,
+        &mut clock,
+        1000,
+        182,
+        initial_emissions,
+        0
+    );
+
+    // --- Increase gauge emissions before distribution (should fail) ---
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let mut voter = scenario.take_shared<Voter>();
+        let mut distribution_config = scenario.take_shared<DistributionConfig>();
+        let admin_cap = scenario.take_from_sender<minter::AdminCap>();
+        let mut gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
+        let mut pool = scenario.take_shared<Pool<USD1, SAIL>>();
+        let aggregator = setup::setup_aggregator(&mut scenario, &mut distribution_config, setup::one_dec18(), &clock);
+
+
+        minter.increase_gauge_emissions<USD1, SAIL, SAIL>(
+            &mut voter,
+            &mut distribution_config,
+            &admin_cap,
+            &mut gauge,
+            &mut pool,
+            increase_emissions_by,
+            &aggregator,
+            &clock,
+            scenario.ctx()
+        );
+
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(voter);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(admin_cap);
+        test_scenario::return_shared(gauge);
+        test_scenario::return_shared(pool);
+        test_utils::destroy(aggregator);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_increase_gauge_emissions_mid_epoch() {
+    let admin = @0xD1;
+    let user = @0xD2;
+    let lp = @0xD3;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    let initial_emissions = 1_000_000;
+    let increase_emissions_by = 2_000_000;
+    let total_expected_emissions = initial_emissions + increase_emissions_by;
+
+    setup::full_setup_with_lock<USD1, SAIL, SAIL, OSAIL1>(
+        &mut scenario,
+        admin,
+        user,
+        &mut clock,
+        1000,
+        182,
+        initial_emissions,
+        0
+    );
+
+    // --- Tx: Distribute Gauge Rewards (OSAIL1) ---
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge_epoch_1<USD1, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
+    };
+
+    // --- Tx: lp Creates and Stakes Position ---
+    let position_tick_lower = tick_math::min_tick().as_u32();
+    let position_tick_upper = tick_math::max_tick().as_u32();
+    let position_liquidity = 1_000_000_000u128;
+    let lp_position_id: ID;
+
+    // First create the position
+    scenario.next_tx(lp);
+    {
+        setup::create_position_with_liquidity<USD1, SAIL>(
+            &mut scenario,
+            lp, // Position owner
+            position_tick_lower,
+            position_tick_upper,
+            position_liquidity,
+            &clock
+        );
+    };
+
+    // Then deposit/stake the position
+    scenario.next_tx(lp);
+    {
+        lp_position_id = setup::deposit_position<USD1, SAIL>(
+            &mut scenario,
+            &clock
+        );
+    };
+
+    // --- Advance time by HALF a week ---
+    clock::increment_for_testing(&mut clock, WEEK / 2);
+
+    // --- Increase gauge emissions ---
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let mut voter = scenario.take_shared<Voter>();
+        let mut distribution_config = scenario.take_shared<DistributionConfig>();
+        let admin_cap = scenario.take_from_sender<minter::AdminCap>();
+        let mut gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
+        let mut pool = scenario.take_shared<Pool<USD1, SAIL>>();
+        let aggregator = setup::setup_aggregator(&mut scenario, &mut distribution_config, setup::one_dec18(), &clock);
+
+
+        minter.increase_gauge_emissions<USD1, SAIL, SAIL>(
+            &mut voter,
+            &mut distribution_config,
+            &admin_cap,
+            &mut gauge,
+            &mut pool,
+            increase_emissions_by,
+            &aggregator,
+            &clock,
+            scenario.ctx()
+        );
+
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(voter);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(admin_cap);
+        test_scenario::return_shared(gauge);
+        test_scenario::return_shared(pool);
+        test_utils::destroy(aggregator);
+    };
+
+    // --- Advance time to the end of the week ---
+    clock::increment_for_testing(&mut clock, WEEK / 2);
+
+    // --- Verify rewards ---
+    scenario.next_tx(lp);
+    {
+        let pool = scenario.take_shared<Pool<USD1, SAIL>>();
+        let gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
+        let (earned, _) = gauge.earned_by_position<USD1, SAIL, OSAIL1>(&pool, lp_position_id, &clock);
+        
+        assert!(total_expected_emissions - earned <= 3, 1);
+
+        test_scenario::return_shared(pool);
+        test_scenario::return_shared(gauge);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+#[expected_failure(abort_code = minter::ECheckAdminRevoked)]
+fun test_increase_gauge_emissions_revoked_admin_cap_fails() {
+    let admin = @0xD1;
+    let user = @0xD2;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    let initial_emissions = 1_000_000;
+    let increase_emissions_by = 2_000_000;
+
+    setup::full_setup_with_lock<USD1, SAIL, SAIL, OSAIL1>(
+        &mut scenario,
+        admin,
+        user,
+        &mut clock,
+        1000,
+        182,
+        initial_emissions,
+        0
+    );
+
+    // --- Tx: Distribute Gauge Rewards (OSAIL1) ---
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge_epoch_1<USD1, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
+    };
+
+    let admin_cap_id: ID;
+    scenario.next_tx(admin);
+    {
+        let admin_cap = scenario.take_from_sender<minter::AdminCap>();
+        admin_cap_id = object::id(&admin_cap);
+        scenario.return_to_sender(admin_cap);
+    };
+
+    // --- Revoke admin cap ---
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let publisher = minter::test_init(scenario.ctx());
+        minter.revoke_admin(&publisher, admin_cap_id);
+
+        test_scenario::return_shared(minter);
+        test_utils::destroy(publisher);
+    };
+
+    // --- Increase gauge emissions with revoked cap (should fail) ---
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let mut voter = scenario.take_shared<Voter>();
+        let mut distribution_config = scenario.take_shared<DistributionConfig>();
+        // this is the old, invalid cap
+        let admin_cap = scenario.take_from_sender<minter::AdminCap>();
+        let mut gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
+        let mut pool = scenario.take_shared<Pool<USD1, SAIL>>();
+        let aggregator = setup::setup_aggregator(&mut scenario, &mut distribution_config, setup::one_dec18(), &clock);
+
+
+        minter.increase_gauge_emissions<USD1, SAIL, SAIL>(
+            &mut voter,
+            &mut distribution_config,
+            &admin_cap,
+            &mut gauge,
+            &mut pool,
+            increase_emissions_by,
+            &aggregator,
+            &clock,
+            scenario.ctx()
+        );
+
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(voter);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(admin_cap);
+        test_scenario::return_shared(gauge);
+        test_scenario::return_shared(pool);
+        test_utils::destroy(aggregator);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+#[expected_failure(abort_code = minter::EIncreaseEmissionsDistributionConfigInvalid)]
+fun test_increase_gauge_emissions_invalid_distribution_config_fails() {
+    let admin = @0xD1;
+    let user = @0xD2;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    let initial_emissions = 1_000_000;
+    let increase_emissions_by = 2_000_000;
+
+    setup::full_setup_with_lock<USD1, SAIL, SAIL, OSAIL1>(
+        &mut scenario,
+        admin,
+        user,
+        &mut clock,
+        1000,
+        182,
+        initial_emissions,
+        0
+    );
+
+    // --- Tx: Distribute Gauge Rewards (OSAIL1) ---
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge_epoch_1<USD1, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
+    };
+
+    // --- Create a new, invalid distribution config ---
+    scenario.next_tx(admin);
+    {
+        distribution::distribution_config::test_init(scenario.ctx());
+    };
+
+    // --- Increase gauge emissions with invalid config (should fail) ---
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let mut voter = scenario.take_shared<Voter>();
+        let mut distribution_config = scenario.take_shared<DistributionConfig>();
+        let admin_cap = scenario.take_from_sender<minter::AdminCap>();
+        let mut gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
+        let mut pool = scenario.take_shared<Pool<USD1, SAIL>>();
+        let aggregator = setup::setup_aggregator(&mut scenario, &mut distribution_config, setup::one_dec18(), &clock);
+
+
+        minter.increase_gauge_emissions<USD1, SAIL, SAIL>(
+            &mut voter,
+            &mut distribution_config,
+            &admin_cap,
+            &mut gauge,
+            &mut pool,
+            increase_emissions_by,
+            &aggregator,
+            &clock,
+            scenario.ctx()
+        );
+
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(voter);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(admin_cap);
+        test_scenario::return_shared(gauge);
+        test_scenario::return_shared(pool);
+        test_utils::destroy(aggregator);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+#[expected_failure(abort_code = gauge::ENotifyRewardWithoutClaimInvalidPool)]
+fun test_increase_gauge_emissions_invalid_pool_fails() {
+    let admin = @0xD1;
+    let user = @0xD2;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    let initial_emissions = 1_000_000;
+    let increase_emissions_by = 2_000_000;
+
+    setup::full_setup_with_lock<USD1, SAIL, SAIL, OSAIL1>(
+        &mut scenario,
+        admin,
+        user,
+        &mut clock,
+        1000,
+        182,
+        initial_emissions,
+        0
+    );
+
+    // --- Tx: Distribute Gauge Rewards (OSAIL1) ---
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge_epoch_1<USD1, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
+    };
+
+    // --- Add a new fee tier ---
+    scenario.next_tx(admin);
+    {
+        let admin_cap = scenario.take_from_sender<config::AdminCap>();
+        let mut global_config = scenario.take_shared<GlobalConfig>();
+        config::add_fee_tier(&mut global_config, 10, 100, scenario.ctx());
+        test_scenario::return_shared(global_config);
+        scenario.return_to_sender(admin_cap);
+    };
+
+    // --- Create a new, invalid pool ---
+    scenario.next_tx(admin);
+    {
+        setup::setup_pool_with_sqrt_price<USD1, SAIL>(&mut scenario, 1 << 64, 10);
+    };
+
+    // --- Increase gauge emissions with invalid pool (should fail) ---
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let mut voter = scenario.take_shared<Voter>();
+        let mut distribution_config = scenario.take_shared<DistributionConfig>();
+        let admin_cap = scenario.take_from_sender<minter::AdminCap>();
+        let mut gauge = scenario.take_shared<Gauge<USD1, SAIL>>();
+        let mut pool = scenario.take_shared<Pool<USD1, SAIL>>();
+        let aggregator = setup::setup_aggregator(&mut scenario, &mut distribution_config, setup::one_dec18(), &clock);
+
+
+        minter.increase_gauge_emissions<USD1, SAIL, SAIL>(
+            &mut voter,
+            &mut distribution_config,
+            &admin_cap,
+            &mut gauge,
+            &mut pool,
+            increase_emissions_by,
+            &aggregator,
+            &clock,
+            scenario.ctx()
+        );
+
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(voter);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(admin_cap);
+        test_scenario::return_shared(gauge);
+        test_scenario::return_shared(pool);
+        test_utils::destroy(aggregator);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+
+#[test]
 #[expected_failure(abort_code = gauge::EGetRewardPrevTokenNotClaimed)]
 fun test_gauge_get_position_reward_fails_wrong_order() {
     let admin = @0xC1;
@@ -1893,7 +2301,7 @@ fun test_half_epoch_staking_distribute() {
     let mut clock = clock::create_for_testing(scenario.ctx());
 
     let ms_in_week = 7 * 24 * 60 * 60 * 1000;
-    let gap_to_vote = 60 * 60 * 1000 + 1000;
+
 
     let lock_amount = 50_000;
     let lock_duration = 182; // ~6 months

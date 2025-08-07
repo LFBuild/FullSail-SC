@@ -3028,7 +3028,7 @@ fun test_distribute_gauge_with_wrong_distribution_config_fails() {
 }
 
 #[test]
-#[expected_failure(abort_code = voter::EDistributeGaugeInvalidGaugeRepresent)]
+#[expected_failure(abort_code = voter::EDistributeGaugeInvalidPool)]
 fun test_distribute_gauge_with_wrong_pool_fails() {
     let admin = @0xA;
     let user = @0xB;
