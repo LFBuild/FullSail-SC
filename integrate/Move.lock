@@ -2,7 +2,7 @@
 
 [move]
 version = 3
-manifest_digest = "CC40929016FCBFBDA86B2FFBB9C3137A0338EECEB4FCED5FC5CA0C56E1A59969"
+manifest_digest = "52BA6A920688DDD24F3284B2DCFC87F0089588F06306A9D9BF2034FF53A60626"
 deps_digest = "8227D341C0550A37580C10FA45FE148A465225149C69D179737E0FE454AD6AEC"
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -86,7 +86,6 @@ dependencies = [
   { id = "Sui", name = "Sui" },
   { id = "Switchboard", name = "Switchboard" },
   { id = "clmm_pool", name = "clmm_pool" },
-  { id = "distribution", name = "distribution" },
   { id = "gauge_cap", name = "gauge_cap" },
   { id = "integer_mate", name = "integer_mate" },
   { id = "locker_cap", name = "locker_cap" },
@@ -141,6 +140,6 @@ flavor = "sui"
 
 [env.mainnet]
 chain-id = "35834a8a"
-original-published-id = "0x6722a83faf3454af89f285b3cf5f85ee8f091d82ce07a7dd6fbdda6a1e395b32"
-latest-published-id = "0x6722a83faf3454af89f285b3cf5f85ee8f091d82ce07a7dd6fbdda6a1e395b32"
+original-published-id = "0x9bd89740b35ed41c16b65840784ba336bbc800330a647309d4d8fc22bf29392b"
+latest-published-id = "0x9bd89740b35ed41c16b65840784ba336bbc800330a647309d4d8fc22bf29392b"
 published-version = "1"
