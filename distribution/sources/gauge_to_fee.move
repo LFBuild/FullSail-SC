@@ -1,4 +1,9 @@
+/// © 2025 Metabyte Labs, Inc.  All Rights Reserved.
 module distribution::gauge_to_fee {
+
+    #[allow(unused_const)]
+    const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
+
     public struct GaugeToFeeProof {
         voter: ID,
         gauge: ID,

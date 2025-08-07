@@ -1,22 +1,28 @@
+/// © 2025 Metabyte Labs, Inc.  All Rights Reserved.
+/// 
+/// A module that provides a wrapper around the base reward system for freely distributable rewards.
+/// This specialized wrapper enables token distribution to participants without requiring tokens to be locked.
+/// 
+/// The FreeManagedReward serves as a key component in the reward distribution system, allowing:
+/// - Distribution of rewards to users who hold specific assets (identified by lock_id)
+/// - Support for multiple token types as rewards
+/// - Time-weighted reward distribution based on the voting escrow system
+/// - Permissioned deposit and withdrawal of rewards through an authorization system
+///
+/// The key difference between this and other reward types (like locked_managed_reward) is that
+/// rewards can be freely claimed without additional restrictions beyond ownership proof.
+///
+/// This module integrates with other distribution components:
+/// - voting_escrow: For time-weighted balances
+/// - reward: For core reward distribution logic
+/// - lock_owner: For ownership verification
+/// - whitelisted_tokens: For token validation
+/// - reward_authorized_cap: For authorization mechanisms
+
 module distribution::free_managed_reward {
-    /// A module that provides a wrapper around the base reward system for freely distributable rewards.
-    /// This specialized wrapper enables token distribution to participants without requiring tokens to be locked.
-    ///
-    /// The FreeManagedReward serves as a key component in the reward distribution system, allowing:
-    /// - Distribution of rewards to users who hold specific assets (identified by lock_id)
-    /// - Support for multiple token types as rewards
-    /// - Time-weighted reward distribution based on the voting escrow system
-    /// - Permissioned deposit and withdrawal of rewards through an authorization system
-    ///
-    /// The key difference between this and other reward types (like locked_managed_reward) is that
-    /// rewards can be freely claimed without additional restrictions beyond ownership proof.
-    ///
-    /// This module integrates with other distribution components:
-    /// - voting_escrow: For time-weighted balances
-    /// - reward: For core reward distribution logic
-    /// - lock_owner: For ownership verification
-    /// - whitelisted_tokens: For token validation
-    /// - reward_authorized_cap: For authorization mechanisms
+
+    #[allow(unused_const)]
+    const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
 
     const EGetRewardInvalidProver: u64 = 9223372337502486527;
 

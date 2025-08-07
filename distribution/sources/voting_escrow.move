@@ -1,4 +1,9 @@
+/// © 2025 Metabyte Labs, Inc.  All Rights Reserved.
+
 module distribution::voting_escrow {
+    #[allow(unused_const)]
+    const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
+
     
     // Error constants
     const ECreateVotingEscrowInvalidPublisher: u64 = 184812403570428600;

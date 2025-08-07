@@ -1,4 +1,9 @@
+/// © 2025 Metabyte Labs, Inc.  All Rights Reserved.
+
 module distribution::reward_distributor_cap {
+    #[allow(unused_const)]
+    const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
+
     const ERewardDistributorInvalid: u64 = 9223372105574252543;
 
     public struct RewardDistributorCap has store, key {

@@ -1,4 +1,8 @@
+/// © 2025 Metabyte Labs, Inc.  All Rights Reserved.
+
 module distribution::whitelisted_tokens {
+    #[allow(unused_const)]
+    const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
 
     const EInvalidVoter: u64 = 9223372260193075199;
     const EInvalidToken: u64 = 9223372268783140867;

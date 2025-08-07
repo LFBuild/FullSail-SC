@@ -1,3 +1,5 @@
+/// © 2025 Metabyte Labs, Inc.  All Rights Reserved.
+/// 
 /// This module implements the fee voting reward distribution mechanism for the platform.
 ///
 /// # Overview
@@ -15,6 +17,9 @@
 /// This module works alongside other components such as `voting_escrow`, `voter`, and `gauge` to create
 /// a complete fee-sharing governance system that incentivizes participation in platform governance.
 module distribution::fee_voting_reward {
+    #[allow(unused_const)]
+    const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
+
     const ENotifyRewardAmountTokenNotWhitelisted: u64 = 9223372427696799743;
     const EVoterGetRewardInvalidVoter: u64 = 9223372358977323007;
 

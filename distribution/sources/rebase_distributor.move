@@ -1,3 +1,4 @@
+/// © 2025 Metabyte Labs, Inc.  All Rights Reserved.
 module distribution::rebase_distributor;
 
 use sui::clock::Clock;
@@ -7,6 +8,9 @@ use distribution::reward_distributor::{Self, RewardDistributor};
 use distribution::voting_escrow;
 use distribution::reward_distributor_cap::RewardDistributorCap;
 use sui::coin;
+
+#[allow(unused_const)]
+const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
 
 const EMinterNotActive: u64 = 326677348800338700;
 const ELockedVotingEscrowCannotClaim: u64 = 27562280597090540;
