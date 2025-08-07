@@ -1410,6 +1410,20 @@ module distribution::minter {
         true
     }
 
+    /// Increases the emissions of a gauge by a specified amount.
+    /// This function is used to increase the emissions of a gauge when the pool performance metrics are higher than expected.
+    /// 
+    /// # Arguments
+    /// * `minter` - The minter instance managing token emissions
+    /// * `voter` - The voter instance managing gauge voting
+    /// * `distribution_config` - Configuration for token distribution
+    /// * `admin_cap` - Capability allowing token distribution
+    /// * `gauge` - The gauge to increase emissions for
+    /// * `pool` - The pool associated with the gauge
+    /// * `emissions_increase_usd` - The amount of emissions to increase in USD. 6 decimals.
+    /// * `aggregator` - The aggregator of oSAIL price to fetch the price from
+    /// * `clock` - The system clock
+    /// * `ctx` - Transaction context
     public fun increase_gauge_emissions<CoinTypeA, CoinTypeB, SailCoinType>(
         minter: &mut Minter<SailCoinType>,
         voter: &mut distribution::voter::Voter,
