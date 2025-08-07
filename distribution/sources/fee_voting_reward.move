@@ -173,7 +173,7 @@ module distribution::fee_voting_reward {
     /// calculation being too expensive to be done on-chain.
     ///
     /// # Arguments
-    /// * `reward` - The `BribeVotingReward` instance to update.
+    /// * `reward` - The `FeeVotingReward` instance to update.
     /// * `reward_authorized_cap` - Capability proving authorization to update balances.
     /// * `balances` - A vector of balance amounts corresponding to each `lock_id`.
     /// * `lock_ids` - A vector of `ID`s for the locks whose balances are being updated.

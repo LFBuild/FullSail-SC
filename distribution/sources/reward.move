@@ -46,7 +46,7 @@ module distribution::reward {
 
 
     public struct EventEpochFinalized has copy, drop, store {
-        // FeeVotingReward, BribeVotingReward or FreeManagedReward id. Supposed to be used to track for which exactly reward this event is.
+        // FeeVotingReward, or FreeManagedReward id. Supposed to be used to track for which exactly reward this event is.
         wrapper_reward_id: ID,
         // Reward id. Usually this reward is unaccessible cos it is wrapped in other object.
         internal_reward_id: ID,
@@ -54,7 +54,7 @@ module distribution::reward {
     }
 
     public struct EventUpdateBalances has copy, drop, store {
-        // FeeVotingReward, BribeVotingReward or FreeManagedReward id. Supposed to be used to track for which exactly reward this event is.
+        // FeeVotingReward, or FreeManagedReward id. Supposed to be used to track for which exactly reward this event is.
         wrapper_reward_id: ID,
         // Reward id. Usually this reward is unaccessible cos it is wrapped in other object.
         internal_reward_id: ID,
@@ -75,7 +75,7 @@ module distribution::reward {
 
     public struct Reward has store, key {
         id: UID,
-        // FeeVotingReward, BribeVotingReward or FreeManagedReward id
+        // FeeVotingReward or FreeManagedReward id
         wrapper_reward_id: ID,
         voter: ID,
         ve: Option<ID>,

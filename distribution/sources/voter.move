@@ -139,7 +139,6 @@ module distribution::voter {
         gauge_to_fee_authorized_cap: distribution::reward_authorized_cap::RewardAuthorizedCap,
         gauge_to_fee: Table<GaugeID, distribution::fee_voting_reward::FeeVotingReward>,
         gauge_to_bribe_authorized_cap: distribution::reward_authorized_cap::RewardAuthorizedCap,
-        gauge_to_bribe: Table<GaugeID, distribution::bribe_voting_reward::BribeVotingReward>,
         // bag to be preapred for future updates
         bag: sui::bag::Bag,
     }
@@ -287,7 +286,6 @@ module distribution::voter {
             gauge_to_fee_authorized_cap: distribution::reward_authorized_cap::create(id, ctx),
             gauge_to_fee: table::new<GaugeID, distribution::fee_voting_reward::FeeVotingReward>(ctx),
             gauge_to_bribe_authorized_cap: distribution::reward_authorized_cap::create(id, ctx),
-            gauge_to_bribe: table::new<GaugeID, distribution::bribe_voting_reward::BribeVotingReward>(ctx),
             // bag to be preapred for future updates
             bag: sui::bag::new(ctx),
         };
@@ -494,36 +492,6 @@ module distribution::voter {
         assert!(current_time > distribution::common::epoch_vote_start(current_time), EVotingNotStarted);
     }
 
-    /// Get a reference to the bribe voting reward for a specific gauge.
-    ///
-    /// # Arguments
-    /// * `voter` - The voter contract reference
-    /// * `gauge_id` - The ID of the gauge
-    ///
-    /// # Returns
-    /// A reference to the bribe voting reward
-    public fun borrow_bribe_voting_reward(
-        voter: &Voter,
-        gauge_id: ID
-    ): &distribution::bribe_voting_reward::BribeVotingReward {
-        voter.gauge_to_bribe.borrow(into_gauge_id(gauge_id))
-    }
-
-    /// Get a mutable reference to the bribe voting reward for a specific gauge.
-    ///
-    /// # Arguments
-    /// * `voter` - The voter contract reference
-    /// * `gauge_id` - The ID of the gauge
-    ///
-    /// # Returns
-    /// A mutable reference to the bribe voting reward
-    public fun borrow_bribe_voting_reward_mut(
-        voter: &mut Voter,
-        gauge_id: ID
-    ): &mut distribution::bribe_voting_reward::BribeVotingReward {
-        voter.gauge_to_bribe.borrow_mut(into_gauge_id(gauge_id))
-    }
-
     /// Get a reference to the fee voting reward for a specific gauge.
     ///
     /// # Arguments
@@ -599,45 +567,6 @@ module distribution::voter {
         };
     }
 
-
-    /// Claims bribe rewards for a single pool.
-    ///
-    /// # Arguments
-    /// * `voter` - The voter contract reference
-    /// * `voting_escrow` - The voting escrow reference
-    /// * `lock` - The lock for which to claim bribe
-    /// * `pool_id` - The pool which user voted for and which bribes to claim
-    /// * `clock` - The system clock for time-based calculations
-    /// * `ctx` - The transaction context
-    ///
-    /// # Emits
-    /// * `EventClaimBribeReward` for each pool with claimed rewards
-    public fun claim_voting_bribe_by_pool<SailCoinType, BribeCoinType>(
-        voter: &mut Voter,
-        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
-        lock: &distribution::voting_escrow::Lock,
-        pool_id: ID,
-        clock: &sui::clock::Clock,
-        ctx: &mut TxContext
-    ) {
-        let pool_id_obj = into_pool_id(pool_id);
-        let gauge_id = *voter.pool_to_gauger.borrow(pool_id_obj);
-        let claim_bribe_reward_event = EventClaimBribeReward {
-            who: tx_context::sender(ctx),
-            amount: voter.gauge_to_bribe.borrow_mut(gauge_id).get_reward<SailCoinType, BribeCoinType>(
-                voting_escrow,
-                lock,
-                clock,
-                ctx
-            ),
-            pool: pool_id,
-            gauge: gauge_id.id,
-            token: type_name::get<BribeCoinType>(),
-            lock: into_lock_id(object::id(lock)).id,
-        };
-        sui::event::emit<EventClaimBribeReward>(claim_bribe_reward_event);
-    }
-
     /// Claims fee rewards for a single pool.
     ///
     /// # Arguments
@@ -704,33 +633,6 @@ module distribution::voter {
         sui::event::emit<EventClaimVotingFeeReward>(claim_voting_fee_reward_event);
     }
 
-    /// Calculates the amount of rewards earned for a specific coin type and lock by every voted pool.
-    /// 
-    /// # Arguments
-    /// * `voter` - The voter contract reference
-    /// * `lock_id` - The ID of the lock to check earnings for
-    /// * `clock` - The system clock
-    /// 
-    public fun earned_voting_bribe<BribeCoinType>(
-        voter: &Voter,
-        lock_id: ID,
-        clock: &sui::clock::Clock
-    ): VecMap<ID, u64> {
-        let voted_pools_ids = voter.voted_pools(lock_id);
-        let mut i = 0;
-        let mut reward_by_pool = vec_map::empty<ID, u64>();
-        while (i < voted_pools_ids.length()) {
-            let pool_id = voted_pools_ids[i];
-            reward_by_pool.insert<ID, u64>(
-                pool_id,
-                voter.borrow_bribe_voting_reward(voter.pool_to_gauge(pool_id))
-                .earned<BribeCoinType>(lock_id, clock)
-            );
-            i = i + 1;
-        };
-        reward_by_pool
-    }
-
     /// Calculates the amount of rewards earned for a specific coin type for single pool.
     /// It doesn't make sense to calculate it for all pools because all pools have different coin types
     /// and function accepts only single coin type.
@@ -766,24 +668,6 @@ module distribution::voter {
         clock: &sui::clock::Clock
     ): u64 {
         voter.gauge_to_fee.borrow(into_gauge_id(gauge_id)).rewards_this_epoch<FeeCoinType>(clock)
-    }
-
-    /// Returns the total bribe rewards available for a specific epoch for a specific coin type.
-    public fun bribe_voting_rewards_at_epoch<BribeCoinType>(
-        voter: &Voter,
-        gauge_id: ID,
-        epoch_start: u64
-    ): u64 {
-        voter.gauge_to_bribe.borrow(into_gauge_id(gauge_id)).rewards_at_epoch<BribeCoinType>(epoch_start)
-    }
-
-    /// Returns the total bribe rewards available for the current epoch for a specific coin type.
-    public fun bribe_voting_rewards_this_epoch<BribeCoinType>(
-        voter: &Voter,
-        gauge_id: ID,
-        clock: &sui::clock::Clock
-    ): u64 {
-        voter.gauge_to_bribe.borrow(into_gauge_id(gauge_id)).rewards_this_epoch<BribeCoinType>(clock)
     }
 
     /// Creates a new gauge for a liquidity pool.
@@ -851,10 +735,6 @@ module distribution::voter {
         if (!reward_coins.contains(&sail_coin_type)) {
             reward_coins.push_back(sail_coin_type);
         };
-        voter.gauge_to_bribe.add(
-            into_gauge_id(gauge_id),
-            distribution::bribe_voting_reward::create(voter_id, voting_escrow_id, gauge_id, reward_coins, ctx)
-        );
         voter.receive_gauger(distribute_cap, &mut gauge, clock);
         let mut alive_gauges_vec = std::vector::empty<ID>();
         alive_gauges_vec.push_back(gauge_id);
@@ -1911,17 +1791,6 @@ module distribution::voter {
         let fee_voting_reward = voter.gauge_to_fee.borrow_mut(gauge_id_obj);
         fee_voting_reward.update_balances(
             &voter.gauge_to_fee_authorized_cap,
-            weights,
-            lock_ids,
-            for_epoch_start,
-            final,
-            clock,
-            ctx
-        );
-
-        let bribe_voting_reward = voter.gauge_to_bribe.borrow_mut(gauge_id_obj);
-        bribe_voting_reward.update_balances(
-            &voter.gauge_to_bribe_authorized_cap,
             weights,
             lock_ids,
             for_epoch_start,
