@@ -167,7 +167,7 @@ module distribution::fee_voting_reward {
         reward.reward.withdraw(reward_authorized_cap, amount, lock_id, clock, ctx);
     }
 
-    /// Updates the balances of bribe rewards for specific locks for a given epoch.
+    /// Updates the balances of voting rewards for specific locks for a given epoch.
     /// This function is typically called by an authorized process to retroactively record
     /// voting power that determine rewards distribution. It is required due to voting power
     /// calculation being too expensive to be done on-chain.

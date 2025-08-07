@@ -151,11 +151,7 @@ module integrate::voting_escrow {
         let mut pool_index = 0;
         while (pool_index < voted_pools.length()) {
             let gauge_id = voter.pool_to_gauge(voted_pools[pool_index]);
-            let updated_incentives = total_incentives + voter.borrow_fee_voting_reward(gauge_id).earned<SailCoinType>(
-                lock_id,
-                clock
-            );
-            total_incentives = updated_incentives + voter.borrow_bribe_voting_reward(gauge_id).earned<SailCoinType>(
+            total_incentives = total_incentives + voter.borrow_fee_voting_reward(gauge_id).earned<SailCoinType>(
                 lock_id,
                 clock
             );
