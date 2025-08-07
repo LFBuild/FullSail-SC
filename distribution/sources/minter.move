@@ -59,6 +59,11 @@ module distribution::minter {
     const EDistributeGaugeMetricsInvalid: u64 = 95918619286974770;
     const EDistributeGaugeNoPeriodButHasEmissions: u64 = 658460351931005700;
 
+    const EIncreaseEmissionsNotDistributed: u64 = 243036335954370780;
+    const EIncreaseEmissionsDistributionConfigInvalid: u64 = 578889065004501400;
+    const EIncreaseEmissionsMinterNotActive: u64 = 204872681976552500;
+    const EIncreaseEmissionsMinterPaused: u64 = 566083930742334200;
+
     const ECheckAdminRevoked: u64 = 922337280994888908;
     const ECheckDistributeGovernorRevoked: u64 = 369612027923601500;
 
@@ -1411,7 +1416,7 @@ module distribution::minter {
         distribution_config: &mut distribution::distribution_config::DistributionConfig,
         admin_cap: &AdminCap,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
-        pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         emissions_increase_usd: u64,
         aggregator: &Aggregator,
         clock: &sui::clock::Clock,
@@ -1419,10 +1424,10 @@ module distribution::minter {
     ) {
         minter.check_admin(admin_cap);
         let gauge_id = object::id(gauge);
-        assert!(gauge_distributed(minter, gauge_id), EAdjustGaugeNotDistributed);
-        assert!(minter.is_valid_distribution_config(distribution_config), EAdjustGaugeDistributionConfigInvalid);
-        assert!(minter.is_active(clock), EAdjustGaugeMinterNotActive);
-        assert!(!minter.is_paused(), EAdjustGaugeMinterPaused);
+        assert!(gauge_distributed(minter, gauge_id), EIncreaseEmissionsNotDistributed);
+        assert!(minter.is_valid_distribution_config(distribution_config), EIncreaseEmissionsDistributionConfigInvalid);
+        assert!(minter.is_active(clock), EIncreaseEmissionsMinterNotActive);
+        assert!(!minter.is_paused(), EIncreaseEmissionsMinterPaused);
 
         let old_gauge_epoch_emissions_usd = minter.gauge_epoch_emissions_usd.remove(gauge_id);
         minter.gauge_epoch_emissions_usd.add(gauge_id, old_gauge_epoch_emissions_usd + emissions_increase_usd);

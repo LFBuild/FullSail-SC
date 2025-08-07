@@ -41,12 +41,8 @@ module distribution::voter {
     const EPokeLockNotVoted: u64 = 922337451075875639;
     const EPokePoolNotVoted: u64 = 922337452793862558;
 
-    const EFirstTokenNotWhitelisted: u64 = 922337387080581119;
-    const ESecondTokenNotWhitelisted: u64 = 922337387510077849;
-
     const ETokenNotWhitelisted: u64 = 922337385362594201;
 
-    const EReceiveGaugeAlreadyHasRepresent: u64 = 922337372048228352;
     const EReceiveGaugePoolAreadyHasGauge: u64 = 922337372477987230;
 
     const ERemoveEpochGovernorNotAGovernor: u64 = 922337331246157007;
@@ -67,8 +63,9 @@ module distribution::voter {
     const EVoteInternalWeightResultedInZeroVotes: u64 = 922337484147110711;
 
     const EDistributeGaugeInvalidToken: u64 = 727114932399146200;
-    const EDistributeGaugeInvalidGaugeRepresent: u64 = 922337598392972083;
+    const EDistributeGaugeInvalidPool: u64 = 922337598392972083;
     const EDistributeGaugeGaugeIsKilled: u64 = 519025590138764600;
+    const EAdjustGaugeGaugeIsKilled: u64 = 855951837524523600;
 
     const EWhitelistNftGovernorInvalid: u64 = 922337395670666447;
 
@@ -893,6 +890,7 @@ module distribution::voter {
         distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
         assert!(voter.is_valid_epoch_token<NextEpochOSail>(), EDistributeGaugeInvalidToken);
         assert!(distribution_config.is_gauge_alive(object::id(gauge)), EDistributeGaugeGaugeIsKilled);
+        assert!(gauge.check_gauger_pool(pool), EDistributeGaugeInvalidPool);
 
         let gauge_id = into_gauge_id(object::id(gauge));
         let ended_epoch_o_sail_emission = gauge.notify_epoch_token<CoinTypeA, CoinTypeB, NextEpochOSail>(
@@ -952,7 +950,7 @@ module distribution::voter {
     /// * `aggregator` - The aggregator to get o-sail price
     /// * `clock` - The system clock
     /// * `ctx` - The transaction context
-    public fun notify_gauge_reward_without_claim<CoinTypeA, CoinTypeB, SailCoinType>(
+    public fun notify_gauge_reward_without_claim<CoinTypeA, CoinTypeB>(
         voter: &mut Voter,
         distribute_cap: &distribution::distribute_cap::DistributeCap,
         distribution_config: &distribution::distribution_config::DistributionConfig,
@@ -964,7 +962,6 @@ module distribution::voter {
         ctx: &mut TxContext
     ) {
         distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
-        assert!(voter.is_valid_epoch_token<NextEpochOSail>(), EAdjustGaugeInvalidToken);
         assert!(distribution_config.is_gauge_alive(object::id(gauge)), EAdjustGaugeGaugeIsKilled);
 
         gauge.notify_reward_without_claim(
