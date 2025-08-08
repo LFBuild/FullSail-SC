@@ -2,12 +2,13 @@
 
 [move]
 version = 3
-manifest_digest = "2210E1855D7ED95884A53177A1EB9D7029097CB6AFC17FBCB6780A6735702725"
-deps_digest = "CAFAD8A7CF51067FB4358215BECB86BD100DD64E57C2AC8A7AE7D74B688F5965"
+manifest_digest = "397A9382F9B4A6EA41D08E6451C157FE8F1CDCA6E7AF2DD9C31FF07A5E5988CA"
+deps_digest = "04732BFEF428F74DE262001DC455D76B909EBC394B034A9A15CC095E4BDD9CEF"
 dependencies = [
   { id = "Sui", name = "Sui" },
   { id = "Switchboard", name = "Switchboard" },
   { id = "clmm_pool", name = "clmm_pool" },
+  { id = "distribution", name = "distribution" },
   { id = "gauge_cap", name = "gauge_cap" },
   { id = "integer_mate", name = "integer_mate" },
   { id = "locker_cap", name = "locker_cap" },
@@ -43,6 +44,20 @@ dependencies = [
   { id = "gauge_cap", name = "gauge_cap" },
   { id = "integer_mate", name = "integer_mate" },
   { id = "move_stl", name = "move_stl" },
+  { id = "price_provider", name = "price_provider" },
+]
+
+[[move.package]]
+id = "distribution"
+source = { local = "../distribution" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+  { id = "Switchboard", name = "Switchboard" },
+  { id = "clmm_pool", name = "clmm_pool" },
+  { id = "gauge_cap", name = "gauge_cap" },
+  { id = "integer_mate", name = "integer_mate" },
+  { id = "locker_cap", name = "locker_cap" },
   { id = "price_provider", name = "price_provider" },
 ]
 
@@ -96,5 +111,5 @@ flavor = "sui"
 [env.mainnet]
 chain-id = "35834a8a"
 original-published-id = "0x1602d390b6181dfdfcd87764ba7134871ddae489b63a28c3ad7679cdf0b0d24b"
-latest-published-id = "0x1602d390b6181dfdfcd87764ba7134871ddae489b63a28c3ad7679cdf0b0d24b"
-published-version = "1"
+latest-published-id = "0x96e0fce3c15d6afa74208dfbae9a6ad271ceb0e2a4ba02f317d5d631420a6576"
+published-version = "2"
