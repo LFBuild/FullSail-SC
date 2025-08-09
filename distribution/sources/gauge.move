@@ -156,7 +156,8 @@ module distribution::gauge {
         gauger_id: ID,
         pool_id: ID,
         position_id: ID,
-        staked_position_id: ID
+        staked_position_id: ID,
+        start_growth_inside: u128
     }
 
     public struct EventGaugeCreated has copy, drop, store {
@@ -522,7 +523,8 @@ module distribution::gauge {
             gauger_id: object::id<Gauge<CoinTypeA, CoinTypeB>>(gauge),
             pool_id: object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool),
             position_id,
-            staked_position_id: object::id<StakedPosition>(&staked_position)
+            staked_position_id: object::id<StakedPosition>(&staked_position),
+            start_growth_inside: gauge.rewards.borrow(position_id).growth_inside
         };
         sui::event::emit<EventDepositGauge>(deposit_gauge_event);
 
