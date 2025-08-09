@@ -112,8 +112,9 @@ module distribution::reward_distributor {
         clock: &sui::clock::Clock
     ) {
         reward_distributor_cap.validate(object::id<RewardDistributor<RewardCoinType>>(reward_distributon));
+        let added_tokens = coin.value();
         reward_distributon.balance.join(coin.into_balance());
-        reward_distributon.checkpoint_token_internal(distribution::common::current_timestamp(clock));
+        reward_distributon.checkpoint_token_internal_v2(added_tokens, distribution::common::current_timestamp(clock));
     }
 
     /// Internal function that handles token checkpointing logic.
@@ -125,6 +126,69 @@ module distribution::reward_distributor {
     fun checkpoint_token_internal<RewardCoinType>(reward_distributor: &mut RewardDistributor<RewardCoinType>, time: u64) {
         let current_balance = reward_distributor.balance.value();
         let balance_delta = current_balance - reward_distributor.token_last_balance;
+        let mut last_token_time = reward_distributor.last_token_time;
+        let token_time_delta = time - last_token_time;
+        let mut last_token_period = distribution::common::to_period(last_token_time);
+        let mut i = 0;
+        while (i < 20) {
+            let last_period_tokens = if (!reward_distributor.tokens_per_period.contains(last_token_period)) {
+                0
+            } else {
+                reward_distributor.tokens_per_period.remove(last_token_period)
+            };
+            let next_token_period = last_token_period + distribution::common::epoch();
+            if (time < next_token_period) {
+                if (token_time_delta == 0 && time == last_token_time) {
+                    reward_distributor.tokens_per_period.add(
+                        last_token_period,
+                        last_period_tokens + balance_delta
+                    );
+                    break
+                };
+                reward_distributor.tokens_per_period.add(
+                    last_token_period,
+                    last_period_tokens + integer_mate::full_math_u64::mul_div_floor(
+                        balance_delta,
+                         time - last_token_time,
+                         token_time_delta
+                        )
+                );
+                break
+            };
+            if (token_time_delta == 0 && next_token_period == last_token_time) {
+                reward_distributor.tokens_per_period.add(
+                    last_token_period,
+                    last_period_tokens + balance_delta
+                );
+            } else {
+                let time_until_next_period = next_token_period - last_token_time;
+                reward_distributor.tokens_per_period.add(
+                    last_token_period,
+                    last_period_tokens + integer_mate::full_math_u64::mul_div_floor(
+                        balance_delta,
+                        time_until_next_period,
+                        token_time_delta
+                    )
+                );
+            };
+            last_token_time = next_token_period;
+            last_token_period = next_token_period;
+            i = i + 1;
+        };
+        reward_distributor.token_last_balance = current_balance;
+        reward_distributor.last_token_time = time;
+        let checkpoint_token_event = EventCheckpointToken {
+            wrapper_distributor_id: reward_distributor.wrapper_distributor_id,
+            to_distribute: balance_delta,
+            timestamp: time,
+            token_type: type_name::get<RewardCoinType>(),
+        };
+        sui::event::emit<EventCheckpointToken>(checkpoint_token_event);
+    }
+
+    fun checkpoint_token_internal_v2<RewardCoinType>(reward_distributor: &mut RewardDistributor<RewardCoinType>, added_tokens: u64, time: u64) {
+        let current_balance = reward_distributor.balance.value();
+        let balance_delta = added_tokens;
         let mut last_token_time = reward_distributor.last_token_time;
         let token_time_delta = time - last_token_time;
         let mut last_token_period = distribution::common::to_period(last_token_time);
