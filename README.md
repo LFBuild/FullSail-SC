@@ -62,8 +62,8 @@ Use `sui client publish` command.
     - Locker `0xddada1cefdef0bf2422fe6e1935d08fc077ee04e73cc2dfadd21788191f795f4`
 - [liquidity_locker upgrade 1](https://suivision.xyz/txblock/9wdhJjHc694CCUu5wJWhFXkfbgf911YZH3iuQMajN24m)
     - package `0x739330092888d91717c7c8cb8b13487037443594d266d8bf331c53b21abf5120`
-- [integrate](https://suivision.xyz/txblock/9sT6cWBdH1FyaQ6QuXkmJdJfJ5GspkRkLCr4pnT14bPs)
-    - package: `0x8378a2bfe6f2febf5fe0e081d7f10f95bc1dc16033ec4662a694351c951baf63`
+- [integrate](https://suivision.xyz/txblock/Aq5UR4pqt9mDgS6bVoQUsB8XXjAwnA4X2Xm4X6MReGpE)
+    - package: `0x2c8e69b337f0ef0df279246612d3bb762e51a9e78ff01934c3436003efd2d337`
 
 ### Testnet
 
