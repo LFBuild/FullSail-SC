@@ -1774,7 +1774,7 @@ module distribution::voting_escrow {
         ctx: &mut TxContext
     ) {
         let lock_id = object::id(lock);
-        assert!(voting_escrow.deactivated(lock_id), EIncreaseAmountDeactivatedLock);
+        assert!(!voting_escrow.deactivated(lock_id), EIncreaseAmountDeactivatedLock);
         let amount = coin.value();
         voting_escrow.balance.join(coin.into_balance());
         voting_escrow.increase_amount_for_internal(
