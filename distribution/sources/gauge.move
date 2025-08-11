@@ -66,6 +66,7 @@ module distribution::gauge {
     const EGetRewardGaugeNotAlive: u64 = 993998734106655200;
     const EGetRewardInvalidRewardToken: u64 = 364572745470385970;
     const EGetRewardPrevTokenNotClaimed: u64 = 863923888158323800;
+    const EIncorrectGrowthGlobal: u64 = 9234972947043423332;
 
     const EPrevRewardClaimedGaugeDoesNotMatchPool: u64 = 555281531268615500;
 
@@ -134,6 +135,7 @@ module distribution::gauge {
 
     public struct RewardProfile has store {
         growth_inside: u128,
+        growth_global: u128,
         amount: u64,
         last_update_time: u64,
     }
@@ -157,7 +159,8 @@ module distribution::gauge {
         pool_id: ID,
         position_id: ID,
         staked_position_id: ID,
-        start_growth_inside: u128
+        start_growth_inside: u128,
+        start_growth_global: u128,
     }
 
     public struct EventGaugeCreated has copy, drop, store {
@@ -175,6 +178,7 @@ module distribution::gauge {
         pool_id: ID,
         position_id: ID,
         growth_inside: u128,
+        growth_global: u128,
         amount: u64,
         token: TypeName,
     }
@@ -493,9 +497,11 @@ module distribution::gauge {
         let (lower_tick, upper_tick) = position.tick_range();
         let gauge_cap = gauge.gauge_cap.borrow();
         pool.update_fullsail_distribution_growth_global(gauge_cap, clock);
+        let growth_global = pool.get_fullsail_distribution_growth_global();
         if (!gauge.rewards.contains(position_id)) {
             let new_reward_profile = RewardProfile {
                 growth_inside: pool.get_fullsail_distribution_growth_inside(lower_tick, upper_tick, 0),
+                growth_global,
                 amount: 0,
                 last_update_time: clock.timestamp_ms() / 1000,
             };
@@ -503,6 +509,7 @@ module distribution::gauge {
         } else {
             let reward_profile = gauge.rewards.borrow_mut(position_id);
             reward_profile.growth_inside = pool.get_fullsail_distribution_growth_inside(lower_tick, upper_tick, 0);
+            reward_profile.growth_global = growth_global;
             reward_profile.last_update_time = clock.timestamp_ms() / 1000;
         };
 
@@ -524,7 +531,8 @@ module distribution::gauge {
             pool_id: object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool),
             position_id,
             staked_position_id: object::id<StakedPosition>(&staked_position),
-            start_growth_inside: gauge.rewards.borrow(position_id).growth_inside
+            start_growth_inside: gauge.rewards.borrow(position_id).growth_inside,
+            start_growth_global: growth_global,
         };
         sui::event::emit<EventDepositGauge>(deposit_gauge_event);
 
@@ -680,6 +688,9 @@ module distribution::gauge {
         } else {
             *gauge.growth_global_by_token.borrow(coin_type)
         };
+        // reward has already been claimed
+        assert!(current_growth_global > gauge.rewards.borrow(position_id).growth_global, EIncorrectGrowthGlobal);
+
         let prev_coin_type_opt: &Option<TypeName> = gauge.growth_global_by_token.prev(coin_type);
         let prev_coin_growth_global: u128 = if (prev_coin_type_opt.is_some()) {
             *gauge.growth_global_by_token.borrow(*prev_coin_type_opt.borrow())
@@ -1595,17 +1606,20 @@ module distribution::gauge {
         let reward_profile = gauge.rewards.borrow_mut(position_id);
 
         pool.update_fullsail_distribution_growth_global(gauge.gauge_cap.borrow(), clock);
+        let growth_global = pool.get_fullsail_distribution_growth_global();
 
         reward_profile.last_update_time = current_time;
         reward_profile.amount = reward_profile.amount + amount_earned;
 
         let amount_to_pay = reward_profile.amount;
         reward_profile.growth_inside = growth_inside;
+        reward_profile.growth_global = growth_global;
         let update_reward_event = EventUpdateRewardPosition {
             gauger_id: gauge_id,
             pool_id: object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool),
             position_id,
             growth_inside: reward_profile.growth_inside,
+            growth_global: reward_profile.growth_global,
             amount: reward_profile.amount,
             token: coin_type,
         };
@@ -1627,26 +1641,26 @@ module distribution::gauge {
     ): bool {
         assert!(gauge.check_gauger_pool(pool), EPrevRewardClaimedGaugeDoesNotMatchPool);
 
-        let position = gauge.staked_positions.borrow(position_id);
-        let (lower_tick, upper_tick) = position.tick_range();
+        // let position = gauge.staked_positions.borrow(position_id);
+        // let (lower_tick, upper_tick) = position.tick_range();
         let prev_coin_type_opt: &Option<TypeName> = gauge.growth_global_by_token.prev(up_to_coin_type);
         let prev_coin_growth_global: u128 = if (prev_coin_type_opt.is_some()) {
             *gauge.growth_global_by_token.borrow(*prev_coin_type_opt.borrow())
         } else {
             0_u128
         };
-        let prev_token_growth_inside = if (prev_coin_growth_global > 0) {
-            // get_fullsail_distribution_growth_inside replaces prev_coin_growth_global with 0 if prev_coin_growth_global is 0
-            pool.get_fullsail_distribution_growth_inside(
-                lower_tick,
-                upper_tick,
-                prev_coin_growth_global
-            )
-        } else {
-            0_u128
-        };
-        let claimed_all_tokens_growth_inside = gauge.rewards.borrow(position_id).growth_inside;
-        let prev_claimed = integer_mate::math_u128::greater_or_equal_overflowing(claimed_all_tokens_growth_inside, prev_token_growth_inside);
+        // let prev_token_growth_inside = if (prev_coin_growth_global > 0) {
+        //     // get_fullsail_distribution_growth_inside replaces prev_coin_growth_global with 0 if prev_coin_growth_global is 0
+        //     pool.get_fullsail_distribution_growth_inside(
+        //         lower_tick,
+        //         upper_tick,
+        //         prev_coin_growth_global
+        //     )
+        // } else {
+        //     0_u128
+        // };
+        let claimed_all_tokens_growth_global = gauge.rewards.borrow(position_id).growth_global;
+        let prev_claimed = integer_mate::math_u128::greater_or_equal_overflowing(claimed_all_tokens_growth_global, prev_coin_growth_global);
 
         prev_claimed
     }
