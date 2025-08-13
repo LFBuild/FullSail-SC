@@ -20,7 +20,6 @@ module distribution::gauge {
     use sui::linked_table::{Self, LinkedTable};
     use sui::balance::{Self, Balance};
     use std::type_name::{Self, TypeName};
-    use switchboard::aggregator::{Aggregator};
     use distribution::common;
     use distribution::distribution_config::{DistributionConfig};
     use distribution::voter_cap::{VoterCap};
@@ -1212,6 +1211,7 @@ module distribution::gauge {
     /// * `voter_cap` - Capability to notify rewards
     /// * `pool` - The associated pool
     /// * `usd_amount` - The amount of USD to distribute, decimals 6
+    /// * `o_sail_price_q64` - The oSAIL price in USD in Q64.64 format
     /// * `clock` - The system clock
     /// * `ctx` - Transaction context
     ///
@@ -1224,7 +1224,7 @@ module distribution::gauge {
         voter_cap: &VoterCap,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         usd_amount: u64,
-        aggregator: &Aggregator,
+        o_sail_price_q64: u128,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
@@ -1235,17 +1235,10 @@ module distribution::gauge {
         );
         assert!(distribution_config.is_gauge_alive(object::id(gauge)), ENotifyRewardWithoutClaimGaugeNotAlive);
         assert!(gauge.check_gauger_pool(pool), ENotifyRewardWithoutClaimInvalidPool);
-        assert!(distribution_config.is_valid_o_sail_price_aggregator(aggregator), ENotifyRewardWithoutClaimInvalidAggregator);
 
         assert!(usd_amount > 0, ENotifyRewardWithoutClaimInvalidAmount);
         gauge.notify_reward_amount_internal<CoinTypeA, CoinTypeB>(usd_amount, clock);
 
-        let o_sail_price_q64 = common::get_time_checked_price_q64(
-            aggregator,
-            common::sail_decimals(),
-            common::usd_decimals(),
-            clock
-        );
         gauge.sync_o_sail_distribution_price_internal(pool, o_sail_price_q64, clock);
     }
 
@@ -1257,6 +1250,7 @@ module distribution::gauge {
     /// * `voter_cap` - Capability to notify rewards
     /// * `pool` - The associated pool
     /// * `usd_amount` - The amount of USD to distribute, decimals 6
+    /// * `o_sail_price_q64` - The oSAIL price in USD in Q64.64 format
     /// * `clock` - The system clock
     /// * `ctx` - Transaction context
     ///
@@ -1272,7 +1266,7 @@ module distribution::gauge {
         voter_cap: &VoterCap,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         usd_amount: u64,
-        aggregator: &Aggregator,
+        o_sail_price_q64: u128,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): (Balance<CoinTypeA>, Balance<CoinTypeB>) {
@@ -1283,7 +1277,6 @@ module distribution::gauge {
         );
         assert!(distribution_config.is_gauge_alive(object::id(gauge)), ENotifyRewardGaugeNotAlive);
         assert!(gauge.check_gauger_pool(pool), ENotifyRewardInvalidPool);
-        assert!(distribution_config.is_valid_o_sail_price_aggregator(aggregator), ENotifyRewardInvalidAggregator);
         assert!(usd_amount > 0, ENotifyRewardInvalidAmount);
         let current_time = clock.timestamp_ms() / 1000;
         assert!(current_time < gauge.period_finish, ENotifyRewardEpochFinished);
@@ -1291,12 +1284,6 @@ module distribution::gauge {
         let (fee_a, fee_b) = gauge.claim_fees_internal(pool);
         gauge.notify_reward_amount_internal<CoinTypeA, CoinTypeB>(usd_amount, clock);
 
-        let o_sail_price_q64 = common::get_time_checked_price_q64(
-            aggregator,
-            common::sail_decimals(),
-            common::usd_decimals(),
-            clock
-        );
         gauge.sync_o_sail_distribution_price_internal(pool, o_sail_price_q64, clock);
         (fee_a, fee_b)
     }
@@ -1417,17 +1404,16 @@ module distribution::gauge {
     /// * `gauge` - The gauge instance
     /// * `distribution_config` - The distribution config
     /// * `pool` - The associated pool
-    /// * `aggregator` - The switchboard aggregator to get the oSAIL price from
+    /// * `o_sail_price_q64` - The oSAIL price in USD in Q64.64 format
     /// * `clock` - The system clock
     ///
     public(package) fun sync_o_sail_distribution_price<CoinTypeA, CoinTypeB>(
         gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
         distribution_config: &DistributionConfig,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        aggregator: &Aggregator,
+        o_sail_price_q64: u128,
         clock: &sui::clock::Clock,
     ) {
-        assert!(distribution_config.is_valid_o_sail_price_aggregator(aggregator), ESyncOsailDistributionPriceInvalidAggregator);
         assert!(
             object::id(distribution_config) == gauge.distribution_config,
             ESyncOsailDistributionPriceDistributionConfInvalid
@@ -1435,12 +1421,6 @@ module distribution::gauge {
         assert!(distribution_config.is_gauge_alive(object::id(gauge)), ESyncOsailDistributionPriceGaugeNotAlive);
         assert!(gauge.check_gauger_pool(pool), ESyncOsailDistributionPriceInvalidPool);
 
-        let o_sail_price_q64 = common::get_time_checked_price_q64(
-            aggregator,
-            common::sail_decimals(),
-            common::usd_decimals(),
-            clock
-        );
         gauge.sync_o_sail_distribution_price_internal(pool, o_sail_price_q64, clock);
     }
 

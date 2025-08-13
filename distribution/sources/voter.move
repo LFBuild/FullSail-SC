@@ -11,7 +11,6 @@ module distribution::voter {
     use sui::vec_set::{Self, VecSet};
     use sui::vec_map::{Self, VecMap};
     use std::type_name::{Self, TypeName};
-    use switchboard::aggregator::{Aggregator};
     
     const ECreateVoterInvalidPublisher: u64 = 831911472280262500;
 
@@ -750,6 +749,8 @@ module distribution::voter {
     /// * `distribution_config` - The distribution configuration
     /// * `gauge` - The gauge to distribute rewards to
     /// * `pool` - The liquidity pool associated with the gauge
+    /// * `usd_reward_amount` - The amount of reward to distribute in USD, decimals 6
+    /// * `o_sail_price_q64` - The oSAIL price in USD in Q64.64 format
     /// * `clock` - The system clock
     /// * `ctx` - The transaction context
     ///
@@ -768,7 +769,7 @@ module distribution::voter {
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         usd_reward_amount: u64,
-        aggregator: &Aggregator,
+        o_sail_price_q64: u128,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): u64 {
@@ -790,7 +791,7 @@ module distribution::voter {
             &voter.voter_cap,
             pool,
             usd_reward_amount,
-            aggregator,
+            o_sail_price_q64,
             clock,
             ctx
         );
@@ -832,7 +833,7 @@ module distribution::voter {
     /// * `gauge` - The gauge to notify reward to
     /// * `pool` - The pool to notify reward to
     /// * `usd_reward_amount` - The amount of reward to notify in usd, decimals 6
-    /// * `aggregator` - The aggregator to get o-sail price
+    /// * `o_sail_price_q64` - The oSAIL price in USD in Q64.64 format
     /// * `clock` - The system clock
     /// * `ctx` - The transaction context
     public(package) fun notify_gauge_reward_without_claim<CoinTypeA, CoinTypeB>(
@@ -842,7 +843,7 @@ module distribution::voter {
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         usd_reward_amount: u64,
-        aggregator: &Aggregator,
+        o_sail_price_q64: u128,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
@@ -854,7 +855,7 @@ module distribution::voter {
             &voter.voter_cap,
             pool,
             usd_reward_amount,
-            aggregator,
+            o_sail_price_q64,
             clock,
             ctx
         );

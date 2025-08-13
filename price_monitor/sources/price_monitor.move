@@ -13,6 +13,9 @@ module price_monitor::price_monitor {
     #[allow(unused_const)]
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
 
+    // Bump the `VERSION` of the package.
+    const VERSION: u64 = 1;
+
     use sui::object::{Self, UID, ID};
     use sui::table::{Self, Table};
     use sui::linked_table::{Self, LinkedTable};
@@ -20,14 +23,13 @@ module price_monitor::price_monitor {
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
     use sui::event;
+    use sui::vec_set::{Self, VecSet};
 
     use switchboard::decimal::{Self, Decimal};
     use switchboard::aggregator::{Self, Aggregator};
     use integer_mate::full_math_u128;
     use integer_mate::math_u128;
     use price_monitor::price_monitor_consts;
-
-
 
     // ===== ERROR CODES =====
 
@@ -42,6 +44,11 @@ module price_monitor::price_monitor {
     const EInvalidSailPool: u64 = 1009;
     const EInvalidAggregator: u64 = 1010;
     const EZeroPrice: u64 = 1011;
+    const EAdminNotWhitelisted: u64 = 1012;
+    const EAddressNotAdmin: u64 = 1013;
+    const EInvalidDeviationThreshold: u64 = 1014;
+    const EInvalidZScoreThreshold: u64 = 1015;
+    const EPackageVersionMismatch: u64 = 1016;
 
     const EDecimalToQ64NegativeNotSupported: u64 = 440708559177319000;
     const EGetTimeCheckedPriceOutdated: u64 = 286529906002696900;
@@ -63,7 +70,6 @@ module price_monitor::price_monitor {
         emergency_zscore_threshold: u64,
         
         // Circuit breaker thresholds
-        warning_anomaly_threshold: u64,
         critical_anomaly_threshold: u64,
         emergency_anomaly_threshold: u64,
         
@@ -74,6 +80,15 @@ module price_monitor::price_monitor {
         // History configuration
         max_price_history_size: u64,
         min_prices_for_analysis: u64,
+        
+        // Validation method toggles
+        enable_oracle_pool_validation: bool,      // Enable/disable oracle-pool deviation validation
+        enable_oracle_history_validation: bool,   // Enable/disable oracle-history deviation validation
+        enable_statistical_validation: bool,      // Enable/disable statistical anomaly detection
+        
+        // Escalation control toggles
+        enable_critical_escalation: bool,         // Enable/disable escalation for critical level anomalies
+        enable_emergency_escalation: bool,        // Enable/disable escalation for emergency level anomalies
     }
 
     /// Individual price point with metadata
@@ -90,6 +105,8 @@ module price_monitor::price_monitor {
     /// Main price monitor instance
     public struct PriceMonitor has store, key {
         id: UID,
+        price_monitor_cap: Option<PriceMonitorCap>,
+        version: u64,
         
         // Configuration
         config: PriceMonitorConfig,
@@ -108,9 +125,14 @@ module price_monitor::price_monitor {
         // Circuit breaker state
         is_emergency_paused: bool,
         pause_timestamp_ms: u64,
-        pause_reason: vector<u8>,
-        pause_level: u8,             // 0=none, 1=warning, 2=critical, 3=emergency
+        last_anomaly_level: u8,             // 0=none, 1=warning, 2=critical, 3=emergency
         last_anomaly_timestamp_ms: u64,
+        
+        // Admin management
+        admins: VecSet<address>,
+
+        // bag to be preapred for future updates
+        bag: sui::bag::Bag,
     }
 
     /// Capability for managing price monitor
@@ -120,21 +142,40 @@ module price_monitor::price_monitor {
     }
 
     /// Capability for emergency operations
-    public struct EmergencyCap has store, key {
+    public struct SuperAdminCap has store, key {
         id: UID,
-        monitor_id: ID,
     }
 
     // ===== EVENTS =====
 
-    /// Event emitted when price anomaly is detected
-    public struct EventPriceAnomalyDetected has copy, drop, store {
+    /// Event emitted when oracle-pool deviation anomaly is detected
+    public struct EventOraclePoolAnomalyDetected has copy, drop, store {
         monitor_id: ID,
         oracle_price_q64: u128,
         pool_price_q64: u128,
         deviation_bps: u64,
+        anomaly_level: u8,
+        anomaly_flags: u8,
+        timestamp_ms: u64,
+    }
+
+    /// Event emitted when oracle-history deviation anomaly is detected
+    public struct EventOracleHistoryAnomalyDetected has copy, drop, store {
+        monitor_id: ID,
+        oracle_price_q64: u128,
+        deviation_bps: u64,
+        anomaly_level: u8,
+        anomaly_flags: u8,
+        timestamp_ms: u64,
+    }
+
+    /// Event emitted when statistical anomaly is detected
+    public struct EventStatisticalAnomalyDetected has copy, drop, store {
+        monitor_id: ID,
+        oracle_price_q64: u128,
         z_score: u128,
         anomaly_level: u8,
+        anomaly_flags: u8,
         timestamp_ms: u64,
     }
 
@@ -142,7 +183,6 @@ module price_monitor::price_monitor {
     public struct EventCircuitBreakerActivated has copy, drop, store {
         monitor_id: ID,
         level: u8,                   // 1=warning, 2=critical, 3=emergency
-        reason: vector<u8>,
         timestamp_ms: u64,
     }
 
@@ -171,17 +211,23 @@ module price_monitor::price_monitor {
             warning_zscore_threshold: price_monitor_consts::get_warning_zscore_threshold(),
             critical_zscore_threshold: price_monitor_consts::get_critical_zscore_threshold(),
             emergency_zscore_threshold: price_monitor_consts::get_emergency_zscore_threshold(),
-            warning_anomaly_threshold: price_monitor_consts::get_warning_anomaly_threshold(),
             critical_anomaly_threshold: price_monitor_consts::get_critical_anomaly_threshold(),
             emergency_anomaly_threshold: price_monitor_consts::get_emergency_anomaly_threshold(),
             anomaly_cooldown_period_ms: price_monitor_consts::get_anomaly_cooldown_period_ms(),
             max_price_age_ms: price_monitor_consts::get_max_price_age_ms(),
             max_price_history_size: price_monitor_consts::get_max_price_history_size(),
             min_prices_for_analysis: price_monitor_consts::get_min_prices_for_analysis(),
+            enable_oracle_pool_validation: price_monitor_consts::get_enable_oracle_pool_validation(),
+            enable_oracle_history_validation: price_monitor_consts::get_enable_oracle_history_validation(),
+            enable_statistical_validation: price_monitor_consts::get_enable_statistical_validation(),
+            enable_critical_escalation: price_monitor_consts::get_enable_critical_escalation(),
+            enable_emergency_escalation: price_monitor_consts::get_enable_emergency_escalation(),
         };
 
-        let monitor = PriceMonitor {
+        let mut monitor = PriceMonitor {
             id: object::new(ctx),
+            price_monitor_cap: option::none<PriceMonitorCap>(),
+            version: VERSION,
             config,
             aggregator_to_pools: table::new(ctx),
             price_history: linked_table::new(ctx),
@@ -191,26 +237,39 @@ module price_monitor::price_monitor {
             consecutive_anomalies: 0,
             is_emergency_paused: false,
             pause_timestamp_ms: 0,
-            pause_reason: vector::empty<u8>(),
-            pause_level: 0,
-
+            last_anomaly_level: price_monitor_consts::get_anomaly_level_normal(),
+            admins: vec_set::empty<address>(),
+            bag: sui::bag::new(ctx),
         };
+
+        // Add the first admin (transaction sender)
+        monitor.admins.insert(sui::tx_context::sender(ctx));
 
         let monitor_cap = PriceMonitorCap {
             id: object::new(ctx),
             monitor_id: object::id(&monitor),
         };
 
-        transfer::transfer<PriceMonitorCap>(monitor_cap, sui::tx_context::sender(ctx));
+        monitor.price_monitor_cap.fill(monitor_cap);
 
-        let emergency_cap = EmergencyCap {
+        let emergency_cap = SuperAdminCap {
             id: object::new(ctx),
-            monitor_id: object::id(&monitor),
         };
 
-        transfer::transfer<EmergencyCap>(emergency_cap, sui::tx_context::sender(ctx));
+        transfer::transfer<SuperAdminCap>(emergency_cap, sui::tx_context::sender(ctx));
 
         transfer::share_object<PriceMonitor>(monitor);
+    }
+
+    /// Checks if the package version matches the expected version.
+    /// 
+    /// # Arguments
+    /// * `monitor` - The price monitor object to check
+    /// 
+    /// # Abort Conditions
+    /// * If the package version is not a version of price_monitor_v1 (error code: EPackageVersionMismatch)
+    public fun checked_package_version(monitor: &PriceMonitor) {
+        assert!(monitor.version == VERSION, EPackageVersionMismatch);
     }
 
     // ===== AGGREGATOR MANAGEMENT =====
@@ -218,29 +277,35 @@ module price_monitor::price_monitor {
     /// Add an aggregator with associated pools
     public fun add_aggregator(
         monitor: &mut PriceMonitor,
-        _cap: &PriceMonitorCap,
         aggregator_id: ID,
         pool_ids: vector<ID>,
+        ctx: &mut TxContext,
     ) {
+        checked_package_version(monitor);
+        check_admin(monitor, sui::tx_context::sender(ctx));
         monitor.aggregator_to_pools.add(aggregator_id, pool_ids);
     }
 
     /// Remove an aggregator and its associated pools
     public fun remove_aggregator(
         monitor: &mut PriceMonitor,
-        _cap: &PriceMonitorCap,
         aggregator_id: ID,
+        ctx: &mut TxContext,
     ) {
+        checked_package_version(monitor);
+        check_admin(monitor, sui::tx_context::sender(ctx));
         monitor.aggregator_to_pools.remove(aggregator_id);
     }
 
     /// Add a pool to an existing aggregator
     public fun add_pool_to_aggregator(
         monitor: &mut PriceMonitor,
-        _cap: &PriceMonitorCap,
         aggregator_id: ID,
         pool_id: ID,
+        ctx: &mut TxContext,
     ) {
+        checked_package_version(monitor);
+        check_admin(monitor, sui::tx_context::sender(ctx));
         assert!(monitor.aggregator_to_pools.contains(aggregator_id), EInvalidAggregator);
         // Check if pool is already associated with this aggregator
         assert!(!is_pool_associated_with_aggregator(monitor, aggregator_id, pool_id), EInvalidSailPool);
@@ -251,10 +316,12 @@ module price_monitor::price_monitor {
     /// Remove a pool from an aggregator
     public fun remove_pool_from_aggregator(
         monitor: &mut PriceMonitor,
-        _cap: &PriceMonitorCap,
         aggregator_id: ID,
         pool_id: ID,
+        ctx: &mut TxContext,
     ) {
+        checked_package_version(monitor);
+        check_admin(monitor, sui::tx_context::sender(ctx));
         assert!(monitor.aggregator_to_pools.contains(aggregator_id), EInvalidAggregator);
         assert!(is_pool_associated_with_aggregator(monitor, aggregator_id, pool_id), EInvalidSailPool);
         let pools = monitor.aggregator_to_pools.borrow_mut(aggregator_id);
@@ -269,23 +336,6 @@ module price_monitor::price_monitor {
         };
     }
 
-    // ===== CONFIGURATION MANAGEMENT =====
-
-    /// Update price monitor configuration
-    public fun update_config(
-        monitor: &mut PriceMonitor,
-        _cap: &PriceMonitorCap,
-        new_config: PriceMonitorConfig,
-    ) {
-        monitor.config = new_config;
-    }
-
-    /// Get current configuration
-    public fun get_config(monitor: &PriceMonitor): &PriceMonitorConfig {
-        &monitor.config
-    }
-
-
     // ===== CORE PRICE MONITORING FUNCTIONS =====
 
     /// Main function to validate and monitor prices
@@ -296,6 +346,8 @@ module price_monitor::price_monitor {
         sail_stablecoin_pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         clock: &Clock,
     ): PriceValidationResult {
+        checked_package_version(monitor);
+        
         let aggregator_id = object::id(aggregator);
         let pool_id = object::id(sail_stablecoin_pool);
         
@@ -316,50 +368,83 @@ module price_monitor::price_monitor {
         assert!(pool_price_q64 > 0, EZeroPrice);
 
         // 1. Multi-Oracle Validation
-        let deviation_result = validate_oracle_pool_deviation(
-            monitor,
-            oracle_price_q64,
-            pool_price_q64
-        );
+        let deviation_result = if (monitor.config.enable_oracle_pool_validation) {
+            validate_oracle_pool_deviation(
+                monitor,
+                oracle_price_q64,
+                pool_price_q64
+            )
+        } else {
+            DeviationValidationResult {
+                deviation_bps: 0,
+                anomaly_level: price_monitor_consts::get_anomaly_level_normal(),
+                anomaly_flags: price_monitor_consts::get_anomaly_flag_none(),
+            }
+        };
+
+        // 2. Oracle-History Deviation Validation
+        let history_deviation_result = if (monitor.config.enable_oracle_history_validation) {
+            validate_oracle_history_deviation(
+                monitor,
+                oracle_price_q64
+            )
+        } else {
+            DeviationValidationResult {
+                deviation_bps: 0,
+                anomaly_level: price_monitor_consts::get_anomaly_level_normal(),
+                anomaly_flags: price_monitor_consts::get_anomaly_flag_none(),
+            }
+        };
         
-        // 2. Statistical Anomaly Detection
-        let statistical_result = validate_statistical_anomaly(
-            monitor,
-            oracle_price_q64
-        );
+        // 3. Statistical Anomaly Detection
+        let statistical_result = if (monitor.config.enable_statistical_validation) {
+            validate_statistical_anomaly(
+                monitor,
+                oracle_price_q64
+            )
+        } else {
+            StatisticalValidationResult {
+                z_score: 0,
+                anomaly_level: price_monitor_consts::get_anomaly_level_normal(),
+                anomaly_flags: price_monitor_consts::get_anomaly_flag_none(),
+            }
+        };
         
-        // 3. Update price history
+        // 4. Update price history
         let price_point = create_price_point(
             oracle_price_q64,
             pool_price_q64,
             deviation_result.deviation_bps,
             statistical_result.z_score,
             current_time_ms,
-            deviation_result.anomaly_level,
-            deviation_result.anomaly_flags
+            math_u128::max(
+                deviation_result.anomaly_level as u128,
+                history_deviation_result.anomaly_level as u128
+            ) as u8,
+            math_u128::max(
+                deviation_result.anomaly_flags as u128,
+                history_deviation_result.anomaly_flags as u128
+            ) as u8
         );
         
         add_price_to_history(monitor, price_point);
         
-        // 4. Circuit Breaker Logic
+        // 5. Circuit Breaker Logic
         let circuit_breaker_result = evaluate_circuit_breaker(
             monitor,
             &deviation_result,
+            &history_deviation_result,
             &statistical_result,
             current_time_ms
         );
         
-        // 5. Store values before moving variables
-        let deviation_bps = deviation_result.deviation_bps;
-        let z_score = statistical_result.z_score;
-        let circuit_level = circuit_breaker_result.level;
-        let circuit_recommendation = circuit_breaker_result.recommendation;
         
         // 6. Emit events
         emit_validation_events(
             monitor, 
             &deviation_result, 
             &statistical_result, 
+            &history_deviation_result,
             &circuit_breaker_result,
             oracle_price_q64,
             pool_price_q64,
@@ -367,10 +452,11 @@ module price_monitor::price_monitor {
         );
         
         // 7. Update monitor state
-        update_monitor_state(monitor, circuit_breaker_result, current_time_ms);
+        update_monitor_state(monitor, &circuit_breaker_result, current_time_ms);
         
         PriceValidationResult {
-            should_return: circuit_level < price_monitor_consts::get_anomaly_level_emergency(), // Level 3 = Emergency
+            is_valid: circuit_breaker_result.level == price_monitor_consts::get_anomaly_level_normal(),
+            escalation_activation: circuit_breaker_result.should_escalate,
             price_q64: oracle_price_q64,
         }
     }
@@ -431,6 +517,59 @@ module price_monitor::price_monitor {
         }
     }
 
+    /// Validate deviation between oracle price and last price from history
+    fun validate_oracle_history_deviation(
+        monitor: &PriceMonitor,
+        oracle_price_q64: u128,
+    ): DeviationValidationResult {
+        let history_length = monitor.price_history.length();
+        if (history_length == 0) {
+            return DeviationValidationResult {
+                deviation_bps: 0,
+                anomaly_level: price_monitor_consts::get_anomaly_level_normal(),
+                anomaly_flags: price_monitor_consts::get_anomaly_flag_none(),
+            }
+        };
+        
+        // Get the most recent price from history (front of LinkedTable)
+        let last_price_key_opt = monitor.price_history.front();
+        if (last_price_key_opt.is_none()) {
+            return DeviationValidationResult {
+                deviation_bps: 0,
+                anomaly_level: price_monitor_consts::get_anomaly_level_normal(),
+                anomaly_flags: price_monitor_consts::get_anomaly_flag_none(),
+            }
+        };
+        
+        let last_price_key = last_price_key_opt.borrow();
+        let last_price_point = monitor.price_history.borrow(*last_price_key);
+        let last_price_history_q64 = last_price_point.oracle_price_q64;
+        
+        let deviation_bps = calculate_deviation_bps(oracle_price_q64, last_price_history_q64);
+        
+        let anomaly_level = if (deviation_bps >= price_monitor_consts::get_emergency_history_deviation_bps()) {
+            price_monitor_consts::get_anomaly_level_emergency()
+        } else if (deviation_bps >= price_monitor_consts::get_critical_history_deviation_bps()) {
+            price_monitor_consts::get_anomaly_level_critical()
+        } else if (deviation_bps >= price_monitor_consts::get_warning_history_deviation_bps()) {
+            price_monitor_consts::get_anomaly_level_warning()
+        } else {
+            price_monitor_consts::get_anomaly_level_normal()
+        };
+        
+        let anomaly_flags = if (anomaly_level > price_monitor_consts::get_anomaly_level_normal()) { 
+            price_monitor_consts::get_anomaly_flag_deviation() 
+        } else { 
+            price_monitor_consts::get_anomaly_flag_none()
+        };
+        
+        DeviationValidationResult {
+            deviation_bps,
+            anomaly_level,
+            anomaly_flags,
+        }
+    }
+
     /// Calculate deviation between two prices in basis points
     fun calculate_deviation_bps(price1_q64: u128, base_price_q64: u128): u64 {
         if (base_price_q64 == 0) return 0;
@@ -462,8 +601,8 @@ module price_monitor::price_monitor {
         if (history_length < monitor.config.min_prices_for_analysis) {
             return StatisticalValidationResult {
                 z_score: 0,
-                anomaly_level: 0,
-                anomaly_flags: 0,
+                anomaly_level: price_monitor_consts::get_anomaly_level_normal(),
+                anomaly_flags: price_monitor_consts::get_anomaly_flag_none(),
             }
         };
         
@@ -472,8 +611,8 @@ module price_monitor::price_monitor {
         if (std_dev == 0) {
             return StatisticalValidationResult {
                 z_score: 0,
-                anomaly_level: 0,
-                anomaly_flags: 0,
+                anomaly_level: price_monitor_consts::get_anomaly_level_normal(),
+                anomaly_flags: price_monitor_consts::get_anomaly_flag_none(),
             }
         };
         
@@ -491,7 +630,7 @@ module price_monitor::price_monitor {
             price_monitor_consts::get_anomaly_level_normal()
         };
         
-        let anomaly_flags = if (anomaly_level > 0) {
+        let anomaly_flags = if (anomaly_level > price_monitor_consts::get_anomaly_level_normal()) {
             price_monitor_consts::get_anomaly_flag_statistical()
         } else {
             price_monitor_consts::get_anomaly_flag_none()
@@ -585,12 +724,16 @@ module price_monitor::price_monitor {
     fun evaluate_circuit_breaker(
         monitor: &PriceMonitor,
         deviation_result: &DeviationValidationResult,
+        history_deviation_result: &DeviationValidationResult,
         statistical_result: &StatisticalValidationResult,
         current_time_ms: u64,
     ): CircuitBreakerResult {
         let max_anomaly_level = math_u128::max(
-            deviation_result.anomaly_level as u128,
-            statistical_result.anomaly_level as u128
+            math_u128::max(
+                deviation_result.anomaly_level as u128,
+                statistical_result.anomaly_level as u128
+            ),
+            history_deviation_result.anomaly_level as u128
         ) as u8;
         
         let should_escalate = should_escalate_circuit_breaker(
@@ -598,20 +741,11 @@ module price_monitor::price_monitor {
             max_anomaly_level,
             current_time_ms
         );
-        
-        let new_level = if (should_escalate) {
-            math_u128::max(monitor.pause_level as u128, max_anomaly_level as u128) as u8
-        } else {
-            monitor.pause_level
-        };
-        
-        let recommendation = get_recommendation(new_level);
-        
+                        
         CircuitBreakerResult {
-            level: new_level,
-            should_activate: new_level > 0,
+            level: max_anomaly_level,
+            should_activate: max_anomaly_level != price_monitor_consts::get_anomaly_level_normal(),
             should_escalate,
-            recommendation,
         }
     }
 
@@ -621,36 +755,26 @@ module price_monitor::price_monitor {
         anomaly_level: u8,
         current_time_ms: u64,
     ): bool {
-        if (anomaly_level == 0) return false;
+        if (anomaly_level == price_monitor_consts::get_anomaly_level_normal()) return false;
         
         // Check cooldown period
         if ((current_time_ms - monitor.last_anomaly_timestamp_ms) < monitor.config.anomaly_cooldown_period_ms) {
             return false
         };
-        
-        // Check consecutive anomalies
-        if (monitor.consecutive_anomalies >= monitor.config.emergency_anomaly_threshold) {
+
+        // Check critical anomalies
+        if (monitor.consecutive_anomalies >= monitor.config.critical_anomaly_threshold && 
+            monitor.config.enable_critical_escalation) {
             return true
         };
         
-        // Check if anomaly level is higher than current pause level
-        anomaly_level > monitor.pause_level
-    }
-
-    /// Get recommendation based on anomaly level
-    fun get_recommendation(level: u8): vector<u8> {
-        // if (level == 0) {
-        //     vector::singleton(b"CONTINUE_NORMAL_OPERATIONS")
-        // } else if (level == 1) {
-        //     vector::singleton(b"INCREASE_MONITORING_FREQUENCY")
-        // } else if (level == 2) {
-        //     vector::singleton(b"PAUSE_CRITICAL_OPERATIONS")
-        // } else if (level == 3) {
-        //     vector::singleton(b"EMERGENCY_PAUSE_ALL_OPERATIONS")
-        // } else {
-        //     vector::singleton(b"UNKNOWN_LEVEL")
-        // }
-        vector::empty<u8>()
+        // Check emergency anomalies
+        if (monitor.consecutive_anomalies >= monitor.config.emergency_anomaly_threshold && 
+            monitor.config.enable_emergency_escalation) {
+            return true
+        };
+        
+        false
     }
 
     // ===== PRICE HISTORY MANAGEMENT =====
@@ -687,24 +811,28 @@ module price_monitor::price_monitor {
         };
     }
 
-
-
     // ===== STATE MANAGEMENT =====
 
     /// Update monitor state based on circuit breaker results
     fun update_monitor_state(
         monitor: &mut PriceMonitor,
-        circuit_breaker_result: CircuitBreakerResult,
+        circuit_breaker_result: &CircuitBreakerResult,
         current_time_ms: u64,
     ) {
-        if (circuit_breaker_result.should_activate) {
+        if (circuit_breaker_result.should_escalate) {
             monitor.is_emergency_paused = true;
             monitor.pause_timestamp_ms = current_time_ms;
-            monitor.pause_level = circuit_breaker_result.level;
+        } else {
+            monitor.is_emergency_paused = false;
+        };
+        
+        if (circuit_breaker_result.should_activate) {     
             monitor.consecutive_anomalies = monitor.consecutive_anomalies + 1;
+            monitor.anomaly_count = monitor.anomaly_count + 1;
         } else {
             monitor.consecutive_anomalies = 0;
         };
+        monitor.last_anomaly_level = circuit_breaker_result.level;
     }
 
     // ===== EVENT EMISSION =====
@@ -714,26 +842,50 @@ module price_monitor::price_monitor {
         monitor: &PriceMonitor,
         deviation_result: &DeviationValidationResult,
         statistical_result: &StatisticalValidationResult,
+        history_deviation_result: &DeviationValidationResult,
         circuit_breaker_result: &CircuitBreakerResult,
         oracle_price_q64: u128,
         pool_price_q64: u128,
         current_time_ms: u64,
     ) {
-        // Emit price anomaly event if any anomaly detected
-        if (deviation_result.anomaly_level > 0 || statistical_result.anomaly_level > 0) {
-            let anomaly_event = EventPriceAnomalyDetected {
+        // Emit oracle-pool deviation anomaly event if detected
+        if (deviation_result.anomaly_level > price_monitor_consts::get_anomaly_level_normal()) {
+            let oracle_pool_event = EventOraclePoolAnomalyDetected {
                 monitor_id: object::id(monitor),
                 oracle_price_q64,
                 pool_price_q64,
                 deviation_bps: deviation_result.deviation_bps,
-                z_score: statistical_result.z_score,
-                anomaly_level: math_u128::max(
-                    deviation_result.anomaly_level as u128,
-                    statistical_result.anomaly_level as u128
-                ) as u8,
+                anomaly_level: deviation_result.anomaly_level,
+                anomaly_flags: deviation_result.anomaly_flags,
                 timestamp_ms: current_time_ms,
             };
-            event::emit(anomaly_event);
+            event::emit(oracle_pool_event);
+        };
+
+        // Emit oracle-history deviation anomaly event if detected
+        if (history_deviation_result.anomaly_level > price_monitor_consts::get_anomaly_level_normal()) {
+            let oracle_history_event = EventOracleHistoryAnomalyDetected {
+                monitor_id: object::id(monitor),
+                oracle_price_q64,
+                deviation_bps: history_deviation_result.deviation_bps,
+                anomaly_level: history_deviation_result.anomaly_level,
+                anomaly_flags: history_deviation_result.anomaly_flags,
+                timestamp_ms: current_time_ms,
+            };
+            event::emit(oracle_history_event);
+        };
+
+        // Emit statistical anomaly event if detected
+        if (statistical_result.anomaly_level > price_monitor_consts::get_anomaly_level_normal()) {
+            let statistical_event = EventStatisticalAnomalyDetected {
+                monitor_id: object::id(monitor),
+                oracle_price_q64,
+                z_score: statistical_result.z_score,
+                anomaly_level: statistical_result.anomaly_level,
+                anomaly_flags: statistical_result.anomaly_flags,
+                timestamp_ms: current_time_ms,
+            };
+            event::emit(statistical_event);
         };
         
         // Emit circuit breaker events
@@ -741,7 +893,6 @@ module price_monitor::price_monitor {
             let circuit_breaker_event = EventCircuitBreakerActivated {
                 monitor_id: object::id(monitor),
                 level: circuit_breaker_result.level,
-                reason: circuit_breaker_result.recommendation,
                 timestamp_ms: current_time_ms,
             };
             event::emit(circuit_breaker_event);
@@ -756,15 +907,277 @@ module price_monitor::price_monitor {
         event::emit(history_event);
     }
 
+    // ===== CONFIGURATION MANAGEMENT =====
+
+    /// Create a new PriceMonitorConfig with specified parameters
+    /// 
+    /// # Arguments
+    /// * `warning_deviation_bps` - Warning deviation threshold in basis points
+    /// * `critical_deviation_bps` - Critical deviation threshold in basis points
+    /// * `emergency_deviation_bps` - Emergency deviation threshold in basis points
+    /// * `warning_zscore_threshold` - Warning Z-Score threshold (scaled by BASIS_POINTS_DENOMINATOR)
+    /// * `critical_zscore_threshold` - Critical Z-Score threshold (scaled by BASIS_POINTS_DENOMINATOR)
+    /// * `emergency_zscore_threshold` - Emergency Z-Score threshold (scaled by BASIS_POINTS_DENOMINATOR)
+    /// * `critical_anomaly_threshold` - Number of consecutive anomalies to trigger critical escalation
+    /// * `emergency_anomaly_threshold` - Number of consecutive anomalies to trigger emergency escalation
+    /// * `anomaly_cooldown_period_ms` - Cooldown period between anomaly escalations in milliseconds
+    /// * `max_price_age_ms` - Maximum age of oracle prices in milliseconds
+    /// * `max_price_history_size` - Maximum number of price points to store in history
+    /// * `min_prices_for_analysis` - Minimum number of prices required for statistical analysis
+    /// * `enable_oracle_pool_validation` - Enable/disable oracle-pool deviation validation
+    /// * `enable_oracle_history_validation` - Enable/disable oracle-history deviation validation
+    /// * `enable_statistical_validation` - Enable/disable statistical anomaly detection
+    /// * `enable_critical_escalation` - Enable/disable escalation for critical level anomalies
+    /// * `enable_emergency_escalation` - Enable/disable escalation for emergency level anomalies
+    /// 
+    /// # Returns
+    /// A new PriceMonitorConfig instance with the specified parameters
+    /// 
+    /// # Aborts
+    /// * If any deviation threshold exceeds BASIS_POINTS_DENOMINATOR (error code: EInvalidDeviationThreshold)
+    /// * If any Z-Score threshold exceeds BASIS_POINTS_DENOMINATOR (error code: EInvalidZScoreThreshold)
+    public fun create_config(
+        warning_deviation_bps: u64,
+        critical_deviation_bps: u64,
+        emergency_deviation_bps: u64,
+        warning_zscore_threshold: u64,
+        critical_zscore_threshold: u64,
+        emergency_zscore_threshold: u64,
+        critical_anomaly_threshold: u64,
+        emergency_anomaly_threshold: u64,
+        anomaly_cooldown_period_ms: u64,
+        max_price_age_ms: u64,
+        max_price_history_size: u64,
+        min_prices_for_analysis: u64,
+        enable_oracle_pool_validation: bool,
+        enable_oracle_history_validation: bool,
+        enable_statistical_validation: bool,
+        enable_critical_escalation: bool,
+        enable_emergency_escalation: bool,
+    ): PriceMonitorConfig {
+        // Validate that deviation thresholds don't exceed BASIS_POINTS_DENOMINATOR
+        assert!(warning_deviation_bps <= price_monitor_consts::get_basis_points_denominator(), EInvalidDeviationThreshold);
+        assert!(critical_deviation_bps <= price_monitor_consts::get_basis_points_denominator(), EInvalidDeviationThreshold);
+        assert!(emergency_deviation_bps <= price_monitor_consts::get_basis_points_denominator(), EInvalidDeviationThreshold);
+        
+        // Validate that Z-Score thresholds don't exceed BASIS_POINTS_DENOMINATOR
+        assert!(warning_zscore_threshold <= price_monitor_consts::get_basis_points_denominator(), EInvalidZScoreThreshold);
+        assert!(critical_zscore_threshold <= price_monitor_consts::get_basis_points_denominator(), EInvalidZScoreThreshold);
+        assert!(emergency_zscore_threshold <= price_monitor_consts::get_basis_points_denominator(), EInvalidZScoreThreshold);
+        
+        PriceMonitorConfig {
+            warning_deviation_bps,
+            critical_deviation_bps,
+            emergency_deviation_bps,
+            warning_zscore_threshold,
+            critical_zscore_threshold,
+            emergency_zscore_threshold,
+            critical_anomaly_threshold,
+            emergency_anomaly_threshold,
+            anomaly_cooldown_period_ms,
+            max_price_age_ms,
+            max_price_history_size,
+            min_prices_for_analysis,
+            enable_oracle_pool_validation,
+            enable_oracle_history_validation,
+            enable_statistical_validation,
+            enable_critical_escalation,
+            enable_emergency_escalation,
+        }
+    }
+
+    /// Update price monitor configuration
+    public fun update_config(
+        monitor: &mut PriceMonitor,
+        new_config: PriceMonitorConfig,
+        ctx: &mut TxContext,
+    ) {
+        checked_package_version(monitor);
+        check_admin(monitor, sui::tx_context::sender(ctx));
+        monitor.config = new_config;
+    }
+
+    /// Get current configuration
+    public fun get_config(monitor: &PriceMonitor): &PriceMonitorConfig {
+        &monitor.config
+    }
+
+    /// Update deviation thresholds (warning, critical, emergency) in basis points
+    /// 
+    /// # Arguments
+    /// * `monitor` - The price monitor object to update
+    /// * `warning_deviation_bps` - New warning deviation threshold in basis points
+    /// * `critical_deviation_bps` - New critical deviation threshold in basis points
+    /// * `emergency_deviation_bps` - New emergency deviation threshold in basis points
+    /// * `ctx` - The transaction context
+    /// 
+    /// # Aborts
+    /// * If the sender is not an admin (error code: EAdminNotWhitelisted)
+    /// * If any deviation threshold exceeds BASIS_POINTS_DENOMINATOR (error code: EInvalidDeviationThreshold)
+    public fun update_deviation_thresholds(
+        monitor: &mut PriceMonitor,
+        warning_deviation_bps: u64,
+        critical_deviation_bps: u64,
+        emergency_deviation_bps: u64,
+        ctx: &mut TxContext,
+    ) {
+        checked_package_version(monitor);
+        check_admin(monitor, sui::tx_context::sender(ctx));
+        
+        // Validate that thresholds don't exceed BASIS_POINTS_DENOMINATOR
+        assert!(warning_deviation_bps <= price_monitor_consts::get_basis_points_denominator(), EInvalidDeviationThreshold);
+        assert!(critical_deviation_bps <= price_monitor_consts::get_basis_points_denominator(), EInvalidDeviationThreshold);
+        assert!(emergency_deviation_bps <= price_monitor_consts::get_basis_points_denominator(), EInvalidDeviationThreshold);
+        
+        monitor.config.warning_deviation_bps = warning_deviation_bps;
+        monitor.config.critical_deviation_bps = critical_deviation_bps;
+        monitor.config.emergency_deviation_bps = emergency_deviation_bps;
+    }
+
+    /// Update Z-Score thresholds (warning, critical, emergency) scaled by BASIS_POINTS_DENOMINATOR
+    /// 
+    /// # Arguments
+    /// * `monitor` - The price monitor object to update
+    /// * `warning_zscore_threshold` - New warning Z-Score threshold
+    /// * `critical_zscore_threshold` - New critical Z-Score threshold
+    /// * `emergency_zscore_threshold` - New emergency Z-Score threshold
+    /// * `ctx` - The transaction context
+    /// 
+    /// # Aborts
+    /// * If the sender is not an admin (error code: EAdminNotWhitelisted)
+    /// * If any Z-Score threshold exceeds BASIS_POINTS_DENOMINATOR (error code: EInvalidZScoreThreshold)
+    public fun update_zscore_thresholds(
+        monitor: &mut PriceMonitor,
+        warning_zscore_threshold: u64,
+        critical_zscore_threshold: u64,
+        emergency_zscore_threshold: u64,
+        ctx: &mut TxContext,
+    ) {
+        checked_package_version(monitor);
+        check_admin(monitor, sui::tx_context::sender(ctx));
+        
+        // Validate that thresholds don't exceed BASIS_POINTS_DENOMINATOR
+        assert!(warning_zscore_threshold <= price_monitor_consts::get_basis_points_denominator(), EInvalidZScoreThreshold);
+        assert!(critical_zscore_threshold <= price_monitor_consts::get_basis_points_denominator(), EInvalidZScoreThreshold);
+        assert!(emergency_zscore_threshold <= price_monitor_consts::get_basis_points_denominator(), EInvalidZScoreThreshold);
+        
+        monitor.config.warning_zscore_threshold = warning_zscore_threshold;
+        monitor.config.critical_zscore_threshold = critical_zscore_threshold;
+        monitor.config.emergency_zscore_threshold = emergency_zscore_threshold;
+    }
+
+    /// Update anomaly escalation thresholds and cooldown period
+    /// 
+    /// # Arguments
+    /// * `monitor` - The price monitor object to update
+    /// * `critical_anomaly_threshold` - New number of consecutive anomalies to trigger critical escalation
+    /// * `emergency_anomaly_threshold` - New number of consecutive anomalies to trigger emergency escalation
+    /// * `anomaly_cooldown_period_ms` - New cooldown period between anomaly escalations in milliseconds
+    /// * `ctx` - The transaction context
+    /// 
+    /// # Aborts
+    /// * If the sender is not an admin (error code: EAdminNotWhitelisted)
+    public fun update_anomaly_thresholds(
+        monitor: &mut PriceMonitor,
+        critical_anomaly_threshold: u64,
+        emergency_anomaly_threshold: u64,
+        anomaly_cooldown_period_ms: u64,
+        ctx: &mut TxContext,
+    ) {
+        checked_package_version(monitor);
+        check_admin(monitor, sui::tx_context::sender(ctx));
+        
+        monitor.config.critical_anomaly_threshold = critical_anomaly_threshold;
+        monitor.config.emergency_anomaly_threshold = emergency_anomaly_threshold;
+        monitor.config.anomaly_cooldown_period_ms = anomaly_cooldown_period_ms;
+    }
+
+    /// Update time-based configuration parameters
+    /// 
+    /// # Arguments
+    /// * `monitor` - The price monitor object to update
+    /// * `max_price_age_ms` - New maximum age of oracle prices in milliseconds
+    /// * `max_price_history_size` - New maximum number of price points to store in history
+    /// * `min_prices_for_analysis` - New minimum number of prices required for statistical analysis
+    /// * `ctx` - The transaction context
+    /// 
+    /// # Aborts
+    /// * If the sender is not an admin (error code: EAdminNotWhitelisted)
+    public fun update_time_config(
+        monitor: &mut PriceMonitor,
+        max_price_age_ms: u64,
+        max_price_history_size: u64,
+        min_prices_for_analysis: u64,
+        ctx: &mut TxContext,
+    ) {
+        checked_package_version(monitor);
+        check_admin(monitor, sui::tx_context::sender(ctx));
+        
+        monitor.config.max_price_age_ms = max_price_age_ms;
+        monitor.config.max_price_history_size = max_price_history_size;
+        monitor.config.min_prices_for_analysis = min_prices_for_analysis;
+        
+        // Update the monitor's max_history_size field as well
+        monitor.max_history_size = max_price_history_size;
+    }
+
+    /// Update validation method toggles
+    /// 
+    /// # Arguments
+    /// * `monitor` - The price monitor object to update
+    /// * `enable_oracle_pool_validation` - Enable/disable oracle-pool deviation validation
+    /// * `enable_oracle_history_validation` - Enable/disable oracle-history deviation validation
+    /// * `enable_statistical_validation` - Enable/disable statistical anomaly detection
+    /// * `ctx` - The transaction context
+    /// 
+    /// # Aborts
+    /// * If the sender is not an admin (error code: EAdminNotWhitelisted)
+    public fun update_validation_toggles(
+        monitor: &mut PriceMonitor,
+        enable_oracle_pool_validation: bool,
+        enable_oracle_history_validation: bool,
+        enable_statistical_validation: bool,
+        ctx: &mut TxContext,
+    ) {
+        checked_package_version(monitor);
+        check_admin(monitor, sui::tx_context::sender(ctx));
+        
+        monitor.config.enable_oracle_pool_validation = enable_oracle_pool_validation;
+        monitor.config.enable_oracle_history_validation = enable_oracle_history_validation;
+        monitor.config.enable_statistical_validation = enable_statistical_validation;
+    }
+
+    /// Update escalation control toggles
+    /// 
+    /// # Arguments
+    /// * `monitor` - The price monitor object to update
+    /// * `enable_critical_escalation` - Enable/disable escalation for critical level anomalies
+    /// * `enable_emergency_escalation` - Enable/disable escalation for emergency level anomalies
+    /// * `ctx` - The transaction context
+    /// 
+    /// # Aborts
+    /// * If the sender is not an admin (error code: EAdminNotWhitelisted)
+    public fun update_escalation_toggles(
+        monitor: &mut PriceMonitor,
+        enable_critical_escalation: bool,
+        enable_emergency_escalation: bool,
+        ctx: &mut TxContext,
+    ) {
+        checked_package_version(monitor);
+        check_admin(monitor, sui::tx_context::sender(ctx));
+        
+        monitor.config.enable_critical_escalation = enable_critical_escalation;
+        monitor.config.enable_emergency_escalation = enable_emergency_escalation;
+    }
+
     // ===== PUBLIC QUERY FUNCTIONS =====
 
     /// Get current circuit breaker status
     public fun get_circuit_breaker_status(monitor: &PriceMonitor): CircuitBreakerStatus {
         CircuitBreakerStatus {
             is_paused: monitor.is_emergency_paused,
-            pause_level: monitor.pause_level,
+            last_anomaly_level: monitor.last_anomaly_level,
             pause_timestamp_ms: monitor.pause_timestamp_ms,
-            pause_reason: monitor.pause_reason,
             anomaly_count: monitor.anomaly_count,
             consecutive_anomalies: monitor.consecutive_anomalies,
         }
@@ -796,37 +1209,37 @@ module price_monitor::price_monitor {
 
     // ===== EMERGENCY OPERATIONS =====
 
-    /// Emergency pause activation (requires EmergencyCap)
+    /// Emergency pause activation
     public fun emergency_pause(
         monitor: &mut PriceMonitor,
-        _emergency_cap: &EmergencyCap,
-        reason: vector<u8>,
         clock: &Clock,
+        ctx: &mut TxContext,
     ) {
+        checked_package_version(monitor);
+        check_admin(monitor, sui::tx_context::sender(ctx));
         monitor.is_emergency_paused = true;
         monitor.pause_timestamp_ms = clock::timestamp_ms(clock);
-        monitor.pause_level = price_monitor_consts::get_anomaly_level_emergency(); // Emergency level
-        monitor.pause_reason = reason;
+        monitor.last_anomaly_level = price_monitor_consts::get_anomaly_level_emergency(); // Emergency level
         
         let event = EventCircuitBreakerActivated {
             monitor_id: object::id(monitor),
             level: price_monitor_consts::get_anomaly_level_emergency(),
-            reason,
             timestamp_ms: clock::timestamp_ms(clock),
         };
         event::emit(event);
     }
 
-    /// Emergency pause deactivation (requires EmergencyCap)
+    /// Emergency pause deactivation
     public fun emergency_resume(
         monitor: &mut PriceMonitor,
-        _emergency_cap: &EmergencyCap,
         clock: &Clock,
+        ctx: &mut TxContext,
     ) {
+        checked_package_version(monitor);
+        check_admin(monitor, sui::tx_context::sender(ctx));
         monitor.is_emergency_paused = false;
         monitor.pause_timestamp_ms = 0;
-        monitor.pause_level = price_monitor_consts::get_anomaly_level_normal();
-        monitor.pause_reason = vector::empty<u8>();
+        monitor.last_anomaly_level = price_monitor_consts::get_anomaly_level_normal();
         monitor.consecutive_anomalies = 0;
         
         let event = EventCircuitBreakerDeactivated {
@@ -837,14 +1250,86 @@ module price_monitor::price_monitor {
         event::emit(event);
     }
 
+    // ===== ADMIN MANAGEMENT =====
+
+    /// Check if the provided address is an admin
+    /// 
+    /// # Arguments
+    /// * `monitor` - The price monitor object to check
+    /// * `admin` - The address to check for admin privileges
+    /// 
+    /// # Abort Conditions
+    /// * If the address is not an admin (error code: EAdminNotWhitelisted)
+    public fun check_admin(monitor: &PriceMonitor, admin: address) {
+        assert!(monitor.admins.contains<address>(&admin), EAdminNotWhitelisted);
+    }
+
+    /// Add a new admin to the price monitor
+    /// 
+    /// # Arguments
+    /// * `_admin_cap` - Administrative capability for authorization
+    /// * `monitor` - The price monitor object to add the admin to
+    /// * `new_admin` - The address of the admin to add
+    /// * `ctx` - The transaction context
+    /// 
+    /// # Aborts
+    /// * If the sender is not an admin (error code: EAdminNotWhitelisted)
+    /// * If the new_admin address is already an admin (error code: EAddressNotAdmin)
+    public fun add_admin(
+        _admin_cap: &SuperAdminCap,
+        monitor: &mut PriceMonitor, 
+        new_admin: address, 
+        ctx: &mut TxContext,
+    ) {
+        checked_package_version(monitor);
+        check_admin(monitor, sui::tx_context::sender(ctx));
+
+        assert!(!monitor.admins.contains(&new_admin), EAddressNotAdmin);
+        monitor.admins.insert(new_admin);
+    }
+
+    /// Remove an admin from the price monitor
+    /// 
+    /// # Arguments
+    /// * `_admin_cap` - Administrative capability for authorization
+    /// * `monitor` - The price monitor object to remove the admin from
+    /// * `who` - The address of the admin to remove
+    /// * `ctx` - The transaction context
+    /// 
+    /// # Aborts
+    /// * If the sender is not an admin (error code: EAdminNotWhitelisted)
+    /// * If the who address is not an admin (error code: EAddressNotAdmin)
+    public fun remove_admin(
+        _admin_cap: &SuperAdminCap,
+        monitor: &mut PriceMonitor,
+        who: address,
+        ctx: &mut TxContext,
+    ) {
+        checked_package_version(monitor);
+        check_admin(monitor, sui::tx_context::sender(ctx));
+
+        assert!(monitor.admins.contains(&who), EAddressNotAdmin);
+        monitor.admins.remove(&who); 
+    }
+
+    /// Check if the provided address is an admin
+    /// 
+    /// # Arguments
+    /// * `monitor` - The price monitor object to check
+    /// * `admin` - The address to check for admin privileges
+    /// 
+    /// # Returns
+    /// Boolean indicating if the address is an admin (true) or not (false)
+    public fun is_admin(monitor: &PriceMonitor, admin: address): bool {
+        monitor.admins.contains(&admin)
+    }
+
     // ===== UTILITY FUNCTIONS =====
 
     /// Get monitor ID
     public fun monitor_id(monitor: &PriceMonitor): ID {
         object::id(monitor)
     }
-
-
 
     // ===== HELPER STRUCTURES =====
 
@@ -867,22 +1352,35 @@ module price_monitor::price_monitor {
         level: u8,
         should_activate: bool,
         should_escalate: bool,
-        recommendation: vector<u8>,
     }
 
     /// Public result of price validation
     public struct PriceValidationResult has drop, copy {
-        /// Whether the validation should abort early and return (true = abort, false = continue)
-        should_return: bool,
+        escalation_activation: bool,
+        is_valid: bool,
         price_q64: u128,
+    }
+
+    /// Getter for escalation_activation field
+    public fun get_escalation_activation(result: &PriceValidationResult): bool {
+        result.escalation_activation
+    }
+
+    /// Getter for is_valid field
+    public fun get_is_valid(result: &PriceValidationResult): bool {
+        result.is_valid
+    }
+
+    /// Getter for price_q64 field
+    public fun get_price_q64(result: &PriceValidationResult): u128 {
+        result.price_q64
     }
 
     /// Circuit breaker status information
     public struct CircuitBreakerStatus has drop, copy {
         is_paused: bool,
-        pause_level: u8,
+        last_anomaly_level: u8,
         pause_timestamp_ms: u64,
-        pause_reason: vector<u8>,
         anomaly_count: u64,
         consecutive_anomalies: u64,
     }
@@ -895,6 +1393,18 @@ module price_monitor::price_monitor {
         min_prices_required: u64,
     }
 
+    /// Utility function to get the current price of an asset from a switchboard aggregator
+    /// Asserts that the price is not too old and returns the price.
+    /// If asset and USD decimals are different the price is adjusted to reflect equasion asset * price = USD
+    /// 
+    /// # Arguments
+    /// * `aggregator` - The switchboard aggregator to get the price from
+    /// * `asset_decimals` - The number of decimals of the asset
+    /// * `usd_decimals` - The number of decimals of the USD
+    /// * `clock` - The system clock
+    /// 
+    /// # Returns
+    /// The price in Q64.64 format, i.e USD/asset * 2^64 with respect to decimals.
     public fun get_time_checked_price_q64(
         aggregator: &Aggregator,
         asset_decimals: u8,
@@ -929,7 +1439,6 @@ module price_monitor::price_monitor {
 
         decimal_to_q64_decimals(price_result_price, dec_denominator)
     }
-
 
     public fun decimal_to_q64(
         decimal: &Decimal,
@@ -988,10 +1497,64 @@ module price_monitor::price_monitor {
 
     // ===== TEST FUNCTIONS =====
 
-    // #[test_only]
-    // public fun test_create_price_monitor(ctx: &mut TxContext): (PriceMonitor, PriceMonitorCap, EmergencyCap) {
-    //     create_price_monitor(ctx)
-    // }
+    #[test_only]
+    public fun test_init(ctx: &mut TxContext) {
+        let config = PriceMonitorConfig {
+            warning_deviation_bps: price_monitor_consts::get_warning_deviation_bps(),
+            critical_deviation_bps: price_monitor_consts::get_critical_deviation_bps(),
+            emergency_deviation_bps: price_monitor_consts::get_emergency_deviation_bps(),
+            warning_zscore_threshold: price_monitor_consts::get_warning_zscore_threshold(),
+            critical_zscore_threshold: price_monitor_consts::get_critical_zscore_threshold(),
+            emergency_zscore_threshold: price_monitor_consts::get_emergency_zscore_threshold(),
+            critical_anomaly_threshold: price_monitor_consts::get_critical_anomaly_threshold(),
+            emergency_anomaly_threshold: price_monitor_consts::get_emergency_anomaly_threshold(),
+            anomaly_cooldown_period_ms: price_monitor_consts::get_anomaly_cooldown_period_ms(),
+            max_price_age_ms: price_monitor_consts::get_max_price_age_ms(),
+            max_price_history_size: price_monitor_consts::get_max_price_history_size(),
+            min_prices_for_analysis: price_monitor_consts::get_min_prices_for_analysis(),
+            enable_oracle_pool_validation: price_monitor_consts::get_enable_oracle_pool_validation(),
+            enable_oracle_history_validation: price_monitor_consts::get_enable_oracle_history_validation(),
+            enable_statistical_validation: price_monitor_consts::get_enable_statistical_validation(),
+            enable_critical_escalation: price_monitor_consts::get_enable_critical_escalation(),
+            enable_emergency_escalation: price_monitor_consts::get_enable_emergency_escalation(),
+        };
+
+        let mut monitor = PriceMonitor {
+            id: object::new(ctx),
+            price_monitor_cap: option::none<PriceMonitorCap>(),
+            version: 1,
+            config,
+            aggregator_to_pools: table::new(ctx),
+            price_history: linked_table::new(ctx),
+            max_history_size: price_monitor_consts::get_max_price_history_size(),
+            anomaly_count: 0,
+            last_anomaly_timestamp_ms: 0,
+            consecutive_anomalies: 0,
+            is_emergency_paused: false,
+            pause_timestamp_ms: 0,
+            last_anomaly_level: price_monitor_consts::get_anomaly_level_normal(),
+            admins: vec_set::empty<address>(),
+            bag: sui::bag::new(ctx),
+        };
+
+        // Add the first admin (transaction sender)
+        monitor.admins.insert(sui::tx_context::sender(ctx));
+
+        let monitor_cap = PriceMonitorCap {
+            id: object::new(ctx),
+            monitor_id: object::id(&monitor),
+        };
+
+        monitor.price_monitor_cap.fill(monitor_cap);
+
+        let emergency_cap = SuperAdminCap {
+            id: object::new(ctx),
+        };
+
+        transfer::transfer<SuperAdminCap>(emergency_cap, sui::tx_context::sender(ctx));
+
+        transfer::share_object<PriceMonitor>(monitor);
+    }
 
     // #[test_only]
     // public fun test_validate_price(

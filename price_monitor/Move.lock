@@ -23,6 +23,12 @@ dependencies = [
   { id = "MoveStdlib", name = "MoveStdlib" },
 ]
 
+[dependencies.Sui]
+git = "https://github.com/MystenLabs/sui.git"
+subdir = "crates/sui-framework/packages/sui-framework"
+rev = "framework/mainnet"
+override = true
+
 [[move.package]]
 id = "Switchboard"
 source = { git = "https://github.com/LFBuild/sui.git", rev = "mainnet", subdir = "on_demand/" }
@@ -30,6 +36,11 @@ source = { git = "https://github.com/LFBuild/sui.git", rev = "mainnet", subdir =
 dependencies = [
   { id = "Sui", name = "Sui" },
 ]
+
+[dependencies.Switchboard]
+git = "https://github.com/LFBuild/sui.git"
+subdir = "on_demand/"
+rev = "mainnet"
 
 [[move.package]]
 id = "clmm_pool"
@@ -43,6 +54,12 @@ dependencies = [
   { id = "price_provider", name = "price_provider" },
 ]
 
+[dependencies.clmm_pool]
+git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
+subdir = "clmm_pool"
+rev = "dev"
+override = true
+
 [[move.package]]
 id = "gauge_cap"
 source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "dev", subdir = "gauge_cap" }
@@ -51,6 +68,12 @@ dependencies = [
   { id = "Sui", name = "Sui" },
 ]
 
+[dependencies.integer_mate]
+git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
+subdir = "integer_mate"
+rev = "dev"
+override = true
+
 [[move.package]]
 id = "integer_mate"
 source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "dev", subdir = "integer_mate" }
@@ -58,6 +81,12 @@ source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "dev",
 dependencies = [
   { id = "Sui", name = "Sui" },
 ]
+
+[dependencies.gauge_cap]
+git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
+subdir = "gauge_cap"
+rev = "dev"
+override = true
 
 [[move.package]]
 id = "move_stl"
