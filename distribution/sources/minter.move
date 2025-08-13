@@ -2098,8 +2098,8 @@ module distribution::minter {
         ctx: &mut TxContext,
     ): Coin<SailCoinType> {
         // extra safety measure in case we forget to remove this function
-        // 1754784000000 is 2025-08-10 00:00:00 UTC, after this date we will not be able to call this function
-        assert!(clock.timestamp_ms() < 1754784000000, EMintTestSailOutdated);
+        // 1756512000000 is 2025-08-30 00:00:00 UTC, after this date we will not be able to call this function
+        assert!(clock.timestamp_ms() < 1756512000000, EMintTestSailOutdated);
         assert!(publisher.from_module<MINTER>(), EMintTestSailPublisherInvalid);
         assert!(!minter.is_paused(), EMintTestSailMinterPaused);
         assert!(amount > 0, EMintTestSailAmountZero);
