@@ -140,6 +140,7 @@ module distribution::minter {
 
     const EGetPositionRewardInvalidRewardToken: u64 = 779306294896264600;
     const EGetMultiplePositionRewardInvalidRewardToken: u64 = 785363146605424900;
+    const EEmissionStopped: u64 = 123456789012345678;
 
     const EMintTestSailOutdated: u64 = 89462538442069740;
     const EMintTestSailPublisherInvalid: u64 = 846785453837100700;
@@ -216,6 +217,8 @@ module distribution::minter {
     public struct EventPauseEmission has copy, drop, store {}
 
     public struct EventUnpauseEmission has copy, drop, store {}
+    public struct EventStopEmission has copy, drop, store {}
+    public struct EventResumeEmission has copy, drop, store {}
 
     public struct EventGrantAdmin has copy, drop, store {
         who: address,
@@ -372,6 +375,7 @@ module distribution::minter {
         revoked_admins: VecSet<ID>,
         revoked_distribute_governors: VecSet<ID>,
         paused: bool,
+        emission_stopped: bool,
         activated_at: u64,
         active_period: u64,
         // The oSAIL which will be distributed at the begining of new epoch and during the epoch
@@ -681,6 +685,7 @@ module distribution::minter {
             revoked_admins: vec_set::empty<ID>(),
             revoked_distribute_governors: vec_set::empty<ID>(),
             paused: false,
+            emission_stopped: false,
             activated_at: 0,
             active_period: 0,
             current_epoch_o_sail: option::none<TypeName>(),
@@ -753,6 +758,14 @@ module distribution::minter {
     /// Nearly all functions should be protected by this check for safety.
     public fun is_paused<SailCoinType>(minter: &Minter<SailCoinType>): bool {
         minter.paused
+    }
+
+    /// Checks if emission is stopped due to oracle compromise.
+    ///
+    /// Used to protect functions that use price aggregators.
+    /// When true, all functions requiring price data should be blocked.
+    public fun is_emission_stopped<SailCoinType>(minter: &Minter<SailCoinType>): bool {
+        minter.emission_stopped
     }
 
     public fun is_valid_distribution_config<SailCoinType>(
@@ -1036,6 +1049,27 @@ module distribution::minter {
         sui::event::emit<EventUnpauseEmission>(unpaused_event);
     }
 
+    /// Stops emission due to oracle compromise.
+    ///
+    /// This is an emergency function that can be used to halt token emissions
+    /// when the price oracle is compromised or provides incorrect data.
+    public fun stop_emission<SailCoinType>(minter: &mut Minter<SailCoinType>, admin_cap: &AdminCap) {
+        minter.check_admin(admin_cap);
+        minter.emission_stopped = true;
+        let stop_emission_event = EventStopEmission {};
+        sui::event::emit<EventStopEmission>(stop_emission_event);
+    }
+
+    /// Resumes emission after oracle compromise is resolved.
+    ///
+    /// This function re-enables token emissions after they were stopped due to oracle issues.
+    public fun resume_emission<SailCoinType>(minter: &mut Minter<SailCoinType>, admin_cap: &AdminCap) {
+        minter.check_admin(admin_cap);
+        minter.emission_stopped = false;
+        let resume_emission_event = EventResumeEmission {};
+        sui::event::emit<EventResumeEmission>(resume_emission_event);
+    }
+
     /// Updates fields related to oSAIL coin
     ///
     /// # Arguments
@@ -1267,6 +1301,7 @@ module distribution::minter {
         ctx: &mut TxContext,
     ): u64 {
         assert!(!minter.is_paused(), EDistributeGaugeMinterPaused);
+        assert!(!minter.is_emission_stopped(), EEmissionStopped);
         minter.check_distribute_governor(distribute_governor_cap);
         assert!(minter.is_active(clock), EDistributeGaugeMinterNotActive);
         let current_epoch_o_sail_type = type_name::get<CurrentEpochOSail>();
@@ -1446,6 +1481,7 @@ module distribution::minter {
         assert!(minter.is_valid_distribution_config(distribution_config), EIncreaseEmissionsDistributionConfigInvalid);
         assert!(minter.is_active(clock), EIncreaseEmissionsMinterNotActive);
         assert!(!minter.is_paused(), EIncreaseEmissionsMinterPaused);
+        assert!(!minter.is_emission_stopped(), EEmissionStopped);
 
         let old_gauge_epoch_emissions_usd = minter.gauge_epoch_emissions_usd.remove(gauge_id);
         minter.gauge_epoch_emissions_usd.add(gauge_id, old_gauge_epoch_emissions_usd + emissions_increase_usd);
@@ -1659,6 +1695,31 @@ module distribution::minter {
             gauge_base_emissions,
         };
         sui::event::emit<EventResetGauge>(reset_gauge_event);
+    }
+
+    public fun sync_o_sail_distribution_price<CoinTypeA, CoinTypeB, SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        distribution_config: &mut distribution::distribution_config::DistributionConfig,
+        gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        price_monitor: &mut price_monitor::price_monitor::PriceMonitor,
+        sail_stablecoin_pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        aggregator: &Aggregator,
+        clock: &sui::clock::Clock
+    ) {
+        let gauge_id = object::id(gauge);
+        assert!(gauge_distributed(minter, gauge_id), EIncreaseEmissionsNotDistributed);
+        assert!(minter.is_valid_distribution_config(distribution_config), EIncreaseEmissionsDistributionConfigInvalid);
+        assert!(minter.is_active(clock), EIncreaseEmissionsMinterNotActive);
+        assert!(!minter.is_paused(), EIncreaseEmissionsMinterPaused);
+        assert!(!minter.is_emission_stopped(), EEmissionStopped);
+
+        gauge.sync_o_sail_distribution_price(
+            distribution_config,
+            pool,
+            aggregator,
+            clock
+        );
     }
 
     /// Borrows current epoch oSAIL token
@@ -1919,6 +1980,7 @@ module distribution::minter {
         ctx: &mut TxContext,
     ): (Coin<USDCoinType>, Coin<SailCoinType>) {
         assert!(!minter.is_paused(), EExerciseOSailMinterPaused);
+        assert!(!minter.is_emission_stopped(), EEmissionStopped);
         assert!(minter.is_valid_o_sail_type<SailCoinType, OSailCoinType>(), EExerciseOSailInvalidOSail);
         let o_sail_type = type_name::get<OSailCoinType>();
         let expiry_date: u64 = *minter.o_sail_expiry_dates.borrow(o_sail_type);
@@ -2306,6 +2368,7 @@ module distribution::minter {
         aggregator: &Aggregator,
     ) {
         minter.check_admin(admin_cap);
+        assert!(!minter.is_emission_stopped(), EEmissionStopped);
         assert!(minter.is_valid_distribution_config(distribution_config), ESetOsailPriceAggregatorInvalidDistrConfig);
         distribution_config.set_o_sail_price_aggregator(aggregator);
 
@@ -2323,6 +2386,7 @@ module distribution::minter {
         aggregator: &Aggregator,
     ) {
         minter.check_admin(admin_cap);
+        assert!(!minter.is_emission_stopped(), EEmissionStopped);
         assert!(minter.is_valid_distribution_config(distribution_config), ESetSailPriceAggregatorInvalidDistrConfig);
         distribution_config.set_sail_price_aggregator(aggregator);
 

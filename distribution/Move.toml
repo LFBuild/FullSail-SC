@@ -46,3 +46,6 @@ local = "../locker_cap"
 git = "https://github.com/LFBuild/sui.git"
 subdir = "on_demand/"
 rev = "mainnet"
+
+[dependencies.price_monitor]
+local = "../price_monitor"
