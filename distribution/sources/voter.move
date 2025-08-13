@@ -761,7 +761,7 @@ module distribution::voter {
     ///
     /// # Emits
     /// * `EventDistributeGauge` with information about distributed rewards
-    public fun distribute_gauge<CoinTypeA, CoinTypeB, NextEpochOSail>(
+    public(package) fun distribute_gauge<CoinTypeA, CoinTypeB, NextEpochOSail>(
         voter: &mut Voter,
         distribute_cap: &distribution::distribute_cap::DistributeCap,
         distribution_config: &distribution::distribution_config::DistributionConfig,
@@ -835,8 +835,8 @@ module distribution::voter {
     /// * `aggregator` - The aggregator to get o-sail price
     /// * `clock` - The system clock
     /// * `ctx` - The transaction context
-    public fun notify_gauge_reward_without_claim<CoinTypeA, CoinTypeB>(
-        voter: &mut Voter,
+    public(package) fun notify_gauge_reward_without_claim<CoinTypeA, CoinTypeB>(
+        voter: &Voter,
         distribute_cap: &distribution::distribute_cap::DistributeCap,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,

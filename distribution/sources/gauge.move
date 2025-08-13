@@ -1178,7 +1178,7 @@ module distribution::gauge {
     /// # Aborts
     /// * If the voter capability is invalid
     /// * If the reward amount is invalid (zero)
-    public fun notify_reward_without_claim<CoinTypeA, CoinTypeB>(
+    public(package) fun notify_reward_without_claim<CoinTypeA, CoinTypeB>(
         gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
         distribution_config: &DistributionConfig,
         voter_cap: &VoterCap,
@@ -1226,7 +1226,7 @@ module distribution::gauge {
     /// # Aborts
     /// * If the voter capability is invalid
     /// * If the reward amount is invalid (zero)
-    public fun notify_reward<CoinTypeA, CoinTypeB>(
+    public(package) fun notify_reward<CoinTypeA, CoinTypeB>(
         gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
         distribution_config: &DistributionConfig,
         voter_cap: &VoterCap,
@@ -1380,7 +1380,7 @@ module distribution::gauge {
     /// * `aggregator` - The switchboard aggregator to get the oSAIL price from
     /// * `clock` - The system clock
     ///
-    public fun sync_o_sail_distribution_price<CoinTypeA, CoinTypeB>(
+    public(package) fun sync_o_sail_distribution_price<CoinTypeA, CoinTypeB>(
         gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
         distribution_config: &DistributionConfig,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
