@@ -46,6 +46,17 @@ module price_monitor::price_monitor_consts {
     /// Minimum number of prices required for statistical analysis
     const MIN_PRICES_FOR_ANALYSIS: u64 = 10;
 
+    // ===== VALIDATION METHOD TOGGLES =====
+    
+    /// Enable oracle-pool deviation validation by default
+    const ENABLE_ORACLE_POOL_VALIDATION: bool = true;
+    
+    /// Enable oracle-history deviation validation by default
+    const ENABLE_ORACLE_HISTORY_VALIDATION: bool = true;
+    
+    /// Enable statistical anomaly detection by default
+    const ENABLE_STATISTICAL_VALIDATION: bool = true;
+
     // ===== MULTI-ORACLE VALIDATION THRESHOLDS =====
     
     /// Warning deviation threshold in basis points (2500 = 25% with BASIS_POINTS_DENOMINATOR = 10000)
@@ -56,6 +67,17 @@ module price_monitor::price_monitor_consts {
     
     /// Emergency deviation threshold in basis points (7500 = 75% with BASIS_POINTS_DENOMINATOR = 10000)
     const EMERGENCY_DEVIATION_BPS: u64 = 7500;
+
+    // ===== HISTORY DEVIATION THRESHOLDS =====
+    
+    /// Warning deviation threshold from history in basis points (1000 = 10% with BASIS_POINTS_DENOMINATOR = 10000)
+    const WARNING_HISTORY_DEVIATION_BPS: u64 = 1000;
+    
+    /// Critical deviation threshold from history in basis points (2000 = 20% with BASIS_POINTS_DENOMINATOR = 10000)
+    const CRITICAL_HISTORY_DEVIATION_BPS: u64 = 2000;
+    
+    /// Emergency deviation threshold from history in basis points (3000 = 30% with BASIS_POINTS_DENOMINATOR = 10000)
+    const EMERGENCY_HISTORY_DEVIATION_BPS: u64 = 3000;
 
     // ===== STATISTICAL ANALYSIS THRESHOLDS =====
     
@@ -70,14 +92,19 @@ module price_monitor::price_monitor_consts {
 
     // ===== CIRCUIT BREAKER THRESHOLDS =====
     
-    /// Warning anomaly threshold (1 anomaly triggers warning)
-    const WARNING_ANOMALY_THRESHOLD: u64 = 1;
-    
     /// Critical anomaly threshold (2 anomalies trigger critical)
     const CRITICAL_ANOMALY_THRESHOLD: u64 = 2;
     
     /// Emergency anomaly threshold (3 anomalies trigger emergency)
     const EMERGENCY_ANOMALY_THRESHOLD: u64 = 3;
+
+    // ===== ESCALATION CONTROL =====
+    
+    /// Enable escalation for critical level anomalies
+    const ENABLE_CRITICAL_ESCALATION: bool = false;
+    
+    /// Enable escalation for emergency level anomalies
+    const ENABLE_EMERGENCY_ESCALATION: bool = true;
 
     // ===== TIME-BASED CONFIGURATION =====
     
@@ -144,6 +171,24 @@ module price_monitor::price_monitor_consts {
     /// Get emergency deviation bps
     public fun get_emergency_deviation_bps(): u64 { EMERGENCY_DEVIATION_BPS }
 
+    /// Get warning history deviation bps
+    public fun get_warning_history_deviation_bps(): u64 { WARNING_HISTORY_DEVIATION_BPS }
+
+    /// Get critical history deviation bps
+    public fun get_critical_history_deviation_bps(): u64 { CRITICAL_HISTORY_DEVIATION_BPS }
+
+    /// Get emergency history deviation bps
+    public fun get_emergency_history_deviation_bps(): u64 { EMERGENCY_HISTORY_DEVIATION_BPS }
+
+    /// Get enable oracle pool validation
+    public fun get_enable_oracle_pool_validation(): bool { ENABLE_ORACLE_POOL_VALIDATION }
+
+    /// Get enable oracle history validation
+    public fun get_enable_oracle_history_validation(): bool { ENABLE_ORACLE_HISTORY_VALIDATION }
+
+    /// Get enable statistical validation
+    public fun get_enable_statistical_validation(): bool { ENABLE_STATISTICAL_VALIDATION }
+
     /// Get warning zscore threshold
     public fun get_warning_zscore_threshold(): u64 { WARNING_ZSCORE_THRESHOLD }
 
@@ -153,14 +198,17 @@ module price_monitor::price_monitor_consts {
     /// Get emergency zscore threshold
     public fun get_emergency_zscore_threshold(): u64 { EMERGENCY_ZSCORE_THRESHOLD }
 
-    /// Get warning anomaly threshold
-    public fun get_warning_anomaly_threshold(): u64 { WARNING_ANOMALY_THRESHOLD }
-
     /// Get critical anomaly threshold
     public fun get_critical_anomaly_threshold(): u64 { CRITICAL_ANOMALY_THRESHOLD }
 
     /// Get emergency anomaly threshold
     public fun get_emergency_anomaly_threshold(): u64 { EMERGENCY_ANOMALY_THRESHOLD }
+
+    /// Get enable critical escalation
+    public fun get_enable_critical_escalation(): bool { ENABLE_CRITICAL_ESCALATION }
+
+    /// Get enable emergency escalation
+    public fun get_enable_emergency_escalation(): bool { ENABLE_EMERGENCY_ESCALATION }
 
     /// Get anomaly cooldown period ms
     public fun get_anomaly_cooldown_period_ms(): u64 { ANOMALY_COOLDOWN_PERIOD_MS }

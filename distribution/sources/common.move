@@ -5,13 +5,6 @@ module distribution::common {
     #[allow(unused_const)]
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
 
-    use switchboard::decimal::{Self, Decimal};
-    use switchboard::aggregator::{Self, Aggregator};
-
-    const EDecimalToQ64NegativeNotSupported: u64 = 440708559177319000;
-    const EGetTimeCheckedPriceOutdated: u64 = 286529906002696900;
-    const EGetTimeCheckedPriceNegativePrice: u64 = 986261309772136700;
-
     const HOUR: u64 = 3600;
     const DAY: u64 = 24 * HOUR;
     const WEEK: u64 = 7 * DAY;
@@ -22,10 +15,7 @@ module distribution::common {
     const MIN_DISCOUNT: u64 = MAX_DISCOUNT / 2;
     const PERCENT_DENOMINATOR: u64 = 100000000;
 
-    const MAX_PRICE_AGE_MS: u64 = 1 * 60 * 1000; // 1 minute
-
     // We use 6 decimals for all tokens participating in distribution calculations.
-    const USD_DECIMALS: u8 = 6;
     const SAIL_DECIMALS: u8 = 6;
 
     /// Returns the current period based on the system time
@@ -212,29 +202,6 @@ module distribution::common {
         timestamp / EPOCH_DURATION
     }
 
-
-    public fun decimal_to_q64(
-        decimal: &Decimal,
-    ): u128 {
-        let dec = decimal.dec();
-        let dec_denominator = decimal::pow_10(dec);
-
-        decimal_to_q64_decimals(decimal, dec_denominator)
-    }
-
-    public fun decimal_to_q64_decimals(
-        decimal: &Decimal,
-        dec_denominator: u128,
-    ): u128 {
-        assert!(!decimal.neg(), EDecimalToQ64NegativeNotSupported);
-
-        integer_mate::full_math_u128::mul_div_floor(
-            decimal.value(),
-            1 << 64,
-            dec_denominator
-        )
-    }
-
     /// Utility function to convert USD amount * 2^64 to asset amount * 2^64
     public fun usd_q64_to_asset_q64(
         usd_amount_q64: u128,
@@ -268,59 +235,8 @@ module distribution::common {
         }
     }
 
-    /// Utility function to get the current price of an asset from a switchboard aggregator
-    /// Asserts that the price is not too old and returns the price.
-    /// If asset and USD decimals are different the price is adjusted to reflect equasion asset * price = USD
-    /// 
-    /// # Arguments
-    /// * `aggregator` - The switchboard aggregator to get the price from
-    /// * `asset_decimals` - The number of decimals of the asset
-    /// * `usd_decimals` - The number of decimals of the USD
-    /// * `clock` - The system clock
-    /// 
-    /// # Returns
-    /// The price in Q64.64 format, i.e USD/asset * 2^64 with respect to decimals.
-    public fun get_time_checked_price_q64(
-        aggregator: &Aggregator,
-        asset_decimals: u8,
-        usd_decimals: u8,
-        clock: &sui::clock::Clock,
-    ): u128 {
-        let price_result = aggregator.current_result();
-        let current_time = clock.timestamp_ms();
-        let price_result_time = price_result.timestamp_ms();
-
-        assert!(price_result_time + MAX_PRICE_AGE_MS > current_time, EGetTimeCheckedPriceOutdated);
-
-        let price_result_price = price_result.result();
-        assert!(!price_result_price.neg(), EGetTimeCheckedPriceNegativePrice);
-
-        let mut dec = price_result_price.dec();
-
-        if (asset_decimals > usd_decimals) {
-            // asset is bigger than USD
-            // asset * price = USD
-            // so to compensate we need to decrease price therefore increase denominator
-            let decimals_delta = asset_decimals - usd_decimals;
-            dec = dec + decimals_delta;
-        } else {
-            // USD is bigger than asset
-            // USD / price = asset
-            // so to compensate we need to increase price therefore decrease denominator
-            let decimals_delta = usd_decimals - asset_decimals;
-            dec = dec - decimals_delta;
-        };
-        let dec_denominator = decimal::pow_10(dec);
-
-        decimal_to_q64_decimals(price_result_price, dec_denominator)
-    }
-
     public fun sail_decimals(): u8 {
         SAIL_DECIMALS
-    }
-
-    public fun usd_decimals(): u8 {
-        USD_DECIMALS
     }
 }
 
