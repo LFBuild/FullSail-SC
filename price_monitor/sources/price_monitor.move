@@ -24,6 +24,8 @@ module price_monitor::price_monitor {
     use sui::tx_context::{Self, TxContext};
     use sui::event;
     use sui::vec_set::{Self, VecSet};
+    use sui::coin::{Self, CoinMetadata};
+    use std::type_name::{Self, TypeName};
 
     use switchboard::decimal::{Self, Decimal};
     use switchboard::aggregator::{Self, Aggregator};
@@ -46,9 +48,11 @@ module price_monitor::price_monitor {
     const EZeroPrice: u64 = 1011;
     const EAdminNotWhitelisted: u64 = 1012;
     const EAddressNotAdmin: u64 = 1013;
-    const EInvalidDeviationThreshold: u64 = 1014;
-    const EInvalidZScoreThreshold: u64 = 1015;
     const EPackageVersionMismatch: u64 = 1016;
+    const EInvalidMetadata: u64 = 1017;
+
+    // Maximum value for u64 type to prevent overflow
+    const MAX_U64: u128 = 0xffffffffffffffff;
 
     const EDecimalToQ64NegativeNotSupported: u64 = 440708559177319000;
     const EGetTimeCheckedPriceOutdated: u64 = 286529906002696900;
@@ -76,6 +80,7 @@ module price_monitor::price_monitor {
         // Time-based configuration
         anomaly_cooldown_period_ms: u64,
         max_price_age_ms: u64,
+        min_price_interval_ms: u64,        // Minimum interval between price history entries in milliseconds
         
         // History configuration
         max_price_history_size: u64,
@@ -215,6 +220,7 @@ module price_monitor::price_monitor {
             emergency_anomaly_threshold: price_monitor_consts::get_emergency_anomaly_threshold(),
             anomaly_cooldown_period_ms: price_monitor_consts::get_anomaly_cooldown_period_ms(),
             max_price_age_ms: price_monitor_consts::get_max_price_age_ms(),
+            min_price_interval_ms: price_monitor_consts::get_min_price_interval_ms(),
             max_price_history_size: price_monitor_consts::get_max_price_history_size(),
             min_prices_for_analysis: price_monitor_consts::get_min_prices_for_analysis(),
             enable_oracle_pool_validation: price_monitor_consts::get_enable_oracle_pool_validation(),
@@ -340,10 +346,11 @@ module price_monitor::price_monitor {
 
     /// Main function to validate and monitor prices
     /// This is the primary entry point for price validation
-    public fun validate_price<CoinTypeA, CoinTypeB>(
+    public fun validate_price<CoinTypeA, CoinTypeB, StableCoin>(
         monitor: &mut PriceMonitor,
         aggregator: &Aggregator,
         sail_stablecoin_pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        metadata: &CoinMetadata<StableCoin>,
         clock: &Clock,
     ): PriceValidationResult {
         checked_package_version(monitor);
@@ -354,12 +361,15 @@ module price_monitor::price_monitor {
         // Check if pool is associated with this aggregator
         assert!(is_pool_associated_with_aggregator(monitor, aggregator_id, pool_id), EInvalidSailPool);
 
+        assert!(type_name::get<CoinTypeA>() == type_name::get<StableCoin>() || 
+            type_name::get<CoinTypeB>() == type_name::get<StableCoin>(), EInvalidMetadata);
+
         let current_time_ms = clock::timestamp_ms(clock);
 
         let oracle_price_q64 = get_time_checked_price_q64(
             aggregator,
             price_monitor_consts::get_sail_decimals(),
-            price_monitor_consts::get_usd_decimals(),
+            metadata.get_decimals(),
             clock
         );
 
@@ -586,8 +596,16 @@ module price_monitor::price_monitor {
             (price_monitor_consts::get_basis_points_denominator() as u128),
             base_price_q64
         );
+        std::debug::print(&b"deviation_bps");
+        std::debug::print(&deviation);
+        std::debug::print(&price1_q64);
+        std::debug::print(&base_price_q64);
+        std::debug::print(&deviation_bps);
         
-        (deviation_bps as u64)
+        // Check if deviation_bps exceeds u64::MAX to prevent overflow
+        let clamped_deviation_bps = if (deviation_bps > MAX_U64) { MAX_U64 } else { deviation_bps };
+        std::debug::print(&clamped_deviation_bps);
+        (clamped_deviation_bps as u64)
     }
 
     // ===== STATISTICAL ANOMALY DETECTION =====
@@ -802,6 +820,19 @@ module price_monitor::price_monitor {
 
     /// Add price point to history
     fun add_price_to_history(monitor: &mut PriceMonitor, price_point: PricePoint) {
+        // Get the most recent price point key (head of the linked table)
+        let latest_key_opt = monitor.price_history.front();
+        if (latest_key_opt.is_some()) {
+            let latest_key = latest_key_opt.borrow();
+            let latest_price_point = monitor.price_history.borrow(*latest_key);
+            
+            // Check if enough time has passed since the last price update
+            if (price_point.timestamp_ms < latest_price_point.timestamp_ms + monitor.config.min_price_interval_ms) {
+                // Not enough time has passed, skip adding this price point
+                return
+            };
+        };
+        
         // Add new price point to the beginning (head) - most recent first
         monitor.price_history.push_front(price_point.timestamp_ms, price_point);
         
@@ -947,6 +978,7 @@ module price_monitor::price_monitor {
         emergency_anomaly_threshold: u64,
         anomaly_cooldown_period_ms: u64,
         max_price_age_ms: u64,
+        min_price_interval_ms: u64,
         max_price_history_size: u64,
         min_prices_for_analysis: u64,
         enable_oracle_pool_validation: bool,
@@ -955,15 +987,6 @@ module price_monitor::price_monitor {
         enable_critical_escalation: bool,
         enable_emergency_escalation: bool,
     ): PriceMonitorConfig {
-        // Validate that deviation thresholds don't exceed BASIS_POINTS_DENOMINATOR
-        assert!(warning_deviation_bps <= price_monitor_consts::get_basis_points_denominator(), EInvalidDeviationThreshold);
-        assert!(critical_deviation_bps <= price_monitor_consts::get_basis_points_denominator(), EInvalidDeviationThreshold);
-        assert!(emergency_deviation_bps <= price_monitor_consts::get_basis_points_denominator(), EInvalidDeviationThreshold);
-        
-        // Validate that Z-Score thresholds don't exceed BASIS_POINTS_DENOMINATOR
-        assert!(warning_zscore_threshold <= price_monitor_consts::get_basis_points_denominator(), EInvalidZScoreThreshold);
-        assert!(critical_zscore_threshold <= price_monitor_consts::get_basis_points_denominator(), EInvalidZScoreThreshold);
-        assert!(emergency_zscore_threshold <= price_monitor_consts::get_basis_points_denominator(), EInvalidZScoreThreshold);
         
         PriceMonitorConfig {
             warning_deviation_bps,
@@ -976,6 +999,7 @@ module price_monitor::price_monitor {
             emergency_anomaly_threshold,
             anomaly_cooldown_period_ms,
             max_price_age_ms,
+            min_price_interval_ms,
             max_price_history_size,
             min_prices_for_analysis,
             enable_oracle_pool_validation,
@@ -1002,6 +1026,8 @@ module price_monitor::price_monitor {
         &monitor.config
     }
 
+
+
     /// Update deviation thresholds (warning, critical, emergency) in basis points
     /// 
     /// # Arguments
@@ -1013,7 +1039,6 @@ module price_monitor::price_monitor {
     /// 
     /// # Aborts
     /// * If the sender is not an admin (error code: EAdminNotWhitelisted)
-    /// * If any deviation threshold exceeds BASIS_POINTS_DENOMINATOR (error code: EInvalidDeviationThreshold)
     public fun update_deviation_thresholds(
         monitor: &mut PriceMonitor,
         warning_deviation_bps: u64,
@@ -1023,11 +1048,6 @@ module price_monitor::price_monitor {
     ) {
         checked_package_version(monitor);
         check_admin(monitor, sui::tx_context::sender(ctx));
-        
-        // Validate that thresholds don't exceed BASIS_POINTS_DENOMINATOR
-        assert!(warning_deviation_bps <= price_monitor_consts::get_basis_points_denominator(), EInvalidDeviationThreshold);
-        assert!(critical_deviation_bps <= price_monitor_consts::get_basis_points_denominator(), EInvalidDeviationThreshold);
-        assert!(emergency_deviation_bps <= price_monitor_consts::get_basis_points_denominator(), EInvalidDeviationThreshold);
         
         monitor.config.warning_deviation_bps = warning_deviation_bps;
         monitor.config.critical_deviation_bps = critical_deviation_bps;
@@ -1045,7 +1065,6 @@ module price_monitor::price_monitor {
     /// 
     /// # Aborts
     /// * If the sender is not an admin (error code: EAdminNotWhitelisted)
-    /// * If any Z-Score threshold exceeds BASIS_POINTS_DENOMINATOR (error code: EInvalidZScoreThreshold)
     public fun update_zscore_thresholds(
         monitor: &mut PriceMonitor,
         warning_zscore_threshold: u64,
@@ -1055,11 +1074,6 @@ module price_monitor::price_monitor {
     ) {
         checked_package_version(monitor);
         check_admin(monitor, sui::tx_context::sender(ctx));
-        
-        // Validate that thresholds don't exceed BASIS_POINTS_DENOMINATOR
-        assert!(warning_zscore_threshold <= price_monitor_consts::get_basis_points_denominator(), EInvalidZScoreThreshold);
-        assert!(critical_zscore_threshold <= price_monitor_consts::get_basis_points_denominator(), EInvalidZScoreThreshold);
-        assert!(emergency_zscore_threshold <= price_monitor_consts::get_basis_points_denominator(), EInvalidZScoreThreshold);
         
         monitor.config.warning_zscore_threshold = warning_zscore_threshold;
         monitor.config.critical_zscore_threshold = critical_zscore_threshold;
@@ -1096,7 +1110,8 @@ module price_monitor::price_monitor {
     /// 
     /// # Arguments
     /// * `monitor` - The price monitor object to update
-    /// * `max_price_age_ms` - New maximum age of oracle prices in milliseconds
+    /// * `max_price_age_ms` - New maximum price age in milliseconds
+    /// * `min_price_interval_ms` - New minimum interval between price history entries in milliseconds
     /// * `max_price_history_size` - New maximum number of price points to store in history
     /// * `min_prices_for_analysis` - New minimum number of prices required for statistical analysis
     /// * `ctx` - The transaction context
@@ -1106,6 +1121,7 @@ module price_monitor::price_monitor {
     public fun update_time_config(
         monitor: &mut PriceMonitor,
         max_price_age_ms: u64,
+        min_price_interval_ms: u64,
         max_price_history_size: u64,
         min_prices_for_analysis: u64,
         ctx: &mut TxContext,
@@ -1114,6 +1130,7 @@ module price_monitor::price_monitor {
         check_admin(monitor, sui::tx_context::sender(ctx));
         
         monitor.config.max_price_age_ms = max_price_age_ms;
+        monitor.config.min_price_interval_ms = min_price_interval_ms;
         monitor.config.max_price_history_size = max_price_history_size;
         monitor.config.min_prices_for_analysis = min_prices_for_analysis;
         
@@ -1415,6 +1432,9 @@ module price_monitor::price_monitor {
         let current_time = clock.timestamp_ms();
         let price_result_time = price_result.timestamp_ms();
 
+        std::debug::print(&price_result_time);
+        std::debug::print(&(price_result_time + price_monitor_consts::get_max_price_age_ms()));
+        std::debug::print(&current_time);
         assert!(price_result_time + price_monitor_consts::get_max_price_age_ms() > current_time, EGetTimeCheckedPriceOutdated);
 
         let price_result_price = price_result.result();
@@ -1510,6 +1530,7 @@ module price_monitor::price_monitor {
             emergency_anomaly_threshold: price_monitor_consts::get_emergency_anomaly_threshold(),
             anomaly_cooldown_period_ms: price_monitor_consts::get_anomaly_cooldown_period_ms(),
             max_price_age_ms: price_monitor_consts::get_max_price_age_ms(),
+            min_price_interval_ms: price_monitor_consts::get_min_price_interval_ms(),
             max_price_history_size: price_monitor_consts::get_max_price_history_size(),
             min_prices_for_analysis: price_monitor_consts::get_min_prices_for_analysis(),
             enable_oracle_pool_validation: price_monitor_consts::get_enable_oracle_pool_validation(),

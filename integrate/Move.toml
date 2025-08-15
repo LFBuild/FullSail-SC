@@ -3,7 +3,7 @@ name = "integrate"
 edition = "2024"
 
 [addresses]
-integrate = "0x0"
+integrate = "0x01"
 
 [dev-dependencies]
 
@@ -53,3 +53,6 @@ local = "../liquidity_locker"
 
 [dependencies.liquidity_soft_locker]
 local = "../liquidity_soft_locker"
+
+[dependencies.price_monitor]
+local = "../price_monitor"

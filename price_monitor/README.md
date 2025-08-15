@@ -1,96 +1,96 @@
 # 🛡️ Price Monitor Module
 
-## Обзор
+## Overview
 
-Модуль `price_monitor` предоставляет комплексную защиту от компрометации оракулов через многоуровневое обнаружение аномалий и автоматическую активацию защитных механизмов.
+The `price_monitor` module provides comprehensive protection against oracle compromise through multi-layered anomaly detection and automatic circuit breaker activation.
 
-## Основные возможности
+## Core Features
 
 ### 1. Multi-Oracle Validation
-- Сравнение цен внешнего оракула с внутренними ценами пулов
-- Выявление расхождений с настраиваемыми порогами
-- Пороги: Warning (25%), Critical (50%), Emergency (75%)
+- Comparison of external oracle prices with internal pool prices
+- Detection of deviations with configurable thresholds
+- Thresholds: Warning (25%), Critical (50%), Emergency (75%)
 
 ### 2. Statistical Anomaly Detection
-- Анализ исторических данных цен (последние 50-70 обновлений)
-- Z-Score анализ для выявления статистических аномалий
-- Адаптивные пороги на основе волатильности рынка
+- Analysis of historical price data (last 50-70 updates)
+- Z-Score analysis for detecting statistical anomalies
+- Adaptive thresholds based on market volatility
 
 ### 3. Circuit Breaker System
-- Автоматическая активация защитных механизмов
-- Три уровня защиты: Warning, Critical, Emergency
-- Мгновенная реакция на угрозы (1-30 секунд)
+- Automatic activation of protective mechanisms
+- Three protection levels: Warning, Critical, Emergency
+- Instant response to threats (1-30 seconds)
 
-## Архитектура
+## Architecture
 
-### Основные структуры
+### Core Structures
 
-**Примечание**: Для оптимизации газа используется `vector<PricePoint>` вместо `Table<u64, PricePoint>`, так как:
-- Количество записей небольшое (50-70)
-- Вектор обеспечивает быстрый доступ к элементам
-- Эффективное добавление новых записей и удаление старых
-- Меньше накладных расходов на газ
+**Note**: For gas optimization, `vector<PricePoint>` is used instead of `Table<u64, PricePoint>` because:
+- The number of records is small (50-70)
+- Vector provides fast access to elements
+- Efficient addition of new records and removal of old ones
+- Lower gas overhead
 
 ```move
-// Основной монитор цен
+// Main price monitor
 struct PriceMonitor has store, key {
-    config: PriceMonitorConfig,           // Конфигурация
-    price_history: vector<PricePoint>,    // История цен (вектор для эффективности)
-    max_history_size: u64,                // Максимальный размер истории
-    anomaly_count: u64,                   // Счетчик аномалий
-    is_emergency_paused: bool,            // Статус паузы
-    pause_timestamp_ms: u64,              // Время активации паузы
-    pause_reason: vector<u8>,             // Причина паузы
-    pause_level: u8,                      // Уровень паузы
+    config: PriceMonitorConfig,           // Configuration
+    price_history: vector<PricePoint>,    // Price history (vector for efficiency)
+    max_history_size: u64,                // Maximum history size
+    anomaly_count: u64,                   // Anomaly counter
+    is_emergency_paused: bool,            // Pause status
+    pause_timestamp_ms: u64,              // Pause activation time
+    pause_reason: vector<u8>,             // Pause reason
+    pause_level: u8,                      // Pause level
 }
 
-// Конфигурация мониторинга
+// Monitoring configuration
 struct PriceMonitorConfig has store, drop {
-    warning_deviation_bps: u64,           // Порог предупреждения (25%)
-    critical_deviation_bps: u64,          // Критический порог (50%)
-    emergency_deviation_bps: u64,         // Экстренный порог (75%)
-    warning_zscore_threshold: u64,        // Z-Score предупреждения (2.5)
-    critical_zscore_threshold: u64,       // Критический Z-Score (3.0)
-    emergency_zscore_threshold: u64,      // Экстренный Z-Score (4.0)
+    warning_deviation_bps: u64,           // Warning threshold (25%)
+    critical_deviation_bps: u64,          // Critical threshold (50%)
+    emergency_deviation_bps: u64,         // Emergency threshold (75%)
+    warning_zscore_threshold: u64,        // Warning Z-Score (2.5)
+    critical_zscore_threshold: u64,       // Critical Z-Score (3.0)
+    emergency_zscore_threshold: u64,      // Emergency Z-Score (4.0)
 }
 
-// Точка цены с метаданными
+// Price point with metadata
 struct PricePoint has store, drop {
-    oracle_price_q64: u128,               // Цена оракула
-    pool_price_q64: u128,                 // Цена пула
-    deviation_bps: u64,                   // Расхождение в базисных пунктах
-    z_score: u64,                         // Z-Score аномалии
-    timestamp_ms: u64,                    // Временная метка
-    anomaly_level: u8,                    // Уровень аномалии
-    anomaly_flags: u8,                    // Флаги типов аномалий
+    oracle_price_q64: u128,               // Oracle price
+    pool_price_q64: u128,                 // Pool price
+    deviation_bps: u64,                   // Deviation in basis points
+    z_score: u64,                         // Anomaly Z-Score
+    timestamp_ms: u64,                    // Timestamp
+    anomaly_level: u8,                    // Anomaly level
+    anomaly_flags: u8,                    // Anomaly type flags
 }
 ```
 
 ### Capabilities
 
 ```move
-// Capability для управления монитором
+// Capability for managing the monitor
 struct PriceMonitorCap has store, key {
     id: UID,
     monitor_id: ID,
 }
 
-// Capability для экстренных операций
+// Capability for emergency operations
 struct EmergencyCap has store, key {
     id: UID,
     monitor_id: ID,
 }
 ```
 
-## Использование
+## Usage
 
-### Создание монитора
+### Creating a Monitor
 
 ```move
 let (monitor, monitor_cap, emergency_cap) = price_monitor::create_price_monitor(ctx);
 ```
 
-### Валидация цен
+### Price Validation
 
 ```move
 let validation_result = price_monitor::validate_price(
@@ -101,18 +101,16 @@ let validation_result = price_monitor::validate_price(
 );
 
 if (!validation_result.is_valid) {
-    // Активировать защитные меры
-    // validation_result.anomaly_level содержит уровень угрозы
-    // validation_result.recommendation содержит рекомендации
+    // Activate protective measures
+    // validation_result.anomaly_level contains threat level
+    // validation_result.recommendation contains recommendations
 };
 ```
 
-
-
-### Экстренные операции
+### Emergency Operations
 
 ```move
-// Экстренная пауза
+// Emergency pause
 price_monitor::emergency_pause(
     &mut monitor, 
     &emergency_cap, 
@@ -120,58 +118,77 @@ price_monitor::emergency_pause(
     clock
 );
 
-// Возобновление работы
+// Resume operation
 price_monitor::emergency_resume(&mut monitor, &emergency_cap, clock);
 ```
 
-## События
+## Events
 
-Модуль эмитит следующие события для off-chain мониторинга:
+The module emits the following events for off-chain monitoring:
 
-- `EventPriceAnomalyDetected` - обнаружена аномалия цены
-- `EventCircuitBreakerActivated` - активирован circuit breaker
-- `EventCircuitBreakerDeactivated` - деактивирован circuit breaker
-- `EventPriceValidated` - цена успешно валидирована
-- `EventPriceHistoryUpdated` - обновлена история цен
+- `EventPriceAnomalyDetected` - price anomaly detected
+- `EventCircuitBreakerActivated` - circuit breaker activated
+- `EventCircuitBreakerDeactivated` - circuit breaker deactivated
+- `EventPriceValidated` - price successfully validated
+- `EventPriceHistoryUpdated` - price history updated
 
-## Конфигурация
+## Configuration
 
-### Пороги по умолчанию
+### Default Thresholds
 
-- **Deviation (расхождение оракул-пул)**:
-  - Warning: 25% (2500 базисных пунктов)
-  - Critical: 50% (5000 базисных пунктов)
-  - Emergency: 75% (7500 базисных пунктов)
+- **Deviation (oracle-pool discrepancy)**:
+  - Warning: 25% (2500 basis points)
+  - Critical: 50% (5000 basis points)
+  - Emergency: 75% (7500 basis points)
 
-- **Z-Score (статистические аномалии)**:
+- **Z-Score (statistical anomalies)**:
   - Warning: 2.5 (250)
   - Critical: 3.0 (300)
   - Emergency: 4.0 (400)
 
 - **Circuit Breaker**:
-  - Warning: 1 аномалия
-  - Critical: 2 аномалии
-  - Emergency: 3 аномалии
+  - Warning: 1 anomaly
+  - Critical: 2 anomalies
+  - Emergency: 3 anomalies
 
-### Настройка порогов
+- **Time Parameters**:
+  - Minimum interval between price history entries: 1 minute (60000 ms)
+  - Maximum price age: 1 minute (60000 ms)
+  - Anomaly cooldown period: 5 minutes (300000 ms)
+
+### Threshold Configuration
 
 ```move
 let new_config = PriceMonitorConfig {
     warning_deviation_bps: 2000,      // 20%
     critical_deviation_bps: 4000,     // 40%
     emergency_deviation_bps: 6000,    // 60%
-    // ... остальные параметры
+    // ... other parameters
 };
 
 price_monitor::update_config(&mut monitor, &monitor_cap, new_config);
 ```
 
-## Интеграция с существующими контрактами
-
-### В gauge.move
+### Time Parameter Configuration
 
 ```move
-// В методе sync_o_sail_distribution_price
+// Update time parameters
+price_monitor::update_time_config(
+    &mut monitor,
+    120000,  // max_price_age_ms: 2 minutes
+    30000,   // min_price_interval_ms: 30 seconds
+    100,     // max_price_history_size: 100 entries
+    15,      // min_prices_for_analysis: 15 prices for analysis
+    ctx
+);
+```
+
+## Integration with Existing Contracts
+
+### In gauge.move
+
+```move
+// In the sync_o_sail_distribution_price method
 let validation_result = price_monitor::validate_price(
     &mut price_monitor,
     oracle_price_q64,
@@ -180,32 +197,32 @@ let validation_result = price_monitor::validate_price(
 );
 
 if (!validation_result.is_valid) {
-    // Блокировать обновление цены
-    // Активировать защитные меры
+    // Block price update
+    // Activate protective measures
     return;
 };
 
-// Продолжить нормальную работу
+// Continue normal operation
 gauge.sync_o_sail_distribution_price_internal(pool, oracle_price_q64, clock);
 ```
 
-## Безопасность
+## Security
 
-- **Capabilities**: разделение прав между обычным управлением и экстренными операциями
-- **Изоляция**: каждый монитор работает независимо
-- **Аудит**: все действия логируются через события
+- **Capabilities**: separation of rights between normal management and emergency operations
+- **Isolation**: each monitor operates independently
+- **Audit**: all actions are logged through events
 
-## Тестирование
+## Testing
 
 ```bash
-# Запуск тестов
+# Run tests
 sui move test
 
-# Тестирование в devnet
+# Test in devnet
 sui move build --skip-dependency-verification
 sui client publish --gas-budget 10000000
 ```
 
-## Лицензия
+## License
 
 © 2025 Metabyte Labs, Inc. All Rights Reserved.

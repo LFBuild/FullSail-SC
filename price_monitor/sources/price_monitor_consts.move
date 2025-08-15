@@ -113,14 +113,14 @@ module price_monitor::price_monitor_consts {
     
     /// Maximum price age in milliseconds (60000 = 1 minute)
     const MAX_PRICE_AGE_MS: u64 = 60000;
+    
+    /// Minimum interval between price history entries in milliseconds (60000 = 1 minute)
+    const MIN_PRICE_INTERVAL_MS: u64 = 60000;
 
     // ===== DECIMAL CONFIGURATION =====
     
     /// SAIL token decimals
     const SAIL_DECIMALS: u8 = 6;
-    
-    /// USD decimals
-    const USD_DECIMALS: u8 = 6;
 
     // ===== Q64 FORMAT CONSTANTS =====
     
@@ -215,12 +215,12 @@ module price_monitor::price_monitor_consts {
 
     /// Get max price age ms
     public fun get_max_price_age_ms(): u64 { MAX_PRICE_AGE_MS }
+    
+    /// Get min price interval ms
+    public fun get_min_price_interval_ms(): u64 { MIN_PRICE_INTERVAL_MS }
 
     /// Get sail decimals
     public fun get_sail_decimals(): u8 { SAIL_DECIMALS }
-
-    /// Get USD decimals
-    public fun get_usd_decimals(): u8 { USD_DECIMALS }
 
     /// Get Q64 shift
     public fun get_q64_shift(): u128 { Q64_SHIFT }
