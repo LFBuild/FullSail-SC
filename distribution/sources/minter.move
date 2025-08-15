@@ -11,6 +11,7 @@ module distribution::minter {
     use sui::bag::{Self, Bag};
     use sui::table::{Self, Table};
     use integer_mate::full_math_u128;
+    use price_monitor::price_monitor::{Self, PriceMonitor};
     use switchboard::aggregator::{Aggregator};
     use distribution::exercise_fee_distributor::{Self, ExerciseFeeDistributor};
 
@@ -1275,6 +1276,7 @@ module distribution::minter {
     /// * `epoch_pool_predicted_volume_usd` - Predicted volume for epoch N (i.e epoch that just started) in USD. Zero for new gauges. 6 decimals.
     /// * `price_monitor` - The price monitor to validate the price
     /// * `sail_stablecoin_pool` - The pool of SAIL token with a stablecoin
+    /// * `metadata` - The metadata of the stablecoin in sail_stablecoin_pool
     /// * `aggregator` - The aggregator of oSAIL price to fetch the price from
     /// * `clock` - The system clock
     /// * `ctx` - Transaction context
@@ -1286,7 +1288,7 @@ module distribution::minter {
     /// * If the gauge has already been distributed for the current period
     /// * If the gauge has no base supply
     /// * If pool metrics are invalid for non-initial epochs
-    public fun distribute_gauge<CoinTypeA, CoinTypeB, SailCoinType, CurrentEpochOSail>(
+    public fun distribute_gauge<CoinTypeA, CoinTypeB, SailPoolCoinTypeA, SailPoolCoinTypeB, StableCoin, SailCoinType, CurrentEpochOSail>(
         minter: &mut Minter<SailCoinType>,
         voter: &mut distribution::voter::Voter,
         distribute_governor_cap: &DistributeGovernorCap,
@@ -1300,8 +1302,9 @@ module distribution::minter {
         epoch_pool_fees_usd: u64,
         epoch_pool_volume_usd: u64,
         epoch_pool_predicted_volume_usd: u64,
-        price_monitor: &mut price_monitor::price_monitor::PriceMonitor,
-        sail_stablecoin_pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        price_monitor: &mut PriceMonitor,
+        sail_stablecoin_pool: &clmm_pool::pool::Pool<SailPoolCoinTypeA, SailPoolCoinTypeB>,
+        metadata: &CoinMetadata<StableCoin>,
         aggregator: &Aggregator,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
@@ -1310,22 +1313,15 @@ module distribution::minter {
         assert!(!minter.is_emission_stopped(), EEmissionStopped);
         minter.check_distribute_governor(distribute_governor_cap);
         assert!(minter.is_active(clock), EDistributeGaugeMinterNotActive);
-        let current_epoch_o_sail_type = type_name::get<CurrentEpochOSail>();
-        assert!(minter.current_epoch_o_sail.borrow() == current_epoch_o_sail_type, EDistributeGaugeInvalidToken);
-        
-        let gauge_id = object::id(gauge);
-        assert!(
-            !minter.gauge_active_period.contains(gauge_id) || *minter.gauge_active_period.borrow(gauge_id) < minter.active_period,
-             EDistributeGaugeAlreadyDistributed
-        );
-        assert!(minter.gauge_epoch_emissions_usd.contains(gauge_id), EDistributeGaugePoolHasNoBaseSupply);
         assert!(minter.is_valid_distribution_config(distribution_config), EDistributeGaugeDistributionConfigInvalid);
+        assert!(distribution_config.is_valid_sail_price_aggregator(aggregator), EExerciseOSailInvalidAggregator);
 
-        assert!(type_name::get<CoinTypeA>() == type_name::get<SailCoinType>() || 
-            type_name::get<CoinTypeB>() == type_name::get<SailCoinType>(), EInvalidSailPool);
+        assert!(type_name::get<SailPoolCoinTypeA>() == type_name::get<SailCoinType>() || 
+            type_name::get<SailPoolCoinTypeB>() == type_name::get<SailCoinType>(), EInvalidSailPool);
         let price_validation_result = price_monitor.validate_price(
             aggregator, 
-            sail_stablecoin_pool, 
+            sail_stablecoin_pool,
+            metadata,
             clock
         );
 
@@ -1337,6 +1333,123 @@ module distribution::minter {
             return 0
         };
         
+        let next_epoch_emissions_usd = minter.distribute_gauge_internal<CoinTypeA, CoinTypeB, SailCoinType, CurrentEpochOSail>(
+            voter,
+            distribution_config,
+            gauge,
+            pool,
+            prev_epoch_pool_emissions_usd,
+            prev_epoch_pool_fees_usd,
+            epoch_pool_emissions_usd,
+            epoch_pool_fees_usd,
+            epoch_pool_volume_usd,
+            epoch_pool_predicted_volume_usd,
+            price_validation_result.get_price_q64(),
+            clock,
+            ctx
+        );
+
+        next_epoch_emissions_usd
+    }
+
+    /// we need this method if pool and sail_stablecoin_pool are the same pool
+    public fun distribute_gauge_for_sail_pool<CoinTypeA, CoinTypeB, StableCoin, SailCoinType, CurrentEpochOSail>(
+        minter: &mut Minter<SailCoinType>,
+        voter: &mut distribution::voter::Voter,
+        distribute_governor_cap: &DistributeGovernorCap,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
+        gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        sail_pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        // params related to rewards change calculation
+        prev_epoch_pool_emissions_usd: u64,
+        prev_epoch_pool_fees_usd: u64,
+        epoch_pool_emissions_usd: u64,
+        epoch_pool_fees_usd: u64,
+        epoch_pool_volume_usd: u64,
+        epoch_pool_predicted_volume_usd: u64,
+        price_monitor: &mut PriceMonitor,
+        metadata: &CoinMetadata<StableCoin>,
+        aggregator: &Aggregator,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext,
+    ): u64 {
+        assert!(!minter.is_paused(), EDistributeGaugeMinterPaused);
+        assert!(!minter.is_emission_stopped(), EEmissionStopped);
+        minter.check_distribute_governor(distribute_governor_cap);
+        assert!(minter.is_active(clock), EDistributeGaugeMinterNotActive);
+        assert!(minter.is_valid_distribution_config(distribution_config), EDistributeGaugeDistributionConfigInvalid);
+        assert!(distribution_config.is_valid_sail_price_aggregator(aggregator), EExerciseOSailInvalidAggregator);
+
+        assert!(
+            type_name::get<CoinTypeA>() == type_name::get<SailCoinType>() || 
+            type_name::get<CoinTypeB>() == type_name::get<SailCoinType>() 
+            &&
+            type_name::get<CoinTypeA>() == type_name::get<StableCoin>() || 
+            type_name::get<CoinTypeB>() == type_name::get<StableCoin>(), 
+            EInvalidSailPool
+        );
+
+        let price_validation_result = price_monitor.validate_price(
+            aggregator, 
+            sail_pool,
+            metadata,
+            clock
+        );
+
+        if (price_validation_result.get_escalation_activation()) {
+
+            minter.emission_stopped = true;
+            sui::event::emit<EventStopEmission>(EventStopEmission {});
+
+            return 0
+        };
+        
+        let next_epoch_emissions_usd = minter.distribute_gauge_internal<CoinTypeA, CoinTypeB, SailCoinType, CurrentEpochOSail>(
+            voter,
+            distribution_config,
+            gauge,
+            sail_pool,
+            prev_epoch_pool_emissions_usd,
+            prev_epoch_pool_fees_usd,
+            epoch_pool_emissions_usd,
+            epoch_pool_fees_usd,
+            epoch_pool_volume_usd,
+            epoch_pool_predicted_volume_usd,
+            price_validation_result.get_price_q64(),
+            clock,
+            ctx
+        );
+
+        next_epoch_emissions_usd
+    }
+
+    fun distribute_gauge_internal<CoinTypeA, CoinTypeB, SailCoinType, CurrentEpochOSail>(
+        minter: &mut Minter<SailCoinType>,
+        voter: &mut distribution::voter::Voter,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
+        gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        // params related to rewards change calculation
+        prev_epoch_pool_emissions_usd: u64,
+        prev_epoch_pool_fees_usd: u64,
+        epoch_pool_emissions_usd: u64,
+        epoch_pool_fees_usd: u64,
+        epoch_pool_volume_usd: u64,
+        epoch_pool_predicted_volume_usd: u64,
+        o_sail_price_q64: u128,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext,
+    ): u64 {
+        let current_epoch_o_sail_type = type_name::get<CurrentEpochOSail>();
+        assert!(minter.current_epoch_o_sail.borrow() == current_epoch_o_sail_type, EDistributeGaugeInvalidToken);
+        
+        let gauge_id = object::id(gauge);
+        assert!(
+            !minter.gauge_active_period.contains(gauge_id) || *minter.gauge_active_period.borrow(gauge_id) < minter.active_period,
+             EDistributeGaugeAlreadyDistributed
+        );
+        assert!(minter.gauge_epoch_emissions_usd.contains(gauge_id), EDistributeGaugePoolHasNoBaseSupply);
+
         let gauge_epoch_count = if (minter.gauge_epoch_count.contains(gauge_id)) {
             minter.gauge_epoch_count.remove(gauge_id)
         } else {
@@ -1391,7 +1504,7 @@ module distribution::minter {
             gauge,
             pool,
             next_epoch_emissions_usd,
-            price_validation_result.get_price_q64(),
+            o_sail_price_q64,
             clock,
             ctx
         );
@@ -1484,36 +1597,39 @@ module distribution::minter {
     /// * `emissions_increase_usd` - The amount of emissions to increase in USD. 6 decimals.
     /// * `price_monitor` - The price monitor to validate the price
     /// * `sail_stablecoin_pool` - The pool of SAIL token with a stablecoin
+    /// * `metadata` - The metadata of the stablecoin in sail_stablecoin_pool
     /// * `aggregator` - The aggregator of oSAIL price to fetch the price from
     /// * `clock` - The system clock
     /// * `ctx` - Transaction context
-    public fun increase_gauge_emissions<CoinTypeA, CoinTypeB, SailCoinType>(
+    public fun increase_gauge_emissions<CoinTypeA, CoinTypeB, SailPoolCoinTypeA, SailPoolCoinTypeB, StableCoin, SailCoinType>(
         minter: &mut Minter<SailCoinType>,
-        voter: &mut distribution::voter::Voter,
-        distribution_config: &mut distribution::distribution_config::DistributionConfig,
+        voter: &distribution::voter::Voter,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
         admin_cap: &AdminCap,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         emissions_increase_usd: u64,
-        price_monitor: &mut price_monitor::price_monitor::PriceMonitor,
-        sail_stablecoin_pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        price_monitor: &mut PriceMonitor,
+        sail_stablecoin_pool: &clmm_pool::pool::Pool<SailPoolCoinTypeA, SailPoolCoinTypeB>,
+        metadata: &CoinMetadata<StableCoin>,
         aggregator: &Aggregator,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
         minter.check_admin(admin_cap);
-        let gauge_id = object::id(gauge);
-        assert!(gauge_distributed(minter, gauge_id), EIncreaseEmissionsNotDistributed);
         assert!(minter.is_valid_distribution_config(distribution_config), EIncreaseEmissionsDistributionConfigInvalid);
         assert!(minter.is_active(clock), EIncreaseEmissionsMinterNotActive);
         assert!(!minter.is_paused(), EIncreaseEmissionsMinterPaused);
         assert!(!minter.is_emission_stopped(), EEmissionStopped);
 
-        assert!(type_name::get<CoinTypeA>() == type_name::get<SailCoinType>() || 
-            type_name::get<CoinTypeB>() == type_name::get<SailCoinType>(), EInvalidSailPool);
+        assert!(distribution_config.is_valid_sail_price_aggregator(aggregator), EExerciseOSailInvalidAggregator);
+
+        assert!(type_name::get<SailPoolCoinTypeA>() == type_name::get<SailCoinType>() || 
+            type_name::get<SailPoolCoinTypeB>() == type_name::get<SailCoinType>(), EInvalidSailPool);
         let price_validation_result = price_monitor.validate_price( 
             aggregator, 
             sail_stablecoin_pool, 
+            metadata,
             clock
         );
 
@@ -1524,6 +1640,90 @@ module distribution::minter {
 
             return
         };
+
+        minter.increase_gauge_emissions_internal(
+            voter,
+            distribution_config,
+            gauge,
+            pool,
+            emissions_increase_usd,
+            price_validation_result.get_price_q64(),
+            clock,
+            ctx
+        );
+    }
+
+    /// we need this method if pool and sail_stablecoin_pool are the same pool
+    public fun increase_gauge_emissions_for_sail_pool<CoinTypeA, CoinTypeB, StableCoin, SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        voter: &distribution::voter::Voter,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
+        admin_cap: &AdminCap,
+        gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        sail_pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        emissions_increase_usd: u64,
+        price_monitor: &mut PriceMonitor,
+        metadata: &CoinMetadata<StableCoin>,
+        aggregator: &Aggregator,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        minter.check_admin(admin_cap);
+        assert!(minter.is_valid_distribution_config(distribution_config), EIncreaseEmissionsDistributionConfigInvalid);
+        assert!(minter.is_active(clock), EIncreaseEmissionsMinterNotActive);
+        assert!(!minter.is_paused(), EIncreaseEmissionsMinterPaused);
+        assert!(!minter.is_emission_stopped(), EEmissionStopped);
+
+        assert!(distribution_config.is_valid_sail_price_aggregator(aggregator), EExerciseOSailInvalidAggregator);
+
+        assert!(
+            type_name::get<CoinTypeA>() == type_name::get<SailCoinType>() || 
+            type_name::get<CoinTypeB>() == type_name::get<SailCoinType>() 
+            &&
+            type_name::get<CoinTypeA>() == type_name::get<StableCoin>() || 
+            type_name::get<CoinTypeB>() == type_name::get<StableCoin>(), 
+            EInvalidSailPool
+        );
+        let price_validation_result = price_monitor.validate_price( 
+            aggregator, 
+            sail_pool, 
+            metadata,
+            clock
+        );
+
+        if (price_validation_result.get_escalation_activation()) {
+
+            minter.emission_stopped = true;
+            sui::event::emit<EventStopEmission>(EventStopEmission {});
+
+            return
+        };
+
+        minter.increase_gauge_emissions_internal(
+            voter,
+            distribution_config,
+            gauge,
+            sail_pool,
+            emissions_increase_usd,
+            price_validation_result.get_price_q64(),
+            clock,
+            ctx
+        );
+    }
+
+    fun increase_gauge_emissions_internal<CoinTypeA, CoinTypeB, SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        voter: &distribution::voter::Voter,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
+        gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        emissions_increase_usd: u64,
+        o_sail_price_q64: u128,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        let gauge_id = object::id(gauge);
+        assert!(gauge_distributed(minter, gauge_id), EIncreaseEmissionsNotDistributed);
 
         let old_gauge_epoch_emissions_usd = minter.gauge_epoch_emissions_usd.remove(gauge_id);
         minter.gauge_epoch_emissions_usd.add(gauge_id, old_gauge_epoch_emissions_usd + emissions_increase_usd);
@@ -1538,7 +1738,7 @@ module distribution::minter {
             gauge,
             pool,
             emissions_increase_usd,
-            price_validation_result.get_price_q64(),
+            o_sail_price_q64,
             clock,
             ctx
         );
@@ -1549,9 +1749,9 @@ module distribution::minter {
             emissions_increase_usd,
             o_sail_type: *minter.current_epoch_o_sail.borrow(),
         };
+
         sui::event::emit<EventIncreaseGaugeEmissions>(event);
     }
-
     
     /// Creates a new gauge for a pool with specified base emissions.
     /// The gauge will be used to distribute oSAIL tokens to the pool based on its performance.
@@ -1751,15 +1951,17 @@ module distribution::minter {
     /// * `pool` - The pool associated with the gauge
     /// * `price_monitor` - The price monitor to validate the price
     /// * `sail_stablecoin_pool` - The pool of SAIL token with a stablecoin
+    /// * `metadata` - The metadata of the stablecoin in sail_stablecoin_pool
     /// * `aggregator` - The aggregator of oSAIL price to fetch the price from
     /// * `clock` - The system clock
-    public fun sync_o_sail_distribution_price<CoinTypeA, CoinTypeB, SailCoinType>(
+    public fun sync_o_sail_distribution_price<CoinTypeA, CoinTypeB, SailPoolCoinTypeA, SailPoolCoinTypeB, StableCoin, SailCoinType>(
         minter: &mut Minter<SailCoinType>,
         distribution_config: &mut distribution::distribution_config::DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        price_monitor: &mut price_monitor::price_monitor::PriceMonitor,
-        sail_stablecoin_pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        price_monitor: &mut PriceMonitor,
+        sail_stablecoin_pool: &clmm_pool::pool::Pool<SailPoolCoinTypeA, SailPoolCoinTypeB>,
+        metadata: &CoinMetadata<StableCoin>,
         aggregator: &Aggregator,
         clock: &sui::clock::Clock
     ) {
@@ -1770,11 +1972,14 @@ module distribution::minter {
         assert!(!minter.is_paused(), EIncreaseEmissionsMinterPaused);
         assert!(!minter.is_emission_stopped(), EEmissionStopped);
 
-        assert!(type_name::get<CoinTypeA>() == type_name::get<SailCoinType>() || 
-            type_name::get<CoinTypeB>() == type_name::get<SailCoinType>(), EInvalidSailPool);
+        assert!(distribution_config.is_valid_sail_price_aggregator(aggregator), EExerciseOSailInvalidAggregator);
+
+        assert!(type_name::get<SailPoolCoinTypeA>() == type_name::get<SailCoinType>() || 
+            type_name::get<SailPoolCoinTypeB>() == type_name::get<SailCoinType>(), EInvalidSailPool);
         let price_validation_result = price_monitor.validate_price(
             aggregator, 
-            sail_stablecoin_pool, 
+            sail_stablecoin_pool,
+            metadata,
             clock
         );
 
@@ -1790,6 +1995,56 @@ module distribution::minter {
         gauge.sync_o_sail_distribution_price(
             distribution_config,
             pool,
+            price_validation_result.get_price_q64(),
+            clock
+        );
+    }
+
+    /// we need this method if pool and sail_stablecoin_pool are the same pool
+    public fun sync_o_sail_distribution_price_for_sail_pool<CoinTypeA, CoinTypeB, StableCoin, SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        distribution_config: &mut distribution::distribution_config::DistributionConfig,
+        gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        sail_pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        price_monitor: &mut PriceMonitor,
+        metadata: &CoinMetadata<StableCoin>,
+        aggregator: &Aggregator,
+        clock: &sui::clock::Clock
+    ) {
+        let gauge_id = object::id(gauge);
+        assert!(gauge_distributed(minter, gauge_id), EIncreaseEmissionsNotDistributed);
+        assert!(minter.is_valid_distribution_config(distribution_config), EIncreaseEmissionsDistributionConfigInvalid);
+        assert!(minter.is_active(clock), EIncreaseEmissionsMinterNotActive);
+        assert!(!minter.is_paused(), EIncreaseEmissionsMinterPaused);
+        assert!(!minter.is_emission_stopped(), EEmissionStopped);
+
+        assert!(distribution_config.is_valid_sail_price_aggregator(aggregator), EExerciseOSailInvalidAggregator);
+
+        assert!(
+            type_name::get<CoinTypeA>() == type_name::get<SailCoinType>() || 
+            type_name::get<CoinTypeB>() == type_name::get<SailCoinType>() 
+            &&
+            type_name::get<CoinTypeA>() == type_name::get<StableCoin>() || 
+            type_name::get<CoinTypeB>() == type_name::get<StableCoin>(), 
+            EInvalidSailPool
+        );
+        let price_validation_result = price_monitor.validate_price(
+            aggregator, 
+            sail_pool,
+            metadata,
+            clock
+        );
+
+        if (price_validation_result.get_escalation_activation()) {
+            minter.emission_stopped = true;
+            sui::event::emit<EventStopEmission>(EventStopEmission {});
+
+            return
+        };
+
+        gauge.sync_o_sail_distribution_price(
+            distribution_config,
+            sail_pool,
             price_validation_result.get_price_q64(),
             clock
         );
@@ -2030,28 +2285,30 @@ module distribution::minter {
     ///
     /// # Arguments
     /// * `minter` - The minter instance
-    /// * `voter` - The voter instance
     /// * `distribution_config` - The distribution config instance
+    /// * `exercise_fee_distributor` - The exercise fee distributor instance
     /// * `o_sail` - The oSAIL coin to exercise
     /// * `fee` - The fee coin to pay for the exercise. This is the fee that is paid to the team wallet.
     /// * `usd_amount_limit` - The maximum amount of USD that can be paid for the exercise.
     /// * `price_monitor` - The price monitor to validate the price
     /// * `sail_stablecoin_pool` - The pool of SAIL token with a stablecoin
+    /// * `metadata` - The metadata of the stablecoin in sail_stablecoin_pool
     /// * `aggregator` - The aggregator of SAIL price to fetch the price from
     /// * `clock` - The clock instance
     /// * `ctx` - The transaction context
     ///
     /// # Returns
     /// * `(usd_left, sail_received)` - The unused USD and the amount of SAIL received
-    public fun exercise_o_sail<CoinTypeA, CoinTypeB, SailCoinType, USDCoinType, OSailCoinType>(
+    public fun exercise_o_sail<SailPoolCoinTypeA, SailPoolCoinTypeB, StableCoin, SailCoinType, USDCoinType, OSailCoinType>(
         minter: &mut Minter<SailCoinType>,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         exercise_fee_distributor: &mut ExerciseFeeDistributor<USDCoinType>,
         o_sail: Coin<OSailCoinType>,
         fee: Coin<USDCoinType>,
         usd_amount_limit: u64,
-        price_monitor: &mut price_monitor::price_monitor::PriceMonitor,
-        sail_stablecoin_pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        price_monitor: &mut PriceMonitor,
+        sail_stablecoin_pool: &clmm_pool::pool::Pool<SailPoolCoinTypeA, SailPoolCoinTypeB>,
+        metadata: &CoinMetadata<StableCoin>,
         aggregator: &Aggregator,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
@@ -2065,13 +2322,17 @@ module distribution::minter {
         assert!(current_time < expiry_date, EExerciseOSailExpired);
         // check distribution config
         assert!(minter.is_valid_distribution_config(distribution_config), EExerciseOSailInvalidDistrConfig);
+        assert!(distribution_config.is_valid_sail_price_aggregator(aggregator), EExerciseOSailInvalidAggregator);
         assert!(minter.is_whitelisted_usd<SailCoinType, USDCoinType>(), EExerciseOSailInvalidUsd);
 
-        assert!(type_name::get<CoinTypeA>() == type_name::get<SailCoinType>() || 
-            type_name::get<CoinTypeB>() == type_name::get<SailCoinType>(), EInvalidSailPool);
+        assert!(type_name::get<SailPoolCoinTypeA>() == type_name::get<SailCoinType>() || 
+            type_name::get<SailPoolCoinTypeB>() == type_name::get<SailCoinType>(), EInvalidSailPool);
+        assert!(type_name::get<SailPoolCoinTypeA>() == type_name::get<USDCoinType>() || 
+            type_name::get<SailPoolCoinTypeB>() == type_name::get<USDCoinType>(), EInvalidSailPool);
         let price_validation_result = price_monitor.validate_price(
             aggregator, 
-            sail_stablecoin_pool, 
+            sail_stablecoin_pool,
+            metadata,
             clock
         );
 
@@ -2108,6 +2369,7 @@ module distribution::minter {
             ctx,
         )
     }
+
     /// withdraws SAIL from storage and burns oSAIL
     fun exercise_o_sail_process_payment<SailCoinType, USDCoinType, OSailCoinType>(
         minter: &mut Minter<SailCoinType>,
@@ -2446,6 +2708,41 @@ module distribution::minter {
         };
         sui::event::emit<EventCancelTimeLockedMint>(event);
         object::delete(id);
+    }
+
+    /// Sets the aggregator that is used to calculate the price of oSAIL in USD
+    /// In practice it is the same as sail_price_aggregator, but for future compatibility we keep it separate.
+    public fun set_o_sail_price_aggregator<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        admin_cap: &AdminCap,
+        distribution_config: &mut distribution::distribution_config::DistributionConfig,
+        aggregator: &Aggregator,
+    ) {
+        minter.check_admin(admin_cap);
+        assert!(minter.is_valid_distribution_config(distribution_config), ESetOsailPriceAggregatorInvalidDistrConfig);
+        distribution_config.set_o_sail_price_aggregator(aggregator);
+
+        let event = EventSetOSailPriceAggregator {
+            price_aggregator: object::id(aggregator),
+        };
+        sui::event::emit<EventSetOSailPriceAggregator>(event);
+    }
+
+    /// Sets the aggregator that is used to calculate the price of SAIL in USD
+    public fun set_sail_price_aggregator<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        admin_cap: &AdminCap,
+        distribution_config: &mut distribution::distribution_config::DistributionConfig,
+        aggregator: &Aggregator,
+    ) {
+        minter.check_admin(admin_cap);
+        assert!(minter.is_valid_distribution_config(distribution_config), ESetSailPriceAggregatorInvalidDistrConfig);
+        distribution_config.set_sail_price_aggregator(aggregator);
+
+        let event = EventSetSailPriceAggregator {
+            price_aggregator: object::id(aggregator),
+        };
+        sui::event::emit<EventSetSailPriceAggregator>(event);
     }
 
     /// Proxy method to be called via Minter
