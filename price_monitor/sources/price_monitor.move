@@ -41,8 +41,6 @@ module price_monitor::price_monitor {
     const EAdminNotWhitelisted: u64 = 93200562390235020;
     const EAddressNotAdmin: u64 = 93002007804597346;
     const EPackageVersionMismatch: u64 = 93406283690864906;
-    const EInvalidMetadata: u64 = 99450784701125044;
-    const EDecimalToQ64NegativeNotSupported: u64 = 93680623720490712;
     const EGetTimeCheckedPriceOutdated: u64 = 93470312203956742;
     const EGetTimeCheckedPriceNegativePrice: u64 = 92834672437062811;
 
@@ -267,7 +265,21 @@ module price_monitor::price_monitor {
     ) {
         checked_package_version(monitor);
         check_admin(monitor, sui::tx_context::sender(ctx));
-        monitor.aggregator_to_pools.add(aggregator_id, pool_ids);
+        let mut current_pool_ids: vector<ID>;
+        if (monitor.aggregator_to_pools.contains(aggregator_id)) {
+            current_pool_ids = monitor.aggregator_to_pools.remove(aggregator_id);
+        } else {
+            current_pool_ids = vector::empty<ID>();
+        };
+
+        let mut i = 0;
+        let new_pool_ids_len = pool_ids.length();
+        while (i < new_pool_ids_len) {
+            current_pool_ids.push_back<ID>(pool_ids[i]);
+            i = i + 1;
+        };
+
+        monitor.aggregator_to_pools.add(aggregator_id, current_pool_ids);
     }
 
     /// Remove an aggregator and its associated pools
@@ -583,6 +595,7 @@ module price_monitor::price_monitor {
         
         // Check if deviation_bps exceeds u64::MAX to prevent overflow
         let clamped_deviation_bps = if (deviation_bps > MAX_U64) { MAX_U64 } else { deviation_bps };
+
         (clamped_deviation_bps as u64)
     }
 
@@ -1455,7 +1468,6 @@ module price_monitor::price_monitor {
     /// 
     /// # Arguments
     /// * `pool` - The CLMM pool containing the trading pair (feed pool)
-    /// * `quote_coin_metadata` - Metadata for the quote coin (e.g., USDC metadata)
     /// 
     /// # Returns
     /// Pool price in Q64.64 format
@@ -1464,6 +1476,7 @@ module price_monitor::price_monitor {
     ): u128 {
 
         let sqrt_price = pool.current_sqrt_price();
+
         let mut pool_price_q64 = (integer_mate::full_math_u128::full_mul(sqrt_price, sqrt_price) >> 64) as u128;
 
         if (type_name::get<CoinTypeA>() == type_name::get<BaseCoin>()) {

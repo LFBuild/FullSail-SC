@@ -1085,6 +1085,7 @@ module distribution::voter {
         distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
 
         let coin_type = type_name::get<RewardCoinType>();
+
         voter.current_epoch_token.swap_or_fill(coin_type);
 
         let pool_id = object::id(voter);
