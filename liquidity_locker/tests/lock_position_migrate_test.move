@@ -2031,8 +2031,6 @@ module liquidity_locker::lock_position_migrate_test {
             distribution_config.test_set_o_sail_price_aggregator(&aggregator);
             distribution_config.test_set_sail_price_aggregator(&aggregator);
 
-            std::debug::print(&std::string::utf8(b"price_monitor.add_aggregator"));
-
             test_scenario::return_shared(price_monitor);
             test_scenario::return_shared(distribution_config);
             transfer::public_share_object(sail_stablecoin_pool);
