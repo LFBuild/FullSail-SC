@@ -2693,7 +2693,9 @@ std::debug::print(&(o_sail_price_q64_decimals>>64));
         sui::event::emit<EventSetSailPriceAggregator>(event);
     }
 
-    /// Proxy method to be called via Minter
+    /// Claims rewards in current epoch oSAIL for a specific position.
+    /// Returns freshly minted oSAIL coins.
+    /// RewardCoinType is supposed to be the current epoch oSAIL.
     public fun get_position_reward<CoinTypeA, CoinTypeB, SailCoinType, RewardCoinType>(
         minter: &mut Minter<SailCoinType>,
         voter: &distribution::voter::Voter,
@@ -2705,7 +2707,7 @@ std::debug::print(&(o_sail_price_q64_decimals>>64));
         ctx: &mut TxContext
     ): Coin<RewardCoinType> {
         let distribute_cap = minter.distribute_cap.borrow();
-        assert!(minter.is_valid_o_sail_type<SailCoinType, RewardCoinType>(), EGetPositionRewardInvalidRewardToken);
+        assert!(minter.is_valid_epoch_token<SailCoinType, RewardCoinType>(), EGetPositionRewardInvalidRewardToken);
         
         let reward_amount = voter.get_position_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
             distribute_cap,
@@ -2720,7 +2722,9 @@ std::debug::print(&(o_sail_price_q64_decimals>>64));
         minter.mint_o_sail<SailCoinType, RewardCoinType>(reward_amount, ctx)
     }
 
-    /// Proxy method to be called via Minter
+    /// Claims rewards in current epoch oSAIL for multiple positions.
+    /// Returns freshly minted oSAIL coins.
+    /// RewardCoinType is supposed to be the current epoch oSAIL.
     public fun get_multiple_position_rewards<CoinTypeA, CoinTypeB, SailCoinType, RewardCoinType>(
         minter: &mut Minter<SailCoinType>,
         voter: &distribution::voter::Voter,
@@ -2732,7 +2736,7 @@ std::debug::print(&(o_sail_price_q64_decimals>>64));
         ctx: &mut TxContext
     ): Coin<RewardCoinType> {
         let distribute_cap = minter.distribute_cap.borrow();
-        assert!(minter.is_valid_o_sail_type<SailCoinType, RewardCoinType>(), EGetMultiplePositionRewardInvalidRewardToken);
+        assert!(minter.is_valid_epoch_token<SailCoinType, RewardCoinType>(), EGetMultiplePositionRewardInvalidRewardToken);
 
         let reward_amount = voter.get_multiple_position_rewards<CoinTypeA, CoinTypeB, RewardCoinType>(
          distribute_cap,
