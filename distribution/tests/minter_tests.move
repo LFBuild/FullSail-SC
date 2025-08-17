@@ -1204,12 +1204,6 @@ fun test_distribute_gauge_increase_emissions() {
     // advance to the end of the epoch
     clock.increment_for_testing(WEEK);
 
-    // claim rewards OSAIL1
-    scenario.next_tx(user);
-    {
-        setup::get_staked_position_reward<USD_TESTS, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
-    };
-
     // claim rewards OSAIL2
     scenario.next_tx(user);
     {
