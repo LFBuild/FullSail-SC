@@ -2315,10 +2315,6 @@ module distribution::minter {
             o_sail_price_q64_decimals,
         );
 
-std::debug::print(&(o_sail_price_q64_decimals>>64));
-        std::debug::print(&usd_amount_to_pay);
-        std::debug::print(&usd_amount_limit);
-
         assert!(usd_amount_limit >= usd_amount_to_pay, EExerciseUsdLimitReached);
 
         exercise_o_sail_process_payment(

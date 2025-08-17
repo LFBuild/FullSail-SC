@@ -1085,12 +1085,9 @@ module distribution::voter {
         distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
 
         let coin_type = type_name::get<RewardCoinType>();
-        std::debug::print(&coin_type);
         voter.current_epoch_token.swap_or_fill(coin_type);
 
         let pool_id = object::id(voter);
-
-        std::debug::print(&pool_id);
 
         let event = EventNotifyEpochToken {
             notifier: distribute_cap.who(),
@@ -1109,11 +1106,7 @@ module distribution::voter {
     ): bool {
         let coin_type = type_name::get<RewardCoinType>();
 
-        std::debug::print(&coin_type);
-
         let pool_id = object::id(voter);
-
-        std::debug::print(&pool_id);
 
         voter.current_epoch_token.borrow() == coin_type
     }

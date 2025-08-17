@@ -124,10 +124,7 @@ module distribution::distribution_config {
         distribution_config: &mut DistributionConfig,
         aggregator: &Aggregator,
     ) {
-        std::debug::print(&std::string::utf8(b"test_set_sail_price_aggregator"));
-        std::debug::print(&object::id(distribution_config));
         distribution_config.sail_price_aggregator_id = option::some(object::id(aggregator));
-        std::debug::print(distribution_config.sail_price_aggregator_id.borrow());
     }
 
     public fun is_valid_o_sail_price_aggregator(
@@ -142,10 +139,6 @@ module distribution::distribution_config {
         distribution_config: &DistributionConfig,
         aggregator: &Aggregator,
     ): bool {
-        std::debug::print(&std::string::utf8(b"is_valid_sail_price_aggregator"));
-        std::debug::print(&object::id(distribution_config));
-        std::debug::print(&distribution_config.sail_price_aggregator_id.is_some());
-        std::debug::print(&std::string::utf8(b"____is_valid_sail_price_aggregator"));
         distribution_config.sail_price_aggregator_id.is_some() && 
         object::id(aggregator) == distribution_config.sail_price_aggregator_id.borrow()
     }

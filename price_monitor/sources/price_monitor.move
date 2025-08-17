@@ -580,15 +580,9 @@ module price_monitor::price_monitor {
             (price_monitor_consts::get_basis_points_denominator() as u128),
             base_price_q64
         );
-        std::debug::print(&b"deviation_bps");
-        std::debug::print(&deviation);
-        std::debug::print(&price1_q64);
-        std::debug::print(&base_price_q64);
-        std::debug::print(&deviation_bps);
         
         // Check if deviation_bps exceeds u64::MAX to prevent overflow
         let clamped_deviation_bps = if (deviation_bps > MAX_U64) { MAX_U64 } else { deviation_bps };
-        std::debug::print(&clamped_deviation_bps);
         (clamped_deviation_bps as u64)
     }
 
