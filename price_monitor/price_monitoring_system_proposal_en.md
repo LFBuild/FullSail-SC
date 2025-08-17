@@ -25,7 +25,7 @@ We compare the price from an external oracle (Switchboard) with the current pric
 - **Up to 25%**: Everything is fine, update the price
 - **25-50%**: Warning, but update
 - **50-75%**: Critical, block update
-- **More than 75%**: Emergency situation, pause pool
+- **More than 75%**: Emergency situation, pause protocol emissions
 
 ### **Why This Is Needed**
 If someone hacks Switchboard and substitutes a fake price, we will notice it immediately by comparing it with the real price in our pool.
@@ -74,13 +74,13 @@ Check Results:
 
 Level 1 (Warning): Log the problem
 Level 2 (Critical): Block price update  
-Level 3 (Emergency): Pause the pool
+Level 3 (Emergency): Pause protocol emissions
 ```
 
 ### **Protection Levels**
 - **Warning**: Only logging and notifications
 - **Critical**: Block critical operations
-- **Emergency**: Complete pool pause
+- **Emergency**: Complete protocol emissions pause
 
 ### **Why This Is Needed**
 Instead of waiting for the team to notice the problem and react manually, the system automatically protects the protocol within seconds.
@@ -159,7 +159,7 @@ Hacker hacks Switchboard and substitutes ETH price from $2800 to $5000
 4. Circuit Breaker System:
    - Receives: "Critical!" + "Emergency!"
    - Decision: Activate Emergency level
-   - Action: Pause the pool
+   - Action: Pause protocol emissions
 
 5. Result:
    - Protocol protected in seconds

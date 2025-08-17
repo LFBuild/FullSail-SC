@@ -16745,7 +16745,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             let sail_stablecoin_pool = scenario.take_shared<Pool<USD_TESTS, SailCoinType>>();
 
-            distributed_amount = minter.distribute_gauge<CoinTypeA, CoinTypeB, USD_TESTS, SailCoinType, USD_TESTS, SailCoinType, EpochOSail>(
+            distributed_amount = minter.distribute_gauge<CoinTypeA, CoinTypeB, USD_TESTS, SailCoinType, SailCoinType, EpochOSail>(
                 &mut voter,
                 &distribute_governor_cap,
                 &distribution_config,
@@ -16759,7 +16759,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 epoch_pool_predicted_volume_usd,
                 &mut price_monitor,
                 &sail_stablecoin_pool,
-                usd_metadata,
                 aggregator,
                 clock,
                 scenario.ctx()
@@ -16767,7 +16766,7 @@ module liquidity_locker::liquidity_lock_v2_tests {
 
             test_scenario::return_shared(sail_stablecoin_pool);
         } else {
-            distributed_amount = minter.distribute_gauge_for_sail_pool<CoinTypeA, CoinTypeB, USD_TESTS, SailCoinType, EpochOSail>(
+            distributed_amount = minter.distribute_gauge_for_sail_pool<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
                 &mut voter,
                 &distribute_governor_cap,
                 &distribution_config,
@@ -16780,7 +16779,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
                 epoch_pool_volume_usd,
                 epoch_pool_predicted_volume_usd,
                 &mut price_monitor,
-                usd_metadata,
                 aggregator,
                 clock,
                 scenario.ctx()

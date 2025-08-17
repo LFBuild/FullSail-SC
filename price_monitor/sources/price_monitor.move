@@ -35,28 +35,19 @@ module price_monitor::price_monitor {
 
     // ===== ERROR CODES =====
 
-    const EInvalidPriceMonitorConfig: u64 = 1001;
-    const EPriceHistoryEmpty: u64 = 1002;
-    const EInsufficientPriceHistory: u64 = 1003;
-    const EInvalidDeviationCalculation: u64 = 1004;
-    const EInvalidZScoreCalculation: u64 = 1005;
-    const EPriceMonitorAlreadyPaused: u64 = 1006;
-    const EPriceMonitorNotPaused: u64 = 1007;
-    const EInvalidGaugeCap: u64 = 1008;
-    const EInvalidSailPool: u64 = 1009;
-    const EInvalidAggregator: u64 = 1010;
-    const EZeroPrice: u64 = 1011;
-    const EAdminNotWhitelisted: u64 = 1012;
-    const EAddressNotAdmin: u64 = 1013;
-    const EPackageVersionMismatch: u64 = 1016;
-    const EInvalidMetadata: u64 = 1017;
+    const EInvalidSailPool: u64 = 94979479040750757;
+    const EInvalidAggregator: u64 = 96897698040023643;
+    const EZeroPrice: u64 = 99740389568845675;
+    const EAdminNotWhitelisted: u64 = 93200562390235020;
+    const EAddressNotAdmin: u64 = 93002007804597346;
+    const EPackageVersionMismatch: u64 = 93406283690864906;
+    const EInvalidMetadata: u64 = 99450784701125044;
+    const EDecimalToQ64NegativeNotSupported: u64 = 93680623720490712;
+    const EGetTimeCheckedPriceOutdated: u64 = 93470312203956742;
+    const EGetTimeCheckedPriceNegativePrice: u64 = 92834672437062811;
 
     // Maximum value for u64 type to prevent overflow
     const MAX_U64: u128 = 0xffffffffffffffff;
-
-    const EDecimalToQ64NegativeNotSupported: u64 = 440708559177319000;
-    const EGetTimeCheckedPriceOutdated: u64 = 286529906002696900;
-    const EGetTimeCheckedPriceNegativePrice: u64 = 986261309772136700;
 
     // ===== STRUCTURES =====
 
@@ -79,8 +70,9 @@ module price_monitor::price_monitor {
         
         // Time-based configuration
         anomaly_cooldown_period_ms: u64,
-        max_price_age_ms: u64,
-        min_price_interval_ms: u64,        // Minimum interval between price history entries in milliseconds
+        max_price_age_ms: u64,                    // Maximum age of oracle price after its last update in aggregator
+        max_price_history_age_ms: u64,            // Maximum age of prices stored in price history
+        min_price_interval_ms: u64,               // Minimum interval between price history entries in milliseconds
         
         // History configuration
         max_price_history_size: u64,
@@ -110,7 +102,6 @@ module price_monitor::price_monitor {
     /// Main price monitor instance
     public struct PriceMonitor has store, key {
         id: UID,
-        price_monitor_cap: Option<PriceMonitorCap>,
         version: u64,
         
         // Configuration
@@ -138,12 +129,6 @@ module price_monitor::price_monitor {
 
         // bag to be preapred for future updates
         bag: sui::bag::Bag,
-    }
-
-    /// Capability for managing price monitor
-    public struct PriceMonitorCap has store, key {
-        id: UID,
-        monitor_id: ID,
     }
 
     /// Capability for emergency operations
@@ -220,6 +205,7 @@ module price_monitor::price_monitor {
             emergency_anomaly_threshold: price_monitor_consts::get_emergency_anomaly_threshold(),
             anomaly_cooldown_period_ms: price_monitor_consts::get_anomaly_cooldown_period_ms(),
             max_price_age_ms: price_monitor_consts::get_max_price_age_ms(),
+            max_price_history_age_ms: price_monitor_consts::get_max_price_history_age_ms(),
             min_price_interval_ms: price_monitor_consts::get_min_price_interval_ms(),
             max_price_history_size: price_monitor_consts::get_max_price_history_size(),
             min_prices_for_analysis: price_monitor_consts::get_min_prices_for_analysis(),
@@ -232,7 +218,6 @@ module price_monitor::price_monitor {
 
         let mut monitor = PriceMonitor {
             id: object::new(ctx),
-            price_monitor_cap: option::none<PriceMonitorCap>(),
             version: VERSION,
             config,
             aggregator_to_pools: table::new(ctx),
@@ -250,13 +235,6 @@ module price_monitor::price_monitor {
 
         // Add the first admin (transaction sender)
         monitor.admins.insert(sui::tx_context::sender(ctx));
-
-        let monitor_cap = PriceMonitorCap {
-            id: object::new(ctx),
-            monitor_id: object::id(&monitor),
-        };
-
-        monitor.price_monitor_cap.fill(monitor_cap);
 
         let emergency_cap = SuperAdminCap {
             id: object::new(ctx),
@@ -346,36 +324,42 @@ module price_monitor::price_monitor {
 
     /// Main function to validate and monitor prices
     /// This is the primary entry point for price validation
-    public fun validate_price<CoinTypeA, CoinTypeB, StableCoin>(
+    /// 
+    /// # Type Parameters
+    /// * `CoinTypeA` - First coin type in the feed pool
+    /// * `CoinTypeB` - Second coin type in the feed pool 
+    /// * `BaseCoin` - The base coin whose price is being monitored (e.g., SAIL)
+    /// 
+    /// # Arguments
+    /// * `monitor` - The price monitor instance
+    /// * `aggregator` - The price aggregator for oracle data
+    /// * `feed_pool` - The CLMM pool containing the trading pair
+    /// * `clock` - The clock for timestamp validation
+    public fun validate_price<CoinTypeA, CoinTypeB, BaseCoin>(
         monitor: &mut PriceMonitor,
         aggregator: &Aggregator,
-        sail_stablecoin_pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        metadata: &CoinMetadata<StableCoin>,
+        feed_pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         clock: &Clock,
     ): PriceValidationResult {
         checked_package_version(monitor);
         
         let aggregator_id = object::id(aggregator);
-        let pool_id = object::id(sail_stablecoin_pool);
+        let pool_id = object::id(feed_pool);
         
         // Check if pool is associated with this aggregator
         assert!(is_pool_associated_with_aggregator(monitor, aggregator_id, pool_id), EInvalidSailPool);
-
-        assert!(type_name::get<CoinTypeA>() == type_name::get<StableCoin>() || 
-            type_name::get<CoinTypeB>() == type_name::get<StableCoin>(), EInvalidMetadata);
 
         let current_time_ms = clock::timestamp_ms(clock);
 
         let oracle_price_q64 = get_time_checked_price_q64(
             aggregator,
-            price_monitor_consts::get_sail_decimals(),
-            metadata.get_decimals(),
             clock
         );
 
-        let sqrt_price = sail_stablecoin_pool.current_sqrt_price();
-        let pool_price_q64 = (integer_mate::full_math_u128::full_mul(sqrt_price, sqrt_price) >> 64) as u128;
-        assert!(pool_price_q64 > 0, EZeroPrice);
+        let pool_price_q64 = get_pool_price_q64<CoinTypeA, CoinTypeB, BaseCoin>(feed_pool);
+
+        // Clean old prices from price history before analysis to ensure data freshness
+        clean_old_prices_from_history(monitor, current_time_ms);
 
         // 1. Multi-Oracle Validation
         let deviation_result = if (monitor.config.enable_oracle_pool_validation) {
@@ -821,10 +805,9 @@ module price_monitor::price_monitor {
     /// Add price point to history
     fun add_price_to_history(monitor: &mut PriceMonitor, price_point: PricePoint) {
         // Get the most recent price point key (head of the linked table)
-        let latest_key_opt = monitor.price_history.front();
-        if (latest_key_opt.is_some()) {
-            let latest_key = latest_key_opt.borrow();
-            let latest_price_point = monitor.price_history.borrow(*latest_key);
+        let front_key_opt = monitor.price_history.front();
+        if (front_key_opt.is_some()) {
+            let latest_price_point = monitor.price_history.borrow(*front_key_opt.borrow());
             
             // Check if enough time has passed since the last price update
             if (price_point.timestamp_ms < latest_price_point.timestamp_ms + monitor.config.min_price_interval_ms) {
@@ -839,6 +822,28 @@ module price_monitor::price_monitor {
         // Remove oldest entry from the end (tail) if we exceed max size
         if (monitor.price_history.length() > monitor.max_history_size) {
             monitor.price_history.pop_back();
+        };
+    }
+
+    /// Clean old prices from history based on max_price_history_age_ms
+    /// This method removes prices that are older than the configured threshold from price history
+    fun clean_old_prices_from_history(monitor: &mut PriceMonitor, current_time_ms: u64) {
+        let max_age_ms = monitor.config.max_price_history_age_ms;
+        if (max_age_ms == 0) return; // Skip if not configured
+                
+        let mut back_key_opt = monitor.price_history.back();
+        while (back_key_opt.is_some()) {
+            let oldest_price_point = monitor.price_history.borrow(*back_key_opt.borrow());
+            
+            // Check if this price is too old
+            if (current_time_ms < oldest_price_point.timestamp_ms + max_age_ms) {
+                // Found a price that's not too old, stop removing
+                break
+            };
+
+            // Remove the oldest price
+            monitor.price_history.pop_back();
+            back_key_opt = monitor.price_history.back();
         };
     }
 
@@ -952,7 +957,9 @@ module price_monitor::price_monitor {
     /// * `critical_anomaly_threshold` - Number of consecutive anomalies to trigger critical escalation
     /// * `emergency_anomaly_threshold` - Number of consecutive anomalies to trigger emergency escalation
     /// * `anomaly_cooldown_period_ms` - Cooldown period between anomaly escalations in milliseconds
-    /// * `max_price_age_ms` - Maximum age of oracle prices in milliseconds
+    /// * `max_price_age_ms` - Maximum age of oracle price after its last update in aggregator in milliseconds
+    /// * `max_price_history_age_ms` - Maximum age of prices stored in price history in milliseconds
+    /// * `min_price_interval_ms` - Minimum interval between price history entries in milliseconds
     /// * `max_price_history_size` - Maximum number of price points to store in history
     /// * `min_prices_for_analysis` - Minimum number of prices required for statistical analysis
     /// * `enable_oracle_pool_validation` - Enable/disable oracle-pool deviation validation
@@ -978,6 +985,7 @@ module price_monitor::price_monitor {
         emergency_anomaly_threshold: u64,
         anomaly_cooldown_period_ms: u64,
         max_price_age_ms: u64,
+        max_price_history_age_ms: u64,
         min_price_interval_ms: u64,
         max_price_history_size: u64,
         min_prices_for_analysis: u64,
@@ -999,6 +1007,7 @@ module price_monitor::price_monitor {
             emergency_anomaly_threshold,
             anomaly_cooldown_period_ms,
             max_price_age_ms,
+            max_price_history_age_ms,
             min_price_interval_ms,
             max_price_history_size,
             min_prices_for_analysis,
@@ -1110,7 +1119,8 @@ module price_monitor::price_monitor {
     /// 
     /// # Arguments
     /// * `monitor` - The price monitor object to update
-    /// * `max_price_age_ms` - New maximum price age in milliseconds
+    /// * `max_price_age_ms` - New maximum age for oracle prices after their last update in aggregator in milliseconds
+    /// * `max_price_history_age_ms` - New maximum age for prices stored in price history in milliseconds
     /// * `min_price_interval_ms` - New minimum interval between price history entries in milliseconds
     /// * `max_price_history_size` - New maximum number of price points to store in history
     /// * `min_prices_for_analysis` - New minimum number of prices required for statistical analysis
@@ -1121,6 +1131,7 @@ module price_monitor::price_monitor {
     public fun update_time_config(
         monitor: &mut PriceMonitor,
         max_price_age_ms: u64,
+        max_price_history_age_ms: u64,
         min_price_interval_ms: u64,
         max_price_history_size: u64,
         min_prices_for_analysis: u64,
@@ -1130,6 +1141,7 @@ module price_monitor::price_monitor {
         check_admin(monitor, sui::tx_context::sender(ctx));
         
         monitor.config.max_price_age_ms = max_price_age_ms;
+        monitor.config.max_price_history_age_ms = max_price_history_age_ms;
         monitor.config.min_price_interval_ms = min_price_interval_ms;
         monitor.config.max_price_history_size = max_price_history_size;
         monitor.config.min_prices_for_analysis = min_prices_for_analysis;
@@ -1372,6 +1384,7 @@ module price_monitor::price_monitor {
     }
 
     /// Public result of price validation
+    /// price_q64 - price in Q64.64 format, i.e USD/asset * 2^64
     public struct PriceValidationResult has drop, copy {
         escalation_activation: bool,
         is_valid: bool,
@@ -1412,107 +1425,64 @@ module price_monitor::price_monitor {
 
     /// Utility function to get the current price of an asset from a switchboard aggregator
     /// Asserts that the price is not too old and returns the price.
-    /// If asset and USD decimals are different the price is adjusted to reflect equasion asset * price = USD
     /// 
     /// # Arguments
     /// * `aggregator` - The switchboard aggregator to get the price from
-    /// * `asset_decimals` - The number of decimals of the asset
-    /// * `usd_decimals` - The number of decimals of the USD
     /// * `clock` - The system clock
     /// 
     /// # Returns
-    /// The price in Q64.64 format, i.e USD/asset * 2^64 with respect to decimals.
+    /// The price in Q64.64 format, i.e USD/asset * 2^64 without decimals
     public fun get_time_checked_price_q64(
         aggregator: &Aggregator,
-        asset_decimals: u8,
-        usd_decimals: u8,
         clock: &sui::clock::Clock,
     ): u128 {
         let price_result = aggregator.current_result();
         let current_time = clock.timestamp_ms();
         let price_result_time = price_result.timestamp_ms();
 
-        std::debug::print(&price_result_time);
-        std::debug::print(&(price_result_time + price_monitor_consts::get_max_price_age_ms()));
-        std::debug::print(&current_time);
         assert!(price_result_time + price_monitor_consts::get_max_price_age_ms() > current_time, EGetTimeCheckedPriceOutdated);
 
         let price_result_price = price_result.result();
         assert!(!price_result_price.neg(), EGetTimeCheckedPriceNegativePrice);
 
-        let mut dec = price_result_price.dec();
+        integer_mate::full_math_u128::mul_div_floor(
+            price_result_price.value(),
+            1 << 64,
+            decimal::pow_10(price_result_price.dec())
+        )
+    }
 
-        if (asset_decimals > usd_decimals) {
-            // asset is bigger than USD
-            // asset * price = USD
-            // so to compensate we need to decrease price therefore increase denominator
-            let decimals_delta = asset_decimals - usd_decimals;
-            dec = dec + decimals_delta;
-        } else {
-            // USD is bigger than asset
-            // USD / price = asset
-            // so to compensate we need to increase price therefore decrease denominator
-            let decimals_delta = usd_decimals - asset_decimals;
-            dec = dec - decimals_delta;
+    /// Get pool price in Q64.64 format
+    /// 
+    /// # Type Parameters
+    /// * `CoinTypeA` - First coin type in the pool
+    /// * `CoinTypeB` - Second coin type in the pool  
+    /// * `BaseCoin` - The base coin whose price is being monitored (e.g., SAIL)
+    /// 
+    /// # Arguments
+    /// * `pool` - The CLMM pool containing the trading pair (feed pool)
+    /// * `quote_coin_metadata` - Metadata for the quote coin (e.g., USDC metadata)
+    /// 
+    /// # Returns
+    /// Pool price in Q64.64 format
+    fun get_pool_price_q64<CoinTypeA, CoinTypeB, BaseCoin>(
+        pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>
+    ): u128 {
+
+        let sqrt_price = pool.current_sqrt_price();
+        let mut pool_price_q64 = (integer_mate::full_math_u128::full_mul(sqrt_price, sqrt_price) >> 64) as u128;
+
+        if (type_name::get<CoinTypeA>() == type_name::get<BaseCoin>()) {
+            pool_price_q64 = integer_mate::full_math_u128::mul_div_floor(
+                1 as u128,
+                1 as u128,
+                pool_price_q64
+            );
         };
-        let dec_denominator = decimal::pow_10(dec);
 
-        decimal_to_q64_decimals(price_result_price, dec_denominator)
-    }
-
-    public fun decimal_to_q64(
-        decimal: &Decimal,
-    ): u128 {
-        let dec = decimal.dec();
-        let dec_denominator = decimal::pow_10(dec);
-
-        decimal_to_q64_decimals(decimal, dec_denominator)
-    }
-
-    public fun decimal_to_q64_decimals(
-        decimal: &Decimal,
-        dec_denominator: u128,
-    ): u128 {
-        assert!(!decimal.neg(), EDecimalToQ64NegativeNotSupported);
-
-        integer_mate::full_math_u128::mul_div_floor(
-            decimal.value(),
-            price_monitor_consts::get_q64_shift(),
-            dec_denominator
-        )
-    }
-
-    /// Utility function to convert USD amount * 2^64 to asset amount * 2^64
-    public fun usd_q64_to_asset_q64(
-        usd_amount_q64: u128,
-        asset_price_q64: u128,
-    ): u128 {
-        integer_mate::full_math_u128::mul_div_floor(
-            usd_amount_q64,
-            price_monitor_consts::get_q64_shift(),
-            asset_price_q64
-        )
-    }
-
-    /// Utility function to convert asset amount * 2^64 to USD amount * 2^64
-    public fun asset_q64_to_usd_q64(
-        asset_amount_q64: u128,
-        asset_price_q64: u128,
-        ceil: bool,
-    ): u128 {
-        if (ceil) {
-            integer_mate::full_math_u128::mul_div_ceil(
-                asset_amount_q64,
-                asset_price_q64,
-                price_monitor_consts::get_q64_shift()
-            )
-        } else {
-            integer_mate::full_math_u128::mul_div_floor(
-                asset_amount_q64,
-                asset_price_q64,
-                price_monitor_consts::get_q64_shift()
-            )
-        }
+        assert!(pool_price_q64 > 0, EZeroPrice);
+        
+        pool_price_q64
     }
 
     // ===== TEST FUNCTIONS =====
@@ -1530,6 +1500,7 @@ module price_monitor::price_monitor {
             emergency_anomaly_threshold: price_monitor_consts::get_emergency_anomaly_threshold(),
             anomaly_cooldown_period_ms: price_monitor_consts::get_anomaly_cooldown_period_ms(),
             max_price_age_ms: price_monitor_consts::get_max_price_age_ms(),
+            max_price_history_age_ms: price_monitor_consts::get_max_price_history_age_ms(),
             min_price_interval_ms: price_monitor_consts::get_min_price_interval_ms(),
             max_price_history_size: price_monitor_consts::get_max_price_history_size(),
             min_prices_for_analysis: price_monitor_consts::get_min_prices_for_analysis(),
@@ -1542,7 +1513,6 @@ module price_monitor::price_monitor {
 
         let mut monitor = PriceMonitor {
             id: object::new(ctx),
-            price_monitor_cap: option::none<PriceMonitorCap>(),
             version: 1,
             config,
             aggregator_to_pools: table::new(ctx),
@@ -1560,13 +1530,6 @@ module price_monitor::price_monitor {
 
         // Add the first admin (transaction sender)
         monitor.admins.insert(sui::tx_context::sender(ctx));
-
-        let monitor_cap = PriceMonitorCap {
-            id: object::new(ctx),
-            monitor_id: object::id(&monitor),
-        };
-
-        monitor.price_monitor_cap.fill(monitor_cap);
 
         let emergency_cap = SuperAdminCap {
             id: object::new(ctx),

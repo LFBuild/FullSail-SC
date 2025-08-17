@@ -111,8 +111,11 @@ module price_monitor::price_monitor_consts {
     /// Anomaly cooldown period in milliseconds (300000 = 5 minutes)
     const ANOMALY_COOLDOWN_PERIOD_MS: u64 = 300000;
     
-    /// Maximum price age in milliseconds (60000 = 1 minute)
+    /// Maximum age of oracle price after its last update in aggregator in milliseconds (60000 = 1 minute)
     const MAX_PRICE_AGE_MS: u64 = 60000;
+    
+    /// Maximum age of prices stored in price history in milliseconds (3600000 = 1 hour)
+    const MAX_PRICE_HISTORY_AGE_MS: u64 = 3600000;
     
     /// Minimum interval between price history entries in milliseconds (60000 = 1 minute)
     const MIN_PRICE_INTERVAL_MS: u64 = 60000;
@@ -216,6 +219,9 @@ module price_monitor::price_monitor_consts {
     /// Get max price age ms
     public fun get_max_price_age_ms(): u64 { MAX_PRICE_AGE_MS }
     
+    /// Get max price history age ms
+    public fun get_max_price_history_age_ms(): u64 { MAX_PRICE_HISTORY_AGE_MS }
+
     /// Get min price interval ms
     public fun get_min_price_interval_ms(): u64 { MIN_PRICE_INTERVAL_MS }
 

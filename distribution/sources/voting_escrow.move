@@ -1592,7 +1592,7 @@ module distribution::voting_escrow {
         voting_escrow: &mut VotingEscrow<SailCoinType>,
         lock: &mut Lock,
         clock: &sui::clock::Clock,
-        ctx: &mut TxContext
+        _ctx: &mut TxContext
     ): u64 {
         let lock_id = object::id<Lock>(lock);
         voting_escrow.managed_to_free.borrow(*voting_escrow.id_to_managed.borrow(lock_id)).earned<RewardCoinType>(
@@ -2580,7 +2580,7 @@ module distribution::voting_escrow {
         assert!(lock.escrow == object::id<VotingEscrow<SailCoinType>>(voting_escrow), EValidateLockInvalidEscrow);
     }
 
-    fun validate_lock_duration<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>, duration_days: u64) {
+    fun validate_lock_duration<SailCoinType>(_voting_escrow: &VotingEscrow<SailCoinType>, duration_days: u64) {
         assert!(
             duration_days * distribution::common::day() >= distribution::common::min_lock_time() &&
                 duration_days * distribution::common::day() <= distribution::common::max_lock_time(),

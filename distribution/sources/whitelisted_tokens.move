@@ -6,9 +6,6 @@ module distribution::whitelisted_tokens {
 
     const EInvalidVoter: u64 = 9223372260193075199;
     const EInvalidToken: u64 = 9223372268783140867;
-    const EPairInvalidVoter: u64 = 9223372204358500351;
-    const EPairInvalidTokenA: u64 = 9223372212948434945;
-    const EPairInvalidTokenB: u64 = 9223372230128304129;
 
     public struct WhitelistedToken {
         voter: ID,

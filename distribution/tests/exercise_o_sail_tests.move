@@ -267,16 +267,16 @@ fun test_exercise_o_sail() {
         setup::aggregator_set_current_value(&mut aggregator,  setup::one_dec18() / 4, clock.timestamp_ms()); 
 
         // Exercise o_sail_ba because Pool is <USD_TESTS, SAIL>
-        let (usd_left, sail_received) = minter::exercise_o_sail<USD_TESTS, SAIL, USD_TESTS, SAIL, USD_TESTS, OSAIL1>(
+        let (usd_left, sail_received) = minter::exercise_o_sail<USD_TESTS, SAIL, SAIL, USD_TESTS, OSAIL1>(
             &mut minter,
             &distribution_config,
             &mut exercise_fee_distributor,
             o_sail_to_exercise,
             usd_fee,
+            &usd_metadata,
             usd_limit,
             &mut price_monitor,
             &sail_stablecoin_pool,
-            &usd_metadata,
             &aggregator,
             &clock,
             scenario.ctx()
@@ -329,7 +329,7 @@ fun test_exercise_o_sail_fail_not_whitelisted_token() {
 
     scenario.next_tx(admin);
     {
-        let (exercise_fee_distributor, cap) = distribution::exercise_fee_distributor::create<AUSD>(
+        let (exercise_fee_distributor, cap) = distribution::exercise_fee_distributor::create<USD_TESTS>(
             &clock,
             scenario.ctx(),
         );
@@ -349,7 +349,7 @@ fun test_exercise_o_sail_fail_not_whitelisted_token() {
     scenario.next_tx(user);
     {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
-        let mut exercise_fee_distributor = scenario.take_shared<ExerciseFeeDistributor<AUSD>>();
+        let mut exercise_fee_distributor = scenario.take_shared<ExerciseFeeDistributor<USD_TESTS>>();
         let distribution_config = scenario.take_shared<DistributionConfig>(); // Needed? minter::exercise doesn't list it
         let mut o_sail1_coin = scenario.take_from_sender<Coin<OSAIL1>>();
         let mut price_monitor = scenario.take_shared<PriceMonitor>();
@@ -358,23 +358,23 @@ fun test_exercise_o_sail_fail_not_whitelisted_token() {
         // Mint OSAIL1 for the user
         let o_sail_to_exercise = o_sail1_coin.split(100_000, scenario.ctx());
 
-        // Mint AUSD fee for the user
-        let usd_fee = coin::mint_for_testing<AUSD>(12_500, scenario.ctx()); // Amount should cover ~50% of SAIL value at price 1
+        // Mint USD_TESTS fee for the user
+        let usd_fee = coin::mint_for_testing<USD_TESTS>(12_500, scenario.ctx()); // Amount should cover ~50% of SAIL value at price 1
         let usd_limit = 12_500;
 
         setup::aggregator_set_current_value(&mut aggregator,  4 * setup::one_dec18(), clock.timestamp_ms());
         
         // Exercise o_sail_ba because Pool is <USD_TESTS, SAIL>
-        let (usd_left, sail_received) = minter::exercise_o_sail<USD_TESTS, SAIL, USD_TESTS, SAIL, AUSD, OSAIL1>(
+        let (usd_left, sail_received) = minter::exercise_o_sail<USD_TESTS, SAIL, SAIL, USD_TESTS, OSAIL1>(
             &mut minter,
             &distribution_config,
             &mut exercise_fee_distributor,
             o_sail_to_exercise,
             usd_fee,
+            &usd_metadata,
             usd_limit,
             &mut price_monitor,
             &sail_stablecoin_pool,
-            &usd_metadata,
             &aggregator,
             &clock,
             scenario.ctx()
@@ -464,16 +464,16 @@ fun test_exercise_o_sail_fail_usd_limit_not_met() {
         let usd_limit = expected_usd_needed - 1; // Set limit below required amount
 
         // Attempt exercise - should fail here because usd_limit is too low
-        let (usd_left, sail_received) = minter::exercise_o_sail<USD_TESTS, SAIL, USD_TESTS, SAIL, USD_TESTS, OSAIL1>(
+        let (usd_left, sail_received) = minter::exercise_o_sail<USD_TESTS, SAIL, SAIL, USD_TESTS, OSAIL1>(
             &mut minter,
             &distribution_config,
             &mut exercise_fee_distributor,
             o_sail_to_exercise,
             usd_fee, // Pass the insufficient limit
+            &usd_metadata,
             usd_limit,
             &mut price_monitor,
             &sail_stablecoin_pool,
-            &usd_metadata,
             &aggregator,
             &clock,
             scenario.ctx()
@@ -553,16 +553,16 @@ fun test_exercise_o_sail_fail_insufficient_usd_fee() {
         let usd_limit = 1_000_000_000;
 
         // Attempt exercise - should fail here due to insufficient balance in usd_fee coin
-        let (usd_left, sail_received) = minter::exercise_o_sail<USD_TESTS, SAIL, USD_TESTS, SAIL, USD_TESTS, OSAIL1>(
+        let (usd_left, sail_received) = minter::exercise_o_sail<USD_TESTS, SAIL, SAIL, USD_TESTS, OSAIL1>(
             &mut minter,
             &distribution_config,
             &mut exercise_fee_distributor,
             o_sail_to_exercise,
             usd_fee, // Pass the coin with insufficient balance
+            &usd_metadata,
             usd_limit,
             &mut price_monitor,
             &sail_stablecoin_pool,
-            &usd_metadata,
             &aggregator,
             &clock,
             scenario.ctx()
@@ -640,16 +640,16 @@ fun test_exercise_o_sail_fail_expired() {
         setup::aggregator_set_current_value(&mut aggregator,  setup::one_dec18(), clock.timestamp_ms());
 
         // Attempt exercise - should fail here because oSAIL1 is expired
-        let (usd_left, sail_received) = minter::exercise_o_sail<USD_TESTS, SAIL, USD_TESTS, SAIL, USD_TESTS, OSAIL1>(
+        let (usd_left, sail_received) = minter::exercise_o_sail<USD_TESTS, SAIL, SAIL, USD_TESTS, OSAIL1>( 
             &mut minter,
             &distribution_config,
             &mut exercise_fee_distributor,
             o_sail_to_exercise,
             usd_fee, 
+            &usd_metadata,
             usd_limit,
             &mut price_monitor,
             &sail_stablecoin_pool,
-            &usd_metadata,
             &aggregator,
             &clock,
             scenario.ctx()
@@ -728,16 +728,16 @@ fun test_exercise_o_sail_before_expiry() {
         setup::aggregator_set_current_value(&mut aggregator,  setup::one_dec18(), clock.timestamp_ms()); 
 
         // Exercise - should succeed
-        let (usd_left, sail_received) = minter::exercise_o_sail<USD_TESTS, SAIL, USD_TESTS, SAIL, USD_TESTS, OSAIL1>(
+        let (usd_left, sail_received) = minter::exercise_o_sail<USD_TESTS, SAIL, SAIL, USD_TESTS, OSAIL1>(
             &mut minter,
             &distribution_config,
             &mut exercise_fee_distributor,
             o_sail_to_exercise,
             usd_fee, 
+            &usd_metadata,
             usd_limit,
             &mut price_monitor,
             &sail_stablecoin_pool,
-            &usd_metadata,
             &aggregator,
             &clock,
             scenario.ctx()
@@ -815,16 +815,16 @@ fun test_exercise_o_sail_whitelist_toggle() {
 
         setup::aggregator_set_current_value(&mut aggregator, setup::one_dec18(), clock.timestamp_ms());
 
-        let (usd_left, sail_received) = minter::exercise_o_sail<USD_TESTS, SAIL, USD_TESTS, SAIL, USD_TESTS, OSAIL1>(
+        let (usd_left, sail_received) = minter::exercise_o_sail<USD_TESTS, SAIL, SAIL, USD_TESTS, OSAIL1>(
             &mut minter, 
             &distribution_config,
             &mut exercise_fee_distributor,
             o_sail_to_exercise, 
             usd_fee, 
+            &usd_metadata,
             usd_limit, 
             &mut price_monitor,
             &sail_stablecoin_pool,
-            &usd_metadata,
             &aggregator,
             &clock,
             scenario.ctx()
@@ -868,16 +868,16 @@ fun test_exercise_o_sail_whitelist_toggle() {
         setup::aggregator_set_current_value(&mut aggregator,  setup::one_dec18(), clock.timestamp_ms());
 
         // This call is expected to fail with EExerciseOSailInvalidUsd
-        let (usd_left, sail_received) = minter::exercise_o_sail<USD_TESTS, SAIL, USD_TESTS, SAIL, USD_TESTS, OSAIL1>(
+        let (usd_left, sail_received) = minter::exercise_o_sail<USD_TESTS, SAIL, SAIL, USD_TESTS, OSAIL1>( 
             &mut minter, 
             &distribution_config,
             &mut exercise_fee_distributor, 
             o_sail_to_exercise, 
             usd_fee, 
+            &usd_metadata,
             usd_limit, 
             &mut price_monitor,
-            &sail_stablecoin_pool,
-            &usd_metadata,
+            &sail_stablecoin_pool, 
             &aggregator,
             &clock,
             scenario.ctx()
@@ -1676,16 +1676,16 @@ fun test_exercise_and_lock_after_epoch_update() {
         setup::aggregator_set_current_value(&mut aggregator,  setup::one_dec18(), clock.timestamp_ms()); 
 
         // Exercise should succeed even though Minter is in Epoch 2
-        let (usd_left, sail_received) = minter::exercise_o_sail<USD_TESTS, SAIL, USD_TESTS, SAIL, USD_TESTS, OSAIL1>(
+        let (usd_left, sail_received) = minter::exercise_o_sail<USD_TESTS, SAIL, SAIL, USD_TESTS, OSAIL1>( 
             &mut minter,
             &distribution_config,
             &mut exercise_fee_distributor,
             o_sail_to_exercise,
             usd_fee, 
+            &usd_metadata,
             usd_limit,
             &mut price_monitor,
-            &sail_stablecoin_pool,
-            &usd_metadata,
+            &sail_stablecoin_pool, 
             &aggregator,
             &clock,
             scenario.ctx()
@@ -1938,16 +1938,16 @@ fun test_exercise_fee_distribution() {
         setup::aggregator_set_current_value(&mut aggregator,  setup::one_dec18(), clock.timestamp_ms()); 
 
         // Exercise o_sail
-        let (usd_left, sail_received) = minter::exercise_o_sail<USD_TESTS, SAIL, USD_TESTS, SAIL, USD_TESTS, OSAIL1>(
+        let (usd_left, sail_received) = minter::exercise_o_sail<USD_TESTS, SAIL, SAIL, USD_TESTS, OSAIL1>(
             &mut minter,
             &distribution_config,
             &mut exercise_fee_distributor,
             o_sail_to_exercise, 
             usd_fee, // Use the specific coin received from admin
+            &usd_metadata,
             usd_limit,
             &mut price_monitor,
-            &sail_stablecoin_pool,
-            &usd_metadata,
+            &sail_stablecoin_pool, 
             &aggregator,
             &clock,
             scenario.ctx()
@@ -2207,16 +2207,16 @@ fun test_exercise_o_sail_high_price() {
         setup::aggregator_set_current_value(&mut aggregator,  high_price, clock.timestamp_ms()); 
 
         // Exercise o_sail
-        let (usd_left, sail_received) = minter::exercise_o_sail<USD_TESTS, SAIL, USD_TESTS, SAIL, USD_TESTS, OSAIL1>(
+        let (usd_left, sail_received) = minter::exercise_o_sail<USD_TESTS, SAIL, SAIL, USD_TESTS, OSAIL1>( 
             &mut minter,
             &distribution_config,
             &mut exercise_fee_distributor,
             o_sail_to_exercise, 
             usd_fee, 
+            &usd_metadata,
             usd_limit,
             &mut price_monitor,
             &sail_stablecoin_pool,
-            &usd_metadata,
             &aggregator,
             &clock,
             scenario.ctx()
@@ -2253,7 +2253,7 @@ fun test_exercise_o_sail_small_price() {
     let user = @0x242;
     let mut scenario = test_scenario::begin(admin);
 
-    let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 9);
+    let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 7);
 
     // Create Clock 
     let mut clock = clock::create_for_testing(scenario.ctx());
@@ -2293,7 +2293,7 @@ fun test_exercise_o_sail_small_price() {
         let o_sail_to_exercise = o_sail1_coin.split(o_sail_to_exercise_amount, scenario.ctx());
 
         let low_price = 1000;
-        let expected_usd_needed = 500 * 1000; // decimals delta = 3
+        let expected_usd_needed = 500 * 10; // decimals delta = 1
         let usd_fee = coin::mint_for_testing<USD_TESTS>(expected_usd_needed, scenario.ctx()); 
         let usd_limit = expected_usd_needed;
         let mut price_monitor = scenario.take_shared<PriceMonitor>();
@@ -2302,16 +2302,16 @@ fun test_exercise_o_sail_small_price() {
         setup::aggregator_set_current_value(&mut aggregator,  low_price, clock.timestamp_ms());
 
         // Exercise o_sail
-        let (usd_left, sail_received) = minter::exercise_o_sail<USD_TESTS, SAIL, USD_TESTS, SAIL, USD_TESTS, OSAIL1>(
+        let (usd_left, sail_received) = minter::exercise_o_sail<USD_TESTS, SAIL, SAIL, USD_TESTS, OSAIL1>(
             &mut minter,
             &distribution_config,
             &mut exercise_fee_distributor,
             o_sail_to_exercise, 
             usd_fee, 
+            &usd_metadata,
             usd_limit,
             &mut price_monitor,
             &sail_stablecoin_pool,
-            &usd_metadata,
             &aggregator,
             &clock,
             scenario.ctx()

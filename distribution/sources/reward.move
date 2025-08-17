@@ -8,7 +8,6 @@ module distribution::reward {
     const EUpdateBalancesEpochStartInvalid: u64 = 97211664930268266;
     const EUpdateBalancesInvalidLocksLength: u64 = 951147350837936100;
     const EUpdateBalancesAlreadyFinal: u64 = 931921756019291000;
-    const EUpdateBalancesLockWasNotDeposited: u64 = 940228096373927230;
     const EUpdateBalancesOnlyFinishedEpochAllowed: u64 = 987934305039328400;
 
     const ERewardPerEpochInvalidToken: u64 = 9223372492121309183;
