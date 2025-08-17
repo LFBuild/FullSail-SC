@@ -1713,16 +1713,11 @@ fun test_gauge_get_position_reward() {
         let (earned_osail1, _) = gauge.earned_by_position<USD_TESTS, SAIL, OSAIL1>(&pool, lp_position_id, &clock); 
         let (earned_osail2, _) = gauge.earned_by_position<USD_TESTS, SAIL, OSAIL2>(&pool, lp_position_id, &clock);
 
-        assert!(first_epoch_emissions - earned_osail1 <= 2, 1);
-        assert!(second_epoch_emissions - earned_osail2 <= 2, 2);
+        // user can earn only current epoch token
+        assert!(earned_osail1 == 0, 1);
+        assert!(second_epoch_emissions + first_epoch_emissions - earned_osail2 <= 3, 2);
         test_scenario::return_shared(pool);
         test_scenario::return_shared(gauge);
-    };
-
-        // Claim all rewards
-    scenario.next_tx(lp);
-    {
-        setup::get_staked_position_reward<USD_TESTS, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     scenario.next_tx(lp);
@@ -1733,13 +1728,9 @@ fun test_gauge_get_position_reward() {
     // Verify all rewards were claimed
     scenario.next_tx(lp);
     {
-        let reward1 = scenario.take_from_sender<Coin<OSAIL1>>();
-        assert!(first_epoch_emissions - reward1.value() <= 2, 3);
-        coin::burn_for_testing(reward1);
-
-        let reward2 = scenario.take_from_sender<Coin<OSAIL2>>();
-        assert!(second_epoch_emissions - reward2.value() <= 2, 4);
-        coin::burn_for_testing(reward2);
+        let reward = scenario.take_from_sender<Coin<OSAIL2>>();
+        assert!(second_epoch_emissions + first_epoch_emissions - reward.value() <= 3, 4);
+        coin::burn_for_testing(reward);
     };
 
     transfer::public_transfer(usd_treasury_cap, admin);
@@ -1778,8 +1769,9 @@ fun test_increase_time_after_distribute() {
         let (earned_osail1, _) = gauge.earned_by_position<USD_TESTS, SAIL, OSAIL1>(&pool, lp_position_id, &clock); 
         let (earned_osail2, _) = gauge.earned_by_position<USD_TESTS, SAIL, OSAIL2>(&pool, lp_position_id, &clock);
 
-        assert!(first_epoch_emissions - earned_osail1 <= 2, 1);
-        assert!(second_epoch_emissions - earned_osail2 <= 2, 2);
+        // user can earn only current epoch token
+        assert!(earned_osail1 == 0, 1);
+        assert!(second_epoch_emissions + first_epoch_emissions - earned_osail2 <= 3, 2);
         test_scenario::return_shared(pool);
         test_scenario::return_shared(gauge);
     };
@@ -1794,16 +1786,11 @@ fun test_increase_time_after_distribute() {
         let (earned_osail1, _) = gauge.earned_by_position<USD_TESTS, SAIL, OSAIL1>(&pool, lp_position_id, &clock); 
         let (earned_osail2, _) = gauge.earned_by_position<USD_TESTS, SAIL, OSAIL2>(&pool, lp_position_id, &clock);
 
-        assert!(first_epoch_emissions - earned_osail1 <= 2, 1);
-        assert!(second_epoch_emissions - earned_osail2 <= 2, 2);
+        // user can earn only current epoch token
+        assert!(earned_osail1 == 0, 1);
+        assert!(second_epoch_emissions + first_epoch_emissions - earned_osail2 <= 3, 2);
         test_scenario::return_shared(pool);
         test_scenario::return_shared(gauge);
-    };
-
-    // Claim all rewards
-    scenario.next_tx(lp);
-    {
-        setup::get_staked_position_reward<USD_TESTS, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     scenario.next_tx(lp);
@@ -1814,13 +1801,9 @@ fun test_increase_time_after_distribute() {
     // Verify all rewards were claimed
     scenario.next_tx(lp);
     {
-        let reward1 = scenario.take_from_sender<Coin<OSAIL1>>();
-        assert!(first_epoch_emissions - reward1.value() <= 2, 3);
-        coin::burn_for_testing(reward1);
-
-        let reward2 = scenario.take_from_sender<Coin<OSAIL2>>();
-        assert!(second_epoch_emissions - reward2.value() <= 2, 4);
-        coin::burn_for_testing(reward2);
+        let reward = scenario.take_from_sender<Coin<OSAIL2>>();
+        assert!(second_epoch_emissions + first_epoch_emissions - reward.value() <= 3, 4);
+        coin::burn_for_testing(reward);
     };
 
     transfer::public_transfer(usd_treasury_cap, admin);
@@ -2278,45 +2261,6 @@ fun test_increase_gauge_emissions_invalid_pool_fails() {
     scenario.end();
 }
 
-
-#[test]
-#[expected_failure(abort_code = gauge::EGetRewardPrevTokenNotClaimed)]
-fun test_gauge_get_position_reward_fails_wrong_order() {
-    let admin = @0xC1;
-    let user = @0xC2; // User with the lock
-    let lp = @0xC3;  // Liquidity Provider
-    let mut scenario = test_scenario::begin(admin);
-    let mut clock = clock::create_for_testing(scenario.ctx());
-
-    let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
-
-    multi_epoch_distribute_setup(
-        &mut scenario,
-        admin,
-        user,
-        lp,
-        &usd_metadata,
-        &mut clock,
-    );
-
-    // Claim all rewards
-    // Should error because of wrong order
-    scenario.next_tx(lp);
-    {
-        setup::get_staked_position_reward<USD_TESTS, SAIL, SAIL, OSAIL2>(&mut scenario, &clock);
-    };
-
-    scenario.next_tx(lp);
-    {
-        setup::get_staked_position_reward<USD_TESTS, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
-    };
-
-    transfer::public_transfer(usd_treasury_cap, admin);
-    transfer::public_transfer(usd_metadata, admin);
-    clock::destroy_for_testing(clock);
-    scenario.end();
-}
-
 #[test]
 fun test_gauge_get_reward() {
     let admin = @0xC1;
@@ -2347,16 +2291,11 @@ fun test_gauge_get_reward() {
         let (earned_osail1, _) = gauge.earned_by_position<USD_TESTS, SAIL, OSAIL1>(&pool, position_id, &clock);
         let (earned_osail2, _) = gauge.earned_by_position<USD_TESTS, SAIL, OSAIL2>(&pool, position_id, &clock);
 
-        assert!(first_epoch_emissions - earned_osail1 <= 2, 1);
-        assert!(second_epoch_emissions - earned_osail2 <= 2, 2);
+        // user can earn only current epoch token
+        assert!(earned_osail1 == 0, 1);
+        assert!(second_epoch_emissions + first_epoch_emissions - earned_osail2 <= 3, 2);
         test_scenario::return_shared(pool);
         test_scenario::return_shared(gauge);
-    };
-
-        // Claim all rewards
-    scenario.next_tx(lp);
-    {
-        setup::get_staked_position_reward<USD_TESTS, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);
     };
 
     scenario.next_tx(lp);
@@ -2367,13 +2306,9 @@ fun test_gauge_get_reward() {
     // Verify all rewards were claimed
     scenario.next_tx(lp);
     {
-        let reward1 = scenario.take_from_sender<Coin<OSAIL1>>();
-        assert!(first_epoch_emissions - reward1.value() <= 2, 3);
-        coin::burn_for_testing(reward1);
-
-        let reward2 = scenario.take_from_sender<Coin<OSAIL2>>();
-        assert!(second_epoch_emissions - reward2.value() <= 2, 4);
-        coin::burn_for_testing(reward2);
+        let reward = scenario.take_from_sender<Coin<OSAIL2>>();
+        assert!(second_epoch_emissions + first_epoch_emissions - reward.value() <= 3, 4);
+        coin::burn_for_testing(reward);
     };
 
     transfer::public_transfer(usd_treasury_cap, admin);
@@ -2383,8 +2318,8 @@ fun test_gauge_get_reward() {
 }
 
 #[test]
-#[expected_failure(abort_code = gauge::EGetRewardPrevTokenNotClaimed)]
-fun test_gauge_get_reward_fails_wrong_order() {
+#[expected_failure(abort_code = minter::EGetPositionRewardInvalidRewardToken)]
+fun test_gauge_get_reward_fails_wrong_token() {
     let admin = @0xC1;
     let user = @0xC2; // User with the lock
     let lp = @0xC3;  // Liquidity Provider
@@ -2403,12 +2338,7 @@ fun test_gauge_get_reward_fails_wrong_order() {
     );
 
     // Claim all rewards
-    // Should error because of wrong order
-    scenario.next_tx(lp);
-    {
-        setup::get_staked_position_reward<USD_TESTS, SAIL, SAIL, OSAIL2>(&mut scenario, &clock);
-    };
-
+    // Should error because oSAIL2 is current epoch token, but we are trying to claim OSAIL1
     scenario.next_tx(lp);
     {
         setup::get_staked_position_reward<USD_TESTS, SAIL, SAIL, OSAIL1>(&mut scenario, &clock);

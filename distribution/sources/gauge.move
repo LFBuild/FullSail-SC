@@ -999,6 +999,7 @@ module distribution::gauge {
         );
         // cannot update to the same token
         assert!(
+            gauge.current_epoch_token.is_none() || 
             !gauge.is_valid_epoch_token<CoinTypeA, CoinTypeB, NextRewardCoinType>(),
             ENotifyEpochTokenAlreadyNotifiedToken
         );
