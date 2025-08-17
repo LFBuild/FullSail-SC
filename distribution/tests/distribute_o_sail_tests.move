@@ -1866,7 +1866,7 @@ fun test_increase_gauge_emissions_before_distribution_fails() {
         let mut price_monitor = scenario.take_shared<PriceMonitor>();
         // let sail_stablecoin_pool = scenario.take_shared<Pool<USD_TESTS, SAIL>>();
 
-        minter.increase_gauge_emissions_for_sail_pool<USD_TESTS, SAIL, USD_TESTS, SAIL>(
+        minter.increase_gauge_emissions_for_sail_pool<USD_TESTS, SAIL, SAIL>(
             &voter,
             &distribution_config,
             &admin_cap,
@@ -1874,7 +1874,6 @@ fun test_increase_gauge_emissions_before_distribution_fails() {
             &mut sail_pool,
             increase_emissions_by,
             &mut price_monitor,
-            &usd_metadata,
             &aggregator,
             &clock,
             scenario.ctx()
@@ -1972,7 +1971,7 @@ fun test_increase_gauge_emissions_mid_epoch() {
 
         setup::aggregator_set_current_value(&mut aggregator,  setup::one_dec18(), clock.timestamp_ms());
 
-        minter.increase_gauge_emissions_for_sail_pool<USD_TESTS, SAIL, USD_TESTS, SAIL>(
+        minter.increase_gauge_emissions_for_sail_pool<USD_TESTS, SAIL, SAIL>(
             &voter,
             &distribution_config,
             &admin_cap,
@@ -1980,7 +1979,6 @@ fun test_increase_gauge_emissions_mid_epoch() {
             &mut sail_pool,
             increase_emissions_by,
             &mut price_monitor,
-            &usd_metadata,
             &aggregator,
             &clock,
             scenario.ctx()
@@ -2081,7 +2079,7 @@ fun test_increase_gauge_emissions_revoked_admin_cap_fails() {
         // let sail_stablecoin_pool = scenario.take_shared<Pool<USD_TESTS, SAIL>>();
 
 
-        minter.increase_gauge_emissions_for_sail_pool<USD_TESTS, SAIL, USD_TESTS, SAIL>(
+        minter.increase_gauge_emissions_for_sail_pool<USD_TESTS, SAIL, SAIL>(
             &voter,
             &distribution_config,
             &admin_cap,
@@ -2089,7 +2087,6 @@ fun test_increase_gauge_emissions_revoked_admin_cap_fails() {
             &mut sail_pool,
             increase_emissions_by,
             &mut price_monitor,
-            &usd_metadata,
             &aggregator,
             &clock,
             scenario.ctx()
@@ -2161,7 +2158,7 @@ fun test_increase_gauge_emissions_invalid_distribution_config_fails() {
 
         setup::aggregator_set_current_value(&mut aggregator,  setup::one_dec18(), clock.timestamp_ms());
 
-        minter.increase_gauge_emissions_for_sail_pool<USD_TESTS, SAIL, USD_TESTS, SAIL>(
+        minter.increase_gauge_emissions_for_sail_pool<USD_TESTS, SAIL, SAIL>(
             &voter,
             &distribution_config,
             &admin_cap,
@@ -2169,7 +2166,6 @@ fun test_increase_gauge_emissions_invalid_distribution_config_fails() {
             &mut sail_pool,
             increase_emissions_by,
             &mut price_monitor,
-            &usd_metadata,
             &aggregator,
             &clock,
             scenario.ctx()
@@ -2251,7 +2247,7 @@ fun test_increase_gauge_emissions_invalid_pool_fails() {
 
         setup::aggregator_set_current_value(&mut aggregator,  setup::one_dec18(), clock.timestamp_ms());
 
-        minter.increase_gauge_emissions<USD_TESTS, SAIL, USD_TESTS, SAIL, USD_TESTS, SAIL>(
+        minter.increase_gauge_emissions<USD_TESTS, SAIL, USD_TESTS, SAIL, SAIL>(
             &voter,
             &distribution_config,
             &admin_cap,
@@ -2260,7 +2256,6 @@ fun test_increase_gauge_emissions_invalid_pool_fails() {
             increase_emissions_by,
             &mut price_monitor,
             &sail_stablecoin_pool,
-            &usd_metadata,
             &aggregator,
             &clock,
             scenario.ctx()

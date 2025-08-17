@@ -37,7 +37,6 @@ module distribution::gauge {
     const ENotifyRewardGaugeNotAlive: u64 = 927999301192928000;
     const ENotifyRewardDistributionConfInvalid: u64 = 311080855434061200;
     const ENotifyRewardInvalidPool: u64 = 5832633373805671000;
-    const ENotifyRewardInvalidAggregator: u64 = 399948098172884900;
     const ENotifyRewardInvalidAmount: u64 = 9223373716188102674;
     const ENotifyRewardEpochFinished: u64 = 256780623436252400;
 
@@ -74,11 +73,9 @@ module distribution::gauge {
     const ENotifyRewardWithoutClaimDistributionConfInvalid: u64 = 921517595696832600;
     const ENotifyRewardAmountRewardRateZero: u64 = 9223373952411435028;
     const ENotifyRewardWithoutClaimInvalidPool: u64 = 6794499896215460000;
-    const ENotifyRewardWithoutClaimInvalidAggregator: u64 = 835496110456481800;
     const ENotifyRewardWithoutClaimInvalidAmount: u64 = 9223373819267317778;
 
     const ESyncFullsailDistributionPriceInvalidEpoch: u64 = 524842288068695600;
-    const ESyncOsailDistributionPriceInvalidAggregator: u64 = 989270720807518800;
     const ESyncOsailDistributionPriceDistributionConfInvalid: u64 = 490749102979896500;
     const ESyncOsailDistributionPriceGaugeNotAlive: u64 = 298752582283296830;
     const ESyncOsailDistributionPriceInvalidPool: u64 = 485510326827034900;
@@ -1168,10 +1165,9 @@ module distribution::gauge {
     ///
     /// # Arguments
     /// * `gauge` - The gauge instance
-    /// * `voter_cap` - Capability to notify rewards
     /// * `pool` - The associated pool
     /// * `usd_amount` - The amount of USD to distribute, decimals 6
-    /// * `o_sail_price_q64` - The oSAIL price in USD in Q64.64 format
+    /// * `o_sail_price_q64` - The oSAIL price in USD in Q64.64 format, in SAIL token decimals
     /// * `clock` - The system clock
     /// * `ctx` - Transaction context
     ///
@@ -1181,14 +1177,12 @@ module distribution::gauge {
     public(package) fun notify_reward_without_claim<CoinTypeA, CoinTypeB>(
         gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
         distribution_config: &DistributionConfig,
-        voter_cap: &VoterCap,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         usd_amount: u64,
         o_sail_price_q64: u128,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        gauge.validate_voter_cap(voter_cap);
         assert!(
             object::id(distribution_config) == gauge.distribution_config,
             ENotifyRewardWithoutClaimDistributionConfInvalid
@@ -1207,10 +1201,9 @@ module distribution::gauge {
     ///
     /// # Arguments
     /// * `gauge` - The gauge instance
-    /// * `voter_cap` - Capability to notify rewards
     /// * `pool` - The associated pool
     /// * `usd_amount` - The amount of USD to distribute, decimals 6
-    /// * `o_sail_price_q64` - The oSAIL price in USD in Q64.64 format
+    /// * `o_sail_price_q64` - The oSAIL price in USD in Q64.64 format, in SAIL token decimals
     /// * `clock` - The system clock
     /// * `ctx` - Transaction context
     ///
@@ -1223,14 +1216,12 @@ module distribution::gauge {
     public(package) fun notify_reward<CoinTypeA, CoinTypeB>(
         gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
         distribution_config: &DistributionConfig,
-        voter_cap: &VoterCap,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         usd_amount: u64,
         o_sail_price_q64: u128,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): (Balance<CoinTypeA>, Balance<CoinTypeB>) {
-        gauge.validate_voter_cap(voter_cap);
         assert!(
             object::id(distribution_config) == gauge.distribution_config,
             ENotifyRewardDistributionConfInvalid
@@ -1364,7 +1355,7 @@ module distribution::gauge {
     /// * `gauge` - The gauge instance
     /// * `distribution_config` - The distribution config
     /// * `pool` - The associated pool
-    /// * `o_sail_price_q64` - The oSAIL price in USD in Q64.64 format
+    /// * `o_sail_price_q64` - The oSAIL price in USD in Q64.64 format, in SAIL token decimals
     /// * `clock` - The system clock
     ///
     public(package) fun sync_o_sail_distribution_price<CoinTypeA, CoinTypeB>(
@@ -1602,7 +1593,7 @@ module distribution::gauge {
         let current_epoch_token = *gauge.current_epoch_token.borrow();
         let all_prev_claimed = gauge.prev_reward_claimed<CoinTypeA, CoinTypeB>(pool, current_epoch_token, position_id);
         if (!all_prev_claimed) {
-            return false;
+            return false
         };
 
         let (earned_this_epoch, _) = gauge.earned_internal<CoinTypeA, CoinTypeB>(

@@ -375,7 +375,7 @@ public fun whitelist_usd<SAIL, UsdCoinType>(
     let mut minter = scenario.take_shared<Minter<SAIL>>();
     let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
     
-    minter::whitelist_usd_test<SAIL, UsdCoinType>(&mut minter, &minter_admin_cap, list);
+    minter::whitelist_usd<SAIL, UsdCoinType>(&mut minter, &minter_admin_cap, list);
 
     if (list) {
         let exercise_fee_distributor = minter::create_exercise_fee_distributor<SAIL, UsdCoinType>(
@@ -1341,7 +1341,7 @@ public fun distribute_gauge_emissions_controlled<CoinTypeA, CoinTypeB, SAIL, Epo
 
         let sail_stablecoin_pool = scenario.take_shared<Pool<USD_TESTS, SAIL>>();
 
-        distributed_amount = minter.distribute_gauge<CoinTypeA, CoinTypeB, USD_TESTS, SAIL, USD_TESTS, SAIL, EpochOSail>(
+        distributed_amount = minter.distribute_gauge<CoinTypeA, CoinTypeB, USD_TESTS, SAIL, SAIL, EpochOSail>(
             &mut voter,
             &distribute_governor_cap,
             &distribution_config,
@@ -1355,7 +1355,6 @@ public fun distribute_gauge_emissions_controlled<CoinTypeA, CoinTypeB, SAIL, Epo
             epoch_pool_predicted_volume_usd,
             &mut price_monitor,
             &sail_stablecoin_pool,
-            usd_metadata,
             aggregator,
             clock,
             scenario.ctx()
@@ -1363,7 +1362,7 @@ public fun distribute_gauge_emissions_controlled<CoinTypeA, CoinTypeB, SAIL, Epo
 
         test_scenario::return_shared(sail_stablecoin_pool);
     } else {
-        distributed_amount = minter.distribute_gauge_for_sail_pool<CoinTypeA, CoinTypeB, USD_TESTS, SAIL, EpochOSail>(
+        distributed_amount = minter.distribute_gauge_for_sail_pool<CoinTypeA, CoinTypeB, SAIL, EpochOSail>(
             &mut voter,
             &distribute_governor_cap,
             &distribution_config,
@@ -1376,7 +1375,6 @@ public fun distribute_gauge_emissions_controlled<CoinTypeA, CoinTypeB, SAIL, Epo
             epoch_pool_volume_usd,
             epoch_pool_predicted_volume_usd,
             &mut price_monitor,
-            usd_metadata,
             aggregator,
             clock,
             scenario.ctx()

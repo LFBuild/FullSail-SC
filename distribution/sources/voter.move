@@ -750,7 +750,7 @@ module distribution::voter {
     /// * `gauge` - The gauge to distribute rewards to
     /// * `pool` - The liquidity pool associated with the gauge
     /// * `usd_reward_amount` - The amount of reward to distribute in USD, decimals 6
-    /// * `o_sail_price_q64` - The oSAIL price in USD in Q64.64 format
+    /// * `o_sail_price_q64` - The oSAIL price in USD in Q64.64 format, in SAIL token decimals
     /// * `clock` - The system clock
     /// * `ctx` - The transaction context
     ///
@@ -764,7 +764,6 @@ module distribution::voter {
     /// * `EventDistributeGauge` with information about distributed rewards
     public(package) fun distribute_gauge<CoinTypeA, CoinTypeB, NextEpochOSail>(
         voter: &mut Voter,
-        distribute_cap: &distribution::distribute_cap::DistributeCap,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
@@ -773,7 +772,6 @@ module distribution::voter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): u64 {
-        distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
         assert!(voter.is_valid_epoch_token<NextEpochOSail>(), EDistributeGaugeInvalidToken);
         assert!(distribution_config.is_gauge_alive(object::id(gauge)), EDistributeGaugeGaugeIsKilled);
         assert!(gauge.check_gauger_pool(pool), EDistributeGaugeInvalidPool);
@@ -788,7 +786,6 @@ module distribution::voter {
         );
         let (fee_reward_a, fee_reward_b) = gauge.notify_reward(
             distribution_config,
-            &voter.voter_cap,
             pool,
             usd_reward_amount,
             o_sail_price_q64,
@@ -833,12 +830,11 @@ module distribution::voter {
     /// * `gauge` - The gauge to notify reward to
     /// * `pool` - The pool to notify reward to
     /// * `usd_reward_amount` - The amount of reward to notify in usd, decimals 6
-    /// * `o_sail_price_q64` - The oSAIL price in USD in Q64.64 format
+    /// * `o_sail_price_q64` - The oSAIL price in USD in Q64.64 format, in SAIL token decimals
     /// * `clock` - The system clock
     /// * `ctx` - The transaction context
     public(package) fun notify_gauge_reward_without_claim<CoinTypeA, CoinTypeB>(
         voter: &Voter,
-        distribute_cap: &distribution::distribute_cap::DistributeCap,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
@@ -847,12 +843,10 @@ module distribution::voter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
         assert!(distribution_config.is_gauge_alive(object::id(gauge)), EAdjustGaugeGaugeIsKilled);
 
         gauge.notify_reward_without_claim(
             distribution_config,
-            &voter.voter_cap,
             pool,
             usd_reward_amount,
             o_sail_price_q64,
@@ -1091,7 +1085,12 @@ module distribution::voter {
         distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
 
         let coin_type = type_name::get<RewardCoinType>();
+        std::debug::print(&coin_type);
         voter.current_epoch_token.swap_or_fill(coin_type);
+
+        let pool_id = object::id(voter);
+
+        std::debug::print(&pool_id);
 
         let event = EventNotifyEpochToken {
             notifier: distribute_cap.who(),
@@ -1109,6 +1108,12 @@ module distribution::voter {
         voter: &Voter,
     ): bool {
         let coin_type = type_name::get<RewardCoinType>();
+
+        std::debug::print(&coin_type);
+
+        let pool_id = object::id(voter);
+
+        std::debug::print(&pool_id);
 
         voter.current_epoch_token.borrow() == coin_type
     }

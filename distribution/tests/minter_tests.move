@@ -2967,7 +2967,7 @@ fun test_distribute_gauge_with_wrong_voter_fails() {
         let mut price_monitor = scenario.take_shared<PriceMonitor>();
         let sail_stablecoin_pool = scenario.take_shared<Pool<USD_TESTS, SAIL>>();
 
-        minter.distribute_gauge<USD_TESTS, AUSD, USD_TESTS, SAIL, USD_TESTS, SAIL, OSAIL1>(
+        minter.distribute_gauge<USD_TESTS, AUSD, USD_TESTS, SAIL, SAIL, OSAIL1>(
             &mut wrong_voter_obj,
             &distribute_governor_cap,
             &distribution_config,
@@ -2976,7 +2976,6 @@ fun test_distribute_gauge_with_wrong_voter_fails() {
             0, 0, 0, 0, 0, 0, // Zero metrics for initial distribution
             &mut price_monitor,
             &sail_stablecoin_pool,
-            &usd_metadata,
             &aggregator,
             &clock,
             scenario.ctx()
@@ -3051,7 +3050,7 @@ fun test_distribute_gauge_with_revoked_governor_cap_fails() {
         let mut price_monitor = scenario.take_shared<PriceMonitor>();
         let sail_stablecoin_pool = scenario.take_shared<Pool<USD_TESTS, SAIL>>();
 
-        minter.distribute_gauge<USD_TESTS, AUSD, USD_TESTS, SAIL, USD_TESTS, SAIL, OSAIL1>(
+        minter.distribute_gauge<USD_TESTS, AUSD, USD_TESTS, SAIL, SAIL, OSAIL1>(
             &mut voter,
             &distribute_governor_cap,
             &distribution_config,
@@ -3060,7 +3059,6 @@ fun test_distribute_gauge_with_revoked_governor_cap_fails() {
             0, 0, 0, 0, 0, 0, // Zero metrics for initial distribution
             &mut price_monitor,
             &sail_stablecoin_pool,
-            &usd_metadata,
             &aggregator,
             &clock,
             scenario.ctx()
@@ -3130,7 +3128,7 @@ fun test_distribute_gauge_with_wrong_distribution_config_fails() {
         let mut price_monitor = scenario.take_shared<PriceMonitor>();
         let sail_stablecoin_pool = scenario.take_shared<Pool<USD_TESTS, SAIL>>(); 
 
-        minter.distribute_gauge<USD_TESTS, AUSD, USD_TESTS, SAIL, USD_TESTS, SAIL, OSAIL1>(
+        minter.distribute_gauge<USD_TESTS, AUSD, USD_TESTS, SAIL, SAIL, OSAIL1>(
             &mut voter,
             &distribute_governor_cap,
             &wrong_distribution_config,
@@ -3139,7 +3137,6 @@ fun test_distribute_gauge_with_wrong_distribution_config_fails() {
             0, 0, 0, 0, 0, 0, // Zero metrics for initial distribution
             &mut price_monitor,
             &sail_stablecoin_pool,
-            &usd_metadata,
             &aggregator,
             &clock,
             scenario.ctx()
@@ -3221,7 +3218,7 @@ fun test_distribute_gauge_with_wrong_pool_fails() {
         let mut price_monitor = scenario.take_shared<PriceMonitor>();
         let sail_stablecoin_pool = scenario.take_shared<Pool<USD_TESTS, SAIL>>();
 
-        minter.distribute_gauge<USD_TESTS, AUSD, USD_TESTS, SAIL, USD_TESTS, SAIL, OSAIL1>(
+        minter.distribute_gauge<USD_TESTS, AUSD, USD_TESTS, SAIL, SAIL, OSAIL1>(
             &mut voter,
             &distribute_governor_cap,
             &distribution_config,
@@ -3230,7 +3227,6 @@ fun test_distribute_gauge_with_wrong_pool_fails() {
             0, 0, 0, 0, 0, 0, // Zero metrics for initial distribution
             &mut price_monitor,
             &sail_stablecoin_pool,
-            &usd_metadata,
             &aggregator,
             &clock,
             scenario.ctx()
