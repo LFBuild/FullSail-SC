@@ -764,7 +764,8 @@ module price_monitor::price_monitor {
         anomaly_level: u8,
         current_time_ms: u64,
     ): bool {
-        if (anomaly_level == price_monitor_consts::get_anomaly_level_normal()) return false;
+        if (anomaly_level == price_monitor_consts::get_anomaly_level_normal() || 
+            (anomaly_level == price_monitor_consts::get_anomaly_level_warning())) return false;
         
         // Check cooldown period
         if ((current_time_ms - monitor.last_anomaly_timestamp_ms) < monitor.config.anomaly_cooldown_period_ms) {
@@ -772,17 +773,21 @@ module price_monitor::price_monitor {
         };
 
         // Check critical anomalies
-        if (monitor.consecutive_anomalies >= monitor.config.critical_anomaly_threshold && 
+        if (
+            anomaly_level == price_monitor_consts::get_anomaly_level_critical() &&
+            monitor.consecutive_anomalies + 1 >= monitor.config.critical_anomaly_threshold && 
             monitor.config.enable_critical_escalation) {
             return true
         };
-        
+
         // Check emergency anomalies
-        if (monitor.consecutive_anomalies >= monitor.config.emergency_anomaly_threshold && 
+        if (
+            anomaly_level == price_monitor_consts::get_anomaly_level_emergency() &&
+            monitor.consecutive_anomalies + 1 >= monitor.config.emergency_anomaly_threshold && 
             monitor.config.enable_emergency_escalation) {
             return true
         };
-        
+
         false
     }
 

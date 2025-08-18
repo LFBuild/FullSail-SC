@@ -93,10 +93,10 @@ module price_monitor::price_monitor_consts {
     // ===== CIRCUIT BREAKER THRESHOLDS =====
     
     /// Critical anomaly threshold (2 anomalies trigger critical)
-    const CRITICAL_ANOMALY_THRESHOLD: u64 = 2;
+    const CRITICAL_ANOMALY_THRESHOLD: u64 = 3;
     
     /// Emergency anomaly threshold (3 anomalies trigger emergency)
-    const EMERGENCY_ANOMALY_THRESHOLD: u64 = 3;
+    const EMERGENCY_ANOMALY_THRESHOLD: u64 = 2;
 
     // ===== ESCALATION CONTROL =====
     
@@ -119,11 +119,6 @@ module price_monitor::price_monitor_consts {
     
     /// Minimum interval between price history entries in milliseconds (60000 = 1 minute)
     const MIN_PRICE_INTERVAL_MS: u64 = 60000;
-
-    // ===== DECIMAL CONFIGURATION =====
-    
-    /// SAIL token decimals
-    const SAIL_DECIMALS: u8 = 6;
 
     // ===== Q64 FORMAT CONSTANTS =====
     
@@ -224,9 +219,6 @@ module price_monitor::price_monitor_consts {
 
     /// Get min price interval ms
     public fun get_min_price_interval_ms(): u64 { MIN_PRICE_INTERVAL_MS }
-
-    /// Get sail decimals
-    public fun get_sail_decimals(): u8 { SAIL_DECIMALS }
 
     /// Get Q64 shift
     public fun get_q64_shift(): u128 { Q64_SHIFT }

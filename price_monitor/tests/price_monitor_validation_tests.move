@@ -108,35 +108,35 @@ public fun setup_test_aggregator(
     aggregator
 }
 
-    public fun aggregator_set_current_value(
-        aggregator: &mut Aggregator,
-        price: u128, // decimals 18
-        result_timestamp_ms: u64,
-    ) {
+public fun aggregator_set_current_value(
+    aggregator: &mut Aggregator,
+    price: u128, // decimals 18
+    result_timestamp_ms: u64,
+) {
 
-        // 1 * 10^18
-        let result = decimal::new(price, false);
-        let min_result = result;
-        let max_result = result;
-        let stdev = decimal::new(0, false);
-        let range = decimal::new(0, false);
-        let mean = result;
+    // 1 * 10^18
+    let result = decimal::new(price, false);
+    let min_result = result;
+    let max_result = result;
+    let stdev = decimal::new(0, false);
+    let range = decimal::new(0, false);
+    let mean = result;
 
-        aggregator.set_current_value(
-            result,
-            result_timestamp_ms,
-            result_timestamp_ms,
-            result_timestamp_ms,
-            min_result,
-            max_result,
-            stdev,
-            range,
-            mean
-        );
+    aggregator.set_current_value(
+        result,
+        result_timestamp_ms,
+        result_timestamp_ms,
+        result_timestamp_ms,
+        min_result,
+        max_result,
+        stdev,
+        range,
+        mean
+    );
 
-        // Return aggregator to the calling function
-        // aggregator
-    }
+    // Return aggregator to the calling function
+    // aggregator
+}
 
 public fun setup_test_pool<USD_TESTS, SAIL>(
     scenario: &mut Scenario,
@@ -240,6 +240,8 @@ fun test_validate_price_normal() {
 fun test_validate_price_warning_deviation() {
     let mut scenario = test_scenario::begin(@0x1);
     let (admin, mut clock) = setup_test_environment(&mut scenario);
+
+    clock::increment_for_testing(&mut clock, 3600000*24*7);
     
     let (mut monitor, admin_cap) = setup_price_monitor(&mut scenario, admin);
     let (mut pools, global_config, clmm_admin_cap) = setup_clmm_environment(&mut scenario, admin);
@@ -296,6 +298,8 @@ fun test_validate_price_warning_deviation() {
 fun test_validate_price_critical_deviation() {
     let mut scenario = test_scenario::begin(@0x1);
     let (admin, mut clock) = setup_test_environment(&mut scenario);
+
+    clock::increment_for_testing(&mut clock, 3600000*24*7);
     
     let (mut monitor, admin_cap) = setup_price_monitor(&mut scenario, admin);
     let (mut pools, global_config, clmm_admin_cap) = setup_clmm_environment(&mut scenario, admin);
@@ -320,6 +324,14 @@ fun test_validate_price_critical_deviation() {
     // Test price validation
     scenario.next_tx(admin);
     {
+
+        monitor.update_anomaly_thresholds(
+            1,
+            1,
+            300000,
+            scenario.ctx()
+        );
+
         let result = price_monitor::validate_price<USD_TESTS, SAIL, SAIL>(
             &mut monitor,
             &aggregator,
@@ -329,7 +341,7 @@ fun test_validate_price_critical_deviation() {
         
         // Should detect critical level deviation
         assert!(!price_monitor::get_is_valid(&result), 0);
-        assert!(!price_monitor::get_escalation_activation(&result), 0);
+        assert!(price_monitor::get_escalation_activation(&result), 0);
         
         // Return objects
         test_scenario::return_shared(monitor);
@@ -352,6 +364,8 @@ fun test_validate_price_critical_deviation() {
 fun test_validate_price_emergency_deviation() {
     let mut scenario = test_scenario::begin(@0x1);
     let (admin, mut clock) = setup_test_environment(&mut scenario);
+
+    clock::increment_for_testing(&mut clock, 3600000*24*7);
     
     let (mut monitor, admin_cap) = setup_price_monitor(&mut scenario, admin);
     let (mut pools, global_config, clmm_admin_cap) = setup_clmm_environment(&mut scenario, admin);
@@ -376,6 +390,14 @@ fun test_validate_price_emergency_deviation() {
     // Test price validation
     scenario.next_tx(admin);
     {
+
+        monitor.update_anomaly_thresholds(
+            1,
+            1,
+            300000,
+            scenario.ctx()
+        );
+
         let result = price_monitor::validate_price<USD_TESTS, SAIL, SAIL>(
             &mut monitor,
             &aggregator,
@@ -385,7 +407,7 @@ fun test_validate_price_emergency_deviation() {
         
         // Should detect emergency level deviation
         assert!(!price_monitor::get_is_valid(&result), 0);
-        assert!(!price_monitor::get_escalation_activation(&result), 0);
+        assert!(price_monitor::get_escalation_activation(&result), 0);
         
         // Return objects
         test_scenario::return_shared(monitor);
@@ -416,7 +438,7 @@ fun test_validate_price_outdated_oracle() {
     let aggregator = setup_test_aggregator(&mut scenario, 1000000000000000000, &clock);
     
     // Setup pool with similar price
-    let pool = setup_test_pool<USD_TESTS, SAIL>(&mut scenario, 1000000000000000000, &mut pools, &global_config, &clock);
+    let pool = setup_test_pool<USD_TESTS, SAIL>(&mut scenario, 1 << 64, &mut pools, &global_config, &clock);
     
     // Add aggregator to monitor with this pool
     scenario.next_tx(admin);
@@ -472,7 +494,7 @@ fun test_validate_price_statistical_anomaly() {
     let mut aggregator = setup_test_aggregator(&mut scenario, 1000000000000000000, &clock);
     
     // Setup pool with similar price
-    let pool = setup_test_pool<USD_TESTS, SAIL>(&mut scenario, 1000000000000000000, &mut pools, &global_config, &clock);
+    let pool = setup_test_pool<USD_TESTS, SAIL>(&mut scenario, 1 << 64, &mut pools, &global_config, &clock);
     
     // Add aggregator to monitor with this pool
     scenario.next_tx(admin);
@@ -499,7 +521,7 @@ fun test_validate_price_statistical_anomaly() {
         // Advance time by 1 minute
         clock::increment_for_testing(&mut clock, 60000);
 
-        aggregator_set_current_value(&mut aggregator, 1000000000000000000, clock.timestamp_ms());
+        aggregator_set_current_value(&mut aggregator, 1000000000000000000 + (clock.timestamp_ms() as u128), clock.timestamp_ms());
         i = i + 1;
     };
     
@@ -625,7 +647,7 @@ fun test_validate_price_history_management() {
     let mut aggregator = setup_test_aggregator(&mut scenario, 1000000000000000000, &clock);
     
     // Setup pool with similar price
-    let pool = setup_test_pool<USD_TESTS, SAIL>(&mut scenario, 1000000000000000000, &mut pools, &global_config, &clock);
+    let pool = setup_test_pool<USD_TESTS, SAIL>(&mut scenario, 1 << 64, &mut pools, &global_config, &clock);
     
     // Add aggregator to monitor with this pool
     scenario.next_tx(admin);
@@ -689,7 +711,7 @@ fun test_validate_price_invalid_pool() {
     
     // Setup aggregator and pool
     let aggregator = setup_test_aggregator(&mut scenario, 1000000000000000000, &clock);
-    let pool = setup_test_pool<USD_TESTS, SAIL>(&mut scenario, 1000000000000000000, &mut pools, &global_config, &clock);
+    let pool = setup_test_pool<USD_TESTS, SAIL>(&mut scenario, 1 << 64, &mut pools, &global_config, &clock);
     
     // Don't add the pool to the aggregator - this should cause validation to fail
     
