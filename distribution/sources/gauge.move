@@ -791,6 +791,48 @@ module distribution::gauge {
         )
     }
 
+    /// Deprecated
+    /// Broken method that exists only to keep other package building and prevent backend from crashing.
+    public fun full_earned_for_type<CoinTypeA, CoinTypeB, RewardCoinType>(
+        gauge: &Gauge<CoinTypeA, CoinTypeB>,
+        pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        position_id: ID,
+        last_growth_inside: u128,
+        clock: &sui::clock::Clock,
+    ): (u64, u128) {
+        assert!(
+            gauge.check_gauger_pool(pool),
+            EFullEarnedForTypeGaugeDoesNotMatchPool
+        );
+        assert!(
+            gauge.staked_positions.contains(position_id),
+            EEarnedByPositionNotDepositedPosition
+        );
+        let coin_type = type_name::get<RewardCoinType>();
+        if (gauge.is_valid_epoch_token<CoinTypeA, CoinTypeB, RewardCoinType>()) {
+            let growth_global = gauge.get_current_growth_global(pool, clock.timestamp_ms() / 1000);
+            let position = gauge.staked_positions.borrow(position_id);
+            let (lower_tick, upper_tick) = position.tick_range();
+            let growth_inside = pool.get_fullsail_distribution_growth_inside(
+                lower_tick,
+                upper_tick,
+                growth_global
+            );
+            let growth_inside_diff = integer_mate::math_u128::wrapping_sub(growth_inside, last_growth_inside);
+            if (integer_mate::math_u128::is_neg(growth_inside_diff)) {
+                return (0, growth_inside)
+            };
+            let amount_earned = integer_mate::full_math_u128::mul_div_floor(
+                growth_inside_diff,
+                position.liquidity(),
+                1 << 64
+            ) as u64;
+            return (amount_earned, growth_inside)
+        };
+
+        (0, 0)
+    }
+
     /// Claims rewards for a specific staked position and transfers them to the position owner.
     /// Should be called in sequence, successfull only when previous coin rewards are claimed.
     ///
