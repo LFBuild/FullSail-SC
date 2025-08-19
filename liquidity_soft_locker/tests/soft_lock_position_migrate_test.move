@@ -1697,7 +1697,7 @@ module liquidity_soft_locker::soft_lock_position_migrate_test {
             // --- Set Reward Distributor Cap ---
             let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            minter.set_reward_distributor_cap(&minter_admin_cap, rebase_distributor_id, rebase_distributor_cap);
+            minter.set_rebase_distributor_cap(&minter_admin_cap, rebase_distributor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
             clock::destroy_for_testing(clock);
