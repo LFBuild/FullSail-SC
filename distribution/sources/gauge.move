@@ -20,7 +20,6 @@ module distribution::gauge {
     use sui::linked_table::{Self, LinkedTable};
     use sui::balance::{Self, Balance};
     use std::type_name::{Self, TypeName};
-    use switchboard::aggregator::{Aggregator};
     use distribution::common;
     use distribution::distribution_config::{DistributionConfig};
     use distribution::voter_cap::{VoterCap};
@@ -38,7 +37,6 @@ module distribution::gauge {
     const ENotifyRewardGaugeNotAlive: u64 = 927999301192928000;
     const ENotifyRewardDistributionConfInvalid: u64 = 311080855434061200;
     const ENotifyRewardInvalidPool: u64 = 5832633373805671000;
-    const ENotifyRewardInvalidAggregator: u64 = 399948098172884900;
     const ENotifyRewardInvalidAmount: u64 = 9223373716188102674;
     const ENotifyRewardEpochFinished: u64 = 256780623436252400;
 
@@ -75,11 +73,9 @@ module distribution::gauge {
     const ENotifyRewardWithoutClaimDistributionConfInvalid: u64 = 921517595696832600;
     const ENotifyRewardAmountRewardRateZero: u64 = 9223373952411435028;
     const ENotifyRewardWithoutClaimInvalidPool: u64 = 6794499896215460000;
-    const ENotifyRewardWithoutClaimInvalidAggregator: u64 = 835496110456481800;
     const ENotifyRewardWithoutClaimInvalidAmount: u64 = 9223373819267317778;
 
     const ESyncFullsailDistributionPriceInvalidEpoch: u64 = 524842288068695600;
-    const ESyncOsailDistributionPriceInvalidAggregator: u64 = 989270720807518800;
     const ESyncOsailDistributionPriceDistributionConfInvalid: u64 = 490749102979896500;
     const ESyncOsailDistributionPriceGaugeNotAlive: u64 = 298752582283296830;
     const ESyncOsailDistributionPriceInvalidPool: u64 = 485510326827034900;
@@ -205,9 +201,6 @@ module distribution::gauge {
         // Checkpoint of distribution reserve to calculate distributed amount.
         // Delta between checkpoints represents distributed amount
         last_distribution_reserve: u64,
-        // Token with TypeName is distributed in interval (growth_global_by_token.prev(token_type) || 0, growth_global_by_token.borrow(token_type)]
-        // growth_global_by_token.borrow(current_epoch_token) is always zero. This element is used to know order of tokens
-        growth_global_by_token: LinkedTable<TypeName, u128>,
         rewards: Table<ID, RewardProfile>,
         // bag to be preapred for future updates
         bag: sui::bag::Bag,
@@ -323,7 +316,6 @@ module distribution::gauge {
             usd_reward_rate_by_epoch: table::new<u64, u128>(ctx),
             o_sail_emission_by_epoch: table::new<u64, u64>(ctx),
             last_distribution_reserve: 0,
-            growth_global_by_token: linked_table::new<TypeName, u128>(ctx),
             rewards: table::new<ID, RewardProfile>(ctx),
             bag: sui::bag::new(ctx),
         }
@@ -555,8 +547,7 @@ module distribution::gauge {
             gauge.check_gauger_pool(pool),
             EEarnedByAccountGaugeDoesNotMatchPool
         );
-        let coin_type = type_name::get<RewardCoinType>();
-        if (!gauge.growth_global_by_token.contains(coin_type)) {
+        if (!gauge.is_valid_epoch_token<CoinTypeA, CoinTypeB, RewardCoinType>()) {
             return 0
         };
         let mut i = 0;
@@ -565,7 +556,6 @@ module distribution::gauge {
             let (earned_i, _) = gauge.earned_internal<CoinTypeA, CoinTypeB>(
                 pool, 
                 staked_positions[i].position_id, 
-                coin_type,
                 clock.timestamp_ms() / 1000
             );
             total_earned = total_earned + earned_i;
@@ -599,7 +589,7 @@ module distribution::gauge {
             EEarnedByAccountGaugeDoesNotMatchPool
         );
         let coin_type = type_name::get<RewardCoinType>();
-        if (!gauge.growth_global_by_token.contains(coin_type)) {
+        if (gauge.current_epoch_token.borrow() != coin_type) {
             return 0
         };
         let mut i = 0;
@@ -608,7 +598,6 @@ module distribution::gauge {
             let (earned_i, _) = gauge.earned_internal<CoinTypeA, CoinTypeB>(
                 pool, 
                 position_ids[i], 
-                coin_type,
                 clock.timestamp_ms() / 1000
             );
             total_earned = total_earned + earned_i;
@@ -646,12 +635,11 @@ module distribution::gauge {
             gauge.staked_positions.contains(position_id),
             EEarnedByPositionNotDepositedPosition
         );
-        let coin_type = type_name::get<RewardCoinType>();
-        if (!gauge.growth_global_by_token.contains(coin_type)) {
+        if (!gauge.is_valid_epoch_token<CoinTypeA, CoinTypeB, RewardCoinType>()) {
             return (0, 0)
         };
 
-        gauge.earned_internal<CoinTypeA, CoinTypeB>(pool, position_id, coin_type, clock.timestamp_ms() / 1000)
+        gauge.earned_internal<CoinTypeA, CoinTypeB>(pool, position_id, clock.timestamp_ms() / 1000)
     }
 
     /// Internal function to calculate earned rewards for a position.
@@ -671,21 +659,10 @@ module distribution::gauge {
         gauge: &Gauge<CoinTypeA, CoinTypeB>,
         pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         position_id: ID,
-        coin_type: TypeName,
         time: u64
     ): (u64, u128) {
         
-        let current_growth_global = if (&coin_type == gauge.borrow_epoch_token()) {
-            get_current_growth_global(gauge, pool, time)
-        } else {
-            *gauge.growth_global_by_token.borrow(coin_type)
-        };
-        let prev_coin_type_opt: &Option<TypeName> = gauge.growth_global_by_token.prev(coin_type);
-        let prev_coin_growth_global: u128 = if (prev_coin_type_opt.is_some()) {
-            *gauge.growth_global_by_token.borrow(*prev_coin_type_opt.borrow())
-        } else {
-            0_u128
-        };
+        let current_growth_global = get_current_growth_global(gauge, pool, time);
 
         let position = gauge.staked_positions.borrow(position_id);
         let (lower_tick, upper_tick) = position.tick_range();
@@ -695,28 +672,7 @@ module distribution::gauge {
             current_growth_global
         );
 
-        // TODO check that get_fullsail_distribution_growth_inside works correctly with
-        // global_growth passed lower than pool.fullsail_distribution_growth_global
-        let prev_token_growth_inside = if (prev_coin_growth_global > 0) {
-            // get_fullsail_distribution_growth_inside replaces prev_coin_growth_global with 0 if prev_coin_growth_global is 0
-            pool.get_fullsail_distribution_growth_inside(
-                lower_tick,
-                upper_tick,
-                prev_coin_growth_global
-            )
-        } else {
-            0_u128
-        };
-        let claimed_all_tokens_growth_inside = gauge.rewards.borrow(position_id).growth_inside;
-        let mut claimed_growth_inside = if (
-            integer_mate::math_u128::greater_or_equal_overflowing(claimed_all_tokens_growth_inside,prev_token_growth_inside)
-        ) {
-            // if user started claiming current token, then we continue from where he left off
-            claimed_all_tokens_growth_inside
-        } else {
-            // if user has not started claiming current token, then we start from the previous token's growth
-            prev_token_growth_inside
-        };
+        let mut claimed_growth_inside = gauge.rewards.borrow(position_id).growth_inside;
 
         if (integer_mate::math_u128::is_neg(claimed_growth_inside)) {
             claimed_growth_inside = 0;
@@ -835,24 +791,8 @@ module distribution::gauge {
         )
     }
 
-    /// Calculates the earned rewards for a specific position and reward token type.
-    /// This function is called only for rewards from the past epoch.
-    /// 
-    /// # Arguments
-    /// * `gauge` - Reference to the gauge managing the position
-    /// * `pool` - Reference to the CLMM pool associated with the position
-    /// * `position_id` - ID of the position to calculate rewards for
-    /// * `last_growth_inside` - Last recorded growth inside value for the position
-    /// 
-    /// # Returns
-    /// Tuple containing:
-    /// * Amount of rewards earned (u64)
-    /// * New growth inside value (u128)
-    /// 
-    /// # Aborts
-    /// * If the reward token type is the epoch token
-    /// * If there is no growth global value for the reward token type
-    /// * If the position is not staked in the gauge
+    /// Deprecated
+    /// Broken method that exists only to keep other package building and prevent backend from crashing.
     public fun full_earned_for_type<CoinTypeA, CoinTypeB, RewardCoinType>(
         gauge: &Gauge<CoinTypeA, CoinTypeB>,
         pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
@@ -864,70 +804,33 @@ module distribution::gauge {
             gauge.check_gauger_pool(pool),
             EFullEarnedForTypeGaugeDoesNotMatchPool
         );
-
-        let coin_type = type_name::get<RewardCoinType>();
-        assert!(gauge.growth_global_by_token.contains(coin_type), EFullEarnedForTypeNoGrowthGlobalByToken);
         assert!(
             gauge.staked_positions.contains(position_id),
             EEarnedByPositionNotDepositedPosition
         );
-
-        let position = gauge.staked_positions.borrow(position_id);
-        let (lower_tick, upper_tick) = position.tick_range();
-        
-        let current_growth_global = if (&coin_type == gauge.borrow_epoch_token()) {
-            get_current_growth_global(gauge, pool, clock.timestamp_ms() / 1000)
-        } else {
-            *gauge.growth_global_by_token.borrow(coin_type)
-        };
-
-        let new_growth_inside = pool.get_fullsail_distribution_growth_inside(
-            lower_tick,
-            upper_tick,
-            current_growth_global
-        );
-
-        let prev_coin_type_opt: &Option<TypeName> = gauge.growth_global_by_token.prev(coin_type);
-        let prev_coin_growth_global: u128 = if (prev_coin_type_opt.is_some()) {
-            *gauge.growth_global_by_token.borrow(*prev_coin_type_opt.borrow())
-        } else {
-            0_u128
-        };
-
-        let prev_token_growth_inside = if (prev_coin_growth_global > 0) {
-            // get_fullsail_distribution_growth_inside replaces prev_coin_growth_global with 0 if prev_coin_growth_global is 0
-            pool.get_fullsail_distribution_growth_inside(
+        let coin_type = type_name::get<RewardCoinType>();
+        if (gauge.is_valid_epoch_token<CoinTypeA, CoinTypeB, RewardCoinType>()) {
+            let growth_global = gauge.get_current_growth_global(pool, clock.timestamp_ms() / 1000);
+            let position = gauge.staked_positions.borrow(position_id);
+            let (lower_tick, upper_tick) = position.tick_range();
+            let growth_inside = pool.get_fullsail_distribution_growth_inside(
                 lower_tick,
                 upper_tick,
-                prev_coin_growth_global
-            )
-        } else {
-            0_u128
+                growth_global
+            );
+            let growth_inside_diff = integer_mate::math_u128::wrapping_sub(growth_inside, last_growth_inside);
+            if (integer_mate::math_u128::is_neg(growth_inside_diff)) {
+                return (0, growth_inside)
+            };
+            let amount_earned = integer_mate::full_math_u128::mul_div_floor(
+                growth_inside_diff,
+                position.liquidity(),
+                1 << 64
+            ) as u64;
+            return (amount_earned, growth_inside)
         };
 
-        let mut last_growth_inside_correct = if (integer_mate::math_u128::greater_or_equal_overflowing(last_growth_inside, prev_token_growth_inside)){
-            last_growth_inside
-        } else {
-            prev_token_growth_inside
-        };
-
-        if (integer_mate::math_u128::is_neg(last_growth_inside_correct)) {
-            last_growth_inside_correct = 0;
-        };
-
-        let growth_inside_diff = integer_mate::math_u128::wrapping_sub(new_growth_inside, last_growth_inside_correct);
-        // assert!(!integer_mate::math_u128::is_neg(growth_inside_diff), EIncorrectGrowthInside);
-        if (integer_mate::math_u128::is_neg(growth_inside_diff)) {
-            return (0, new_growth_inside)
-        };
-
-        let amount_earned = integer_mate::full_math_u128::mul_div_floor(
-            growth_inside_diff,
-            position.liquidity(),
-            1 << 64
-        ) as u64;
-
-        (amount_earned, new_growth_inside)
+        (0, 0)
     }
 
     /// Claims rewards for a specific staked position and transfers them to the position owner.
@@ -966,7 +869,7 @@ module distribution::gauge {
             EGetPositionRewardGaugeNotAlive
         );
         assert!(
-            gauge.is_valid_reward_token<CoinTypeA, CoinTypeB, RewardCoinType>(),
+            gauge.is_valid_epoch_token<CoinTypeA, CoinTypeB, RewardCoinType>(),
             EGetPositionRewardInvalidRewardToken
         );
         let reward_amount = gauge.get_reward_internal<CoinTypeA, CoinTypeB, RewardCoinType>(
@@ -1014,7 +917,7 @@ module distribution::gauge {
             EGetRewardGaugeNotAlive
         );
         assert!(
-            gauge.is_valid_reward_token<CoinTypeA, CoinTypeB, RewardCoinType>(),
+            gauge.is_valid_epoch_token<CoinTypeA, CoinTypeB, RewardCoinType>(),
             EGetRewardInvalidRewardToken
         );
 
@@ -1136,8 +1039,10 @@ module distribution::gauge {
             distribution_config.is_gauge_alive(object::id(gauge)),
             ENotifyEpochTokenGaugeNotAlive
         );
+        // cannot update to the same token
         assert!(
-            !gauge.is_valid_reward_token<CoinTypeA, CoinTypeB, NextRewardCoinType>(),
+            gauge.current_epoch_token.is_none() || 
+            !gauge.is_valid_epoch_token<CoinTypeA, CoinTypeB, NextRewardCoinType>(),
             ENotifyEpochTokenAlreadyNotifiedToken
         );
 
@@ -1185,17 +1090,14 @@ module distribution::gauge {
         };
         if (gauge.current_epoch_token.is_some()) {
             let prev_epoch_token = gauge.current_epoch_token.extract();
-            gauge.growth_global_by_token.remove(prev_epoch_token); // remove zero from the end
 
             // last growth_global that corresponds to the **previous** token.
             let growth_global = pool.get_fullsail_distribution_growth_global();
-            gauge.growth_global_by_token.push_back(prev_epoch_token, growth_global);
             event.prev_token.fill(prev_epoch_token);
             event.growth_global_prev_token = growth_global;
         };
         // Update TokenName state
         gauge.current_epoch_token.fill(coin_type);
-        gauge.growth_global_by_token.push_back(coin_type, 0); // add zero to the end
 
         gauge.epoch_token_last_notified = current_time;
 
@@ -1209,43 +1111,34 @@ module distribution::gauge {
     ///
     /// # Arguments
     /// * `gauge` - The gauge instance
-    /// * `voter_cap` - Capability to notify rewards
     /// * `pool` - The associated pool
     /// * `usd_amount` - The amount of USD to distribute, decimals 6
+    /// * `o_sail_price_q64` - The oSAIL price in USD in Q64.64 format, in SAIL token decimals
     /// * `clock` - The system clock
     /// * `ctx` - Transaction context
     ///
     /// # Aborts
     /// * If the voter capability is invalid
     /// * If the reward amount is invalid (zero)
-    public fun notify_reward_without_claim<CoinTypeA, CoinTypeB>(
+    public(package) fun notify_reward_without_claim<CoinTypeA, CoinTypeB>(
         gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
         distribution_config: &DistributionConfig,
-        voter_cap: &VoterCap,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         usd_amount: u64,
-        aggregator: &Aggregator,
+        o_sail_price_q64: u128,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        gauge.validate_voter_cap(voter_cap);
         assert!(
             object::id(distribution_config) == gauge.distribution_config,
             ENotifyRewardWithoutClaimDistributionConfInvalid
         );
         assert!(distribution_config.is_gauge_alive(object::id(gauge)), ENotifyRewardWithoutClaimGaugeNotAlive);
         assert!(gauge.check_gauger_pool(pool), ENotifyRewardWithoutClaimInvalidPool);
-        assert!(distribution_config.is_valid_o_sail_price_aggregator(aggregator), ENotifyRewardWithoutClaimInvalidAggregator);
 
         assert!(usd_amount > 0, ENotifyRewardWithoutClaimInvalidAmount);
         gauge.notify_reward_amount_internal<CoinTypeA, CoinTypeB>(usd_amount, clock);
 
-        let o_sail_price_q64 = common::get_time_checked_price_q64(
-            aggregator,
-            common::sail_decimals(),
-            common::usd_decimals(),
-            clock
-        );
         gauge.sync_o_sail_distribution_price_internal(pool, o_sail_price_q64, clock);
     }
 
@@ -1254,9 +1147,9 @@ module distribution::gauge {
     ///
     /// # Arguments
     /// * `gauge` - The gauge instance
-    /// * `voter_cap` - Capability to notify rewards
     /// * `pool` - The associated pool
     /// * `usd_amount` - The amount of USD to distribute, decimals 6
+    /// * `o_sail_price_q64` - The oSAIL price in USD in Q64.64 format, in SAIL token decimals
     /// * `clock` - The system clock
     /// * `ctx` - Transaction context
     ///
@@ -1266,24 +1159,21 @@ module distribution::gauge {
     /// # Aborts
     /// * If the voter capability is invalid
     /// * If the reward amount is invalid (zero)
-    public fun notify_reward<CoinTypeA, CoinTypeB>(
+    public(package) fun notify_reward<CoinTypeA, CoinTypeB>(
         gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
         distribution_config: &DistributionConfig,
-        voter_cap: &VoterCap,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         usd_amount: u64,
-        aggregator: &Aggregator,
+        o_sail_price_q64: u128,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): (Balance<CoinTypeA>, Balance<CoinTypeB>) {
-        gauge.validate_voter_cap(voter_cap);
         assert!(
             object::id(distribution_config) == gauge.distribution_config,
             ENotifyRewardDistributionConfInvalid
         );
         assert!(distribution_config.is_gauge_alive(object::id(gauge)), ENotifyRewardGaugeNotAlive);
         assert!(gauge.check_gauger_pool(pool), ENotifyRewardInvalidPool);
-        assert!(distribution_config.is_valid_o_sail_price_aggregator(aggregator), ENotifyRewardInvalidAggregator);
         assert!(usd_amount > 0, ENotifyRewardInvalidAmount);
         let current_time = clock.timestamp_ms() / 1000;
         assert!(current_time < gauge.period_finish, ENotifyRewardEpochFinished);
@@ -1291,12 +1181,6 @@ module distribution::gauge {
         let (fee_a, fee_b) = gauge.claim_fees_internal(pool);
         gauge.notify_reward_amount_internal<CoinTypeA, CoinTypeB>(usd_amount, clock);
 
-        let o_sail_price_q64 = common::get_time_checked_price_q64(
-            aggregator,
-            common::sail_decimals(),
-            common::usd_decimals(),
-            clock
-        );
         gauge.sync_o_sail_distribution_price_internal(pool, o_sail_price_q64, clock);
         (fee_a, fee_b)
     }
@@ -1417,17 +1301,16 @@ module distribution::gauge {
     /// * `gauge` - The gauge instance
     /// * `distribution_config` - The distribution config
     /// * `pool` - The associated pool
-    /// * `aggregator` - The switchboard aggregator to get the oSAIL price from
+    /// * `o_sail_price_q64` - The oSAIL price in USD in Q64.64 format, in SAIL token decimals
     /// * `clock` - The system clock
     ///
-    public fun sync_o_sail_distribution_price<CoinTypeA, CoinTypeB>(
+    public(package) fun sync_o_sail_distribution_price<CoinTypeA, CoinTypeB>(
         gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
         distribution_config: &DistributionConfig,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        aggregator: &Aggregator,
+        o_sail_price_q64: u128,
         clock: &sui::clock::Clock,
     ) {
-        assert!(distribution_config.is_valid_o_sail_price_aggregator(aggregator), ESyncOsailDistributionPriceInvalidAggregator);
         assert!(
             object::id(distribution_config) == gauge.distribution_config,
             ESyncOsailDistributionPriceDistributionConfInvalid
@@ -1435,12 +1318,6 @@ module distribution::gauge {
         assert!(distribution_config.is_gauge_alive(object::id(gauge)), ESyncOsailDistributionPriceGaugeNotAlive);
         assert!(gauge.check_gauger_pool(pool), ESyncOsailDistributionPriceInvalidPool);
 
-        let o_sail_price_q64 = common::get_time_checked_price_q64(
-            aggregator,
-            common::sail_decimals(),
-            common::usd_decimals(),
-            clock
-        );
         gauge.sync_o_sail_distribution_price_internal(pool, o_sail_price_q64, clock);
     }
 
@@ -1536,19 +1413,6 @@ module distribution::gauge {
         gauge.current_epoch_token.borrow() == &coin_type
     }
 
-    /// Returns true if the token was ever notified
-    ///
-    /// # Arguments
-    /// * `<RewardCoinType>` - The coin type to be checked.
-    /// * `gauge` - The gauge contract reference
-    public fun is_valid_reward_token<CoinTypeA, CoinTypeB, RewardCoinType>(
-        gauge: &Gauge<CoinTypeA, CoinTypeB>,
-    ): bool {
-        let coin_type = type_name::get<RewardCoinType>();
-
-        gauge.growth_global_by_token.contains(coin_type)
-    }
-
     public fun borrow_epoch_token<CoinTypeA, CoinTypeB>(
         gauge: &Gauge<CoinTypeA, CoinTypeB>,
     ): &TypeName {
@@ -1587,10 +1451,9 @@ module distribution::gauge {
         clock: &sui::clock::Clock
     ): u64 {
         let coin_type = type_name::get<RewardCoinType>();
-        assert!(gauge.prev_reward_claimed<CoinTypeA, CoinTypeB>(pool, coin_type, position_id), EGetRewardPrevTokenNotClaimed);
         let gauge_id = object::id<Gauge<CoinTypeA, CoinTypeB>>(gauge);
         let current_time = clock.timestamp_ms() / 1000;
-        let (amount_earned, growth_inside) = gauge.earned_internal<CoinTypeA, CoinTypeB>(pool, position_id, coin_type, current_time);
+        let (amount_earned, growth_inside) = gauge.earned_internal<CoinTypeA, CoinTypeB>(pool, position_id, current_time);
         
         let reward_profile = gauge.rewards.borrow_mut(position_id);
 
@@ -1616,41 +1479,6 @@ module distribution::gauge {
         amount_to_pay
     }
 
-
-    /// Returns true if all reward coins up to up_to_coin_type were claimed by position.
-    /// If so, it means that the position will never claim previous epoch oSAIL.
-    public fun prev_reward_claimed<CoinTypeA, CoinTypeB>(
-        gauge: &Gauge<CoinTypeA, CoinTypeB>,
-        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        up_to_coin_type: TypeName,
-        position_id: ID,
-    ): bool {
-        assert!(gauge.check_gauger_pool(pool), EPrevRewardClaimedGaugeDoesNotMatchPool);
-
-        let position = gauge.staked_positions.borrow(position_id);
-        let (lower_tick, upper_tick) = position.tick_range();
-        let prev_coin_type_opt: &Option<TypeName> = gauge.growth_global_by_token.prev(up_to_coin_type);
-        let prev_coin_growth_global: u128 = if (prev_coin_type_opt.is_some()) {
-            *gauge.growth_global_by_token.borrow(*prev_coin_type_opt.borrow())
-        } else {
-            0_u128
-        };
-        let prev_token_growth_inside = if (prev_coin_growth_global > 0) {
-            // get_fullsail_distribution_growth_inside replaces prev_coin_growth_global with 0 if prev_coin_growth_global is 0
-            pool.get_fullsail_distribution_growth_inside(
-                lower_tick,
-                upper_tick,
-                prev_coin_growth_global
-            )
-        } else {
-            0_u128
-        };
-        let claimed_all_tokens_growth_inside = gauge.rewards.borrow(position_id).growth_inside;
-        let prev_claimed = integer_mate::math_u128::greater_or_equal_overflowing(claimed_all_tokens_growth_inside, prev_token_growth_inside);
-
-        prev_claimed
-    }
-
     public fun all_rewards_claimed<CoinTypeA, CoinTypeB>(
         gauge: &Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
@@ -1659,20 +1487,13 @@ module distribution::gauge {
     ): bool {
         assert!(gauge.check_gauger_pool(pool), EAllRewardsClaimedGaugeDoesNotMatchPool);
 
-        let current_epoch_token = *gauge.current_epoch_token.borrow();
-        let all_prev_claimed = gauge.prev_reward_claimed<CoinTypeA, CoinTypeB>(pool, current_epoch_token, position_id);
-        if (!all_prev_claimed) {
-            return false;
-        };
-
-        let (earned_this_epoch, _) = gauge.earned_internal<CoinTypeA, CoinTypeB>(
+        let (earned, _) = gauge.earned_internal<CoinTypeA, CoinTypeB>(
             pool,
             position_id,
-            current_epoch_token,
             clock.timestamp_ms() / 1000
         );
 
-        earned_this_epoch == 0
+        earned == 0
     }
 
     /// Withdraws a staked position from the gauge and returns it to its owner.

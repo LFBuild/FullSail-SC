@@ -28,11 +28,13 @@ liquidity_locker = "0x0"
 # The dev-dependencies section allows overriding dependencies for `--test` and
 # `--dev` modes. You can introduce test-only dependencies here.
 # Local = { local = "../path/to/dev-build" }
+price_monitor = { local = "../price_monitor" }
 
 [dev-addresses]
 # The dev-addresses section allows overwriting named addresses for the `--test`
 # and `--dev` modes.
 # alice = "0xB0B"
+# price_monitor = "0x1"
 
 [dependencies.Sui]
 git = "https://github.com/MystenLabs/sui.git"

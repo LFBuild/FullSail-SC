@@ -148,4 +148,3 @@ module distribution::distribution_config {
         init(ctx);
     }
 }
-

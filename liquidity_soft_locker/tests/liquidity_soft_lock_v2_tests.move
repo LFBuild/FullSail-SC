@@ -7,7 +7,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
     use liquidity_soft_locker::pool_soft_tranche;
     use locker_cap::locker_cap;
     use clmm_pool::position;
-    use clmm_pool::pool;
+    use clmm_pool::pool::{Self as pool, Pool};
     use clmm_pool::factory::{Self as factory, Pools};
     use clmm_pool::config::{Self as config, GlobalConfig};
     use clmm_pool::stats;
@@ -21,8 +21,13 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
     use distribution::common;
     use distribution::rebase_distributor;
     use sui::clock;
-    use switchboard::aggregator;
+    use switchboard::aggregator::{Self, Aggregator};
     use switchboard::decimal;
+    use sui::coin::{Self, Coin, CoinMetadata};
+    use price_monitor::price_monitor::{Self, PriceMonitor};
+    use std::type_name::{Self, TypeName};
+
+    use liquidity_soft_locker::usd_tests::{Self, USD_TESTS};
 
     const ONE_DEC18: u128 = 1000000000000000000;
 
@@ -124,6 +129,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         scenario.next_tx(admin);
         {
             full_setup_with_osail(
@@ -133,6 +141,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -242,6 +252,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
         };
 
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -267,6 +280,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         scenario.next_tx(admin);
         {
             full_setup_with_osail(
@@ -276,6 +292,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -376,6 +394,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
         };
 
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -401,6 +422,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         scenario.next_tx(admin);
         {
             full_setup_with_osail(
@@ -410,6 +434,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -526,6 +552,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
         };
 
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -551,6 +580,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         scenario.next_tx(admin);
         {
             full_setup_with_osail(
@@ -560,6 +592,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -658,6 +692,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
         };
 
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -683,6 +720,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         scenario.next_tx(admin);
         {
             full_setup_with_osail(
@@ -692,6 +732,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -772,6 +814,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
         };
 
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -797,6 +842,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         scenario.next_tx(admin);
         {
             full_setup_with_osail(
@@ -806,6 +854,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -902,6 +952,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
         };
 
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -925,6 +978,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         scenario.next_tx(admin);
         {
             full_setup_with_osail(
@@ -934,6 +990,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -1071,6 +1129,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
         };
 
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -1095,6 +1156,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         scenario.next_tx(admin);
         {
             full_setup_with_osail(
@@ -1104,6 +1168,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -1239,6 +1305,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
         };
 
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -1263,6 +1332,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         scenario.next_tx(admin);
         {
             full_setup_with_osail(
@@ -1272,6 +1344,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -1448,6 +1522,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
         };
 
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -1472,6 +1549,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         scenario.next_tx(admin);
         {
             full_setup_with_osail(
@@ -1481,6 +1561,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -1648,6 +1730,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
         };
 
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -1672,6 +1757,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         scenario.next_tx(admin);
         {
             full_setup_with_osail(
@@ -1681,6 +1769,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -1848,6 +1938,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
         };
 
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -1872,6 +1965,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         // Setup
         scenario.next_tx(admin);
         {
@@ -1882,6 +1978,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -2007,7 +2105,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 2
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &clock);
+            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // Advance to Epoch 3 (OSAIL3)
@@ -2027,7 +2125,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 3
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &clock);
+            distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
         
         // Advance to Epoch 4 (OSAIL4)
@@ -2047,7 +2145,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // distribute gauge for epoch 4
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &clock);
+            distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // Add reward to the THIRD epoch
@@ -2128,6 +2226,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             scenario.return_to_sender(minter_admin_cap);
         };
         
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -2152,6 +2253,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         // Setup
         scenario.next_tx(admin);
         {
@@ -2162,6 +2266,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -2287,7 +2393,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 2
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &clock);
+            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // Advance to Epoch 3 (OSAIL3)
@@ -2307,7 +2413,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 3
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &clock);
+            distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
         
         // Advance to Epoch 4 (OSAIL4)
@@ -2327,7 +2433,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // distribute gauge for epoch 4
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &clock);
+            distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // Add reward to the THIRD epoch
@@ -2410,6 +2516,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             scenario.return_to_sender(minter_admin_cap);
         };
         
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -2434,6 +2543,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         // Setup
         scenario.next_tx(admin);
         {
@@ -2444,6 +2556,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -2569,7 +2683,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 2
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &clock);
+            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // Advance to Epoch 3 (OSAIL3)
@@ -2589,7 +2703,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 3
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &clock);
+            distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
         
         // Advance to Epoch 4 (OSAIL4)
@@ -2609,7 +2723,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // distribute gauge for epoch 4
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &clock);
+            distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // Add reward to the THIRD epoch
@@ -2699,6 +2813,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             test_scenario::return_shared(ve);
         };
         
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -2723,6 +2840,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         // Setup
         scenario.next_tx(admin);
         {
@@ -2733,6 +2853,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -2858,7 +2980,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 2
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &clock);
+            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // Advance to Epoch 3 (OSAIL3)
@@ -2878,7 +3000,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 3
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &clock);
+            distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
         
         // Advance to Epoch 4 (OSAIL4)
@@ -2898,7 +3020,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // distribute gauge for epoch 4
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &clock);
+            distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // Add reward to the THIRD epoch
@@ -2991,6 +3113,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             test_scenario::return_shared(ve);
         };
         
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -3015,6 +3140,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         // Setup
         scenario.next_tx(admin);
         {
@@ -3025,6 +3153,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -3150,7 +3280,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 2
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &clock);
+            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // split position in the 1/3 of epoch 2
@@ -3238,7 +3368,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 3
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &clock);
+            distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
         
         // Advance to Epoch 4 (OSAIL4)
@@ -3258,7 +3388,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // distribute gauge for epoch 4
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &clock);
+            distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // Add reward to the THIRD epoch
@@ -3356,6 +3486,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             scenario.return_to_sender(minter_admin_cap);
         };
         
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -3380,6 +3513,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         // Setup
         scenario.next_tx(admin);
         {
@@ -3390,6 +3526,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -3563,7 +3701,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 2
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &clock);
+            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // Advance to Epoch 3 (OSAIL3)
@@ -3583,7 +3721,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 3
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &clock);
+            distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
         
         // Advance to Epoch 4 (OSAIL4)
@@ -3603,7 +3741,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // distribute gauge for epoch 4
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &clock);
+            distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // Add reward to the THIRD epoch
@@ -3684,6 +3822,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             scenario.return_to_sender(minter_admin_cap);
         };
         
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -3710,6 +3851,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         scenario.next_tx(admin);
         {
             full_setup_with_osail(
@@ -3719,6 +3863,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -3841,6 +3987,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
         };
 
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -3867,6 +4016,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         scenario.next_tx(admin);
         {
             full_setup_with_osail(
@@ -3876,6 +4028,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -3998,6 +4152,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
         };
 
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -4024,6 +4181,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         scenario.next_tx(admin);
         {
             full_setup_with_osail(
@@ -4033,6 +4193,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -4173,6 +4335,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
         };
 
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -4197,6 +4362,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock); 
+
         scenario.next_tx(admin);
         {
             full_setup_with_osail(
@@ -4206,6 +4374,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -4352,7 +4522,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 2
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &clock);
+            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // Add reward to the first tranche
@@ -4399,7 +4569,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 3
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &clock);
+            distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         scenario.next_tx(admin);
@@ -4445,7 +4615,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 4
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &clock);
+            distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         scenario.next_tx(admin);
@@ -4491,7 +4661,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 5
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL5>(&mut scenario, &clock);
+            distribute_gauge_epoch_3<SailCoinType, OSAIL5>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         scenario.next_tx(admin);
@@ -4621,6 +4791,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             scenario.return_to_sender(minter_admin_cap);
         };
 
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -4646,6 +4819,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         scenario.next_tx(admin);
         {
             full_setup_with_osail(
@@ -4655,6 +4831,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 (101<<64)/100, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -4831,7 +5009,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 2
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &clock);
+            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // Advance to Epoch 3 (OSAIL3)
@@ -4851,7 +5029,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 3
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &clock);
+            distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         clock::increment_for_testing(&mut clock, common::epoch_to_seconds(1)/2*1000);
@@ -4936,7 +5114,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 4
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &clock);
+            distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // set_total_incomed_and_add_reward for epoch 4
@@ -5063,7 +5241,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 5
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL5>(&mut scenario, &clock);
+            distribute_gauge_epoch_3<SailCoinType, OSAIL5>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // set_total_incomed_and_add_reward for epoch 5
@@ -5177,7 +5355,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 6
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL6>(&mut scenario, &clock);
+            distribute_gauge_epoch_3<SailCoinType, OSAIL6>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // full remove and unlock position for epoch 6
@@ -5255,6 +5433,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         };
 
 
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -5280,6 +5461,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         scenario.next_tx(admin);
         {
             full_setup_with_osail(
@@ -5289,6 +5473,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -5413,7 +5599,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 2
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &clock);
+            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // adding reward to the first tranche
@@ -5460,7 +5646,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 3
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &clock);
+            distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // set_total_incomed_and_add_reward
@@ -5583,7 +5769,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 4
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &clock);
+            distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         scenario.next_tx(admin);
@@ -5665,6 +5851,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             
         };
 
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -5690,6 +5879,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         scenario.next_tx(admin);
         {
             full_setup_with_osail(
@@ -5699,6 +5891,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -5830,6 +6024,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
         };
 
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -5855,6 +6052,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         scenario.next_tx(admin);
         {
             full_setup_with_osail(
@@ -5863,7 +6063,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951,
-                10_000_000_000_000, 
+                10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -5993,6 +6195,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
         };
 
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -6018,6 +6223,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         scenario.next_tx(admin);
         {
             full_setup_with_osail(
@@ -6027,6 +6235,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -6184,6 +6394,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             
         };
 
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -6210,6 +6423,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         scenario.next_tx(admin);
         {
             full_setup_with_osail(
@@ -6219,6 +6435,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -6375,6 +6593,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             
         };
 
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -6401,6 +6622,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         scenario.next_tx(admin);
         {
             full_setup_with_osail(
@@ -6409,7 +6633,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951,
-                10_000_000_000_000, 
+                10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -6564,6 +6790,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             
         };
 
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -6590,6 +6819,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         scenario.next_tx(admin);
         {
             full_setup_with_osail(
@@ -6598,7 +6830,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951,
-                10_000_000_000_000, 
+                10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -6755,6 +6989,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             
         };
 
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -6781,6 +7018,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         scenario.next_tx(admin);
         {
             full_setup_with_osail(
@@ -6789,7 +7029,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 1000, 
                 182, 
                 18584142135623730951,
-                10_000_000_000_000, 
+                10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -6953,6 +7195,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             
         };
 
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -6979,6 +7224,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         scenario.next_tx(admin);
         {
             full_setup_with_osail(
@@ -6988,6 +7236,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -7149,6 +7399,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             
         };
 
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -7175,6 +7428,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         scenario.next_tx(admin);
         {
             full_setup_with_osail(
@@ -7184,6 +7440,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -7365,6 +7623,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             
         };
 
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -7391,6 +7652,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         scenario.next_tx(admin);
         {
             full_setup_with_osail(
@@ -7400,6 +7664,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -7548,7 +7814,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 2
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &clock);
+            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // Advance to Epoch 3 (OSAIL3)
@@ -7568,7 +7834,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 3
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &clock);
+            distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // Advance to Epoch 4 (OSAIL4)
@@ -7588,7 +7854,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 4
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &clock);
+            distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         scenario.next_tx(admin);
@@ -7647,6 +7913,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             
         };
 
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -7671,6 +7940,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         scenario.next_tx(admin);
         {
             full_setup_with_osail(
@@ -7680,6 +7952,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -7849,6 +8123,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
         };
 
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -7873,15 +8150,20 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         scenario.next_tx(admin);
         {
-            full_setup_with_osail(
+            full_setup_with_osail( 
                 &mut scenario, 
                 admin, 
                 1000, 
                 182, 
                 18584142135623730951, // 148 current tick
                 10_000_000_000_000,
+                &usd_metadata,  
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -8036,6 +8318,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
         };
 
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -8060,6 +8345,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         scenario.next_tx(admin);
         {
             full_setup_with_osail(
@@ -8069,6 +8357,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -8275,6 +8565,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             test_scenario::return_shared(price_provider);
         };
 
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -8299,6 +8592,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         scenario.next_tx(admin);
         {
             full_setup_with_osail(
@@ -8308,6 +8604,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -8526,6 +8824,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             test_scenario::return_shared(price_provider);
         };
 
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -8550,6 +8851,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         scenario.next_tx(admin);
         {
             full_setup_with_osail(
@@ -8559,6 +8863,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -8727,6 +9033,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
         };
 
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -8751,6 +9060,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         // Setup
         scenario.next_tx(admin);
         {
@@ -8761,6 +9073,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -8913,7 +9227,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 2
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &clock);
+            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // change position in the 99/100 of epoch 2
@@ -9019,7 +9333,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 3
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &clock);
+            distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // change position in the middle of epoch 3
@@ -9125,7 +9439,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 4
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &clock);
+            distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // Add reward to the THIRD epoch
@@ -9206,6 +9520,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             
         };
         
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -9231,6 +9548,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         scenario.next_tx(admin);
         {
             full_setup_with_osail(
@@ -9240,6 +9560,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -9370,6 +9692,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
         };
 
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -9395,6 +9720,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         scenario.next_tx(admin);
         {
             full_setup_with_osail(
@@ -9404,6 +9732,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -9550,6 +9880,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
         };
 
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -9575,6 +9908,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         scenario.next_tx(admin);
         {
             full_setup_with_osail(
@@ -9584,6 +9920,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -9712,6 +10050,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
         };
 
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -9737,6 +10078,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         scenario.next_tx(admin);
         {
             full_setup_with_osail(
@@ -9746,6 +10090,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951,
                 10_000_000_000_000, 
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -9887,6 +10233,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             scenario.return_to_sender(governor_cap);
         };
 
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -9911,6 +10260,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             rewarder::test_init(scenario.ctx());
         };
 
+        let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<SailCoinType, SailCoinType, USD_TESTS, SailCoinType>(&mut scenario, admin, &clock);
+
         // Setup
         scenario.next_tx(admin);
         {
@@ -9921,6 +10273,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
                 182, 
                 18584142135623730951, 
                 10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
                 &mut clock
             );
         };
@@ -10071,7 +10425,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 2
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &clock);
+            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // change range position in the 10/100 of epoch 2
@@ -10616,7 +10970,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // // Distribute gauge for epoch 3
         // scenario.next_tx(admin);
         // {
-        //     distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &clock);
+        //     distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         // };
 
         // // Advance to Epoch 4 (OSAIL4)
@@ -10636,7 +10990,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // // Distribute gauge for epoch 4
         // scenario.next_tx(admin);
         // {
-        //     distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &clock);
+        //     distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         // };
 
         // // Add reward to the 3 epoch
@@ -10765,6 +11119,9 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         position_ids.drop();
         // position_ids.destroy_empty();
         
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
         clock::destroy_for_testing(clock);
         test_scenario::end(scenario);
     }
@@ -10921,6 +11278,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         lock_duration_days: u64,
         current_sqrt_price: u128,
         gauge_base_emissions: u64,
+        usd_metadata: &CoinMetadata<USD_TESTS>,
+        aggregator: &mut Aggregator,
         clock: &mut clock::Clock
     ) {
         scenario.next_tx(admin);
@@ -10947,7 +11306,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Update Minter Period to OSAIL1
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_1<SailCoinType, OSAIL1>(scenario, clock);
+            distribute_gauge_epoch_1<SailCoinType, OSAIL1>(scenario, usd_metadata, aggregator, clock);
         };
     }
 
@@ -10956,13 +11315,6 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         scenario: &mut test_scenario::Scenario,
         sender: address
     ) { // No return value
-
-        // --- Initialize Distribution Config ---
-        scenario.next_tx(sender);
-        {
-            distribution_config::test_init(scenario.ctx());
-            gauge_cap::gauge_cap::init_test(scenario.ctx());
-        };
 
         // --- Minter Setup --- 
         scenario.next_tx(sender);
@@ -11049,15 +11401,17 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             test_utils::destroy(rd_publisher);
             let rebase_distributor_id = object::id(&rebase_distributor_obj);
             transfer::public_share_object(rebase_distributor_obj);
-            clock::destroy_for_testing(clock);
+        
             // --- Set Reward Distributor Cap ---
             let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-            minter.set_reward_distributor_cap(&minter_admin_cap, rebase_distributor_id, rebase_distributor_cap);
+            minter.set_rebase_distributor_cap(&minter_admin_cap, rebase_distributor_cap);
             test_scenario::return_shared(minter);
             scenario.return_to_sender(minter_admin_cap);
+            clock::destroy_for_testing(clock);
         };
     }
+
 
     // Updates the minter period, sets the next period token to OSailCoinTypeNext
     #[test_only]
@@ -11164,7 +11518,11 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         let mut pools = scenario.take_shared<Pools>();
         let lock = scenario.take_from_sender<voting_escrow::Lock>();
 
-        config::add_fee_tier(&mut global_config, 1, 1000, scenario.ctx());
+        let fee_tiers = global_config.fee_tiers();
+        let one_tier: u32 = 1;
+        if (!fee_tiers.contains(&one_tier)) {
+            config::add_fee_tier(&mut global_config, one_tier, 1000, scenario.ctx());
+        };
 
         let mut pool = factory::create_pool_<TestCoinB, TestCoinA>(
             &mut pools,
@@ -11178,7 +11536,6 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             clock,
             scenario.ctx()
         );
-        let pool_id = sui::object::id<pool::Pool<TestCoinB, TestCoinA>>(&pool);
 
         let gauge = minter.create_gauge<TestCoinB, TestCoinA, SailCoinType>(
             &mut voter,
@@ -11205,9 +11562,43 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         test_scenario::return_shared(ve);
     }
 
+    fun create_pool<TestCoinB, TestCoinA>(
+        scenario: &mut test_scenario::Scenario,
+        current_sqrt_price: u128,
+        clock: &clock::Clock,
+    ){
+        let mut global_config = scenario.take_shared<config::GlobalConfig>();
+        let mut pools = scenario.take_shared<Pools>();
+
+        let fee_tiers = global_config.fee_tiers();
+        let one_tier: u32 = 1;
+        if (!fee_tiers.contains(&one_tier)) {
+            config::add_fee_tier(&mut global_config, one_tier, 1000, scenario.ctx());
+        };
+
+        let pool = factory::create_pool_<TestCoinB, TestCoinA>(
+            &mut pools,
+            &global_config,
+            1, // tick_spacing
+            current_sqrt_price,
+            std::string::utf8(b""), // url
+            @0x2, // feed_id_coin_a
+            @0x3, // feed_id_coin_b
+            true, // auto_calculation_volumes
+            clock,
+            scenario.ctx()
+        );
+
+        test_scenario::return_shared(pools);
+        transfer::public_share_object(pool);
+        test_scenario::return_shared(global_config);
+    }
+
     #[test_only]
     fun distribute_gauge_epoch_1<SailCoinType, EpochOSail>(
         scenario: &mut test_scenario::Scenario,
+        usd_metadata: &CoinMetadata<USD_TESTS>,
+        aggregator: &mut Aggregator,
         clock: &clock::Clock,
     ): u64 {
         // initial epoch is distributed without any historical data
@@ -11226,6 +11617,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             epoch_pool_fees_usd,
             epoch_pool_volume_usd,
             epoch_pool_predicted_volume_usd,
+            usd_metadata,
+            aggregator,
             clock
         )
     }
@@ -11233,6 +11626,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
     #[test_only]
     fun distribute_gauge_epoch_2<SailCoinType, EpochOSail>(
         scenario: &mut test_scenario::Scenario,
+        usd_metadata: &CoinMetadata<USD_TESTS>,
+        aggregator: &mut Aggregator,
         clock: &clock::Clock,
     ): u64 {
         // epoch 2 is distributed with historical data from epoch 1
@@ -11252,6 +11647,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             epoch_pool_fees_usd,
             epoch_pool_volume_usd,
             epoch_pool_predicted_volume_usd,
+            usd_metadata,
+            aggregator,
             clock
         )
     }
@@ -11259,6 +11656,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
     #[test_only]
     fun distribute_gauge_epoch_3<SailCoinType, EpochOSail>(
         scenario: &mut test_scenario::Scenario,
+        usd_metadata: &CoinMetadata<USD_TESTS>,
+        aggregator: &mut Aggregator,
         clock: &clock::Clock,
     ): u64 {
         // this data results into stable emissions, same as epoch 2 emissions
@@ -11277,6 +11676,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             epoch_pool_fees_usd,
             epoch_pool_volume_usd,
             epoch_pool_predicted_volume_usd,
+            usd_metadata,
+            aggregator,
             clock
         )
     }
@@ -11291,6 +11692,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         epoch_pool_fees_usd: u64,
         epoch_pool_volume_usd: u64,
         epoch_pool_predicted_volume_usd: u64,
+        usd_metadata: &CoinMetadata<USD_TESTS>,
+        aggregator: &mut Aggregator,
         clock: &clock::Clock,
     ): u64 {
         let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>(); // Minter is now responsible
@@ -11299,27 +11702,55 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         let mut pool = scenario.take_from_sender<pool::Pool<CoinTypeA, CoinTypeB>>();
         let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
         let distribute_governor_cap = scenario.take_from_sender<minter::DistributeGovernorCap>(); // Minter uses DistributeGovernorCap
+        let mut price_monitor = scenario.take_shared<PriceMonitor>();
 
-        let aggregator = setup_aggregator(scenario, &mut distribution_config, one_dec18(), clock);
+        aggregator_set_current_value(aggregator,  one_dec18(), clock.timestamp_ms());
 
-        let distributed_amount = minter.distribute_gauge<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
-            // &mut minter, // minter is the receiver
-            &mut voter,
-            &distribute_governor_cap,
-            &distribution_config,
-            &mut gauge,
-            &mut pool,
-            prev_epoch_pool_emissions,
-            prev_epoch_pool_fees_usd,
-            epoch_pool_emissions_usd,
-            epoch_pool_fees_usd,
-            epoch_pool_volume_usd,
-            epoch_pool_predicted_volume_usd,
-            &aggregator,
-            clock,
-            scenario.ctx()
-        );
-        test_utils::destroy(aggregator);
+        let mut distributed_amount: u64 = 0;
+        if (type_name::get<CoinTypeA>() != type_name::get<USD_TESTS>() || 
+                type_name::get<CoinTypeB>() != type_name::get<SailCoinType>()) {
+
+            let sail_stablecoin_pool = scenario.take_shared<Pool<USD_TESTS, SailCoinType>>();
+
+            distributed_amount = minter.distribute_gauge<CoinTypeA, CoinTypeB, USD_TESTS, SailCoinType, SailCoinType, EpochOSail>(
+                &mut voter,
+                &distribute_governor_cap,
+                &distribution_config,
+                &mut gauge,
+                &mut pool,
+                prev_epoch_pool_emissions,
+                prev_epoch_pool_fees_usd,
+                epoch_pool_emissions_usd,
+                epoch_pool_fees_usd,
+                epoch_pool_volume_usd,
+                epoch_pool_predicted_volume_usd,
+                &mut price_monitor,
+                &sail_stablecoin_pool,
+                aggregator,
+                clock,
+                scenario.ctx()
+            );
+
+            test_scenario::return_shared(sail_stablecoin_pool);
+        } else {
+            distributed_amount = minter.distribute_gauge_for_sail_pool<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
+                &mut voter,
+                &distribute_governor_cap,
+                &distribution_config,
+                &mut gauge,
+                &mut pool,
+                prev_epoch_pool_emissions,
+                prev_epoch_pool_fees_usd,
+                epoch_pool_emissions_usd,
+                epoch_pool_fees_usd,
+                epoch_pool_volume_usd,
+                epoch_pool_predicted_volume_usd,
+                &mut price_monitor,
+                aggregator,
+                clock,
+                scenario.ctx()
+            );
+        };
 
         // Return shared objects
         test_scenario::return_shared(minter);
@@ -11328,6 +11759,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         scenario.return_to_sender(pool);
         test_scenario::return_shared(distribution_config);
         scenario.return_to_sender(distribute_governor_cap);
+        test_scenario::return_shared(price_monitor);
 
         distributed_amount
     }
@@ -11336,16 +11768,75 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         ONE_DEC18
     }
 
+    // CoinTypeA and CoinTypeB - to check that such a pool has already been created
+    // in other cases you can pass any types, so that the USD_TESTS/SAIL pool is created
+    #[test_only]
+    public fun setup_price_monitor_and_aggregator<CoinTypeA, CoinTypeB, USD_TESTS: drop, SAIL: drop>(
+        scenario: &mut test_scenario::Scenario,
+        sender: address,
+        clock: &clock::Clock,
+    ): Aggregator {
+
+        // create pool for USD_TESTS/SAIL
+        if (type_name::get<CoinTypeA>() != type_name::get<USD_TESTS>() || 
+            type_name::get<CoinTypeB>() != type_name::get<SAIL>()) {
+
+            // create pool for USD_TESTS/SAIL
+            scenario.next_tx(sender);
+            {
+                let pool_sqrt_price: u128 = 1 << 64; // Price = 1
+                create_pool<USD_TESTS, SAIL>(
+                scenario, 
+                    pool_sqrt_price,
+                    clock
+                );
+            };
+        };
+
+        // --- Initialize Price Monitor --- and aggregator
+        scenario.next_tx(sender);
+        {
+            price_monitor::test_init(scenario.ctx());
+        };
+
+        let aggregator = setup_aggregator(scenario, one_dec18(), clock);
+
+        // --- Price Monitor Setup --- 
+        scenario.next_tx(sender);
+        {
+            let mut price_monitor = scenario.take_shared<price_monitor::PriceMonitor>();
+            let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
+            let sail_stablecoin_pool = scenario.take_shared<pool::Pool<USD_TESTS, SAIL>>();
+            
+            let pool_id = object::id(&sail_stablecoin_pool);
+
+            price_monitor.add_aggregator(
+                aggregator.id(),
+                vector[pool_id],
+                scenario.ctx()
+            );
+
+            distribution_config.test_set_o_sail_price_aggregator(&aggregator);
+            distribution_config.test_set_sail_price_aggregator(&aggregator);
+
+            test_scenario::return_shared(price_monitor);
+            test_scenario::return_shared(distribution_config);
+            transfer::public_share_object(sail_stablecoin_pool);
+        };
+
+        aggregator
+    }
+
     /// You can create new aggregator just prior to the call that requires it.
     /// Then just destroy it after the call.
     /// Aggregators are not shared objects due to missing store capability.
     public fun setup_aggregator(
         scenario: &mut test_scenario::Scenario,
-        distribution_config: &mut distribution_config::DistributionConfig,
         price: u128, // decimals 18
-        clock: &clock::Clock,
-    ): aggregator::Aggregator {
+        clock: &clock::Clock, 
+    ): Aggregator {
         let owner = scenario.ctx().sender();
+
         let mut aggregator = aggregator::new_aggregator(
             aggregator::example_queue_id(),
             std::string::utf8(b"test_aggregator"),
@@ -11381,10 +11872,38 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             mean
         );
 
-        distribution_config.test_set_o_sail_price_aggregator(&aggregator);
-        distribution_config.test_set_sail_price_aggregator(&aggregator);
-
+        // Return aggregator to the calling function
         aggregator
+    }
+
+    public fun aggregator_set_current_value(
+        aggregator: &mut Aggregator,
+        price: u128, // decimals 18
+        result_timestamp_ms: u64,
+    ) {
+
+        // 1 * 10^18
+        let result = decimal::new(price, false);
+        let min_result = result;
+        let max_result = result;
+        let stdev = decimal::new(0, false);
+        let range = decimal::new(0, false);
+        let mean = result;
+
+        aggregator.set_current_value(
+            result,
+            result_timestamp_ms,
+            result_timestamp_ms,
+            result_timestamp_ms,
+            min_result,
+            max_result,
+            stdev,
+            range,
+            mean
+        );
+
+        // Return aggregator to the calling function
+        // aggregator
     }
 
     #[test]

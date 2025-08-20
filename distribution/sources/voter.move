@@ -9,9 +9,8 @@ module distribution::voter {
     use sui::coin::{Self, Coin};
     use sui::balance::{Self, Balance};
     use sui::vec_set::{Self, VecSet};
-    use sui::vec_map::{Self, VecMap};
+    use sui::vec_map::{VecMap};
     use std::type_name::{Self, TypeName};
-    use switchboard::aggregator::{Aggregator};
     
     const ECreateVoterInvalidPublisher: u64 = 831911472280262500;
 
@@ -94,14 +93,6 @@ module distribution::voter {
         id: ID,
     }
 
-    /// Holds the representation of a gauge in the system
-    public struct GaugeRepresent has drop, store {
-        gauger_id: ID,
-        pool_id: ID,
-        weight: u64,
-        last_reward_time: u64,
-    }
-
     /// Hold lock's vote for a pool and it's volume
     public struct VolumeVote has drop, store {
         volume: u64, // us dollars, decimals 6
@@ -139,6 +130,8 @@ module distribution::voter {
         gauge_to_fee_authorized_cap: distribution::reward_authorized_cap::RewardAuthorizedCap,
         gauge_to_fee: Table<GaugeID, distribution::fee_voting_reward::FeeVotingReward>,
         gauge_to_bribe_authorized_cap: distribution::reward_authorized_cap::RewardAuthorizedCap,
+        exercise_fee_reward: distribution::exercise_fee_reward::ExerciseFeeReward,
+        exercise_fee_authorized_cap: distribution::reward_authorized_cap::RewardAuthorizedCap,
         // bag to be preapred for future updates
         bag: sui::bag::Bag,
     }
@@ -286,6 +279,8 @@ module distribution::voter {
             gauge_to_fee_authorized_cap: distribution::reward_authorized_cap::create(id, ctx),
             gauge_to_fee: table::new<GaugeID, distribution::fee_voting_reward::FeeVotingReward>(ctx),
             gauge_to_bribe_authorized_cap: distribution::reward_authorized_cap::create(id, ctx),
+            exercise_fee_reward: distribution::exercise_fee_reward::create(id, vector[], ctx),
+            exercise_fee_authorized_cap: distribution::reward_authorized_cap::create(id, ctx),
             // bag to be preapred for future updates
             bag: sui::bag::new(ctx),
         };
@@ -531,6 +526,82 @@ module distribution::voter {
         &voter.voter_cap
     }
 
+    public fun borrow_exercise_fee_reward(
+        voter: &Voter
+    ): &distribution::exercise_fee_reward::ExerciseFeeReward {
+        &voter.exercise_fee_reward
+    }
+
+    public fun borrow_exercise_fee_reward_mut(
+        voter: &mut Voter
+    ): &mut distribution::exercise_fee_reward::ExerciseFeeReward {
+        &mut voter.exercise_fee_reward
+    }
+
+    /// Notify the voter about the amount of exercise fee reward.
+    /// 
+    /// # Arguments
+    /// * `distribute_cap` - The distribute cap to validate the voter and permissions
+    /// * `voter` - The voter contract reference
+    /// * `reward` - The reward coin
+    /// * `clock` - The system clock
+    public fun notify_exercise_fee_reward_amount<RewardCoinType>(
+        voter: &mut Voter,
+        distribute_cap: &distribution::distribute_cap::DistributeCap,
+        reward: Coin<RewardCoinType>,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        distribute_cap.validate_distribute_voter_id(object::id(voter));
+        let exercise_fee_authorized_cap = &voter.exercise_fee_authorized_cap;
+        let exercise_fee_reward = &mut voter.exercise_fee_reward;
+        exercise_fee_reward
+            .notify_reward_amount(
+                exercise_fee_authorized_cap,
+                reward,
+                clock,
+                ctx
+            );
+    }
+
+    /// Claims exercise fee rewards for a specific lock. Exercise fee becomes available at the end of the week if the
+    /// lock has voted during the week.
+    public fun claim_exercise_fee_reward<SailCoinType, RewardCoinType>(
+        voter: &mut Voter,
+        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        lock: &distribution::voting_escrow::Lock,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        let amount = voter.exercise_fee_reward.get_reward<SailCoinType, RewardCoinType>(
+            voting_escrow,
+            lock,
+            clock,
+            ctx,
+        );
+        let claim_exercise_fee_reward_event = EventClaimExerciseFeeReward {
+            who: ctx.sender(),
+            amount,
+            token: type_name::get<RewardCoinType>(),
+            lock: into_lock_id(object::id(lock)).id,
+        };
+        sui::event::emit<EventClaimExerciseFeeReward>(claim_exercise_fee_reward_event);
+    }
+
+    /// Calculates the amount of exercise oSAIL fee in the specified coin type earned by the lock.
+    /// 
+    /// # Arguments
+    /// * `voter` - The voter contract reference
+    /// * `lock_id` - The ID of the lock to check earnings for
+    /// * `clock` - The system clock
+    public fun earned_exercise_fee<ExerciseFeeCoinType>(
+        voter: &Voter,
+        lock_id: ID,
+        clock: &sui::clock::Clock
+    ): u64 {
+        voter.exercise_fee_reward.earned<ExerciseFeeCoinType>(lock_id, clock)
+    }
+
     /// Internal function to validate vote parameters.
     /// Checks that the pool IDs and weights arrays match in length,
     /// that the number of votes does not exceed the maximum allowed,
@@ -750,6 +821,8 @@ module distribution::voter {
     /// * `distribution_config` - The distribution configuration
     /// * `gauge` - The gauge to distribute rewards to
     /// * `pool` - The liquidity pool associated with the gauge
+    /// * `usd_reward_amount` - The amount of reward to distribute in USD, decimals 6
+    /// * `o_sail_price_q64` - The oSAIL price in USD in Q64.64 format, in SAIL token decimals
     /// * `clock` - The system clock
     /// * `ctx` - The transaction context
     ///
@@ -761,18 +834,16 @@ module distribution::voter {
     ///
     /// # Emits
     /// * `EventDistributeGauge` with information about distributed rewards
-    public fun distribute_gauge<CoinTypeA, CoinTypeB, NextEpochOSail>(
+    public(package) fun distribute_gauge<CoinTypeA, CoinTypeB, NextEpochOSail>(
         voter: &mut Voter,
-        distribute_cap: &distribution::distribute_cap::DistributeCap,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         usd_reward_amount: u64,
-        aggregator: &Aggregator,
+        o_sail_price_q64: u128,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): u64 {
-        distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
         assert!(voter.is_valid_epoch_token<NextEpochOSail>(), EDistributeGaugeInvalidToken);
         assert!(distribution_config.is_gauge_alive(object::id(gauge)), EDistributeGaugeGaugeIsKilled);
         assert!(gauge.check_gauger_pool(pool), EDistributeGaugeInvalidPool);
@@ -787,10 +858,9 @@ module distribution::voter {
         );
         let (fee_reward_a, fee_reward_b) = gauge.notify_reward(
             distribution_config,
-            &voter.voter_cap,
             pool,
             usd_reward_amount,
-            aggregator,
+            o_sail_price_q64,
             clock,
             ctx
         );
@@ -832,29 +902,26 @@ module distribution::voter {
     /// * `gauge` - The gauge to notify reward to
     /// * `pool` - The pool to notify reward to
     /// * `usd_reward_amount` - The amount of reward to notify in usd, decimals 6
-    /// * `aggregator` - The aggregator to get o-sail price
+    /// * `o_sail_price_q64` - The oSAIL price in USD in Q64.64 format, in SAIL token decimals
     /// * `clock` - The system clock
     /// * `ctx` - The transaction context
-    public fun notify_gauge_reward_without_claim<CoinTypeA, CoinTypeB>(
-        voter: &mut Voter,
-        distribute_cap: &distribution::distribute_cap::DistributeCap,
+    public(package) fun notify_gauge_reward_without_claim<CoinTypeA, CoinTypeB>(
+        voter: &Voter,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         usd_reward_amount: u64,
-        aggregator: &Aggregator,
+        o_sail_price_q64: u128,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
         assert!(distribution_config.is_gauge_alive(object::id(gauge)), EAdjustGaugeGaugeIsKilled);
 
         gauge.notify_reward_without_claim(
             distribution_config,
-            &voter.voter_cap,
             pool,
             usd_reward_amount,
-            aggregator,
+            o_sail_price_q64,
             clock,
             ctx
         );
@@ -1090,7 +1157,10 @@ module distribution::voter {
         distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
 
         let coin_type = type_name::get<RewardCoinType>();
+
         voter.current_epoch_token.swap_or_fill(coin_type);
+
+        let pool_id = object::id(voter);
 
         let event = EventNotifyEpochToken {
             notifier: distribute_cap.who(),
@@ -1108,6 +1178,8 @@ module distribution::voter {
         voter: &Voter,
     ): bool {
         let coin_type = type_name::get<RewardCoinType>();
+
+        let pool_id = object::id(voter);
 
         voter.current_epoch_token.borrow() == coin_type
     }
@@ -1361,6 +1433,18 @@ module distribution::voter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        let exercise_fee_deposited_balance = voter.exercise_fee_reward
+            .borrow_reward()
+            .balance_of(lock_id.id, clock);
+        if (exercise_fee_deposited_balance > 0) {
+            voter.exercise_fee_reward.withdraw(
+            &voter.exercise_fee_authorized_cap,
+            exercise_fee_deposited_balance,
+                lock_id.id,
+                clock,
+                ctx
+            );
+        };
         let total_pools_count = if (voter.pool_vote.contains(lock_id)) {
             voter.pool_vote.borrow(lock_id).length()
         } else {
@@ -1559,6 +1643,14 @@ module distribution::voter {
         ctx: &mut TxContext
     ) {
         voter.reset_internal(voting_escrow, distribution_config, lock_id, clock, ctx);
+
+        voter.exercise_fee_reward.deposit(
+            &voter.exercise_fee_authorized_cap,
+            voting_power,
+            lock_id.id,
+            clock,
+            ctx
+        );
 
         let mut input_total_weight = 0;
         let mut lock_used_weights = 0;
@@ -1791,6 +1883,30 @@ module distribution::voter {
         let fee_voting_reward = voter.gauge_to_fee.borrow_mut(gauge_id_obj);
         fee_voting_reward.update_balances(
             &voter.gauge_to_fee_authorized_cap,
+            weights,
+            lock_ids,
+            for_epoch_start,
+            final,
+            clock,
+            ctx
+        );
+    }
+
+    public fun update_exercise_fee_weights(
+        voter: &mut Voter,
+        distribute_cap: &distribution::distribute_cap::DistributeCap,
+        weights: vector<u64>,
+        lock_ids: vector<ID>,
+        for_epoch_start: u64,
+        final: bool,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
+
+        let exercise_fee_reward = &mut voter.exercise_fee_reward;
+        exercise_fee_reward.update_balances(
+            &voter.exercise_fee_authorized_cap,
             weights,
             lock_ids,
             for_epoch_start,

@@ -1,9 +1,9 @@
 [package]
-name = "distribution"
+name = "price_monitor"
 edition = "2024"
 
 [addresses]
-distribution = "0x0"
+price_monitor = "0x2"
 
 [dev-dependencies]
 
@@ -27,25 +27,7 @@ subdir = "integer_mate"
 rev = "dev"
 override = true
 
-[dependencies.gauge_cap]
-git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
-subdir = "gauge_cap"
-rev = "dev"
-override = true
-
-[dependencies.price_provider]
-git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
-subdir = "price_provider"
-rev = "dev"
-override = true
-
-[dependencies.locker_cap]
-local = "../locker_cap"
-
 [dependencies.Switchboard]
 git = "https://github.com/LFBuild/sui.git"
 subdir = "on_demand/"
 rev = "mainnet"
-
-[dependencies.price_monitor]
-local = "../price_monitor"

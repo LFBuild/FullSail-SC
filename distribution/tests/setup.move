@@ -12,7 +12,7 @@ use clmm_pool::price_provider::{Self, PriceProvider};
 use clmm_pool::stats::{Self, Stats};
 use distribution::minter::{Self, Minter};
 use distribution::voter::{Self, Voter};
-use sui::coin::{Self, Coin};
+use sui::coin::{Self, Coin, CoinMetadata};
 use distribution::distribution_config::{Self, DistributionConfig};
 use distribution::voting_escrow::{Self, VotingEscrow, Lock};
 use distribution::rebase_distributor::{Self, RebaseDistributor};
@@ -21,6 +21,10 @@ use clmm_pool::rewarder;
 use distribution::gauge::{Self, Gauge, StakedPosition};
 use switchboard::aggregator::{Self, Aggregator};
 use switchboard::decimal;
+use price_monitor::price_monitor::{Self, PriceMonitor};
+use std::type_name::{Self, TypeName};
+
+use distribution::usd_tests::{Self, USD_TESTS};
 
 const ONE_DEC18: u128 = 1000000000000000000;
 
@@ -136,7 +140,7 @@ public fun setup_pool_with_sqrt_price<CoinTypeA: drop, CoinTypeB: drop>(
 }
 
 // Sets up the Minter, Voter, VotingEscrow, and RewardDistributor modules for testing.
-public fun setup_distribution<SailCoinType>(
+public fun setup_distribution<SAIL>(
     scenario: &mut test_scenario::Scenario,
     sender: address,
     clock: &Clock
@@ -154,8 +158,8 @@ public fun setup_distribution<SailCoinType>(
     {
         let minter_publisher = minter::test_init(scenario.ctx());
         let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
-        let treasury_cap = coin::create_treasury_cap_for_testing<SailCoinType>(scenario.ctx());
-        let (minter_obj, minter_admin_cap) = minter::create_test<SailCoinType>(
+        let treasury_cap = coin::create_treasury_cap_for_testing<SAIL>(scenario.ctx());
+        let (minter_obj, minter_admin_cap) = minter::create_test<SAIL>(
             &minter_publisher,
             option::some(treasury_cap),
             object::id(&distribution_config),
@@ -199,7 +203,7 @@ public fun setup_distribution<SailCoinType>(
         transfer::public_share_object(voter_obj);
 
         // --- Set Distribute Cap ---
-        let mut minter = scenario.take_shared<Minter<SailCoinType>>();
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
         let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
         minter.set_distribute_cap(&minter_admin_cap, distribute_cap);
         test_scenario::return_shared(minter);
@@ -213,7 +217,7 @@ public fun setup_distribution<SailCoinType>(
         let voter_obj = scenario.take_shared<Voter>(); 
         let voter_id = object::id(&voter_obj);
         test_scenario::return_shared(voter_obj); 
-        let ve_obj = voting_escrow::create<SailCoinType>(
+        let ve_obj = voting_escrow::create<SAIL>(
             &ve_publisher,
             voter_id, 
             clock,
@@ -227,7 +231,7 @@ public fun setup_distribution<SailCoinType>(
     scenario.next_tx(sender);
     {
         let rd_publisher = rebase_distributor::test_init(scenario.ctx());
-        let (rebase_distributor, rd_cap) = rebase_distributor::create<SailCoinType>(
+        let (rebase_distributor, rd_cap) = rebase_distributor::create<SAIL>(
             &rd_publisher,
             clock,
             scenario.ctx()
@@ -237,15 +241,13 @@ public fun setup_distribution<SailCoinType>(
         transfer::public_share_object(rebase_distributor);
         
         // --- Set Reward Distributor Cap ---
-        let mut minter = scenario.take_shared<Minter<SailCoinType>>();
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
         let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-        minter.set_reward_distributor_cap(&minter_admin_cap, rebase_distributor_id, rd_cap);
+        minter.set_rebase_distributor_cap(&minter_admin_cap, rd_cap);
         test_scenario::return_shared(minter);
         scenario.return_to_sender(minter_admin_cap);
     };
 }
-
-public struct USD1 has drop {}
     
 public struct SAIL has drop {}
 
@@ -267,19 +269,19 @@ fun test_distribution_setup_utility() {
         // Minter, Voter, VE, RD objects are shared, AdminCaps are owned by 'admin'
     };
 
-    // Tx 3: Setup Pool (USD1/SAIL)
+    // Tx 3: Setup Pool (USD_TESTS/SAIL)
     scenario.next_tx(admin);
-    // Assuming USD1's type name > SAIL's type name lexicographically
+    // Assuming USD_TESTS's type name > SAIL's type name lexicographically
     let pool_sqrt_price: u128 = 2 << 64;
     let pool_tick_spacing = 1;
     let pool_fee_rate = 1000;
     {
-        setup_pool_with_sqrt_price<USD1, SAIL>( // Create USD1/SAIL pool
+        setup_pool_with_sqrt_price<USD_TESTS, SAIL>( // Create USD_TESTS/SAIL pool
             &mut scenario,
             pool_sqrt_price,
             pool_tick_spacing,
         );
-        // Pool<USD1, SAIL> is now shared
+        // Pool<USD_TESTS, SAIL> is now shared
     };
 
 
@@ -293,7 +295,7 @@ fun test_distribution_setup_utility() {
         let rd_obj = scenario.take_shared<RebaseDistributor<SAIL>>();
         let global_config_obj = scenario.take_shared<config::GlobalConfig>();
         let distribution_config_obj = scenario.take_shared<distribution_config::DistributionConfig>();
-        let pool_obj = scenario.take_shared<Pool<USD1, SAIL>>(); // Take the pool
+        let pool_obj = scenario.take_shared<Pool<USD_TESTS, SAIL>>(); // Take the pool
 
         // Take AdminCaps from sender
         let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
@@ -330,7 +332,7 @@ fun test_distribution_setup_utility() {
 
 // Activates the minter for a specific oSAIL epoch.
 // Requires the minter, voter, rd, and admin cap to be set up.
-public fun activate_minter<SailCoinType, OSailCoinType>( // Changed to public
+public fun activate_minter<SAIL, OSailCoinType>( // Changed to public
     scenario: &mut test_scenario::Scenario,
     initial_o_sail_supply: u64,
     clock: &mut Clock
@@ -338,15 +340,15 @@ public fun activate_minter<SailCoinType, OSailCoinType>( // Changed to public
 
     // increment clock to make sure the activated_at field is not 0 and epoch start is not 0
     clock.increment_for_testing(7 * 24 * 60 * 60 * 1000 + 1000);
-    let mut minter_obj = scenario.take_shared<Minter<SailCoinType>>();
+    let mut minter_obj = scenario.take_shared<Minter<SAIL>>();
     let mut voter = scenario.take_shared<Voter>();
-    let mut rebase_distributor = scenario.take_shared<RebaseDistributor<SailCoinType>>();
+    let mut rebase_distributor = scenario.take_shared<RebaseDistributor<SAIL>>();
     let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
     // Create TreasuryCap for OSAIL2 for the next epoch
     let mut o_sail_cap = coin::create_treasury_cap_for_testing<OSailCoinType>(scenario.ctx());
     let initial_supply = o_sail_cap.mint(initial_o_sail_supply, scenario.ctx());
 
-    minter_obj.activate_test<SailCoinType, OSailCoinType>(
+    minter_obj.activate_test<SAIL, OSailCoinType>(
         &mut voter,
         &minter_admin_cap,
         &mut rebase_distributor,
@@ -373,17 +375,7 @@ public fun whitelist_usd<SailCoinType, UsdCoinType>(
     let mut minter = scenario.take_shared<Minter<SailCoinType>>();
     let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
     
-    minter::whitelist_usd_test<SailCoinType, UsdCoinType>(&mut minter, &minter_admin_cap, list);
-
-    if (list) {
-        let exercise_fee_distributor = minter::create_exercise_fee_distributor<SailCoinType, UsdCoinType>(
-            &mut minter,
-            &minter_admin_cap,
-            clock,
-            scenario.ctx()
-        );
-        transfer::public_share_object(exercise_fee_distributor);
-    };
+    minter::whitelist_usd<SailCoinType, UsdCoinType>(&mut minter, &minter_admin_cap, list);
 
     test_scenario::return_shared(minter);
     scenario.return_to_sender(minter_admin_cap);
@@ -391,18 +383,17 @@ public fun whitelist_usd<SailCoinType, UsdCoinType>(
 
 // Mints SAIL and creates a permanent lock in the Voting Escrow for the user.
 // Assumes the transaction is run by the user who will own the lock.
-public fun mint_and_create_permanent_lock<SailCoinType>(
+public fun mint_and_create_permanent_lock<SAIL>(
     scenario: &mut test_scenario::Scenario,
     _user: address, // User who will own the lock (must be the sender of this tx block)
     amount_to_lock: u64,
     clock: &Clock,
 ) {
-    let sail_coin = coin::mint_for_testing<SailCoinType>(amount_to_lock, scenario.ctx());
-
-    let mut ve = scenario.take_shared<VotingEscrow<SailCoinType>>();
+    let sail_coin = coin::mint_for_testing<SAIL>(amount_to_lock, scenario.ctx());
+    let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
 
     // create_lock consumes the coin and transfers the lock to ctx.sender()
-    voting_escrow::create_lock<SailCoinType>(
+    voting_escrow::create_lock<SAIL>(
         &mut ve,
         sail_coin,
         182, // Duration doesn't matter for permanent lock
@@ -416,17 +407,17 @@ public fun mint_and_create_permanent_lock<SailCoinType>(
     // Lock is automatically transferred to the user (sender of this tx block)
 }
 
-public fun mint_and_create_perpetual_lock<SailCoinType>(
+public fun mint_and_create_perpetual_lock<SAIL>(
     scenario: &mut test_scenario::Scenario,
     _user: address,
     amount_to_lock: u64,
     clock: &Clock,
 ) {
-    let sail_coin = coin::mint_for_testing<SailCoinType>(amount_to_lock, scenario.ctx());
+    let sail_coin = coin::mint_for_testing<SAIL>(amount_to_lock, scenario.ctx());
 
-    let mut ve = scenario.take_shared<VotingEscrow<SailCoinType>>();
+    let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
 
-    voting_escrow::create_lock_advanced<SailCoinType>(
+    voting_escrow::create_lock_advanced<SAIL>(
         &mut ve,
         sail_coin,
         182, // duration doesn't matter
@@ -439,17 +430,17 @@ public fun mint_and_create_perpetual_lock<SailCoinType>(
     test_scenario::return_shared(ve);
 }
 
-public fun mint_and_create_perpetual_lock_for<SailCoinType>(
+public fun mint_and_create_perpetual_lock_for<SAIL>(
     scenario: &mut test_scenario::Scenario,
     owner: address,
     amount_to_lock: u64,
     clock: &Clock,
 ) {
-    let sail_coin = coin::mint_for_testing<SailCoinType>(amount_to_lock, scenario.ctx());
+    let sail_coin = coin::mint_for_testing<SAIL>(amount_to_lock, scenario.ctx());
 
-    let mut ve = scenario.take_shared<VotingEscrow<SailCoinType>>();
+    let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
 
-    voting_escrow::create_lock_for<SailCoinType>(
+    voting_escrow::create_lock_for<SAIL>(
         &mut ve,
         owner,
         sail_coin,
@@ -513,21 +504,21 @@ fun test_mint_and_create_permanent_lock() {
 
 // Creates a Gauge for an existing pool.
 // Assumes Voter, VE, DistributionConfig are set up, and the sender has the required caps.
-public fun setup_gauge_for_pool<CoinTypeA, CoinTypeB, SailCoinType>(
+public fun setup_gauge_for_pool<CoinTypeA, CoinTypeB, SAIL>(
     scenario: &mut test_scenario::Scenario,
     gauge_base_emissions: u64, // Added gauge_base_emissions parameter
     clock: &Clock,
 ) {
-    let mut minter = scenario.take_shared<Minter<SailCoinType>>(); // Minter is now responsible
+    let mut minter = scenario.take_shared<Minter<SAIL>>(); // Minter is now responsible
     let mut voter = scenario.take_shared<Voter>();
-    let ve = scenario.take_shared<VotingEscrow<SailCoinType>>();
+    let ve = scenario.take_shared<VotingEscrow<SAIL>>();
     let mut dist_config = scenario.take_shared<distribution_config::DistributionConfig>();
     let create_cap = scenario.take_from_sender<gauge_cap::gauge_cap::CreateCap>();
     let admin_cap = scenario.take_from_sender<minter::AdminCap>(); // Minter uses AdminCap
     let mut pool = scenario.take_shared<Pool<CoinTypeA, CoinTypeB>>();
 
     // Use minter to create the gauge
-    let gauge = minter.create_gauge<CoinTypeA, CoinTypeB, SailCoinType>(
+    let gauge = minter.create_gauge<CoinTypeA, CoinTypeB, SAIL>(
         // &mut minter, // minter is the receiver, so it's an implicit first argument
         &mut voter,
         &mut dist_config,
@@ -556,7 +547,7 @@ public fun setup_gauge_for_pool<CoinTypeA, CoinTypeB, SailCoinType>(
 // Creates a new position in an existing pool and adds liquidity.
 // Assumes GlobalConfig and Pool<CoinTypeA, CoinTypeB> are shared.
 // Transfers the new Position object to the specified owner.
-public fun create_position_with_liquidity<CoinTypeA: store, CoinTypeB: store>(
+public fun create_position_with_liquidity<CoinTypeA, CoinTypeB>(
     scenario: &mut test_scenario::Scenario,
     owner: address,
     tick_lower: u32,
@@ -612,7 +603,7 @@ public fun create_position_with_liquidity<CoinTypeA: store, CoinTypeB: store>(
 // Adds liquidity to existing position.
 // Assumes GlobalConfig and Pool<CoinTypeA, CoinTypeB> are shared, Position is owned by the sender
 // Transfers the new Position object to the specified owner.
-public fun add_liquidity<CoinTypeA: store, CoinTypeB: store>(
+public fun add_liquidity<CoinTypeA, CoinTypeB>(
     scenario: &mut test_scenario::Scenario,
     liquidity_delta: u128,
     clock: &Clock,
@@ -655,7 +646,7 @@ public fun add_liquidity<CoinTypeA: store, CoinTypeB: store>(
 // Removes liquidity from existing position.
 // Assumes GlobalConfig and Pool<CoinTypeA, CoinTypeB> are shared, Position is owned by the sender
 // Destroys removed liquidity assets.
-public fun remove_liquidity<CoinTypeA: store, CoinTypeB: store>(
+public fun remove_liquidity<CoinTypeA, CoinTypeB>(
     scenario: &mut test_scenario::Scenario,
     liquidity_delta: u128,
     clock: &Clock,
@@ -903,18 +894,18 @@ fun test_swap_utility() {
 }
 
 // Mints SAIL and creates a non-permanent lock in the Voting Escrow for the sender.
-public fun mint_and_create_lock<SailCoinType>(
+public fun mint_and_create_lock<SAIL>(
     scenario: &mut test_scenario::Scenario,
     amount_to_lock: u64,
     lock_duration_days: u64,
     clock: &Clock,
 ) {
-    let sail_coin = coin::mint_for_testing<SailCoinType>(amount_to_lock, scenario.ctx());
+    let sail_coin = coin::mint_for_testing<SAIL>(amount_to_lock, scenario.ctx());
 
-    let mut ve = scenario.take_shared<VotingEscrow<SailCoinType>>();
+    let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
 
     // create_lock consumes the coin and transfers the lock to ctx.sender()
-    voting_escrow::create_lock<SailCoinType>(
+    voting_escrow::create_lock<SAIL>(
         &mut ve,
         sail_coin,
         lock_duration_days,
@@ -928,14 +919,14 @@ public fun mint_and_create_lock<SailCoinType>(
     // Lock is automatically transferred to the user (sender of this tx block)
 }
 
-public fun withdraw_lock<SailCoinType>(
+public fun withdraw_lock<SAIL>(
     scenario: &mut test_scenario::Scenario,
     clock: &Clock,
 ) {
-    let mut ve = scenario.take_shared<VotingEscrow<SailCoinType>>();
+    let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
     let lock = scenario.take_from_sender<Lock>();
 
-    voting_escrow::withdraw<SailCoinType>(
+    voting_escrow::withdraw<SAIL>(
         &mut ve,
         lock,
         clock,
@@ -1004,20 +995,20 @@ public fun withdraw_position<CoinTypeA, CoinTypeB, LastRewardCoin>(
     test_scenario::return_shared(gauge);
 }
 
-public fun get_staked_position_reward<CoinTypeA, CoinTypeB, SailCoinType, RewardCoinType>(
+public fun get_staked_position_reward<CoinTypeA, CoinTypeB, SAIL, RewardCoinType>(
     scenario: &mut test_scenario::Scenario,
     clock: &Clock,
 ) {
     {
         let mut gauge = scenario.take_shared<Gauge<CoinTypeA, CoinTypeB>>();
-        let mut minter = scenario.take_shared<Minter<SailCoinType>>();
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
         let voter = scenario.take_shared<Voter>();
         let mut pool = scenario.take_shared<Pool<CoinTypeA, CoinTypeB>>();
         let position = scenario.take_from_sender<StakedPosition>();
         let distribution_config = scenario.take_shared<DistributionConfig>();
 
-        // USD1 is not a valid reward token
-        let reward = minter.get_position_reward<CoinTypeA, CoinTypeB, SailCoinType, RewardCoinType>(
+        // USD_TESTS is not a valid reward token
+        let reward = minter.get_position_reward<CoinTypeA, CoinTypeB, SAIL, RewardCoinType>(
             &voter,
             &distribution_config,
             &mut gauge,
@@ -1039,15 +1030,15 @@ public fun get_staked_position_reward<CoinTypeA, CoinTypeB, SailCoinType, Reward
 }
 
 // Updates the minter period, sets the next period token to OSailCoinTypeNext
-public fun update_minter_period<SailCoinType, OSailCoinType>(
+public fun update_minter_period<SAIL, OSailCoinType>(
     scenario: &mut test_scenario::Scenario,
     initial_o_sail_supply: u64,
     clock: &Clock,
 ): Coin<OSailCoinType> {
-        let mut minter = scenario.take_shared<Minter<SailCoinType>>();
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
         let mut voter = scenario.take_shared<Voter>();
-        let voting_escrow = scenario.take_shared<VotingEscrow<SailCoinType>>();
-        let mut rebase_distributor = scenario.take_shared<RebaseDistributor<SailCoinType>>();
+        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
+        let mut rebase_distributor = scenario.take_shared<RebaseDistributor<SAIL>>();
         let distribution_config = scenario.take_shared<DistributionConfig>();
         let distribute_governor_cap = scenario.take_from_sender<minter::DistributeGovernorCap>(); // Correct cap for update_period
 
@@ -1055,7 +1046,7 @@ public fun update_minter_period<SailCoinType, OSailCoinType>(
         let mut o_sail_cap = coin::create_treasury_cap_for_testing<OSailCoinType>(scenario.ctx());
         let initial_supply = o_sail_cap.mint(initial_o_sail_supply, scenario.ctx());
 
-        minter::update_period_test<SailCoinType, OSailCoinType>(
+        minter::update_period_test<SAIL, OSailCoinType>(
             &mut minter, // minter is the receiver
             &mut voter,
             &distribution_config,
@@ -1078,8 +1069,10 @@ public fun update_minter_period<SailCoinType, OSailCoinType>(
         initial_supply
 }
 
-public fun distribute_gauge_epoch_1<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
+public fun distribute_gauge_epoch_1<CoinTypeA, CoinTypeB, SAIL, EpochOSail, USD_TESTS>(
     scenario: &mut test_scenario::Scenario,
+    usd_metadata: &CoinMetadata<USD_TESTS>,
+    aggregator: &mut Aggregator, 
     clock: &Clock,
 ): u64 {
     // initial epoch is distributed without any historical data
@@ -1090,7 +1083,7 @@ public fun distribute_gauge_epoch_1<CoinTypeA, CoinTypeB, SailCoinType, EpochOSa
     let epoch_pool_volume_usd: u64 = 0;
     let epoch_pool_predicted_volume_usd: u64 = 0;
 
-    distribute_gauge_emissions_controlled<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
+    distribute_gauge_emissions_controlled<CoinTypeA, CoinTypeB, SAIL, EpochOSail, USD_TESTS>(
         scenario,
         prev_epoch_pool_emissions,
         prev_epoch_pool_fees_usd,
@@ -1098,12 +1091,16 @@ public fun distribute_gauge_epoch_1<CoinTypeA, CoinTypeB, SailCoinType, EpochOSa
         epoch_pool_fees_usd,
         epoch_pool_volume_usd,
         epoch_pool_predicted_volume_usd,
+        usd_metadata,
+        aggregator,
         clock
     )
 }
 
-public fun distribute_gauge_epoch_2<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
-        scenario: &mut test_scenario::Scenario,
+public fun distribute_gauge_epoch_2<CoinTypeA, CoinTypeB, SAIL, EpochOSail, USD_TESTS>(
+    scenario: &mut test_scenario::Scenario,
+    usd_metadata: &CoinMetadata<USD_TESTS>,
+    aggregator: &mut Aggregator,
     clock: &Clock,
 ): u64 {
     // epoch 2 is distributed with historical data from epoch 1
@@ -1115,7 +1112,7 @@ public fun distribute_gauge_epoch_2<CoinTypeA, CoinTypeB, SailCoinType, EpochOSa
     let epoch_pool_volume_usd: u64 = 1_000_000_000;
     let epoch_pool_predicted_volume_usd: u64 = 1_000_000_000;
 
-    distribute_gauge_emissions_controlled<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
+    distribute_gauge_emissions_controlled<CoinTypeA, CoinTypeB, SAIL, EpochOSail, USD_TESTS>(
         scenario,
         prev_epoch_pool_emissions,
         prev_epoch_pool_fees_usd,
@@ -1123,12 +1120,16 @@ public fun distribute_gauge_epoch_2<CoinTypeA, CoinTypeB, SailCoinType, EpochOSa
         epoch_pool_fees_usd,
         epoch_pool_volume_usd,
         epoch_pool_predicted_volume_usd,
+        usd_metadata,
+        aggregator,
         clock
     )
 }
 
-public fun distribute_gauge_epoch_3<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
+public fun distribute_gauge_epoch_3<CoinTypeA, CoinTypeB, SAIL, EpochOSail, USD_TESTS>(
         scenario: &mut test_scenario::Scenario,
+        usd_metadata: &CoinMetadata<USD_TESTS>,
+        aggregator: &mut Aggregator,
     clock: &Clock,
 ): u64 {
     // this data results into stable emissions, same as epoch 2 emissions
@@ -1139,7 +1140,7 @@ public fun distribute_gauge_epoch_3<CoinTypeA, CoinTypeB, SailCoinType, EpochOSa
     let epoch_pool_volume_usd: u64 = 1_000_000_000;
     let epoch_pool_predicted_volume_usd: u64 = 1_000_000_000;
 
-    distribute_gauge_emissions_controlled<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
+    distribute_gauge_emissions_controlled<CoinTypeA, CoinTypeB, SAIL, EpochOSail, USD_TESTS>(
         scenario,
         prev_epoch_pool_emissions,
         prev_epoch_pool_fees_usd,
@@ -1147,65 +1148,162 @@ public fun distribute_gauge_epoch_3<CoinTypeA, CoinTypeB, SailCoinType, EpochOSa
         epoch_pool_fees_usd,
         epoch_pool_volume_usd,
         epoch_pool_predicted_volume_usd,
+        usd_metadata,
+        aggregator,
         clock
     )
 }
 
+    // CoinTypeA and CoinTypeB - to check that such a pool has already been created
+    // in other cases you can pass any types, so that the USD_TESTS/SAIL pool is created
+    #[test_only]
+    public fun setup_price_monitor_and_aggregator<CoinTypeA, CoinTypeB, USD: drop, SAIL: drop>(
+        scenario: &mut test_scenario::Scenario,
+        sender: address,
+        clock: &Clock,
+    ): Aggregator {
 
-/// You can create new aggregator just prior to the call that requires it.
-/// Then just destroy it after the call.
-/// Aggregators are not shared objects due to missing store capability.
-public fun setup_aggregator(
-    scenario: &mut test_scenario::Scenario,
-    distribution_config: &mut DistributionConfig,
-    price: u128, // decimals 18
-    clock: &Clock,
-): Aggregator {
-    let owner = scenario.ctx().sender();
-    let mut aggregator = aggregator::new_aggregator(
-        aggregator::example_queue_id(),
-        std::string::utf8(b"test_aggregator"),
-        owner,
-        vector::empty(),
-        1,
-        1000000000000000,
-        100000000000,
-        5,
-        1000,
-        scenario.ctx(),
-    );
+        // create pool for USD_TESTS/SAIL
+        if (type_name::get<CoinTypeA>() != type_name::get<USD>() || 
+            type_name::get<CoinTypeB>() != type_name::get<SAIL>()) {
 
-    // 1 * 10^18
-    let result = decimal::new(price, false);
-    let result_timestamp_ms = clock.timestamp_ms();
-    let min_result = result;
-    let max_result = result;
-    let stdev = decimal::new(0, false);
-    let range = decimal::new(0, false);
-    let mean = result;
+            // create pool for USD_TESTS/SAIL
+            scenario.next_tx(sender);
+            {
+                let global_config = scenario.take_shared<GlobalConfig>();
+                let mut pools = test_scenario::take_shared<Pools>(scenario);
+                
+                let pool_sqrt_price: u128 = 1 << 64; // Price = 1
+                let sail_stablecoin_pool = create_pool_with_sqrt_price<USD, SAIL>(
+                    &mut pools,
+                    &global_config,
+                    clock,
+                    pool_sqrt_price,
+                    scenario.ctx()
+                );
 
-    aggregator::set_current_value(
-        &mut aggregator,
-        result,
-        result_timestamp_ms,
-        result_timestamp_ms,
-        result_timestamp_ms,
-        min_result,
-        max_result,
-        stdev,
-        range,
-        mean
-    );
+                test_scenario::return_shared(global_config);
+                test_scenario::return_shared(pools);
+                transfer::public_share_object(sail_stablecoin_pool);
+            };
+        };
 
-    distribution_config.set_o_sail_price_aggregator(&aggregator);
-    distribution_config.set_sail_price_aggregator(&aggregator);
+        // --- Initialize Price Monitor --- and aggregator
+        scenario.next_tx(sender);
+        {
+            price_monitor::test_init(scenario.ctx());
+        };
 
-    aggregator
-}
+        let aggregator = setup_aggregator(scenario, one_dec18(), clock);
+
+        // --- Price Monitor Setup --- 
+        scenario.next_tx(sender);
+        {
+            let mut price_monitor = scenario.take_shared<price_monitor::PriceMonitor>();
+            let mut distribution_config = scenario.take_shared<DistributionConfig>();
+            let sail_stablecoin_pool = scenario.take_shared<Pool<USD_TESTS, SAIL>>();
+            
+            let pool_id = object::id(&sail_stablecoin_pool);
+
+            price_monitor.add_aggregator(
+                aggregator.id(),
+                vector[pool_id],
+                scenario.ctx()
+            );
+
+            distribution_config.set_o_sail_price_aggregator(&aggregator);
+            distribution_config.set_sail_price_aggregator(&aggregator);
+
+            test_scenario::return_shared(price_monitor);
+            test_scenario::return_shared(distribution_config);
+            transfer::public_share_object(sail_stablecoin_pool);
+        };
+
+        aggregator
+    }
+
+    /// You can create new aggregator just prior to the call that requires it.
+    /// Then just destroy it after the call.
+    /// Aggregators are not shared objects due to missing store capability.
+    public fun setup_aggregator(
+        scenario: &mut test_scenario::Scenario,
+        price: u128, // decimals 18
+        clock: &Clock,
+    ): Aggregator {
+        let owner = scenario.ctx().sender();
+
+        let mut aggregator = aggregator::new_aggregator(
+            aggregator::example_queue_id(),
+            std::string::utf8(b"test_aggregator"),
+            owner,
+            vector::empty(),
+            1,
+            1000000000000000,
+            100000000000,
+            5,
+            1000,
+            scenario.ctx(),
+        );
+
+        // 1 * 10^18
+        let result = decimal::new(price, false);
+        let result_timestamp_ms = clock.timestamp_ms();
+        let min_result = result;
+        let max_result = result;
+        let stdev = decimal::new(0, false);
+        let range = decimal::new(0, false);
+        let mean = result;
+
+        aggregator::set_current_value(
+            &mut aggregator,
+            result,
+            result_timestamp_ms,
+            result_timestamp_ms,
+            result_timestamp_ms,
+            min_result,
+            max_result,
+            stdev,
+            range,
+            mean
+        );
+
+        // Return aggregator to the calling function
+        aggregator
+    }
+
+    public fun aggregator_set_current_value(
+        aggregator: &mut Aggregator,
+        price: u128, // decimals 18
+        result_timestamp_ms: u64,
+    ) {
+
+        // 1 * 10^18
+        let result = decimal::new(price, false);
+        let min_result = result;
+        let max_result = result;
+        let stdev = decimal::new(0, false);
+        let range = decimal::new(0, false);
+        let mean = result;
+
+        aggregator.set_current_value(
+            result,
+            result_timestamp_ms,
+            result_timestamp_ms,
+            result_timestamp_ms,
+            min_result,
+            max_result,
+            stdev,
+            range,
+            mean
+        );
+
+        // Return aggregator to the calling function
+        // aggregator
+    }
 
 // Utility to call minter.distribute_gauge
 // Assumes Voter, Gauge, Pool, DistributionConfig are shared.
-public fun distribute_gauge_emissions_controlled<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
+public fun distribute_gauge_emissions_controlled<CoinTypeA, CoinTypeB, SAIL, EpochOSail, USD_TESTS>(
     scenario: &mut test_scenario::Scenario,
     prev_epoch_pool_emissions: u64,
     prev_epoch_pool_fees_usd: u64,
@@ -1213,35 +1311,65 @@ public fun distribute_gauge_emissions_controlled<CoinTypeA, CoinTypeB, SailCoinT
     epoch_pool_fees_usd: u64,
     epoch_pool_volume_usd: u64,
     epoch_pool_predicted_volume_usd: u64,
+    usd_metadata: &CoinMetadata<USD_TESTS>,
+    aggregator: &mut Aggregator,
     clock: &Clock,
 ): u64 {
-    let mut minter = scenario.take_shared<Minter<SailCoinType>>(); // Minter is now responsible
+    let mut minter = scenario.take_shared<Minter<SAIL>>(); // Minter is now responsible
     let mut voter = scenario.take_shared<Voter>();
     let mut gauge = scenario.take_shared<Gauge<CoinTypeA, CoinTypeB>>();
     let mut pool = scenario.take_shared<Pool<CoinTypeA, CoinTypeB>>();
-    let mut distribution_config = scenario.take_shared<DistributionConfig>();
+    let distribution_config = scenario.take_shared<DistributionConfig>();
     let distribute_governor_cap = scenario.take_from_sender<minter::DistributeGovernorCap>(); // Minter uses DistributeGovernorCap
+    let mut price_monitor = scenario.take_shared<PriceMonitor>();
 
-    let aggregator = setup_aggregator(scenario, &mut distribution_config, one_dec18(), clock);
-    let distributed_amount = minter.distribute_gauge<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
-        // &mut minter, // minter is the receiver
-        &mut voter,
-        &distribute_governor_cap,
-        &distribution_config,
-        &mut gauge,
-        &mut pool,
-        prev_epoch_pool_emissions,
-        prev_epoch_pool_fees_usd,
-        epoch_pool_emissions_usd,
-        epoch_pool_fees_usd,
-        epoch_pool_volume_usd,
-        epoch_pool_predicted_volume_usd,
-        &aggregator,
-        clock,
-        scenario.ctx()
-    );
+    aggregator_set_current_value(aggregator,  one_dec18(), clock.timestamp_ms());
 
-    test_utils::destroy(aggregator);
+    let mut distributed_amount: u64 = 0;
+    if (type_name::get<CoinTypeA>() != type_name::get<USD_TESTS>() || 
+            type_name::get<CoinTypeB>() != type_name::get<SAIL>()) {
+
+        let sail_stablecoin_pool = scenario.take_shared<Pool<USD_TESTS, SAIL>>();
+
+        distributed_amount = minter.distribute_gauge<CoinTypeA, CoinTypeB, USD_TESTS, SAIL, SAIL, EpochOSail>(
+            &mut voter,
+            &distribute_governor_cap,
+            &distribution_config,
+            &mut gauge,
+            &mut pool,
+            prev_epoch_pool_emissions,
+            prev_epoch_pool_fees_usd,
+            epoch_pool_emissions_usd,
+            epoch_pool_fees_usd,
+            epoch_pool_volume_usd,
+            epoch_pool_predicted_volume_usd,
+            &mut price_monitor,
+            &sail_stablecoin_pool,
+            aggregator,
+            clock,
+            scenario.ctx()
+        );
+
+        test_scenario::return_shared(sail_stablecoin_pool);
+    } else {
+        distributed_amount = minter.distribute_gauge_for_sail_pool<CoinTypeA, CoinTypeB, SAIL, EpochOSail>(
+            &mut voter,
+            &distribute_governor_cap,
+            &distribution_config,
+            &mut gauge,
+            &mut pool,
+            prev_epoch_pool_emissions,
+            prev_epoch_pool_fees_usd,
+            epoch_pool_emissions_usd,
+            epoch_pool_fees_usd,
+            epoch_pool_volume_usd,
+            epoch_pool_predicted_volume_usd,
+            &mut price_monitor,
+            aggregator,
+            clock,
+            scenario.ctx()
+        );
+    };
 
     // Return shared objects
     test_scenario::return_shared(minter);
@@ -1250,6 +1378,7 @@ public fun distribute_gauge_emissions_controlled<CoinTypeA, CoinTypeB, SailCoinT
     test_scenario::return_shared(pool);
     test_scenario::return_shared(distribution_config);
     scenario.return_to_sender(distribute_governor_cap);
+    test_scenario::return_shared(price_monitor);
 
     distributed_amount
 }
@@ -1259,7 +1388,7 @@ public fun distribute_gauge_emissions_controlled<CoinTypeA, CoinTypeB, SailCoinT
 /// Assumes standard tick spacing and price for the pool.
 /// The admin address receives MinterAdminCap, GovernorCap, CreateCap.
 /// The user address receives the specified oSAIL and the created Lock.
-public fun full_setup_with_lock<CoinTypeA: drop + store, CoinTypeB: drop + store, SailCoinType, OSailCoinType>(
+public fun full_setup_with_lock<CoinTypeA: drop, CoinTypeB: drop, SAIL: drop, OSailCoinType, USD: drop>(
     scenario: &mut test_scenario::Scenario,
     admin: address,
     user: address,
@@ -1268,7 +1397,7 @@ public fun full_setup_with_lock<CoinTypeA: drop + store, CoinTypeB: drop + store
     lock_duration_days: u64,
     gauge_base_emissions: u64,
     initial_o_sail_supply: u64
-) {
+): Aggregator {
     // Tx 1: Setup CLMM Factory & Fee Tier (using tick_spacing=1)
     {
         setup_clmm_factory_with_fee_tier(scenario, admin, 1, 1000);
@@ -1277,7 +1406,7 @@ public fun full_setup_with_lock<CoinTypeA: drop + store, CoinTypeB: drop + store
     // Tx 2: Setup Distribution (admin gets caps)
     {
         // Needs CLMM config initialized
-        setup_distribution<SailCoinType>(scenario, admin, clock);
+        setup_distribution<SAIL>(scenario, admin, clock);
     };
 
     // Tx 3: Setup Pool (CoinTypeA/CoinTypeB, price=1)
@@ -1295,14 +1424,14 @@ public fun full_setup_with_lock<CoinTypeA: drop + store, CoinTypeB: drop + store
     // Tx 4: Activate Minter for Epoch 1 (OSAILCoinType)
     scenario.next_tx(admin);
     {
-        let o_sail_coin = activate_minter<SailCoinType, OSailCoinType>(scenario, initial_o_sail_supply, clock);
+        let o_sail_coin = activate_minter<SAIL, OSailCoinType>(scenario, initial_o_sail_supply, clock);
         o_sail_coin.burn_for_testing();
     };
 
     // Tx 5: Create Gauge for the CoinTypeA/CoinTypeB pool
     scenario.next_tx(admin); // Admin needs caps to create gauge
     {
-        setup_gauge_for_pool<CoinTypeA, CoinTypeB, SailCoinType>(
+        setup_gauge_for_pool<CoinTypeA, CoinTypeB, SAIL>(
             scenario,
             gauge_base_emissions,
             clock // Pass immutable clock ref here
@@ -1312,7 +1441,7 @@ public fun full_setup_with_lock<CoinTypeA: drop + store, CoinTypeB: drop + store
     // Tx 6: Create Lock for the user
     scenario.next_tx(user); // User needs to be sender to receive the lock
     {
-        mint_and_create_lock<SailCoinType>(
+        mint_and_create_lock<SAIL>(
             scenario,
             lock_amount,
             lock_duration_days,
@@ -1320,9 +1449,11 @@ public fun full_setup_with_lock<CoinTypeA: drop + store, CoinTypeB: drop + store
         );
         // Lock object is automatically transferred to user
     };
+
+    setup_price_monitor_and_aggregator<CoinTypeA, CoinTypeB, USD, SAIL>(scenario, admin, clock)
 }
 
-public fun vote<SailCoinType>(
+public fun vote<SAIL>(
     scenario: &mut test_scenario::Scenario,
     pools: vector<ID>,
     weights: vector<u64>,
@@ -1331,7 +1462,7 @@ public fun vote<SailCoinType>(
 ) {
     let mut voter = scenario.take_shared<Voter>();
     let distribution_config = scenario.take_shared<DistributionConfig>();
-    let mut ve = scenario.take_shared<VotingEscrow<SailCoinType>>();
+    let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
     let lock = scenario.take_from_sender<Lock>();
 
     voter.vote(
@@ -1351,13 +1482,13 @@ public fun vote<SailCoinType>(
     scenario.return_to_sender(lock);
 }
 
-public fun vote_for_pool<CoinTypeA, CoinTypeB, SailCoinType>(
+public fun vote_for_pool<CoinTypeA, CoinTypeB, SAIL>(
     scenario: &mut test_scenario::Scenario,
     clock: &mut Clock,
 ) {
     let pool = scenario.take_shared<Pool<CoinTypeA, CoinTypeB>>();
     let pool_id = object::id(&pool);
-    vote<SailCoinType>(
+    vote<SAIL>(
         scenario,
         vector[pool_id],
         vector[10000], // 100% weight
