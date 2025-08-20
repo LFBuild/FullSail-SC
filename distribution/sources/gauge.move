@@ -616,7 +616,8 @@ module distribution::gauge {
     /// * `clock` - The system clock
     ///
     /// # Returns
-    /// The amount of rewards earned by the position
+    /// The amount of rewards earned by the position and total growth inside of the position
+    /// Ignore growth inside of the position if you don't need it.
     ///
     /// # Aborts
     /// * If the gauge does not match the pool
