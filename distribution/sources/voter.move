@@ -1895,7 +1895,6 @@ module distribution::voter {
     public fun update_exercise_fee_weights(
         voter: &mut Voter,
         distribute_cap: &distribution::distribute_cap::DistributeCap,
-        gauge_id: ID,
         weights: vector<u64>,
         lock_ids: vector<ID>,
         for_epoch_start: u64,
@@ -1904,7 +1903,6 @@ module distribution::voter {
         ctx: &mut TxContext
     ) {
         distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
-        let gauge_id_obj = into_gauge_id(gauge_id);
 
         let exercise_fee_reward = &mut voter.exercise_fee_reward;
         exercise_fee_reward.update_balances(

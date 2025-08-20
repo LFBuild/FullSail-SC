@@ -2751,7 +2751,6 @@ module distribution::minter {
         minter: &mut Minter<SailCoinType>,
         voter: &mut distribution::voter::Voter,
         distribute_governor_cap: &DistributeGovernorCap,
-        gauge_id: ID,
         lock_ids: vector<ID>,
         for_epoch_start: u64,
         clock: &sui::clock::Clock,
@@ -2769,7 +2768,6 @@ module distribution::minter {
 
         voter.update_exercise_fee_weights(
             distribute_cap,
-            gauge_id,
             weights,
             lock_ids,
             for_epoch_start,
@@ -2785,7 +2783,6 @@ module distribution::minter {
         minter: &mut Minter<SailCoinType>,
         voter: &mut distribution::voter::Voter,
         distribute_governor_cap: &DistributeGovernorCap,
-        gauge_id: ID,
         for_epoch_start: u64,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
@@ -2796,7 +2793,6 @@ module distribution::minter {
 
         voter.update_exercise_fee_weights(
             distribute_cap,
-            gauge_id,
             vector::empty(),
             vector::empty(),
             for_epoch_start,

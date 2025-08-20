@@ -1976,12 +1976,10 @@ fun test_exercise_fee_distribution() {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
         let mut voter = scenario.take_shared<Voter>();
         let distribute_governor_cap = scenario.take_from_sender<minter::DistributeGovernorCap>();
-        let gauge = scenario.take_shared<distribution::gauge::Gauge<USD_TESTS, SAIL>>();
         minter::finalize_exercise_fee_weights<SAIL>(
             &mut minter, 
             &mut voter, 
             &distribute_governor_cap, 
-            object::id(&gauge),
             epoch_start,
             &clock, 
             scenario.ctx()
@@ -1989,7 +1987,6 @@ fun test_exercise_fee_distribution() {
         test_scenario::return_shared(minter);
         test_scenario::return_shared(voter);
         scenario.return_to_sender(distribute_governor_cap);
-        test_scenario::return_shared(gauge);
     };
 
     // --- Verify Fee Distribution to Voters ---
