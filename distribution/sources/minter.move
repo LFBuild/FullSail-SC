@@ -14,7 +14,6 @@ module distribution::minter {
     use price_monitor::price_monitor::{Self, PriceMonitor};
     use switchboard::decimal::{Self, Decimal};
     use switchboard::aggregator::{Aggregator};
-    use distribution::exercise_fee_distributor::{Self, ExerciseFeeDistributor};
 
     const ECreateMinterInvalidPublisher: u64 = 695309471293028100;
     const ECreateMinterInvalidSailDecimals: u64 = 744215000566210300;
@@ -89,7 +88,6 @@ module distribution::minter {
     const EBurnOSailMinterPaused: u64 = 947382564018592637;
 
     const EExerciseUsdLimitReached: u64 = 490517942447480600;
-    const EExerciseOSailPoolNotWhitelisted: u64 = 221252400064791070;
 
     const ETeamWalletNotSet: u64 = 798141442607710900;
     const EDistributeTeamTokenNotFound: u64 = 962925679282177400;
@@ -244,14 +242,8 @@ module distribution::minter {
         token_type: TypeName,
     }
 
-    public struct EventSetRewardDistributorCap has copy, drop, store {
-        reward_distributor_cap: ID,
-        reward_distributor_id: ID,
-    }
-
-    public struct EventRevokeRewardDistributorCap has copy, drop, store {
-        reward_distributor_cap: ID,
-        reward_distributor_id: ID,
+    public struct EventSetRebaseDistributorCap has copy, drop, store {
+        rebase_distributor_cap: ID,
     }
 
     public struct EventSetDistributeCap has copy, drop, store {
@@ -318,11 +310,6 @@ module distribution::minter {
     public struct EventWhitelistUSD has copy, drop, store {
         usd_type: TypeName,
         whitelisted: bool,
-    }
-
-    public struct EventCreateExerciseFeeDistributor has copy, drop, store {
-        usd_type: TypeName,
-        exercise_fee_distributor_id: ID,
     }
 
     public struct EventSetOSailPriceAggregator has copy, drop, store {
@@ -392,7 +379,7 @@ module distribution::minter {
         protocol_fee_rate: u64,
         team_wallet: address,
         // Map Rebase/ExerciseFee Distributor ID -> Capability
-        reward_distributor_caps: Table<ID, distribution::reward_distributor_cap::RewardDistributorCap>,
+        rebase_distributor_cap: Option<distribution::reward_distributor_cap::RewardDistributorCap>,
         distribute_cap: Option<distribution::distribute_cap::DistributeCap>,
         // pools that can be used to exercise oSAIL
         // we don't need whitelisted tokens, cos
@@ -501,7 +488,7 @@ module distribution::minter {
         assert!(!minter.is_active(clock), EActivateMinterAlreadyActive);
         let rebase_distributor_id = object::id(rebase_distributor);
         assert!(
-            minter.reward_distributor_caps.contains(rebase_distributor_id),
+            minter.rebase_distributor_cap.is_some(),
             EActivateMinterNoDistributorCap
         );
         minter.update_o_sail_token(epoch_o_sail_treasury_cap, clock);
@@ -511,9 +498,9 @@ module distribution::minter {
         minter.activated_at = current_time;
         minter.active_period = distribution::common::to_period(minter.activated_at);
         minter.last_epoch_update_time = current_time;
-        let reward_distributor_cap = minter.reward_distributor_caps.borrow(rebase_distributor_id);
+        let rebase_distributor_cap = minter.rebase_distributor_cap.borrow();
         rebase_distributor.start(
-            reward_distributor_cap,
+            rebase_distributor_cap,
             minter.active_period,
             clock,
         );
@@ -698,7 +685,7 @@ module distribution::minter {
             team_emission_rate: 500,
             protocol_fee_rate: 500,
             team_wallet: @0x0,
-            reward_distributor_caps: table::new<ID, distribution::reward_distributor_cap::RewardDistributorCap>(ctx),
+            rebase_distributor_cap: option::none<distribution::reward_distributor_cap::RewardDistributorCap>(),
             distribute_cap: option::none<distribution::distribute_cap::DistributeCap>(),
             whitelisted_usd: vec_set::empty<TypeName>(),
             exercise_fee_team_balances: bag::new(ctx),
@@ -870,40 +857,19 @@ module distribution::minter {
     }
 
     /// Sets the reward distributor capability for the minter.
-    public fun set_reward_distributor_cap<SailCoinType>(
+    public fun set_rebase_distributor_cap<SailCoinType>(
         minter: &mut Minter<SailCoinType>,
         admin_cap: &AdminCap,
-        reward_distributor_id: ID,
-        reward_distributor_cap: distribution::reward_distributor_cap::RewardDistributorCap
+        rebase_distributor_cap: distribution::reward_distributor_cap::RewardDistributorCap
     ) {
         minter.check_admin(admin_cap);
-        let reward_distributor_cap_id = object::id(&reward_distributor_cap);
-        minter.reward_distributor_caps.add(reward_distributor_id, reward_distributor_cap);
+        let rebase_distributor_cap_id = object::id(&rebase_distributor_cap);
+        minter.rebase_distributor_cap.fill(rebase_distributor_cap);
 
-        let set_reward_distributor_cap_event = EventSetRewardDistributorCap {
-            reward_distributor_cap: reward_distributor_cap_id,
-            reward_distributor_id,
+        let set_rebase_distributor_cap_event = EventSetRebaseDistributorCap {
+            rebase_distributor_cap: rebase_distributor_cap_id,
         };
-        sui::event::emit<EventSetRewardDistributorCap>(set_reward_distributor_cap_event);
-    }
-
-    /// Removes the reward distributor capability.
-    public fun revoke_reward_distributor_cap<SailCoinType>(
-        minter: &mut Minter<SailCoinType>,
-        admin_cap: &AdminCap,
-        reward_distributor_id: ID
-    ): distribution::reward_distributor_cap::RewardDistributorCap {
-        minter.check_admin(admin_cap);
-        let reward_distributor_cap = minter.reward_distributor_caps.remove(reward_distributor_id);
-        let reward_distributor_cap_id = object::id(&reward_distributor_cap);
-
-        let revoke_reward_distributor_cap_event = EventRevokeRewardDistributorCap {
-            reward_distributor_cap: reward_distributor_cap_id,
-            reward_distributor_id,
-        };
-        sui::event::emit<EventRevokeRewardDistributorCap>(revoke_reward_distributor_cap_event);
-
-        reward_distributor_cap
+        sui::event::emit<EventSetRebaseDistributorCap>(set_rebase_distributor_cap_event);
     }
 
     /// Sets the distribute capability for the minter.
@@ -1201,7 +1167,7 @@ module distribution::minter {
         );
         assert!(minter.all_gauges_distributed(distribution_config), EUpdatePeriodNotAllGaugesDistributed);
         let rebase_distributor_id = object::id(rebase_distributor);
-        assert!(minter.reward_distributor_caps.contains(rebase_distributor_id), EUpdatePeriodNoRebaseDistributorCap);
+        assert!(minter.rebase_distributor_cap.is_some(), EUpdatePeriodNoRebaseDistributorCap);
 
         let prev_prev_epoch_emissions = minter.o_sail_epoch_emissions(distribution_config);
         minter.update_o_sail_token(epoch_o_sail_treasury_cap, clock);
@@ -1227,9 +1193,9 @@ module distribution::minter {
                 rebase_growth,
                 ctx
             );
-            let reward_distributor_cap = minter.reward_distributor_caps.borrow(rebase_distributor_id);
+            let rebase_distributor_cap = minter.rebase_distributor_cap.borrow();
             rebase_distributor.checkpoint_token(
-                reward_distributor_cap,
+                rebase_distributor_cap,
                 rebase_emissions,
                 clock
             );
@@ -1237,9 +1203,9 @@ module distribution::minter {
         let distribute_cap = minter.distribute_cap.borrow();
         voter.notify_epoch_token<EpochOSail>(distribute_cap, ctx);
         minter.active_period = distribution::common::current_period(clock);
-        let reward_distributor_cap = minter.reward_distributor_caps.borrow(rebase_distributor_id);
+        let rebase_distributor_cap = minter.rebase_distributor_cap.borrow();
         rebase_distributor.update_active_period(
-            reward_distributor_cap,
+            rebase_distributor_cap,
             minter.active_period
         );
         let update_epoch_event = EventUpdateEpoch {
@@ -2247,7 +2213,7 @@ module distribution::minter {
     /// # Arguments
     /// * `minter` - The minter instance
     /// * `distribution_config` - The distribution config instance
-    /// * `exercise_fee_distributor` - The exercise fee distributor instance
+    /// * `voter` - The voter instance
     /// * `o_sail` - The oSAIL coin to exercise
     /// * `fee` - The fee coin to pay for the exercise. This is the fee that is paid to the team wallet.
     /// * `usd_amount_limit` - The maximum amount of USD that can be paid for the exercise.
@@ -2263,7 +2229,7 @@ module distribution::minter {
     public fun exercise_o_sail<SailPoolCoinTypeA, SailPoolCoinTypeB, SailCoinType, USDCoinType, OSailCoinType>(
         minter: &mut Minter<SailCoinType>,
         distribution_config: &distribution::distribution_config::DistributionConfig,
-        exercise_fee_distributor: &mut ExerciseFeeDistributor<USDCoinType>,
+        voter: &mut distribution::voter::Voter,
         o_sail: Coin<OSailCoinType>,
         fee: Coin<USDCoinType>,
         metadata: &CoinMetadata<USDCoinType>,
@@ -2319,7 +2285,7 @@ module distribution::minter {
 
         exercise_o_sail_process_payment(
             minter,
-            exercise_fee_distributor,
+            voter,
             o_sail,
             fee,
             usd_amount_to_pay,
@@ -2331,7 +2297,7 @@ module distribution::minter {
     /// withdraws SAIL from storage and burns oSAIL
     fun exercise_o_sail_process_payment<SailCoinType, USDCoinType, OSailCoinType>(
         minter: &mut Minter<SailCoinType>,
-        exercise_fee_distributor: &mut ExerciseFeeDistributor<USDCoinType>,
+        voter: &mut distribution::voter::Voter,
         o_sail: Coin<OSailCoinType>,
         mut usd_in: Coin<USDCoinType>,
         usd_amount_in: u64,
@@ -2360,10 +2326,14 @@ module distribution::minter {
 
             team_fee_balance.join(protocol_fee.into_balance());
         };
-
-        let reward_distributor_cap = minter.reward_distributor_caps.borrow(object::id(exercise_fee_distributor));
+        
         let fee_to_distribute = usd_to_pay.value();
-        exercise_fee_distributor.checkpoint_token(reward_distributor_cap, usd_to_pay, clock);
+        voter.notify_exercise_fee_reward_amount(
+            minter.distribute_cap.borrow(),
+            usd_to_pay,
+            clock,
+            ctx,
+        );
 
         minter.burn_o_sail(o_sail);
         let sail_out = minter.mint_sail(sail_amount_out, ctx);
@@ -2375,7 +2345,7 @@ module distribution::minter {
             exercise_fee_token_type: type_name::get<USDCoinType>(),
             exercise_fee_amount: usd_amount_in,
             protocol_fee_amount,
-            fee_to_distribute: fee_to_distribute,
+            fee_to_distribute,
         };
         sui::event::emit<EventExerciseOSail>(event);
 
@@ -2492,34 +2462,6 @@ module distribution::minter {
             whitelisted: list,
         };
         sui::event::emit<EventWhitelistUSD>(event);
-    }
-
-    public fun create_exercise_fee_distributor<SailCoinType, UsdCoinType>(
-        minter: &mut Minter<SailCoinType>,
-        admin_cap: &AdminCap,
-        clock: &sui::clock::Clock,
-        ctx: &mut TxContext,
-    ): ExerciseFeeDistributor<UsdCoinType> {
-        assert!(!minter.is_paused(), ECreateExerciseFeeDistributorMinterPaused);
-        minter.check_admin(admin_cap);
-        assert!(minter.is_whitelisted_usd<SailCoinType, UsdCoinType>(), ECreateExerciseFeeDistributorInvalidUsd);
-        let usd_type = type_name::get<UsdCoinType>();
-
-        let (mut exercise_fee_distributor, cap) = exercise_fee_distributor::create<UsdCoinType>(
-            clock,
-            ctx,
-        );
-        exercise_fee_distributor.start(&cap, clock);
-        let exercise_fee_distributor_id = object::id(&exercise_fee_distributor);
-        minter.reward_distributor_caps.add(exercise_fee_distributor_id, cap);
-
-        let event = EventCreateExerciseFeeDistributor {
-            usd_type,
-            exercise_fee_distributor_id,
-        };
-        sui::event::emit<EventCreateExerciseFeeDistributor>(event);
-
-        exercise_fee_distributor
     }
 
     public fun is_whitelisted_usd<SailCoinType, UsdCoinType>(
@@ -2794,6 +2736,63 @@ module distribution::minter {
         voter.update_voted_weights(
             distribute_cap,
             gauge_id,
+            vector::empty(),
+            vector::empty(),
+            for_epoch_start,
+            true,
+            clock,
+            ctx
+        )
+    }
+
+    /// A method that is supposed to be called by the backend voting service to null unvoted lock weigths.
+    /// In turn unvoted locks are not earning exercise fee rewards.
+    public fun null_exercise_fee_weights<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        voter: &mut distribution::voter::Voter,
+        distribute_governor_cap: &DistributeGovernorCap,
+        lock_ids: vector<ID>,
+        for_epoch_start: u64,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        minter.check_distribute_governor(distribute_governor_cap);
+
+        let distribute_cap = minter.distribute_cap.borrow();
+        let mut weights = vector::empty();
+        let mut i = 0;
+        while (i < lock_ids.length()) {
+            weights.push_back(0);
+            i = i + 1;
+        };
+
+        voter.update_exercise_fee_weights(
+            distribute_cap,
+            weights,
+            lock_ids,
+            for_epoch_start,
+            false,
+            clock,
+            ctx,
+        )
+    }
+
+    // A method to finalize epoch for exercise fee weights. 
+    // After calling this method the exercise fee would be available for claiming.
+    public fun finalize_exercise_fee_weights<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        voter: &mut distribution::voter::Voter,
+        distribute_governor_cap: &DistributeGovernorCap,
+        for_epoch_start: u64,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        minter.check_distribute_governor(distribute_governor_cap);
+
+        let distribute_cap = minter.distribute_cap.borrow();
+
+        voter.update_exercise_fee_weights(
+            distribute_cap,
             vector::empty(),
             vector::empty(),
             for_epoch_start,

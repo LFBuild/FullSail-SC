@@ -571,7 +571,7 @@ module distribution::voting_escrow {
     /// # Arguments
     /// * `voting_escrow` - The voting escrow instance
     /// * `lock_id` - The ID of the lock to query
-    /// * `time` - The timestamp at which to calculate voting power
+    /// * `time` - The timestamp in seconds at which to calculate voting power
     ///
     /// # Returns
     /// The voting power of the lock at the specified time
@@ -590,7 +590,7 @@ module distribution::voting_escrow {
     /// # Arguments
     /// * `voting_escrow` - The voting escrow instance
     /// * `lock_id` - The ID of the lock to query
-    /// * `time` - The timestamp at which to calculate voting power
+    /// * `time` - The timestamp in seconds at which to calculate voting power
     ///
     /// # Returns
     /// The voting power of the lock at the specified time
@@ -1859,7 +1859,7 @@ module distribution::voting_escrow {
     public fun increase_unlock_time<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
         lock: &mut Lock,
-        days_to_add: u64,
+        new_lock_duration_days: u64,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
@@ -1874,7 +1874,7 @@ module distribution::voting_escrow {
         assert!(!current_locked_balance.is_permanent, EIncreaseTimePermanent);
         let current_time = distribution::common::current_timestamp(clock);
         let lock_end_epoch_time = distribution::common::to_period(
-            current_time + days_to_add * distribution::common::day()
+            current_time + new_lock_duration_days * distribution::common::day()
         );
         assert!(current_locked_balance.end > current_time, EIncreaseTimeExpired);
         assert!(current_locked_balance.amount > 0, EIncreaseTimeNoBalance);
@@ -2616,6 +2616,40 @@ module distribution::voting_escrow {
             voting_escrow.voted.remove(lock_id);
         };
         voting_escrow.voted.add(lock_id, is_voting);
+    }
+
+    /// Returns voting power delta for a given amount as if it was deposited into the lock and amount that cannot be deposited.
+    /// If lock has ended, adding new voting power makes no sense. So we can't deposit anything and return the amount 
+    /// that cannot be deposited as second return value.
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `lock_id` - The ID of the lock to simulate the deposit for
+    /// * `amount` - The amount of tokens to simulate the deposit for
+    /// * `clock` - The system clock
+    ///
+    /// # Returns
+    /// The voting power delta for the given amount and the amount that cannot be deposited.
+    public fun simulate_depoist<SailCoinType>(
+        voting_escrow: &VotingEscrow<SailCoinType>,
+        lock_id: ID,
+        amount: u64,
+        clock: &sui::clock::Clock,
+    ): (u64, u64) {
+        let locked_balance = voting_escrow.locked.borrow(lock_id);
+        if (locked_balance.is_permanent || locked_balance.is_perpetual) {
+            return (amount, 0);
+        };
+        let current_time = distribution::common::current_timestamp(clock);
+        if (locked_balance.end <= current_time) {
+            return (0, amount);
+        };
+        let remaining_time = locked_balance.end - current_time;
+        let voting_power_delta = integer_mate::full_math_u64::mul_div_floor(
+            amount,
+            remaining_time,
+            distribution::common::max_lock_time()
+        );
+        (voting_power_delta, 0)
     }
 
     /// Withdraws tokens and rewards from a managed lock back to the original lock.
