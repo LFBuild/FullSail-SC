@@ -1436,7 +1436,6 @@ fun test_simulate_deposit_on_nearly_expired_2_year_lock() {
         let lock_id = sui::object::id(&lock);
 
         power_before = voting_escrow::balance_of_nft_at(&ve, lock_id, clock.timestamp_ms() / 1000);
-        std::debug::print(&power_before);
 
         let (delta, cannot_deposit) = voting_escrow::simulate_depoist(&ve, lock_id, amount_to_deposit, &clock);
         simulated_delta = delta;
@@ -1523,7 +1522,6 @@ fun test_simulate_deposit_on_expired_2_year_lock() {
         let lock_id = sui::object::id(&lock);
 
         power_before = voting_escrow::balance_of_nft_at(&ve, lock_id, clock.timestamp_ms() / 1000);
-        std::debug::print(&power_before);
 
         let (delta, cannot_deposit) = voting_escrow::simulate_depoist(&ve, lock_id, amount_to_deposit, &clock);
         simulated_delta = delta;
