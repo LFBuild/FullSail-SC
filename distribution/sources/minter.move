@@ -2752,7 +2752,6 @@ module distribution::minter {
         voter: &mut distribution::voter::Voter,
         distribute_governor_cap: &DistributeGovernorCap,
         gauge_id: ID,
-        weights: vector<u64>,
         lock_ids: vector<ID>,
         for_epoch_start: u64,
         clock: &sui::clock::Clock,
