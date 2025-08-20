@@ -595,7 +595,6 @@ module price_monitor::price_monitor {
         
         // Check if deviation_bps exceeds u64::MAX to prevent overflow
         let clamped_deviation_bps = if (deviation_bps > MAX_U64) { MAX_U64 } else { deviation_bps };
-
         (clamped_deviation_bps as u64)
     }
 

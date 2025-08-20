@@ -21,7 +21,6 @@ module distribution::fee_voting_reward {
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
 
     const ENotifyRewardAmountTokenNotWhitelisted: u64 = 9223372427696799743;
-    const EVoterGetRewardInvalidVoter: u64 = 9223372358977323007;
 
     public struct FeeVotingReward has store, key {
         id: UID,

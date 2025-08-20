@@ -243,7 +243,7 @@ public fun setup_distribution<SAIL>(
         // --- Set Reward Distributor Cap ---
         let mut minter = scenario.take_shared<Minter<SAIL>>();
         let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-        minter.set_reward_distributor_cap(&minter_admin_cap, rebase_distributor_id, rd_cap);
+        minter.set_rebase_distributor_cap(&minter_admin_cap, rd_cap);
         test_scenario::return_shared(minter);
         scenario.return_to_sender(minter_admin_cap);
     };
@@ -367,25 +367,15 @@ public fun activate_minter<SAIL, OSailCoinType>( // Changed to public
 
 // Whitelists or de-whitelists a token in the Minter for oSAIL exercising.
 // Requires the minter and admin cap to be set up.
-public fun whitelist_usd<SAIL, UsdCoinType>(
+public fun whitelist_usd<SailCoinType, UsdCoinType>(
     scenario: &mut test_scenario::Scenario,
     list: bool, 
     clock: &Clock,
 ) {
-    let mut minter = scenario.take_shared<Minter<SAIL>>();
+    let mut minter = scenario.take_shared<Minter<SailCoinType>>();
     let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
     
-    minter::whitelist_usd<SAIL, UsdCoinType>(&mut minter, &minter_admin_cap, list);
-
-    if (list) {
-        let exercise_fee_distributor = minter::create_exercise_fee_distributor<SAIL, UsdCoinType>(
-            &mut minter,
-            &minter_admin_cap,
-            clock,
-            scenario.ctx()
-        );
-        transfer::public_share_object(exercise_fee_distributor);
-    };
+    minter::whitelist_usd<SailCoinType, UsdCoinType>(&mut minter, &minter_admin_cap, list);
 
     test_scenario::return_shared(minter);
     scenario.return_to_sender(minter_admin_cap);
