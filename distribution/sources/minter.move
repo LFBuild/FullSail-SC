@@ -373,7 +373,7 @@ module distribution::minter {
         protocol_fee_rate: u64,
         team_wallet: address,
         // Map Rebase/ExerciseFee Distributor ID -> Capability
-        rebase_distributor_cap: Option<distribution::reward_distributor_cap::RewardDistributorCap>,
+        rebase_distributor_cap: Option<distribution::rebase_distributor_cap::RebaseDistributorCap>,
         distribute_cap: Option<distribution::distribute_cap::DistributeCap>,
         // pools that can be used to exercise oSAIL
         // we don't need whitelisted tokens, cos
@@ -436,7 +436,7 @@ module distribution::minter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
     ) {
-        assert!(epoch_o_sail_metadata.get_decimals() == distribution::common::sail_decimals(), EActivateMinterInvalidOSailDecimals);
+        assert!(epoch_o_sail_metadata.get_decimals() == ve::common::sail_decimals(), EActivateMinterInvalidOSailDecimals);
         minter.activate_internal(
             voter,
             admin_cap,
@@ -488,9 +488,9 @@ module distribution::minter {
         minter.update_o_sail_token(epoch_o_sail_treasury_cap, clock);
         let distribute_cap = minter.distribute_cap.borrow();
         voter.notify_epoch_token<EpochOSail>(distribute_cap, ctx);
-        let current_time = distribution::common::current_timestamp(clock);
+        let current_time = ve::common::current_timestamp(clock);
         minter.activated_at = current_time;
-        minter.active_period = distribution::common::to_period(minter.activated_at);
+        minter.active_period = ve::common::to_period(minter.activated_at);
         minter.last_epoch_update_time = current_time;
         let rebase_distributor_cap = minter.rebase_distributor_cap.borrow();
         rebase_distributor.start(
@@ -639,7 +639,7 @@ module distribution::minter {
         distribution_config: ID,
         ctx: &mut TxContext
     ): (Minter<SailCoinType>, AdminCap) {
-        assert!(metadata.get_decimals() == distribution::common::sail_decimals(), ECreateMinterInvalidSailDecimals);
+        assert!(metadata.get_decimals() == ve::common::sail_decimals(), ECreateMinterInvalidSailDecimals);
         create_internal(publisher, treasury_cap, distribution_config, ctx)
     }
 
@@ -679,7 +679,7 @@ module distribution::minter {
             team_emission_rate: 500,
             protocol_fee_rate: 500,
             team_wallet: @0x0,
-            rebase_distributor_cap: option::none<distribution::reward_distributor_cap::RewardDistributorCap>(),
+            rebase_distributor_cap: option::none<distribution::rebase_distributor_cap::RebaseDistributorCap>(),
             distribute_cap: option::none<distribution::distribute_cap::DistributeCap>(),
             whitelisted_usd: vec_set::empty<TypeName>(),
             exercise_fee_team_balances: bag::new(ctx),
@@ -729,7 +729,7 @@ module distribution::minter {
     /// A minter is considered active if it has been activated,
     /// and the current period is at least the minter's active period.
     public fun is_active<SailCoinType>(minter: &Minter<SailCoinType>, clock: &sui::clock::Clock): bool {
-        minter.activated_at > 0 && distribution::common::current_period(clock) >= minter.active_period
+        minter.activated_at > 0 && ve::common::current_period(clock) >= minter.active_period
     }
 
     /// Minter is paused during emergency situations to prevent further damage.
@@ -815,7 +815,7 @@ module distribution::minter {
         treasury_cap: TreasuryCap<SailCoinType>,
         metadata: &CoinMetadata<SailCoinType>
     ) {
-        assert!(metadata.get_decimals() == distribution::common::sail_decimals(), ESetTreasuryCapInvalidSailDecimals);
+        assert!(metadata.get_decimals() == ve::common::sail_decimals(), ESetTreasuryCapInvalidSailDecimals);
         minter.set_treasury_cap_internal(admin_cap, treasury_cap);
     }
 
@@ -854,7 +854,7 @@ module distribution::minter {
     public fun set_rebase_distributor_cap<SailCoinType>(
         minter: &mut Minter<SailCoinType>,
         admin_cap: &AdminCap,
-        rebase_distributor_cap: distribution::reward_distributor_cap::RewardDistributorCap
+        rebase_distributor_cap: distribution::rebase_distributor_cap::RebaseDistributorCap
     ) {
         minter.check_admin(admin_cap);
         let rebase_distributor_cap_id = object::id(&rebase_distributor_cap);
@@ -1052,9 +1052,9 @@ module distribution::minter {
         minter.o_sail_caps.add(o_sail_type, treasury_cap);
         // oSAIL is distributed until the end of the active period, so we add extra epoch to the duration
         // as in some cases users will not be able to claim oSAIL until the end of the epoch.
-        let o_sail_expiry_date = distribution::common::current_period(clock) +
-            distribution::common::o_sail_duration() +
-            distribution::common::epoch();
+        let o_sail_expiry_date = ve::common::current_period(clock) +
+            ve::common::o_sail_duration() +
+            ve::common::epoch();
         minter.o_sail_expiry_dates.add(o_sail_type, o_sail_expiry_date);
     }
 
@@ -1094,14 +1094,14 @@ module distribution::minter {
         voter: &mut distribution::voter::Voter,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         distribute_governor_cap: &DistributeGovernorCap,
-        voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        voting_escrow: &ve::voting_escrow::VotingEscrow<SailCoinType>,
         rebase_distributor: &mut distribution::rebase_distributor::RebaseDistributor<SailCoinType>,
         epoch_o_sail_treasury_cap: TreasuryCap<EpochOSail>,
         epoch_o_sail_metadata: &CoinMetadata<EpochOSail>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        assert!(epoch_o_sail_metadata.get_decimals() == distribution::common::sail_decimals(), EUpdatePeriodOSailInvalidDecimals);
+        assert!(epoch_o_sail_metadata.get_decimals() == ve::common::sail_decimals(), EUpdatePeriodOSailInvalidDecimals);
         minter.update_period_internal(
             voter,
             distribution_config,
@@ -1121,7 +1121,7 @@ module distribution::minter {
         voter: &mut distribution::voter::Voter,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         distribute_governor_cap: &DistributeGovernorCap,
-        voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        voting_escrow: &ve::voting_escrow::VotingEscrow<SailCoinType>,
         rebase_distributor: &mut distribution::rebase_distributor::RebaseDistributor<SailCoinType>,
         epoch_o_sail_treasury_cap: TreasuryCap<EpochOSail>,
         clock: &sui::clock::Clock,
@@ -1144,7 +1144,7 @@ module distribution::minter {
         voter: &mut distribution::voter::Voter,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         distribute_governor_cap: &DistributeGovernorCap,
-        voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        voting_escrow: &ve::voting_escrow::VotingEscrow<SailCoinType>,
         rebase_distributor: &mut distribution::rebase_distributor::RebaseDistributor<SailCoinType>,
         epoch_o_sail_treasury_cap: TreasuryCap<EpochOSail>,
         clock: &sui::clock::Clock,
@@ -1154,9 +1154,9 @@ module distribution::minter {
         minter.check_distribute_governor(distribute_governor_cap);
         assert!(minter.is_valid_distribution_config(distribution_config), EUpdatePeriodDistributionConfigInvalid);
         assert!(minter.is_active(clock), EUpdatePeriodMinterNotActive);
-        let current_time = distribution::common::current_timestamp(clock);
+        let current_time = ve::common::current_timestamp(clock);
         assert!(
-            minter.active_period + distribution::common::epoch() < current_time,
+            minter.active_period + ve::common::epoch() < current_time,
             EUpdatePeriodNotFinishedYet
         );
         let rebase_distributor_id = object::id(rebase_distributor);
@@ -1195,7 +1195,7 @@ module distribution::minter {
         };
         let distribute_cap = minter.distribute_cap.borrow();
         voter.notify_epoch_token<EpochOSail>(distribute_cap, ctx);
-        minter.active_period = distribution::common::current_period(clock);
+        minter.active_period = ve::common::current_period(clock);
         let rebase_distributor_cap = minter.rebase_distributor_cap.borrow();
         rebase_distributor.update_active_period(
             rebase_distributor_cap,
@@ -1690,7 +1690,7 @@ module distribution::minter {
         distribution_config: &mut distribution::distribution_config::DistributionConfig,
         create_cap: &gauge_cap::gauge_cap::CreateCap,
         admin_cap: &AdminCap,
-        voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        voting_escrow: &ve::voting_escrow::VotingEscrow<SailCoinType>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         gauge_base_emissions: u64,
         clock: &sui::clock::Clock,
@@ -1731,7 +1731,7 @@ module distribution::minter {
     public fun kill_gauge<SailCoinType>(
         minter: &mut Minter<SailCoinType>,
         distribution_config: &mut distribution::distribution_config::DistributionConfig,
-        emergency_council_cap: &distribution::emergency_council::EmergencyCouncilCap,
+        emergency_council_cap: &ve::emergency_council::EmergencyCouncilCap,
         gauge_id: ID,
     ) {
         emergency_council_cap.validate_emergency_council_minter_id(object::id(minter));
@@ -1764,7 +1764,7 @@ module distribution::minter {
     public fun revive_gauge<SailCoinType>(
         minter: &mut Minter<SailCoinType>,
         distribution_config: &mut distribution::distribution_config::DistributionConfig,
-        emergency_council_cap: &distribution::emergency_council::EmergencyCouncilCap,
+        emergency_council_cap: &ve::emergency_council::EmergencyCouncilCap,
         gauge_id: ID,
     ) {
         emergency_council_cap.validate_emergency_council_minter_id(object::id(minter));
@@ -1806,12 +1806,12 @@ module distribution::minter {
     public fun reset_gauge<CoinTypeA, CoinTypeB, SailCoinType>(
         minter: &mut Minter<SailCoinType>,
         distribution_config: &mut distribution::distribution_config::DistributionConfig,
-        emergency_council_cap: &distribution::emergency_council::EmergencyCouncilCap,
+        emergency_council_cap: &ve::emergency_council::EmergencyCouncilCap,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         gauge_base_emissions: u64,
         clock: &sui::clock::Clock
     ) {
-        distribution::emergency_council::validate_emergency_council_minter_id(emergency_council_cap, object::id(minter));
+        ve::emergency_council::validate_emergency_council_minter_id(emergency_council_cap, object::id(minter));
         assert!(!minter.is_paused(), EResetGaugeMinterPaused);
         assert!(minter.is_active(clock), EResetGaugeMinterNotActive);
         assert!(gauge_base_emissions > 0, EResetGaugeZeroBaseEmissions);
@@ -2076,7 +2076,7 @@ module distribution::minter {
     /// * If lock_duration is not one of allowed durations
     public fun create_lock_from_o_sail<SailCoinType, OSailCoinType>(
         minter: &mut Minter<SailCoinType>,
-        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
         o_sail: sui::coin::Coin<OSailCoinType>,
         lock_duration_days: u64,
         permanent: bool,
@@ -2085,10 +2085,10 @@ module distribution::minter {
     ) {
         assert!(!minter.is_paused(), ECreateLockFromOSailMinterPaused);
         assert!(minter.is_valid_o_sail_type<SailCoinType, OSailCoinType>(), ECreateLockFromOSailInvalidToken);
-        let lock_duration_seconds = lock_duration_days * distribution::common::day();
+        let lock_duration_seconds = lock_duration_days * ve::common::day();
         let o_sail_type = type_name::get<OSailCoinType>();
         let expiry_date: u64 = *minter.o_sail_expiry_dates.borrow(o_sail_type);
-        let current_time = distribution::common::current_timestamp(clock);
+        let current_time = ve::common::current_timestamp(clock);
         let o_sail_expired = current_time >= expiry_date;
 
         // locking for any duration less than permanent
@@ -2115,13 +2115,13 @@ module distribution::minter {
 
         // received SAIL percent changes from discount percent to 100%
         let percent_to_receive = if (permanent) {
-            distribution::common::persent_denominator()
+            ve::common::persent_denominator()
         } else {
-            let max_extra_percents = distribution::common::persent_denominator() - distribution::common::o_sail_discount();
-            distribution::common::o_sail_discount() + integer_mate::full_math_u64::mul_div_floor(
+            let max_extra_percents = ve::common::persent_denominator() - ve::common::o_sail_discount();
+            ve::common::o_sail_discount() + integer_mate::full_math_u64::mul_div_floor(
                 lock_duration_seconds,
                 max_extra_percents,
-                distribution::common::max_lock_time()
+                ve::common::max_lock_time()
             )
         };
 
@@ -2156,14 +2156,14 @@ module distribution::minter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
     ): Coin<SailCoinType> {
-        assert!(percent_to_receive <= distribution::common::persent_denominator(), EExerciseOSailFreeTooBigPercent);
+        assert!(percent_to_receive <= ve::common::persent_denominator(), EExerciseOSailFreeTooBigPercent);
 
         let o_sail_amount = o_sail.value();
 
         let sail_amount_to_receive = integer_mate::full_math_u64::mul_div_floor(
             o_sail_amount,
             percent_to_receive,
-            distribution::common::persent_denominator()
+            ve::common::persent_denominator()
         );
 
         minter.burn_o_sail(o_sail);
@@ -2220,7 +2220,7 @@ module distribution::minter {
         assert!(minter.is_valid_o_sail_type<SailCoinType, OSailCoinType>(), EExerciseOSailInvalidOSail);
         let o_sail_type = type_name::get<OSailCoinType>();
         let expiry_date: u64 = *minter.o_sail_expiry_dates.borrow(o_sail_type);
-        let current_time = distribution::common::current_timestamp(clock);
+        let current_time = ve::common::current_timestamp(clock);
         assert!(current_time < expiry_date, EExerciseOSailExpired);
         // check distribution config
         assert!(minter.is_valid_distribution_config(distribution_config), EExerciseOSailInvalidDistrConfig);
@@ -2248,7 +2248,7 @@ module distribution::minter {
         };
 
         // there is a possibility that different discount percents will be implemented
-        let discount_percent = distribution::common::o_sail_discount();
+        let discount_percent = ve::common::o_sail_discount();
 
         let usd_amount_to_pay = exercise_o_sail_calc<OSailCoinType>(
             &o_sail,
@@ -2336,14 +2336,14 @@ module distribution::minter {
     ): u64 {
         let o_sail_amount = o_sail.value();
         let o_sail_amount_q64 = (o_sail_amount as u128) << 64;
-        let pay_for_percent = distribution::common::persent_denominator() - discount_percent;
+        let pay_for_percent = ve::common::persent_denominator() - discount_percent;
         // round up amount to pay for to avoid rounding abuse
         let sail_amount_to_pay_for_q64 = integer_mate::full_math_u128::mul_div_ceil(
             pay_for_percent as u128,
             o_sail_amount_q64,
-            distribution::common::persent_denominator() as u128
+            ve::common::persent_denominator() as u128
         );
-        let usd_amount_to_pay_q64 = distribution::common::asset_q64_to_usd_q64(
+        let usd_amount_to_pay_q64 = ve::common::asset_q64_to_usd_q64(
             sail_amount_to_pay_for_q64,
             sail_price_q64,
             true, // round up payment to avoid rounding abuse
@@ -2377,7 +2377,7 @@ module distribution::minter {
         distribution_config: &distribution::distribution_config::DistributionConfig,
     ): u64 {
         let active_period = minter.active_period;
-        let prev_active_period = active_period - distribution::common::epoch();
+        let prev_active_period = active_period - ve::common::epoch();
         minter.o_sail_emissions_by_epoch(prev_active_period)
     }
 
@@ -2853,7 +2853,7 @@ module distribution::minter {
             return (0, true)
         };
 
-        let asset_decimals = distribution::common::sail_decimals();
+        let asset_decimals = ve::common::sail_decimals();
         let usd_decimals = metadata.get_decimals();
 
         if (asset_decimals > usd_decimals) {

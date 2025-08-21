@@ -1,6 +1,7 @@
 /// © 2025 Metabyte Labs, Inc.  All Rights Reserved.
 
-module distribution::voting_escrow {
+module ve::voting_escrow {
+    use ve::voting_escrow_cap::{Self, VotingEscrowCap};
     #[allow(unused_const)]
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
 
@@ -73,7 +74,7 @@ module distribution::voting_escrow {
     const EWithdrawManagedNotManaged: u64 = 922337808846671057;
     const EWithdrawManagedNotLockedType: u64 = 922337809276180894;
     const EWithdrawManagedInvalidManagedLock: u64 = 922337810564657975;
-    const EOwnerProofNotOwner: u64 = 922337320938084761;
+    const EValidateOwnershipNotOwner: u64 = 922337320938084761;
     const EValidateLockDurationInvalid: u64 = 922337411132463514;
     const EGetPastPowerPointError: u64 = 922337711780108697;
     const EGetVotingPowerOwnershipChangeTooRecent: u64 = 922337699754409987;
@@ -235,16 +236,14 @@ module distribution::voting_escrow {
         slope_changes: sui::table::Table<u64, integer_mate::i128::I128>,
         permanent_lock_balance: u64,
         escrow_type: sui::table::Table<ID, EscrowType>,
-        voting_dao: distribution::voting_dao::VotingDAO,
+        voting_dao: ve::voting_dao::VotingDAO,
         can_split: sui::table::Table<address, bool>,
         managed_locks: sui::vec_set::VecSet<ID>,
         allowed_managers: sui::vec_set::VecSet<address>,
         managed_weights: sui::table::Table<ID, sui::table::Table<ID, u64>>,
-        managed_to_locked: sui::table::Table<ID, distribution::locked_managed_reward::LockedManagedReward>,
-        managed_to_free: sui::table::Table<ID, distribution::free_managed_reward::FreeManagedReward>,
+        managed_to_locked: sui::table::Table<ID, ve::locked_managed_reward::LockedManagedReward>,
+        managed_to_free: sui::table::Table<ID, ve::free_managed_reward::FreeManagedReward>,
         id_to_managed: sui::table::Table<ID, ID>,
-        locked_managed_reward_authorized_cap: distribution::reward_authorized_cap::RewardAuthorizedCap,
-        free_managed_reward_authorized_cap: distribution::reward_authorized_cap::RewardAuthorizedCap,
         // bag to be preapred for future updates
         bag: sui::bag::Bag,
     }
@@ -311,7 +310,7 @@ module distribution::voting_escrow {
         assert!(!lock_has_voted, ESplitPositionVoted);
         let locked_balance = *voting_escrow.locked.borrow(lock_id);
         assert!(
-            locked_balance.end > distribution::common::current_timestamp(clock) || locked_balance.is_permanent,
+            locked_balance.end > ve::common::current_timestamp(clock) || locked_balance.is_permanent,
             ESplitAmountZero
         );
         assert!(amount > 0, ESplitAmountZero);
@@ -433,7 +432,7 @@ module distribution::voting_escrow {
         voter_id: ID,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
-    ): VotingEscrow<SailCoinType> {
+    ): (VotingEscrow<SailCoinType>, VotingEscrowCap) {
         assert!(publisher.from_module<VOTING_ESCROW>(), ECreateVotingEscrowInvalidPublisher);
         let uid = object::new(ctx);
         let inner_id = object::uid_to_inner(&uid);
@@ -455,31 +454,30 @@ module distribution::voting_escrow {
             slope_changes: sui::table::new<u64, integer_mate::i128::I128>(ctx),
             permanent_lock_balance: 0,
             escrow_type: sui::table::new<ID, EscrowType>(ctx),
-            voting_dao: distribution::voting_dao::create(ctx),
+            voting_dao: ve::voting_dao::create(ctx),
             can_split: sui::table::new<address, bool>(ctx),
             managed_locks: sui::vec_set::empty<ID>(),
             allowed_managers: sui::vec_set::empty<address>(),
             managed_weights: sui::table::new<ID, sui::table::Table<ID, u64>>(ctx),
-            managed_to_locked: sui::table::new<ID, distribution::locked_managed_reward::LockedManagedReward>(
+            managed_to_locked: sui::table::new<ID, ve::locked_managed_reward::LockedManagedReward>(
                 ctx
             ),
-            managed_to_free: sui::table::new<ID, distribution::free_managed_reward::FreeManagedReward>(
+            managed_to_free: sui::table::new<ID, ve::free_managed_reward::FreeManagedReward>(
                 ctx
             ),
             id_to_managed: sui::table::new<ID, ID>(ctx),
-            locked_managed_reward_authorized_cap: distribution::reward_authorized_cap::create(inner_id, ctx),
-            free_managed_reward_authorized_cap: distribution::reward_authorized_cap::create(inner_id, ctx),
             // bag to be preapred for future updates
             bag: sui::bag::new(ctx),
         };
         let global_point = GlobalPoint {
             bias: integer_mate::i128::from(0),
             slope: integer_mate::i128::from(0),
-            ts: distribution::common::current_timestamp(clock),
+            ts: ve::common::current_timestamp(clock),
             permanent_lock_balance: 0,
         };
         voting_escrow.point_history.add(0, global_point);
-        voting_escrow
+        let voting_escrow_cap = ve::voting_escrow_cap::create(inner_id, ctx);
+        (voting_escrow, voting_escrow_cap)
     }
 
     /// Withdraw tokens from a lock after the lock duration has expired. This allows users to reclaim
@@ -514,7 +512,7 @@ module distribution::voting_escrow {
         );
         let locked_balance = *voting_escrow.locked.borrow(lock_id);
         assert!(!locked_balance.is_permanent, EWithdrawPermanentPosition);
-        assert!(distribution::common::current_timestamp(clock) >= locked_balance.end, EWithdrawBeforeEndTime);
+        assert!(ve::common::current_timestamp(clock) >= locked_balance.end, EWithdrawBeforeEndTime);
         let current_total_locked = voting_escrow.total_locked;
         voting_escrow.total_locked = voting_escrow.total_locked - locked_balance.amount;
         voting_escrow.burn_lock_internal(lock, locked_balance, clock, ctx);
@@ -740,7 +738,7 @@ module distribution::voting_escrow {
         let mut next_slope_change = integer_mate::i128::from(0);
         let current_epoch = voting_escrow.epoch;
         let mut new_epoch = current_epoch;
-        let current_timestamp = distribution::common::current_timestamp(clock);
+        let current_timestamp = ve::common::current_timestamp(clock);
         if (lock_id_opt.is_some()) {
             let permanent_amount = if (next_locked_balance.is_permanent) {
                 next_locked_balance.amount
@@ -753,7 +751,7 @@ module distribution::voting_escrow {
                     integer_mate::full_math_u128::mul_div_floor(
                         (old_locked_balance.amount as u128),
                         1 << 64,
-                        (distribution::common::max_lock_time() as u128)
+                        (ve::common::max_lock_time() as u128)
                     )
                 );
                 old_user_point.bias = old_user_point.slope.mul(
@@ -767,7 +765,7 @@ module distribution::voting_escrow {
                     integer_mate::full_math_u128::mul_div_floor(
                         (next_locked_balance.amount as u128),
                         1 << 64,
-                        (distribution::common::max_lock_time() as u128)
+                        (ve::common::max_lock_time() as u128)
                     )
                 );
                 next_user_point.bias = next_user_point.slope.mul(
@@ -806,10 +804,10 @@ module distribution::voting_escrow {
         };
         let mut current_point = last_point;
         let mut last_point_timestamp = current_point.ts;
-        let mut period_timestamp = distribution::common::to_period(last_point_timestamp);
+        let mut period_timestamp = ve::common::to_period(last_point_timestamp);
         let mut i = 0;
         while (i < 255) {
-            let next_epoch_timestamp = period_timestamp + distribution::common::epoch();
+            let next_epoch_timestamp = period_timestamp + ve::common::epoch();
             period_timestamp = next_epoch_timestamp;
             let mut slope_change = integer_mate::i128::from(0);
             if (next_epoch_timestamp > current_timestamp) {
@@ -981,12 +979,12 @@ module distribution::voting_escrow {
         voting_escrow.validate_lock_duration(lock_duration_days);
         let lock_amount = coin_to_lock.value();
         assert!(lock_amount > 0, ECreateLockAmountZero);
-        let current_time = distribution::common::current_timestamp(clock);
+        let current_time = ve::common::current_timestamp(clock);
         let sender = tx_context::sender(ctx);
         let end_time = if (permanent || perpetual) {
             0
         } else {
-            distribution::common::to_period(current_time + lock_duration_days * distribution::common::day())
+            ve::common::to_period(current_time + lock_duration_days * ve::common::day())
         };
         let (lock_immut, create_lock_receipt) = voting_escrow.create_lock_internal(
             sender,
@@ -1039,11 +1037,11 @@ module distribution::voting_escrow {
         voting_escrow.validate_lock_duration(duration_days);
         let lock_amount = coin.value();
         assert!(lock_amount > 0, ECreateLockForAmountZero);
-        let start_time = distribution::common::current_timestamp(clock);
+        let start_time = ve::common::current_timestamp(clock);
         let end_time = if (permanent || perpetual) {
             0
         } else {
-            distribution::common::to_period(start_time + duration_days * distribution::common::day())
+            ve::common::to_period(start_time + duration_days * ve::common::day())
         };
         let (lock_immut, create_lock_receipt) = voting_escrow.create_lock_internal(
             owner,
@@ -1168,7 +1166,7 @@ module distribution::voting_escrow {
         let (lock, create_lock_receipt) = voting_escrow.create_lock_internal(
             owner,
             0,
-            distribution::common::current_timestamp(clock),
+            ve::common::current_timestamp(clock),
             0,
             true,
             false,
@@ -1180,13 +1178,13 @@ module distribution::voting_escrow {
         voting_escrow.managed_locks.insert(lock_id);
         voting_escrow.escrow_type.add(lock_id, EscrowType::MANAGED);
         let sail_coin_type = std::type_name::get<SailCoinType>();
-        let lock_managed_reward = distribution::locked_managed_reward::create(
+        let lock_managed_reward = ve::locked_managed_reward::create(
             voting_escrow.voter,
             object::id<VotingEscrow<SailCoinType>>(voting_escrow),
             sail_coin_type,
             ctx
         );
-        let free_managed_reward = distribution::free_managed_reward::create(
+        let free_managed_reward = ve::free_managed_reward::create(
             voting_escrow.voter,
             object::id<VotingEscrow<SailCoinType>>(voting_escrow),
             sail_coin_type,
@@ -1196,10 +1194,10 @@ module distribution::voting_escrow {
             owner,
             lock_id,
             sender,
-            locked_managed_reward: object::id<distribution::locked_managed_reward::LockedManagedReward>(
+            locked_managed_reward: object::id<ve::locked_managed_reward::LockedManagedReward>(
                 &lock_managed_reward
             ),
-            free_managed_reward: object::id<distribution::free_managed_reward::FreeManagedReward>(&free_managed_reward),
+            free_managed_reward: object::id<ve::free_managed_reward::FreeManagedReward>(&free_managed_reward),
         };
         sui::event::emit<EventCreateManaged>(create_managed_event);
         voting_escrow.managed_to_locked.add(lock_id, lock_managed_reward);
@@ -1350,7 +1348,7 @@ module distribution::voting_escrow {
         assert!(
             clock.timestamp_ms() - *voting_escrow.ownership_change_at.borrow(
                 lock_id
-            ) >= distribution::common::get_time_to_finality_ms(),
+            ) >= ve::common::get_time_to_finality_ms(),
             EDelegateOwnershipChangeTooRecent
         );
         let current_delegatee = voting_escrow.voting_dao.delegatee(lock_id);
@@ -1465,34 +1463,34 @@ module distribution::voting_escrow {
     ///
     /// # Arguments
     /// * `voting_escrow` - The voting escrow instance
-    /// * `voter_cap` - The voter capability to authorize the operation
+    /// * `voting_escrow_cap` - The capability to authorize the operation
     /// * `lock` - The lock containing tokens to deposit
     /// * `managed_lock` - The managed lock to deposit into
     /// * `clock` - The system clock
     /// * `ctx` - The transaction context
     ///
     /// # Aborts
-    /// * If the voter capability doesn't match the voting escrow
+    /// * If the voting escrow capability doesn't match the voting escrow
     /// * If the managed lock is not of type MANAGED
     /// * If the managed lock is deactivated
     /// * If the source lock is not of type NORMAL
     /// * If the source lock has no balance
     public fun deposit_managed<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
-        voter_cap: &distribution::voter_cap::VoterCap,
+        voting_escrow_cap: &VotingEscrowCap,
         lock: &mut Lock,
         managed_lock: &mut Lock,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        assert!(voter_cap.get_voter_id() == voting_escrow.voter, EDepositManagedInvalidVoter);
+        voting_escrow_cap.validate(object::id(voting_escrow));
         let lock_id = object::id<Lock>(lock);
         let managed_lock_id = object::id<Lock>(managed_lock);
         assert!(voting_escrow.escrow_type(managed_lock_id) == EscrowType::MANAGED, EDepositManagedNotManagedType);
         assert!(!voting_escrow.deactivated(managed_lock_id), EDepositManagedDeactivated);
         assert!(voting_escrow.escrow_type(lock_id) == EscrowType::NORMAL, EDepositManagedNotNormalEscrow);
         assert!(
-            voting_escrow.balance_of_nft_at_internal(lock_id, distribution::common::current_timestamp(clock)) > 0,
+            voting_escrow.balance_of_nft_at_internal(lock_id, ve::common::current_timestamp(clock)) > 0,
             EDepositManagedNoBalance
         );
         let current_locked_balance = *voting_escrow.locked.borrow(lock_id);
@@ -1526,14 +1524,12 @@ module distribution::voting_escrow {
         voting_escrow.id_to_managed.add(lock_id, managed_lock_id);
         voting_escrow.escrow_type.add(lock_id, EscrowType::LOCKED);
         voting_escrow.managed_to_locked.borrow_mut(managed_lock_id).deposit(
-            &voting_escrow.locked_managed_reward_authorized_cap,
             current_locked_amount,
             lock_id,
             clock,
             ctx
         );
         voting_escrow.managed_to_free.borrow_mut(managed_lock_id).deposit(
-            &voting_escrow.free_managed_reward_authorized_cap,
             current_locked_amount,
             lock_id,
             clock,
@@ -1614,11 +1610,13 @@ module distribution::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        let owner_proof = voting_escrow.owner_proof(lock, ctx);
+        let owner = voting_escrow.validate_ownership(lock, ctx);
+        let lock_id = object::id(lock);
         voting_escrow.managed_to_free.borrow_mut(
             *voting_escrow.id_to_managed.borrow(object::id<Lock>(lock))
         ).get_reward<RewardCoinType>(
-            owner_proof,
+            owner,
+            lock_id,
             clock,
             ctx
         );
@@ -1635,7 +1633,7 @@ module distribution::voting_escrow {
     /// * `ctx` - The transaction context
     public fun free_managed_reward_notify_reward<SailCoinType, RewardCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
-        whitelisted_token: Option<distribution::whitelisted_tokens::WhitelistedToken>,
+        whitelisted_token: Option<ve::whitelisted_tokens::WhitelistedToken>,
         coin: sui::coin::Coin<RewardCoinType>,
         managed_lock_id: ID,
         clock: &sui::clock::Clock,
@@ -1748,10 +1746,10 @@ module distribution::voting_escrow {
         assert!(
             clock.timestamp_ms() - *voting_escrow.ownership_change_at.borrow(
                 lock_id
-            ) >= distribution::common::get_time_to_finality_ms(),
+            ) >= ve::common::get_time_to_finality_ms(),
             EGetVotingPowerOwnershipChangeTooRecent
         );
-        voting_escrow.balance_of_nft_at_internal(lock_id, distribution::common::current_timestamp(clock))
+        voting_escrow.balance_of_nft_at_internal(lock_id, ve::common::current_timestamp(clock))
     }
 
     /// Returns the ID of the managed lock associated with a locked lock.
@@ -1819,7 +1817,7 @@ module distribution::voting_escrow {
         assert!(exists, EIncreaseAmountNotExists);
         assert!(current_locked_balance.amount > 0, EIncreaseAmountNoBalance);
         assert!(
-            current_locked_balance.end > distribution::common::current_timestamp(
+            current_locked_balance.end > ve::common::current_timestamp(
                 clock
             ) || current_locked_balance.is_permanent,
             EIncreaseTimeNotNormalEscrow
@@ -1846,7 +1844,6 @@ module distribution::voting_escrow {
         );
         if (escrow_type == EscrowType::MANAGED) {
             voting_escrow.managed_to_locked.borrow_mut(lock_id).notify_reward_amount(
-                &voting_escrow.locked_managed_reward_authorized_cap,
                 sui::coin::from_balance<SailCoinType>(voting_escrow.balance.split(amount_to_add), ctx),
                 clock,
                 ctx
@@ -1872,15 +1869,15 @@ module distribution::voting_escrow {
         assert!(is_normal_escrow, EIncreaseTimeNotNormalEscrow);
         let current_locked_balance = *voting_escrow.locked.borrow(lock_id);
         assert!(!current_locked_balance.is_permanent, EIncreaseTimePermanent);
-        let current_time = distribution::common::current_timestamp(clock);
-        let lock_end_epoch_time = distribution::common::to_period(
-            current_time + new_lock_duration_days * distribution::common::day()
+        let current_time = ve::common::current_timestamp(clock);
+        let lock_end_epoch_time = ve::common::to_period(
+            current_time + new_lock_duration_days * ve::common::day()
         );
         assert!(current_locked_balance.end > current_time, EIncreaseTimeExpired);
         assert!(current_locked_balance.amount > 0, EIncreaseTimeNoBalance);
         assert!(lock_end_epoch_time > current_locked_balance.end, EIncreaseTimeNotLater);
         assert!(
-            lock_end_epoch_time < current_time + (distribution::common::max_lock_time() as u64),
+            lock_end_epoch_time < current_time + (ve::common::max_lock_time() as u64),
             EIncreaseTimeTooLong
         );
         voting_escrow.deposit_for_internal(
@@ -2007,7 +2004,7 @@ module distribution::voting_escrow {
         assert!(is_normal_escrow, ELockPermanentNotNormalEscrow);
         let v3 = *voting_escrow.locked.borrow(lock_id);
         assert!(!v3.is_permanent, ELockPermanentAlreadyPermanent);
-        assert!(v3.end > distribution::common::current_timestamp(clock), ELockPermanentExpired);
+        assert!(v3.end > ve::common::current_timestamp(clock), ELockPermanentExpired);
         assert!(v3.amount > 0, ELockPermanentNoBalance);
         voting_escrow.lock_permanent_internal(lock, clock, ctx);
     }
@@ -2069,7 +2066,7 @@ module distribution::voting_escrow {
     }
 
     public fun managed_to_free<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>, lock_id: ID): ID {
-        object::id<distribution::free_managed_reward::FreeManagedReward>(
+        object::id<ve::free_managed_reward::FreeManagedReward>(
             voting_escrow.managed_to_free.borrow(lock_id)
         )
     }
@@ -2106,7 +2103,7 @@ module distribution::voting_escrow {
         assert!(lock_id_a != lock_id_b, EMergeSamePosition);
         let lock_b_balance = *voting_escrow.locked.borrow(lock_id_b);
         assert!(
-            lock_b_balance.end > distribution::common::current_timestamp(clock) || lock_b_balance.is_permanent == true,
+            lock_b_balance.end > ve::common::current_timestamp(clock) || lock_b_balance.is_permanent == true,
             EMergeSourcePermanent
         );
         let lock_a_balance = *voting_escrow.locked.borrow(lock_id_a);
@@ -2171,22 +2168,19 @@ module distribution::voting_escrow {
         *voting_escrow.owner_of.borrow(lock_id)
     }
 
-    public fun owner_proof<SailCoinType>(
+    public fun validate_ownership<SailCoinType>(
         voting_escrow: &VotingEscrow<SailCoinType>,
         lock: &Lock,
         ctx: &mut TxContext
-    ): distribution::lock_owner::OwnerProof {
+    ): address {
         voting_escrow.validate_lock(lock);
         let sender = tx_context::sender(ctx);
         assert!(
             voting_escrow.owner_of.borrow(object::id<Lock>(lock)) == &sender,
-            EOwnerProofNotOwner
+            EValidateOwnershipNotOwner
         );
-        distribution::lock_owner::issue(
-            object::id<VotingEscrow<SailCoinType>>(voting_escrow),
-            object::id<Lock>(lock),
-            tx_context::sender(ctx)
-        )
+
+        sender
     }
 
     public fun ownership_change_at<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>, lock_id: ID): u64 {
@@ -2270,7 +2264,7 @@ module distribution::voting_escrow {
     /// * If the lock is already in the requested activation state
     public fun set_managed_lock_deactivated<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
-        emergency_council_cap: &distribution::emergency_council::EmergencyCouncilCap,
+        emergency_council_cap: &ve::emergency_council::EmergencyCouncilCap,
         lock_id: ID,
         deactivated: bool
     ) {
@@ -2363,9 +2357,9 @@ module distribution::voting_escrow {
     }
 
 
-    public fun create_team_cap<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>, publisher: &sui::package::Publisher, ctx: &mut TxContext): distribution::team_cap::TeamCap {
+    public fun create_team_cap<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>, publisher: &sui::package::Publisher, ctx: &mut TxContext): ve::team_cap::TeamCap {
         assert!(publisher.from_module<VOTING_ESCROW>(), EGrantTeamCapInvalidPublisher);
-        let team_cap = distribution::team_cap::create(object::id(voting_escrow), ctx);
+        let team_cap = ve::team_cap::create(object::id(voting_escrow), ctx);
 
         team_cap
     }
@@ -2386,7 +2380,7 @@ module distribution::voting_escrow {
     /// Emits an EventToggleSplit event with the address and new permission status
     public fun toggle_split<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
-        team_cap: &distribution::team_cap::TeamCap,
+        team_cap: &ve::team_cap::TeamCap,
         who: address,
         allowed: bool
     ) {
@@ -2461,10 +2455,10 @@ module distribution::voting_escrow {
         let mut bias = point.bias;
         let mut slope = point.slope;
         let point_time = point.ts;
-        let mut point_epoch_time = distribution::common::to_period(point_time);
+        let mut point_epoch_time = ve::common::to_period(point_time);
         let mut i = 0;
         while (i < 255) {
-            let next_epoch_time = point_epoch_time + distribution::common::epoch();
+            let next_epoch_time = point_epoch_time + ve::common::epoch();
             point_epoch_time = next_epoch_time;
             let mut slope_changes = integer_mate::i128::from(0);
             if (next_epoch_time > time) {
@@ -2536,9 +2530,9 @@ module distribution::voting_escrow {
         let mut old_locked_balance = *voting_escrow.locked.borrow(lock_id);
         assert!(old_locked_balance.is_permanent, EUnlockPermanentNotPermanent);
         assert!(!old_locked_balance.is_perpetual, EUnlockPermanentIsPerpetual);
-        let current_time = distribution::common::current_timestamp(clock);
+        let current_time = ve::common::current_timestamp(clock);
         voting_escrow.permanent_lock_balance = voting_escrow.permanent_lock_balance - old_locked_balance.amount;
-        old_locked_balance.end = distribution::common::to_period(current_time + distribution::common::max_lock_time());
+        old_locked_balance.end = ve::common::to_period(current_time + ve::common::max_lock_time());
         old_locked_balance.is_permanent = false;
         voting_escrow.delegate_internal(lock, object::id_from_address(@0x0), clock, ctx);
         let current_locked_balance = *voting_escrow.locked.borrow(lock_id);
@@ -2582,8 +2576,8 @@ module distribution::voting_escrow {
 
     fun validate_lock_duration<SailCoinType>(_voting_escrow: &VotingEscrow<SailCoinType>, duration_days: u64) {
         assert!(
-            duration_days * distribution::common::day() >= distribution::common::min_lock_time() &&
-                duration_days * distribution::common::day() <= distribution::common::max_lock_time(),
+            duration_days * ve::common::day() >= ve::common::min_lock_time() &&
+                duration_days * ve::common::day() <= ve::common::max_lock_time(),
             EValidateLockDurationInvalid
         );
     }
@@ -2595,23 +2589,23 @@ module distribution::voting_escrow {
     ///
     /// # Arguments
     /// * `voting_escrow` - The voting escrow instance
-    /// * `voter_cap` - The voter capability to authorize this operation
+    /// * `voting_escrow_cap` - The capability to authorize this operation
     /// * `lock_id` - The ID of the lock being used for voting
     /// * `is_voting` - Boolean flag: true when the lock is actively voting, false when done
     ///
     /// # Aborts
-    /// * If the voter capability doesn't match the voting escrow instance
+    /// * If the voting escrow capability doesn't match the voting escrow instance
     ///
     /// # Security
-    /// This operation requires the voter capability to prevent unauthorized freezing of positions.
+    /// This operation requires the voting escrow capability to prevent unauthorized freezing of positions.
     /// Only the authorized voter system should be able to mark locks as voting.
     public fun voting<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
-        voter_cap: &distribution::voter_cap::VoterCap,
+        voting_escrow_cap: &VotingEscrowCap,
         lock_id: ID,
         is_voting: bool
     ) {
-        assert!(voting_escrow.voter == voter_cap.get_voter_id(), EVotingInvalidVoter);
+        voting_escrow_cap.validate(object::id(voting_escrow));
         if (voting_escrow.voted.contains(lock_id)) {
             voting_escrow.voted.remove(lock_id);
         };
@@ -2639,7 +2633,7 @@ module distribution::voting_escrow {
         if (locked_balance.is_permanent || locked_balance.is_perpetual) {
             return (amount, 0)
         };
-        let current_time = distribution::common::current_timestamp(clock);
+        let current_time = ve::common::current_timestamp(clock);
         if (locked_balance.end <= current_time) {
             return (0, amount)
         };
@@ -2647,7 +2641,7 @@ module distribution::voting_escrow {
         let voting_power_delta = integer_mate::full_math_u64::mul_div_floor(
             amount,
             remaining_time,
-            distribution::common::max_lock_time()
+            ve::common::max_lock_time()
         );
         
         (voting_power_delta, 0)
@@ -2658,10 +2652,9 @@ module distribution::voting_escrow {
     ///
     /// # Arguments
     /// * `voting_escrow` - The voting escrow instance
-    /// * `voter_cap` - The voter capability to authorize the operation
+    /// * `voting_escrow_cap` - The voter capability to authorize the operation
     /// * `lock` - The original lock to withdraw back to
     /// * `managed_lock` - The managed lock to withdraw from
-    /// * `owner_proof` - Proof of ownership of the lock
     /// * `clock` - The system clock
     /// * `ctx` - The transaction context
     ///
@@ -2672,15 +2665,15 @@ module distribution::voting_escrow {
     /// * If the managed lock ID doesn't match
     public fun withdraw_managed<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
-        voter_cap: &distribution::voter_cap::VoterCap,
+        voting_escrow_cap: &VotingEscrowCap,
         lock: &mut Lock,
         managed_lock: &mut Lock,
-        owner_proof: distribution::lock_owner::OwnerProof,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
         let lock_id = object::id<Lock>(lock);
-        assert!(voter_cap.get_voter_id() == voting_escrow.voter, EWithdrawManagedInvalidVoter);
+        voting_escrow_cap.validate(object::id(voting_escrow));
+        let owner = voting_escrow.validate_ownership(lock, ctx);
         assert!(voting_escrow.id_to_managed.contains(lock_id), EWithdrawManagedNotManaged);
         assert!(voting_escrow.escrow_type(lock_id) == EscrowType::LOCKED, EWithdrawManagedNotLockedType);
         let managed_lock_id = *voting_escrow.id_to_managed.borrow(lock_id);
@@ -2688,12 +2681,11 @@ module distribution::voting_escrow {
         let locked_managed_reward = voting_escrow.managed_to_locked.borrow_mut(managed_lock_id);
         let managed_weight = *voting_escrow.managed_weights.borrow(lock_id).borrow(managed_lock_id);
         let new_managed_weight = managed_weight + locked_managed_reward.earned<SailCoinType>(lock_id, clock);
-        let lock_end_time = distribution::common::to_period(
-            distribution::common::current_timestamp(clock) + distribution::common::max_lock_time()
+        let lock_end_time = ve::common::to_period(
+            ve::common::current_timestamp(clock) + ve::common::max_lock_time()
         );
-        voting_escrow.managed_to_free.borrow_mut(managed_lock_id).get_reward<SailCoinType>(owner_proof, clock, ctx);
+        voting_escrow.managed_to_free.borrow_mut(managed_lock_id).get_reward<SailCoinType>(owner, lock_id, clock, ctx);
         voting_escrow.balance.join<SailCoinType>(locked_managed_reward.get_reward<SailCoinType>(
-            &voting_escrow.locked_managed_reward_authorized_cap,
             lock_id,
             clock,
             ctx
@@ -2734,14 +2726,12 @@ module distribution::voting_escrow {
         );
         voting_escrow.locked.add(managed_lock_id, managed_lock_balance);
         voting_escrow.managed_to_locked.borrow_mut(managed_lock_id).withdraw(
-            &voting_escrow.locked_managed_reward_authorized_cap,
             managed_weight,
             lock_id,
             clock,
             ctx
         );
         voting_escrow.managed_to_free.borrow_mut(managed_lock_id).withdraw(
-            &voting_escrow.free_managed_reward_authorized_cap,
             managed_weight,
             lock_id,
             clock,

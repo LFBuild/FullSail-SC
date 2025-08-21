@@ -1,6 +1,6 @@
 /// © 2025 Metabyte Labs, Inc.  All Rights Reserved.
 
-module distribution::reward_distributor_cap {
+module ve::reward_distributor_cap {
     #[allow(unused_const)]
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
 

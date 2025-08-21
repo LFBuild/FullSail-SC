@@ -42,6 +42,9 @@ override = true
 [dependencies.locker_cap]
 local = "../locker_cap"
 
+[dependencies.ve]
+local = "../ve"
+
 [dependencies.Switchboard]
 git = "https://github.com/LFBuild/sui.git"
 subdir = "on_demand/"

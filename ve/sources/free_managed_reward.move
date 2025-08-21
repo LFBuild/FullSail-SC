@@ -15,22 +15,20 @@
 /// This module integrates with other distribution components:
 /// - voting_escrow: For time-weighted balances
 /// - reward: For core reward distribution logic
-/// - lock_owner: For ownership verification
 /// - whitelisted_tokens: For token validation
-/// - reward_authorized_cap: For authorization mechanisms
-
-module distribution::free_managed_reward {
+module ve::free_managed_reward {
 
     #[allow(unused_const)]
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
-
-    const EGetRewardInvalidProver: u64 = 9223372337502486527;
 
     const ENotifyRewardAmountTokenNotAllowed: u64 = 9223372389042094079;
 
     public struct FreeManagedReward has store, key {
         id: UID,
-        reward: distribution::reward::Reward,
+        voter: ID,
+        ve: ID,
+        reward: ve::reward::Reward,
+        reward_cap: ve::reward_cap::RewardCap,
         // bag to be preapred for future updates
         bag: sui::bag::Bag,
     }
@@ -55,17 +53,18 @@ module distribution::free_managed_reward {
         type_name_vec.push_back(reward_coin_type);
         let id = object::new(ctx);
         let inner_id = id.uid_to_inner();
-        FreeManagedReward {
-            id,
-            reward: distribution::reward::create(
+        let (reward, reward_cap) = ve::reward::create(
                 inner_id,
-                voter,
-                option::some(ve),
-                ve,
                 type_name_vec,
                 false,
                 ctx
-            ),
+        );
+        FreeManagedReward {
+            id,
+            voter,
+            ve,
+            reward,
+            reward_cap,
             bag: sui::bag::new(ctx),
         }
     }
@@ -74,7 +73,6 @@ module distribution::free_managed_reward {
     /// 
     /// # Arguments
     /// * `reward` - The FreeManagedReward object to deposit into
-    /// * `reward_authorized_cap` - Capability object for authorization
     /// * `amount` - The amount of tokens to deposit
     /// * `lock_id` - The ID of the lock to deposit for
     /// * `clock` - Clock object for timestamp
@@ -82,15 +80,14 @@ module distribution::free_managed_reward {
     /// 
     /// # Aborts
     /// * If the authorization is invalid
-    public fun deposit(
+    public(package) fun deposit(
         reward: &mut FreeManagedReward,
-        reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
         amount: u64,
         lock_id: ID,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        reward.reward.deposit(reward_authorized_cap, amount, lock_id, clock, ctx);
+        reward.reward.deposit(&reward.reward_cap, amount, lock_id, clock, ctx);
     }
 
     /// Calculates how much of a specific reward token type a lock has earned.
@@ -126,18 +123,17 @@ module distribution::free_managed_reward {
         reward.reward.rewards_list_length()
     }
 
-    public fun withdraw(
+    public(package) fun withdraw(
         reward: &mut FreeManagedReward,
-        reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
         amount: u64,
         lock_id: ID,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        reward.reward.withdraw(reward_authorized_cap, amount, lock_id, clock, ctx);
+        reward.reward.withdraw(&reward.reward_cap, amount, lock_id, clock, ctx);
     }
 
-    public fun borrow_reward(reward: &FreeManagedReward): &distribution::reward::Reward {
+    public fun borrow_reward(reward: &FreeManagedReward): &ve::reward::Reward {
         &reward.reward
     }
 
@@ -150,23 +146,21 @@ module distribution::free_managed_reward {
     /// 
     /// # Arguments
     /// * `reward` - The FreeManagedReward object
-    /// * `owner_proff` - Proof of ownership of the lock
+    /// * `owner` - The address of the owner of the lock
+    /// * `lock_id` - The ID of the lock to claim rewards for
     /// * `clock` - Clock object for timestamp
     /// * `ctx` - Transaction context
-    /// 
-    /// # Aborts
-    /// * If the prover ID in the ownership proof doesn't match the reward's ve ID
-    public fun get_reward<RewardCoinType>(
+    public(package) fun get_reward<RewardCoinType>(
         reward: &mut FreeManagedReward,
-        owner_proff: distribution::lock_owner::OwnerProof,
+        owner: address,
+        lock_id: ID,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        let (prover, lock, owner) = owner_proff.consume();
-        assert!(reward.reward.ve() == prover, EGetRewardInvalidProver);
         let mut reward_coin = reward.reward.get_reward_internal<RewardCoinType>(
-            tx_context::sender(ctx),
-            lock,
+            &reward.reward_cap,
+            owner,
+            lock_id,
             clock,
             ctx
         );
@@ -197,7 +191,7 @@ module distribution::free_managed_reward {
     /// * If the whitelisted token validation fails
     public fun notify_reward_amount<RewardCoinType>(
         reward: &mut FreeManagedReward,
-        mut whitelisted_token: Option<distribution::whitelisted_tokens::WhitelistedToken>,
+        mut whitelisted_token: Option<ve::whitelisted_tokens::WhitelistedToken>,
         coin: sui::coin::Coin<RewardCoinType>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
@@ -208,14 +202,22 @@ module distribution::free_managed_reward {
                 whitelisted_token.is_some(),
                 ENotifyRewardAmountTokenNotAllowed
             );
-            whitelisted_token.extract().validate<RewardCoinType>(reward.reward.voter());
-            reward.reward.add_reward_token(coin_type_name);
+            whitelisted_token.extract().validate<RewardCoinType>(reward.voter());
+            reward.reward.add_reward_token(&reward.reward_cap, coin_type_name);
         };
         if (whitelisted_token.is_some()) {
-            whitelisted_token.extract().validate<RewardCoinType>(reward.reward.voter());
+            whitelisted_token.extract().validate<RewardCoinType>(reward.voter());
         };
         whitelisted_token.destroy_none();
-        reward.reward.notify_reward_amount_internal(coin.into_balance(), clock, ctx);
+        reward.reward.notify_reward_amount_internal(&reward.reward_cap, coin.into_balance(), clock, ctx);
+    }
+
+    public fun voter(reward: &FreeManagedReward): ID {
+        reward.voter
+    }
+
+    public fun ve(reward: &FreeManagedReward): ID {
+        reward.ve
     }
 }
 

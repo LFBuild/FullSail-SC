@@ -42,8 +42,8 @@ module integrate::setup_distribution {
             tx_context::sender(ctx)
         );
         transfer::public_share_object(rebase_distributor);
-        transfer::public_share_object<distribution::voting_escrow::VotingEscrow<SailCoinType>>(
-            distribution::voting_escrow::create<SailCoinType>(
+        transfer::public_share_object<ve::voting_escrow::VotingEscrow<SailCoinType>>(
+            ve::voting_escrow::create<SailCoinType>(
                 voting_escrow_publisher,
                 object::id<distribution::voter::Voter>(&voter),
                 clock,

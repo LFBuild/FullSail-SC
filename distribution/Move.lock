@@ -2,8 +2,8 @@
 
 [move]
 version = 3
-manifest_digest = "DA5A7A75AA268F6C52ED9889D1F8B6217B7665B20C3FB28EB88755DF1BBFB7C1"
-deps_digest = "04732BFEF428F74DE262001DC455D76B909EBC394B034A9A15CC095E4BDD9CEF"
+manifest_digest = "A786022E4F1D5CCB7655371211692AF40802E02287658B91101AF1BC4973CD00"
+deps_digest = "8227D341C0550A37580C10FA45FE148A465225149C69D179737E0FE454AD6AEC"
 dependencies = [
   { id = "Sui", name = "Sui" },
   { id = "Switchboard", name = "Switchboard" },
@@ -13,6 +13,7 @@ dependencies = [
   { id = "locker_cap", name = "locker_cap" },
   { id = "price_monitor", name = "price_monitor" },
   { id = "price_provider", name = "price_provider" },
+  { id = "ve", name = "ve" },
 ]
 
 [[move.package]]
@@ -96,6 +97,15 @@ source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "dev",
 
 dependencies = [
   { id = "Sui", name = "Sui" },
+]
+
+[[move.package]]
+id = "ve"
+source = { local = "../ve" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+  { id = "integer_mate", name = "integer_mate" },
 ]
 
 [move.toolchain-version]

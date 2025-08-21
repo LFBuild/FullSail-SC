@@ -4,8 +4,8 @@ module distribution::exercise_o_sail_tests;
 use distribution::setup;
 use distribution::minter::{Self, Minter};
 use distribution::voter::{Self, Voter};
-use distribution::voting_escrow::{Self, VotingEscrow, Lock};
-use distribution::reward_distributor::{Self, RewardDistributor};
+use ve::voting_escrow::{Self, VotingEscrow, Lock};
+use ve::reward_distributor::{Self, RewardDistributor};
 use distribution::distribution_config::{Self, DistributionConfig};
 use distribution::exercise_fee_reward;
 
@@ -18,7 +18,7 @@ use sui::test_scenario;
 use sui::test_utils;
 use sui::clock::{Self, Clock};
 use sui::coin::{Self, Coin};
-use distribution::common; // Import common for time constants
+use ve::common; // Import common for time constants
 
 use switchboard::aggregator::{Self, Aggregator};
 use price_monitor::price_monitor::{Self, PriceMonitor};

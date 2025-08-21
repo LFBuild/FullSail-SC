@@ -121,17 +121,15 @@ module distribution::voter {
         // the history of all coins that were distributed. In case we need to iterate over them to calculate rewards.
         // Linked table cos we probably need both to check if a sertain coin was used as reward and to iterate.
         reward_tokens: LinkedTable<TypeName, bool>,
-        // Coins that allowed to be used as bribe rewards or free managed rewards
-        is_whitelisted_token: Table<std::type_name::TypeName, bool>,
+        whitelisted_manager: ve::whitelisted_tokens::WhitelistManager,
+        whitelisted_manager_cap: ve::whitelisted_tokens::WhitelistManagerCap,
         is_whitelisted_nft: Table<LockID, bool>,
         max_voting_num: u64,
         last_voted: Table<LockID, u64>,
         pool_vote: Table<LockID, vector<PoolID>>,
-        gauge_to_fee_authorized_cap: distribution::reward_authorized_cap::RewardAuthorizedCap,
         gauge_to_fee: Table<GaugeID, distribution::fee_voting_reward::FeeVotingReward>,
-        gauge_to_bribe_authorized_cap: distribution::reward_authorized_cap::RewardAuthorizedCap,
         exercise_fee_reward: distribution::exercise_fee_reward::ExerciseFeeReward,
-        exercise_fee_authorized_cap: distribution::reward_authorized_cap::RewardAuthorizedCap,
+        voting_escrow_cap: ve::voting_escrow_cap::VotingEscrowCap,
         // bag to be preapred for future updates
         bag: sui::bag::Bag,
     }
@@ -139,13 +137,6 @@ module distribution::voter {
     public struct EventNotifyEpochToken has copy, drop, store {
         notifier: ID,
         token: TypeName,
-    }
-
-    /// Event emitted when a token is whitelisted or de-whitelisted
-    public struct EventWhitelistToken has copy, drop, store {
-        sender: address,
-        token: std::type_name::TypeName,
-        listed: bool,
     }
 
     /// Event emitted when an NFT is whitelisted or de-whitelisted
@@ -249,11 +240,13 @@ module distribution::voter {
         publisher: &sui::package::Publisher,
         global_config: ID,
         distribution_config: ID,
+        voting_escrow_cap: ve::voting_escrow_cap::VotingEscrowCap,
         ctx: &mut TxContext
     ): (Voter, distribution::distribute_cap::DistributeCap) {
         assert!(publisher.from_module<VOTER>(), ECreateVoterInvalidPublisher);
         let uid = object::new(ctx);
         let id = *object::uid_as_inner(&uid);
+        let (whitelisted_manager, whitelisted_manager_cap) = ve::whitelisted_tokens::create(id, ctx);
         let voter = Voter {
             id: uid,
             global_config,
@@ -271,16 +264,15 @@ module distribution::voter {
             balances: sui::bag::new(ctx),
             current_epoch_token: option::none<TypeName>(),
             reward_tokens: linked_table::new<TypeName, bool>(ctx),
-            is_whitelisted_token: table::new<std::type_name::TypeName, bool>(ctx),
+            whitelisted_manager,
+            whitelisted_manager_cap,
             is_whitelisted_nft: table::new<LockID, bool>(ctx),
             max_voting_num: 10,
             last_voted: table::new<LockID, u64>(ctx),
             pool_vote: table::new<LockID, vector<PoolID>>(ctx),
-            gauge_to_fee_authorized_cap: distribution::reward_authorized_cap::create(id, ctx),
             gauge_to_fee: table::new<GaugeID, distribution::fee_voting_reward::FeeVotingReward>(ctx),
-            gauge_to_bribe_authorized_cap: distribution::reward_authorized_cap::create(id, ctx),
             exercise_fee_reward: distribution::exercise_fee_reward::create(id, vector[], ctx),
-            exercise_fee_authorized_cap: distribution::reward_authorized_cap::create(id, ctx),
+            voting_escrow_cap,
             // bag to be preapred for future updates
             bag: sui::bag::new(ctx),
         };
@@ -306,22 +298,22 @@ module distribution::voter {
     /// * If the current time is after the epoch voting end time
     public fun deposit_managed<SailCoinType>(
         voter: &mut Voter,
-        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
         distribution_config: &distribution::distribution_config::DistributionConfig,
-        lock: &mut distribution::voting_escrow::Lock,
-        managed_lock: &mut distribution::voting_escrow::Lock,
+        lock: &mut ve::voting_escrow::Lock,
+        managed_lock: &mut ve::voting_escrow::Lock,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        let lock_id = into_lock_id(object::id<distribution::voting_escrow::Lock>(lock));
+        let lock_id = into_lock_id(object::id<ve::voting_escrow::Lock>(lock));
         voter.assert_only_new_epoch(lock_id, clock);
-        let current_time = distribution::common::current_timestamp(clock);
-        assert!(current_time <= distribution::common::epoch_vote_end(current_time), EDepositManagedEpochVoteEnded);
+        let current_time = ve::common::current_timestamp(clock);
+        assert!(current_time <= ve::common::epoch_vote_end(current_time), EDepositManagedEpochVoteEnded);
         if (voter.last_voted.contains(lock_id)) {
             voter.last_voted.remove(lock_id);
         };
         voter.last_voted.add(lock_id, current_time);
-        voting_escrow.deposit_managed(&voter.voter_cap, lock, managed_lock, clock, ctx);
+        voting_escrow.deposit_managed(&voter.voting_escrow_cap, lock, managed_lock, clock, ctx);
         let balance = voting_escrow.balance_of_nft_at(lock_id.id, current_time);
         let managed_lock_id = into_lock_id(object::id(managed_lock));
         voter.poke_internal(voting_escrow, distribution_config, managed_lock_id, balance, clock, ctx);
@@ -344,25 +336,25 @@ module distribution::voter {
     /// * If the managed lock ID doesn't match the expected ID
     public fun withdraw_managed<SailCoinType>(
         voter: &mut Voter,
-        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
         distribution_config: &distribution::distribution_config::DistributionConfig,
-        lock: &mut distribution::voting_escrow::Lock,
-        managed_lock: &mut distribution::voting_escrow::Lock,
+        lock: &mut ve::voting_escrow::Lock,
+        managed_lock: &mut ve::voting_escrow::Lock,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        let lock_id = into_lock_id(object::id<distribution::voting_escrow::Lock>(lock));
+        let lock_id = into_lock_id(object::id<ve::voting_escrow::Lock>(lock));
         voter.assert_only_new_epoch(lock_id, clock);
         let managedd_lock_id = voting_escrow.id_to_managed(lock_id.id);
         assert!(
-            managedd_lock_id == object::id<distribution::voting_escrow::Lock>(managed_lock),
+            managedd_lock_id == object::id<ve::voting_escrow::Lock>(managed_lock),
             EWithdrawManagedInvlidManaged
         );
-        let owner_proof = voting_escrow.owner_proof(lock, ctx);
-        voting_escrow.withdraw_managed(&voter.voter_cap, lock, managed_lock, owner_proof, clock, ctx);
+        voting_escrow.validate_ownership(lock, ctx);
+        voting_escrow.withdraw_managed(&voter.voting_escrow_cap, lock, managed_lock, clock, ctx);
         let balance_of_nft = voting_escrow.balance_of_nft_at(
             managedd_lock_id,
-            distribution::common::current_timestamp(clock)
+            ve::common::current_timestamp(clock)
         );
         let managed_lock_id = into_lock_id(object::id(managed_lock));
         if (balance_of_nft == 0) {
@@ -483,8 +475,8 @@ module distribution::voter {
     /// * If the lock has already voted in the current epoch
     /// * If voting for the current epoch hasn't started yet
     fun assert_only_new_epoch(_: &Voter, _: LockID, clock: &sui::clock::Clock) {
-        let current_time = distribution::common::current_timestamp(clock);
-        assert!(current_time > distribution::common::epoch_vote_start(current_time), EVotingNotStarted);
+        let current_time = ve::common::current_timestamp(clock);
+        assert!(current_time > ve::common::epoch_vote_start(current_time), EVotingNotStarted);
     }
 
     /// Get a reference to the fee voting reward for a specific gauge.
@@ -553,11 +545,10 @@ module distribution::voter {
         ctx: &mut TxContext
     ) {
         distribute_cap.validate_distribute_voter_id(object::id(voter));
-        let exercise_fee_authorized_cap = &voter.exercise_fee_authorized_cap;
         let exercise_fee_reward = &mut voter.exercise_fee_reward;
         exercise_fee_reward
             .notify_reward_amount(
-                exercise_fee_authorized_cap,
+                &voter.voter_cap,
                 reward,
                 clock,
                 ctx
@@ -568,12 +559,13 @@ module distribution::voter {
     /// lock has voted during the week.
     public fun claim_exercise_fee_reward<SailCoinType, RewardCoinType>(
         voter: &mut Voter,
-        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
-        lock: &distribution::voting_escrow::Lock,
+        voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
+        lock: &ve::voting_escrow::Lock,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
         let amount = voter.exercise_fee_reward.get_reward<SailCoinType, RewardCoinType>(
+            &voter.voter_cap,
             voting_escrow,
             lock,
             clock,
@@ -652,8 +644,8 @@ module distribution::voter {
     /// * `EventClaimVotingFeeReward` for each pool with claimed rewards
     public fun claim_voting_fee_by_pool<CoinTypeA, CoinTypeB, SailCoinType>(
         voter: &mut Voter,
-        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
-        lock: &distribution::voting_escrow::Lock,
+        voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
+        lock: &ve::voting_escrow::Lock,
         pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
@@ -677,8 +669,8 @@ module distribution::voter {
     /// * `EventClaimVotingFeeReward` for each pool with claimed rewards
     public fun claim_voting_fee<SailCoinType, FeeCoinType>(
         voter: &mut Voter,
-        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
-        lock: &distribution::voting_escrow::Lock,
+        voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
+        lock: &ve::voting_escrow::Lock,
         pool_id: ID,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
@@ -691,6 +683,7 @@ module distribution::voter {
                 .gauge_to_fee
                 .borrow_mut(gauge_id)
                 .get_reward<SailCoinType, FeeCoinType>(
+                    &voter.voter_cap,
                     voting_escrow,
                     lock,
                     clock,
@@ -766,7 +759,7 @@ module distribution::voter {
         distribution_config: &mut distribution::distribution_config::DistributionConfig,
         create_cap: &gauge_cap::gauge_cap::CreateCap,
         distribute_cap: &distribution::distribute_cap::DistributeCap,
-        voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        voting_escrow: &ve::voting_escrow::VotingEscrow<SailCoinType>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
@@ -797,10 +790,10 @@ module distribution::voter {
         reward_coins.push_back(type_name::get<CoinTypeB>());
         let gauge_id = object::id<distribution::gauge::Gauge<CoinTypeA, CoinTypeB>>(&gauge);
         let voter_id = object::id<Voter>(voter);
-        let voting_escrow_id = object::id<distribution::voting_escrow::VotingEscrow<SailCoinType>>(voting_escrow);
+        let voting_escrow_id = object::id<ve::voting_escrow::VotingEscrow<SailCoinType>>(voting_escrow);
         voter.gauge_to_fee.add(
             into_gauge_id(gauge_id),
-            distribution::fee_voting_reward::create(voter_id, voting_escrow_id, gauge_id, reward_coins, ctx)
+            distribution::fee_voting_reward::create(voter_id, gauge_id, reward_coins, ctx)
         );
         let sail_coin_type=type_name::get<SailCoinType>();
         if (!reward_coins.contains(&sail_coin_type)) {
@@ -868,13 +861,13 @@ module distribution::voter {
         let fee_b_amount = fee_reward_b.value<CoinTypeB>();
         let fee_voting_reward = voter.gauge_to_fee.borrow_mut(gauge_id);
         fee_voting_reward.notify_reward_amount(
-            &voter.gauge_to_fee_authorized_cap,
+            &voter.voter_cap,
             coin::from_balance<CoinTypeA>(fee_reward_a, ctx),
             clock,
             ctx
         );
         fee_voting_reward.notify_reward_amount(
-            &voter.gauge_to_fee_authorized_cap,
+            &voter.voter_cap,
             coin::from_balance<CoinTypeB>(fee_reward_b, ctx),
             clock,
             ctx
@@ -940,7 +933,7 @@ module distribution::voter {
         let fee_voting_reward = voter.gauge_to_fee.borrow_mut(into_gauge_id(gauge_id));
 
         fee_voting_reward.notify_reward_amount(
-            &voter.gauge_to_fee_authorized_cap,
+            &voter.voter_cap,
             reward,
             clock,
             ctx
@@ -1116,13 +1109,7 @@ module distribution::voter {
     /// # Returns
     /// True if the token type is whitelisted, false otherwise
     public fun is_whitelisted_token<CoinToCheckType>(voter: &Voter): bool {
-        let coin_type_name = std::type_name::get<CoinToCheckType>();
-        if (voter.is_whitelisted_token.contains(coin_type_name)) {
-            let is_whitelisted_true = true;
-            &is_whitelisted_true == voter.is_whitelisted_token.borrow(coin_type_name)
-        } else {
-            false
-        }
+        voter.whitelisted_manager.is_whitelisted_token<CoinToCheckType>()
     }
 
     /// Returns the timestamp when a lock last voted.
@@ -1202,14 +1189,14 @@ module distribution::voter {
     /// * `ctx` - The transaction context
     public fun poke<SailCoinType>(
         voter: &mut Voter,
-        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         lock_id: ID,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        let current_time = distribution::common::current_timestamp(clock);
-        assert!(current_time > distribution::common::epoch_vote_start(current_time), EPokeVotingNotStartedYet);
+        let current_time = ve::common::current_timestamp(clock);
+        assert!(current_time > ve::common::epoch_vote_start(current_time), EPokeVotingNotStartedYet);
         let voting_power = voting_escrow.get_voting_power(lock_id, clock);
         let lock_id_obj = into_lock_id(lock_id);
         voter.poke_internal(voting_escrow, distribution_config, lock_id_obj, voting_power, clock, ctx);
@@ -1227,7 +1214,7 @@ module distribution::voter {
     /// * `ctx` - The transaction context
     fun poke_internal<SailCoinType>(
         voter: &mut Voter,
-        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         lock_id: LockID,
         voting_power: u64,
@@ -1319,9 +1306,8 @@ module distribution::voter {
     /// A capability proving that the token is whitelisted
     public fun prove_token_whitelisted<CoinToCheckType>(
         voter: &Voter
-    ): distribution::whitelisted_tokens::WhitelistedToken {
-        assert!(voter.is_whitelisted_token<CoinToCheckType>(), ETokenNotWhitelisted);
-        distribution::whitelisted_tokens::create<CoinToCheckType>(object::id<Voter>(voter))
+    ): ve::whitelisted_tokens::WhitelistedToken {
+        voter.whitelisted_manager.prove_token_whitelisted<CoinToCheckType>()
     }
 
     /// Receives a gauge into the voter system, associating it with a pool.
@@ -1404,9 +1390,9 @@ module distribution::voter {
     /// * `ctx` - The transaction context
     public fun reset<SailCoinType>(
         voter: &mut Voter,
-        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
         distribution_config: &distribution::distribution_config::DistributionConfig,
-        lock: &distribution::voting_escrow::Lock,
+        lock: &ve::voting_escrow::Lock,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
@@ -1427,7 +1413,7 @@ module distribution::voter {
     /// * `ctx` - The transaction context
     fun reset_internal<SailCoinType>(
         voter: &mut Voter,
-        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
         _: &distribution::distribution_config::DistributionConfig,
         lock_id: LockID,
         clock: &sui::clock::Clock,
@@ -1438,7 +1424,7 @@ module distribution::voter {
             .balance_of(lock_id.id, clock);
         if (exercise_fee_deposited_balance > 0) {
             voter.exercise_fee_reward.withdraw(
-            &voter.exercise_fee_authorized_cap,
+            &voter.voter_cap,
             exercise_fee_deposited_balance,
                 lock_id.id,
                 clock,
@@ -1474,7 +1460,7 @@ module distribution::voter {
             };
             pool_index = pool_index + 1;
         };
-        voting_escrow.voting(&voter.voter_cap, lock_id.id, false);
+        voting_escrow.voting(&voter.voting_escrow_cap, lock_id.id, false);
         if (voter.used_weights.contains(lock_id)) {
             voter.used_weights.remove(lock_id);
         };
@@ -1574,9 +1560,9 @@ module distribution::voter {
     /// * If the lock has no voting power
     public fun vote<SailCoinType>(
         voter: &mut Voter,
-        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
         distribution_config: &distribution::distribution_config::DistributionConfig,
-        lock: &distribution::voting_escrow::Lock,
+        lock: &ve::voting_escrow::Lock,
         pools: vector<ID>,
         weights: vector<u64>,
         volumes: vector<u64>,
@@ -1590,9 +1576,9 @@ module distribution::voter {
             !voting_escrow.deactivated(lock_id.id),
             EVoteVotingEscrowDeactivated
         );
-        let current_time = distribution::common::current_timestamp(clock);
+        let current_time = ve::common::current_timestamp(clock);
         let epoch_vote_ended_and_nft_not_whitelisted = (
-            current_time > distribution::common::epoch_vote_end(current_time)
+            current_time > ve::common::epoch_vote_end(current_time)
         ) && (
             !voter.is_whitelisted_nft.contains(lock_id) ||
                 *voter.is_whitelisted_nft.borrow(lock_id) == false
@@ -1632,7 +1618,7 @@ module distribution::voter {
     /// * `EventVoted` for each pool voted for
     fun vote_internal<SailCoinType>(
         voter: &mut Voter,
-        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         lock_id: LockID,
         voting_power: u64,
@@ -1645,7 +1631,7 @@ module distribution::voter {
         voter.reset_internal(voting_escrow, distribution_config, lock_id, clock, ctx);
 
         voter.exercise_fee_reward.deposit(
-            &voter.exercise_fee_authorized_cap,
+            &voter.voter_cap,
             voting_power,
             lock_id.id,
             clock,
@@ -1728,7 +1714,7 @@ module distribution::voter {
             i = i + 1;
         };
         if (lock_used_weights > 0) {
-            voting_escrow.voting(&voter.voter_cap, lock_id.id, true);
+            voting_escrow.voting(&voter.voting_escrow_cap, lock_id.id, true);
         };
         if (voter.used_weights.contains(lock_id)) {
             voter.used_weights.remove(lock_id);
@@ -1815,9 +1801,6 @@ module distribution::voter {
     ///
     /// # Aborts
     /// * If the caller is not a governor
-    ///
-    /// # Emits
-    /// * `EventWhitelistToken` with whitelist information
     public fun whitelist_token<CoinToWhitelistType>(
         voter: &mut Voter,
         governor_cap: &distribution::voter_cap::GovernorCap,
@@ -1836,33 +1819,18 @@ module distribution::voter {
         );
     }
 
-    /// Internal function to implement token whitelisting.
-    /// Handles the details of updating the whitelisting status and emitting events.
-    ///
-    /// # Arguments
-    /// * `voter` - The voter contract reference
-    /// * `coinTypeName` - The type name of the token to whitelist
-    /// * `listed` - Whether to whitelist (true) or de-whitelist (false)
-    /// * `sender` - The address of the sender for the event
-    ///
-    /// # Emits
-    /// * `EventWhitelistToken` with whitelist information
     fun whitelist_token_internal(
         voter: &mut Voter,
-        coinTypeName: std::type_name::TypeName,
+        token: std::type_name::TypeName,
         listed: bool,
         sender: address
     ) {
-        if (voter.is_whitelisted_token.contains(coinTypeName)) {
-            voter.is_whitelisted_token.remove(coinTypeName);
-        };
-        voter.is_whitelisted_token.add(coinTypeName, listed);
-        let whitelist_token_event = EventWhitelistToken {
-            sender,
-            token: coinTypeName,
+        voter.whitelisted_manager.whitelist_token(
+            &voter.whitelisted_manager_cap,
+            token,
             listed,
-        };
-        sui::event::emit<EventWhitelistToken>(whitelist_token_event);
+            sender
+        );
     }
 
     // proxy method to be called via Minter
@@ -1882,7 +1850,7 @@ module distribution::voter {
 
         let fee_voting_reward = voter.gauge_to_fee.borrow_mut(gauge_id_obj);
         fee_voting_reward.update_balances(
-            &voter.gauge_to_fee_authorized_cap,
+            &voter.voter_cap,
             weights,
             lock_ids,
             for_epoch_start,
@@ -1906,7 +1874,7 @@ module distribution::voter {
 
         let exercise_fee_reward = &mut voter.exercise_fee_reward;
         exercise_fee_reward.update_balances(
-            &voter.exercise_fee_authorized_cap,
+            &voter.voter_cap,
             weights,
             lock_ids,
             for_epoch_start,

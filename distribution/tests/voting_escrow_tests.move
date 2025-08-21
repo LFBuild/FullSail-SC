@@ -1,11 +1,11 @@
 #[test_only]
-module distribution::voting_escrow_tests;
+module ve::voting_escrow_tests;
 
 use sui::test_scenario::{Self};
 use sui::clock::{Self, Clock};
 use distribution::setup::{Self, SAIL};
-use distribution::voting_escrow::{Self, VotingEscrow, Lock};
-use distribution::common;
+use ve::voting_escrow::{Self, VotingEscrow, Lock};
+use ve::common;
 use sui::coin::{Self, Coin};
 use clmm_pool::config;
 

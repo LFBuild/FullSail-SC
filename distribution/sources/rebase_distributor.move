@@ -3,10 +3,11 @@ module distribution::rebase_distributor;
 
 use sui::clock::Clock;
 use sui::coin::Coin;
-use distribution::common;
-use distribution::reward_distributor::{Self, RewardDistributor};
-use distribution::voting_escrow;
-use distribution::reward_distributor_cap::RewardDistributorCap;
+use ve::common;
+use ve::reward_distributor::{Self, RewardDistributor};
+use ve::voting_escrow;
+use ve::reward_distributor_cap::RewardDistributorCap;
+use distribution::rebase_distributor_cap::{Self, RebaseDistributorCap};
 use sui::coin;
 
 #[allow(unused_const)]
@@ -30,6 +31,7 @@ public struct EventUpdateActivePeriod has copy, drop, store {
 public struct RebaseDistributor<phantom SailCoinType> has key, store {
     id: UID,
     reward_distributor: RewardDistributor<SailCoinType>,
+    reward_distributor_cap: RewardDistributorCap,
     minter_active_period: u64,
     // bag to be prepared for future updates
     bag: sui::bag::Bag,
@@ -48,21 +50,23 @@ public fun create<SailCoinType>(
     publisher: &sui::package::Publisher,
     clock: &Clock,
     ctx: &mut TxContext
-): (RebaseDistributor<SailCoinType>, RewardDistributorCap) {
+): (RebaseDistributor<SailCoinType>, RebaseDistributorCap) {
     assert!(publisher.from_module<REBASE_DISTRIBUTOR>(), ECreateRebaseDistributorInvalidPublisher);
 
     let id = object::new(ctx);
     let inner_id = id.uid_to_inner();
-    let (reward_distributor, cap) = reward_distributor::create<SailCoinType>(inner_id, clock, ctx);
+    let (reward_distributor, reward_distributor_cap) = reward_distributor::create<SailCoinType>(inner_id, clock, ctx);
+    let rebase_distributor_cap = rebase_distributor_cap::create(inner_id, ctx);
 
     (
         RebaseDistributor {
             id,
             reward_distributor,
+            reward_distributor_cap,
             minter_active_period: 0,
             bag: sui::bag::new(ctx),
         },
-        cap,
+        rebase_distributor_cap,
     )
 }
 
@@ -85,8 +89,9 @@ public fun claim<SailCoinType>(
 
     let reward_coin = reward_distributor::claim(
         &mut self.reward_distributor,
+        &self.reward_distributor_cap,
         voting_escrow,
-        lock,
+        lock_id,
         ctx,
     );
 
@@ -123,13 +128,13 @@ public fun balance<SailCoinType>(self: &RebaseDistributor<SailCoinType>): u64 {
 
 public fun checkpoint_token<SailCoinType>(
     self: &mut RebaseDistributor<SailCoinType>,
-    reward_distributor_cap: &RewardDistributorCap,
+    rebase_distributor_cap: &RebaseDistributorCap,
     coin: Coin<SailCoinType>,
     clock: &Clock
 ) {
     reward_distributor::checkpoint_token(
         &mut self.reward_distributor,
-        reward_distributor_cap,
+        &self.reward_distributor_cap,
         coin,
         clock,
     );
@@ -153,11 +158,12 @@ public fun minter_active_period<SailCoinType>(self: &RebaseDistributor<SailCoinT
 
 public fun start<SailCoinType>(
     self: &mut RebaseDistributor<SailCoinType>,
-    reward_distributor_cap: &RewardDistributorCap,
+    rebase_distributor_cap: &RebaseDistributorCap,
     minter_active_period: u64,
     clock: &Clock
 ) {
-    reward_distributor::start(&mut self.reward_distributor, reward_distributor_cap, clock);
+    rebase_distributor_cap.validate(object::id(self));
+    reward_distributor::start(&mut self.reward_distributor, &self.reward_distributor_cap, clock);
     self.minter_active_period = minter_active_period;
     let event = EventStart { minter_active_period };
     sui::event::emit(event);
@@ -172,10 +178,10 @@ public fun tokens_per_period<SailCoinType>(
 
 public(package) fun update_active_period<SailCoinType>(
     self: &mut RebaseDistributor<SailCoinType>,
-    reward_distributor_cap: &RewardDistributorCap,
+    rebase_distributor_cap: &RebaseDistributorCap,
     new_active_period: u64
 ) {
-    reward_distributor_cap.validate(object::id(&self.reward_distributor));
+    rebase_distributor_cap.validate(object::id(self));
     self.minter_active_period = new_active_period;
     let event = EventUpdateActivePeriod { minter_active_period: new_active_period };
     sui::event::emit(event);

@@ -16,7 +16,7 @@ use clmm_pool::config::{Self, GlobalConfig};
 use clmm_pool::pool::{Pool};
 use clmm_pool::tick_math;
 use sui::test_utils;
-use distribution::voting_escrow::{Lock, VotingEscrow};
+use ve::voting_escrow::{Lock, VotingEscrow};
 use switchboard::aggregator::{Self, Aggregator};
 use price_monitor::price_monitor::{Self, PriceMonitor};
 

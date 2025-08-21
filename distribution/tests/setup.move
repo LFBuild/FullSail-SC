@@ -14,7 +14,7 @@ use distribution::minter::{Self, Minter};
 use distribution::voter::{Self, Voter};
 use sui::coin::{Self, Coin, CoinMetadata};
 use distribution::distribution_config::{Self, DistributionConfig};
-use distribution::voting_escrow::{Self, VotingEscrow, Lock};
+use ve::voting_escrow::{Self, VotingEscrow, Lock};
 use distribution::rebase_distributor::{Self, RebaseDistributor};
 use clmm_pool::tick_math;
 use clmm_pool::rewarder;

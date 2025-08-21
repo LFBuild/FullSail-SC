@@ -2,12 +2,19 @@ module distribution::exercise_fee_reward {
     #[allow(unused_const)]
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
 
+    const EValidateVoterCapInvalid: u64 = 667556652936764400;
+
     public struct ExerciseFeeReward has store, key {
         id: UID,
-        reward: distribution::reward::Reward,
+        voter: ID,
+        reward: ve::reward::Reward,
+        reward_cap: ve::reward_cap::RewardCap,
+        // bag to be preapred for future updates
+        bag: sui::bag::Bag,
     }
 
     public struct EventExerciseFeeRewardCreated has copy, drop, store {
+        voter: ID,
         id: ID,
     }
 
@@ -16,7 +23,6 @@ module distribution::exercise_fee_reward {
     ///
     /// # Arguments
     /// * `voter` - The ID of the voter
-    /// * `gauge_id` - The ID of the authorized gauge
     /// * `reward_coin_types` - Vector of coin types that can be used as rewards
     /// * `ctx` - The transaction context
     ///
@@ -29,22 +35,31 @@ module distribution::exercise_fee_reward {
     ): ExerciseFeeReward {
         let id = object::new(ctx);
         let inner_id = id.uid_to_inner();
-        let bribe_voting_reward_created_event = EventExerciseFeeRewardCreated {
+        let event = EventExerciseFeeRewardCreated {
+            voter,
             id: inner_id,
         };
-        sui::event::emit<EventExerciseFeeRewardCreated>(bribe_voting_reward_created_event);
+        sui::event::emit<EventExerciseFeeRewardCreated>(event);
+        let (reward, reward_cap) = ve::reward::create(inner_id, reward_coin_types, true, ctx);
         ExerciseFeeReward {
             id,
-            reward: distribution::reward::create(
-                inner_id,
-                voter,
-                option::none(),
-                voter,
-                reward_coin_types,
-                true,
-                ctx
-            ),
+            voter,
+            reward,
+            reward_cap,
+            bag: sui::bag::new(ctx),
         }
+    }
+
+    /// Validates that the `VoterCap` corresponds to the voter of the `ExerciseFeeReward`.
+    ///
+    /// # Arguments
+    /// * `reward` - The `ExerciseFeeReward` instance.
+    /// * `voter_cap` - The `VoterCap` to validate.
+    ///
+    /// # Aborts
+    /// * If the voter ID from `voter_cap` does not match `reward.voter`.
+    public fun validate_voter_cap(reward: &ExerciseFeeReward, voter_cap: &distribution::voter_cap::VoterCap) {
+        assert!(voter_cap.get_voter_id() == reward.voter, EValidateVoterCapInvalid);
     }
 
     /// Deposits rewards into the ExerciseFeeReward.
@@ -53,20 +68,21 @@ module distribution::exercise_fee_reward {
     ///
     /// # Arguments
     /// * `reward` - The ExerciseFeeReward to deposit into
-    /// * `authorized_cap` - Capability proving authorization to deposit
+    /// * `voter_cap` - Capability proving authorization to deposit
     /// * `amount` - The amount to deposit
     /// * `lock_id` - The ID of the lock receiving the reward
     /// * `clock` - The system clock
     /// * `ctx` - The transaction context
     public fun deposit(
         reward: &mut ExerciseFeeReward,
-        authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
+        voter_cap: &distribution::voter_cap::VoterCap,
         amount: u64,
         lock_id: ID,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        reward.reward.deposit(authorized_cap, amount, lock_id, clock, ctx);
+        reward.validate_voter_cap(voter_cap);
+        reward.reward.deposit(&reward.reward_cap, amount, lock_id, clock, ctx);
     }
 
     /// Calculates the amount of rewards earned for a specific coin type and lock.
@@ -126,20 +142,21 @@ module distribution::exercise_fee_reward {
     ///
     /// # Arguments
     /// * `reward` - The ExerciseFeeReward to withdraw from
-    /// * `reward_authorized_cap` - Capability proving authorization to withdraw
+    /// * `voter_cap` - Capability proving authorization to withdraw
     /// * `amount` - The amount to withdraw
     /// * `lock_id` - The ID of the lock
     /// * `clock` - The system clock
     /// * `ctx` - The transaction context
     public fun withdraw(
         reward: &mut ExerciseFeeReward,
-        reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
+        voter_cap: &distribution::voter_cap::VoterCap,
         amount: u64,
         lock_id: ID,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        reward.reward.withdraw(reward_authorized_cap, amount, lock_id, clock, ctx);
+        reward.validate_voter_cap(voter_cap);
+        reward.reward.withdraw(&reward.reward_cap, amount, lock_id, clock, ctx);
     }
 
     /// Borrows the reward field from the ExerciseFeeReward.
@@ -149,7 +166,7 @@ module distribution::exercise_fee_reward {
     ///
     /// # Returns
     /// A reference to the underlying Reward
-    public fun borrow_reward(reward: &ExerciseFeeReward): &distribution::reward::Reward {
+    public fun borrow_reward(reward: &ExerciseFeeReward): &ve::reward::Reward {
         &reward.reward
     }
 
@@ -157,6 +174,7 @@ module distribution::exercise_fee_reward {
     ///
     /// # Arguments
     /// * `reward` - The ExerciseFeeReward to claim from
+    /// * `voter_cap` - The voter capability
     /// * `voting_escrow` - The voting escrow instance
     /// * `lock` - The lock to claim rewards for
     /// * `clock` - The system clock
@@ -166,14 +184,23 @@ module distribution::exercise_fee_reward {
     /// The amount of rewards claimed
     public fun get_reward<SailCoinType, CoinType>(
         reward: &mut ExerciseFeeReward,
-        voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
-        lock: &distribution::voting_escrow::Lock,
+        // voter emits events so we require voter cap to be passed in
+        voter_cap: &distribution::voter_cap::VoterCap,
+        voting_escrow: &ve::voting_escrow::VotingEscrow<SailCoinType>,
+        lock: &ve::voting_escrow::Lock,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): u64 {
-        let lock_id = object::id<distribution::voting_escrow::Lock>(lock);
+        reward.validate_voter_cap(voter_cap);
+        let lock_id = object::id<ve::voting_escrow::Lock>(lock);
         let lock_owner = voting_escrow.owner_of(lock_id);
-        let mut reward_balance_opt = reward.reward.get_reward_internal<CoinType>(lock_owner, lock_id, clock, ctx);
+        let mut reward_balance_opt = reward.reward.get_reward_internal<CoinType>(
+            &reward.reward_cap,
+            lock_owner,
+            lock_id,
+            clock,
+            ctx,
+        );
         let reward_amount = if (reward_balance_opt.is_some()) {
             let reward_balance = reward_balance_opt.extract();
             let amount = reward_balance.value();
@@ -197,63 +224,29 @@ module distribution::exercise_fee_reward {
     ///
     /// # Arguments
     /// * `reward` - The ExerciseFeeReward reward instance
-    /// * `reward_authorized_cap` - The authorization capability for rewards
+    /// * `voter_cap` - The authorization capability for rewards
     /// * `coin` - The coin to add as rewards
     /// * `clock` - The system clock
     /// * `ctx` - The transaction context
     public fun notify_reward_amount<CoinType>(
         reward: &mut ExerciseFeeReward,
-        reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
+        voter_cap: &distribution::voter_cap::VoterCap,
         coin: sui::coin::Coin<CoinType>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        reward_authorized_cap.validate(reward.reward.authorized());
+        reward.validate_voter_cap(voter_cap);
         let coin_type = std::type_name::get<CoinType>();
         // whitelist check is performend on the Minter level
         if (!reward.reward.rewards_contains(coin_type)) {
-            reward.reward.add_reward_token(coin_type);
+            reward.reward.add_reward_token(&reward.reward_cap, coin_type);
         };
-        reward.reward.notify_reward_amount_internal(coin.into_balance(), clock, ctx);
-    }
-
-    /// Allows a voter to claim rewards for a specific lock
-    ///
-    /// # Arguments
-    /// * `reward` - The ExerciseFeeReward instance
-    /// * `voter_cap` - The voter capability proving authority
-    /// * `voting_escrow` - The voting escrow instance
-    /// * `lock_id` - The ID of the lock to claim rewards for
-    /// * `clock` - The system clock
-    /// * `ctx` - The transaction context
-    ///
-    /// # Returns
-    /// A balance containing the claimed rewards
-    ///
-    /// # Aborts
-    /// * If the voter is not authorized to claim the rewards
-    public fun voter_get_reward<SailCoinType, FeeCoinType>(
-        reward: &mut ExerciseFeeReward,
-        reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
-        voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
-        lock_id: ID,
-        clock: &sui::clock::Clock,
-        ctx: &mut TxContext
-    ): sui::balance::Balance<FeeCoinType> {
-        reward_authorized_cap.validate(reward.reward.authorized());
-        let mut reward_balance_option = reward.reward.get_reward_internal<FeeCoinType>(
-            voting_escrow.owner_of(lock_id),
-            lock_id,
+        reward.reward.notify_reward_amount_internal(
+            &reward.reward_cap,
+            coin.into_balance(),
             clock,
             ctx
         );
-        let reward_balance = if (reward_balance_option.is_some()) {
-            reward_balance_option.extract()
-        } else {
-            sui::balance::zero<FeeCoinType>()
-        };
-        reward_balance_option.destroy_none();
-        reward_balance
     }
 
 
@@ -263,15 +256,16 @@ module distribution::exercise_fee_reward {
     ///
     /// # Arguments
     /// * `reward` - The `ExerciseFeeReward` instance to update.
-    /// * `reward_authorized_cap` - Capability proving authorization to update balances.
+    /// * `voter_cap` - Capability proving authorization to update balances.
     /// * `balances` - A vector of balance amounts corresponding to each `lock_id`.
     /// * `lock_ids` - A vector of `ID`s for the locks whose balances are being updated.
     /// * `for_epoch_start` - The timestamp marking the beginning of the epoch for which balances are being set.
     /// * `final` - true if thats the last update for the epoch
+    /// * `clock` - The system clock
     /// * `ctx` - The transaction context.
     public fun update_balances(
         reward: &mut ExerciseFeeReward,
-        reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
+        voter_cap: &distribution::voter_cap::VoterCap,
         balances: vector<u64>,
         lock_ids: vector<ID>,
         for_epoch_start: u64,
@@ -279,8 +273,9 @@ module distribution::exercise_fee_reward {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        reward.validate_voter_cap(voter_cap);
         reward.reward.update_balances(
-            reward_authorized_cap,
+            &reward.reward_cap,
             balances,
             lock_ids,
             for_epoch_start,
@@ -310,5 +305,9 @@ module distribution::exercise_fee_reward {
 
     public fun total_supply(reward: &ExerciseFeeReward, clock: &sui::clock::Clock): u64 {
         reward.reward.total_supply(clock)
+    }
+
+    public fun voter(reward: &ExerciseFeeReward): ID {
+        reward.voter
     }
 }

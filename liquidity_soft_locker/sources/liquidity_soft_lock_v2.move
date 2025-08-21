@@ -29,7 +29,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2 {
     use liquidity_soft_locker::pool_soft_tranche;
     use liquidity_soft_locker::soft_consts;
     use liquidity_soft_locker::soft_locker_utils;
-    use distribution::common;
+    use ve::common;
     use distribution::gauge;
     
     // Bump the `VERSION` of the package.
@@ -1238,7 +1238,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2 {
     public fun collect_reward_and_unlock_position<CoinTypeA, CoinTypeB, LockEndOSail, SailCoinType, LockRewardCoinType>(
         locker: &mut SoftLocker,
         pool_tranche_manager: &mut pool_soft_tranche::PoolSoftTrancheManager,
-        voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        voting_escrow: &ve::voting_escrow::VotingEscrow<SailCoinType>,
         gauge: &mut gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         mut lock_position: SoftLockedPosition<CoinTypeA, CoinTypeB>,
@@ -1295,7 +1295,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2 {
     public fun collect_reward_sail_and_unlock_position<CoinTypeA, CoinTypeB, LockEndOSail, SailCoinType>(
         locker: &mut SoftLocker,
         pool_tranche_manager: &mut pool_soft_tranche::PoolSoftTrancheManager,
-        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
         gauge: &mut gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         mut lock_position: SoftLockedPosition<CoinTypeA, CoinTypeB>,
@@ -1474,7 +1474,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2 {
     public fun collect_reward<CoinTypeA, CoinTypeB, EpochOSail, SailCoinType, LockRewardCoinType>(
         locker: &SoftLocker,
         pool_tranche_manager: &mut pool_soft_tranche::PoolSoftTrancheManager,
-        _: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        _: &ve::voting_escrow::VotingEscrow<SailCoinType>,
         gauge: &mut gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         locked_position: &mut SoftLockedPosition<CoinTypeA, CoinTypeB>,
@@ -1527,7 +1527,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2 {
     public fun collect_reward_sail<CoinTypeA, CoinTypeB, LockEndOSail, SailCoinType>(
         locker: &SoftLocker,
         pool_tranche_manager: &mut pool_soft_tranche::PoolSoftTrancheManager,
-        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
         gauge: &mut gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         locked_position: &mut SoftLockedPosition<CoinTypeA, CoinTypeB>,

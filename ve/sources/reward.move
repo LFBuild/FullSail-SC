@@ -1,5 +1,5 @@
 /// © 2025 Metabyte Labs, Inc.  All Rights Reserved.
-module distribution::reward {
+module ve::reward {
 
     #[allow(unused_const)]
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
@@ -76,9 +76,6 @@ module distribution::reward {
         id: UID,
         // FeeVotingReward or FreeManagedReward id
         wrapper_reward_id: ID,
-        voter: ID,
-        ve: Option<ID>,
-        authorized: ID,
         token_rewards_per_epoch: sui::table::Table<std::type_name::TypeName, sui::table::Table<u64, u64>>,
         last_earn: sui::table::Table<std::type_name::TypeName, sui::table::Table<ID, u64>>,
         rewards: sui::vec_set::VecSet<std::type_name::TypeName>,
@@ -112,20 +109,15 @@ module distribution::reward {
     /// 
     /// # Arguments
     /// * `reward` - The reward object to be modified
+    /// * `reward_cap` - Capability object for authorization
     /// * `coinTypeName` - The type name of the coin to add as reward
-    public(package) fun add_reward_token(reward: &mut Reward, coinTypeName: std::type_name::TypeName) {
+    public fun add_reward_token(
+        reward: &mut Reward,
+        reward_cap: &ve::reward_cap::RewardCap,
+        coinTypeName: std::type_name::TypeName
+    ) {
+        reward_cap.validate(object::id(reward));
         reward.rewards.insert<std::type_name::TypeName>(coinTypeName);
-    }
-
-    /// Returns the ID of the authorized entity for this reward contract.
-    /// 
-    /// # Arguments
-    /// * `reward` - The reward object
-    /// 
-    /// # Returns
-    /// The ID of the authorized entity
-    public fun authorized(reward: &Reward): ID {
-        reward.authorized
     }
 
     /// Returns the balance of a specific lock in the reward system.
@@ -138,7 +130,7 @@ module distribution::reward {
     /// # Returns
     /// The amount of tokens locked for the specified lock_id at the current time.
     public fun balance_of(reward: &Reward, lock_id: ID, clock: &sui::clock::Clock): u64 {
-        let current_time = distribution::common::current_timestamp(clock);
+        let current_time = ve::common::current_timestamp(clock);
 
         reward.balance_of_at(lock_id, current_time)
     }
@@ -179,27 +171,22 @@ module distribution::reward {
     /// # Arguments
     /// * `voter` - The ID of the voter module
     /// * `ve` - The ID of the voting escrow module
-    /// * `authorized` - The ID for authorization
     /// * `reward_coin_types` - A vector of coin types that can be used as rewards
     /// * `ctx` - Transaction context
     /// 
     /// # Returns
     /// A new Reward object with initialized data structures
-    public(package) fun create(
+    public fun create(
         wrapper_reward_id: ID,
-        voter: ID,
-        ve: Option<ID>,
-        authorized: ID,
         reward_coin_types: vector<std::type_name::TypeName>,
         balance_update_enabled: bool,
         ctx: &mut TxContext
-    ): Reward {
+    ): (Reward, ve::reward_cap::RewardCap) {
+        let id = object::new(ctx);
+        let id_inner = id.uid_to_inner();
         let mut reward = Reward {
-            id: object::new(ctx),
+            id,
             wrapper_reward_id,
-            voter,
-            ve,
-            authorized,
             token_rewards_per_epoch: sui::table::new<std::type_name::TypeName, sui::table::Table<u64, u64>>(ctx),
             last_earn: sui::table::new<std::type_name::TypeName, sui::table::Table<ID, u64>>(ctx),
             rewards: sui::vec_set::empty<std::type_name::TypeName>(),
@@ -220,7 +207,8 @@ module distribution::reward {
             );
             i = i + 1;
         };
-        reward
+        let reward_cap = ve::reward_cap::create(id_inner, ctx);
+        (reward, reward_cap)
     }
 
     /// Increases the balance of a specific lock in the current epoch.
@@ -228,7 +216,7 @@ module distribution::reward {
     /// 
     /// # Arguments
     /// * `reward` - The reward object to deposit into
-    /// * `reward_authorized_cap` - Capability object for authorization
+    /// * `reward_cap` - Capability object for authorization
     /// * `amount` - The amount of tokens to deposit
     /// * `lock_id` - The ID of the lock to deposit for
     /// * `clock` - Clock object for timestamp
@@ -236,16 +224,16 @@ module distribution::reward {
     /// 
     /// # Aborts
     /// * If the authorization is invalid
-    public(package) fun deposit(
+    public fun deposit(
         reward: &mut Reward,
-        reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
+        reward_cap: &ve::reward_cap::RewardCap,
         amount: u64,
         lock_id: ID,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        reward_authorized_cap.validate(reward.authorized);
-        let current_time = distribution::common::current_timestamp(clock);
+        reward_cap.validate(object::id(reward));
+        let current_time = ve::common::current_timestamp(clock);
 
         // Update total supply
         let current_total_supply = reward.total_supply_at(current_time);
@@ -274,11 +262,12 @@ module distribution::reward {
     /// 
     /// # Arguments
     /// * `reward` - The reward object to update
-    /// * `reward_authorized_cap` - Capability object for authorization
+    /// * `reward_cap` - Capability object for authorization
     /// * `balances` - Vector of balances to update
     /// * `lock_ids` - Vector of lock IDs to update
     /// * `for_epoch_start` - The epoch start to update the balances at. Balances are invariant inside epoch.
     /// * `final` - true if thats the last update for the epoch
+    /// * `clock` - Clock object for timestamp
     /// * `ctx` - Transaction context
     /// 
     /// # Aborts
@@ -286,9 +275,9 @@ module distribution::reward {
     /// * If the lock was not deposited in the epoch start
     /// * If the epoch start is not a multiple of the epoch
     /// * If the epoch is already finalized
-    public(package) fun update_balances(
+    public fun update_balances(
         reward: &mut Reward,
-        reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
+        reward_cap: &ve::reward_cap::RewardCap,
         balances: vector<u64>,
         lock_ids: vector<ID>,
         for_epoch_start: u64,
@@ -296,17 +285,17 @@ module distribution::reward {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        reward_authorized_cap.validate(reward.authorized);
+        reward_cap.validate(object::id(reward));
         assert!(reward.balance_update_enabled, EUpdateBalancesDisabled);
-        assert!(for_epoch_start % distribution::common::epoch() == 0, EUpdateBalancesEpochStartInvalid);
+        assert!(for_epoch_start % ve::common::epoch() == 0, EUpdateBalancesEpochStartInvalid);
         assert!(lock_ids.length() == balances.length(), EUpdateBalancesInvalidLocksLength);
         assert!(
             !reward.epoch_updates_finalized.contains(for_epoch_start) || 
             !(*reward.epoch_updates_finalized.borrow(for_epoch_start)), 
             EUpdateBalancesAlreadyFinal
         );
-        let current_time = distribution::common::current_timestamp(clock);
-        let current_epoch_start = distribution::common::epoch_start(current_time);
+        let current_time = ve::common::current_timestamp(clock);
+        let current_epoch_start = ve::common::epoch_start(current_time);
         // balance update is only allowed for finished epochs
         assert!(for_epoch_start < current_epoch_start, EUpdateBalancesOnlyFinishedEpochAllowed);
         let mut i = 0;
@@ -353,7 +342,7 @@ module distribution::reward {
     /// 
     /// # Returns
     /// The amount of coins earned as rewards, first epoch that has not been earned yet.
-    public(package) fun earned_internal<CoinType>(reward: &Reward, lock_id: ID, clock: &sui::clock::Clock): (u64, u64) {
+    fun earned_internal<CoinType>(reward: &Reward, lock_id: ID, clock: &sui::clock::Clock): (u64, u64) {
         let zero_checkpoints = if (!reward.num_checkpoints.contains(lock_id)) {
             true
         } else {
@@ -367,7 +356,7 @@ module distribution::reward {
         let last_earn_epoch_time = if (reward.last_earn.contains(coin_type_name) && reward.last_earn.borrow(
             coin_type_name
         ).contains(lock_id)) {
-            distribution::common::epoch_start(
+            ve::common::epoch_start(
                 *reward.last_earn.borrow(coin_type_name).borrow(lock_id)
             )
         } else {
@@ -382,9 +371,9 @@ module distribution::reward {
             prior_checkpoint.epoch_start
         };
         let mut next_epoch_time = latest_epoch_time;
-        let epochs_until_now = (distribution::common::epoch_start(
-            distribution::common::current_timestamp(clock)
-        ) - latest_epoch_time) / distribution::common::epoch();
+        let epochs_until_now = (ve::common::epoch_start(
+            ve::common::current_timestamp(clock)
+        ) - latest_epoch_time) / ve::common::epoch();
         if (epochs_until_now > 0) {
             let mut i = 0;
             // limit the number of iterations to prevent denial of service.
@@ -403,9 +392,9 @@ module distribution::reward {
                     break
                 };
                 let next_checkpoint = reward.checkpoints.borrow(lock_id).borrow(
-                    reward.get_prior_balance_index(lock_id, next_epoch_time + distribution::common::epoch() - 1)
+                    reward.get_prior_balance_index(lock_id, next_epoch_time + ve::common::epoch() - 1)
                 );
-                let supply_index = reward.get_prior_supply_index(next_epoch_time + distribution::common::epoch() - 1);
+                let supply_index = reward.get_prior_supply_index(next_epoch_time + ve::common::epoch() - 1);
                 let supply = if (!reward.supply_checkpoints.contains(supply_index)) {
                     1
                 } else {
@@ -430,14 +419,14 @@ module distribution::reward {
                     reward_in_epoch,
                     supply
                 );
-                next_epoch_time = next_epoch_time + distribution::common::epoch();
+                next_epoch_time = next_epoch_time + ve::common::epoch();
                 i = i + 1;
             };
         };
         (earned_amount, next_epoch_time)
     }
 
-    public(package) fun earned<CoinType>(reward: &Reward, lock_id: ID, clock: &sui::clock::Clock): u64 {
+    public fun earned<CoinType>(reward: &Reward, lock_id: ID, clock: &sui::clock::Clock): u64 {
         let (earned_amount, _) = reward.earned_internal<CoinType>(lock_id, clock);
 
         earned_amount
@@ -528,6 +517,7 @@ module distribution::reward {
     /// 
     /// # Arguments
     /// * `reward` - The reward object
+    /// * `reward_cap` - Capability object for authorization
     /// * `recipient` - The address that will receive the rewards
     /// * `lock_id` - The ID of the lock to claim rewards for
     /// * `clock` - Clock object for timestamp
@@ -535,13 +525,15 @@ module distribution::reward {
     /// 
     /// # Returns
     /// An optional balance of the claimed rewards, None if no rewards to claim
-    public(package) fun get_reward_internal<CoinType>(
+    public fun get_reward_internal<CoinType>(
         reward: &mut Reward,
+        reward_cap: &ve::reward_cap::RewardCap,
         recipient: address,
         lock_id: ID,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): Option<sui::balance::Balance<CoinType>> {
+        reward_cap.validate(object::id(reward));
         let (reward_amount, first_non_earned_epoch) = reward.earned_internal<CoinType>(lock_id, clock);
         let coin_type_name = std::type_name::get<CoinType>();
         if (!reward.last_earn.contains(coin_type_name)) {
@@ -575,18 +567,21 @@ module distribution::reward {
     /// 
     /// # Arguments
     /// * `reward` - The reward object to add tokens to
+    /// * `reward_cap` - Capability object for authorization
     /// * `balance` - The balance of tokens to add as rewards
     /// * `clock` - Clock object for timestamp
     /// * `ctx` - Transaction context
-    public(package) fun notify_reward_amount_internal<CoinType>(
+    public fun notify_reward_amount_internal<CoinType>(
         reward: &mut Reward,
+        reward_cap: &ve::reward_cap::RewardCap,
         balance: sui::balance::Balance<CoinType>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        reward_cap.validate(object::id(reward));
         let reward_amount = balance.value<CoinType>();
         let reward_type_name = std::type_name::get<CoinType>();
-        let epoch_start = distribution::common::epoch_start(distribution::common::current_timestamp(clock));
+        let epoch_start = ve::common::epoch_start(ve::common::current_timestamp(clock));
         if (!reward.token_rewards_per_epoch.contains(reward_type_name)) {
             reward.token_rewards_per_epoch.add(reward_type_name, sui::table::new<u64, u64>(ctx));
         };
@@ -644,7 +639,7 @@ module distribution::reward {
     /// 
     /// # Returns
     /// The count of supported reward token types
-    public(package) fun rewards_list_length(reward: &Reward): u64 {
+    public fun rewards_list_length(reward: &Reward): u64 {
         reward.rewards.size<std::type_name::TypeName>()
     }
 
@@ -676,7 +671,7 @@ module distribution::reward {
     /// # Returns
     /// The amount of rewards for the current epoch
     public fun rewards_this_epoch<CoinType>(reward: &Reward, clock: &sui::clock::Clock): u64 {
-        let epoch_start_time = distribution::common::epoch_start(distribution::common::current_timestamp(clock));
+        let epoch_start_time = ve::common::epoch_start(ve::common::current_timestamp(clock));
         reward.rewards_at_epoch<CoinType>(epoch_start_time)
     }
 
@@ -709,7 +704,7 @@ module distribution::reward {
     /// # Returns
     /// The total supply value from the relevant checkpoint, or 0 if no history.
     public fun total_supply(reward: &Reward, clock: &sui::clock::Clock): u64 {
-        let current_time = distribution::common::current_timestamp(clock);
+        let current_time = ve::common::current_timestamp(clock);
         reward.total_supply_at(current_time)
     }
 
@@ -742,34 +737,12 @@ module distribution::reward {
         checkpoint.supply
     }
 
-    /// Returns the ID of the voting escrow module for this reward.
-    /// 
-    /// # Arguments
-    /// * `reward` - The reward object
-    /// 
-    /// # Returns
-    /// The ID of the ve (voting escrow) module
-    public fun ve(reward: &Reward): ID {
-        *reward.ve.borrow()
-    }
-
-    /// Returns the ID of the voter module for this reward.
-    /// 
-    /// # Arguments
-    /// * `reward` - The reward object
-    /// 
-    /// # Returns
-    /// The ID of the voter module
-    public fun voter(reward: &Reward): ID {
-        reward.voter
-    }
-
     /// Decreases the balance of a specific lock in the current epoch.
     /// Updates checkpoints and supply data, then emits a withdraw event.
     /// 
     /// # Arguments
     /// * `reward` - The reward object to withdraw from
-    /// * `reward_authorized_cap` - Capability object for authorization
+    /// * `reward_cap` - Capability object for authorization
     /// * `amount` - The amount of tokens to withdraw
     /// * `lock_id` - The ID of the lock to withdraw from
     /// * `clock` - Clock object for timestamp
@@ -777,16 +750,16 @@ module distribution::reward {
     /// 
     /// # Aborts
     /// * If the authorization is invalid
-    public(package) fun withdraw(
+    public fun withdraw(
         reward: &mut Reward,
-        reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
+        reward_cap: &ve::reward_cap::RewardCap,
         amount: u64,
         lock_id: ID,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        reward_authorized_cap.validate(reward.authorized);
-        let current_time = distribution::common::current_timestamp(clock);
+        reward_cap.validate(object::id(reward));
+        let current_time = ve::common::current_timestamp(clock);
 
         // Update total supply
         let current_total_supply = reward.total_supply_at(current_time);
@@ -833,7 +806,7 @@ module distribution::reward {
         } else {
             0
         };
-        let epoch_start = distribution::common::epoch_start(time);
+        let epoch_start = ve::common::epoch_start(time);
         // latest checkpoint timestam is equal to current epoch start
         if (
             num_of_checkpoints > 0 &&
@@ -896,7 +869,7 @@ module distribution::reward {
     /// * `total_supply` - The total supply to record
     fun write_supply_checkpoint_internal(reward: &mut Reward, time: u64, total_supply: u64) {
         let num_of_checkpoints = reward.supply_num_checkpoints;
-        let epoch_start = distribution::common::epoch_start(time);
+        let epoch_start = ve::common::epoch_start(time);
         // latest checkpoint timestam is equal to current epoch start
         if (
             num_of_checkpoints > 0 &&

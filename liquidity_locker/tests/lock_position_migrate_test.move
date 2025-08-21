@@ -16,10 +16,10 @@ module liquidity_locker::lock_position_migrate_test {
     use price_provider::price_provider;
     use distribution::distribution_config;
     use distribution::voter;
-    use distribution::voting_escrow;
+    use ve::voting_escrow;
     use distribution::minter;
     use distribution::gauge;
-    use distribution::common;
+    use ve::common;
     use distribution::rebase_distributor;
     use sui::clock;
     use switchboard::aggregator::{Self, Aggregator};

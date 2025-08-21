@@ -17,7 +17,7 @@ use clmm_pool::config::GlobalConfig;
 use clmm_pool::tick_math;
 use sui::test_utils;
 
-use distribution::common;
+use ve::common;
 use distribution::distribute_cap::{Self};
 use distribution::distribution_config::{Self, DistributionConfig};
 use distribution::rebase_distributor::{Self,RebaseDistributor};
@@ -25,10 +25,10 @@ use distribution::gauge::{Self, Gauge, StakedPosition};
 use gauge_cap::gauge_cap::{Self, CreateCap};
 use distribution::minter::{AdminCap, Minter};
 use distribution::voter::{Self, Voter};
-use distribution::voting_escrow::{Self, VotingEscrow, Lock};
+use ve::voting_escrow::{Self, VotingEscrow, Lock};
 use distribution::setup;
 use sui::sui::SUI;
-use distribution::emergency_council;
+use ve::emergency_council;
 
 use switchboard::aggregator::{Self, Aggregator};
 use price_monitor::price_monitor::{Self, PriceMonitor};
@@ -1728,7 +1728,7 @@ fun test_distribute_revived_gauge_succeeds() {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
         let mut dist_config = scenario.take_shared<DistributionConfig>();
         let mut gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
-        let emergency_cap = scenario.take_from_sender<distribution::emergency_council::EmergencyCouncilCap>();
+        let emergency_cap = scenario.take_from_sender<ve::emergency_council::EmergencyCouncilCap>();
 
         minter.reset_gauge(
             &mut dist_config,

@@ -1,6 +1,6 @@
 /// © 2025 Metabyte Labs, Inc.  All Rights Reserved.
 
-module distribution::reward_distributor {
+module ve::reward_distributor {
 
     #[allow(unused_const)]
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
@@ -69,24 +69,24 @@ module distribution::reward_distributor {
     /// Creates a new reward distributor and its associated capability.
     /// 
     /// # Arguments
-    /// * `publisher` - The publisher reference
+    /// * `wrapper_distributor_id` - The ID of the wrapper distributor
     /// * `clock` - The system clock
     /// * `ctx` - The transaction context
     /// 
     /// # Returns
     /// A tuple containing the new reward distributor and its capability
-    public(package) fun create<RewardCoinType>(
+    public fun create<RewardCoinType>(
         wrapper_distributor_id: ID,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
-    ): (RewardDistributor<RewardCoinType>, distribution::reward_distributor_cap::RewardDistributorCap) {
+    ): (RewardDistributor<RewardCoinType>, ve::reward_distributor_cap::RewardDistributorCap) {
         let uid = object::new(ctx);
         let reward_distributor = RewardDistributor<RewardCoinType> {
             id: uid,
             wrapper_distributor_id,
-            start_time: distribution::common::current_timestamp(clock),
+            start_time: ve::common::current_timestamp(clock),
             time_cursor_of: table::new<ID, u64>(ctx),
-            last_token_time: distribution::common::current_timestamp(clock),
+            last_token_time: ve::common::current_timestamp(clock),
             tokens_per_period: table::new<u64, u64>(ctx),
             token_last_balance: 0,
             balance: balance::zero<RewardCoinType>(),
@@ -94,7 +94,7 @@ module distribution::reward_distributor {
             bag: sui::bag::new(ctx),
         };
         let id = *object::uid_as_inner(&reward_distributor.id);
-        (reward_distributor, distribution::reward_distributor_cap::create(id, ctx))
+        (reward_distributor, ve::reward_distributor_cap::create(id, ctx))
     }
 
     /// Checkpoints tokens by adding new tokens to the distributor and updating distribution data.
@@ -107,14 +107,14 @@ module distribution::reward_distributor {
     /// * `clock` - The system clock
     public fun checkpoint_token<RewardCoinType>(
         reward_distributon: &mut RewardDistributor<RewardCoinType>,
-        reward_distributor_cap: &distribution::reward_distributor_cap::RewardDistributorCap,
+        reward_distributor_cap: &ve::reward_distributor_cap::RewardDistributorCap,
         coin: Coin<RewardCoinType>,
         clock: &sui::clock::Clock
     ) {
         reward_distributor_cap.validate(object::id<RewardDistributor<RewardCoinType>>(reward_distributon));
         let added_tokens = coin.value();
         reward_distributon.balance.join(coin.into_balance());
-        reward_distributon.checkpoint_token_internal(added_tokens, distribution::common::current_timestamp(clock));
+        reward_distributon.checkpoint_token_internal(added_tokens, ve::common::current_timestamp(clock));
     }
 
     /// Internal function that handles token checkpointing logic.
@@ -122,13 +122,14 @@ module distribution::reward_distributor {
     /// 
     /// # Arguments
     /// * `reward_distributor` - The reward distributor to update
+    /// * `added_tokens` - The amount of tokens being added
     /// * `time` - The current timestamp
     fun checkpoint_token_internal<RewardCoinType>(reward_distributor: &mut RewardDistributor<RewardCoinType>, added_tokens: u64, time: u64) {
         let current_balance = reward_distributor.balance.value();
         let balance_delta = added_tokens;
         let mut last_token_time = reward_distributor.last_token_time;
         let token_time_delta = time - last_token_time;
-        let mut last_token_period = distribution::common::to_period(last_token_time);
+        let mut last_token_period = ve::common::to_period(last_token_time);
         let mut i = 0;
         while (i < 20) {
             let last_period_tokens = if (!reward_distributor.tokens_per_period.contains(last_token_period)) {
@@ -136,7 +137,7 @@ module distribution::reward_distributor {
             } else {
                 reward_distributor.tokens_per_period.remove(last_token_period)
             };
-            let next_token_period = last_token_period + distribution::common::epoch();
+            let next_token_period = last_token_period + ve::common::epoch();
             if (time < next_token_period) {
                 if (token_time_delta == 0 && time == last_token_time) {
                     reward_distributor.tokens_per_period.add(
@@ -191,9 +192,9 @@ module distribution::reward_distributor {
     /// 
     /// # Arguments
     /// * `reward_distributor` - The reward distributor to claim from
+    /// * `reward_distributor_cap` - Capability proving authorization to claim
     /// * `voting_escrow` - The voting escrow instance
-    /// * `lock` - The lock to claim rewards for
-    /// * `clock` - The system clock
+    /// * `lock_id` - The lock ID to claim rewards for
     /// * `ctx` - The transaction context
     /// 
     /// # Returns
@@ -202,18 +203,14 @@ module distribution::reward_distributor {
     /// # Aborts
     /// * If the minter is not active for the current period
     /// * If the voting escrow is of type locked
-    public(package) fun claim<SailCoinType, RewardCoinType>(
+    public fun claim<SailCoinType, RewardCoinType>(
         reward_distributor: &mut RewardDistributor<RewardCoinType>,
-        voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
-        lock: &distribution::voting_escrow::Lock,
+        reward_distributor_cap: &ve::reward_distributor_cap::RewardDistributorCap,
+        voting_escrow: &ve::voting_escrow::VotingEscrow<SailCoinType>,
+        lock_id: ID,
         ctx: &mut TxContext
     ): Coin<RewardCoinType> {
-        let lock_id = object::id<distribution::voting_escrow::Lock>(lock);
-        assert!(
-            voting_escrow.escrow_type(lock_id).is_locked() == false,
-            ELockedVotingEscrowCannotClaim
-        );
-        let period = distribution::common::to_period(reward_distributor.last_token_time);
+        let period = ve::common::to_period(reward_distributor.last_token_time);
         let reward = reward_distributor.claim_internal(voting_escrow, lock_id, period);
 
         coin::from_balance<RewardCoinType>(reward_distributor.balance.split<RewardCoinType>(reward), ctx)
@@ -232,7 +229,7 @@ module distribution::reward_distributor {
     /// The amount of rewards claimed
     fun claim_internal<SailCoinType, RewardCoinType>(
         reward_distributor: &mut RewardDistributor<RewardCoinType>,
-        voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        voting_escrow: &ve::voting_escrow::VotingEscrow<SailCoinType>,
         lock_id: ID,
         max_period: u64
     ): u64 {
@@ -271,13 +268,13 @@ module distribution::reward_distributor {
     /// The amount of rewards claimable
     public fun claimable<SailCoinType, RewardCoinType>(
         reward_distributor: &RewardDistributor<RewardCoinType>,
-        voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        voting_escrow: &ve::voting_escrow::VotingEscrow<SailCoinType>,
         lock_id: ID
     ): u64 {
         let (claimable_amount, _, _) = reward_distributor.claimable_internal(
             voting_escrow,
             lock_id,
-            distribution::common::to_period(reward_distributor.last_token_time)
+            ve::common::to_period(reward_distributor.last_token_time)
         );
         claimable_amount
     }
@@ -296,7 +293,7 @@ module distribution::reward_distributor {
     /// A tuple containing the claimable amount, epoch start, and epoch end
     fun claimable_internal<SailCoinType, RewardCoinType>(
         reward_distributor: &RewardDistributor<RewardCoinType>,
-        voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        voting_escrow: &ve::voting_escrow::VotingEscrow<SailCoinType>,
         lock_id: ID,
         max_period: u64
     ): (u64, u64, u64) {
@@ -313,7 +310,7 @@ module distribution::reward_distributor {
         };
         if (last_checkpoint_time == 0) {
             let user_point = voting_escrow.user_point_history(lock_id, 1);
-            let initial_period = distribution::common::to_period(
+            let initial_period = ve::common::to_period(
                 user_point.user_point_ts()
             );
             epoch_end = initial_period;
@@ -323,15 +320,15 @@ module distribution::reward_distributor {
             return (0, epoch_start, epoch_end)
         };
         if (epoch_end < reward_distributor.start_time) {
-            epoch_end = distribution::common::to_period(reward_distributor.start_time);
+            epoch_end = ve::common::to_period(reward_distributor.start_time);
         };
         let mut i = 0;
         while (i < 50) {
             if (epoch_end >= max_period) {
                 break
             };
-            let user_balance = voting_escrow.balance_of_nft_at(lock_id, epoch_end + distribution::common::epoch() - 1);
-            let total_supply = voting_escrow.total_supply_at(epoch_end + distribution::common::epoch() - 1);
+            let user_balance = voting_escrow.balance_of_nft_at(lock_id, epoch_end + ve::common::epoch() - 1);
+            let total_supply = voting_escrow.total_supply_at(epoch_end + ve::common::epoch() - 1);
             let non_zero_total_supply = if (total_supply == 0) {
                 1
             } else {
@@ -348,7 +345,7 @@ module distribution::reward_distributor {
                 period_reward_tokens,
                 non_zero_total_supply
             );
-            epoch_end = epoch_end + distribution::common::epoch();
+            epoch_end = epoch_end + ve::common::epoch();
             i = i + 1;
         };
         (total_reward, epoch_start, epoch_end)
@@ -373,11 +370,11 @@ module distribution::reward_distributor {
     /// * `clock` - The system clock
     public fun start<RewardCoinType>(
         reward_distributor: &mut RewardDistributor<RewardCoinType>,
-        reward_distributor_cap: &distribution::reward_distributor_cap::RewardDistributorCap,
+        reward_distributor_cap: &ve::reward_distributor_cap::RewardDistributorCap,
         clock: &sui::clock::Clock
     ) {
         reward_distributor_cap.validate(object::id<RewardDistributor<RewardCoinType>>(reward_distributor));
-        let current_time = distribution::common::current_timestamp(clock);
+        let current_time = ve::common::current_timestamp(clock);
         reward_distributor.start_time = current_time;
         reward_distributor.last_token_time = current_time;
         let start_event = EventStart { };
@@ -403,9 +400,9 @@ module distribution::reward_distributor {
     public fun test_create_reward_distributor_cap<RewardCoinType>(
         self: &RewardDistributor<RewardCoinType>,
         ctx: &mut TxContext
-    ): distribution::reward_distributor_cap::RewardDistributorCap {
+    ): ve::reward_distributor_cap::RewardDistributorCap {
         let reward_distributor_id = object::id(self);
-        distribution::reward_distributor_cap::create(reward_distributor_id, ctx)
+        ve::reward_distributor_cap::create(reward_distributor_id, ctx)
     }
 
     #[test_only]

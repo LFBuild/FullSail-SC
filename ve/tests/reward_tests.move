@@ -1,5 +1,5 @@
 #[test_only]
-module distribution::reward_tests;
+module ve::reward_tests;
 
 use sui::test_scenario::{Self, Scenario};
 use sui::object::{Self, ID};
@@ -7,10 +7,10 @@ use sui::types;
 use std::option::{Self, Option};
 use std::type_name::{Self, TypeName};
 
-use distribution::reward::{Self, Reward};
+use ve::reward::{Self, Reward};
 use sui::test_utils;
 use sui::clock::{Self, Clock};
-use distribution::reward_authorized_cap::{Self, RewardAuthorizedCap};
+use ve::reward_cap::{Self, RewardCap};
 use integer_mate::full_math_u64;
 use sui::coin::{Self, Coin};
 
@@ -26,21 +26,14 @@ fun test_create_reward() {
     let clock = clock::create_for_testing(scenario.ctx());
 
     // Define dummy IDs and reward types
-    let voter_id: ID = object::id_from_address(@0x1);
-    let ve_id: ID = object::id_from_address(@0x2);
-    let ve_id_option: Option<ID> = option::some(ve_id);
-    let authorized_id: ID = object::id_from_address(@0x3); // E.g., Voter ID or specific cap ID
     let reward_types = vector[
         type_name::get<USD1>(),
         type_name::get<SAIL>()
     ];
 
     // Call the create function
-    let reward_obj = reward::create(
+    let (reward_obj, reward_cap) = reward::create(
         object::id_from_address(@0x0),
-        voter_id,
-        ve_id_option,
-        authorized_id,
         reward_types,
         false,
         scenario.ctx()
@@ -48,34 +41,25 @@ fun test_create_reward() {
 
     // --- Assertions ---
     assert!(reward::total_supply(&reward_obj, &clock) == 0, 1);
-    assert!(reward::voter(&reward_obj) == voter_id, 2);
-    assert!(reward::ve(&reward_obj) == ve_id, 3);
-    assert!(reward::authorized(&reward_obj) == authorized_id, 4);
     assert!(reward::rewards_list_length(&reward_obj) == 2, 5);
     assert!(reward::rewards_contains(&reward_obj, type_name::get<USD1>()), 6);
     assert!(reward::rewards_contains(&reward_obj, type_name::get<SAIL>()), 7);
     assert!(!reward::rewards_contains(&reward_obj, type_name::get<OTHER>()), 8);
 
     test_utils::destroy(reward_obj);
+    test_utils::destroy(reward_cap);
     
     clock::destroy_for_testing(clock);
     scenario.end();
 }
 fun create_default_reward(
     scenario: &mut Scenario,
-    authorized_id: ID,
     balance_update_enabled: bool
-): Reward {
-    let voter_id: ID = object::id_from_address(@0x1);
-    let ve_id: ID = object::id_from_address(@0x2);
-    let ve_id_option: Option<ID> = option::some(ve_id);
+): (Reward, RewardCap) {
     let reward_types = vector[type_name::get<USD1>()];
 
     reward::create(
         object::id_from_address(@0x0),
-        voter_id,
-        ve_id_option,
-        authorized_id,
         reward_types,
         balance_update_enabled,
         scenario.ctx()
@@ -85,14 +69,11 @@ fun create_default_reward(
 #[test]
 fun test_deposit_reward() {
     let admin = @0xBB;
-    let authorized_id: ID = object::id_from_address(@0xCC);
     let mut scenario = test_scenario::begin(admin);
     let clock = clock::create_for_testing(scenario.ctx());
 
 
-    let mut reward_obj = create_default_reward(&mut scenario, authorized_id, false);
-
-    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx()); 
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, false);
 
     // Define deposit details
     let lock_id: ID = object::id_from_address(@0x100);
@@ -128,13 +109,11 @@ fun test_deposit_reward() {
 #[test]
 fun test_withdraw_reward() {
     let admin = @0xCC;
-    let authorized_id: ID = object::id_from_address(@0xDD); // ID for auth
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
     // Create Reward object and Cap
-    let mut reward_obj = create_default_reward(&mut scenario, authorized_id, false);
-    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx()); 
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, false);
 
     // Define details
     let lock_id: ID = object::id_from_address(@0x101);
@@ -176,13 +155,11 @@ fun test_withdraw_reward() {
 #[test]
 fun test_deposit_withdraw_reward_multi_epoch() {
     let admin = @0xEE;
-    let authorized_id: ID = object::id_from_address(@0xFF); // ID for auth
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
     // Create Reward object and Cap
-    let mut reward_obj = create_default_reward(&mut scenario, authorized_id, false);
-    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx()); 
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, false);
 
     // Define details
     let lock_id: ID = object::id_from_address(@0x102);
@@ -240,13 +217,11 @@ fun test_deposit_withdraw_reward_multi_epoch() {
 #[test]
 fun test_multi_lock_simple_reward_distribution() {
     let admin = @0xFF;
-    let authorized_id: ID = object::id_from_address(@0xEE); // ID for auth
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
     // Create Reward object and Cap
-    let mut reward_obj = create_default_reward(&mut scenario, authorized_id, false);
-    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx()); 
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, false);
 
     // Define details
     let lock_id1: ID = object::id_from_address(@0x103);
@@ -272,13 +247,14 @@ fun test_multi_lock_simple_reward_distribution() {
     // Use the internal notify function accessible within the package tests
     reward::notify_reward_amount_internal<USD1>(
         &mut reward_obj,
+        &reward_cap,
         reward_coin.into_balance(),
         &clock,
         scenario.ctx()
     );
 
     clock.increment_for_testing( 10000);
-    let notified_epoch_start = distribution::common::epoch_start(clock.timestamp_ms() / 1000);
+    let notified_epoch_start = ve::common::epoch_start(clock.timestamp_ms() / 1000);
 
     assert!(reward::rewards_at_epoch<USD1>(&reward_obj, notified_epoch_start) == notify_amount, 10);
     assert!(reward::rewards_this_epoch<USD1>(&reward_obj, &clock) == notify_amount, 11);
@@ -319,6 +295,7 @@ fun test_multi_lock_simple_reward_distribution() {
     // Claim for lock1
     let balance_opt1 = reward::get_reward_internal<USD1>(
         &mut reward_obj, 
+        &reward_cap,
         admin, // Recipient address (using admin for test)
         lock_id1, 
         &clock, 
@@ -332,6 +309,7 @@ fun test_multi_lock_simple_reward_distribution() {
     // Claim for lock2
     let balance_opt2 = reward::get_reward_internal<USD1>(
         &mut reward_obj, 
+        &reward_cap,
         admin, // Recipient address (using admin for test)
         lock_id2, 
         &clock, 
@@ -368,13 +346,11 @@ fun test_multi_lock_simple_reward_distribution() {
 #[test]
 fun test_mid_epoch_deposit_reward() {
     let admin = @0xEE;
-    let authorized_id: ID = object::id_from_address(@0xFF); // ID for auth
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
     // Create Reward object and Cap
-    let mut reward_obj = create_default_reward(&mut scenario, authorized_id, false);
-    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx()); 
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, false);
 
     // Define details
     let lock_id1: ID = object::id_from_address(@0x105);
@@ -397,6 +373,7 @@ fun test_mid_epoch_deposit_reward() {
     let reward_coin = coin::mint_for_testing<USD1>(notify_amount, scenario.ctx());
     reward::notify_reward_amount_internal<USD1>(
         &mut reward_obj,
+        &reward_cap,
         reward_coin.into_balance(),
         &clock,
         scenario.ctx()
@@ -450,13 +427,11 @@ fun test_mid_epoch_deposit_reward() {
 #[test]
 fun test_mid_epoch_deposit_withdraw_reward() {
     let admin = @0x11;
-    let authorized_id: ID = object::id_from_address(@0x22); // ID for auth
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
     // Create Reward object and Cap
-    let mut reward_obj = create_default_reward(&mut scenario, authorized_id, false);
-    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx()); 
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, false);
 
     // Define details
     let lock_id1: ID = object::id_from_address(@0x107);
@@ -477,6 +452,7 @@ fun test_mid_epoch_deposit_withdraw_reward() {
     let reward_coin = coin::mint_for_testing<USD1>(notify_amount, scenario.ctx());
     reward::notify_reward_amount_internal<USD1>(
         &mut reward_obj,
+        &reward_cap,
         reward_coin.into_balance(),
         &clock,
         scenario.ctx()
@@ -535,13 +511,11 @@ fun test_mid_epoch_deposit_withdraw_reward() {
 #[test]
 fun test_withdraw_after_epoch_reward() {
     let admin = @0x33;
-    let authorized_id: ID = object::id_from_address(@0x44); // ID for auth
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
     // Create Reward object and Cap
-    let mut reward_obj = create_default_reward(&mut scenario, authorized_id, false);
-    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx()); 
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, false);
 
     // Define details
     let lock_id1: ID = object::id_from_address(@0x109);
@@ -562,6 +536,7 @@ fun test_withdraw_after_epoch_reward() {
     let reward_coin = coin::mint_for_testing<USD1>(notify_amount, scenario.ctx());
     reward::notify_reward_amount_internal<USD1>(
         &mut reward_obj,
+        &reward_cap,
         reward_coin.into_balance(),
         &clock,
         scenario.ctx()
@@ -598,12 +573,12 @@ fun test_withdraw_after_epoch_reward() {
     assert!(earned1 + earned2 <= notify_amount, 9);
     assert!(earned1 + earned2 >= notify_amount - 1, 10); 
 
-    let balance_opt1 = reward::get_reward_internal<USD1>(&mut reward_obj, admin, lock_id1, &clock, scenario.ctx());
+    let balance_opt1 = reward::get_reward_internal<USD1>(&mut reward_obj, &reward_cap, admin, lock_id1, &clock, scenario.ctx());
     assert!(option::is_some(&balance_opt1), 11);
     sui::balance::destroy_for_testing(option::destroy_some(balance_opt1));
     assert!(reward_obj.earned<USD1>(lock_id1, &clock) == 0, 12); // Earned becomes 0 after claim
 
-    let balance_opt2 = reward::get_reward_internal<USD1>(&mut reward_obj, admin, lock_id2, &clock, scenario.ctx());
+    let balance_opt2 = reward::get_reward_internal<USD1>(&mut reward_obj, &reward_cap, admin, lock_id2, &clock, scenario.ctx());
     assert!(option::is_some(&balance_opt2), 13);
     sui::balance::destroy_for_testing(option::destroy_some(balance_opt2));
     assert!(reward_obj.earned<USD1>(lock_id2, &clock) == 0, 14); // Earned becomes 0 after claim
@@ -619,13 +594,11 @@ fun test_withdraw_after_epoch_reward() {
 #[test]
 fun test_rewards_across_multiple_epochs() {
     let admin = @0x55;
-    let authorized_id: ID = object::id_from_address(@0x66); // ID for auth
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
     // Create Reward object and Cap
-    let mut reward_obj = create_default_reward(&mut scenario, authorized_id, false);
-    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx()); 
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, false);
 
     // Define details
     let lock_id1: ID = object::id_from_address(@0x10B);
@@ -647,6 +620,7 @@ fun test_rewards_across_multiple_epochs() {
     let reward_coin1 = coin::mint_for_testing<USD1>(notify_amount1, scenario.ctx());
     reward::notify_reward_amount_internal<USD1>(
         &mut reward_obj,
+        &reward_cap,
         reward_coin1.into_balance(),
         &clock,
         scenario.ctx()
@@ -665,6 +639,7 @@ fun test_rewards_across_multiple_epochs() {
     let reward_coin2 = coin::mint_for_testing<USD1>(notify_amount2, scenario.ctx());
     reward::notify_reward_amount_internal<USD1>(
         &mut reward_obj,
+        &reward_cap,
         reward_coin2.into_balance(),
         &clock,
         scenario.ctx()
@@ -713,28 +688,20 @@ fun test_rewards_across_multiple_epochs() {
 #[test]
 fun test_multi_token_reward_same_epoch() {
     let admin = @0x77;
-    let authorized_id: ID = object::id_from_address(@0x88); // ID for auth
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
     // Modify default reward creation to include SAIL
-    let voter_id: ID = object::id_from_address(@0x1);
-    let ve_id: ID = object::id_from_address(@0x2);
-    let ve_id_option: Option<ID> = option::some(ve_id);
     let reward_types = vector[
         type_name::get<USD1>(),
         type_name::get<SAIL>()
     ];
-    let mut reward_obj = reward::create(
+    let (mut reward_obj, reward_cap) = reward::create(
         object::id_from_address(@0x0),
-        voter_id,
-        ve_id_option,
-        authorized_id,
         reward_types,
         false,
         scenario.ctx()
     );
-    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx()); 
 
     // Define details
     let lock_id1: ID = object::id_from_address(@0x10D);
@@ -756,6 +723,7 @@ fun test_multi_token_reward_same_epoch() {
     let reward_coin_usd = coin::mint_for_testing<USD1>(notify_amount_usd, scenario.ctx());
     reward::notify_reward_amount_internal<USD1>(
         &mut reward_obj,
+        &reward_cap,
         reward_coin_usd.into_balance(),
         &clock,
         scenario.ctx()
@@ -764,6 +732,7 @@ fun test_multi_token_reward_same_epoch() {
     let reward_coin_sail = coin::mint_for_testing<SAIL>(notify_amount_sail, scenario.ctx());
     reward::notify_reward_amount_internal<SAIL>(
         &mut reward_obj,
+        &reward_cap,
         reward_coin_sail.into_balance(),
         &clock,
         scenario.ctx()
@@ -814,13 +783,11 @@ fun test_multi_token_reward_same_epoch() {
 #[test]
 fun test_reward_large_nums() {
     let admin = @0xFF;
-    let authorized_id: ID = object::id_from_address(@0xEE); // ID for auth
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
     // Create Reward object and Cap
-    let mut reward_obj = create_default_reward(&mut scenario, authorized_id, false);
-    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx()); 
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, false);
 
     // Define details
     let lock_id1: ID = object::id_from_address(@0x103);
@@ -846,6 +813,7 @@ fun test_reward_large_nums() {
     // Use the internal notify function accessible within the package tests
     reward::notify_reward_amount_internal<USD1>(
         &mut reward_obj,
+        &reward_cap,
         reward_coin.into_balance(),
         &clock,
         scenario.ctx()
@@ -884,6 +852,7 @@ fun test_reward_large_nums() {
     // Claim for lock1
     let balance_opt1 = reward::get_reward_internal<USD1>(
         &mut reward_obj, 
+        &reward_cap,
         admin, // Recipient address (using admin for test)
         lock_id1, 
         &clock, 
@@ -897,6 +866,7 @@ fun test_reward_large_nums() {
     // Claim for lock2
     let balance_opt2 = reward::get_reward_internal<USD1>(
         &mut reward_obj, 
+        &reward_cap,
         admin, // Recipient address (using admin for test)
         lock_id2, 
         &clock, 
@@ -929,13 +899,11 @@ fun test_reward_large_nums() {
 #[test]
 fun test_reward_distribution_at_epoch_start() {
     let admin = @0xABC;
-    let authorized_id: ID = object::id_from_address(@0xDEF); // ID for auth
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
     // Create Reward object and Cap
-    let mut reward_obj = create_default_reward(&mut scenario, authorized_id, false);
-    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx());
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, false);
 
     // Define details
     let lock_id1: ID = object::id_from_address(@0x201);
@@ -962,6 +930,7 @@ fun test_reward_distribution_at_epoch_start() {
     let reward_coin = coin::mint_for_testing<USD1>(notify_amount, scenario.ctx());
     reward::notify_reward_amount_internal<USD1>(
         &mut reward_obj,
+        &reward_cap,
         reward_coin.into_balance(),
         &clock, // Clock is now at the beginning of Epoch 2
         scenario.ctx()
@@ -1011,17 +980,14 @@ fun test_reward_distribution_at_epoch_start() {
 }
 
 #[test]
-#[expected_failure(abort_code = distribution::reward::EUpdateBalancesDisabled)]
+#[expected_failure(abort_code = ve::reward::EUpdateBalancesDisabled)]
 fun test_reward_update_balances_disabled_should_fail() {
     let admin = @0x99;
-    let authorized_id: ID = object::id_from_address(@0xAA);
     let mut scenario = test_scenario::begin(admin);
     let clock = clock::create_for_testing(scenario.ctx());
 
     // Create reward with balance_update_enabled = false using utility function
-    let mut reward_obj = create_default_reward(&mut scenario, authorized_id, false);
-
-    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx());
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, false);
 
     // Try to call update_balances - this should fail
     let lock_ids = vector[object::id_from_address(@0x123)];
@@ -1048,13 +1014,11 @@ fun test_reward_update_balances_disabled_should_fail() {
 #[test]
 fun test_reward_balance_update_enabled_no_finalization() {
     let admin = @0x11;
-    let authorized_id: ID = object::id_from_address(@0x22);
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
     // Create reward with balance_update_enabled = true
-    let mut reward_obj = create_default_reward(&mut scenario, authorized_id, true);
-    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx());
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, true);
 
     // Define details
     let lock_id1: ID = object::id_from_address(@0x301);
@@ -1073,6 +1037,7 @@ fun test_reward_balance_update_enabled_no_finalization() {
     let reward_coin = coin::mint_for_testing<USD1>(notify_amount, scenario.ctx());
     reward::notify_reward_amount_internal<USD1>(
         &mut reward_obj,
+        &reward_cap,
         reward_coin.into_balance(),
         &clock,
         scenario.ctx()
@@ -1106,13 +1071,11 @@ fun test_reward_balance_update_enabled_no_finalization() {
 #[test]
 fun test_reward_balance_update_enabled_not_finalized() {
     let admin = @0x33;
-    let authorized_id: ID = object::id_from_address(@0x44);
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
     // Create reward with balance_update_enabled = true
-    let mut reward_obj = create_default_reward(&mut scenario, authorized_id, true);
-    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx());
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, true);
 
     // Define details
     let lock_id1: ID = object::id_from_address(@0x401);
@@ -1132,6 +1095,7 @@ fun test_reward_balance_update_enabled_not_finalized() {
     let reward_coin = coin::mint_for_testing<USD1>(notify_amount, scenario.ctx());
     reward::notify_reward_amount_internal<USD1>(
         &mut reward_obj,
+        &reward_cap,
         reward_coin.into_balance(),
         &clock,
         scenario.ctx()
@@ -1141,7 +1105,7 @@ fun test_reward_balance_update_enabled_not_finalized() {
     assert!(reward_obj.earned<USD1>(lock_id1, &clock) == 0, 3);
 
     // Get the epoch start for Epoch 1 (for update_balances call)
-    let epoch1_start = distribution::common::epoch_start(distribution::common::current_timestamp(&clock));
+    let epoch1_start = ve::common::epoch_start(ve::common::current_timestamp(&clock));
 
     // --- Advance to Epoch 2 ---
     clock.increment_for_testing(one_week_ms);
@@ -1206,13 +1170,11 @@ fun test_reward_balance_update_enabled_not_finalized() {
 #[test]
 fun test_reward_update_balances_specific_epoch() {
     let admin = @0x55;
-    let authorized_id: ID = object::id_from_address(@0x66);
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
     // Create reward with balance_update_enabled = true
-    let mut reward_obj = create_default_reward(&mut scenario, authorized_id, true);
-    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx());
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, true);
 
     // Define details
     let lock_id1: ID = object::id_from_address(@0x501);
@@ -1226,7 +1188,7 @@ fun test_reward_update_balances_specific_epoch() {
     assert!(reward_obj.balance_of(lock_id1, &clock) == initial_deposit, 2);
 
     // Get epoch start times for reference
-    let epoch1_start = distribution::common::epoch_start(distribution::common::current_timestamp(&clock));
+    let epoch1_start = ve::common::epoch_start(ve::common::current_timestamp(&clock));
     
     // Verify total_supply_at for epoch 1
     let epoch1_total_supply = reward_obj.total_supply_at(epoch1_start);
@@ -1236,7 +1198,7 @@ fun test_reward_update_balances_specific_epoch() {
 
     // --- Advance to Epoch 2 ---
     clock.increment_for_testing(one_week_ms);
-    let epoch2_start = distribution::common::epoch_start(distribution::common::current_timestamp(&clock));
+    let epoch2_start = ve::common::epoch_start(ve::common::current_timestamp(&clock));
 
     // Total supply should still be the same (no balance updates yet)
     assert!(reward_obj.total_supply(&clock) == initial_deposit, 4);
@@ -1328,10 +1290,9 @@ fun setup_3_epoch_scenario(
     scenario: &mut Scenario,
     clock: &mut Clock,
     authorized_id: ID
-): (Reward, RewardAuthorizedCap, ID, u64, u64, u64, u64) {
+): (Reward, RewardCap, ID, u64, u64, u64, u64) {
     // Create reward with balance_update_enabled = true
-    let mut reward_obj = create_default_reward(scenario, authorized_id, true);
-    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx());
+    let (mut reward_obj, reward_cap) = create_default_reward(scenario, true);
 
     // Define details
     let lock_id1: ID = object::id_from_address(@0x601);
@@ -1344,7 +1305,7 @@ fun setup_3_epoch_scenario(
     reward_obj.deposit(&reward_cap, initial_deposit, lock_id1, clock, scenario.ctx());
 
     // Get epoch start times for reference
-    let epoch1_start = distribution::common::epoch_start(distribution::common::current_timestamp(clock));
+    let epoch1_start = ve::common::epoch_start(ve::common::current_timestamp(clock));
     
     clock.increment_for_testing(1000);
 
@@ -1705,18 +1666,16 @@ fun test_reward_third_epoch_balance_updates() {
 #[test]
 fun test_reward_update_balances_of_non_existing_lock() {
     let admin = @0xBB;
-    let authorized_id: ID = object::id_from_address(@0xCC);
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
     // Create reward with balance_update_enabled = true
-    let mut reward_obj = create_default_reward(&mut scenario, authorized_id, true);
-    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx());
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, true);
 
     let one_week_ms = 7 * 24 * 60 * 60 * 1000;
 
     // --- Epoch 1: No deposits, just advance time ---
-    let epoch1_start = distribution::common::epoch_start(distribution::common::current_timestamp(&clock));
+    let epoch1_start = ve::common::epoch_start(ve::common::current_timestamp(&clock));
     clock.increment_for_testing(one_week_ms);
 
     // --- Epoch 2: Still no deposits, advance time ---
@@ -1756,15 +1715,13 @@ fun test_reward_update_balances_of_non_existing_lock() {
 #[test]
 fun test_reward_balance_of_non_existing_lock() {
     let admin = @0xDD;
-    let authorized_id: ID = object::id_from_address(@0xEE);
     let mut scenario = test_scenario::begin(admin);
     let clock = clock::create_for_testing(scenario.ctx());
 
     // Create reward with default settings
-    let reward_obj = create_default_reward(&mut scenario, authorized_id, false);
-    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx());
-    let current_time = distribution::common::current_timestamp(&clock);
-    let epoch_start = distribution::common::epoch_start(current_time);
+    let (reward_obj, reward_cap) = create_default_reward(&mut scenario, false);
+    let current_time = ve::common::current_timestamp(&clock);
+    let epoch_start = ve::common::epoch_start(current_time);
 
     // Create some lock IDs that never get deposited
     let non_existing_lock1: ID = object::id_from_address(@0x801);
@@ -1772,8 +1729,8 @@ fun test_reward_balance_of_non_existing_lock() {
     assert!(reward_obj.balance_of(non_existing_lock1, &clock) == 0, 1);
     assert!(reward_obj.balance_of_at(non_existing_lock1, epoch_start) == 0, 4);
     assert!(reward_obj.balance_of_at(non_existing_lock1, epoch_start + 1) == 0, 4);
-    assert!(reward_obj.balance_of_at(non_existing_lock1, epoch_start + 1 * distribution::common::epoch() - 1) == 0, 4);
-    assert!(reward_obj.balance_of_at(non_existing_lock1, epoch_start + distribution::common::epoch() / 2) == 0, 4);
+    assert!(reward_obj.balance_of_at(non_existing_lock1, epoch_start + 1 * ve::common::epoch() - 1) == 0, 4);
+    assert!(reward_obj.balance_of_at(non_existing_lock1, epoch_start + ve::common::epoch() / 2) == 0, 4);
 
     // Cleanup
     test_utils::destroy(reward_cap);
@@ -1786,18 +1743,16 @@ fun test_reward_balance_of_non_existing_lock() {
 #[test]
 fun test_reward_update_balances_non_deposited_lock() {
     let admin = @0xFF;
-    let authorized_id: ID = object::id_from_address(@0xAB);
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
     let one_week_ms = 7 * 24 * 60 * 60 * 1000;
 
     // Create reward with balance_update_enabled = true
-    let mut reward_obj = create_default_reward(&mut scenario, authorized_id, true);
-    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx());
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, true);
 
     // Get current epoch start
-    let current_time = distribution::common::current_timestamp(&clock);
-    let epoch_start = distribution::common::epoch_start(current_time);
+    let current_time = ve::common::current_timestamp(&clock);
+    let epoch_start = ve::common::epoch_start(current_time);
 
     // Create a lock ID that was never deposited to the system
     let non_existing_lock: ID = object::id_from_address(@0x901);
@@ -1833,13 +1788,11 @@ fun test_reward_update_balances_non_deposited_lock() {
 #[test]
 fun test_reward_multiple_update_balances_latest_wins() {
     let admin = @0xAC;
-    let authorized_id: ID = object::id_from_address(@0xBD);
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
     // Create reward with balance_update_enabled = true
-    let mut reward_obj = create_default_reward(&mut scenario, authorized_id, true);
-    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx());
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, true);
 
     let one_week_ms = 7 * 24 * 60 * 60 * 1000;
 
@@ -1852,7 +1805,7 @@ fun test_reward_multiple_update_balances_latest_wins() {
     reward_obj.deposit(&reward_cap, initial_deposit1, lock_id1, &clock, scenario.ctx());
     reward_obj.deposit(&reward_cap, initial_deposit2, lock_id2, &clock, scenario.ctx());
 
-    let epoch1_start = distribution::common::epoch_start(distribution::common::current_timestamp(&clock));
+    let epoch1_start = ve::common::epoch_start(ve::common::current_timestamp(&clock));
 
     // Advance to next epoch to be able to update the previous epoch
     clock.increment_for_testing(one_week_ms);
@@ -1921,16 +1874,14 @@ fun test_reward_multiple_update_balances_latest_wins() {
 }
 
 #[test]
-#[expected_failure(abort_code = distribution::reward::EUpdateBalancesAlreadyFinal)]
+#[expected_failure(abort_code = ve::reward::EUpdateBalancesAlreadyFinal)]
 fun test_reward_update_balances_after_final_should_fail() {
     let admin = @0xCE;
-    let authorized_id: ID = object::id_from_address(@0xDF);
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
     // Create reward with balance_update_enabled = true
-    let mut reward_obj = create_default_reward(&mut scenario, authorized_id, true);
-    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx());
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, true);
 
     let one_week_ms = 7 * 24 * 60 * 60 * 1000;
 
@@ -1939,7 +1890,7 @@ fun test_reward_update_balances_after_final_should_fail() {
     let initial_deposit1 = 3000;
 
     reward_obj.deposit(&reward_cap, initial_deposit1, lock_id1, &clock, scenario.ctx());
-    let epoch1_start = distribution::common::epoch_start(distribution::common::current_timestamp(&clock));
+    let epoch1_start = ve::common::epoch_start(ve::common::current_timestamp(&clock));
 
     // Advance to next epoch to be able to update the previous epoch
     clock.increment_for_testing(one_week_ms);
@@ -1982,16 +1933,14 @@ fun test_reward_update_balances_after_final_should_fail() {
 }
 
 #[test]
-#[expected_failure(abort_code = distribution::reward::EUpdateBalancesOnlyFinishedEpochAllowed)]
+#[expected_failure(abort_code = ve::reward::EUpdateBalancesOnlyFinishedEpochAllowed)]
 fun test_reward_update_balances_current_epoch_should_fail() {
     let admin = @0xDE;
-    let authorized_id: ID = object::id_from_address(@0xEF);
     let mut scenario = test_scenario::begin(admin);
     let clock = clock::create_for_testing(scenario.ctx());
 
     // Create reward with balance_update_enabled = true
-    let mut reward_obj = create_default_reward(&mut scenario, authorized_id, true);
-    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx());
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, true);
 
     // --- Deposit a lock in the current epoch ---
     let lock_id1: ID = object::id_from_address(@0xC01);
@@ -2002,8 +1951,8 @@ fun test_reward_update_balances_current_epoch_should_fail() {
     assert!(reward_obj.balance_of(lock_id1, &clock) == deposit_amount, 2);
 
     // Get the current time and epoch start
-    let current_time = distribution::common::current_timestamp(&clock);
-    let current_epoch_start = distribution::common::epoch_start(current_time);
+    let current_time = ve::common::current_timestamp(&clock);
+    let current_epoch_start = ve::common::epoch_start(current_time);
 
     // --- Try to update balances for the current epoch ---
     // This should fail because you can't update balances for the active epoch
@@ -2028,16 +1977,14 @@ fun test_reward_update_balances_current_epoch_should_fail() {
 }
 
 #[test]
-#[expected_failure(abort_code = distribution::reward::EUpdateBalancesOnlyFinishedEpochAllowed)]
+#[expected_failure(abort_code = ve::reward::EUpdateBalancesOnlyFinishedEpochAllowed)]
 fun test_reward_update_balances_future_epoch_should_fail() {
     let admin = @0xF0;
-    let authorized_id: ID = object::id_from_address(@0xF1);
     let mut scenario = test_scenario::begin(admin);
     let clock = clock::create_for_testing(scenario.ctx());
 
     // Create reward with balance_update_enabled = true
-    let mut reward_obj = create_default_reward(&mut scenario, authorized_id, true);
-    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx());
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, true);
 
     // --- Deposit a lock in the current epoch ---
     let lock_id1: ID = object::id_from_address(@0xF01);
@@ -2048,11 +1995,11 @@ fun test_reward_update_balances_future_epoch_should_fail() {
     assert!(reward_obj.balance_of(lock_id1, &clock) == deposit_amount, 2);
 
     // Get the current time and epoch start
-    let current_time = distribution::common::current_timestamp(&clock);
-    let current_epoch_start = distribution::common::epoch_start(current_time);
+    let current_time = ve::common::current_timestamp(&clock);
+    let current_epoch_start = ve::common::epoch_start(current_time);
     
     // Calculate a future epoch start (10 weeks in the future)
-    let one_week = distribution::common::epoch();
+    let one_week = ve::common::epoch();
     let future_epoch_start = current_epoch_start + (10 * one_week);
 
     // --- Try to update balances for the future epoch ---
@@ -2080,13 +2027,11 @@ fun test_reward_update_balances_future_epoch_should_fail() {
 #[test]
 fun test_reward_update_balances_past_epoch_after_time_advance() {
     let admin = @0xF2;
-    let authorized_id: ID = object::id_from_address(@0xF3);
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
     // Create reward with balance_update_enabled = true
-    let mut reward_obj = create_default_reward(&mut scenario, authorized_id, true);
-    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx());
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, true);
 
     // --- Epoch 1: Deposit a lock ---
     let lock_id1: ID = object::id_from_address(@0xF02);
@@ -2097,7 +2042,7 @@ fun test_reward_update_balances_past_epoch_after_time_advance() {
     assert!(reward_obj.balance_of(lock_id1, &clock) == initial_deposit, 2);
 
     // Store epoch starts for reference
-    let epoch1_start = distribution::common::epoch_start(distribution::common::current_timestamp(&clock));
+    let epoch1_start = ve::common::epoch_start(ve::common::current_timestamp(&clock));
     let one_week_ms = 7 * 24 * 60 * 60 * 1000;
     let one_week_seconds = one_week_ms / 1000;
 
@@ -2112,8 +2057,8 @@ fun test_reward_update_balances_past_epoch_after_time_advance() {
     clock.increment_for_testing(5 * one_week_ms);
 
     // Verify we're now in epoch 6
-    let current_time = distribution::common::current_timestamp(&clock);
-    let current_epoch_start = distribution::common::epoch_start(current_time);
+    let current_time = ve::common::current_timestamp(&clock);
+    let current_epoch_start = ve::common::epoch_start(current_time);
     assert!(current_epoch_start == epoch6_start, 3);
 
     // Verify the deposit is still tracked correctly
@@ -2204,16 +2149,14 @@ fun test_reward_update_balances_past_epoch_after_time_advance() {
 }
 
 #[test]
-#[expected_failure(abort_code = distribution::reward::EUpdateBalancesInvalidLocksLength)]
+#[expected_failure(abort_code = ve::reward::EUpdateBalancesInvalidLocksLength)]
 fun test_reward_update_balances_no_weights_should_fail() {
     let admin = @0xF4;
-    let authorized_id: ID = object::id_from_address(@0xF5);
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
     // Create reward with balance_update_enabled = true
-    let mut reward_obj = create_default_reward(&mut scenario, authorized_id, true);
-    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx());
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, true);
 
     // --- Deposit a lock first ---
     let lock_id1: ID = object::id_from_address(@0xF03);
@@ -2224,7 +2167,7 @@ fun test_reward_update_balances_no_weights_should_fail() {
     assert!(reward_obj.balance_of(lock_id1, &clock) == initial_deposit, 2);
 
     // Store epoch start for the deposit
-    let epoch1_start = distribution::common::epoch_start(distribution::common::current_timestamp(&clock));
+    let epoch1_start = ve::common::epoch_start(ve::common::current_timestamp(&clock));
     let one_week_ms = 7 * 24 * 60 * 60 * 1000;
 
     // Advance to next epoch so we can update the previous epoch
@@ -2255,13 +2198,11 @@ fun test_reward_update_balances_no_weights_should_fail() {
 #[test]
 fun test_reward_notify_then_deposits_update_balances_and_claim() {
     let admin = @0xF6;
-    let authorized_id: ID = object::id_from_address(@0xF7);
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
     // Create reward with balance_update_enabled = true
-    let mut reward_obj = create_default_reward(&mut scenario, authorized_id, true);
-    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx());
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, true);
 
     let one_week_ms = 7 * 24 * 60 * 60 * 1000;
     let notify_amount = 10000; // USD1 reward amount
@@ -2270,13 +2211,14 @@ fun test_reward_notify_then_deposits_update_balances_and_claim() {
     let reward_coin = coin::mint_for_testing<USD1>(notify_amount, scenario.ctx());
     reward::notify_reward_amount_internal<USD1>(
         &mut reward_obj,
+        &reward_cap,
         reward_coin.into_balance(),
         &clock,
         scenario.ctx()
     );
 
     // Store epoch start for reference
-    let epoch1_start = distribution::common::epoch_start(distribution::common::current_timestamp(&clock));
+    let epoch1_start = ve::common::epoch_start(ve::common::current_timestamp(&clock));
 
     // Verify no earned rewards yet (no deposits, no locks)
     let lock_id1: ID = object::id_from_address(@0xF04);
@@ -2357,6 +2299,7 @@ fun test_reward_notify_then_deposits_update_balances_and_claim() {
     // --- Claim rewards for both locks ---
     let balance_opt1 = reward::get_reward_internal<USD1>(
         &mut reward_obj, 
+        &reward_cap,
         admin, // Recipient address
         lock_id1, 
         &clock, 
@@ -2369,6 +2312,7 @@ fun test_reward_notify_then_deposits_update_balances_and_claim() {
 
     let balance_opt2 = reward::get_reward_internal<USD1>(
         &mut reward_obj, 
+        &reward_cap,
         admin, // Recipient address
         lock_id2, 
         &clock, 
@@ -2394,13 +2338,11 @@ fun test_reward_notify_then_deposits_update_balances_and_claim() {
 #[test]
 fun test_reward_only_finalized_epochs_claimable() {
     let admin = @0xF8;
-    let authorized_id: ID = object::id_from_address(@0xF9);
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
     // Create reward with balance_update_enabled = true
-    let mut reward_obj = create_default_reward(&mut scenario, authorized_id, true);
-    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx());
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, true);
 
     let one_week_ms = 7 * 24 * 60 * 60 * 1000;
     let notify_amount1 = 5000; // USD1 reward amount for epoch 1
@@ -2410,13 +2352,14 @@ fun test_reward_only_finalized_epochs_claimable() {
     let reward_coin1 = coin::mint_for_testing<USD1>(notify_amount1, scenario.ctx());
     reward::notify_reward_amount_internal<USD1>(
         &mut reward_obj,
+        &reward_cap,
         reward_coin1.into_balance(),
         &clock,
         scenario.ctx()
     );
 
     // Store epoch start for reference
-    let epoch1_start = distribution::common::epoch_start(distribution::common::current_timestamp(&clock));
+    let epoch1_start = ve::common::epoch_start(ve::common::current_timestamp(&clock));
 
     // --- Epoch 1, Step 2: Deposit a lock ---
     let lock_id1: ID = object::id_from_address(@0xF06);
@@ -2431,12 +2374,13 @@ fun test_reward_only_finalized_epochs_claimable() {
 
     // --- Advance to Epoch 2 ---
     clock.increment_for_testing(one_week_ms);
-    let epoch2_start = distribution::common::epoch_start(distribution::common::current_timestamp(&clock));
+    let epoch2_start = ve::common::epoch_start(ve::common::current_timestamp(&clock));
 
     // --- Epoch 2, Step 1: Notify reward amount again for epoch 2 ---
     let reward_coin2 = coin::mint_for_testing<USD1>(notify_amount2, scenario.ctx());
     reward::notify_reward_amount_internal<USD1>(
         &mut reward_obj,
+        &reward_cap,
         reward_coin2.into_balance(),
         &clock,
         scenario.ctx()
@@ -2500,6 +2444,7 @@ fun test_reward_only_finalized_epochs_claimable() {
     // --- Claim rewards (should only get epoch 1 rewards) ---
     let balance_opt = reward::get_reward_internal<USD1>(
         &mut reward_obj, 
+        &reward_cap,
         admin, // Recipient address
         lock_id1, 
         &clock, 
@@ -2529,13 +2474,11 @@ fun test_reward_only_finalized_epochs_claimable() {
 #[test]
 fun test_reward_only_second_epoch_finalized_no_rewards() {
     let admin = @0xFA;
-    let authorized_id: ID = object::id_from_address(@0xFB);
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
     // Create reward with balance_update_enabled = true
-    let mut reward_obj = create_default_reward(&mut scenario, authorized_id, true);
-    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx());
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, true);
 
     let one_week_ms = 7 * 24 * 60 * 60 * 1000;
     let notify_amount1 = 5000; // USD1 reward amount for epoch 1
@@ -2545,13 +2488,14 @@ fun test_reward_only_second_epoch_finalized_no_rewards() {
     let reward_coin1 = coin::mint_for_testing<USD1>(notify_amount1, scenario.ctx());
     reward::notify_reward_amount_internal<USD1>(
         &mut reward_obj,
+        &reward_cap,
         reward_coin1.into_balance(),
         &clock,
         scenario.ctx()
     );
 
     // Store epoch start for reference
-    let epoch1_start = distribution::common::epoch_start(distribution::common::current_timestamp(&clock));
+    let epoch1_start = ve::common::epoch_start(ve::common::current_timestamp(&clock));
 
     // --- Epoch 1, Step 2: Deposit a lock ---
     let lock_id1: ID = object::id_from_address(@0xF07);
@@ -2566,12 +2510,13 @@ fun test_reward_only_second_epoch_finalized_no_rewards() {
 
     // --- Advance to Epoch 2 ---
     clock.increment_for_testing(one_week_ms);
-    let epoch2_start = distribution::common::epoch_start(distribution::common::current_timestamp(&clock));
+    let epoch2_start = ve::common::epoch_start(ve::common::current_timestamp(&clock));
 
     // --- Epoch 2, Step 1: Notify reward amount again for epoch 2 ---
     let reward_coin2 = coin::mint_for_testing<USD1>(notify_amount2, scenario.ctx());
     reward::notify_reward_amount_internal<USD1>(
         &mut reward_obj,
+        &reward_cap,
         reward_coin2.into_balance(),
         &clock,
         scenario.ctx()
@@ -2633,6 +2578,7 @@ fun test_reward_only_second_epoch_finalized_no_rewards() {
     // --- Attempt to claim rewards (should get nothing) ---
     let balance_opt = reward::get_reward_internal<USD1>(
         &mut reward_obj, 
+        &reward_cap,
         admin, // Recipient address
         lock_id1, 
         &clock, 
@@ -2663,13 +2609,11 @@ fun test_reward_only_second_epoch_finalized_no_rewards() {
 #[test]
 fun test_reward_double_claim_impossible() {
     let admin = @0xFC;
-    let authorized_id: ID = object::id_from_address(@0xFD);
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
     // Create reward with balance_update_enabled = true
-    let mut reward_obj = create_default_reward(&mut scenario, authorized_id, true);
-    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx());
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, true);
 
     let one_week_ms = 7 * 24 * 60 * 60 * 1000;
     let notify_amount1 = 3000; // USD1 reward amount for epoch 1
@@ -2679,13 +2623,14 @@ fun test_reward_double_claim_impossible() {
     let reward_coin1 = coin::mint_for_testing<USD1>(notify_amount1, scenario.ctx());
     reward::notify_reward_amount_internal<USD1>(
         &mut reward_obj,
+        &reward_cap,
         reward_coin1.into_balance(),
         &clock,
         scenario.ctx()
     );
 
     // Store epoch start for reference
-    let epoch1_start = distribution::common::epoch_start(distribution::common::current_timestamp(&clock));
+    let epoch1_start = ve::common::epoch_start(ve::common::current_timestamp(&clock));
 
     // --- Epoch 1: Deposit a lock ---
     let lock_id1: ID = object::id_from_address(@0xF08);
@@ -2700,7 +2645,7 @@ fun test_reward_double_claim_impossible() {
 
     // --- Advance to Epoch 2 ---
     clock.increment_for_testing(one_week_ms);
-    let epoch2_start = distribution::common::epoch_start(distribution::common::current_timestamp(&clock));
+    let epoch2_start = ve::common::epoch_start(ve::common::current_timestamp(&clock));
 
     // --- Epoch 2: Update balances for Epoch 1 ---
     let updated_balance_epoch1 = 6000; // Custom balance for epoch 1
@@ -2721,6 +2666,7 @@ fun test_reward_double_claim_impossible() {
     let reward_coin2 = coin::mint_for_testing<USD1>(notify_amount2, scenario.ctx());
     reward::notify_reward_amount_internal<USD1>(
         &mut reward_obj,
+        &reward_cap,
         reward_coin2.into_balance(),
         &clock,
         scenario.ctx()
@@ -2732,6 +2678,7 @@ fun test_reward_double_claim_impossible() {
 
     let balance_opt_wrong_token = reward::get_reward_internal<OTHER>(
         &mut reward_obj, 
+        &reward_cap,
         admin, // Recipient address
         lock_id1, 
         &clock, 
@@ -2746,6 +2693,7 @@ fun test_reward_double_claim_impossible() {
 
     let balance_opt1 = reward::get_reward_internal<USD1>(
         &mut reward_obj, 
+        &reward_cap,
         admin, // Recipient address
         lock_id1, 
         &clock, 
@@ -2762,6 +2710,7 @@ fun test_reward_double_claim_impossible() {
     // --- Double claim attempt 1: Try to claim reward again instantly ---
     let balance_opt1_double = reward::get_reward_internal<USD1>(
         &mut reward_obj, 
+        &reward_cap,
         admin, // Recipient address
         lock_id1, 
         &clock, 
@@ -2780,6 +2729,7 @@ fun test_reward_double_claim_impossible() {
 
     let balance_opt_wrong_token = reward::get_reward_internal<OTHER>(
         &mut reward_obj, 
+        &reward_cap,
         admin, // Recipient address
         lock_id1, 
         &clock, 
@@ -2811,6 +2761,7 @@ fun test_reward_double_claim_impossible() {
 
     let balance_opt_wrong_token = reward::get_reward_internal<OTHER>(
         &mut reward_obj, 
+        &reward_cap,
         admin, // Recipient address
         lock_id1, 
         &clock, 
@@ -2825,6 +2776,7 @@ fun test_reward_double_claim_impossible() {
 
     let balance_opt2 = reward::get_reward_internal<USD1>(
         &mut reward_obj, 
+        &reward_cap,
         admin, // Recipient address
         lock_id1, 
         &clock, 
@@ -2841,6 +2793,7 @@ fun test_reward_double_claim_impossible() {
     // --- Double claim attempt 2: Try to claim reward again instantly ---
     let balance_opt2_double = reward::get_reward_internal<USD1>(
         &mut reward_obj, 
+        &reward_cap,
         admin, // Recipient address
         lock_id1, 
         &clock, 
@@ -2856,6 +2809,7 @@ fun test_reward_double_claim_impossible() {
 
     let balance_opt_wrong_token = reward::get_reward_internal<OTHER>(
         &mut reward_obj, 
+        &reward_cap,
         admin, // Recipient address
         lock_id1, 
         &clock, 
@@ -2878,28 +2832,20 @@ fun test_reward_double_claim_impossible() {
 #[test]
 fun test_reward_multi_token_notify_and_claim() {
     let admin = @0xFE;
-    let authorized_id: ID = object::id_from_address(@0xFF);
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
     // Create reward with balance_update_enabled = true and support for multiple tokens
-    let voter_id: ID = object::id_from_address(@0x1);
-    let ve_id: ID = object::id_from_address(@0x2);
-    let ve_id_option: Option<ID> = option::some(ve_id);
     let reward_types = vector[
         type_name::get<USD1>(),
         type_name::get<OTHER>()
     ];
-    let mut reward_obj = reward::create(
+    let (mut reward_obj, reward_cap) = reward::create(
         object::id_from_address(@0x0),
-        voter_id,
-        ve_id_option,
-        authorized_id,
         reward_types,
         true, // balance_update_enabled = true
         scenario.ctx()
     );
-    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx());
 
     let one_week_ms = 7 * 24 * 60 * 60 * 1000;
     let notify_amount_usd1 = 5000; // USD1 reward amount
@@ -2909,6 +2855,7 @@ fun test_reward_multi_token_notify_and_claim() {
     let reward_coin_usd1 = coin::mint_for_testing<USD1>(notify_amount_usd1, scenario.ctx());
     reward::notify_reward_amount_internal<USD1>(
         &mut reward_obj,
+        &reward_cap,
         reward_coin_usd1.into_balance(),
         &clock,
         scenario.ctx()
@@ -2918,13 +2865,14 @@ fun test_reward_multi_token_notify_and_claim() {
     let reward_coin_other = coin::mint_for_testing<OTHER>(notify_amount_other, scenario.ctx());
     reward::notify_reward_amount_internal<OTHER>(
         &mut reward_obj,
+        &reward_cap,
         reward_coin_other.into_balance(),
         &clock,
         scenario.ctx()
     );
 
     // Store epoch start for reference
-    let epoch1_start = distribution::common::epoch_start(distribution::common::current_timestamp(&clock));
+    let epoch1_start = ve::common::epoch_start(ve::common::current_timestamp(&clock));
 
     // Verify both tokens are supported
     assert!(reward_obj.rewards_contains(type_name::get<USD1>()), 1);
@@ -2984,6 +2932,7 @@ fun test_reward_multi_token_notify_and_claim() {
     // --- Claim USD1 rewards ---
     let balance_opt_usd1 = reward::get_reward_internal<USD1>(
         &mut reward_obj, 
+        &reward_cap,
         admin, // Recipient address
         lock_id1, 
         &clock, 
@@ -3000,6 +2949,7 @@ fun test_reward_multi_token_notify_and_claim() {
     // --- Claim OTHER rewards ---
     let balance_opt_other = reward::get_reward_internal<OTHER>(
         &mut reward_obj, 
+        &reward_cap,
         admin, // Recipient address
         lock_id1, 
         &clock, 
@@ -3020,6 +2970,7 @@ fun test_reward_multi_token_notify_and_claim() {
     // --- Verify double claim protection for both tokens ---
     let balance_opt_usd1_double = reward::get_reward_internal<USD1>(
         &mut reward_obj, 
+        &reward_cap,
         admin,
         lock_id1, 
         &clock, 
@@ -3030,6 +2981,7 @@ fun test_reward_multi_token_notify_and_claim() {
 
     let balance_opt_other_double = reward::get_reward_internal<OTHER>(
         &mut reward_obj, 
+        &reward_cap,
         admin,
         lock_id1, 
         &clock, 
@@ -3049,13 +3001,11 @@ fun test_reward_multi_token_notify_and_claim() {
 #[test]
 fun test_reward_update_balances_empty_vectors_should_succeed() {
     let admin = @0xEA;
-    let authorized_id: ID = object::id_from_address(@0xEB);
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
     // Create reward with balance_update_enabled = true
-    let mut reward_obj = create_default_reward(&mut scenario, authorized_id, true);
-    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx());
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, true);
 
     let one_week_ms = 7 * 24 * 60 * 60 * 1000;
 
@@ -3077,13 +3027,14 @@ fun test_reward_update_balances_empty_vectors_should_succeed() {
     let reward_coin = coin::mint_for_testing<USD1>(1000, scenario.ctx());
     reward::notify_reward_amount_internal<USD1>(
         &mut reward_obj,
+        &reward_cap,
         reward_coin.into_balance(),
         &clock,
         scenario.ctx()
     );
 
     // Store epoch start for reference
-    let epoch1_start = distribution::common::epoch_start(distribution::common::current_timestamp(&clock));
+    let epoch1_start = ve::common::epoch_start(ve::common::current_timestamp(&clock));
 
     // --- Advance to Epoch 2 ---
     clock.increment_for_testing(one_week_ms);
@@ -3152,13 +3103,11 @@ fun test_reward_update_balances_empty_vectors_should_succeed() {
 #[test]
 fun test_claim_rewards_sequentially_with_balance_updates() {
     let admin = @0xEE;
-    let authorized_id: ID = object::id_from_address(@0xEF);
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
     // 1. Create reward with balance_update_enabled = true
-    let mut reward_obj = create_default_reward(&mut scenario, authorized_id, true);
-    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx());
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, true);
 
     let one_week_ms = 7 * 24 * 60 * 60 * 1000;
     let lock_id1: ID = object::id_from_address(@0xF0B);
@@ -3169,12 +3118,13 @@ fun test_claim_rewards_sequentially_with_balance_updates() {
     // In Epoch 1
     // 2. Deposit a lock
     reward_obj.deposit(&reward_cap, deposit_amount, lock_id1, &clock, scenario.ctx());
-    let epoch1_start = distribution::common::epoch_start(distribution::common::current_timestamp(&clock));
+    let epoch1_start = ve::common::epoch_start(ve::common::current_timestamp(&clock));
 
     // 3. Notify reward for Epoch 1
     let reward_coin1 = coin::mint_for_testing<USD1>(notify_amount1, scenario.ctx());
     reward::notify_reward_amount_internal<USD1>(
         &mut reward_obj,
+        &reward_cap,
         reward_coin1.into_balance(),
         &clock,
         scenario.ctx()
@@ -3182,13 +3132,14 @@ fun test_claim_rewards_sequentially_with_balance_updates() {
 
     // 4. Advance time to Epoch 2
     clock.increment_for_testing(one_week_ms);
-    let epoch2_start = distribution::common::epoch_start(distribution::common::current_timestamp(&clock));
+    let epoch2_start = ve::common::epoch_start(ve::common::current_timestamp(&clock));
 
     // In Epoch 2
     // 5. Notify reward again for Epoch 2
     let reward_coin2 = coin::mint_for_testing<USD1>(notify_amount2, scenario.ctx());
     reward::notify_reward_amount_internal<USD1>(
         &mut reward_obj,
+        &reward_cap,
         reward_coin2.into_balance(),
         &clock,
         scenario.ctx()
@@ -3215,7 +3166,7 @@ fun test_claim_rewards_sequentially_with_balance_updates() {
     let earned_epoch1 = reward_obj.earned<USD1>(lock_id1, &clock);
     assert!(earned_epoch1 == notify_amount1, 2);
 
-    let balance_opt1 = reward::get_reward_internal<USD1>(&mut reward_obj, admin, lock_id1, &clock, scenario.ctx());
+    let balance_opt1 = reward::get_reward_internal<USD1>(&mut reward_obj, &reward_cap, admin, lock_id1, &clock, scenario.ctx());
     assert!(option::is_some(&balance_opt1), 3);
     let claimed_balance1 = option::destroy_some(balance_opt1);
     assert!(claimed_balance1.value() == notify_amount1, 4);
@@ -3249,7 +3200,7 @@ fun test_claim_rewards_sequentially_with_balance_updates() {
     // 10. and claims rewards for the lock.
     let earned_epoch2_after_advance = reward_obj.earned<USD1>(lock_id1, &clock);
     assert!(earned_epoch2_after_advance == notify_amount2, 8);
-    let balance_opt2 = reward::get_reward_internal<USD1>(&mut reward_obj, admin, lock_id1, &clock, scenario.ctx());
+    let balance_opt2 = reward::get_reward_internal<USD1>(&mut reward_obj, &reward_cap, admin, lock_id1, &clock, scenario.ctx());
     assert!(option::is_some(&balance_opt2), 9);
     let claimed_balance2 = option::destroy_some(balance_opt2);
     assert!(claimed_balance2.value() == notify_amount2, 10);
@@ -3267,13 +3218,11 @@ fun test_claim_rewards_sequentially_with_balance_updates() {
 #[test]
 fun test_claim_rewards_epoch_by_epoch_with_balance_updates() {
     let admin = @0xEC;
-    let authorized_id: ID = object::id_from_address(@0xED);
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
     // Step 1: Create Reward with balance updates enabled
-    let mut reward_obj = create_default_reward(&mut scenario, authorized_id, true);
-    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx());
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, true);
 
     let one_week_ms = 7 * 24 * 60 * 60 * 1000;
     let lock_id1: ID = object::id_from_address(@0xF0A);
@@ -3289,23 +3238,25 @@ fun test_claim_rewards_epoch_by_epoch_with_balance_updates() {
     let reward_coin1 = coin::mint_for_testing<USD1>(notify_amount1, scenario.ctx());
     reward::notify_reward_amount_internal<USD1>(
         &mut reward_obj,
+        &reward_cap,
         reward_coin1.into_balance(),
         &clock,
         scenario.ctx()
     );
-    let epoch1_start = distribution::common::epoch_start(distribution::common::current_timestamp(&clock));
+    let epoch1_start = ve::common::epoch_start(ve::common::current_timestamp(&clock));
 
     // Earned is 0 within the same epoch
     assert!(reward_obj.earned<USD1>(lock_id1, &clock) == 0, 2);
 
     // Step 4: Advance to Epoch 2
     clock.increment_for_testing(one_week_ms);
-    let epoch2_start = distribution::common::epoch_start(distribution::common::current_timestamp(&clock));
+    let epoch2_start = ve::common::epoch_start(ve::common::current_timestamp(&clock));
 
     // Step 5: Notify reward for Epoch 2
     let reward_coin2 = coin::mint_for_testing<USD1>(notify_amount2, scenario.ctx());
     reward::notify_reward_amount_internal<USD1>(
         &mut reward_obj,
+        &reward_cap,
         reward_coin2.into_balance(),
         &clock,
         scenario.ctx()
@@ -3342,6 +3293,7 @@ fun test_claim_rewards_epoch_by_epoch_with_balance_updates() {
 
     let balance_opt1 = reward::get_reward_internal<USD1>(
         &mut reward_obj,
+        &reward_cap,
         admin,
         lock_id1,
         &clock,
@@ -3376,6 +3328,7 @@ fun test_claim_rewards_epoch_by_epoch_with_balance_updates() {
 
     let balance_opt2 = reward::get_reward_internal<USD1>(
         &mut reward_obj,
+        &reward_cap,
         admin,
         lock_id1,
         &clock,
@@ -3399,13 +3352,11 @@ fun test_claim_rewards_epoch_by_epoch_with_balance_updates() {
 #[test]
 fun test_double_claim_with_balance_updates_is_zero() {
     let admin = @0xEE;
-    let authorized_id: ID = object::id_from_address(@0xEF);
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
     // 1. Create reward with balance_update_enabled = true
-    let mut reward_obj = create_default_reward(&mut scenario, authorized_id, true);
-    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx());
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, true);
 
     let one_week_ms = 7 * 24 * 60 * 60 * 1000;
     let lock_id1: ID = object::id_from_address(@0xF0C);
@@ -3414,12 +3365,13 @@ fun test_double_claim_with_balance_updates_is_zero() {
 
     // 2. Deposit a lock
     reward_obj.deposit(&reward_cap, deposit_amount, lock_id1, &clock, scenario.ctx());
-    let epoch_start = distribution::common::epoch_start(distribution::common::current_timestamp(&clock));
+    let epoch_start = ve::common::epoch_start(ve::common::current_timestamp(&clock));
 
     // 3. Notify reward
     let reward_coin = coin::mint_for_testing<USD1>(notify_amount, scenario.ctx());
     reward::notify_reward_amount_internal<USD1>(
         &mut reward_obj,
+        &reward_cap,
         reward_coin.into_balance(),
         &clock,
         scenario.ctx()
@@ -3445,7 +3397,7 @@ fun test_double_claim_with_balance_updates_is_zero() {
     let earned_before_claim = reward_obj.earned<USD1>(lock_id1, &clock);
     assert!(earned_before_claim == notify_amount, 1);
 
-    let balance_opt1 = reward::get_reward_internal<USD1>(&mut reward_obj, admin, lock_id1, &clock, scenario.ctx());
+    let balance_opt1 = reward::get_reward_internal<USD1>(&mut reward_obj, &reward_cap, admin, lock_id1, &clock, scenario.ctx());
     assert!(option::is_some(&balance_opt1), 2);
     let claimed_balance1 = option::destroy_some(balance_opt1);
     assert!(claimed_balance1.value() == notify_amount, 3);
@@ -3456,7 +3408,7 @@ fun test_double_claim_with_balance_updates_is_zero() {
     assert!(earned_after_claim == 0, 4);
 
     // 6. Tries again to claim rewards for the same lock
-    let balance_opt2 = reward::get_reward_internal<USD1>(&mut reward_obj, admin, lock_id1, &clock, scenario.ctx());
+    let balance_opt2 = reward::get_reward_internal<USD1>(&mut reward_obj, &reward_cap, admin, lock_id1, &clock, scenario.ctx());
     
     // 7. Second time claimed rewards should be zero
     assert!(option::is_none(&balance_opt2), 5); // Should get None as there are no rewards to claim
@@ -3475,13 +3427,11 @@ fun test_double_claim_with_balance_updates_is_zero() {
 #[test]
 fun test_claim_rewards_after_100_epochs() {
     let admin = @0xFAFA;
-    let authorized_id: ID = object::id_from_address(@0xBABA);
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
     // Create Reward object and Cap
-    let mut reward_obj = create_default_reward(&mut scenario, authorized_id, false);
-    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx());
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, false);
 
     // Define details
     let lock_id: ID = object::id_from_address(@0xDADA);
@@ -3501,6 +3451,7 @@ fun test_claim_rewards_after_100_epochs() {
         let reward_coin = coin::mint_for_testing<USD1>(notify_amount_per_epoch, scenario.ctx());
         reward::notify_reward_amount_internal<USD1>(
             &mut reward_obj,
+            &reward_cap,
             reward_coin.into_balance(),
             &clock,
             scenario.ctx()
@@ -3520,6 +3471,7 @@ fun test_claim_rewards_after_100_epochs() {
     // Claim rewards
     let balance_opt = reward::get_reward_internal<USD1>(
         &mut reward_obj,
+        &reward_cap,
         admin,
         lock_id,
         &clock,
@@ -3543,13 +3495,11 @@ fun test_claim_rewards_after_100_epochs() {
 #[test]
 fun test_claim_rewards_after_200_epochs() {
     let admin = @0xFAFA;
-    let authorized_id: ID = object::id_from_address(@0xBABA);
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
     // Create Reward object and Cap
-    let mut reward_obj = create_default_reward(&mut scenario, authorized_id, false);
-    let reward_cap = reward_authorized_cap::create(authorized_id, scenario.ctx());
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, false);
 
     // Define details
     let lock_id: ID = object::id_from_address(@0xDADA);
@@ -3569,6 +3519,7 @@ fun test_claim_rewards_after_200_epochs() {
         let reward_coin = coin::mint_for_testing<USD1>(notify_amount_per_epoch, scenario.ctx());
         reward::notify_reward_amount_internal<USD1>(
             &mut reward_obj,
+            &reward_cap,
             reward_coin.into_balance(),
             &clock,
             scenario.ctx()
@@ -3592,6 +3543,7 @@ fun test_claim_rewards_after_200_epochs() {
         // Claim rewards
         let balance_opt = reward::get_reward_internal<USD1>(
             &mut reward_obj,
+            &reward_cap,
             admin,
             lock_id,
             &clock,

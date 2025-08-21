@@ -52,7 +52,7 @@ module integrate::voter {
         distribtuion_config: &mut distribution::distribution_config::DistributionConfig,
         create_cap: &gauge_cap::gauge_cap::CreateCap,
         admin_cap: &distribution::minter::AdminCap,
-        voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        voting_escrow: &ve::voting_escrow::VotingEscrow<SailCoinType>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         gauge_base_emissions: u64,
         clock: &sui::clock::Clock,
@@ -75,9 +75,9 @@ module integrate::voter {
 
     public entry fun poke<SailCoinType>(
         voter: &mut distribution::voter::Voter,
-        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
         distribtuion_config: &distribution::distribution_config::DistributionConfig,
-        lock: &distribution::voting_escrow::Lock,
+        lock: &ve::voting_escrow::Lock,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
@@ -86,9 +86,9 @@ module integrate::voter {
 
     public entry fun vote<SailCoinType>(
         voter: &mut distribution::voter::Voter,
-        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
         distribtuion_config: &distribution::distribution_config::DistributionConfig,
-        lock: &distribution::voting_escrow::Lock,
+        lock: &ve::voting_escrow::Lock,
         pools: vector<ID>,
         weights: vector<u64>,
         volumes: vector<u64>,
@@ -109,9 +109,9 @@ module integrate::voter {
 
     public fun batch_vote<SailCoinType> (
         voter: &mut distribution::voter::Voter,
-        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
         distribtuion_config: &distribution::distribution_config::DistributionConfig,
-        mut locks: vector<distribution::voting_escrow::Lock>,
+        mut locks: vector<ve::voting_escrow::Lock>,
         pools: vector<ID>,
         weights: vector<u64>,
         volumes: vector<u64>,
@@ -131,8 +131,8 @@ module integrate::voter {
 
     public fun claim_voting_fee_rewards<SailCoinType, CoinTypeA, CoinTypeB>(
         voter: &mut distribution::voter::Voter,
-        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
-        mut locks: vector<distribution::voting_escrow::Lock>,
+        voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
+        mut locks: vector<ve::voting_escrow::Lock>,
         pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
@@ -151,8 +151,8 @@ module integrate::voter {
 
     public fun claim_voting_fee_rewards_single<SailCoinType, CoinTypeA, CoinTypeB>(
         voter: &mut distribution::voter::Voter,
-        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
-        lock: &distribution::voting_escrow::Lock,
+        voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
+        lock: &ve::voting_escrow::Lock,
         pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
@@ -180,7 +180,7 @@ module integrate::voter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        if (minter.active_period() + distribution::common::epoch() < distribution::common::current_timestamp(clock)) {
+        if (minter.active_period() + ve::common::epoch() < ve::common::current_timestamp(clock)) {
             abort EDistributeInvalidPeriod
         };
         assert!(
@@ -230,7 +230,7 @@ public entry fun distribute_for_sail_pool<CoinTypeA, CoinTypeB, SailCoinType, Ep
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        if (minter.active_period() + distribution::common::epoch() < distribution::common::current_timestamp(clock)) {
+        if (minter.active_period() + ve::common::epoch() < ve::common::current_timestamp(clock)) {
             abort EDistributeInvalidPeriod
         };
         assert!(

@@ -29,7 +29,7 @@ module liquidity_locker::liquidity_lock_v2 {
     use liquidity_locker::pool_tranche;
     use liquidity_locker::consts;
     use liquidity_locker::locker_utils;
-    use distribution::common;
+    use ve::common;
     use distribution::gauge;
     
     // Bump the `VERSION` of the package.
@@ -1307,7 +1307,7 @@ module liquidity_locker::liquidity_lock_v2 {
     public fun collect_reward<CoinTypeA, CoinTypeB, EpochOSail, SailCoinType, LockRewardCoinType>(
         locker: &Locker,
         pool_tranche_manager: &mut pool_tranche::PoolTrancheManager,
-        _: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        _: &ve::voting_escrow::VotingEscrow<SailCoinType>,
         gauge: &mut gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         locked_position: &mut LockedPosition<CoinTypeA, CoinTypeB>,
@@ -1360,7 +1360,7 @@ module liquidity_locker::liquidity_lock_v2 {
     public fun collect_reward_sail<CoinTypeA, CoinTypeB, EpochOSail, SailCoinType>(
         locker: &Locker,
         pool_tranche_manager: &mut pool_tranche::PoolTrancheManager,
-        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
         gauge: &mut gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         locked_position: &mut LockedPosition<CoinTypeA, CoinTypeB>,
