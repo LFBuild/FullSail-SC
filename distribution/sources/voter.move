@@ -13,10 +13,13 @@ module distribution::voter {
     use std::type_name::{Self, TypeName};
     
     const ECreateVoterInvalidPublisher: u64 = 831911472280262500;
+    const ESetVotingEscrowCapInvalidPublisher: u64 = 180901439185181760;
 
     const EDepositManagedEpochVoteEnded: u64 = 922337530103326315;
+    const EDepositManagedVotingEscrowCapNotSet: u64 = 742033984283866600;
 
-    const EWithdrawManagedInvlidManaged: u64 = 922337537833933209;
+    const EWithdrawManagedInvalidManaged: u64 = 922337537833933209;
+    const EWithdrawManagedVotingEscrowCapNotSet: u64 = 445278511513513150;
 
     const EAddEpochGovernorInvalidGovernor: u64 = 922337326521692981;
 
@@ -61,6 +64,7 @@ module distribution::voter {
     const EVoteNotWhitelistedNft: u64 = 922337464819718557;
     const EVoteNoVotingPower: u64 = 922337468685202231;
 
+    const EVoteInternalVotingEscrowCapNotSet: u64 = 120698940230993040;
     const EVoteInternalGaugeDoesNotExist: u64 = 922337479851920589;
     const EVoteInternalGaugeNotAlive: u64 = 922337480710992693;
     const EVoteInternalPoolAreadyVoted: u64 = 922337483288104144;
@@ -74,6 +78,8 @@ module distribution::voter {
     const EWhitelistNftGovernorInvalid: u64 = 922337395670666447;
 
     const EWhitelistTokenGovernorInvalid: u64 = 922337389657712232;
+
+    const EResetVotingEscrowCapNotSet: u64 = 466338960180442200;
 
     /// Module identifier for the Voter module
     public struct VOTER has drop {}
@@ -129,7 +135,7 @@ module distribution::voter {
         pool_vote: Table<LockID, vector<PoolID>>,
         gauge_to_fee: Table<GaugeID, distribution::fee_voting_reward::FeeVotingReward>,
         exercise_fee_reward: distribution::exercise_fee_reward::ExerciseFeeReward,
-        voting_escrow_cap: ve::voting_escrow_cap::VotingEscrowCap,
+        voting_escrow_cap: Option<ve::voting_escrow_cap::VotingEscrowCap>,
         // bag to be preapred for future updates
         bag: sui::bag::Bag,
     }
@@ -240,7 +246,6 @@ module distribution::voter {
         publisher: &sui::package::Publisher,
         global_config: ID,
         distribution_config: ID,
-        voting_escrow_cap: ve::voting_escrow_cap::VotingEscrowCap,
         ctx: &mut TxContext
     ): (Voter, distribution::distribute_cap::DistributeCap) {
         assert!(publisher.from_module<VOTER>(), ECreateVoterInvalidPublisher);
@@ -272,12 +277,21 @@ module distribution::voter {
             pool_vote: table::new<LockID, vector<PoolID>>(ctx),
             gauge_to_fee: table::new<GaugeID, distribution::fee_voting_reward::FeeVotingReward>(ctx),
             exercise_fee_reward: distribution::exercise_fee_reward::create(id, vector[], ctx),
-            voting_escrow_cap,
+            voting_escrow_cap: option::none(),
             // bag to be preapred for future updates
             bag: sui::bag::new(ctx),
         };
         let distribute_cap = distribution::distribute_cap::create_internal(id, ctx);
         (voter, distribute_cap)
+    }
+
+    public fun set_voting_escrow_cap(
+        voter: &mut Voter,
+        publisher: &sui::package::Publisher,
+        voting_escrow_cap: ve::voting_escrow_cap::VotingEscrowCap
+    ) {
+        assert!(publisher.from_module<VOTER>(), ESetVotingEscrowCapInvalidPublisher);
+        voter.voting_escrow_cap.fill(voting_escrow_cap);
     }
 
     /// Deposits a managed lock into the voting escrow system.
@@ -307,13 +321,14 @@ module distribution::voter {
     ) {
         let lock_id = into_lock_id(object::id<ve::voting_escrow::Lock>(lock));
         voter.assert_only_new_epoch(lock_id, clock);
+        assert!(voter.voting_escrow_cap.is_some(), EDepositManagedVotingEscrowCapNotSet);
         let current_time = ve::common::current_timestamp(clock);
         assert!(current_time <= ve::common::epoch_vote_end(current_time), EDepositManagedEpochVoteEnded);
         if (voter.last_voted.contains(lock_id)) {
             voter.last_voted.remove(lock_id);
         };
         voter.last_voted.add(lock_id, current_time);
-        voting_escrow.deposit_managed(&voter.voting_escrow_cap, lock, managed_lock, clock, ctx);
+        voting_escrow.deposit_managed(voter.voting_escrow_cap.borrow(), lock, managed_lock, clock, ctx);
         let balance = voting_escrow.balance_of_nft_at(lock_id.id, current_time);
         let managed_lock_id = into_lock_id(object::id(managed_lock));
         voter.poke_internal(voting_escrow, distribution_config, managed_lock_id, balance, clock, ctx);
@@ -345,13 +360,14 @@ module distribution::voter {
     ) {
         let lock_id = into_lock_id(object::id<ve::voting_escrow::Lock>(lock));
         voter.assert_only_new_epoch(lock_id, clock);
+        assert!(voter.voting_escrow_cap.is_some(), EWithdrawManagedVotingEscrowCapNotSet);
         let managedd_lock_id = voting_escrow.id_to_managed(lock_id.id);
         assert!(
             managedd_lock_id == object::id<ve::voting_escrow::Lock>(managed_lock),
-            EWithdrawManagedInvlidManaged
+            EWithdrawManagedInvalidManaged
         );
         voting_escrow.validate_ownership(lock, ctx);
-        voting_escrow.withdraw_managed(&voter.voting_escrow_cap, lock, managed_lock, clock, ctx);
+        voting_escrow.withdraw_managed(voter.voting_escrow_cap.borrow(), lock, managed_lock, clock, ctx);
         let balance_of_nft = voting_escrow.balance_of_nft_at(
             managedd_lock_id,
             ve::common::current_timestamp(clock)
@@ -1419,6 +1435,7 @@ module distribution::voter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        assert!(voter.voting_escrow_cap.is_some(), EResetVotingEscrowCapNotSet);
         let exercise_fee_deposited_balance = voter.exercise_fee_reward
             .borrow_reward()
             .balance_of(lock_id.id, clock);
@@ -1460,7 +1477,7 @@ module distribution::voter {
             };
             pool_index = pool_index + 1;
         };
-        voting_escrow.voting(&voter.voting_escrow_cap, lock_id.id, false);
+        voting_escrow.voting(voter.voting_escrow_cap.borrow(), lock_id.id, false);
         if (voter.used_weights.contains(lock_id)) {
             voter.used_weights.remove(lock_id);
         };
@@ -1628,6 +1645,7 @@ module distribution::voter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        assert!(voter.voting_escrow_cap.is_some(), EVoteInternalVotingEscrowCapNotSet);
         voter.reset_internal(voting_escrow, distribution_config, lock_id, clock, ctx);
 
         voter.exercise_fee_reward.deposit(
@@ -1714,7 +1732,7 @@ module distribution::voter {
             i = i + 1;
         };
         if (lock_used_weights > 0) {
-            voting_escrow.voting(&voter.voting_escrow_cap, lock_id.id, true);
+            voting_escrow.voting(voter.voting_escrow_cap.borrow(), lock_id.id, true);
         };
         if (voter.used_weights.contains(lock_id)) {
             voter.used_weights.remove(lock_id);

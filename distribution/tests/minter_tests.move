@@ -758,13 +758,14 @@ fun test_create_gauge_wrong_voting_escrow() {
         let ve_publisher = voting_escrow::test_init(scenario.ctx());
         let voter = scenario.take_shared<Voter>();
         let voter_id = object::id_from_address(@0x123456); // wrong voter id
-        let wrong_ve = voting_escrow::create<SAIL>(
+        let (wrong_ve, wrong_ve_cap) = voting_escrow::create<SAIL>(
             &ve_publisher,
             voter_id,
             &clock,
             scenario.ctx()
         );
         
+        test_utils::destroy(wrong_ve_cap);
         transfer::public_share_object(wrong_ve);
         test_scenario::return_shared(voter);
         test_utils::destroy(ve_publisher);
