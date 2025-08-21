@@ -1436,42 +1436,6 @@ fun test_distribute_gauge_with_emission_changes() {
 }
 
 #[test]
-#[expected_failure(abort_code = minter::EUpdatePeriodNotAllGaugesDistributed)]
-fun test_skip_distribution_epoch() {
-    let admin = @0xA;
-    let user = @0xB;
-    let mut scenario = test_scenario::begin(admin);
-    let mut clock = clock::create_for_testing(scenario.ctx());
-
-    let gauge_base_emissions = 1_000_000;
-
-    let aggregator = setup::full_setup_with_lock<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(
-        &mut scenario,
-        admin,
-        user,
-        &mut clock,
-        1000000,
-        182,
-        gauge_base_emissions,
-        0
-    );
-
-    // --- EPOCH 2 ---
-    clock.increment_for_testing(WEEK);
-
-    // Update minter period for epoch 2
-    scenario.next_tx(admin);
-    {
-        let o_sail_coin_2 = setup::update_minter_period<SAIL, OSAIL2>(&mut scenario, 0, &clock);
-        o_sail_coin_2.burn_for_testing();
-    };
-
-    test_utils::destroy(aggregator);
-    clock::destroy_for_testing(clock);
-    scenario.end();
-}
-
-#[test]
 #[expected_failure(abort_code = minter::EDistributeGaugeAlreadyDistributed)]
 fun test_distribute_same_gauge_twice_in_one_epoch_fails() {
     let admin = @0xA;

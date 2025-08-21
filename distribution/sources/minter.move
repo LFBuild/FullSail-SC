@@ -110,13 +110,7 @@ module distribution::minter {
     const EReviveGaugeAlreadyAlive: u64 = 533150247921935500;
     const EReviveGaugeNotKilledInCurrentEpoch: u64 = 295306155667221200;
 
-    const EOSailEpochEmissionsNotAllGaugesDistributed: u64 = 371288980415980200;
-
     const EWhitelistPoolMinterPaused: u64 = 316161888154524900;
-    const EWhitelistPoolInvalidUsdDecimals: u64 = 248951658954113400;
-
-    const ECreateExerciseFeeDistributorMinterPaused: u64 = 59297471025912430;
-    const ECreateExerciseFeeDistributorInvalidUsd: u64 = 291849308119121600;
 
     const EScheduleSailMintPublisherInvalid: u64 = 716204622969124700;
     const EScheduleSailMintMinterPaused: u64 = 849544693573603300;
@@ -1165,7 +1159,6 @@ module distribution::minter {
             minter.active_period + distribution::common::epoch() < current_time,
             EUpdatePeriodNotFinishedYet
         );
-        assert!(minter.all_gauges_distributed(distribution_config), EUpdatePeriodNotAllGaugesDistributed);
         let rebase_distributor_id = object::id(rebase_distributor);
         assert!(minter.rebase_distributor_cap.is_some(), EUpdatePeriodNoRebaseDistributorCap);
 
@@ -1512,24 +1505,6 @@ module distribution::minter {
 
         if (gauge_active_period == 0 || minter.active_period > gauge_active_period) {
             return false
-        };
-
-        true
-    }
-
-    public fun all_gauges_distributed<SailCoinType>(
-        minter: &Minter<SailCoinType>,
-        distribution_config: &distribution::distribution_config::DistributionConfig,
-    ): bool {
-        let alive_gauges = distribution_config.borrow_alive_gauges().keys();
-        let mut i = 0;
-        let alive_gauges_len = alive_gauges.length();
-        while (i < alive_gauges_len) {
-            let gauge_id = *alive_gauges.borrow(i);
-            if (!gauge_distributed(minter, gauge_id)) {
-                return false;
-            };
-            i = i + 1;
         };
 
         true
@@ -2403,7 +2378,6 @@ module distribution::minter {
     ): u64 {
         let active_period = minter.active_period;
         let prev_active_period = active_period - distribution::common::epoch();
-        assert!(minter.all_gauges_distributed(distribution_config), EOSailEpochEmissionsNotAllGaugesDistributed);
         minter.o_sail_emissions_by_epoch(prev_active_period)
     }
 

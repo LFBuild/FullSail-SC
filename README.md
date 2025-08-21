@@ -53,7 +53,8 @@ Use `sui client publish` command.
 
 #### Publication transactions
 
-- [locker_cap](https://suivision.xyz/txblock/44qDgoxThEZvSDUuiuihtjPAYstL5HFEyMoyewyFGw3J)
+- [locker_cap](https://suivision.xyz/txblock/A9ETxo574RNtZYkZULKFA69mLrkhBEYYQ1JtpSyYTXGz)
+- [price_monitor](https://suivision.xyz/txblock/H8JKphamnJpzwmvQ1mYgAFFHMHWGaekBtmWgjURMBFX3)
 - [distribution](https://suivision.xyz/txblock/F4NsBgNMUJsXHH78q76URg4dWJybwjLhe2maj9MpuSR9)
 - [sail](https://suiscan.xyz/mainnet/tx/8Jn5vMSMzQaREW5ZJk1cnJ4tZkRqaqUBk5FFQkVAbb5g)
 - [o_sail_token](https://suiscan.xyz/mainnet/tx/HX7xBW8vkSusm3KW6iCioWUhmeEU4z7Ggu9e1gsLP3qe)

@@ -2637,11 +2637,11 @@ module distribution::voting_escrow {
     ): (u64, u64) {
         let locked_balance = voting_escrow.locked.borrow(lock_id);
         if (locked_balance.is_permanent || locked_balance.is_perpetual) {
-            return (amount, 0);
+            return (amount, 0)
         };
         let current_time = distribution::common::current_timestamp(clock);
         if (locked_balance.end <= current_time) {
-            return (0, amount);
+            return (0, amount)
         };
         let remaining_time = locked_balance.end - current_time;
         let voting_power_delta = integer_mate::full_math_u64::mul_div_floor(
@@ -2649,6 +2649,7 @@ module distribution::voting_escrow {
             remaining_time,
             distribution::common::max_lock_time()
         );
+        
         (voting_power_delta, 0)
     }
 

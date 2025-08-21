@@ -21,8 +21,7 @@ export AGGREGATOR=0xffc454dfd3e8543d8bb097a3bf8acfb9d721eed5820d86aa31a331291ff5
 export DISTRIBUTE_GOVERNOR_CAP=
 export TEAM_CAP=0x7ec37fe724c79088f5f5ab9119fd6728f13939f30059430289c64500d7c50e6f
 export EMERGENCY_COUNCIL_CAP=
-
-export UPGRADE_CAP=0xbf019b0f0882fc94f8030618dc83fe171c6febb75c982d0ab318d49e791e7090
+export PRICE_MONITOR=0xb0329fa21eddeaad7c9bf922894912847b9b80c2a3daf1d572f52e127b407604
 
 export CLOCK=0x6
 # use setup_distribution.sh script in integrate directory to create minter, voter and voting_escrow.
