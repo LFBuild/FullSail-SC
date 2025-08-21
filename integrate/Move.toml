@@ -56,3 +56,6 @@ local = "../liquidity_soft_locker"
 
 [dependencies.price_monitor]
 local = "../price_monitor"
+
+[dependencies.ve]
+local = "../ve"

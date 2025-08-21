@@ -29,22 +29,6 @@ module integrate::voting_escrow {
         100000000
     }
 
-    public entry fun create<SailCoinType>(
-        publisher: &sui::package::Publisher,
-        voter_id: ID,
-        clock: &sui::clock::Clock,
-        ctx: &mut TxContext
-    ) {
-        transfer::public_share_object<ve::voting_escrow::VotingEscrow<SailCoinType>>(
-            ve::voting_escrow::create<SailCoinType>(
-                publisher,
-                voter_id,
-                clock,
-                ctx
-            )
-        );
-    }
-
     public entry fun create_lock<SailCoinType>(
         arg0: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
         coins: vector<sui::coin::Coin<SailCoinType>>,
@@ -133,7 +117,7 @@ module integrate::voting_escrow {
         sui::event::emit<LockSummary>(lock_summary_internal<SailCoinType>(
             voter,
             voting_escrow,
-            reward_distributor,
+            rebase_distributor,
             lock_id,
             clock
         ));

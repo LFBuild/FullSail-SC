@@ -21,7 +21,7 @@ module integrate::setup_distribution {
             ctx
         );
         let mut minter = minter_immut;
-        let (voter, distribute_cap) = distribution::voter::create(
+        let (mut voter, distribute_cap) = distribution::voter::create(
             voter_publisher,
             object::id(global_config),
             object::id(distribution_config),
@@ -42,14 +42,14 @@ module integrate::setup_distribution {
             tx_context::sender(ctx)
         );
         transfer::public_share_object(rebase_distributor);
-        transfer::public_share_object<ve::voting_escrow::VotingEscrow<SailCoinType>>(
-            ve::voting_escrow::create<SailCoinType>(
-                voting_escrow_publisher,
-                object::id<distribution::voter::Voter>(&voter),
-                clock,
-                ctx
-            )
+        let (voting_escrow, voting_escrow_cap) = ve::voting_escrow::create<SailCoinType>(
+            voting_escrow_publisher,
+            object::id<distribution::voter::Voter>(&voter),
+            clock,
+            ctx
         );
+        transfer::public_share_object<ve::voting_escrow::VotingEscrow<SailCoinType>>(voting_escrow);
+        voter.set_voting_escrow_cap(voter_publisher, voting_escrow_cap);
         transfer::public_share_object<distribution::voter::Voter>(voter);
         transfer::public_share_object<distribution::minter::Minter<SailCoinType>>(minter);
     }

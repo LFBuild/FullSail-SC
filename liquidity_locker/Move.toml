@@ -76,3 +76,6 @@ rev = "mainnet"
 
 [dependencies.distribution]
 local = "../distribution"
+
+[dependencies.ve]
+local = "../ve"

@@ -2,7 +2,7 @@
 
 [move]
 version = 3
-manifest_digest = "31A1AE3F5C81DD9F440A97C8550E10D02A583281585387E91F13D217113B1C3C"
+manifest_digest = "4E641F8D365AAA05A3A1AC7E3E30D2F1A2E3E0CC066E4A14F324F7DAB9ADBD9A"
 deps_digest = "8227D341C0550A37580C10FA45FE148A465225149C69D179737E0FE454AD6AEC"
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -63,6 +63,7 @@ dependencies = [
   { id = "locker_cap", name = "locker_cap" },
   { id = "price_monitor", name = "price_monitor" },
   { id = "price_provider", name = "price_provider" },
+  { id = "ve", name = "ve" },
 ]
 
 [[move.package]]
@@ -114,6 +115,15 @@ source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "dev",
 
 dependencies = [
   { id = "Sui", name = "Sui" },
+]
+
+[[move.package]]
+id = "ve"
+source = { local = "../ve" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+  { id = "integer_mate", name = "integer_mate" },
 ]
 
 [move.toolchain-version]
