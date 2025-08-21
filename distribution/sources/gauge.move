@@ -20,7 +20,7 @@ module distribution::gauge {
     use sui::linked_table::{Self, LinkedTable};
     use sui::balance::{Self, Balance};
     use std::type_name::{Self, TypeName};
-    use distribution::common;
+    use ve::common;
     use distribution::distribution_config::{DistributionConfig};
     use distribution::voter_cap::{VoterCap};
 

@@ -15,10 +15,10 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
     use price_provider::price_provider;
     use distribution::distribution_config;
     use distribution::voter;
-    use distribution::voting_escrow;
+    use ve::voting_escrow;
     use distribution::minter;
     use distribution::gauge;
-    use distribution::common;
+    use ve::common;
     use distribution::rebase_distributor;
     use sui::clock;
     use switchboard::aggregator::{Self, Aggregator};
@@ -231,8 +231,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             locked_positions.destroy_empty();
 
             let (expiration_time, full_unlocking_time) = liquidity_soft_lock_v2::get_unlock_time(&locked_position);
-            assert!(expiration_time == distribution::common::epoch_start(clock.timestamp_ms()/1000) + 5*86400*7, 92343253242);
-            assert!(full_unlocking_time == distribution::common::epoch_start(clock.timestamp_ms()/1000) + 6*86400*7, 9234326345);
+            assert!(expiration_time == ve::common::epoch_start(clock.timestamp_ms()/1000) + 5*86400*7, 92343253242);
+            assert!(full_unlocking_time == ve::common::epoch_start(clock.timestamp_ms()/1000) + 6*86400*7, 9234326345);
             assert!(liquidity_soft_lock_v2::get_profitability(&locked_position) == 10000, 923463477);
             assert!(locked_position.get_locked_position_id() == position_id, 9234325235);
 
@@ -1095,12 +1095,12 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             locked_positions.destroy_empty();
 
             let (expiration_time_1, full_unlocking_time_1) = locked_position_1.get_unlock_time();
-            assert!(expiration_time_1 == distribution::common::epoch_start(clock.timestamp_ms()/1000) + 5*86400*7, 92343253242);
-            assert!(full_unlocking_time_1 == distribution::common::epoch_start(clock.timestamp_ms()/1000) + 6*86400*7, 9234326345);
+            assert!(expiration_time_1 == ve::common::epoch_start(clock.timestamp_ms()/1000) + 5*86400*7, 92343253242);
+            assert!(full_unlocking_time_1 == ve::common::epoch_start(clock.timestamp_ms()/1000) + 6*86400*7, 9234326345);
             assert!(locked_position_1.get_profitability() == 10000, 923463477);
             let (expiration_time_2, full_unlocking_time_2) = locked_position_2.get_unlock_time();
-            assert!(expiration_time_2 == distribution::common::epoch_start(clock.timestamp_ms()/1000) + 5*86400*7, 92343253252);
-            assert!(full_unlocking_time_2 == distribution::common::epoch_start(clock.timestamp_ms()/1000) + 6*86400*7, 92343263123);
+            assert!(expiration_time_2 == ve::common::epoch_start(clock.timestamp_ms()/1000) + 5*86400*7, 92343253252);
+            assert!(full_unlocking_time_2 == ve::common::epoch_start(clock.timestamp_ms()/1000) + 6*86400*7, 92343263123);
             assert!(locked_position_2.get_profitability() == 10000, 9234124421);
 
             let liquidity1 = pool.position_manager().borrow_position_info(locked_position_1.get_locked_position_id()).info_liquidity();
@@ -1270,12 +1270,12 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             locked_positions.destroy_empty();
 
             let (expiration_time_1, full_unlocking_time_1) = locked_position_1.get_unlock_time();
-            assert!(expiration_time_1 == (distribution::common::epoch_start(clock.timestamp_ms()/1000) + 5*86400*7), 92343253242);
-            assert!(full_unlocking_time_1 == (distribution::common::epoch_start(clock.timestamp_ms()/1000) + 6*86400*7), 9234326345);
+            assert!(expiration_time_1 == (ve::common::epoch_start(clock.timestamp_ms()/1000) + 5*86400*7), 92343253242);
+            assert!(full_unlocking_time_1 == (ve::common::epoch_start(clock.timestamp_ms()/1000) + 6*86400*7), 9234326345);
             assert!(locked_position_1.get_profitability() == 10000, 923463477);
             let (expiration_time_2, full_unlocking_time_2) = locked_position_2.get_unlock_time();
-            assert!(expiration_time_2 == (distribution::common::epoch_start(clock.timestamp_ms()/1000) + 5*86400*7), 92343253252);
-            assert!(full_unlocking_time_2 == (distribution::common::epoch_start(clock.timestamp_ms()/1000) + 6*86400*7), 92343263123);
+            assert!(expiration_time_2 == (ve::common::epoch_start(clock.timestamp_ms()/1000) + 5*86400*7), 92343253252);
+            assert!(full_unlocking_time_2 == (ve::common::epoch_start(clock.timestamp_ms()/1000) + 6*86400*7), 92343263123);
             assert!(locked_position_2.get_profitability() == 10000, 9234124421);
 
             let liquidity1 = pool.position_manager().borrow_position_info(locked_position_1.get_locked_position_id()).info_liquidity();
@@ -4478,8 +4478,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             locked_positions.destroy_empty();
 
             let (expiration_time_1, full_unlocking_time_1) = locked_position_1.get_unlock_time();
-            assert!(expiration_time_1 == (distribution::common::epoch_start(clock.timestamp_ms()/1000) + 3*86400*7), 92343253242);
-            assert!(full_unlocking_time_1 == (distribution::common::epoch_start(clock.timestamp_ms()/1000) + 4*86400*7), 9234326345);
+            assert!(expiration_time_1 == (ve::common::epoch_start(clock.timestamp_ms()/1000) + 3*86400*7), 92343253242);
+            assert!(full_unlocking_time_1 == (ve::common::epoch_start(clock.timestamp_ms()/1000) + 4*86400*7), 9234326345);
 
             let liquidity1 = pool.position_manager().borrow_position_info(locked_position_1.get_locked_position_id()).info_liquidity();
             let liquidity2 = pool.position_manager().borrow_position_info(locked_position_2.get_locked_position_id()).info_liquidity();
@@ -4962,8 +4962,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             locked_positions.destroy_empty();
 
             let (expiration_time_1, full_unlocking_time_1) = locked_position_1.get_unlock_time();
-            assert!(expiration_time_1 == (distribution::common::epoch_start(clock.timestamp_ms()/1000) + 2*86400*7), 92343253242);
-            assert!(full_unlocking_time_1 == (distribution::common::epoch_start(clock.timestamp_ms()/1000) + 5*86400*7), 9234326345);
+            assert!(expiration_time_1 == (ve::common::epoch_start(clock.timestamp_ms()/1000) + 2*86400*7), 92343253242);
+            assert!(full_unlocking_time_1 == (ve::common::epoch_start(clock.timestamp_ms()/1000) + 5*86400*7), 9234326345);
 
             let liquidity1 = pool.position_manager().borrow_position_info(locked_position_1.get_locked_position_id()).info_liquidity();
             let liquidity2 = pool.position_manager().borrow_position_info(locked_position_2.get_locked_position_id()).info_liquidity();
@@ -7769,8 +7769,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             locked_positions.destroy_empty();
 
             let (expiration_time_1, full_unlocking_time_1) = locked_position_1.get_unlock_time();
-            assert!(expiration_time_1 == (distribution::common::epoch_start(clock.timestamp_ms()/1000) + 3*86400*7), 92343253242);
-            assert!(full_unlocking_time_1 == (distribution::common::epoch_start(clock.timestamp_ms()/1000) + 4*86400*7), 9234326345);
+            assert!(expiration_time_1 == (ve::common::epoch_start(clock.timestamp_ms()/1000) + 3*86400*7), 92343253242);
+            assert!(full_unlocking_time_1 == (ve::common::epoch_start(clock.timestamp_ms()/1000) + 4*86400*7), 9234326345);
 
             let liquidity1 = pool.position_manager().borrow_position_info(locked_position_1.get_locked_position_id()).info_liquidity();
             let liquidity2 = pool.position_manager().borrow_position_info(locked_position_2.get_locked_position_id()).info_liquidity();
@@ -11374,15 +11374,18 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         {
             let clock = clock::create_for_testing(scenario.ctx());
             let ve_publisher = voting_escrow::test_init(scenario.ctx());
-            let voter_obj = scenario.take_shared<voter::Voter>(); 
+            let voter_publisher = voter::test_init(scenario.ctx());
+            let mut voter_obj = scenario.take_shared<voter::Voter>(); 
             let voter_id = object::id(&voter_obj);
-            test_scenario::return_shared(voter_obj); 
-            let ve_obj = voting_escrow::create<SailCoinType>(
+            let (ve_obj, ve_cap) = voting_escrow::create<SailCoinType>(
                 &ve_publisher,
                 voter_id, 
                 &clock,
                 scenario.ctx()
             );
+            voter_obj.set_voting_escrow_cap(&voter_publisher, ve_cap);
+            test_scenario::return_shared(voter_obj);
+            test_utils::destroy(voter_publisher);
             test_utils::destroy(ve_publisher);
             transfer::public_share_object(ve_obj);
             clock::destroy_for_testing(clock);

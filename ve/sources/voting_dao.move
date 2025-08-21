@@ -1,6 +1,6 @@
 /// © 2025 Metabyte Labs, Inc.  All Rights Reserved.
 
-module distribution::voting_dao {
+module ve::voting_dao {
     #[allow(unused_const)]
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
 
@@ -164,7 +164,7 @@ module distribution::voting_dao {
         };
         let v1 = v0 > 0 && arg2 - arg0.checkpoints.borrow(arg1).borrow(
             v0 - 1
-        ).from_timestamp < distribution::common::get_time_to_finality_ms();
+        ).from_timestamp < ve::common::get_time_to_finality_ms();
         !v1
     }
 }

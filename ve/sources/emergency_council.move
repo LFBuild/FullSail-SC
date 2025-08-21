@@ -18,7 +18,7 @@
 /// The council's powers are deliberately limited to specific safety-oriented functions like
 /// killing/reviving gauges and deactivating managed locks, ensuring it cannot override normal
 /// governance for routine protocol decisions.
-module distribution::emergency_council {
+module ve::emergency_council {
     use sui::package;
 
     #[allow(unused_const)]

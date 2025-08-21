@@ -1,12 +1,15 @@
 /// © 2025 Metabyte Labs, Inc.  All Rights Reserved.
 
-module distribution::locked_managed_reward {
+module ve::locked_managed_reward {
     #[allow(unused_const)]
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
 
     public struct LockedManagedReward has store, key {
         id: UID,
-        reward: distribution::reward::Reward,
+        voter: ID,
+        ve: ID,
+        reward: ve::reward::Reward,
+        reward_cap: ve::reward_cap::RewardCap,
         // bag to be preapred for future updates
         bag: sui::bag::Bag,
     }
@@ -21,30 +24,30 @@ module distribution::locked_managed_reward {
         coin_types_vec.push_back(reward_coin_type);
         let id = object::new(ctx);
         let inner_id = id.uid_to_inner();
-        LockedManagedReward {
-            id,
-            reward: distribution::reward::create(
+        let (reward, reward_cap) = ve::reward::create(
                 inner_id,
-                voter,
-                option::some(ve),
-                ve,
                 coin_types_vec,
                 false,
                 ctx
-            ),
+            );
+        LockedManagedReward {
+            id,
+            voter,
+            ve,
+            reward,
+            reward_cap,
             bag: sui::bag::new(ctx),
         }
     }
 
-    public fun deposit(
+    public(package) fun deposit(
         reward: &mut LockedManagedReward,
-        reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
         amount: u64,
         lock_id: ID,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        reward.reward.deposit(reward_authorized_cap, amount, lock_id, clock, ctx);
+        reward.reward.deposit(&reward.reward_cap, amount, lock_id, clock, ctx);
     }
 
     public fun earned<RewardCoinType>(
@@ -67,31 +70,29 @@ module distribution::locked_managed_reward {
         reward.reward.rewards_list_length()
     }
 
-    public fun withdraw(
+    public(package) fun withdraw(
         reward: &mut LockedManagedReward,
-        reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
         amount: u64,
         lock_id: ID,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        reward.reward.withdraw(reward_authorized_cap, amount, lock_id, clock, ctx);
+        reward.reward.withdraw(&reward.reward_cap, amount, lock_id, clock, ctx);
     }
 
-    public fun borrow_reward(reward: &LockedManagedReward): &distribution::reward::Reward {
+    public fun borrow_reward(reward: &LockedManagedReward): &ve::reward::Reward {
         &reward.reward
     }
 
-    public fun get_reward<RewardCoinType>(
+    public(package) fun get_reward<RewardCoinType>(
         reward: &mut LockedManagedReward,
-        reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
         lock_id: ID,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): sui::balance::Balance<RewardCoinType> {
-        reward_authorized_cap.validate(reward.reward.ve());
-        let vote_escrow_id = reward.reward.ve();
+        let vote_escrow_id = reward.ve();
         let mut reward_balance_option = reward.reward.get_reward_internal<RewardCoinType>(
+            &reward.reward_cap,
             object::id_to_address(&vote_escrow_id),
             lock_id,
             clock,
@@ -106,15 +107,21 @@ module distribution::locked_managed_reward {
         reward_balance
     }
 
-    public fun notify_reward_amount<RewardCoinType>(
+    public(package) fun notify_reward_amount<RewardCoinType>(
         reward: &mut LockedManagedReward,
-        reward_authorized_cap: &distribution::reward_authorized_cap::RewardAuthorizedCap,
         coin: sui::coin::Coin<RewardCoinType>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        reward_authorized_cap.validate(reward.reward.ve());
-        reward.reward.notify_reward_amount_internal(coin.into_balance(), clock, ctx);
+        reward.reward.notify_reward_amount_internal(&reward.reward_cap, coin.into_balance(), clock, ctx);
+    }
+
+    public fun voter(reward: &LockedManagedReward): ID {
+        reward.voter
+    }
+
+    public fun ve(reward: &LockedManagedReward): ID {
+        reward.ve
     }
 }
 

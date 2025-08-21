@@ -11,7 +11,7 @@ module integrate::reward_distributor {
 
     public entry fun claimable<SailCoinType>(
         rebase_distributor: &distribution::rebase_distributor::RebaseDistributor<SailCoinType>,
-        voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        voting_escrow: &ve::voting_escrow::VotingEscrow<SailCoinType>,
         lock_id: ID
     ) {
         let claimable_event = Claimable {
@@ -26,13 +26,13 @@ module integrate::reward_distributor {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        let (rebase_distributor, reward_distributor_cap) = distribution::rebase_distributor::create<SailCoinType>(
+        let (rebase_distributor, rebase_distributor_cap) = distribution::rebase_distributor::create<SailCoinType>(
             publisher,
             clock,
             ctx
         );
-        transfer::public_transfer<distribution::reward_distributor_cap::RewardDistributorCap>(
-            reward_distributor_cap,
+        transfer::public_transfer<distribution::rebase_distributor_cap::RebaseDistributorCap>(
+            rebase_distributor_cap,
             tx_context::sender(ctx)
         );
         transfer::public_share_object(rebase_distributor);
@@ -40,13 +40,13 @@ module integrate::reward_distributor {
 
     public entry fun claim_and_lock<SailCoinType>(
         rebase_distributor: &mut distribution::rebase_distributor::RebaseDistributor<SailCoinType>,
-        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
-        lock: &mut distribution::voting_escrow::Lock,
+        voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
+        lock: &mut ve::voting_escrow::Lock,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
         let claim_and_lock_event = ClaimAndLock {
-            lock_id: object::id<distribution::voting_escrow::Lock>(lock),
+            lock_id: object::id<ve::voting_escrow::Lock>(lock),
             amount: rebase_distributor.claim(voting_escrow, lock, clock, ctx),
         };
         sui::event::emit<ClaimAndLock>(claim_and_lock_event);

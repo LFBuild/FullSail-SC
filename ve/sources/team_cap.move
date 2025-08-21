@@ -1,6 +1,6 @@
 /// © 2025 Metabyte Labs, Inc.  All Rights Reserved.
 
-module distribution::team_cap {
+module ve::team_cap {
     #[allow(unused_const)]
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
 

@@ -16,10 +16,10 @@ module liquidity_locker::lock_position_migrate_test {
     use price_provider::price_provider;
     use distribution::distribution_config;
     use distribution::voter;
-    use distribution::voting_escrow;
+    use ve::voting_escrow;
     use distribution::minter;
     use distribution::gauge;
-    use distribution::common;
+    use ve::common;
     use distribution::rebase_distributor;
     use sui::clock;
     use switchboard::aggregator::{Self, Aggregator};
@@ -1588,15 +1588,19 @@ module liquidity_locker::lock_position_migrate_test {
         {
             let clock = clock::create_for_testing(scenario.ctx());
             let ve_publisher = voting_escrow::test_init(scenario.ctx());
-            let voter_obj = scenario.take_shared<voter::Voter>(); 
+            let voter_publisher = voter::test_init(scenario.ctx());
+            let mut voter_obj = scenario.take_shared<voter::Voter>(); 
             let voter_id = object::id(&voter_obj);
-            test_scenario::return_shared(voter_obj); 
-            let ve_obj = voting_escrow::create<SailCoinType>(
+            let (ve_obj, ve_cap) = voting_escrow::create<SailCoinType>(
                 &ve_publisher,
                 voter_id, 
                 &clock,
                 scenario.ctx()
             );
+
+            voter_obj.set_voting_escrow_cap(&voter_publisher, ve_cap);
+            test_scenario::return_shared(voter_obj);
+            test_utils::destroy(voter_publisher);
             test_utils::destroy(ve_publisher);
             transfer::public_share_object(ve_obj);
             clock::destroy_for_testing(clock);

@@ -3,7 +3,7 @@ name = "distribution"
 edition = "2024"
 
 [addresses]
-distribution = "0x0"
+distribution = "0x03"
 
 [dev-dependencies]
 
@@ -41,6 +41,9 @@ override = true
 
 [dependencies.locker_cap]
 local = "../locker_cap"
+
+[dependencies.ve]
+local = "../ve"
 
 [dependencies.Switchboard]
 git = "https://github.com/LFBuild/sui.git"

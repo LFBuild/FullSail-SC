@@ -16,8 +16,8 @@ module integrate::voting_escrow {
     }
 
     public entry fun transfer<SailCoinType>(
-        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
-        lock: distribution::voting_escrow::Lock,
+        voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
+        lock: ve::voting_escrow::Lock,
         recipient: address,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
@@ -29,24 +29,8 @@ module integrate::voting_escrow {
         100000000
     }
 
-    public entry fun create<SailCoinType>(
-        publisher: &sui::package::Publisher,
-        voter_id: ID,
-        clock: &sui::clock::Clock,
-        ctx: &mut TxContext
-    ) {
-        transfer::public_share_object<distribution::voting_escrow::VotingEscrow<SailCoinType>>(
-            distribution::voting_escrow::create<SailCoinType>(
-                publisher,
-                voter_id,
-                clock,
-                ctx
-            )
-        );
-    }
-
     public entry fun create_lock<SailCoinType>(
-        arg0: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        arg0: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
         coins: vector<sui::coin::Coin<SailCoinType>>,
         lock_duration_days: u64,
         permanent: bool,
@@ -63,8 +47,8 @@ module integrate::voting_escrow {
     }
 
     public entry fun increase_amount<SailCoinType>(
-        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
-        lock: &mut distribution::voting_escrow::Lock,
+        voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
+        lock: &mut ve::voting_escrow::Lock,
         coins: vector<sui::coin::Coin<SailCoinType>>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
@@ -73,8 +57,8 @@ module integrate::voting_escrow {
     }
 
     public entry fun increase_unlock_time<SailCoinType>(
-        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
-        lock: &mut distribution::voting_escrow::Lock,
+        voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
+        lock: &mut ve::voting_escrow::Lock,
         new_lock_duration_days: u64,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
@@ -83,8 +67,8 @@ module integrate::voting_escrow {
     }
 
     public entry fun lock_permanent<SailCoinType>(
-        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
-        lock: &mut distribution::voting_escrow::Lock,
+        voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
+        lock: &mut ve::voting_escrow::Lock,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
@@ -92,8 +76,8 @@ module integrate::voting_escrow {
     }
 
     public entry fun unlock_permanent<SailCoinType>(
-        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
-        lock: &mut distribution::voting_escrow::Lock,
+        voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
+        lock: &mut ve::voting_escrow::Lock,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
@@ -101,7 +85,7 @@ module integrate::voting_escrow {
     }
 
     public entry fun create_lock_single_coin<SailCoinType>(
-        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
         coin: sui::coin::Coin<SailCoinType>,
         lock_duration_days: u64,
         permanent: bool,
@@ -114,8 +98,8 @@ module integrate::voting_escrow {
     }
 
     public entry fun increase_amount_single_coin<SailCoinType>(
-        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
-        lock: &mut distribution::voting_escrow::Lock,
+        voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
+        lock: &mut ve::voting_escrow::Lock,
         coin: sui::coin::Coin<SailCoinType>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
@@ -125,15 +109,15 @@ module integrate::voting_escrow {
 
     public entry fun lock_summary<SailCoinType>(
         voter: &distribution::voter::Voter,
-        voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
-        reward_distributor: &distribution::reward_distributor::RewardDistributor<SailCoinType>,
+        voting_escrow: &ve::voting_escrow::VotingEscrow<SailCoinType>,
+        rebase_distributor: &distribution::rebase_distributor::RebaseDistributor<SailCoinType>,
         lock_id: ID,
         clock: &sui::clock::Clock
     ) {
         sui::event::emit<LockSummary>(lock_summary_internal<SailCoinType>(
             voter,
             voting_escrow,
-            reward_distributor,
+            rebase_distributor,
             lock_id,
             clock
         ));
@@ -141,8 +125,8 @@ module integrate::voting_escrow {
 
     fun lock_summary_internal<SailCoinType>(
         voter: &distribution::voter::Voter,
-        voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
-        reward_distributor: &distribution::reward_distributor::RewardDistributor<SailCoinType>,
+        voting_escrow: &ve::voting_escrow::VotingEscrow<SailCoinType>,
+        rebase_distributor: &distribution::rebase_distributor::RebaseDistributor<SailCoinType>,
         lock_id: ID,
         clock: &sui::clock::Clock
     ): LockSummary {
@@ -159,16 +143,16 @@ module integrate::voting_escrow {
         };
         LockSummary {
             voting_power: voting_escrow.balance_of_nft_at(lock_id, clock.timestamp_ms() / 1000),
-            reward_distributor_claimable: reward_distributor.claimable(voting_escrow, lock_id),
+            reward_distributor_claimable: rebase_distributor.claimable(voting_escrow, lock_id),
             fee_incentive_total: total_incentives,
             voted_pools,
         }
     }
 
     public entry fun merge_locks<SailCoinType>(
-        voting_escrow: &mut distribution::voting_escrow::VotingEscrow<SailCoinType>,
-        lock_a: distribution::voting_escrow::Lock,
-        lock_b: &mut distribution::voting_escrow::Lock,
+        voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
+        lock_a: ve::voting_escrow::Lock,
+        lock_b: &mut ve::voting_escrow::Lock,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
@@ -177,11 +161,11 @@ module integrate::voting_escrow {
 
     public entry fun summary<SailCoinType>(
         minter: &distribution::minter::Minter<SailCoinType>,
-        voting_escrow: &distribution::voting_escrow::VotingEscrow<SailCoinType>,
+        voting_escrow: &ve::voting_escrow::VotingEscrow<SailCoinType>,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         clock: &sui::clock::Clock
     ) {
-        let current_timestamp = distribution::common::current_timestamp(clock);
+        let current_timestamp = ve::common::current_timestamp(clock);
         let total_locked = voting_escrow.total_locked();
         let epoch_emissions = minter.o_sail_epoch_emissions(distribution_config);
         let rebase_growth = distribution::minter::calculate_rebase_growth(
@@ -191,7 +175,7 @@ module integrate::voting_escrow {
         );
         let summary_event = Summary {
             total_locked,
-            total_voting_power: voting_escrow.total_supply_at(distribution::common::current_timestamp(clock)),
+            total_voting_power: voting_escrow.total_supply_at(ve::common::current_timestamp(clock)),
             rebase_apr: integer_mate::full_math_u64::mul_div_floor(
                 rebase_growth,
                 max_bps(),
@@ -201,8 +185,8 @@ module integrate::voting_escrow {
                     distribution::minter::rate_denom() - minter.team_emission_rate()
                 )
             ),
-            current_epoch_end: distribution::common::epoch_next(current_timestamp),
-            current_epoch_vote_end: distribution::common::epoch_vote_end(current_timestamp),
+            current_epoch_end: ve::common::epoch_next(current_timestamp),
+            current_epoch_vote_end: ve::common::epoch_vote_end(current_timestamp),
             team_emission_rate: minter.team_emission_rate(),
         };
         sui::event::emit<Summary>(summary_event);
