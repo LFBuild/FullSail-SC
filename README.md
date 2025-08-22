@@ -63,5 +63,5 @@ Use `sui client publish` command.
 - [liquidity_soft_locker_v2](https://suivision.xyz/txblock/6q5WucQJTGTiwqT9C2FSzBZW7WXBQru2QaQuTWLMCHsx)
 - [integrate](https://suivision.xyz/txblock/CdEEyieqZMKHw4fhMifTYjUCHxBqAj6GytWbz2t9ZfFF)
 
-- [setup distribtuion tx](https://suiscan.xyz/mainnet/tx/4DxAaa9SYfVTARoABVLPB3zhxo7B9h8c5djoSFfy4uXG)
+- [setup distribtuion tx](https://suiscan.xyz/mainnet/tx/9AgxsB9myAkUTesv7FdyooaHFWEzT4V22FFYTKwzH3ZT)
 - [activate minter tx](https://suiscan.xyz/mainnet/tx/62CQswg1EmVcyfrA2FGgSMGgTHQsYZJJtq9PChhnqbmL)
