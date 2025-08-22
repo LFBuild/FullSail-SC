@@ -2253,8 +2253,7 @@ module distribution::minter {
         *minter.gauge_epoch_emissions_usd.borrow(gauge_id)
     }
 
-    /// Allows usage of the pool for oSAIL exercise
-    /// Also allows tokens from the pool to be used as exercise fee tokens
+    // Allows USD to be used as exercise fee token
     public fun whitelist_usd<SailCoinType, UsdCoinType>(
         minter: &mut Minter<SailCoinType>,
         admin_cap: &AdminCap,
