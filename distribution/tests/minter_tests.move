@@ -34,6 +34,8 @@ use switchboard::aggregator::{Self, Aggregator};
 use price_monitor::price_monitor::{Self, PriceMonitor};
 
 use distribution::usd_tests::{Self, USD_TESTS};
+use distribution::minter::EDistributeGaugeFirstEpochEmissionsInvalid;
+use distribution::minter::EDistributeGaugeEmissionsZero;
 
 const WEEK: u64 = 7 * 24 * 60 * 60 * 1000;
 
@@ -57,359 +59,6 @@ fun setup_for_gauge_creation(scenario: &mut test_scenario::Scenario, admin: addr
     scenario.next_tx(admin);
     let o_sail_coin = setup::activate_minter<SAIL, OSAIL1>(scenario, 0, clock);
     o_sail_coin.burn_for_testing();
-}
-
-#[test]
-fun test_minter_calculate_next_pool_emissions() {
-    let max_growth_small_inputs = minter::calculate_next_pool_emissions(
-        100,
-        2,
-        1,
-        2,
-        2,
-        1,
-        2
-    );
-    assert!(110 - max_growth_small_inputs <= 1, 1);
-
-    let max_decrease_small_inputs = minter::calculate_next_pool_emissions(
-        100,
-        2,
-        2,
-        2,
-        1,
-        2,
-        1
-    );
-    assert!(90 - max_decrease_small_inputs <= 1, 2);
-
-    let max_growth_large_inputs = minter::calculate_next_pool_emissions(
-        1_000_000_000_000_000_000,
-        1_000_000_000_000_000_000,
-        1_000_000_000_000_000_000,
-        1_000_000_000_000_000_000,
-        2_000_000_000_000_000_000,
-        1_000_000_000_000_000_000,
-        2_000_000_000_000_000_000
-    );
-    assert!(1_100_000_000_000_000_000 - max_growth_large_inputs <= 1, 3);
-
-    let max_decrease_large_inputs = minter::calculate_next_pool_emissions(
-        1_000_000_000_000_000_000,
-        1_000_000_000_000_000_000,
-        1_000_000_000_000_000_000,
-        2_000_000_000_000_000_000,
-        1_000_000_000_000_000_000,
-        2_000_000_000_000_000_000,
-        1_000_000_000_000_000_000
-    );
-    assert!(900_000_000_000_000_000 - max_decrease_large_inputs <= 1, 4);
-
-     let max_growth_extra_large_inputs = minter::calculate_next_pool_emissions(
-        1<<62,
-        1<<62,
-        1<<62,
-        1<<62,
-        1<<63,
-        1<<62,
-        1<<63
-    );
-    assert!(5072854620270126694 - max_growth_extra_large_inputs <= 1, 3);
-
-    let max_decrease_extra_large_inputs = minter::calculate_next_pool_emissions(
-        1<<62,
-        1<<62,
-        1<<63,
-        1<<62,
-        1<<62,
-        1<<63,
-        1<<62
-    );
-    assert!(4150517416584649114 - max_decrease_extra_large_inputs <= 1, 4);
-
-    let max_growth_roe_large_numbers = minter::calculate_next_pool_emissions(
-        1_000_000_000_000_000_000,
-        1_000_000_000_000_000_000,
-        1_000_000_000_000_000_000,
-        1_000_000_000_000_000_000,
-        2_000_000_000_000_000_000,
-        1_000_000_000_000_000_000,
-        1_000_000_000_000_000_000
-    );
-    assert!(1_100_000_000_000_000_000 - max_growth_roe_large_numbers <= 1, 5);
-
-    let max_growth_vol_large_numbers = minter::calculate_next_pool_emissions(
-        1_000_000_000_000_000_000,
-        1_000_000_000_000_000_000,
-        1_000_000_000_000_000_000,
-        1_000_000_000_000_000_000,
-        1_000_000_000_000_000_000,
-        1_000_000_000_000_000_000,
-        2_000_000_000_000_000_000
-    );
-    assert!(1_100_000_000_000_000_000 - max_growth_vol_large_numbers <= 1, 6);
-
-    let max_growth_roe_small_numbers = minter::calculate_next_pool_emissions(
-        100,
-        1,
-        1,
-        1,
-        2,
-        1,
-        1
-    );
-    assert!(110 - max_growth_roe_small_numbers <= 1, 7);
-
-    let max_growth_vol_small_numbers = minter::calculate_next_pool_emissions(
-        100,
-        1,
-        1,
-        1,
-        2,
-        1,
-        1
-    );
-    assert!(110 - max_growth_vol_small_numbers <= 1, 8);
-
-    // 10% in roe increase should result in 5% emissions increase
-    let roe_increase_10 = minter::calculate_next_pool_emissions(
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_100_000,
-        1_000_000,
-        1_000_000
-    );
-    assert!(1_050_000 - roe_increase_10 <= 1, 9);
-
-    // 10% in vol increase should result in 5% emissions increase
-    let vol_increase_10 = minter::calculate_next_pool_emissions(
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_100_000
-    );
-    assert!(1_050_000 - vol_increase_10 <= 1, 10);
-
-    // 10% in roe increase and 10% in vol increase should result in 10% emissions increase
-    let roe_increase_10_vol_increase_10 = minter::calculate_next_pool_emissions(
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_100_000,
-        1_000_000,
-        1_100_000
-    );
-    assert!(1_100_000 - roe_increase_10_vol_increase_10 <= 1, 11);
-
-    // 5% in roe increase and 5% in vol increase should result in 5% emissions increase
-    let roe_increase_5_vol_increase_5 = minter::calculate_next_pool_emissions(
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_050_000,
-        1_000_000,
-        1_050_000
-    );
-    assert!(1_050_000 - roe_increase_5_vol_increase_5 <= 1, 12);
-
-    // 5% in roe increase should result in 2.5% emissions increase
-    let roe_increase_5 = minter::calculate_next_pool_emissions(
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_050_000,
-        1_000_000,
-        1_000_000
-    );
-    assert!(1_025_000 - roe_increase_5 <= 1, 13);
-
-    // 5% in volume increase should result in 2.5% emissions increase
-    let vol_increase_5 = minter::calculate_next_pool_emissions(
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_050_000
-    );
-    assert!(1_025_000 - vol_increase_5 <= 1, 14);
-
-    // stable roe and vol should result in stable emissions
-    let stable_roe_vol = minter::calculate_next_pool_emissions(
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_000_000
-    );
-    assert!(1_000_000 - stable_roe_vol <= 1, 15);
-
-    // 10% in roe decrease should result in 5% emissions decrease
-    let roe_decrease_10 = minter::calculate_next_pool_emissions(
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        900_000,
-        1_000_000,
-        1_000_000
-    );
-    assert!(950_000 - roe_decrease_10 <= 1, 16);
-
-    // 10% in roe decrease and 10% in vol decrease should result in 10% emissions decrease
-    let roe_decrease_10_vol_decrease_10 = minter::calculate_next_pool_emissions(
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        900_000,
-        1_000_000,
-        900_000
-    );
-    assert!(900_000 - roe_decrease_10_vol_decrease_10 <= 1, 17);
-
-    // 5% in roe decrease should result in 2.5% emissions decrease
-    let roe_decrease_5 = minter::calculate_next_pool_emissions(
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        950_000,
-        1_000_000,
-        1_000_000
-    );
-    assert!(975_000 - roe_decrease_5 <= 1, 18);
-
-    // 5% in volume decrease should result in 2.5% emissions decrease
-    let vol_decrease_5 = minter::calculate_next_pool_emissions(
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        950_000
-    );
-    assert!(975_000 - vol_decrease_5 <= 1, 19);
-
-    // 10% in roe increase and 10% in vol decrease should result in stable emissions
-    let roe_increase_10_vol_decrease_10 = minter::calculate_next_pool_emissions(
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_100_000,
-        1_000_000,
-        900_000
-    );
-    assert!(1_000_000 - roe_increase_10_vol_decrease_10 <= 1, 20);
-
-    // 10% in roe decrease and 10% in vol increase should result in stable emissions
-    let roe_decrease_10_vol_increase_10 = minter::calculate_next_pool_emissions(
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        900_000,
-        1_000_000,
-        1_100_000
-    );
-    assert!(1_000_000 - roe_decrease_10_vol_increase_10 <= 1, 21);
-
-    // 50% in roe increase and 50% in vol decrease should result in stable emissions
-    let roe_increase_50_vol_decrease_50 = minter::calculate_next_pool_emissions(
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_500_000,
-        1_000_000,
-        500_000
-    );
-    assert!(1_000_000 - roe_increase_50_vol_decrease_50 <= 1, 22);
-
-    // 10% in roe increase and 2% in vol decrease should result in 4% emissions increase
-    let roe_increase_10_vol_decrease_2 = minter::calculate_next_pool_emissions(
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_100_000,
-        1_000_000,
-        980_000
-    );
-    assert!(1_040_000 - roe_increase_10_vol_decrease_2 <= 1, 23);
-
-    // 2% in roe decrease and 10% in vol increase should result in 4% emissions increase
-    let roe_decrease_2_vol_increase_10 = minter::calculate_next_pool_emissions(
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        980_000,
-        1_000_000,
-        1_100_000
-    );
-    assert!(1_040_000 - roe_decrease_2_vol_increase_10 <= 1, 24);
-
-    // 10% in roe decrease and 2% in vol increase should result in 4% emissions decrease
-    let roe_decrease_10_vol_increase_2 = minter::calculate_next_pool_emissions(
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        900_000,
-        1_000_000,
-        1_020_000
-    );
-    assert!(960_000 - roe_decrease_10_vol_increase_2 <= 1, 25);
-
-    // 2% in roe increase and 10% in vol decrease should result in 4% emissions decrease
-    let roe_decrease_2_vol_increase_10 = minter::calculate_next_pool_emissions(
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1020_000,
-        1_000_000,
-        900_000
-    );
-    assert!(960_000 - roe_decrease_2_vol_increase_10 <= 1, 26);
-
-    // 0.001% in roe increase should result in 0.0005% emissions increase
-    let roe_increase_0_001 = minter::calculate_next_pool_emissions(
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_000_010,
-        1_000_000,
-        1_000_000
-    );
-    assert!(1_000_005 - roe_increase_0_001 <= 1, 27);
-
-    // 0.001% in vol increase should result in 0.0005% emissions increase
-    let vol_increase_0_001 = minter::calculate_next_pool_emissions(
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_000_000,
-        1_000_010
-    );
-    assert!(1_000_005 - vol_increase_0_001 <= 1, 28);
 }
 
 #[test]
@@ -918,7 +567,7 @@ fun test_distribute_gauge_initial_amount() {
     scenario.next_tx(admin);
     let distributed_amount: u64;
     {
-        distributed_amount = setup::distribute_gauge_epoch_1<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        distributed_amount = setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     scenario.next_tx(admin);
@@ -952,8 +601,8 @@ fun test_distribute_gauge_initial_amount() {
 }
 
 #[test]
-#[expected_failure(abort_code = minter::EDistributeGaugeFirstEpochMetricsInvalid)]
-fun test_distribute_gauge_initial_epoch_with_non_zero_metrics_fails() {
+#[expected_failure(abort_code = minter::EDistributeGaugeFirstEpochEmissionsInvalid)]
+fun test_distribute_gauge_initial_epoch_with_wrong_metrics_fails() {
     let admin = @0xA;
     let user = @0xB;
     let mut scenario = test_scenario::begin(admin);
@@ -974,17 +623,12 @@ fun test_distribute_gauge_initial_epoch_with_non_zero_metrics_fails() {
         0
     );
 
-    // distribute the gauge with non-zero metrics
+    // distribute the gauge with metrics different from the base emissions
     scenario.next_tx(admin);
     {
         setup::distribute_gauge_emissions_controlled<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(
             &mut scenario,
-            1_000_000, // prev_epoch_pool_emissions
-            1_000_000, // prev_epoch_pool_fees_usd
-            1_000_000, // epoch_pool_emissions_usd
-            1_000_000, // epoch_pool_fees_usd
-            1_000_000, // epoch_pool_volume_usd
-            1_000_000, // epoch_pool_predicted_volume_usd
+            999_999, //next epoch emissions
             &usd_metadata,
             &mut aggregator,
             &clock
@@ -999,7 +643,7 @@ fun test_distribute_gauge_initial_epoch_with_non_zero_metrics_fails() {
 }
 
 #[test]
-#[expected_failure(abort_code = minter::EDistributeGaugeMetricsInvalid)]
+#[expected_failure(abort_code = minter::EDistributeGaugeEmissionsZero)]
 fun test_distribute_gauge_second_epoch_with_zero_metrics_fails() {
     let admin = @0xA;
     let user = @0xB;
@@ -1024,7 +668,7 @@ fun test_distribute_gauge_second_epoch_with_zero_metrics_fails() {
     // --- EPOCH 1: Successful distribution ---
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     // --- EPOCH 2: Attempt distribution with zero metrics (should fail) ---
@@ -1042,12 +686,123 @@ fun test_distribute_gauge_second_epoch_with_zero_metrics_fails() {
     {
         setup::distribute_gauge_emissions_controlled<USD_TESTS, AUSD, SAIL, OSAIL2, USD_TESTS>( 
             &mut scenario,
-            0, // prev_epoch_pool_emissions
-            0, // prev_epoch_pool_fees_usd
-            0, // epoch_pool_emissions_usd
-            0, // epoch_pool_fees_usd
-            0, // epoch_pool_volume_usd
-            0, // epoch_pool_predicted_volume_usd
+            0, // next epoch emissions
+            &usd_metadata,
+            &mut aggregator,
+            &clock
+        );
+    };
+
+    transfer::public_transfer(usd_treasury_cap, admin);
+    transfer::public_transfer(usd_metadata, admin);
+    test_utils::destroy(aggregator);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+#[expected_failure(abort_code = minter::EDistributeGaugeEmissionsChangeTooBig)]
+fun test_distribute_gauge_second_epoch_too_big_change_fails() {
+    let admin = @0xA;
+    let user = @0xB;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+
+    let gauge_base_emissions = 1_000_000;
+
+    let mut aggregator = setup::full_setup_with_lock<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(
+        &mut scenario,
+        admin,
+        user,
+        &mut clock,
+        1_000_000,
+        182,
+        gauge_base_emissions,
+        0
+    );
+
+    // --- EPOCH 1: Successful distribution ---
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+    };
+
+    // --- EPOCH 2: Attempt distribution with zero metrics (should fail) ---
+    clock.increment_for_testing(WEEK);
+
+    // Update minter period for epoch 2
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin_2 = setup::update_minter_period<SAIL, OSAIL2>(&mut scenario, 0, &clock);
+        o_sail_coin_2.burn_for_testing();
+    };
+
+    // Distribute for epoch 2 with all-zero metrics
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge_emissions_controlled<USD_TESTS, AUSD, SAIL, OSAIL2, USD_TESTS>( 
+            &mut scenario,
+            5_000_000, // more than 4x is not allowed
+            &usd_metadata,
+            &mut aggregator,
+            &clock
+        );
+    };
+
+    transfer::public_transfer(usd_treasury_cap, admin);
+    transfer::public_transfer(usd_metadata, admin);
+    test_utils::destroy(aggregator);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+#[expected_failure(abort_code = minter::EDistributeGaugeEmissionsChangeTooBig)]
+fun test_distribute_gauge_second_epoch_too_big_change_down_fails() {
+    let admin = @0xA;
+    let user = @0xB;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+
+    let gauge_base_emissions = 1_000_000;
+
+    let mut aggregator = setup::full_setup_with_lock<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(
+        &mut scenario,
+        admin,
+        user,
+        &mut clock,
+        1_000_000,
+        182,
+        gauge_base_emissions,
+        0
+    );
+
+    // --- EPOCH 1: Successful distribution ---
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+    };
+
+    // --- EPOCH 2: Attempt distribution with zero metrics (should fail) ---
+    clock.increment_for_testing(WEEK);
+
+    // Update minter period for epoch 2
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin_2 = setup::update_minter_period<SAIL, OSAIL2>(&mut scenario, 0, &clock);
+        o_sail_coin_2.burn_for_testing();
+    };
+
+    // Distribute for epoch 2 with all-zero metrics
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge_emissions_controlled<USD_TESTS, AUSD, SAIL, OSAIL2, USD_TESTS>( 
+            &mut scenario,
+            200_000, // more than 4x even down is not allowed
             &usd_metadata,
             &mut aggregator,
             &clock
@@ -1109,7 +864,7 @@ fun test_distribute_gauge_without_minter_activation_fails() {
     // Try to distribute the gauge, which should fail.
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     // Cleanup
@@ -1146,7 +901,7 @@ fun test_distribute_gauge_increase_emissions() {
     // distribute the gauge for epoch 1
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     // create and deposit position
@@ -1190,12 +945,7 @@ fun test_distribute_gauge_increase_emissions() {
     {
         setup::distribute_gauge_emissions_controlled<USD_TESTS, AUSD, SAIL, OSAIL2, USD_TESTS>(
             &mut scenario,
-            0,
-            0,
-            gauge_base_emissions,
-            1_000_000, // not used in calculations for first epoch but are known values
-            1_000_000,
-            1_100_000, // 10% Vol increase
+            gauge_base_emissions * 2, // next epoch emissions
             &usd_metadata,
             &mut aggregator,
             &clock
@@ -1219,7 +969,7 @@ fun test_distribute_gauge_increase_emissions() {
         // we advanced by the week, so we should go back to check emissions
         let current_period = common::current_period(&clock) - common::week();
 
-        let expected_emissions = gauge_base_emissions * 105 / 100; // 5% increase
+        let expected_emissions = gauge_base_emissions * 2; // 5% increase
 
         assert!(expected_emissions - new_emissions <= 1, 1);
         assert!(minter.usd_emissions_by_epoch(current_period) == new_emissions, 2);
@@ -1266,7 +1016,7 @@ fun test_distribute_gauge_with_emission_changes() {
     // Distribute the gauge for epoch 1 (base emissions)
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     // create position
@@ -1322,12 +1072,7 @@ fun test_distribute_gauge_with_emission_changes() {
     {
         setup::distribute_gauge_emissions_controlled<USD_TESTS, AUSD, SAIL, OSAIL2, USD_TESTS>(
             &mut scenario,
-            0,
-            0,
-            gauge_base_emissions,
-            1_000_000, // not used in calculations for first epoch but are known values
-            1_000_000,
-            1_200_000, // 20% Vol increase
+            gauge_base_emissions * 11 / 10, // next epoch emissions
             &usd_metadata,
             &mut aggregator,
             &clock
@@ -1374,12 +1119,7 @@ fun test_distribute_gauge_with_emission_changes() {
     {
         setup::distribute_gauge_emissions_controlled<USD_TESTS, AUSD, SAIL, OSAIL3, USD_TESTS>(
             &mut scenario,
-            1_000_000,    // prev_epoch_pool_emissions (from N-2, which is epoch 2)
-            1_000_000,          // prev_epoch_pool_fees_usd
-            1_000_000,          // epoch_pool_emissions_usd (from N-1)
-            900_000,            // epoch_pool_fees_usd -> 10% ROE decrease
-            1_000_000,          // epoch_pool_volume_usd (from N-1)
-            900_000,            // epoch_pool_predicted_volume_usd -> 10% Vol decrease
+            emissions_epoch_2 * 9 / 10, // next epoch emissions
             &usd_metadata,
             &mut aggregator,
             &clock
@@ -1462,7 +1202,7 @@ fun test_distribute_same_gauge_twice_in_one_epoch_fails() {
     // --- EPOCH 1: Successful distribution ---
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     // --- Advance time by a few hours ---
@@ -1471,7 +1211,7 @@ fun test_distribute_same_gauge_twice_in_one_epoch_fails() {
     // --- Attempt to distribute the same gauge again (should fail) ---
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     transfer::public_transfer(usd_treasury_cap, admin);
@@ -1508,8 +1248,8 @@ fun test_distribute_gauge_with_wrong_o_sail_fails() {
     // --- EPOCH 1: Successful distribution ---
     scenario.next_tx(admin);
     {
-        // distribute_gauge_epoch_1 uses <SUI, OSAIL1> as <Prev, Next>
-        setup::distribute_gauge_epoch_1<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        // distribute_gauge uses <SUI, OSAIL1> as <Prev, Next>
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     // --- EPOCH 2 ---
@@ -1530,12 +1270,7 @@ fun test_distribute_gauge_with_wrong_o_sail_fails() {
         // and we are trying to distribute OSAIL1 again as NextEpochOSail (EpochOSail in wrapper)
         setup::distribute_gauge_emissions_controlled<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(
             &mut scenario,
-            0,                  // prev_epoch_pool_emissions (N-2 is epoch 0, so 0)
-            0,                  // prev_epoch_pool_fees_usd (N-2 is epoch 0, so 0)
-            1_000_000,          // epoch_pool_emissions_usd (N-1)
-            1_000_000,          // epoch_pool_fees_usd (N-1)
-            1_000_000,          // epoch_pool_volume_usd (N-1)
-            1_000_000,          // epoch_pool_predicted_volume_usd (N)
+            gauge_base_emissions,
             &usd_metadata,
             &mut aggregator,    
             &clock
@@ -1575,7 +1310,7 @@ fun test_distribute_killed_gauge_fails() {
     // --- EPOCH 1: Successful distribution ---
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     // --- EPOCH 2 ---
@@ -1624,12 +1359,7 @@ fun test_distribute_killed_gauge_fails() {
     {
         setup::distribute_gauge_emissions_controlled<USD_TESTS, AUSD, SAIL, OSAIL2, USD_TESTS>(
             &mut scenario,
-            0,
-            0,
             gauge_base_emissions,
-            1_000_000, 
-            1_000_000,
-            1_100_000,
             &usd_metadata,
             &mut aggregator,
             &clock
@@ -1668,7 +1398,7 @@ fun test_distribute_revived_gauge_succeeds() {
     // distribute the gauge
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     // --- EPOCH 2 ---
@@ -1749,7 +1479,7 @@ fun test_distribute_revived_gauge_succeeds() {
     scenario.next_tx(admin);
     {
         // prev epoch sail is OSAIL1, cos second epoch is skipped.
-        setup::distribute_gauge_epoch_1<USD_TESTS, AUSD, SAIL, OSAIL3, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL3, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     // Verification
@@ -1881,7 +1611,7 @@ fun test_kill_revive_in_same_epoch_rewards() {
     // 2. Distribute Gauge for Epoch 1
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     // 3. User creates and deposits a position
@@ -2009,7 +1739,7 @@ fun test_revive_gauge_in_next_epoch_fails() {
     // 2. Distribute Gauge for Epoch 1
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     // 3. Advance time 1/2 week and kill the gauge
@@ -2110,7 +1840,7 @@ fun test_reset_gauge_in_same_epoch_fails() {
     // 2. Distribute Gauge for Epoch 1
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     // 3. Advance time 1/3 week and kill the gauge
@@ -2265,7 +1995,7 @@ fun test_reset_and_distribute_undistributed_killed_gauge() {
     // 5. Distribute the gauge now that it's reset and alive
     scenario.next_tx(admin);
     {
-        let distributed_amount = setup::distribute_gauge_epoch_1<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        let distributed_amount = setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         assert!(distributed_amount == new_gauge_base_emissions, 0);
     };
 
@@ -2400,7 +2130,7 @@ fun test_revive_already_alive_gauge_fails() {
     // 2. Distribute the gauge
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     // 3. Kill the gauge
@@ -2689,7 +2419,7 @@ fun test_revive_gauge_with_invalid_emergency_cap_fails() {
     // 2. Distribute the gauge
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock); 
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock); 
     };
 
     // 3. Kill the gauge
@@ -2932,7 +2662,7 @@ fun test_distribute_gauge_with_wrong_voter_fails() {
             &distribution_config,
             &mut gauge,
             &mut pool,
-            0, 0, 0, 0, 0, 0, // Zero metrics for initial distribution
+            0,
             &mut price_monitor,
             &sail_stablecoin_pool,
             &aggregator,
@@ -3015,7 +2745,7 @@ fun test_distribute_gauge_with_revoked_governor_cap_fails() {
             &distribution_config,
             &mut gauge,
             &mut pool,
-            0, 0, 0, 0, 0, 0, // Zero metrics for initial distribution
+            0,
             &mut price_monitor,
             &sail_stablecoin_pool,
             &aggregator,
@@ -3093,7 +2823,7 @@ fun test_distribute_gauge_with_wrong_distribution_config_fails() {
             &wrong_distribution_config,
             &mut gauge,
             &mut pool,
-            0, 0, 0, 0, 0, 0, // Zero metrics for initial distribution
+            0,
             &mut price_monitor,
             &sail_stablecoin_pool,
             &aggregator,
@@ -3183,7 +2913,7 @@ fun test_distribute_gauge_with_wrong_pool_fails() {
             &distribution_config,
             &mut gauge,
             &mut new_pool,
-            0, 0, 0, 0, 0, 0, // Zero metrics for initial distribution
+            gauge_base_emissions,
             &mut price_monitor,
             &sail_stablecoin_pool,
             &aggregator,
@@ -3235,7 +2965,7 @@ fun test_update_period_with_wrong_voter_fails() {
     // 2. Distribute gauge for epoch 1
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     // 3. Advance to the next epoch
@@ -3331,7 +3061,7 @@ fun test_update_period_with_wrong_distribution_config_fails() {
     // 2. Distribute gauge for epoch 1
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     // 3. Advance to the next epoch
@@ -3412,7 +3142,7 @@ fun test_update_period_with_revoked_governor_cap_fails() {
     // 2. Distribute gauge for epoch 1
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     // 3. Revoke the DistributeGovernorCap
@@ -3674,7 +3404,7 @@ fun test_double_activation_fails() {
 //     // 2. Distribute gauge for epoch 1
 //     scenario.next_tx(admin);
 //     {
-//         setup::distribute_gauge_epoch_1<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &clock); 
+//         setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &clock); 
 //     };
 
 //     // 3. Advance to the next epoch
@@ -3704,7 +3434,7 @@ fun test_double_activation_fails() {
 //     // distribute the gauge for epoch 2
 //     scenario.next_tx(admin);
 //     {
-//         setup::distribute_gauge_epoch_2<USD_TESTS, AUSD, SAIL, OSAIL2, USD_TESTS>(&mut scenario, &clock);
+//         setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL2, USD_TESTS>(&mut scenario, &clock);
 //     };
 
 //     scenario.next_tx(admin);

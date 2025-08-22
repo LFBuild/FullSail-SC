@@ -2105,7 +2105,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 2
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL2>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // Advance to Epoch 3 (OSAIL3)
@@ -2125,7 +2125,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 3
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL3>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
         
         // Advance to Epoch 4 (OSAIL4)
@@ -2145,7 +2145,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // distribute gauge for epoch 4
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL4>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // Add reward to the THIRD epoch
@@ -2393,7 +2393,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 2
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL2>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // Advance to Epoch 3 (OSAIL3)
@@ -2413,7 +2413,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 3
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL3>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
         
         // Advance to Epoch 4 (OSAIL4)
@@ -2433,7 +2433,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // distribute gauge for epoch 4
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL4>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // Add reward to the THIRD epoch
@@ -2683,7 +2683,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 2
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL2>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // Advance to Epoch 3 (OSAIL3)
@@ -2703,7 +2703,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 3
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL3>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
         
         // Advance to Epoch 4 (OSAIL4)
@@ -2723,7 +2723,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // distribute gauge for epoch 4
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL4>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // Add reward to the THIRD epoch
@@ -2980,7 +2980,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 2
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL2>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // Advance to Epoch 3 (OSAIL3)
@@ -3000,7 +3000,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 3
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL3>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
         
         // Advance to Epoch 4 (OSAIL4)
@@ -3020,7 +3020,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // distribute gauge for epoch 4
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL4>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // Add reward to the THIRD epoch
@@ -3280,7 +3280,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 2
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL2>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // split position in the 1/3 of epoch 2
@@ -3368,7 +3368,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 3
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL3>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
         
         // Advance to Epoch 4 (OSAIL4)
@@ -3388,7 +3388,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // distribute gauge for epoch 4
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL4>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // Add reward to the THIRD epoch
@@ -3701,7 +3701,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 2
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL2>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // Advance to Epoch 3 (OSAIL3)
@@ -3721,7 +3721,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 3
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL3>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
         
         // Advance to Epoch 4 (OSAIL4)
@@ -3741,7 +3741,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // distribute gauge for epoch 4
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL4>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // Add reward to the THIRD epoch
@@ -4522,7 +4522,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 2
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL2>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // Add reward to the first tranche
@@ -4569,7 +4569,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 3
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL3>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         scenario.next_tx(admin);
@@ -4615,7 +4615,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 4
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL4>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         scenario.next_tx(admin);
@@ -4661,7 +4661,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 5
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL5>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL5>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         scenario.next_tx(admin);
@@ -5009,7 +5009,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 2
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL2>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // Advance to Epoch 3 (OSAIL3)
@@ -5029,7 +5029,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 3
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL3>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         clock::increment_for_testing(&mut clock, common::epoch_to_seconds(1)/2*1000);
@@ -5114,7 +5114,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 4
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL4>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // set_total_incomed_and_add_reward for epoch 4
@@ -5241,7 +5241,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 5
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL5>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL5>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // set_total_incomed_and_add_reward for epoch 5
@@ -5355,7 +5355,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 6
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL6>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL6>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // full remove and unlock position for epoch 6
@@ -5599,7 +5599,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 2
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL2>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // adding reward to the first tranche
@@ -5646,7 +5646,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 3
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL3>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // set_total_incomed_and_add_reward
@@ -5769,7 +5769,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 4
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL4>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         scenario.next_tx(admin);
@@ -7814,7 +7814,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 2
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL2>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // Advance to Epoch 3 (OSAIL3)
@@ -7834,7 +7834,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 3
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL3>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // Advance to Epoch 4 (OSAIL4)
@@ -7854,7 +7854,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 4
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL4>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         scenario.next_tx(admin);
@@ -9227,7 +9227,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 2
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL2>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // change position in the 99/100 of epoch 2
@@ -9333,7 +9333,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 3
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL3>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // change position in the middle of epoch 3
@@ -9439,7 +9439,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 4
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL4>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // Add reward to the THIRD epoch
@@ -10425,7 +10425,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Distribute gauge for epoch 2
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_2<SailCoinType, OSAIL2>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+            distribute_gauge<SailCoinType, OSAIL2>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         };
 
         // change range position in the 10/100 of epoch 2
@@ -10970,7 +10970,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // // Distribute gauge for epoch 3
         // scenario.next_tx(admin);
         // {
-        //     distribute_gauge_epoch_3<SailCoinType, OSAIL3>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        //     distribute_gauge<SailCoinType, OSAIL3>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         // };
 
         // // Advance to Epoch 4 (OSAIL4)
@@ -10990,7 +10990,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // // Distribute gauge for epoch 4
         // scenario.next_tx(admin);
         // {
-        //     distribute_gauge_epoch_3<SailCoinType, OSAIL4>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        //     distribute_gauge<SailCoinType, OSAIL4>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
         // };
 
         // // Add reward to the 3 epoch
@@ -11306,7 +11306,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         // Update Minter Period to OSAIL1
         scenario.next_tx(admin);
         {
-            distribute_gauge_epoch_1<SailCoinType, OSAIL1>(scenario, usd_metadata, aggregator, clock);
+            distribute_gauge<SailCoinType, OSAIL1>(scenario, usd_metadata, aggregator, clock);
         };
     }
 
@@ -11598,135 +11598,37 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
     }
 
     #[test_only]
-    fun distribute_gauge_epoch_1<SailCoinType, EpochOSail>(
+    fun distribute_gauge<SailCoinType, EpochOSail>(
         scenario: &mut test_scenario::Scenario,
-        usd_metadata: &CoinMetadata<USD_TESTS>,
-        aggregator: &mut Aggregator,
-        clock: &clock::Clock,
-    ): u64 {
-        // initial epoch is distributed without any historical data
-        let prev_epoch_pool_emissions: u64 = 0;
-        let prev_epoch_pool_fees_usd: u64 = 0;
-        let epoch_pool_emissions_usd: u64 = 0;
-        let epoch_pool_fees_usd: u64 = 0;
-        let epoch_pool_volume_usd: u64 = 0;
-        let epoch_pool_predicted_volume_usd: u64 = 0;
-
-        distribute_gauge_emissions_controlled<TestCoinB, TestCoinA, SailCoinType, EpochOSail>(
-            scenario,
-            prev_epoch_pool_emissions,
-            prev_epoch_pool_fees_usd,
-            epoch_pool_emissions_usd,
-            epoch_pool_fees_usd,
-            epoch_pool_volume_usd,
-            epoch_pool_predicted_volume_usd,
-            usd_metadata,
-            aggregator,
-            clock
-        )
-    }
-
-    #[test_only]
-    fun distribute_gauge_epoch_2<SailCoinType, EpochOSail>(
-        scenario: &mut test_scenario::Scenario,
-        usd_metadata: &CoinMetadata<USD_TESTS>,
-        aggregator: &mut Aggregator,
-        clock: &clock::Clock,
-    ): u64 {
-        // epoch 2 is distributed with historical data from epoch 1
-        // this data results into stable emissions, same as epoch 1 emissions
-        let prev_epoch_pool_emissions: u64 = 0;
-        let prev_epoch_pool_fees_usd: u64 = 0;
-        let epoch_pool_emissions_usd: u64 = 1_000_000_000;
-        let epoch_pool_fees_usd: u64 = 1_000_000_000;
-        let epoch_pool_volume_usd: u64 = 1_000_000_000;
-        let epoch_pool_predicted_volume_usd: u64 = 1_060_000_000; // +3% emissions increase
-
-        distribute_gauge_emissions_controlled<TestCoinB, TestCoinA, SailCoinType, EpochOSail>(
-            scenario,
-            prev_epoch_pool_emissions,
-            prev_epoch_pool_fees_usd,
-            epoch_pool_emissions_usd,
-            epoch_pool_fees_usd,
-            epoch_pool_volume_usd,
-            epoch_pool_predicted_volume_usd,
-            usd_metadata,
-            aggregator,
-            clock
-        )
-    }
-
-    #[test_only]
-    fun distribute_gauge_epoch_3<SailCoinType, EpochOSail>(
-        scenario: &mut test_scenario::Scenario,
-        usd_metadata: &CoinMetadata<USD_TESTS>,
-        aggregator: &mut Aggregator,
-        clock: &clock::Clock,
-    ): u64 {
-        // this data results into stable emissions, same as epoch 2 emissions
-        let prev_epoch_pool_emissions: u64 = 1_000_000_000;
-        let prev_epoch_pool_fees_usd: u64 = 1_000_000_000;
-        let epoch_pool_emissions_usd: u64 = 1_000_000_000;
-        let epoch_pool_fees_usd: u64 = 1_000_000_000;
-        let epoch_pool_volume_usd: u64 = 1_000_000_000;
-        let epoch_pool_predicted_volume_usd: u64 = 1_060_000_000; // +3% emissions increase
-
-        distribute_gauge_emissions_controlled<TestCoinB, TestCoinA, SailCoinType, EpochOSail>(
-            scenario,
-            prev_epoch_pool_emissions,
-            prev_epoch_pool_fees_usd,
-            epoch_pool_emissions_usd,
-            epoch_pool_fees_usd,
-            epoch_pool_volume_usd,
-            epoch_pool_predicted_volume_usd,
-            usd_metadata,
-            aggregator,
-            clock
-        )
-    }
-
-    // Utility to call minter.distribute_gauge
-    #[test_only]
-    fun distribute_gauge_emissions_controlled<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
-        scenario: &mut test_scenario::Scenario,
-        prev_epoch_pool_emissions: u64,
-        prev_epoch_pool_fees_usd: u64,
-        epoch_pool_emissions_usd: u64,
-        epoch_pool_fees_usd: u64,
-        epoch_pool_volume_usd: u64,
-        epoch_pool_predicted_volume_usd: u64,
         usd_metadata: &CoinMetadata<USD_TESTS>,
         aggregator: &mut Aggregator,
         clock: &clock::Clock,
     ): u64 {
         let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>(); // Minter is now responsible
         let mut voter = scenario.take_shared<voter::Voter>();
-        let mut gauge = scenario.take_from_sender<gauge::Gauge<CoinTypeA, CoinTypeB>>();
-        let mut pool = scenario.take_from_sender<pool::Pool<CoinTypeA, CoinTypeB>>();
+        let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
+        let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
         let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
         let distribute_governor_cap = scenario.take_from_sender<minter::DistributeGovernorCap>(); // Minter uses DistributeGovernorCap
         let mut price_monitor = scenario.take_shared<PriceMonitor>();
 
         aggregator_set_current_value(aggregator,  one_dec18(), clock.timestamp_ms());
 
-        let mut distributed_amount: u64 = 0;
-        if (type_name::get<CoinTypeA>() != type_name::get<USD_TESTS>() || 
-                type_name::get<CoinTypeB>() != type_name::get<SailCoinType>()) {
+        // use the same emissions as in previous epoch
+        let next_epoch_emissions_usd = minter.gauge_epoch_emissions_usd(object::id(&gauge));
+
+        if (type_name::get<TestCoinA>() != type_name::get<USD_TESTS>() || 
+                type_name::get<TestCoinB>() != type_name::get<SailCoinType>()) {
 
             let sail_stablecoin_pool = scenario.take_shared<Pool<USD_TESTS, SailCoinType>>();
 
-            distributed_amount = minter.distribute_gauge<CoinTypeA, CoinTypeB, USD_TESTS, SailCoinType, SailCoinType, EpochOSail>(
+            minter.distribute_gauge<TestCoinB, TestCoinA, USD_TESTS, SailCoinType, SailCoinType, EpochOSail>(
                 &mut voter,
                 &distribute_governor_cap,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                prev_epoch_pool_emissions,
-                prev_epoch_pool_fees_usd,
-                epoch_pool_emissions_usd,
-                epoch_pool_fees_usd,
-                epoch_pool_volume_usd,
-                epoch_pool_predicted_volume_usd,
+                next_epoch_emissions_usd,
                 &mut price_monitor,
                 &sail_stablecoin_pool,
                 aggregator,
@@ -11736,18 +11638,13 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
 
             test_scenario::return_shared(sail_stablecoin_pool);
         } else {
-            distributed_amount = minter.distribute_gauge_for_sail_pool<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
+            minter.distribute_gauge_for_sail_pool<TestCoinB, TestCoinA, SailCoinType, EpochOSail>(
                 &mut voter,
                 &distribute_governor_cap,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
-                prev_epoch_pool_emissions,
-                prev_epoch_pool_fees_usd,
-                epoch_pool_emissions_usd,
-                epoch_pool_fees_usd,
-                epoch_pool_volume_usd,
-                epoch_pool_predicted_volume_usd,
+                next_epoch_emissions_usd,
                 &mut price_monitor,
                 aggregator,
                 clock,
@@ -11764,7 +11661,73 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
         scenario.return_to_sender(distribute_governor_cap);
         test_scenario::return_shared(price_monitor);
 
-        distributed_amount
+        next_epoch_emissions_usd
+    }
+
+    // Utility to call minter.distribute_gauge
+    #[test_only]
+    fun distribute_gauge_emissions_controlled<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
+        scenario: &mut test_scenario::Scenario,
+        next_epoch_emissions_usd: u64,
+        usd_metadata: &CoinMetadata<USD_TESTS>,
+        aggregator: &mut Aggregator,
+        clock: &clock::Clock,
+    ): u64 {
+        let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>(); // Minter is now responsible
+        let mut voter = scenario.take_shared<voter::Voter>();
+        let mut gauge = scenario.take_from_sender<gauge::Gauge<CoinTypeA, CoinTypeB>>();
+        let mut pool = scenario.take_from_sender<pool::Pool<CoinTypeA, CoinTypeB>>();
+        let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
+        let distribute_governor_cap = scenario.take_from_sender<minter::DistributeGovernorCap>(); // Minter uses DistributeGovernorCap
+        let mut price_monitor = scenario.take_shared<PriceMonitor>();
+
+        aggregator_set_current_value(aggregator,  one_dec18(), clock.timestamp_ms());
+
+        if (type_name::get<CoinTypeA>() != type_name::get<USD_TESTS>() || 
+                type_name::get<CoinTypeB>() != type_name::get<SailCoinType>()) {
+
+            let sail_stablecoin_pool = scenario.take_shared<Pool<USD_TESTS, SailCoinType>>();
+
+            minter.distribute_gauge<CoinTypeA, CoinTypeB, USD_TESTS, SailCoinType, SailCoinType, EpochOSail>(
+                &mut voter,
+                &distribute_governor_cap,
+                &distribution_config,
+                &mut gauge,
+                &mut pool,
+                next_epoch_emissions_usd,
+                &mut price_monitor,
+                &sail_stablecoin_pool,
+                aggregator,
+                clock,
+                scenario.ctx()
+            );
+
+            test_scenario::return_shared(sail_stablecoin_pool);
+        } else {
+            minter.distribute_gauge_for_sail_pool<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
+                &mut voter,
+                &distribute_governor_cap,
+                &distribution_config,
+                &mut gauge,
+                &mut pool,
+                next_epoch_emissions_usd,
+                &mut price_monitor,
+                aggregator,
+                clock,
+                scenario.ctx()
+            );
+        };
+
+        // Return shared objects
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(voter);
+        scenario.return_to_sender(gauge);
+        scenario.return_to_sender(pool);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(distribute_governor_cap);
+        test_scenario::return_shared(price_monitor);
+
+        next_epoch_emissions_usd
     }
 
     public fun one_dec18(): u128 {
