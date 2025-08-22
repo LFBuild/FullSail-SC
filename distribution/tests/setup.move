@@ -1072,73 +1072,6 @@ public fun update_minter_period<SAIL, OSailCoinType>(
         initial_supply
 }
 
-public fun distribute_gauge<CoinTypeA, CoinTypeB, SAIL, EpochOSail, USD_TESTS>(
-    scenario: &mut test_scenario::Scenario,
-    usd_metadata: &CoinMetadata<USD_TESTS>,
-    aggregator: &mut Aggregator,
-    clock: &Clock,
-): u64 {
-    let mut minter = scenario.take_shared<Minter<SAIL>>(); // Minter is now responsible
-    let mut voter = scenario.take_shared<Voter>();
-    let mut gauge = scenario.take_shared<Gauge<CoinTypeA, CoinTypeB>>();
-    let mut pool = scenario.take_shared<Pool<CoinTypeA, CoinTypeB>>();
-    let distribution_config = scenario.take_shared<DistributionConfig>();
-    let distribute_governor_cap = scenario.take_from_sender<minter::DistributeGovernorCap>(); // Minter uses DistributeGovernorCap
-    let mut price_monitor = scenario.take_shared<PriceMonitor>();
-
-    aggregator_set_current_value(aggregator,  one_dec18(), clock.timestamp_ms());
-
-    // use the same emissions as in previous epoch
-    let next_epoch_emissions_usd = minter.gauge_epoch_emissions_usd(object::id(&gauge));
-
-    let mut distributed_amount: u64 = 0;
-    if (type_name::get<CoinTypeA>() != type_name::get<USD_TESTS>() || 
-            type_name::get<CoinTypeB>() != type_name::get<SAIL>()) {
-
-        let sail_stablecoin_pool = scenario.take_shared<Pool<USD_TESTS, SAIL>>();
-
-        minter.distribute_gauge<CoinTypeA, CoinTypeB, USD_TESTS, SAIL, SAIL, EpochOSail>(
-            &mut voter,
-            &distribute_governor_cap,
-            &distribution_config,
-            &mut gauge,
-            &mut pool,
-            next_epoch_emissions_usd,
-            &mut price_monitor,
-            &sail_stablecoin_pool,
-            aggregator,
-            clock,
-            scenario.ctx()
-        );
-
-        test_scenario::return_shared(sail_stablecoin_pool);
-    } else {
-        minter.distribute_gauge_for_sail_pool<CoinTypeA, CoinTypeB, SAIL, EpochOSail>(
-            &mut voter,
-            &distribute_governor_cap,
-            &distribution_config,
-            &mut gauge,
-            &mut pool,
-            next_epoch_emissions_usd,
-            &mut price_monitor,
-            aggregator,
-            clock,
-            scenario.ctx()
-        );
-    };
-
-    // Return shared objects
-    test_scenario::return_shared(minter);
-    test_scenario::return_shared(voter);
-    test_scenario::return_shared(gauge);
-    test_scenario::return_shared(pool);
-    test_scenario::return_shared(distribution_config);
-    scenario.return_to_sender(distribute_governor_cap);
-    test_scenario::return_shared(price_monitor);
-
-    next_epoch_emissions_usd
-}
-
     // CoinTypeA and CoinTypeB - to check that such a pool has already been created
     // in other cases you can pass any types, so that the USD_TESTS/SAIL pool is created
     #[test_only]
@@ -1305,6 +1238,73 @@ public fun distribute_gauge_emissions_controlled<CoinTypeA, CoinTypeB, SAIL, Epo
 
     aggregator_set_current_value(aggregator,  one_dec18(), clock.timestamp_ms());
 
+    if (type_name::get<CoinTypeA>() != type_name::get<USD_TESTS>() || 
+            type_name::get<CoinTypeB>() != type_name::get<SAIL>()) {
+
+        let sail_stablecoin_pool = scenario.take_shared<Pool<USD_TESTS, SAIL>>();
+
+        minter.distribute_gauge<CoinTypeA, CoinTypeB, USD_TESTS, SAIL, SAIL, EpochOSail>(
+            &mut voter,
+            &distribute_governor_cap,
+            &distribution_config,
+            &mut gauge,
+            &mut pool,
+            next_epoch_emissions_usd,
+            &mut price_monitor,
+            &sail_stablecoin_pool,
+            aggregator,
+            clock,
+            scenario.ctx()
+        );
+
+        test_scenario::return_shared(sail_stablecoin_pool);
+    } else {
+        minter.distribute_gauge_for_sail_pool<CoinTypeA, CoinTypeB, SAIL, EpochOSail>(
+            &mut voter,
+            &distribute_governor_cap,
+            &distribution_config,
+            &mut gauge,
+            &mut pool,
+            next_epoch_emissions_usd,
+            &mut price_monitor,
+            aggregator,
+            clock,
+            scenario.ctx()
+        );
+    };
+
+    // Return shared objects
+    test_scenario::return_shared(minter);
+    test_scenario::return_shared(voter);
+    test_scenario::return_shared(gauge);
+    test_scenario::return_shared(pool);
+    test_scenario::return_shared(distribution_config);
+    scenario.return_to_sender(distribute_governor_cap);
+    test_scenario::return_shared(price_monitor);
+
+    next_epoch_emissions_usd
+}
+
+public fun distribute_gauge<CoinTypeA, CoinTypeB, SAIL, EpochOSail, USD_TESTS>(
+    scenario: &mut test_scenario::Scenario,
+    usd_metadata: &CoinMetadata<USD_TESTS>,
+    aggregator: &mut Aggregator,
+    clock: &Clock,
+): u64 {
+    let mut minter = scenario.take_shared<Minter<SAIL>>(); // Minter is now responsible
+    let mut voter = scenario.take_shared<Voter>();
+    let mut gauge = scenario.take_shared<Gauge<CoinTypeA, CoinTypeB>>();
+    let mut pool = scenario.take_shared<Pool<CoinTypeA, CoinTypeB>>();
+    let distribution_config = scenario.take_shared<DistributionConfig>();
+    let distribute_governor_cap = scenario.take_from_sender<minter::DistributeGovernorCap>(); // Minter uses DistributeGovernorCap
+    let mut price_monitor = scenario.take_shared<PriceMonitor>();
+
+    aggregator_set_current_value(aggregator,  one_dec18(), clock.timestamp_ms());
+
+    // use the same emissions as in previous epoch
+    let next_epoch_emissions_usd = minter.gauge_epoch_emissions_usd(object::id(&gauge));
+
+    let mut distributed_amount: u64 = 0;
     if (type_name::get<CoinTypeA>() != type_name::get<USD_TESTS>() || 
             type_name::get<CoinTypeB>() != type_name::get<SAIL>()) {
 

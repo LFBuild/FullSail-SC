@@ -168,12 +168,7 @@ module integrate::voter {
         distribtuion_config: &distribution::distribution_config::DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        prev_epoch_pool_emissions_usd: u64,
-        prev_epoch_pool_fees_usd: u64,
-        epoch_pool_emissions_usd: u64,
-        epoch_pool_fees_usd: u64,
-        epoch_pool_volume_usd: u64,
-        epoch_pool_predicted_volume_usd: u64,
+        next_epoch_emissions_usd: u64,
         price_monitor: &mut price_monitor::price_monitor::PriceMonitor,
         sail_stablecoin_pool: &clmm_pool::pool::Pool<SailPoolCoinTypeA, SailPoolCoinTypeB>,
         aggregator: &switchboard::aggregator::Aggregator,
@@ -181,33 +176,36 @@ module integrate::voter {
         ctx: &mut TxContext
     ) {
         if (minter.active_period() + ve::common::epoch() < ve::common::current_timestamp(clock)) {
-            abort EDistributeInvalidPeriod
+            abort EDistributeInvalidPeriod;
         };
         assert!(
             gauge.pool_id() == object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool),
             EDistributeInccorectGaugePool
         );
+        minter.distribute_gauge<
+            CoinTypeA,
+            CoinTypeB,
+            SailPoolCoinTypeA,
+            SailPoolCoinTypeB,
+            SailCoinType,
+            EpochOSail
+        >(
+            voter,
+            distribute_governor_cap,
+            distribtuion_config,
+            gauge,
+            pool,
+            next_epoch_emissions_usd,
+            price_monitor,
+            sail_stablecoin_pool,
+            aggregator,
+            clock,
+            ctx
+        );
         let event_distribute_reward = EventDistributeReward {
             sender: tx_context::sender(ctx),
             gauge: object::id<distribution::gauge::Gauge<CoinTypeA, CoinTypeB>>(gauge),
-            amount: minter.distribute_gauge<CoinTypeA, CoinTypeB, SailPoolCoinTypeA, SailPoolCoinTypeB, SailCoinType, EpochOSail>(
-                voter,
-                distribute_governor_cap,
-                distribtuion_config,
-                gauge,
-                pool,
-                prev_epoch_pool_emissions_usd,
-                prev_epoch_pool_fees_usd,
-                epoch_pool_emissions_usd,
-                epoch_pool_fees_usd,
-                epoch_pool_volume_usd,
-                epoch_pool_predicted_volume_usd,
-                price_monitor,
-                sail_stablecoin_pool,
-                aggregator,
-                clock,
-                ctx
-            ),
+            amount: next_epoch_emissions_usd,
         };
         sui::event::emit<EventDistributeReward>(event_distribute_reward);
     }
@@ -219,12 +217,7 @@ public entry fun distribute_for_sail_pool<CoinTypeA, CoinTypeB, SailCoinType, Ep
         distribtuion_config: &distribution::distribution_config::DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         sail_pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        prev_epoch_pool_emissions_usd: u64,
-        prev_epoch_pool_fees_usd: u64,
-        epoch_pool_emissions_usd: u64,
-        epoch_pool_fees_usd: u64,
-        epoch_pool_volume_usd: u64,
-        epoch_pool_predicted_volume_usd: u64,
+        next_epoch_emissions_usd: u64,
         price_monitor: &mut price_monitor::price_monitor::PriceMonitor,
         aggregator: &switchboard::aggregator::Aggregator,
         clock: &sui::clock::Clock,
@@ -237,26 +230,27 @@ public entry fun distribute_for_sail_pool<CoinTypeA, CoinTypeB, SailCoinType, Ep
             gauge.pool_id() == object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(sail_pool),
             EDistributeInccorectGaugePool
         );
+        minter.distribute_gauge_for_sail_pool<
+            CoinTypeA,
+            CoinTypeB,
+            SailCoinType,
+            EpochOSail
+        >(
+            voter,
+            distribute_governor_cap,
+            distribtuion_config,
+            gauge,
+            sail_pool,
+            next_epoch_emissions_usd,
+            price_monitor,
+            aggregator,
+            clock,
+            ctx
+        );
         let event_distribute_reward = EventDistributeReward {
             sender: tx_context::sender(ctx),
             gauge: object::id<distribution::gauge::Gauge<CoinTypeA, CoinTypeB>>(gauge),
-            amount: minter.distribute_gauge_for_sail_pool<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
-                voter,
-                distribute_governor_cap,
-                distribtuion_config,
-                gauge,
-                sail_pool,
-                prev_epoch_pool_emissions_usd,
-                prev_epoch_pool_fees_usd,
-                epoch_pool_emissions_usd,
-                epoch_pool_fees_usd,
-                epoch_pool_volume_usd,
-                epoch_pool_predicted_volume_usd,
-                price_monitor,
-                aggregator,
-                clock,
-                ctx
-            ),
+            amount: next_epoch_emissions_usd,
         };
         sui::event::emit<EventDistributeReward>(event_distribute_reward);
     }
