@@ -229,7 +229,7 @@ public fun test_gauge_notify_epoch_token_epoch_already_started() {
 
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     clock::increment_for_testing(&mut clock, WEEK * 2 / 3);
@@ -738,7 +738,7 @@ fun full_setup_with_two_positions(
     // not at the start of the epoch, but it is pretty close to the real world situation
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(scenario, usd_metadata, &mut aggregator, clock); 
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(scenario, usd_metadata, &mut aggregator, clock); 
     };
 
     // lp1 creates and stakes position
@@ -1068,7 +1068,7 @@ fun test_update_minter_period_with_same_o_sail_fails() {
     // Distribute Gauge Rewards (OSAIL1)
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     clock.increment_for_testing(WEEK);
@@ -1122,7 +1122,7 @@ fun test_single_position_reward_over_time_distribute() {
     // --- Tx: Distribute Gauge Rewards (OSAIL1) ---
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
 
@@ -1268,7 +1268,7 @@ fun test_single_position_withdraw_distribute() {
     // --- Tx: Distribute Gauge Rewards (OSAIL1) ---
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     // advance time to make sure that voting started
@@ -1380,7 +1380,7 @@ fun test_single_position_deposit_for_1h() {
         // --- Tx: Distribute Gauge Rewards (OSAIL1) ---
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     // advance time to make sure that voting started
@@ -1487,7 +1487,7 @@ fun test_position_deposit_for_1h_widthrawal_and_deposit_again_for_1h() {
     // --- Tx: Distribute Gauge Rewards (OSAIL1) ---
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     // advance time to make sure that voting started
@@ -1633,7 +1633,7 @@ fun multi_epoch_distribute_setup(
     // Distribute OSAIL1 rewards to the gauge
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(scenario, usd_metadata, &mut aggregator, clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(scenario, usd_metadata, &mut aggregator, clock);
     };
 
     // --- 4. LP Creates and Stakes Position ---
@@ -1681,7 +1681,7 @@ fun multi_epoch_distribute_setup(
     // Distribute OSAIL2 rewards to the gauge
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_2<USD_TESTS, SAIL, SAIL, OSAIL2, USD_TESTS>(scenario, usd_metadata, &mut aggregator, clock); 
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL2, USD_TESTS>(scenario, usd_metadata, &mut aggregator, clock); 
     };
 
     // --- 6. Advance Time by One More Week ---
@@ -1914,7 +1914,7 @@ fun test_increase_gauge_emissions_mid_epoch() {
     // --- Tx: Distribute Gauge Rewards (OSAIL1) ---
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);   
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);   
     };
 
     // --- Tx: lp Creates and Stakes Position ---
@@ -2034,7 +2034,7 @@ fun test_increase_gauge_emissions_revoked_admin_cap_fails() {
     // --- Tx: Distribute Gauge Rewards (OSAIL1) ---
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     let admin_cap_id: ID;
@@ -2126,7 +2126,7 @@ fun test_increase_gauge_emissions_invalid_distribution_config_fails() {
     // --- Tx: Distribute Gauge Rewards (OSAIL1) ---
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     // --- Create a new, invalid distribution config ---
@@ -2205,7 +2205,7 @@ fun test_increase_gauge_emissions_invalid_pool_fails() {
     // --- Tx: Distribute Gauge Rewards (OSAIL1) ---
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     // --- Add a new fee tier ---
@@ -2388,7 +2388,7 @@ fun test_half_epoch_staking_distribute() {
 
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
 
@@ -2974,7 +2974,7 @@ fun rollover_setup(
     // Distribute OSAIL1 rewards to the gauge
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(scenario, usd_metadata, &mut aggregator, clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(scenario, usd_metadata, &mut aggregator, clock);
     };
 
     // advance time to make sure that voting started
@@ -3006,7 +3006,7 @@ fun rollover_setup(
     // Distribute OSAIL2 rewards to the gauge
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_2<USD_TESTS, SAIL, SAIL, OSAIL2, USD_TESTS>(scenario, usd_metadata, &mut aggregator, clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL2, USD_TESTS>(scenario, usd_metadata, &mut aggregator, clock);
     };
 
     (first_epoch_emissions, second_epoch_emissions, aggregator)
@@ -3223,7 +3223,7 @@ fun test_distribute_rollover_random_next_token_is_invalid() {
     // Distribute OSAIL2 (wrong token) rewards to the gauge
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_3<USD_TESTS, SAIL, SAIL, OSAIL2, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL2, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     transfer::public_transfer(usd_treasury_cap, admin);
@@ -3262,7 +3262,7 @@ fun test_claim_full_epoch_reward_in_next_epoch() {
     // --- 2. Distribute Gauge Rewards for Epoch 1 (OSAIL1) ---
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     // --- 3. LP Creates and Stakes Position ---
@@ -3307,7 +3307,7 @@ fun test_claim_full_epoch_reward_in_next_epoch() {
     // Distribute OSAIL2 rewards to the gauge
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_2<USD_TESTS, SAIL, SAIL, OSAIL2, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL2, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     // --- 6. Claim Rewards ---
@@ -3357,7 +3357,7 @@ fun test_claim_mid_epoch_then_rollover_and_claim_rest() {
     // --- 2. Distribute Gauge Rewards for Epoch 1 ---
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     // --- 3. LP Creates and Stakes Position ---
@@ -3397,7 +3397,7 @@ fun test_claim_mid_epoch_then_rollover_and_claim_rest() {
 
     // Distribute 0 emissions for Epoch 2 to isolate testing of rollover rewards
     scenario.next_tx(admin); {
-        setup::distribute_gauge_epoch_2<USD_TESTS, SAIL, SAIL, OSAIL2, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock); 
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL2, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock); 
     };
 
     // --- 7. Claim remaining rewards in Epoch 2 ---
@@ -3442,7 +3442,7 @@ fun test_claim_rewards_after_10_epochs() {
     // --- 2. Distribute Gauge Rewards for Epoch 1 ---
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     // --- 3. LP Creates and Stakes Position ---
@@ -3466,7 +3466,7 @@ fun test_claim_rewards_after_10_epochs() {
         coin::burn_for_testing(o_sail_supply);
     };
     scenario.next_tx(admin); {
-        setup::distribute_gauge_epoch_2<USD_TESTS, SAIL, SAIL, OSAIL2, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL2, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
     clock::increment_for_testing(&mut clock, WEEK);
 
@@ -3476,7 +3476,7 @@ fun test_claim_rewards_after_10_epochs() {
         coin::burn_for_testing(o_sail_supply);
     };
     scenario.next_tx(admin); {
-        setup::distribute_gauge_epoch_3<USD_TESTS, SAIL, SAIL, OSAIL3, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL3, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
     clock::increment_for_testing(&mut clock, WEEK);
 
@@ -3486,7 +3486,7 @@ fun test_claim_rewards_after_10_epochs() {
         coin::burn_for_testing(o_sail_supply);
     };
     scenario.next_tx(admin); {
-        setup::distribute_gauge_epoch_3<USD_TESTS, SAIL, SAIL, OSAIL4, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL4, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
     clock::increment_for_testing(&mut clock, WEEK);
 
@@ -3496,7 +3496,7 @@ fun test_claim_rewards_after_10_epochs() {
         coin::burn_for_testing(o_sail_supply);
     };
     scenario.next_tx(admin); {
-        setup::distribute_gauge_epoch_3<USD_TESTS, SAIL, SAIL, OSAIL5, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL5, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
     clock::increment_for_testing(&mut clock, WEEK);
 
@@ -3506,7 +3506,7 @@ fun test_claim_rewards_after_10_epochs() {
         coin::burn_for_testing(o_sail_supply);
     };
     scenario.next_tx(admin); {
-        setup::distribute_gauge_epoch_3<USD_TESTS, SAIL, SAIL, OSAIL6, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL6, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
     clock::increment_for_testing(&mut clock, WEEK);
 
@@ -3516,7 +3516,7 @@ fun test_claim_rewards_after_10_epochs() {
         coin::burn_for_testing(o_sail_supply);
     };
     scenario.next_tx(admin); {
-        setup::distribute_gauge_epoch_3<USD_TESTS, SAIL, SAIL, OSAIL7, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL7, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
     clock::increment_for_testing(&mut clock, WEEK);
 
@@ -3526,7 +3526,7 @@ fun test_claim_rewards_after_10_epochs() {
         coin::burn_for_testing(o_sail_supply);
     };
     scenario.next_tx(admin); {
-        setup::distribute_gauge_epoch_3<USD_TESTS, SAIL, SAIL, OSAIL8, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL8, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
     clock::increment_for_testing(&mut clock, WEEK);
 
@@ -3536,7 +3536,7 @@ fun test_claim_rewards_after_10_epochs() {
         coin::burn_for_testing(o_sail_supply);
     };
     scenario.next_tx(admin); {
-        setup::distribute_gauge_epoch_3<USD_TESTS, SAIL, SAIL, OSAIL9, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL9, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
     clock::increment_for_testing(&mut clock, WEEK);
 
@@ -3546,7 +3546,7 @@ fun test_claim_rewards_after_10_epochs() {
         coin::burn_for_testing(o_sail_supply);
     };
     scenario.next_tx(admin); {
-        setup::distribute_gauge_epoch_3<USD_TESTS, SAIL, SAIL, OSAIL10, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL10, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
     clock::increment_for_testing(&mut clock, WEEK);
 
@@ -3594,7 +3594,7 @@ fun test_inactive_position_stops_earning_rewards() {
     // --- 2. Distribute Gauge Rewards for Epoch 1 ---
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     // --- 3. LP (full range) Creates a Non-Staked Position ---
@@ -3661,7 +3661,7 @@ fun test_inactive_position_stops_earning_rewards() {
         coin::burn_for_testing(supply);
     };
     scenario.next_tx(admin); {
-        setup::distribute_gauge_epoch_2<USD_TESTS, SAIL, SAIL, OSAIL2, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL2, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
     clock.increment_for_testing(WEEK);
 
@@ -3705,7 +3705,7 @@ fun test_claim_then_inactive_position_stops_earning() {
     // --- 2. Distribute Gauge Rewards for Epoch 1 ---
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     // --- 3. LP (full range) Creates a Non-Staked Position ---
@@ -3771,7 +3771,7 @@ fun test_claim_then_inactive_position_stops_earning() {
         coin::burn_for_testing(supply);
     };
     scenario.next_tx(admin); {
-        setup::distribute_gauge_epoch_2<USD_TESTS, SAIL, SAIL, OSAIL2, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL2, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
     clock.increment_for_testing(WEEK);
 
@@ -3815,7 +3815,7 @@ fun test_inactive_position_claim_at_epoch_end() {
     // --- 2. Distribute Gauge Rewards for Epoch 1 ---
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     // --- 3. LP (full range) Creates a Non-Staked Position ---
@@ -3898,7 +3898,7 @@ fun test_rewards_accrue_only_when_active_across_epochs() {
     // --- 2. Distribute Gauge Rewards for Epoch 1 ---
     scenario.next_tx(admin);
     {
-        setup::distribute_gauge_epoch_1<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     // --- 3. Create Positions ---
@@ -3937,7 +3937,7 @@ fun test_rewards_accrue_only_when_active_across_epochs() {
         coin::burn_for_testing(supply);
     };
     scenario.next_tx(admin); {
-        setup::distribute_gauge_epoch_2<USD_TESTS, SAIL, SAIL, OSAIL2, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL2, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     // --- 6. Wait for Epoch 2 to end (position is inactive) ---
@@ -3957,7 +3957,7 @@ fun test_rewards_accrue_only_when_active_across_epochs() {
         coin::burn_for_testing(supply);
     };
     scenario.next_tx(admin); {
-        setup::distribute_gauge_epoch_3<USD_TESTS, SAIL, SAIL, OSAIL3, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL3, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     // --- 8. Wait for Epoch 3 to end (position is active) ---
@@ -4007,7 +4007,7 @@ fun test_intermittent_active_position_rewards() {
 
     // --- 2. Distribute Gauge Rewards ---
     scenario.next_tx(admin); {
-        setup::distribute_gauge_epoch_1<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
 
     // --- 3. Create Positions ---
@@ -4085,7 +4085,7 @@ fun test_intermittent_active_position_rewards() {
         coin::burn_for_testing(supply);
     };
     scenario.next_tx(admin); {
-        setup::distribute_gauge_epoch_2<USD_TESTS, SAIL, SAIL, OSAIL2, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL2, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
     };
     scenario.next_tx(lp_tight_range); {
         setup::get_staked_position_reward<USD_TESTS, SAIL, SAIL, OSAIL2>(&mut scenario, &clock);

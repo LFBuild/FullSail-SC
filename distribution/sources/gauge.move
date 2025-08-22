@@ -156,11 +156,6 @@ module distribution::gauge {
         start_growth_inside: u128
     }
 
-    public struct EventGaugeCreated has copy, drop, store {
-        id: ID,
-        pool_id: ID,
-    }
-
     public struct EventGaugeSetVoter has copy, drop, store {
         id: ID,
         voter_id: ID,
@@ -293,11 +288,6 @@ module distribution::gauge {
         ctx: &mut TxContext
     ): Gauge<CoinTypeA, CoinTypeB> {
         let id = object::new(ctx);
-        let gauge_created_event = EventGaugeCreated {
-            id: object::uid_to_inner(&id),
-            pool_id,
-        };
-        sui::event::emit<EventGaugeCreated>(gauge_created_event);
         Gauge<CoinTypeA, CoinTypeB> {
             id,
             pool_id,

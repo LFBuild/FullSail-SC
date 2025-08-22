@@ -49,7 +49,6 @@ module distribution::minter {
     const EUpdatePeriodMinterPaused: u64 = 540422149172903100;
     const EUpdatePeriodMinterNotActive: u64 = 922337339406490010;
     const EUpdatePeriodNotFinishedYet: u64 = 922337340695058843;
-    const EUpdatePeriodNotAllGaugesDistributed: u64 = 150036217874985900;
     const EUpdatePeriodNoRebaseDistributorCap: u64 = 493364785715856700;
     const EUpdatePeriodDistributionConfigInvalid: u64 = 222427100417155840;
     const EUpdatePeriodOSailAlreadyUsed: u64 = 573264404146058900;
@@ -57,17 +56,20 @@ module distribution::minter {
     const EDistributeGaugeMinterPaused: u64 = 383966743216827200;
     const EDistributeGaugeInvalidToken: u64 = 802874746577660900;
     const EDistributeGaugeAlreadyDistributed: u64 = 259145126193785820;
+    const EDistributeGaugePriceInvalid: u64 = 501128786431030500;
     const EDistributeGaugePoolHasNoBaseSupply: u64 = 764215244078886900;
     const EDistributeGaugeDistributionConfigInvalid: u64 = 540205746933504640;
     const EDistributeGaugeMinterNotActive: u64 = 728194857362048571;
-    const EDistributeGaugeFirstEpochMetricsInvalid: u64 = 671508139267645600;
-    const EDistributeGaugeMetricsInvalid: u64 = 95918619286974770;
+    const EDistributeGaugeFirstEpochEmissionsInvalid: u64 = 671508139267645600;
+    const EDistributeGaugeEmissionsZero: u64 = 424941542236535500;
+    const EDistributeGaugeEmissionsChangeTooBig: u64 = 95918619286974770;
     const EDistributeGaugeNoPeriodButHasEmissions: u64 = 658460351931005700;
 
     const EIncreaseEmissionsNotDistributed: u64 = 243036335954370780;
     const EIncreaseEmissionsDistributionConfigInvalid: u64 = 578889065004501400;
     const EIncreaseEmissionsMinterNotActive: u64 = 204872681976552500;
     const EIncreaseEmissionsMinterPaused: u64 = 566083930742334200;
+    const EIncreaseEmissionsPriceInvalid: u64 = 779501100558419000;
 
     const ECheckAdminRevoked: u64 = 922337280994888908;
     const ECheckDistributeGovernorRevoked: u64 = 369612027923601500;
@@ -83,6 +85,7 @@ module distribution::minter {
     const EExerciseOSailInvalidDistrConfig: u64 = 156849871586365300;
     const EExerciseOSailInvalidAggregator: u64 = 48171994695305640;
     const EExerciseOSailInvalidUsd: u64 = 953914262470819500;
+    const EExerciseOSailInvalidPrice: u64 = 819506397692905300;
 
     const EBurnOSailInvalidOSail: u64 = 665869556650983200;
     const EBurnOSailMinterPaused: u64 = 947382564018592637;
@@ -161,8 +164,7 @@ module distribution::minter {
     const MAX_TEAM_EMISSIONS_RATE: u64 = 500;
     const MAX_PROTOCOL_FEE_RATE: u64 = 3000;
 
-    const MAX_EMISSIONS_CHANGE_RATE: u64 = RATE_DENOM + RATE_DENOM / 10; // +10%
-    const MIN_EMISSIONS_CHANGE_RATE: u64 = RATE_DENOM - RATE_DENOM / 10; // -10%
+    const MAX_EMISSIONS_CHANGE_RATIO: u64 = 4;
 
     const MINT_LOCK_TIME_MS: u64 = 24 * 60 * 60 * 1000; // 1 day
 
@@ -264,6 +266,12 @@ module distribution::minter {
         team_wallet: address,
         amount: u64,
         token_type: TypeName,
+    }
+
+    public struct EventGaugeCreated has copy, drop, store {
+        id: ID,
+        pool_id: ID,
+        base_emissions: u64,
     }
 
     public struct EventDistributeGauge has copy, drop, store {
@@ -527,86 +535,6 @@ module distribution::minter {
             total_supply - total_locked,
             total_supply
         ) / 2
-    }
-
-    fun max_emissions_change_q64(): u128 {
-        full_math_u128::mul_div_floor(
-            MAX_EMISSIONS_CHANGE_RATE as u128,
-            1<<64,
-            RATE_DENOM as u128,
-        )
-    }
-
-    fun min_emissions_change_q64(): u128 {
-        full_math_u128::mul_div_floor(
-            MIN_EMISSIONS_CHANGE_RATE as u128,
-            1<<64,
-            RATE_DENOM as u128,
-        )
-    }
-
-    /// Calculates pool emissions according to the formula:
-    /// Δ_Pool_Rewards = 0.5 × Δ_ROE + 0.5 × Δ_Vol  ∈ [-10%, +10%]
-    /// Where:
-    /// Δ_ROE = (ROE_{n-1} / ROE_{n-2}) - 1
-    /// Δ_Vol = (Predicted_vol_n / VOL_{n-1}) - 1
-    /// Where:
-    /// ROE = ((TDVR - TDVE) / TDVE) + 1
-    /// TDVE = Total Dollar Value Emitted
-    /// TDVR = Total Dollar Value Returned
-    public fun calculate_next_pool_emissions(
-        epoch_pool_emissions: u64,
-        prev_epoch_pool_emissions_usd: u64,
-        prev_epoch_pool_fees_usd: u64,
-        epoch_pool_emissions_usd: u64,
-        epoch_pool_fees_usd: u64,
-        epoch_pool_volume_usd: u64,
-        epoch_pool_predicted_volume_usd: u64,
-    ): u64 {
-
-        // ROE change is 1 for first voting epoch
-        let roe_change_q64 = if (prev_epoch_pool_fees_usd > 0 && prev_epoch_pool_emissions_usd > 0) {
-            let prev_epoch_roe_q64 = full_math_u128::mul_div_floor(
-                prev_epoch_pool_fees_usd as u128,
-                1<<64,
-                prev_epoch_pool_emissions_usd as u128,
-            );
-            let current_epoch_roe_q64 = full_math_u128::mul_div_floor(
-                epoch_pool_fees_usd as u128,
-                1<<64,
-                epoch_pool_emissions_usd as u128
-            );
-            full_math_u128::mul_div_floor(
-                current_epoch_roe_q64,
-                1<<64,
-                prev_epoch_roe_q64
-            )
-        } else {
-            1<<64
-        };
-
-        let volume_change_q64 = full_math_u128::mul_div_floor(
-            epoch_pool_predicted_volume_usd as u128,
-            1<<64,
-            epoch_pool_volume_usd as u128
-        );
-
-        let mut emissions_change_q64 = (roe_change_q64 + volume_change_q64) / 2;
-
-        let max_emissions_ch = max_emissions_change_q64();
-        let min_emissions_ch = min_emissions_change_q64();
-
-        if (emissions_change_q64 > max_emissions_ch) {
-            emissions_change_q64 = max_emissions_ch;
-        };
-        if (emissions_change_q64 < min_emissions_ch) {
-            emissions_change_q64 = min_emissions_ch;
-        };
-        full_math_u128::mul_div_floor(
-            epoch_pool_emissions as u128,
-            emissions_change_q64,
-            1<<64
-        ) as u64
     }
 
 
@@ -1225,12 +1153,7 @@ module distribution::minter {
     /// * `distribution_config` - Configuration for token distribution
     /// * `gauge` - The gauge to distribute tokens to
     /// * `pool` - The pool associated with the gauge
-    /// * `prev_epoch_pool_emissions_usd` - N-2 epoch's (i.e epoch that ended 1 epoch ago) emissions for the pool. Zero for gauges younger than 2 epochs. 6 decimals.
-    /// * `prev_epoch_pool_fees_usd` - N-2 epoch's (i.e epoch that ended 1 epoch ago) fees in USD. Zero for gauges younger than 2 epochs. 6 decimals.
-    /// * `epoch_pool_emissions_usd` - N-1 epoch's (i.e epoch that just ended) emissions in USD. Zero for new gauges. 6 decimals.
-    /// * `epoch_pool_fees_usd` - N-1 epoch's (i.e epoch that just ended) fees in USD. Zero for new gauges. 6 decimals.
-    /// * `epoch_pool_volume_usd` - N-1 epoch's (i.e epoch that just ended) trading volume in USD. Zero for new gauges. 6 decimals.
-    /// * `epoch_pool_predicted_volume_usd` - Predicted volume for epoch N (i.e epoch that just started) in USD. Zero for new gauges. 6 decimals.
+    /// * `next_epoch_emissions_usd` - oSAIL usd valuation to be emitted for the next epoch, decimals 6
     /// * `price_monitor` - The price monitor to validate the price
     /// * `sail_stablecoin_pool` - The pool of SAIL token with a stablecoin
     /// * `aggregator` - The aggregator of oSAIL price to fetch the price from
@@ -1251,19 +1174,13 @@ module distribution::minter {
         distribution_config: &distribution::distribution_config::DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        // params related to rewards change calculation
-        prev_epoch_pool_emissions_usd: u64,
-        prev_epoch_pool_fees_usd: u64,
-        epoch_pool_emissions_usd: u64,
-        epoch_pool_fees_usd: u64,
-        epoch_pool_volume_usd: u64,
-        epoch_pool_predicted_volume_usd: u64,
+        next_epoch_emissions_usd: u64,
         price_monitor: &mut PriceMonitor,
         sail_stablecoin_pool: &clmm_pool::pool::Pool<SailPoolCoinTypeA, SailPoolCoinTypeB>,
         aggregator: &Aggregator,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
-    ): u64 {
+    ) {
         assert!(!minter.is_paused(), EDistributeGaugeMinterPaused);
         assert!(!minter.is_emission_stopped(), EEmissionStopped);
         minter.check_distribute_governor(distribute_governor_cap);
@@ -1281,27 +1198,18 @@ module distribution::minter {
             clock
         );
 
-        if (is_price_invalid) {
-            return 0
-        };
+        assert!(!is_price_invalid, EDistributeGaugePriceInvalid);
         
-        let next_epoch_emissions_usd = minter.distribute_gauge_internal<CoinTypeA, CoinTypeB, SailCoinType, CurrentEpochOSail>(
+        minter.distribute_gauge_internal<CoinTypeA, CoinTypeB, SailCoinType, CurrentEpochOSail>(
             voter,
             distribution_config,
             gauge,
             pool,
-            prev_epoch_pool_emissions_usd,
-            prev_epoch_pool_fees_usd,
-            epoch_pool_emissions_usd,
-            epoch_pool_fees_usd,
-            epoch_pool_volume_usd,
-            epoch_pool_predicted_volume_usd,
+            next_epoch_emissions_usd,
             o_sail_price_q64,
             clock,
             ctx
         );
-
-        next_epoch_emissions_usd
     }
 
     /// we need this method if pool and sail_stablecoin_pool are the same pool
@@ -1312,18 +1220,12 @@ module distribution::minter {
         distribution_config: &distribution::distribution_config::DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         sail_pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        // params related to rewards change calculation
-        prev_epoch_pool_emissions_usd: u64,
-        prev_epoch_pool_fees_usd: u64,
-        epoch_pool_emissions_usd: u64,
-        epoch_pool_fees_usd: u64,
-        epoch_pool_volume_usd: u64,
-        epoch_pool_predicted_volume_usd: u64,
+        next_epoch_emissions_usd: u64,
         price_monitor: &mut PriceMonitor,
         aggregator: &Aggregator,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
-    ): u64 {
+    ) {
         assert!(!minter.is_paused(), EDistributeGaugeMinterPaused);
         assert!(!minter.is_emission_stopped(), EEmissionStopped);
         minter.check_distribute_governor(distribute_governor_cap);
@@ -1344,27 +1246,18 @@ module distribution::minter {
             clock
         );
 
-        if (is_price_invalid) {
-            return 0
-        };
+        assert!(!is_price_invalid, EDistributeGaugePriceInvalid);
         
-        let next_epoch_emissions_usd = minter.distribute_gauge_internal<CoinTypeA, CoinTypeB, SailCoinType, CurrentEpochOSail>(
+        minter.distribute_gauge_internal<CoinTypeA, CoinTypeB, SailCoinType, CurrentEpochOSail>(
             voter,
             distribution_config,
             gauge,
             sail_pool,
-            prev_epoch_pool_emissions_usd,
-            prev_epoch_pool_fees_usd,
-            epoch_pool_emissions_usd,
-            epoch_pool_fees_usd,
-            epoch_pool_volume_usd,
-            epoch_pool_predicted_volume_usd,
+            next_epoch_emissions_usd,
             o_sail_price_q64,
             clock,
             ctx
         );
-
-        next_epoch_emissions_usd
     }
 
     fun distribute_gauge_internal<CoinTypeA, CoinTypeB, SailCoinType, CurrentEpochOSail>(
@@ -1373,17 +1266,11 @@ module distribution::minter {
         distribution_config: &distribution::distribution_config::DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        // params related to rewards change calculation
-        prev_epoch_pool_emissions_usd: u64,
-        prev_epoch_pool_fees_usd: u64,
-        epoch_pool_emissions_usd: u64,
-        epoch_pool_fees_usd: u64,
-        epoch_pool_volume_usd: u64,
-        epoch_pool_predicted_volume_usd: u64,
+        next_epoch_emissions_usd: u64,
         o_sail_price_q64: u128,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
-    ): u64 {
+    ) {
         let current_epoch_o_sail_type = type_name::get<CurrentEpochOSail>();
         assert!(minter.current_epoch_o_sail.borrow() == current_epoch_o_sail_type, EDistributeGaugeInvalidToken);
         
@@ -1401,47 +1288,21 @@ module distribution::minter {
         } else {
             0
         };
+        let prev_epoch_emissions_usd = minter.gauge_epoch_emissions_usd.remove(gauge_id);
         // indicates if this gauges was never distributed before
         let is_initial_epoch = gauge_epoch_count == 0;
 
         if (is_initial_epoch) {
             // for pools that are new there is no enough data.
             // This extra validation should make sure that our service handles such situations properly
-            assert!(
-                prev_epoch_pool_emissions_usd == 0 &&
-                prev_epoch_pool_fees_usd == 0 &&
-                epoch_pool_emissions_usd == 0 &&
-                epoch_pool_fees_usd == 0 &&
-                epoch_pool_volume_usd == 0 &&
-                epoch_pool_predicted_volume_usd == 0,
-                EDistributeGaugeFirstEpochMetricsInvalid,
-            )
+            assert!(next_epoch_emissions_usd == prev_epoch_emissions_usd, EDistributeGaugeFirstEpochEmissionsInvalid);
         } else {
-            // These values should not be zero, othervise the formula breaks
-            // we are not checking prev_epoch_pool_emissions_usd and prev_epoch_pool_fees_usd
-            // cos we can make the term with them equal to 1 and the formula will be correct
-            assert!(
-                epoch_pool_emissions_usd > 0 &&
-                epoch_pool_fees_usd > 0 &&
-                epoch_pool_volume_usd > 0 &&
-                epoch_pool_predicted_volume_usd > 0,
-                EDistributeGaugeMetricsInvalid
-            )
-        };
-        // calculate amount of oSAIL to distribute
-        let current_epoch_emissions_usd = minter.gauge_epoch_emissions_usd.remove(gauge_id);
-        let next_epoch_emissions_usd = if (is_initial_epoch) {
-            current_epoch_emissions_usd
-        } else {
-            calculate_next_pool_emissions(
-                current_epoch_emissions_usd,
-                prev_epoch_pool_emissions_usd,
-                prev_epoch_pool_fees_usd,
-                epoch_pool_emissions_usd,
-                epoch_pool_fees_usd,
-                epoch_pool_volume_usd,
-                epoch_pool_predicted_volume_usd
-            )
+            assert!(next_epoch_emissions_usd > 0, EDistributeGaugeEmissionsZero);
+            if (prev_epoch_emissions_usd > next_epoch_emissions_usd) {
+                assert!(prev_epoch_emissions_usd / next_epoch_emissions_usd < MAX_EMISSIONS_CHANGE_RATIO, EDistributeGaugeEmissionsChangeTooBig);
+            } else {
+                assert!(next_epoch_emissions_usd / prev_epoch_emissions_usd < MAX_EMISSIONS_CHANGE_RATIO, EDistributeGaugeEmissionsChangeTooBig);
+            }
         };
         let ended_epoch_o_sail_emission = voter.distribute_gauge<CoinTypeA, CoinTypeB, CurrentEpochOSail>(
             distribution_config,
@@ -1489,8 +1350,6 @@ module distribution::minter {
             ended_epoch_o_sail_emission,
         };
         sui::event::emit<EventDistributeGauge>(event);
-
-        next_epoch_emissions_usd
     }
 
     public fun gauge_distributed<SailCoinType>(
@@ -1558,9 +1417,7 @@ module distribution::minter {
             clock
         );
 
-        if (is_price_invalid) {
-            return 
-        };
+        assert!(!is_price_invalid, EIncreaseEmissionsPriceInvalid);
 
         minter.increase_gauge_emissions_internal(
             voter,
@@ -1608,9 +1465,7 @@ module distribution::minter {
             clock
         );
 
-        if (is_price_invalid) {
-            return
-        };
+        assert!(!is_price_invalid, EIncreaseEmissionsPriceInvalid);
 
         minter.increase_gauge_emissions_internal(
             voter,
@@ -1713,6 +1568,13 @@ module distribution::minter {
 
         let gauge_id = object::id(&gauge);
         minter.gauge_epoch_emissions_usd.add(gauge_id, gauge_base_emissions);
+
+        let event = EventGaugeCreated {
+            id: gauge_id,
+            pool_id: object::id(pool),
+            base_emissions: gauge_base_emissions,
+        };
+        sui::event::emit<EventGaugeCreated>(event);
         
         gauge
     }
@@ -1896,9 +1758,7 @@ module distribution::minter {
             clock
         );
 
-        if (is_price_invalid) {
-            return
-        };
+        assert!(!is_price_invalid, EIncreaseEmissionsPriceInvalid);
 
         gauge.sync_o_sail_distribution_price(
             distribution_config,
@@ -1940,9 +1800,7 @@ module distribution::minter {
             clock
         );
 
-        if (is_price_invalid) {
-            return
-        };
+        assert!(!is_price_invalid, EIncreaseEmissionsPriceInvalid);
 
         gauge.sync_o_sail_distribution_price(
             distribution_config,
@@ -2238,14 +2096,7 @@ module distribution::minter {
             clock
         );
 
-        if (is_price_invalid) {
-            transfer::public_transfer<Coin<OSailCoinType>>(
-                o_sail, 
-                ctx.sender()
-            );
-
-            return (fee, coin::zero<SailCoinType>(ctx))
-        };
+        assert!(!is_price_invalid, EExerciseOSailInvalidPrice);
 
         // there is a possibility that different discount percents will be implemented
         let discount_percent = ve::common::o_sail_discount();
@@ -2396,6 +2247,10 @@ module distribution::minter {
     /// or will be distributed in initial epoch.
     public fun borrow_pool_epoch_emissions_usd<SailCoinType>(minter: &Minter<SailCoinType>): &Table<ID, u64> {
         &minter.gauge_epoch_emissions_usd
+    }
+
+    public fun gauge_epoch_emissions_usd<SailCoinType>(minter: &Minter<SailCoinType>, gauge_id: ID): u64 {
+        *minter.gauge_epoch_emissions_usd.borrow(gauge_id)
     }
 
     /// Allows usage of the pool for oSAIL exercise

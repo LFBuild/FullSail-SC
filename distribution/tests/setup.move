@@ -1072,89 +1072,71 @@ public fun update_minter_period<SAIL, OSailCoinType>(
         initial_supply
 }
 
-public fun distribute_gauge_epoch_1<CoinTypeA, CoinTypeB, SAIL, EpochOSail, USD_TESTS>(
-    scenario: &mut test_scenario::Scenario,
-    usd_metadata: &CoinMetadata<USD_TESTS>,
-    aggregator: &mut Aggregator, 
-    clock: &Clock,
-): u64 {
-    // initial epoch is distributed without any historical data
-    let prev_epoch_pool_emissions: u64 = 0;
-    let prev_epoch_pool_fees_usd: u64 = 0;
-    let epoch_pool_emissions_usd: u64 = 0;
-    let epoch_pool_fees_usd: u64 = 0;
-    let epoch_pool_volume_usd: u64 = 0;
-    let epoch_pool_predicted_volume_usd: u64 = 0;
-
-    distribute_gauge_emissions_controlled<CoinTypeA, CoinTypeB, SAIL, EpochOSail, USD_TESTS>(
-        scenario,
-        prev_epoch_pool_emissions,
-        prev_epoch_pool_fees_usd,
-        epoch_pool_emissions_usd,
-        epoch_pool_fees_usd,
-        epoch_pool_volume_usd,
-        epoch_pool_predicted_volume_usd,
-        usd_metadata,
-        aggregator,
-        clock
-    )
-}
-
-public fun distribute_gauge_epoch_2<CoinTypeA, CoinTypeB, SAIL, EpochOSail, USD_TESTS>(
+public fun distribute_gauge<CoinTypeA, CoinTypeB, SAIL, EpochOSail, USD_TESTS>(
     scenario: &mut test_scenario::Scenario,
     usd_metadata: &CoinMetadata<USD_TESTS>,
     aggregator: &mut Aggregator,
     clock: &Clock,
 ): u64 {
-    // epoch 2 is distributed with historical data from epoch 1
-    // this data results into stable emissions, same as epoch 1 emissions
-    let prev_epoch_pool_emissions: u64 = 0;
-    let prev_epoch_pool_fees_usd: u64 = 0;
-    let epoch_pool_emissions_usd: u64 = 1_000_000_000;
-    let epoch_pool_fees_usd: u64 = 1_000_000_000;
-    let epoch_pool_volume_usd: u64 = 1_000_000_000;
-    let epoch_pool_predicted_volume_usd: u64 = 1_000_000_000;
+    let mut minter = scenario.take_shared<Minter<SAIL>>(); // Minter is now responsible
+    let mut voter = scenario.take_shared<Voter>();
+    let mut gauge = scenario.take_shared<Gauge<CoinTypeA, CoinTypeB>>();
+    let mut pool = scenario.take_shared<Pool<CoinTypeA, CoinTypeB>>();
+    let distribution_config = scenario.take_shared<DistributionConfig>();
+    let distribute_governor_cap = scenario.take_from_sender<minter::DistributeGovernorCap>(); // Minter uses DistributeGovernorCap
+    let mut price_monitor = scenario.take_shared<PriceMonitor>();
 
-    distribute_gauge_emissions_controlled<CoinTypeA, CoinTypeB, SAIL, EpochOSail, USD_TESTS>(
-        scenario,
-        prev_epoch_pool_emissions,
-        prev_epoch_pool_fees_usd,
-        epoch_pool_emissions_usd,
-        epoch_pool_fees_usd,
-        epoch_pool_volume_usd,
-        epoch_pool_predicted_volume_usd,
-        usd_metadata,
-        aggregator,
-        clock
-    )
-}
+    aggregator_set_current_value(aggregator,  one_dec18(), clock.timestamp_ms());
 
-public fun distribute_gauge_epoch_3<CoinTypeA, CoinTypeB, SAIL, EpochOSail, USD_TESTS>(
-        scenario: &mut test_scenario::Scenario,
-        usd_metadata: &CoinMetadata<USD_TESTS>,
-        aggregator: &mut Aggregator,
-    clock: &Clock,
-): u64 {
-    // this data results into stable emissions, same as epoch 2 emissions
-    let prev_epoch_pool_emissions: u64 = 1_000_000_000;
-    let prev_epoch_pool_fees_usd: u64 = 1_000_000_000;
-    let epoch_pool_emissions_usd: u64 = 1_000_000_000;
-    let epoch_pool_fees_usd: u64 = 1_000_000_000;
-    let epoch_pool_volume_usd: u64 = 1_000_000_000;
-    let epoch_pool_predicted_volume_usd: u64 = 1_000_000_000;
+    // use the same emissions as in previous epoch
+    let next_epoch_emissions_usd = minter.gauge_epoch_emissions_usd(object::id(&gauge));
 
-    distribute_gauge_emissions_controlled<CoinTypeA, CoinTypeB, SAIL, EpochOSail, USD_TESTS>(
-        scenario,
-        prev_epoch_pool_emissions,
-        prev_epoch_pool_fees_usd,
-        epoch_pool_emissions_usd,
-        epoch_pool_fees_usd,
-        epoch_pool_volume_usd,
-        epoch_pool_predicted_volume_usd,
-        usd_metadata,
-        aggregator,
-        clock
-    )
+    let mut distributed_amount: u64 = 0;
+    if (type_name::get<CoinTypeA>() != type_name::get<USD_TESTS>() || 
+            type_name::get<CoinTypeB>() != type_name::get<SAIL>()) {
+
+        let sail_stablecoin_pool = scenario.take_shared<Pool<USD_TESTS, SAIL>>();
+
+        minter.distribute_gauge<CoinTypeA, CoinTypeB, USD_TESTS, SAIL, SAIL, EpochOSail>(
+            &mut voter,
+            &distribute_governor_cap,
+            &distribution_config,
+            &mut gauge,
+            &mut pool,
+            next_epoch_emissions_usd,
+            &mut price_monitor,
+            &sail_stablecoin_pool,
+            aggregator,
+            clock,
+            scenario.ctx()
+        );
+
+        test_scenario::return_shared(sail_stablecoin_pool);
+    } else {
+        minter.distribute_gauge_for_sail_pool<CoinTypeA, CoinTypeB, SAIL, EpochOSail>(
+            &mut voter,
+            &distribute_governor_cap,
+            &distribution_config,
+            &mut gauge,
+            &mut pool,
+            next_epoch_emissions_usd,
+            &mut price_monitor,
+            aggregator,
+            clock,
+            scenario.ctx()
+        );
+    };
+
+    // Return shared objects
+    test_scenario::return_shared(minter);
+    test_scenario::return_shared(voter);
+    test_scenario::return_shared(gauge);
+    test_scenario::return_shared(pool);
+    test_scenario::return_shared(distribution_config);
+    scenario.return_to_sender(distribute_governor_cap);
+    test_scenario::return_shared(price_monitor);
+
+    next_epoch_emissions_usd
 }
 
     // CoinTypeA and CoinTypeB - to check that such a pool has already been created
@@ -1308,12 +1290,7 @@ public fun distribute_gauge_epoch_3<CoinTypeA, CoinTypeB, SAIL, EpochOSail, USD_
 // Assumes Voter, Gauge, Pool, DistributionConfig are shared.
 public fun distribute_gauge_emissions_controlled<CoinTypeA, CoinTypeB, SAIL, EpochOSail, USD_TESTS>(
     scenario: &mut test_scenario::Scenario,
-    prev_epoch_pool_emissions: u64,
-    prev_epoch_pool_fees_usd: u64,
-    epoch_pool_emissions_usd: u64,
-    epoch_pool_fees_usd: u64,
-    epoch_pool_volume_usd: u64,
-    epoch_pool_predicted_volume_usd: u64,
+    next_epoch_emissions_usd: u64,
     usd_metadata: &CoinMetadata<USD_TESTS>,
     aggregator: &mut Aggregator,
     clock: &Clock,
@@ -1328,24 +1305,18 @@ public fun distribute_gauge_emissions_controlled<CoinTypeA, CoinTypeB, SAIL, Epo
 
     aggregator_set_current_value(aggregator,  one_dec18(), clock.timestamp_ms());
 
-    let mut distributed_amount: u64 = 0;
     if (type_name::get<CoinTypeA>() != type_name::get<USD_TESTS>() || 
             type_name::get<CoinTypeB>() != type_name::get<SAIL>()) {
 
         let sail_stablecoin_pool = scenario.take_shared<Pool<USD_TESTS, SAIL>>();
 
-        distributed_amount = minter.distribute_gauge<CoinTypeA, CoinTypeB, USD_TESTS, SAIL, SAIL, EpochOSail>(
+        minter.distribute_gauge<CoinTypeA, CoinTypeB, USD_TESTS, SAIL, SAIL, EpochOSail>(
             &mut voter,
             &distribute_governor_cap,
             &distribution_config,
             &mut gauge,
             &mut pool,
-            prev_epoch_pool_emissions,
-            prev_epoch_pool_fees_usd,
-            epoch_pool_emissions_usd,
-            epoch_pool_fees_usd,
-            epoch_pool_volume_usd,
-            epoch_pool_predicted_volume_usd,
+            next_epoch_emissions_usd,
             &mut price_monitor,
             &sail_stablecoin_pool,
             aggregator,
@@ -1355,18 +1326,13 @@ public fun distribute_gauge_emissions_controlled<CoinTypeA, CoinTypeB, SAIL, Epo
 
         test_scenario::return_shared(sail_stablecoin_pool);
     } else {
-        distributed_amount = minter.distribute_gauge_for_sail_pool<CoinTypeA, CoinTypeB, SAIL, EpochOSail>(
+        minter.distribute_gauge_for_sail_pool<CoinTypeA, CoinTypeB, SAIL, EpochOSail>(
             &mut voter,
             &distribute_governor_cap,
             &distribution_config,
             &mut gauge,
             &mut pool,
-            prev_epoch_pool_emissions,
-            prev_epoch_pool_fees_usd,
-            epoch_pool_emissions_usd,
-            epoch_pool_fees_usd,
-            epoch_pool_volume_usd,
-            epoch_pool_predicted_volume_usd,
+            next_epoch_emissions_usd,
             &mut price_monitor,
             aggregator,
             clock,
@@ -1383,7 +1349,7 @@ public fun distribute_gauge_emissions_controlled<CoinTypeA, CoinTypeB, SAIL, Epo
     scenario.return_to_sender(distribute_governor_cap);
     test_scenario::return_shared(price_monitor);
 
-    distributed_amount
+    next_epoch_emissions_usd
 }
 
 /// Sets up the entire environment: CLMM, Distribution, Pool, Gauge,
