@@ -56,7 +56,6 @@ module distribution::minter {
     const EDistributeGaugeMinterPaused: u64 = 383966743216827200;
     const EDistributeGaugeInvalidToken: u64 = 802874746577660900;
     const EDistributeGaugeAlreadyDistributed: u64 = 259145126193785820;
-    const EDistributeGaugePriceInvalid: u64 = 501128786431030500;
     const EDistributeGaugePoolHasNoBaseSupply: u64 = 764215244078886900;
     const EDistributeGaugeDistributionConfigInvalid: u64 = 540205746933504640;
     const EDistributeGaugeMinterNotActive: u64 = 728194857362048571;
@@ -69,7 +68,6 @@ module distribution::minter {
     const EIncreaseEmissionsDistributionConfigInvalid: u64 = 578889065004501400;
     const EIncreaseEmissionsMinterNotActive: u64 = 204872681976552500;
     const EIncreaseEmissionsMinterPaused: u64 = 566083930742334200;
-    const EIncreaseEmissionsPriceInvalid: u64 = 779501100558419000;
 
     const ECheckAdminRevoked: u64 = 922337280994888908;
     const ECheckDistributeGovernorRevoked: u64 = 369612027923601500;
@@ -85,7 +83,6 @@ module distribution::minter {
     const EExerciseOSailInvalidDistrConfig: u64 = 156849871586365300;
     const EExerciseOSailInvalidAggregator: u64 = 48171994695305640;
     const EExerciseOSailInvalidUsd: u64 = 953914262470819500;
-    const EExerciseOSailInvalidPrice: u64 = 819506397692905300;
 
     const EBurnOSailInvalidOSail: u64 = 665869556650983200;
     const EBurnOSailMinterPaused: u64 = 947382564018592637;
@@ -1198,7 +1195,9 @@ module distribution::minter {
             clock
         );
 
-        assert!(!is_price_invalid, EDistributeGaugePriceInvalid);
+        if (is_price_invalid) {
+            return;
+        };
         
         minter.distribute_gauge_internal<CoinTypeA, CoinTypeB, SailCoinType, CurrentEpochOSail>(
             voter,
@@ -1246,8 +1245,10 @@ module distribution::minter {
             clock
         );
 
-        assert!(!is_price_invalid, EDistributeGaugePriceInvalid);
-        
+        if (is_price_invalid) {
+            return;
+        };
+
         minter.distribute_gauge_internal<CoinTypeA, CoinTypeB, SailCoinType, CurrentEpochOSail>(
             voter,
             distribution_config,
@@ -1417,7 +1418,9 @@ module distribution::minter {
             clock
         );
 
-        assert!(!is_price_invalid, EIncreaseEmissionsPriceInvalid);
+        if (is_price_invalid) {
+            return 
+        };
 
         minter.increase_gauge_emissions_internal(
             voter,
@@ -1465,7 +1468,9 @@ module distribution::minter {
             clock
         );
 
-        assert!(!is_price_invalid, EIncreaseEmissionsPriceInvalid);
+        if (is_price_invalid) {
+            return
+        };
 
         minter.increase_gauge_emissions_internal(
             voter,
@@ -1758,7 +1763,9 @@ module distribution::minter {
             clock
         );
 
-        assert!(!is_price_invalid, EIncreaseEmissionsPriceInvalid);
+        if (is_price_invalid) {
+            return
+        };
 
         gauge.sync_o_sail_distribution_price(
             distribution_config,
@@ -1800,7 +1807,9 @@ module distribution::minter {
             clock
         );
 
-        assert!(!is_price_invalid, EIncreaseEmissionsPriceInvalid);
+        if (is_price_invalid) {
+            return
+        };
 
         gauge.sync_o_sail_distribution_price(
             distribution_config,
@@ -2096,7 +2105,15 @@ module distribution::minter {
             clock
         );
 
-        assert!(!is_price_invalid, EExerciseOSailInvalidPrice);
+
+        if (is_price_invalid) {
+            transfer::public_transfer<Coin<OSailCoinType>>(
+                o_sail, 
+                ctx.sender()
+            );
+
+            return (fee, coin::zero<SailCoinType>(ctx))
+        };
 
         // there is a possibility that different discount percents will be implemented
         let discount_percent = ve::common::o_sail_discount();
