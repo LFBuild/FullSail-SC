@@ -79,6 +79,7 @@ module ve::voting_escrow {
     const EGetPastPowerPointError: u64 = 922337711780108697;
     const EGetVotingPowerOwnershipChangeTooRecent: u64 = 922337699754409987;
     const EPointHistoryInvalid: u64 = 999;
+    const ESetDisplayInvalidPublisher: u64 = 241248021930127600;
 
     public struct VOTING_ESCROW has drop {}
 
@@ -2212,6 +2213,7 @@ module ve::voting_escrow {
     /// Creates and initializes a Display object for Lock NFTs with Fullsail-specific branding
     /// and transfers it to the transaction sender
     public fun set_display(publisher: &sui::package::Publisher, ctx: &mut TxContext) {
+        assert!(publisher.from_module<VOTING_ESCROW>(), ESetDisplayInvalidPublisher);
         let mut fields = std::vector::empty<std::string::String>();
         fields.push_back(std::string::utf8(b"name"));
         fields.push_back(std::string::utf8(b"locked_amount"));
