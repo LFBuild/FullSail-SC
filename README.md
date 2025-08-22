@@ -54,13 +54,14 @@ Use `sui client publish` command.
 #### Publication transactions
 
 - [locker_cap](https://suivision.xyz/txblock/A9ETxo574RNtZYkZULKFA69mLrkhBEYYQ1JtpSyYTXGz)
-- [price_monitor](https://suivision.xyz/txblock/H8JKphamnJpzwmvQ1mYgAFFHMHWGaekBtmWgjURMBFX3)
-- [distribution](https://suivision.xyz/txblock/F4NsBgNMUJsXHH78q76URg4dWJybwjLhe2maj9MpuSR9)
-- [sail](https://suiscan.xyz/mainnet/tx/8Jn5vMSMzQaREW5ZJk1cnJ4tZkRqaqUBk5FFQkVAbb5g)
-- [o_sail_token](https://suiscan.xyz/mainnet/tx/HX7xBW8vkSusm3KW6iCioWUhmeEU4z7Ggu9e1gsLP3qe)
-- [liquidity_locker v1](https://suivision.xyz/txblock/Zm17zXX779ZHnCur2fYwxAmzpMTCyLYrrKNbutMSxtM)
-- [liquidity_soft_locker_v2](https://suivision.xyz/txblock/DYQQ5R73ct8zwnM1tAe8XicyjNC2QQAqXadCeBy9DPes)
-- [integrate](https://suivision.xyz/txblock/T4kvrRHAgqnLiShwLY1grKqHJGZjGmRTBp5tAHYXByn)
+- [price_monitor](https://suivision.xyz/txblock/Ebihvi7VPj44crKsaV7GCQzfnZN8ZqbGcDrwrvW9QMma)
+- [ve](https://suivision.xyz/txblock/AkG6aofQaLb7C6noE2MVamd3izkfv8KWzFNS9QMeMDnf)
+- [distribution](https://suivision.xyz/txblock/HVoGW3CLph1hFhUuuMxHafUk1fcLw1yFEFkcmSd5xY4k)
+- [sail](https://suiscan.xyz/mainnet/tx/6r8D44Gif1grzftFbtkkcX1CNdUKyT9z8LEuu6dFmf9k)
+- [o_sail_token](https://suiscan.xyz/mainnet/tx/71SWPFWjZLXoD4SwQuTDUGQm9sCbHXVPXy4aqsnyRCar)
+- [liquidity_locker_v2](https://suivision.xyz/txblock/B8W9yphVuMSkSFLYFLHVuwdVXPXdp9XxBhZ3buE6svGr)
+- [liquidity_soft_locker_v2](https://suivision.xyz/txblock/6q5WucQJTGTiwqT9C2FSzBZW7WXBQru2QaQuTWLMCHsx)
+- [integrate](https://suivision.xyz/txblock/CdEEyieqZMKHw4fhMifTYjUCHxBqAj6GytWbz2t9ZfFF)
 
 - [setup distribtuion tx](https://suiscan.xyz/mainnet/tx/4DxAaa9SYfVTARoABVLPB3zhxo7B9h8c5djoSFfy4uXG)
 - [activate minter tx](https://suiscan.xyz/mainnet/tx/62CQswg1EmVcyfrA2FGgSMGgTHQsYZJJtq9PChhnqbmL)
