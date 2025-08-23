@@ -6,77 +6,79 @@
 "AddressOwner":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
 }
 "objectType":string"0x2::coin::Coin<0x2::sui::SUI>"
-"objectId":string"0xb570226229ac35c2d4cfb3d21995c7dc1a87a3f9b5f884ac02ecd5dab65903d2"
-"version":string"602534473"
-"previousVersion":string"602534472"
-"digest":string"CgT94Vtsdpt7sUdeJyg5q6XqwZg8GxNDWpbXvGRjcMns"
+"objectId":string"0x3ea8f1103616b290b61af94776a11a6bc85c59de84d56fc57af5ef3951663baa"
+"version":string"611722730"
+"previousVersion":string"611722729"
+"digest":string"9ZnFwmbWHQyiPYXPLjNLtwaNJqKYuMCHSecnsbZT9EiL"
 }
 1:{7 items
 "type":string"created"
 "sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
-"owner":string"Immutable"
-"objectType":string"0x2::coin::CoinMetadata<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail4::OSAIL4>"
-"objectId":string"0x0733bef506c8f46a19756febc525b453ebe88114afe08357ace2b621171d5018"
-"version":string"602534473"
-"digest":string"62ejw2roc72dXVPNWTqwyPjbGBXXCuZEL2bW5duBtZZT"
+"owner":{1 item
+"AddressOwner":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
+}
+"objectType":string"0x2::coin::TreasuryCap<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail1::OSAIL1>"
+"objectId":string"0x02ab3df7c1b4d6892cbb1b5b9e5799352f97d5bd15d149c4b37f0ac52f430b79"
+"version":string"611722730"
+"digest":string"B48ywGoLzmHEb63RF2fCi3cUpi73pf1Fdt3MjJa186oo"
 }
 2:{7 items
 "type":string"created"
 "sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
-"owner":string"Immutable"
-"objectType":string"0x2::coin::CoinMetadata<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail10::OSAIL10>"
-"objectId":string"0x089b50fa219a604a2d76f6d15d15b41cfaac5cfbdee8c7698add13cc49655475"
-"version":string"602534473"
-"digest":string"7YDkr4A2Xa68Sz7kZJCtcryCPTfAWjvb8HbEULo8NeiU"
+"owner":{1 item
+"AddressOwner":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
+}
+"objectType":string"0x2::coin::TreasuryCap<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail19::OSAIL19>"
+"objectId":string"0x0ce9996caf340967eb01132f7ed9d14f0fe4787ade5bddb61091a32a0dcc018c"
+"version":string"611722730"
+"digest":string"8bTS3sYADgEF6iKtG5X9cGtYoHt3azGdCF1cU3pmCneQ"
 }
 3:{7 items
 "type":string"created"
 "sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
 "owner":string"Immutable"
-"objectType":string"0x2::coin::CoinMetadata<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail14::OSAIL14>"
-"objectId":string"0x0cf79f324f380995c33a0bf85b7047adf331ba207fb0672e6aeb9d612c82d5d5"
-"version":string"602534473"
-"digest":string"HNf93f4KsNSYwsRLGehyTyxb6Ln36jNRr6KYV71Xdf4b"
+"objectType":string"0x2::coin::CoinMetadata<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail1::OSAIL1>"
+"objectId":string"0x0e8724f083b0a33266696f08035e24dc3d83bb5928dd4573dbf3c892f4a49c07"
+"version":string"611722730"
+"digest":string"G8cw3YAAF5qLmeqmqTTU5MZ6jb13oXFc16Vg6STXp2Be"
 }
 4:{7 items
 "type":string"created"
 "sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
-"owner":string"Immutable"
-"objectType":string"0x2::coin::CoinMetadata<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail19::OSAIL19>"
-"objectId":string"0x129ee316abf2444d9ecb9eb62a754f1a99d8fd76541f4aa8e2703cad07652756"
-"version":string"602534473"
-"digest":string"DSsEuFeq8qEQidDbKPxGAJknxXHig6QYjng3fnTtwCpP"
+"owner":{1 item
+"AddressOwner":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
+}
+"objectType":string"0x2::coin::TreasuryCap<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail12::OSAIL12>"
+"objectId":string"0x0fffdd8c62e82938d1d1129a146bca75952a43e776baa737a39bdf83db8b5edf"
+"version":string"611722730"
+"digest":string"qDo8rgVVghcsxrUXzu52JrXbCkBQRT5KW7AFDx1Ya8D"
 }
 5:{7 items
 "type":string"created"
 "sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
 "owner":string"Immutable"
-"objectType":string"0x2::coin::CoinMetadata<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail18::OSAIL18>"
-"objectId":string"0x146bf9372cd5bd7a263f617721da1da90707c9fab5058a3f841d3ef11a81c924"
-"version":string"602534473"
-"digest":string"5Lq5gwBUv1AjccCEKCkjaofDcaUVEQF16LKw7bjBoyD1"
+"objectType":string"0x2::coin::CoinMetadata<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail20::OSAIL20>"
+"objectId":string"0x1286dca5c61e5ae9c320cd0959e321aeee8f7890728b580ec8b20c0091804ee4"
+"version":string"611722730"
+"digest":string"AQ3ZHUZg5yMspTeNKnmwDfQh4hSUr3HqTjyVGj8yefJK"
 }
 6:{7 items
 "type":string"created"
 "sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
-"owner":{1 item
-"AddressOwner":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
-}
-"objectType":string"0x2::coin::TreasuryCap<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail8::OSAIL8>"
-"objectId":string"0x22664cd43b426d1c255c8d0789239a87e12417329a604e81ca660045a007a497"
-"version":string"602534473"
-"digest":string"HBisiHy1QwJMxM7G4gMSu4X415aFRLJ88q5DASANKtQC"
+"owner":string"Immutable"
+"objectType":string"0x2::coin::CoinMetadata<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail3::OSAIL3>"
+"objectId":string"0x1477214e63b19b3275b0eac9e7d41baad70beefd339faf22b6966ce407237c65"
+"version":string"611722730"
+"digest":string"4wGmZvqY9z1SVH54qKimUW7AjXdEYoCySrTn7Pw9kR5H"
 }
 7:{7 items
 "type":string"created"
 "sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
-"owner":{1 item
-"AddressOwner":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
-}
-"objectType":string"0x2::package::UpgradeCap"
-"objectId":string"0x22de71b26ac482e72acfae847c6f52b0e5d6142b5797bdc06e9aa5ea1c81dec6"
-"version":string"602534473"
-"digest":string"GCn8Rhec6aHP2PWXhArvWuM6h4vvFZFtk4XD3QoUASP9"
+"owner":string"Immutable"
+"objectType":string"0x2::coin::CoinMetadata<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail9::OSAIL9>"
+"objectId":string"0x19a32310d641be642044f5337e6646543bf96c889b00813c01d013aaf4ff4e59"
+"version":string"611722730"
+"digest":string"GW8ZhnFCDFk9dkyuvLRigxZgZRxMSoAMKRpxjLpRX2iv"
 }
 8:{7 items
 "type":string"created"
@@ -84,28 +86,28 @@
 "owner":{1 item
 "AddressOwner":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
 }
-"objectType":string"0x2::coin::TreasuryCap<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail9::OSAIL9>"
-"objectId":string"0x24981ffb8f3d3c8429e079efd620aca69c9125840f03cd2f16a9ab9d3dca7b39"
-"version":string"602534473"
-"digest":string"AJp1YihC4hh7BSkP8Jjn64seiGJAsTrPu1XUfyEASKpr"
+"objectType":string"0x2::coin::TreasuryCap<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail8::OSAIL8>"
+"objectId":string"0x1a959d9134246b67d6f5414983bddd825587bf54360e440e18046fb14a0967af"
+"version":string"611722730"
+"digest":string"2pBBYKEgVGj3ZzxtJdgnsE6DbjZGQdAjZKMH6xzxFSP5"
 }
 9:{7 items
 "type":string"created"
 "sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
 "owner":string"Immutable"
-"objectType":string"0x2::coin::CoinMetadata<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail2::OSAIL2>"
-"objectId":string"0x3f1eba66f91b2f4e04ecbf41770bb08b1a5abc0c0976b4c1d2b946eb5910d778"
-"version":string"602534473"
-"digest":string"AqrtLMK6vC4aRceKNrWiA5tuPJ4XyL45WyqzN34J7JjN"
+"objectType":string"0x2::coin::CoinMetadata<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail7::OSAIL7>"
+"objectId":string"0x26c2fc6c7b0b485d8d35c73048a2449a3215e1bd2cb7f2b2b4265eacaf757a31"
+"version":string"611722730"
+"digest":string"FyWYRUThdmKXv6Auj1mGWeP8cikkEiyan16bGwMHKhpj"
 }
 10:{7 items
 "type":string"created"
 "sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
 "owner":string"Immutable"
-"objectType":string"0x2::coin::CoinMetadata<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail3::OSAIL3>"
-"objectId":string"0x4a95981ace284695b0378a63f758a499ac52a6c29ff34313ab26cc63d1355215"
-"version":string"602534473"
-"digest":string"AGsi6vb9JZZ1jhHckWTDGVbC4jBdi3YhsAKhgqiTdkVp"
+"objectType":string"0x2::coin::CoinMetadata<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail8::OSAIL8>"
+"objectId":string"0x2fc6c3ef734da721b3ead83751edbb94be4deafd25b505f9ede123377430f908"
+"version":string"611722730"
+"digest":string"4hWtK1DxMmqHHp1Z1sgSqPNsxeJuerM3AYKSDQbwAyCC"
 }
 11:{7 items
 "type":string"created"
@@ -113,39 +115,39 @@
 "owner":{1 item
 "AddressOwner":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
 }
-"objectType":string"0x2::coin::TreasuryCap<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail13::OSAIL13>"
-"objectId":string"0x593254376b0741bd3a0713640a25553002b81da3db4335882754538697573d0a"
-"version":string"602534473"
-"digest":string"y8aa9kfDaW2QCP3K1UkiRZh9UcU4wzsZ8QtkeKrQDHs"
+"objectType":string"0x2::coin::TreasuryCap<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail16::OSAIL16>"
+"objectId":string"0x404c0151dfd7a3c11e1d8b02132a88efab6e43827cacbde784aeaf8c78525d19"
+"version":string"611722730"
+"digest":string"wWqfFThLD1U5UCgZhibBfS8uiKQeYKe72gZF2vFKnhn"
 }
 12:{7 items
-"type":string"created"
-"sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
-"owner":string"Immutable"
-"objectType":string"0x2::coin::CoinMetadata<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail5::OSAIL5>"
-"objectId":string"0x5d2edaae8b9e1a7b0058ba85d0ae4e4c388ec7d2e5a31c4e8f22178dbcff612c"
-"version":string"602534473"
-"digest":string"7bDVSQHzhRmFQorrbzY3SXuyFSeQ4cyNpWbqgd5bgmMe"
-}
-13:{7 items
 "type":string"created"
 "sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
 "owner":{1 item
 "AddressOwner":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
 }
-"objectType":string"0x2::coin::TreasuryCap<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail18::OSAIL18>"
-"objectId":string"0x5fcde4a23a4fa2ad48233f81821ca16295e363968383b648465c42c05c848abd"
-"version":string"602534473"
-"digest":string"HCmv6ixmJTwaP8NynxY84eptJgQMqLhB4rqPhDtLPCmo"
+"objectType":string"0x2::coin::TreasuryCap<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail13::OSAIL13>"
+"objectId":string"0x4a22382933710aafe2ff5b79644603bbf5c1e1cd69d5549eda62efe2c1d5de2a"
+"version":string"611722730"
+"digest":string"AqCYwPzbn44Jjq5zXtPXHxtcAfS4uW4ebQzrSrZfw4a7"
+}
+13:{7 items
+"type":string"created"
+"sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
+"owner":string"Immutable"
+"objectType":string"0x2::coin::CoinMetadata<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail2::OSAIL2>"
+"objectId":string"0x4d69a1fd47b1862a1087cdf6fec6ebc76184581bd50996133b623f582d436974"
+"version":string"611722730"
+"digest":string"3jUoVpfcJFQSgPQsKbG991q66CUCRiGBt9d3xubefoKs"
 }
 14:{7 items
 "type":string"created"
 "sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
 "owner":string"Immutable"
-"objectType":string"0x2::coin::CoinMetadata<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail8::OSAIL8>"
-"objectId":string"0x5ffc8e3f21789baec358f06342da7093da868627ef430214eb07039ac32f0939"
-"version":string"602534473"
-"digest":string"FgF4ugmmKTBuiBwL4MjJtXqsfN7TeCjb7CfLF8SoHwnb"
+"objectType":string"0x2::coin::CoinMetadata<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail14::OSAIL14>"
+"objectId":string"0x4f663be3a6ab5c4af4aa0daab53411c6b2ee62539fd14bd1024a86e0da6ed486"
+"version":string"611722730"
+"digest":string"XPAL1M8hJqpX9aAfcEcTJqsFbvqH2x5NDMZzYQyfWF2"
 }
 15:{7 items
 "type":string"created"
@@ -153,68 +155,66 @@
 "owner":{1 item
 "AddressOwner":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
 }
-"objectType":string"0x2::coin::TreasuryCap<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail14::OSAIL14>"
-"objectId":string"0x6358ce3949787cb26a2459eca3fd7b85e716f6f7de88581beda7c63c2399e2eb"
-"version":string"602534473"
-"digest":string"9EAqshh4Moa14ZdsxwHaMQvJrnuusT9Pjji9Loh14aCe"
+"objectType":string"0x2::coin::TreasuryCap<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail10::OSAIL10>"
+"objectId":string"0x503f2d6fe62d36d4bcd01b53a4d45ee3614a625320c396c43bdfe9bcf796a8e6"
+"version":string"611722730"
+"digest":string"3gJAqBFFcEfDHD8zwvUAFt3ZW3BGWLwNu5fJGbyfFuvi"
 }
 16:{7 items
 "type":string"created"
 "sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
 "owner":string"Immutable"
-"objectType":string"0x2::coin::CoinMetadata<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail13::OSAIL13>"
-"objectId":string"0x654625b219c6c7b79df5ddd91e12a525753cc7b20411dffe813703db00fb2a22"
-"version":string"602534473"
-"digest":string"4QW1fzT4usERy2pbV4BATck4xC32H6V2S3sL5UXHkGJn"
+"objectType":string"0x2::coin::CoinMetadata<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail17::OSAIL17>"
+"objectId":string"0x51d20570776ec73c1057aab208f468b033ee47749583f218e8ccbbb78702125d"
+"version":string"611722730"
+"digest":string"3KpWxQb8iGyTcvZNHFAELSCWTAnKBfmzSmn2bFuvCSqn"
 }
 17:{7 items
+"type":string"created"
+"sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
+"owner":string"Immutable"
+"objectType":string"0x2::coin::CoinMetadata<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail12::OSAIL12>"
+"objectId":string"0x5ec92bd1ec07fa9a5e961a2bf6fc7d52a23610d785f68a87f852fd1fcb4bdb08"
+"version":string"611722730"
+"digest":string"EAhe1aLUvdnShXY4icBFNQes35UdKP4c56GDsGeCgv78"
+}
+18:{7 items
 "type":string"created"
 "sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
 "owner":{1 item
 "AddressOwner":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
 }
-"objectType":string"0x2::coin::TreasuryCap<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail19::OSAIL19>"
-"objectId":string"0x6966ee6b619fc5067216d125552dfc59968b3b6f24af3dff16689f0e03443a90"
-"version":string"602534473"
-"digest":string"5xAkWBLUkN5sZJaGmj48GUiAvhFX1uFfn1Uo669h9PrH"
-}
-18:{7 items
-"type":string"created"
-"sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
-"owner":string"Immutable"
-"objectType":string"0x2::coin::CoinMetadata<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail11::OSAIL11>"
-"objectId":string"0x6c9b79fb00fe481044c60a431e81a02cc7059a5f389dced2702bebf5f3a26c1e"
-"version":string"602534473"
-"digest":string"FKTL5yka7SWCrPF8ftN2JJpFBmqnEafKoAMotD17jv4v"
+"objectType":string"0x2::coin::TreasuryCap<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail5::OSAIL5>"
+"objectId":string"0x62e08f16154d908c3fb5c7cbc3d13c7e0880c01f6fb377bcde577dab715f851e"
+"version":string"611722730"
+"digest":string"GxqAFAjpMz66M4qasfx3cvVCrQTUYhwQkkcfzp9J6RyQ"
 }
 19:{7 items
 "type":string"created"
 "sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
 "owner":string"Immutable"
-"objectType":string"0x2::coin::CoinMetadata<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail1::OSAIL1>"
-"objectId":string"0x75db176a6f176416c7bdeb328c97b696ca0b40a43721507bb69a7552f5388409"
-"version":string"602534473"
-"digest":string"68QdkYoxhdCL2jjcQMBm2HqSRoYZHaoMA5S5ycrtkVsW"
+"objectType":string"0x2::coin::CoinMetadata<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail18::OSAIL18>"
+"objectId":string"0x753d45725df71fb425875a08c7565c4b22bb3a764af0f8acbc40af47095dc820"
+"version":string"611722730"
+"digest":string"D9NmMrdV1mVZjMw3BA81nWwYf3o88VkJYmjngG1FFhrk"
 }
 20:{7 items
 "type":string"created"
 "sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
 "owner":string"Immutable"
-"objectType":string"0x2::coin::CoinMetadata<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail9::OSAIL9>"
-"objectId":string"0x7ee3e4685376f498513ffce204e7d58c6775dfba050dd09ab59b22f89b1638bf"
-"version":string"602534473"
-"digest":string"9DXbRaKW1mYCXyhXhTqM7ufBUAbinfrgvTNGBrT8dCt3"
+"objectType":string"0x2::coin::CoinMetadata<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail6::OSAIL6>"
+"objectId":string"0x7aaa53661b72670f1ae83f69ee8a4cdf38bed12e590d56c22ed3b3320f81383f"
+"version":string"611722730"
+"digest":string"Cz6tQfrEvvBgiKE2LKhHAsK6ExeMbS7fGozipd9WW73m"
 }
 21:{7 items
 "type":string"created"
 "sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
-"owner":{1 item
-"AddressOwner":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
-}
-"objectType":string"0x2::coin::TreasuryCap<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail17::OSAIL17>"
-"objectId":string"0x8231f0928c1fc6e39fd848ff211c69a2a4dfbe0ac13ec3cf4949ca352547c7b8"
-"version":string"602534473"
-"digest":string"HW7Wv3yYM92FKhjXukj33rVMGhYPTaqGrJsEt9eQhJRF"
+"owner":string"Immutable"
+"objectType":string"0x2::coin::CoinMetadata<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail15::OSAIL15>"
+"objectId":string"0x7e40bbe8e1e35b657f221ff5748d0fc6124a34ee89553c886d7d2d2a5b25f496"
+"version":string"611722730"
+"digest":string"AeYTe75f31D6EAvqhocTfd2BQUwK1sjwmtK5qu6XVNuY"
 }
 22:{7 items
 "type":string"created"
@@ -222,10 +222,10 @@
 "owner":{1 item
 "AddressOwner":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
 }
-"objectType":string"0x2::coin::TreasuryCap<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail7::OSAIL7>"
-"objectId":string"0x8960ed38fb2be2a9f6a093cd559eaf331d0f2cff952a0769ba9b7eb8ba83c7ce"
-"version":string"602534473"
-"digest":string"4FNm8X8DvtfvKN2oGE4GSLCjQxnH1vtRDny3GAWo2Ti4"
+"objectType":string"0x2::coin::TreasuryCap<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail20::OSAIL20>"
+"objectId":string"0x8455c13d77652941c7af18d1fc238a71b61c418ad597bd8f6049513d4ed841eb"
+"version":string"611722730"
+"digest":string"6nLiUuSSxsFEzAoWMDgWXxTDKBU16FxNEzhkr9cEAELm"
 }
 23:{7 items
 "type":string"created"
@@ -233,10 +233,10 @@
 "owner":{1 item
 "AddressOwner":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
 }
-"objectType":string"0x2::coin::TreasuryCap<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail1::OSAIL1>"
-"objectId":string"0x91a78e6a58aa75bb914bec1d59fe17e1d61d6648adfd725253c828d1ae1453b7"
-"version":string"602534473"
-"digest":string"HiXgZNy1iGmrSc9hGMdhjgQ7eKvoYFM2WpagF8YLJgyd"
+"objectType":string"0x2::coin::TreasuryCap<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail6::OSAIL6>"
+"objectId":string"0x8ffde10c2142585f5890458f0ed0f076774b32510845bdbe7f8a30c3bc3fc560"
+"version":string"611722730"
+"digest":string"9fnv1he95rc2fTsohtA3bsLCqb5TcxbEWR25AuLXVmxr"
 }
 24:{7 items
 "type":string"created"
@@ -244,10 +244,10 @@
 "owner":{1 item
 "AddressOwner":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
 }
-"objectType":string"0x2::coin::TreasuryCap<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail11::OSAIL11>"
-"objectId":string"0xa14f8e58fa1f3e002a750c0b45e51441182bb5b8f35854fed04968b1218aa00f"
-"version":string"602534473"
-"digest":string"GAWRLksUNY3igNHWdXKquLGdPSTuE8PMmzpoo8TdMfLj"
+"objectType":string"0x2::coin::TreasuryCap<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail17::OSAIL17>"
+"objectId":string"0x9aef48fcfa9750dc41edbc9e2703e3913a86d3333126204f86ee526cfc56b8cf"
+"version":string"611722730"
+"digest":string"GGYL4rE7aDifbXabvgV58WBvnrWSfPHxLC4h15LXJY3M"
 }
 25:{7 items
 "type":string"created"
@@ -255,30 +255,30 @@
 "owner":{1 item
 "AddressOwner":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
 }
-"objectType":string"0x2::coin::TreasuryCap<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail6::OSAIL6>"
-"objectId":string"0xa6679fa4ca57965122380f3a3ffead50bea2e30552c98488c660b3b5cecb4d37"
-"version":string"602534473"
-"digest":string"hTcyJoegdKDv9kt2fxqoziw8xGVpoccnMN1Ea64Aa5A"
+"objectType":string"0x2::package::UpgradeCap"
+"objectId":string"0xa99e39aa21e2a60a1033922872fe77baba19266970118749ac6c6f254a7a96d3"
+"version":string"611722730"
+"digest":string"YhhRiZ5diW4btVwoESsKrUDEfmwwmBBu2SmyKQkMjbk"
 }
 26:{7 items
-"type":string"created"
-"sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
-"owner":string"Immutable"
-"objectType":string"0x2::coin::CoinMetadata<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail6::OSAIL6>"
-"objectId":string"0xb70d96c2b9dadab5a00730ebf883d326ab6cfe50109325cfa89a58f532ed70e4"
-"version":string"602534473"
-"digest":string"5hMDwCxfpzoVtyNHruzxcw48bQJrU4qKZhSbv6HHaT1s"
-}
-27:{7 items
 "type":string"created"
 "sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
 "owner":{1 item
 "AddressOwner":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
 }
-"objectType":string"0x2::coin::TreasuryCap<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail10::OSAIL10>"
-"objectId":string"0xbb022f3c330010dd0a4d83e69738fc172f6e047456cdf7d93fa27273afbce736"
-"version":string"602534473"
-"digest":string"BD5S6x7Yef3G7jMdXe82tdru86xw6BH1CJKP76UpsaSa"
+"objectType":string"0x2::coin::TreasuryCap<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail7::OSAIL7>"
+"objectId":string"0xa9b6be6f472cae617d98ef733fa647211e5336c333fa880ecd964bc4997f35d4"
+"version":string"611722730"
+"digest":string"JDMRPsf9kK3gJRYE5qRW1GFh8b8VewE8eHzrudZ7jJa2"
+}
+27:{7 items
+"type":string"created"
+"sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
+"owner":string"Immutable"
+"objectType":string"0x2::coin::CoinMetadata<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail11::OSAIL11>"
+"objectId":string"0xae3e2476eb373fd8bb5da13ede16130b3f08fbf1eaaf22d695d5ff9c52a47b6a"
+"version":string"611722730"
+"digest":string"GS1cudkyLmmpBrMnDpWxmMtUnw8U25pEfUokjmCvu8Yf"
 }
 28:{7 items
 "type":string"created"
@@ -286,34 +286,138 @@
 "owner":{1 item
 "AddressOwner":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
 }
-"objectType":string"0x2::coin::TreasuryCap<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail3::OSAIL3>"
-"objectId":string"0xbc9aa6083cdde0e1053a544446dea910684235b2635b78ef804d23897f3d18d0"
-"version":string"602534473"
-"digest":string"8mfnqpnRjaeVCwkZ1kBJBQXjfoofT9wkpWrJnELxE1jK"
+"objectType":string"0x2::coin::TreasuryCap<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail18::OSAIL18>"
+"objectId":string"0xb0f1b1e073b82c7d11b5ebbc033e14362a04e64d1c35776e25f36ee4a94810d7"
+"version":string"611722730"
+"digest":string"6N38doUk8eaUoazud4uk9sbJ4LzXmX6poyCCrGr4qFES"
 }
 29:{7 items
 "type":string"created"
 "sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
 "owner":string"Immutable"
-"objectType":string"0x2::coin::CoinMetadata<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail16::OSAIL16>"
-"objectId":string"0xc23e5af87934679fa9c6b80f01e06c10a03bae1788fffe24da155af8501a509f"
-"version":string"602534473"
-"digest":string"9iQwD79v4Rqr7BGEdFksRnEhdWQumuBYXSLvY2To3eJw"
+"objectType":string"0x2::coin::CoinMetadata<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail13::OSAIL13>"
+"objectId":string"0xb8acc43de632213a687122c72e00ea8c9c5dd5b91a76c2b6d34fdd24da53b58c"
+"version":string"611722730"
+"digest":string"GmsDST7xwzLYVFWSb4TfXi7qm79Eog2eMfYhSiEs1nmb"
 }
 30:{7 items
 "type":string"created"
 "sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
-"owner":string"Immutable"
-"objectType":string"0x2::coin::CoinMetadata<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail17::OSAIL17>"
-"objectId":string"0xcae19902a8a4c84d54c027047bc09e849c55629f8b2c208f1426f6024e69fb4a"
-"version":string"602534473"
-"digest":string"7bAsjzSKQiM1s5UKjwwQEGMVnWTDZiMQV2DFH5Baw6qB"
+"owner":{1 item
+"AddressOwner":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
 }
-31:{5 items
+"objectType":string"0x2::coin::TreasuryCap<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail11::OSAIL11>"
+"objectId":string"0xbc5f5494dda66e2d91d5070d1921d28f69cda041323afbc5134bab719727464c"
+"version":string"611722730"
+"digest":string"Ek7NzaKmaNzX8BbZzQS6NSsVueM9XqLBkqd2SFqh7iD6"
+}
+31:{7 items
+"type":string"created"
+"sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
+"owner":string"Immutable"
+"objectType":string"0x2::coin::CoinMetadata<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail4::OSAIL4>"
+"objectId":string"0xc3f8c9f527c5ae8f9c82aeed8c871912ae3bf825db87418a034b5874a506ca64"
+"version":string"611722730"
+"digest":string"3NtigipTvtkWNfxptiQoQXQpaYSNfRdKtfELKbyNEwQS"
+}
+32:{7 items
+"type":string"created"
+"sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
+"owner":{1 item
+"AddressOwner":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
+}
+"objectType":string"0x2::coin::TreasuryCap<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail14::OSAIL14>"
+"objectId":string"0xc8ffe97f4ed81a8d6651feda659f34defe1b68750b2a157220619afdad22a54e"
+"version":string"611722730"
+"digest":string"5N61JtztVXy7cYJYDDRgGj6T8PxogY19BjsUrLDBjQvV"
+}
+33:{7 items
+"type":string"created"
+"sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
+"owner":string"Immutable"
+"objectType":string"0x2::coin::CoinMetadata<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail16::OSAIL16>"
+"objectId":string"0xcfe21e95f602a5f894b6d14cad5a2c5d36fe755f89720c64c5eb9b535ff59181"
+"version":string"611722730"
+"digest":string"G5jb8DLAzLVs73cVjW9apLAFdWUf73iFL58yMbjYtGzk"
+}
+34:{7 items
+"type":string"created"
+"sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
+"owner":{1 item
+"AddressOwner":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
+}
+"objectType":string"0x2::coin::TreasuryCap<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail15::OSAIL15>"
+"objectId":string"0xd10416e0a8ef934a365f48a7d938ae4a1a02f02fdad78a74d61d4fbb568e5ad0"
+"version":string"611722730"
+"digest":string"EL3wB6fp9bPY4Yv32XQDvNa8qaBHkvmra5AgxegvhcMo"
+}
+35:{7 items
+"type":string"created"
+"sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
+"owner":{1 item
+"AddressOwner":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
+}
+"objectType":string"0x2::coin::TreasuryCap<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail2::OSAIL2>"
+"objectId":string"0xd18f0700ee30de6ccb769bc0688e83f96c9485568954afd29ae2cdc866a118a3"
+"version":string"611722730"
+"digest":string"GJGUL6jD7PyrXjBFZ4KPFwa14sLq4hHkkgTC3bxLQb55"
+}
+36:{7 items
+"type":string"created"
+"sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
+"owner":{1 item
+"AddressOwner":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
+}
+"objectType":string"0x2::coin::TreasuryCap<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail9::OSAIL9>"
+"objectId":string"0xdd20b6fa0a39a4ade7a86e0a83f6742f45d472b3c52013fe1c76f0f7f7c43d87"
+"version":string"611722730"
+"digest":string"BCFgmfCv12TrT2xm9dYgPercmkjxtTjv9aJdNMGNaKjH"
+}
+37:{7 items
+"type":string"created"
+"sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
+"owner":{1 item
+"AddressOwner":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
+}
+"objectType":string"0x2::coin::TreasuryCap<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail3::OSAIL3>"
+"objectId":string"0xdf4636fe58e2236608c50348e0d252e707d94515e38dddc6d36424b6986b463f"
+"version":string"611722730"
+"digest":string"Dy8YxUX4dPdG7nkFE5atUXWEATQcknDU6Akwy9wq4W2u"
+}
+38:{7 items
+"type":string"created"
+"sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
+"owner":string"Immutable"
+"objectType":string"0x2::coin::CoinMetadata<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail10::OSAIL10>"
+"objectId":string"0xdfc446578f275b5c7c9bd02f7cbb55c9395871c885cf116e5b4928e5f97a1fd6"
+"version":string"611722730"
+"digest":string"BKMtFznmZQt2z9a1ZdfNTpKUDrKKXvsDgyLDpFyrZBba"
+}
+39:{7 items
+"type":string"created"
+"sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
+"owner":string"Immutable"
+"objectType":string"0x2::coin::CoinMetadata<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail19::OSAIL19>"
+"objectId":string"0xe0d062051f532b4100cd073aeeff19c0ed31b3b70120877b3bb38444cfeacb83"
+"version":string"611722730"
+"digest":string"4W3rcKCrf4oaWsxq5sKrJF1g1uxnjyQoDj6fCd3FEBd5"
+}
+40:{7 items
+"type":string"created"
+"sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
+"owner":{1 item
+"AddressOwner":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
+}
+"objectType":string"0x2::coin::TreasuryCap<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail4::OSAIL4>"
+"objectId":string"0xf140f8ad85cdcba865d1857624c7e7c990e04261b95890688515d1b101882967"
+"version":string"611722730"
+"digest":string"B8gzyHgAQ3PQD3M5ovJYaBM27AjcKYAe2EKMihzjy7nW"
+}
+41:{5 items
 "type":string"published"
-"packageId":string"0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108"
+"packageId":string"0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b"
 "version":string"1"
-"digest":string"8vighrfmWN1u33Lcc7bCwKrhceoe5jhXzjPiHg8JdZi4"
+"digest":string"9vHWkaMT1ETRDNreWHBLs4ofH9BAJpLcAvUA2bR3uER6"
 "modules":[20 items
 0:string"osail1"
 1:string"osail10"
@@ -337,117 +441,13 @@
 19:string"osail9"
 ]
 }
-32:{7 items
-"type":string"created"
-"sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
-"owner":{1 item
-"AddressOwner":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
-}
-"objectType":string"0x2::coin::TreasuryCap<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail2::OSAIL2>"
-"objectId":string"0xd2bd5c161d4b837fd11bdb53fcf5fb648c94da160578f3f07431271e9bcb2b44"
-"version":string"602534473"
-"digest":string"GmrZSQQ2tWhnHetgDqUWRKHexLmqxwx4RmU2cmZ1kHZ"
-}
-33:{7 items
-"type":string"created"
-"sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
-"owner":string"Immutable"
-"objectType":string"0x2::coin::CoinMetadata<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail15::OSAIL15>"
-"objectId":string"0xd2ccf572afb2a74586e7fc23ce73a40e07c915de567904ba7889e75a4c7c3c46"
-"version":string"602534473"
-"digest":string"AyRA2ZgmJbiPDePA6PwCZmhowYQ2JM1tHYcB8zfQf712"
-}
-34:{7 items
-"type":string"created"
-"sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
-"owner":{1 item
-"AddressOwner":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
-}
-"objectType":string"0x2::coin::TreasuryCap<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail15::OSAIL15>"
-"objectId":string"0xd6eee6256026d4980b47a83605357303434ce7c1a2ea21ac238fc7e3a304e7b4"
-"version":string"602534473"
-"digest":string"CVj23MWtJWDjJgUoK6DN1FrwBRQx63rriUifJJsWHGot"
-}
-35:{7 items
-"type":string"created"
-"sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
-"owner":string"Immutable"
-"objectType":string"0x2::coin::CoinMetadata<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail12::OSAIL12>"
-"objectId":string"0xdf11b3978dfa46380f884712da612c06fa397b6779f953203ceb67bcf6ff41fd"
-"version":string"602534473"
-"digest":string"4FEaZRPydCaSCC7MZDXSexUyL2ewtuFWxtwiW7Gq2N6n"
-}
-36:{7 items
-"type":string"created"
-"sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
-"owner":string"Immutable"
-"objectType":string"0x2::coin::CoinMetadata<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail7::OSAIL7>"
-"objectId":string"0xe4057e408605de49bb8369ce43e74390201134d9c4fb5cbd06025c020b95aa0f"
-"version":string"602534473"
-"digest":string"AN4YLp2SEMVpT8sxpWURcLkMfjNL6hss1zB15W5MZUTu"
-}
-37:{7 items
-"type":string"created"
-"sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
-"owner":{1 item
-"AddressOwner":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
-}
-"objectType":string"0x2::coin::TreasuryCap<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail16::OSAIL16>"
-"objectId":string"0xe7cb7d13fd39e046dd53bfbd0df88ba7095baca87e15dca0d79797ccd4eb9ef9"
-"version":string"602534473"
-"digest":string"J3moTJWM28uhAo8JDbXPK4fvieNAVPDLXEciLWFKcoxC"
-}
-38:{7 items
-"type":string"created"
-"sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
-"owner":{1 item
-"AddressOwner":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
-}
-"objectType":string"0x2::coin::TreasuryCap<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail4::OSAIL4>"
-"objectId":string"0xeb6319454084db63812bec2069e5b1441c3361ef060e1dee70bd1bec3527ee29"
-"version":string"602534473"
-"digest":string"7yf9QbKMY97esptNysrSJ2kjhHka2nbTA9NkiNL4ojNA"
-}
-39:{7 items
-"type":string"created"
-"sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
-"owner":{1 item
-"AddressOwner":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
-}
-"objectType":string"0x2::coin::TreasuryCap<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail5::OSAIL5>"
-"objectId":string"0xec420c799625b1dd58cd2ff6310d2f689964283cdd3ecc5ae5c535bc03b3643c"
-"version":string"602534473"
-"digest":string"HLDEB1ziVJmcNiuGr75cG3qiHtus94QKhGTTLWGSodDb"
-}
-40:{7 items
-"type":string"created"
-"sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
-"owner":{1 item
-"AddressOwner":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
-}
-"objectType":string"0x2::coin::TreasuryCap<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail20::OSAIL20>"
-"objectId":string"0xef8d8d0848ba4aa70c54b5b501ce538c49d63eae5ffade77f4009f39941a7bb8"
-"version":string"602534473"
-"digest":string"5Ad2UB5UBKjhDQCzrgpno6xaV4xPktJX9vGUAomARUSg"
-}
-41:{7 items
-"type":string"created"
-"sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
-"owner":{1 item
-"AddressOwner":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
-}
-"objectType":string"0x2::coin::TreasuryCap<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail12::OSAIL12>"
-"objectId":string"0xf3e09705f0d24519d2c2d40dfcc085d5f3e7dbb064cabe2925aafabe1cd4f68d"
-"version":string"602534473"
-"digest":string"FqzXRDw7Gce727bqs8qxs5zzbGB4wFiED6N7VdRH53A2"
-}
 42:{7 items
 "type":string"created"
 "sender":string"0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340"
 "owner":string"Immutable"
-"objectType":string"0x2::coin::CoinMetadata<0xce92c2ad59fb8bc8da77ef327c6407999163d4061262e906bd72c9409f00f108::osail20::OSAIL20>"
-"objectId":string"0xf776983041dcf3bddf154ea9a1cf21618f9fd4aec109cf0933f8d41e688b80b2"
-"version":string"602534473"
-"digest":string"BXrmUmWgHuEQ5Mfufuyp6eeWFYUGHNwnKwsRru3jmrie"
+"objectType":string"0x2::coin::CoinMetadata<0xf6990b97eb5cf6111472da6e530c41b653426dde8789f0aeff66ec36bb83773b::osail5::OSAIL5>"
+"objectId":string"0xfb85b40af799031a2650de56fea29cb09cc07d1619e3ab7643becedbcf2b4a5b"
+"version":string"611722730"
+"digest":string"QeBD4FJZfqK4sCptYb2t1JXe4KCHJQVJqhwbd8Ny4DU"
 }
 ]
