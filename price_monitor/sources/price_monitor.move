@@ -1485,8 +1485,8 @@ module price_monitor::price_monitor {
 
         if (type_name::get<CoinTypeA>() == type_name::get<BaseCoin>()) {
             pool_price_q64 = integer_mate::full_math_u128::mul_div_floor(
-                1 as u128,
-                1 as u128,
+                (1<<64) as u128,
+                (1<<64) as u128,
                 pool_price_q64
             );
         };
