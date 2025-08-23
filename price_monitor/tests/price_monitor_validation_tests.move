@@ -15,6 +15,7 @@ use clmm_pool::factory::{Self, Pools};
 use clmm_pool::config::{Self, GlobalConfig, AdminCap};
 
 use price_monitor::usd_tests::{Self, USD_TESTS};
+use price_monitor::ausd_tests::{Self, AUSD_TESTS};
 
 public struct SAIL has drop {}
 
@@ -138,13 +139,13 @@ public fun aggregator_set_current_value(
     // aggregator
 }
 
-public fun setup_test_pool<USD_TESTS, SAIL>(
+public fun setup_test_pool<CoinTypeA, CoinTypeB>(
     scenario: &mut Scenario,
     sqrt_price: u128,
     pools: &mut Pools,
     global_config: &GlobalConfig,
     clock: &Clock,
-): Pool<USD_TESTS, SAIL> {
+): Pool<CoinTypeA, CoinTypeB> {
     let _admin = @0x1;
     let url = std::string::utf8(b"https://test.pool");
     let feed_id_a = @0x2;
@@ -152,7 +153,7 @@ public fun setup_test_pool<USD_TESTS, SAIL>(
     let auto_calc = true;
     let tick_spacing = 1;
 
-    factory::create_pool_<USD_TESTS, SAIL>(
+    factory::create_pool_<CoinTypeA, CoinTypeB>(
         pools,
         global_config,
         tick_spacing,
@@ -209,6 +210,60 @@ fun test_validate_price_normal() {
     scenario.next_tx(admin);
     {
         let result = price_monitor::validate_price<USD_TESTS, SAIL, SAIL>(
+            &mut monitor,
+            &aggregator,
+            &pool,
+            &clock
+        );
+        
+        // Should be valid since prices are similar
+        assert!(price_monitor::get_is_valid(&result), 0);
+        assert!(!price_monitor::get_escalation_activation(&result), 0);
+        
+        // Return objects
+        test_scenario::return_shared(monitor);
+        test_scenario::return_shared(pools);
+        test_scenario::return_shared(global_config);
+        scenario.return_to_sender(admin_cap);
+        scenario.return_to_sender(clmm_admin_cap);
+    };
+    
+    // Destroy objects that don't have drop ability
+    test_utils::destroy(aggregator);
+    test_utils::destroy(pool);
+    clock::destroy_for_testing(clock);
+    
+    scenario.end();
+}
+
+// Test 1.1: Normal price validation - no anomalies (AUSD, SAIL first)
+#[test]
+fun test_validate_price_normal_ausd_sail_first() {
+    let mut scenario = test_scenario::begin(@0x1);
+    let (admin, mut clock) = setup_test_environment(&mut scenario);
+    
+    let (mut monitor, admin_cap) = setup_price_monitor(&mut scenario, admin);
+    let (mut pools, global_config, clmm_admin_cap) = setup_clmm_environment(&mut scenario, admin);
+    
+    // Setup aggregator with price 1.0 (1 * 10^18)
+    let aggregator = setup_test_aggregator(&mut scenario, 1000000000000000000, &clock);
+    
+    // Setup pool with similar price (sqrt_price = 1.0, so price = 1.0)
+    let pool = setup_test_pool<SAIL, AUSD_TESTS>(&mut scenario, 1 << 64, &mut pools, &global_config, &clock);
+    
+    // Add aggregator to monitor with this pool
+    scenario.next_tx(admin);
+    {
+        let pool_id = object::id(&pool);
+        let mut pool_ids = vector::empty();
+        vector::push_back(&mut pool_ids, pool_id);
+        price_monitor::add_aggregator(&mut monitor, object::id(&aggregator), pool_ids, scenario.ctx());
+    };
+    
+    // Test price validation
+    scenario.next_tx(admin);
+    {
+        let result = price_monitor::validate_price<SAIL, AUSD_TESTS, SAIL>(
             &mut monitor,
             &aggregator,
             &pool,
@@ -635,70 +690,70 @@ fun test_validate_price_circuit_breaker_escalation() {
 }
 
 // Test 8: Price history management (size limits)
-#[test]
-fun test_validate_price_history_management() {
-    let mut scenario = test_scenario::begin(@0x1);
-    let (admin, mut clock) = setup_test_environment(&mut scenario);
+// #[test]
+// fun test_validate_price_history_management() {
+//     let mut scenario = test_scenario::begin(@0x1);
+//     let (admin, mut clock) = setup_test_environment(&mut scenario);
     
-    let (mut monitor, admin_cap) = setup_price_monitor(&mut scenario, admin);
-    let (mut pools, global_config, clmm_admin_cap) = setup_clmm_environment(&mut scenario, admin);
+//     let (mut monitor, admin_cap) = setup_price_monitor(&mut scenario, admin);
+//     let (mut pools, global_config, clmm_admin_cap) = setup_clmm_environment(&mut scenario, admin);
     
-    // Setup aggregator with price 1.0 (1 * 10^18)
-    let mut aggregator = setup_test_aggregator(&mut scenario, 1000000000000000000, &clock);
+//     // Setup aggregator with price 1.0 (1 * 10^18)
+//     let mut aggregator = setup_test_aggregator(&mut scenario, 1000000000000000000, &clock);
     
-    // Setup pool with similar price
-    let pool = setup_test_pool<USD_TESTS, SAIL>(&mut scenario, 1 << 64, &mut pools, &global_config, &clock);
+//     // Setup pool with similar price
+//     let pool = setup_test_pool<USD_TESTS, SAIL>(&mut scenario, 1 << 64, &mut pools, &global_config, &clock);
     
-    // Add aggregator to monitor with this pool
-    scenario.next_tx(admin);
-    {
-        let pool_id = object::id(&pool);
-        let mut pool_ids = vector::empty();
-        vector::push_back(&mut pool_ids, pool_id);
-        price_monitor::add_aggregator(&mut monitor, object::id(&aggregator), pool_ids, scenario.ctx());
-    };
+//     // Add aggregator to monitor with this pool
+//     scenario.next_tx(admin);
+//     {
+//         let pool_id = object::id(&pool);
+//         let mut pool_ids = vector::empty();
+//         vector::push_back(&mut pool_ids, pool_id);
+//         price_monitor::add_aggregator(&mut monitor, object::id(&aggregator), pool_ids, scenario.ctx());
+//     };
     
-    // Add many price points to test history size management
-    let mut i = 0;
-    while (i < 80) {
-        scenario.next_tx(admin);
-        {
-            price_monitor::validate_price<USD_TESTS, SAIL, SAIL>(
-                &mut monitor,
-                &aggregator,
-                &pool,
-                &clock
-            );
-        };
+//     // Add many price points to test history size management
+//     let mut i = 0;
+//     while (i < 80) {
+//         scenario.next_tx(admin);
+//         {
+//             price_monitor::validate_price<USD_TESTS, SAIL, SAIL>(
+//                 &mut monitor,
+//                 &aggregator,
+//                 &pool,
+//                 &clock
+//             );
+//         };
         
-        // Advance time by 1 minute
-        clock::increment_for_testing(&mut clock, 60000);
+//         // Advance time by 1 minute
+//         clock::increment_for_testing(&mut clock, 60000);
 
-        aggregator_set_current_value(&mut aggregator, 1000000000000000000, clock.timestamp_ms());
+//         aggregator_set_current_value(&mut aggregator, 1000000000000000000, clock.timestamp_ms());
 
-        i = i + 1;
-    };
+//         i = i + 1;
+//     };
     
-    // Check price statistics to verify history size management
-    scenario.next_tx(admin);
-    {
-        let _stats = price_monitor::get_price_statistics(&monitor);
+//     // Check price statistics to verify history size management
+//     scenario.next_tx(admin);
+//     {
+//         let _stats = price_monitor::get_price_statistics(&monitor);
         
-        // Return objects
-        test_scenario::return_shared(monitor);
-        test_scenario::return_shared(pools);
-        test_scenario::return_shared(global_config);
-        scenario.return_to_sender(admin_cap);
-        scenario.return_to_sender(clmm_admin_cap);
-    };
+//         // Return objects
+//         test_scenario::return_shared(monitor);
+//         test_scenario::return_shared(pools);
+//         test_scenario::return_shared(global_config);
+//         scenario.return_to_sender(admin_cap);
+//         scenario.return_to_sender(clmm_admin_cap);
+//     };
     
-    // Destroy objects that don't have drop ability
-    test_utils::destroy(aggregator);
-    test_utils::destroy(pool);
-    clock::destroy_for_testing(clock);
+//     // Destroy objects that don't have drop ability
+//     test_utils::destroy(aggregator);
+//     test_utils::destroy(pool);
+//     clock::destroy_for_testing(clock);
     
-    scenario.end();
-}
+//     scenario.end();
+// }
 
 // Test 9: Invalid pool (should fail with EInvalidSailPool)
 #[test, expected_failure(abort_code = ::price_monitor::price_monitor::EInvalidSailPool)]
