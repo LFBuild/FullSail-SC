@@ -133,7 +133,12 @@ module distribution::minter {
     const ESetSailPriceAggregatorInvalidDistrConfig: u64 = 869469108643585500;
 
     const EGetPositionRewardInvalidRewardToken: u64 = 779306294896264600;
+    const EGetPosDistributionConfInvalid: u64 = 695673975436220400;
+    const EGetPosRewardGaugeNotAlive: u64 = 993998734106655200;
     const EGetMultiplePositionRewardInvalidRewardToken: u64 = 785363146605424900;
+    const EGetMultiPosRewardDistributionConfInvalid: u64 = 695673975436220400;
+    const EGetMultiPosRewardGaugeNotAlive: u64 = 993998734106655200;
+
     const EEmissionStopped: u64 = 123456789012345678;
 
     const EMintTestSailOutdated: u64 = 89462538442069740;
@@ -355,6 +360,15 @@ module distribution::minter {
         id: UID,
         amount: u64,
         unlock_time: u64,
+    }
+
+    public struct EventClaimPositionReward has copy, drop, store {
+        from: address,
+        gauge_id: ID,
+        pool_id: ID,
+        position_id: ID,
+        amount: u64,
+        token: TypeName,
     }
 
     public struct Minter<phantom SailCoinType> has store, key {
@@ -2476,12 +2490,110 @@ module distribution::minter {
         sui::event::emit<EventSetSailPriceAggregator>(event);
     }
 
+    /// Calculates the rewards in RewardCoinType earned by all staked positions.
+    /// Successfull only when previous coin rewards are claimed.
+    ///
+    /// # Arguments
+    /// * `minter` - The minter instance
+    /// * `gauge` - The gauge instance
+    /// * `pool` - The associated pool
+    /// * `staked_positions` - The staked positions to check rewards for
+    /// * `clock` - The system clock
+    ///
+    /// # Returns
+    /// The total amount of rewards earned by the staked positions. 0 if the epoch token is not valid.
+    public fun earned_by_staked_position<CoinTypeA, CoinTypeB, SailCoinType, RewardCoinType>(
+        minter: &Minter<SailCoinType>,
+        gauge: &distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        staked_positions: &vector<distribution::gauge::StakedPosition>,
+        clock: &sui::clock::Clock
+    ): u64 {
+        if (!minter.is_valid_epoch_token<SailCoinType, RewardCoinType>()) {
+            return 0
+        };
+        // we don't need to check if the epoch token is valid here cos validity of the epoch token is defined by minter
+        let mut i = 0;
+        let mut total_earned = 0;
+        while (i < staked_positions.length()) {
+            let earned_i = gauge.earned<CoinTypeA, CoinTypeB>(
+                pool, 
+                staked_positions[i].position_id(), 
+                clock
+            );
+            total_earned = total_earned + earned_i;
+
+            i = i + 1;
+        };
+        total_earned
+    }
+
+    /// Calculates the rewards in RewardCoinType earned by all positions with given IDs.
+    ///
+    /// # Arguments
+    /// * `minter` - The minter instance
+    /// * `gauge` - The gauge instance
+    /// * `pool` - The associated pool
+    /// * `position_ids` - The IDs of the positions to check
+    /// * `clock` - The system clock
+    /// 
+    /// # Returns
+    /// The total amount of rewards earned by the positions. 0 if the epoch token is not valid.
+    public fun earned_by_position_ids<CoinTypeA, CoinTypeB, SailCoinType, RewardCoinType>(
+        minter: &Minter<SailCoinType>,
+        gauge: &distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        position_ids: &vector<ID>,
+        clock: &sui::clock::Clock
+    ): u64 {
+        if (!minter.is_valid_epoch_token<SailCoinType, RewardCoinType>()) {
+            return 0
+        };
+        let mut i = 0;
+        let mut total_earned = 0;
+        while (i < position_ids.length()) {
+            let earned_i = gauge.earned<CoinTypeA, CoinTypeB>(
+                pool, 
+                position_ids[i], 
+                clock
+            );
+            total_earned = total_earned + earned_i;
+
+            i = i + 1;
+        };
+        total_earned
+    }
+
+    /// Calculates the rewards in RewardCoinType earned by a specific position.
+    ///
+    /// # Arguments
+    /// * `minter` - The minter instance
+    /// * `gauge` - The gauge instance
+    /// * `pool` - The associated pool
+    /// * `position_id` - ID of the position to check
+    /// * `clock` - The system clock
+    ///
+    /// # Returns
+    /// The amount of rewards earned by the position. 0 if the epoch token is not valid.
+    public fun earned_by_position<CoinTypeA, CoinTypeB, SailCoinType, RewardCoinType>(
+        minter: &Minter<SailCoinType>,
+        gauge: &distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        position_id: ID,
+        clock: &sui::clock::Clock
+    ): u64 {
+        if (!minter.is_valid_epoch_token<SailCoinType, RewardCoinType>()) {
+            return 0
+        };
+
+        gauge.earned<CoinTypeA, CoinTypeB>(pool, position_id, clock)
+    }
+
     /// Claims rewards in current epoch oSAIL for a specific position.
     /// Returns freshly minted oSAIL coins.
     /// RewardCoinType is supposed to be the current epoch oSAIL.
     public fun get_position_reward<CoinTypeA, CoinTypeB, SailCoinType, RewardCoinType>(
         minter: &mut Minter<SailCoinType>,
-        voter: &distribution::voter::Voter,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
@@ -2489,15 +2601,20 @@ module distribution::minter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): Coin<RewardCoinType> {
-        let distribute_cap = minter.distribute_cap.borrow();
         assert!(minter.is_valid_epoch_token<SailCoinType, RewardCoinType>(), EGetPositionRewardInvalidRewardToken);
+        assert!(
+            object::id(distribution_config) == minter.distribution_config,
+            EGetPosDistributionConfInvalid
+        );
+        assert!(
+            distribution_config.is_gauge_alive(object::id(gauge)),
+            EGetPosRewardGaugeNotAlive
+        );
         
-        let reward_amount = voter.get_position_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
-            distribute_cap,
-            distribution_config,
+        let reward_amount = get_position_reward_internal<CoinTypeA, CoinTypeB, SailCoinType, RewardCoinType>(
             gauge,
             pool,
-            staked_position,
+            staked_position.position_id(),
             clock,
             ctx
         );
@@ -2510,7 +2627,6 @@ module distribution::minter {
     /// RewardCoinType is supposed to be the current epoch oSAIL.
     public fun get_multiple_position_rewards<CoinTypeA, CoinTypeB, SailCoinType, RewardCoinType>(
         minter: &mut Minter<SailCoinType>,
-        voter: &distribution::voter::Voter,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
@@ -2518,20 +2634,58 @@ module distribution::minter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): Coin<RewardCoinType> {
-        let distribute_cap = minter.distribute_cap.borrow();
         assert!(minter.is_valid_epoch_token<SailCoinType, RewardCoinType>(), EGetMultiplePositionRewardInvalidRewardToken);
-
-        let reward_amount = voter.get_multiple_position_rewards<CoinTypeA, CoinTypeB, RewardCoinType>(
-         distribute_cap,
-            distribution_config,
-            gauge,
-            pool,
-            staked_positions,
-            clock,
-            ctx
+        assert!(
+            object::id(distribution_config) == minter.distribution_config,
+            EGetMultiPosRewardDistributionConfInvalid
+        );
+        assert!(
+            distribution_config.is_gauge_alive(object::id(gauge)),
+            EGetMultiPosRewardGaugeNotAlive
         );
 
-        minter.mint_o_sail<SailCoinType, RewardCoinType>(reward_amount, ctx)
+        let mut i = 0;
+        let mut total_earned = 0;
+        while (i < staked_positions.length()) {
+            let earned_i = get_position_reward_internal<CoinTypeA, CoinTypeB, SailCoinType, RewardCoinType>(
+                gauge,
+                pool, 
+                staked_positions[i].position_id(), 
+                clock,
+                ctx
+            );
+            total_earned = total_earned + earned_i;
+
+            i = i + 1;
+        };
+
+        minter.mint_o_sail<SailCoinType, RewardCoinType>(total_earned, ctx)
+    }
+
+    fun get_position_reward_internal<CoinTypeA, CoinTypeB, SailCoinType, RewardCoinType>(
+        gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        position_id: ID,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ): u64 {
+        let reward_amount = gauge.update_reward_internal<CoinTypeA, CoinTypeB>(
+            pool,
+            position_id,
+            clock,
+        );
+
+        let event = EventClaimPositionReward {
+            from: tx_context::sender(ctx),
+            gauge_id: object::id(gauge),
+            pool_id: object::id(pool),
+            position_id,
+            amount: reward_amount,
+            token: type_name::get<RewardCoinType>(),
+        };
+        sui::event::emit<EventClaimPositionReward>(event);
+        
+        reward_amount
     }
 
     // A method that is supposed to be called by the backend voting service to update voted weights.

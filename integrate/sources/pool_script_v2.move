@@ -664,7 +664,6 @@ module integrate::pool_script_v2 {
         global_config: &clmm_pool::config::GlobalConfig,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         minter: &mut distribution::minter::Minter<SailCoinType>,
-        voter: &distribution::voter::Voter,
         vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
@@ -679,7 +678,6 @@ module integrate::pool_script_v2 {
     ): distribution::gauge::StakedPosition {
        let mut reward_coin = distribution::minter::get_position_reward<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
             minter,
-            voter,
             distribution_config,
             gauge,
             pool,
@@ -733,7 +731,6 @@ module integrate::pool_script_v2 {
         global_config: &clmm_pool::config::GlobalConfig,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         minter: &mut distribution::minter::Minter<SailCoinType>,
-        voter: &distribution::voter::Voter,
         vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
@@ -746,7 +743,6 @@ module integrate::pool_script_v2 {
     ): distribution::gauge::StakedPosition {
        let mut reward_coin = distribution::minter::get_position_reward<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
             minter,
-            voter,
             distribution_config,
             gauge,
             pool,
@@ -798,7 +794,6 @@ module integrate::pool_script_v2 {
         global_config: &clmm_pool::config::GlobalConfig,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         minter: &mut distribution::minter::Minter<SailCoinType>,
-        voter: &distribution::voter::Voter,
         vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
@@ -810,7 +805,6 @@ module integrate::pool_script_v2 {
     ) {
        let mut reward_coin = distribution::minter::get_position_reward<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
             minter,
-            voter,
             distribution_config,
             gauge,
             pool,

@@ -1441,7 +1441,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -3716,7 +3715,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -3729,7 +3727,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward2 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL2>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -4847,7 +4844,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let staking_reward1 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -4860,7 +4856,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let staking_reward2 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL2>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -5011,7 +5006,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let staking_reward3 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL3>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -5494,7 +5488,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward1 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -5507,7 +5500,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward2 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL2>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -5520,7 +5512,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward3 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL3>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -5533,7 +5524,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward4 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL4>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -6006,7 +5996,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let staking_reward1 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -6061,7 +6050,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let staking_reward2 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL2>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -6074,7 +6062,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let staking_reward3 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL3>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -6115,7 +6102,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let staking_reward4 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL4>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -6497,7 +6483,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward1 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -6510,7 +6495,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward2 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL2>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -6539,7 +6523,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward3 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL3>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -6666,7 +6649,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward3 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL3>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -6788,7 +6770,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward4 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL4>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -6905,7 +6886,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward5 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL5>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -7241,7 +7221,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward1 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -7253,7 +7232,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward2 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL2>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -7266,7 +7244,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward3 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL3>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -7336,7 +7313,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward3 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL3>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -7685,7 +7661,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward1 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -7697,7 +7672,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward2 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL2>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -7710,7 +7684,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward3 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL3>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -11134,7 +11107,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -12379,7 +12351,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -12392,7 +12363,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward2 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL2>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -12576,7 +12546,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL2>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -12589,7 +12558,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward2 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL3>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -13571,7 +13539,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -13931,7 +13898,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -13944,7 +13910,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward2 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL2>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -14156,7 +14121,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL2>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -14242,7 +14206,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward2 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL2>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -14274,7 +14237,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward1 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL2>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -14390,7 +14352,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL2>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -14987,7 +14948,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward1 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -15000,7 +14960,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward2 = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL2>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -15074,7 +15033,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL2>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -15147,7 +15105,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL2>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -15222,7 +15179,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL2>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -15301,7 +15257,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL2>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -15379,7 +15334,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL2>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -15856,7 +15810,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,
@@ -15912,7 +15865,6 @@ module liquidity_locker::liquidity_lock_v2_tests {
             let reward = liquidity_lock_v2::claim_position_reward_for_staking<TestCoinB, TestCoinA, SailCoinType, OSAIL2>(
                 &locker,
                 &mut minter,
-                &voter,
                 &distribution_config,
                 &mut gauge,
                 &mut pool,

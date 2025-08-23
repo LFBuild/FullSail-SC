@@ -1902,7 +1902,7 @@ module distribution::voter {
         );
     }
 
-    /// Proxy method to be called via Minter
+    /// Deprecated
     public fun get_position_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
         voter: &Voter,
         distribute_cap: &distribution::distribute_cap::DistributeCap,
@@ -1913,19 +1913,10 @@ module distribution::voter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): u64 {
-        distribute_cap.validate_distribute_voter_id(object::id(voter));
-        
-        gauge.get_position_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
-            pool,
-            &voter.voter_cap,
-            distribution_config,
-            staked_position,
-            clock,
-            ctx
-        )
+        abort 0
     }
 
-    /// Proxy method to be called via Minter
+    /// Deprecated
     public fun get_multiple_position_rewards<CoinTypeA, CoinTypeB, RewardCoinType>(
         voter: &Voter,
         distribute_cap: &distribution::distribute_cap::DistributeCap,
@@ -1936,16 +1927,7 @@ module distribution::voter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): u64 {
-        distribute_cap.validate_distribute_voter_id(object::id(voter));
-
-        gauge.get_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
-            pool,
-            &voter.voter_cap,
-            distribution_config,
-            staked_positions,
-            clock,
-            ctx
-        )
+        abort 0
     }
 
     #[test_only]
