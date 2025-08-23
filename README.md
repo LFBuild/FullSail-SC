@@ -55,13 +55,17 @@ Use `sui client publish` command.
 
 - [locker_cap](https://suivision.xyz/txblock/A9ETxo574RNtZYkZULKFA69mLrkhBEYYQ1JtpSyYTXGz)
 - [price_monitor](https://suivision.xyz/txblock/Ebihvi7VPj44crKsaV7GCQzfnZN8ZqbGcDrwrvW9QMma)
+    * [price_monitor upgrade](https://suivision.xyz/txblock/FRv3NLYKUvDcbhuPE5xRcRZTfpaE4pVJz2cxgGAQioYT)
 - [ve](https://suivision.xyz/txblock/AkG6aofQaLb7C6noE2MVamd3izkfv8KWzFNS9QMeMDnf)
 - [distribution](https://suivision.xyz/txblock/HVoGW3CLph1hFhUuuMxHafUk1fcLw1yFEFkcmSd5xY4k)
+    * [distribution upgrade](https://suivision.xyz/txblock/BSKbkYv9QvAfVGv647KbuqG6AsYWjWg6Tj3XCo7puSfS)
 - [sail](https://suiscan.xyz/mainnet/tx/6r8D44Gif1grzftFbtkkcX1CNdUKyT9z8LEuu6dFmf9k)
 - [o_sail_token](https://suiscan.xyz/mainnet/tx/71SWPFWjZLXoD4SwQuTDUGQm9sCbHXVPXy4aqsnyRCar)
 - [liquidity_locker_v2](https://suivision.xyz/txblock/B8W9yphVuMSkSFLYFLHVuwdVXPXdp9XxBhZ3buE6svGr)
+    * [liquidity_locker_v2 upgrade](https://suivision.xyz/8wXaSgZ1PkmS9m3JpCTe6BMU6GEZEfDdK6eYbiLtnsc3)
 - [liquidity_soft_locker_v2](https://suivision.xyz/txblock/6q5WucQJTGTiwqT9C2FSzBZW7WXBQru2QaQuTWLMCHsx)
-- [integrate](https://suivision.xyz/txblock/CdEEyieqZMKHw4fhMifTYjUCHxBqAj6GytWbz2t9ZfFF)
+    * [liquidity_soft_locker_v2 upgrade](https://suivision.xyz/txblock/7eEZjabvK8Hzta3zxcTmLWYeNcinYVtCZRvpWmYBDCCs)
+- [integrate](https://suivision.xyz/txblock/7u6wGjaEki5UyZjYLLQRTCc6E2wFfSwavxKjBfq3gBi4)
 
 - [setup distribtuion tx](https://suiscan.xyz/mainnet/tx/9AgxsB9myAkUTesv7FdyooaHFWEzT4V22FFYTKwzH3ZT)
 - [activate minter tx](https://suiscan.xyz/mainnet/tx/62CQswg1EmVcyfrA2FGgSMGgTHQsYZJJtq9PChhnqbmL)
