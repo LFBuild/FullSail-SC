@@ -76,7 +76,6 @@ module distribution::gauge {
     const EWithdrawPositionInvalidPool: u64 = 496532944256373500;
 
     const EFullEarnedForTypeGaugeDoesNotMatchPool: u64 = 266845958013316900;
-    const EFullEarnedForTypeNoGrowthGlobalByToken: u64 = 923483942940234034;
 
     public struct AdminCap has store, key {
         id: UID,
@@ -122,14 +121,6 @@ module distribution::gauge {
         last_update_time: u64,
     }
 
-    /// Deprecated
-    public struct EventClaimReward has copy, drop, store {
-        from: address,
-        position_id: ID,
-        amount: u64,
-        token: TypeName,
-    }
-
     public struct EventWithdrawPosition has copy, drop, store {
         staked_position_id: ID,
         position_id: ID,
@@ -150,17 +141,7 @@ module distribution::gauge {
         voter_id: ID,
     }
 
-    /// Deprecated
     public struct EventUpdateRewardPosition has copy, drop, store {
-        gauger_id: ID,
-        pool_id: ID,
-        position_id: ID,
-        growth_inside: u128,
-        amount: u64,
-        token: TypeName,
-    }
-
-    public struct EventUpdateRewardPositionV2 has copy, drop, store {
         gauger_id: ID,
         pool_id: ID,
         position_id: ID,
@@ -511,36 +492,6 @@ module distribution::gauge {
         staked_position
     }
 
-    /// Deprecated
-    // public fun earned_by_staked_position<CoinTypeA, CoinTypeB, RewardCoinType>(
-    //     gauge: &Gauge<CoinTypeA, CoinTypeB>,
-    //     pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-    //     staked_positions: &vector<StakedPosition>,
-    //     clock: &sui::clock::Clock
-    // ): u64 {
-    //     abort 0
-    // }
-
-    // /// Deprecated
-    // public fun earned_by_position_ids<CoinTypeA, CoinTypeB, RewardCoinType>(
-    //     gauge: &Gauge<CoinTypeA, CoinTypeB>,
-    //     pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-    //     position_ids: &vector<ID>,
-    //     clock: &sui::clock::Clock
-    // ): u64 {
-    //    abort 0
-    // }
-
-    // /// Deprecated
-    // public fun earned_by_position<CoinTypeA, CoinTypeB, RewardCoinType>(
-    //     gauge: &Gauge<CoinTypeA, CoinTypeB>,
-    //     pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-    //     position_id: ID,
-    //     clock: &sui::clock::Clock
-    // ): (u64, u128) {
-    //     abort 0
-    // }
-
 
     /// Function to calculate earned rewards for a position.
     /// Does not consider current epoch oSAIL token.
@@ -763,45 +714,6 @@ module distribution::gauge {
 
         (0, 0)
     }
-
-    /// Claims rewards for a specific staked position and transfers them to the position owner.
-    /// Should be called in sequence, successfull only when previous coin rewards are claimed.
-    ///
-    /// # Arguments
-    /// * `gauge` - The gauge instance
-    /// * `pool` - The associated pool
-    /// * `position_id` - ID of the position to claim rewards for
-    /// * `clock` - The system clock
-    /// * `ctx` - Transaction context
-    ///
-    /// # Aborts
-    /// * If the gauge does not match the pool
-    /// * If the position is not staked in the gauge
-    public fun get_position_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
-        gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
-        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        voter_cap: &VoterCap,
-        distribution_config: &DistributionConfig,
-        staked_position: &StakedPosition,
-        clock: &sui::clock::Clock,
-        ctx: &mut TxContext
-    ): u64 {
-        abort 0
-    }
-
-    /// Deprecated
-    public fun get_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
-        gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
-        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        voter_cap: &VoterCap,
-        distribution_config: &DistributionConfig,
-        staked_positions: &vector<StakedPosition>,
-        clock: &sui::clock::Clock,
-        ctx: &mut TxContext
-    ): u64 {
-        abort 0
-    }
-
     /// Collects rewards for a specific pool position.
     /// 
     /// # Arguments
@@ -1286,14 +1198,14 @@ module distribution::gauge {
 
         let amount_to_pay = reward_profile.amount;
         reward_profile.growth_inside = growth_inside;
-        let update_reward_event = EventUpdateRewardPositionV2 {
+        let update_reward_event = EventUpdateRewardPosition {
             gauger_id: gauge_id,
             pool_id: object::id(pool),
             position_id,
             growth_inside: reward_profile.growth_inside,
             amount: reward_profile.amount,
         };
-        sui::event::emit<EventUpdateRewardPositionV2>(update_reward_event);
+        sui::event::emit<EventUpdateRewardPosition>(update_reward_event);
 
         reward_profile.amount = 0;
 
