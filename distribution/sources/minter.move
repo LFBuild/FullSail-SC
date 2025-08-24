@@ -88,6 +88,7 @@ module distribution::minter {
     const EBurnOSailMinterPaused: u64 = 947382564018592637;
 
     const EExerciseUsdLimitReached: u64 = 490517942447480600;
+    const EExerciseUsdLimitHigherThanOSail: u64 = 953914262470819500;
 
     const ETeamWalletNotSet: u64 = 798141442607710900;
     const EDistributeTeamTokenNotFound: u64 = 962925679282177400;
@@ -2138,6 +2139,7 @@ module distribution::minter {
             o_sail_price_q64_decimals,
         );
 
+        assert!(o_sail.value() >= usd_amount_limit, EExerciseUsdLimitHigherThanOSail);
         assert!(usd_amount_limit >= usd_amount_to_pay, EExerciseUsdLimitReached);
 
         exercise_o_sail_process_payment(
