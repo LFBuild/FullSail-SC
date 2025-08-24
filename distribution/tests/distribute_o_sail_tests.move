@@ -511,7 +511,7 @@ public fun test_gauge_get_position_reward_invalid_reward_token() {
 }
 
 #[test]
-#[expected_failure(abort_code = gauge::EGetPositionRewardGaugeDoesNotMatchPool)]
+#[expected_failure(abort_code = gauge::EUpdateRewardGaugeDoesNotMatchPool)]
 public fun test_gauge_get_position_reward_invalid_pool() {
     let admin = @0xD1; // Use a different address
     let user = @0xD2;
@@ -634,7 +634,7 @@ public fun test_gauge_get_reward_invalid_reward_token() {
 }
 
 #[test]
-#[expected_failure(abort_code = gauge::EGetPositionRewardGaugeDoesNotMatchPool)]
+#[expected_failure(abort_code = gauge::EUpdateRewardGaugeDoesNotMatchPool)]
 public fun test_gauge_get_reward_invalid_pool() {
     let admin = @0xD1; // Use a different address
     let user = @0xD2;
@@ -851,36 +851,42 @@ fun check_two_positions_single_epoch(
         let gauge = scenario.take_shared<Gauge<USD_TESTS, SAIL>>();
         let minter = scenario.take_shared<Minter<SAIL>>();
 
-        let (earned_lp1, _) = gauge.earned_by_position<USD_TESTS, SAIL, OSAIL1>(
+        let earned_lp1 = minter.earned_by_position<USD_TESTS, SAIL, SAIL, OSAIL1>(
+            &gauge,
             &pool,
             lp1_position_id,
             clock
         );
-        let (earned_lp2, _) = gauge.earned_by_position<USD_TESTS, SAIL, OSAIL1>(
+        let earned_lp2 = minter.earned_by_position<USD_TESTS, SAIL, SAIL, OSAIL1>(
+            &gauge,
             &pool,
             lp2_position_id,
             clock
         );
 
-        let (earned_lp1_nonepoch_coin, _) = gauge.earned_by_position<USD_TESTS, SAIL, USD_TESTS>(
+        let earned_lp1_nonepoch_coin = minter.earned_by_position<USD_TESTS, SAIL, SAIL, USD_TESTS>(
+            &gauge,
             &pool,
             lp1_position_id,
             clock
         );
 
-        let (earned_lp2_nonepoch_coin, _) = gauge.earned_by_position<USD_TESTS, SAIL, USD_TESTS>(
+        let earned_lp2_nonepoch_coin = minter.earned_by_position<USD_TESTS, SAIL, SAIL, USD_TESTS>(
+            &gauge,
             &pool,
             lp2_position_id,
             clock
         );
 
-        let earned_lp1_by_pos_ids = gauge.earned_by_position_ids<USD_TESTS, SAIL, OSAIL1>(
+        let earned_lp1_by_pos_ids = minter.earned_by_position_ids<USD_TESTS, SAIL, SAIL, OSAIL1>(
+            &gauge,
             &pool,
             &vector[lp1_position_id],
             clock
         );
 
-        let earned_lp2_by_pos_ids = gauge.earned_by_position_ids<USD_TESTS, SAIL, OSAIL1>(
+        let earned_lp2_by_pos_ids = minter.earned_by_position_ids<USD_TESTS, SAIL, SAIL, OSAIL1>(
+            &gauge,
             &pool,
             &vector[lp2_position_id],
             clock
@@ -1165,8 +1171,10 @@ fun test_single_position_reward_over_time_distribute() {
     {
         let pool = scenario.take_shared<Pool<USD_TESTS, SAIL>>();
         let gauge = scenario.take_shared<Gauge<USD_TESTS, SAIL>>();
+        let minter = scenario.take_shared<Minter<SAIL>>();
 
-        let (earned_half, _) = gauge.earned_by_position<USD_TESTS, SAIL, OSAIL1>(
+        let earned_half = minter.earned_by_position<USD_TESTS, SAIL, SAIL, OSAIL1>(
+            &gauge,
             &pool,
             lp1_position_id,
             &clock
@@ -1179,6 +1187,7 @@ fun test_single_position_reward_over_time_distribute() {
 
         test_scenario::return_shared(pool);
         test_scenario::return_shared(gauge);
+        test_scenario::return_shared(minter);
     };
 
     // claim half reward
@@ -1204,8 +1213,10 @@ fun test_single_position_reward_over_time_distribute() {
     {
         let pool = scenario.take_shared<Pool<USD_TESTS, SAIL>>();
         let gauge = scenario.take_shared<Gauge<USD_TESTS, SAIL>>();
+        let minter = scenario.take_shared<Minter<SAIL>>();
 
-        let (earned_full, _) = gauge.earned_by_position<USD_TESTS, SAIL, OSAIL1>( 
+        let earned_full = minter.earned_by_position<USD_TESTS, SAIL, SAIL, OSAIL1>( 
+            &gauge,
             &pool,
             lp1_position_id,
             &clock
@@ -1215,6 +1226,7 @@ fun test_single_position_reward_over_time_distribute() {
 
         test_scenario::return_shared(pool);
         test_scenario::return_shared(gauge);
+        test_scenario::return_shared(minter);
     };
 
     // claim second half reward
@@ -1718,14 +1730,26 @@ fun test_gauge_get_position_reward() {
     {
         let pool = scenario.take_shared<Pool<USD_TESTS, SAIL>>();
         let gauge = scenario.take_shared<Gauge<USD_TESTS, SAIL>>();
-        let (earned_osail1, _) = gauge.earned_by_position<USD_TESTS, SAIL, OSAIL1>(&pool, lp_position_id, &clock); 
-        let (earned_osail2, _) = gauge.earned_by_position<USD_TESTS, SAIL, OSAIL2>(&pool, lp_position_id, &clock);
+        let minter = scenario.take_shared<Minter<SAIL>>();
+        let earned_osail1 = minter.earned_by_position<USD_TESTS, SAIL, SAIL, OSAIL1>(
+            &gauge,
+            &pool,
+            lp_position_id,
+            &clock
+        ); 
+        let earned_osail2 = minter.earned_by_position<USD_TESTS, SAIL, SAIL, OSAIL2>(
+            &gauge,
+            &pool,
+            lp_position_id,
+            &clock
+        );
 
         // user can earn only current epoch token
         assert!(earned_osail1 == 0, 1);
         assert!(second_epoch_emissions + first_epoch_emissions - earned_osail2 <= 3, 2);
         test_scenario::return_shared(pool);
         test_scenario::return_shared(gauge);
+        test_scenario::return_shared(minter);
     };
 
     scenario.next_tx(lp);
@@ -1774,14 +1798,26 @@ fun test_increase_time_after_distribute() {
     {
         let pool = scenario.take_shared<Pool<USD_TESTS, SAIL>>();
         let gauge = scenario.take_shared<Gauge<USD_TESTS, SAIL>>();
-        let (earned_osail1, _) = gauge.earned_by_position<USD_TESTS, SAIL, OSAIL1>(&pool, lp_position_id, &clock); 
-        let (earned_osail2, _) = gauge.earned_by_position<USD_TESTS, SAIL, OSAIL2>(&pool, lp_position_id, &clock);
+        let minter = scenario.take_shared<Minter<SAIL>>();
+        let earned_osail1 = minter.earned_by_position<USD_TESTS, SAIL, SAIL, OSAIL1>(
+            &gauge,
+            &pool,
+            lp_position_id,
+            &clock
+        ); 
+        let earned_osail2 = minter.earned_by_position<USD_TESTS, SAIL, SAIL, OSAIL2>(
+            &gauge,
+            &pool,
+            lp_position_id,
+            &clock
+        );
 
         // user can earn only current epoch token
         assert!(earned_osail1 == 0, 1);
         assert!(second_epoch_emissions + first_epoch_emissions - earned_osail2 <= 3, 2);
         test_scenario::return_shared(pool);
         test_scenario::return_shared(gauge);
+        test_scenario::return_shared(minter);
     };
 
     // --- 7. Advance Time by 1 more week, rewards should not change ---
@@ -1791,14 +1827,26 @@ fun test_increase_time_after_distribute() {
     {
         let pool = scenario.take_shared<Pool<USD_TESTS, SAIL>>();
         let gauge = scenario.take_shared<Gauge<USD_TESTS, SAIL>>();
-        let (earned_osail1, _) = gauge.earned_by_position<USD_TESTS, SAIL, OSAIL1>(&pool, lp_position_id, &clock); 
-        let (earned_osail2, _) = gauge.earned_by_position<USD_TESTS, SAIL, OSAIL2>(&pool, lp_position_id, &clock);
+        let minter = scenario.take_shared<Minter<SAIL>>();
+        let earned_osail1 = minter.earned_by_position<USD_TESTS, SAIL, SAIL, OSAIL1>(
+            &gauge,
+            &pool,
+            lp_position_id,
+            &clock
+        ); 
+        let earned_osail2 = minter.earned_by_position<USD_TESTS, SAIL, SAIL, OSAIL2>(
+            &gauge,
+            &pool,
+            lp_position_id,
+            &clock
+        );
 
         // user can earn only current epoch token
         assert!(earned_osail1 == 0, 1);
         assert!(second_epoch_emissions + first_epoch_emissions - earned_osail2 <= 3, 2);
         test_scenario::return_shared(pool);
         test_scenario::return_shared(gauge);
+        test_scenario::return_shared(minter);
     };
 
     scenario.next_tx(lp);
@@ -1992,12 +2040,19 @@ fun test_increase_gauge_emissions_mid_epoch() {
     {
         let pool = scenario.take_shared<Pool<USD_TESTS, SAIL>>();
         let gauge = scenario.take_shared<Gauge<USD_TESTS, SAIL>>();
-        let (earned, _) = gauge.earned_by_position<USD_TESTS, SAIL, OSAIL1>(&pool, lp_position_id, &clock);
+        let minter = scenario.take_shared<Minter<SAIL>>();
+        let earned = minter.earned_by_position<USD_TESTS, SAIL, SAIL, OSAIL1>(
+            &gauge,
+            &pool,
+            lp_position_id,
+            &clock
+        );
         
         assert!(total_expected_emissions - earned <= 3, 1);
 
         test_scenario::return_shared(pool);
         test_scenario::return_shared(gauge);
+        test_scenario::return_shared(minter);
     };
 
     transfer::public_transfer(usd_treasury_cap, admin);
@@ -2296,14 +2351,26 @@ fun test_gauge_get_reward() {
     {
         let pool = scenario.take_shared<Pool<USD_TESTS, SAIL>>();
         let gauge = scenario.take_shared<Gauge<USD_TESTS, SAIL>>();
-        let (earned_osail1, _) = gauge.earned_by_position<USD_TESTS, SAIL, OSAIL1>(&pool, position_id, &clock);
-        let (earned_osail2, _) = gauge.earned_by_position<USD_TESTS, SAIL, OSAIL2>(&pool, position_id, &clock);
+        let minter = scenario.take_shared<Minter<SAIL>>();
+        let earned_osail1 = minter.earned_by_position<USD_TESTS, SAIL, SAIL, OSAIL1>(
+            &gauge,
+            &pool,
+            position_id,
+            &clock
+        );
+        let earned_osail2 = minter.earned_by_position<USD_TESTS, SAIL, SAIL, OSAIL2>(
+            &gauge,
+            &pool,
+            position_id,
+            &clock
+        );
 
         // user can earn only current epoch token
         assert!(earned_osail1 == 0, 1);
         assert!(second_epoch_emissions + first_epoch_emissions - earned_osail2 <= 3, 2);
         test_scenario::return_shared(pool);
         test_scenario::return_shared(gauge);
+        test_scenario::return_shared(minter);
     };
 
     scenario.next_tx(lp);
@@ -2466,18 +2533,21 @@ fun test_half_epoch_staking_distribute() {
         let gauge = scenario.take_shared<Gauge<USD_TESTS, SAIL>>();
         let minter = scenario.take_shared<Minter<SAIL>>();
 
-        let (earned_lp1, _) = gauge.earned_by_position<USD_TESTS, SAIL, OSAIL1>( 
+        let earned_lp1 = minter.earned_by_position<USD_TESTS, SAIL, SAIL, OSAIL1>( 
+            &gauge,
             &pool,
             lp1_position_id,
             &clock
         );
-        let (earned_lp2, _) = gauge.earned_by_position<USD_TESTS, SAIL, OSAIL1>(
+        let earned_lp2 = minter.earned_by_position<USD_TESTS, SAIL, SAIL, OSAIL1>(
+            &gauge,
             &pool,
             lp2_position_id,
             &clock
         );
 
-        let (earned_lp2_nonepoch_coin, _) = gauge.earned_by_position<USD_TESTS, SAIL, USD_TESTS>(
+        let earned_lp2_nonepoch_coin = minter.earned_by_position<USD_TESTS, SAIL, SAIL, USD_TESTS>(
+            &gauge,
             &pool,
             lp2_position_id,
             &clock
@@ -2578,12 +2648,14 @@ fun test_half_epoch_withdrawal_distribute() {
         let gauge = scenario.take_shared<Gauge<USD_TESTS, SAIL>>();
         let minter = scenario.take_shared<Minter<SAIL>>();
 
-        let (earned_lp1, _) = gauge.earned_by_position<USD_TESTS, SAIL, OSAIL1>( 
+        let earned_lp1 = minter.earned_by_position<USD_TESTS, SAIL, SAIL, OSAIL1>( 
+            &gauge,
             &pool,
             lp1_position_id,
             &clock
         );
-        let (earned_lp2, _) = gauge.earned_by_position<USD_TESTS, SAIL, OSAIL1>(
+        let earned_lp2 = minter.earned_by_position<USD_TESTS, SAIL, SAIL, OSAIL1>(
+            &gauge,
             &pool,
             lp2_position_id,
             &clock
@@ -2698,12 +2770,14 @@ fun test_distribute_position_increase_after_deposit() {
         let gauge = scenario.take_shared<Gauge<USD_TESTS, SAIL>>();
         let minter = scenario.take_shared<Minter<SAIL>>();
 
-        let (earned_lp1, _) = gauge.earned_by_position<USD_TESTS, SAIL, OSAIL1>( 
+        let earned_lp1 = minter.earned_by_position<USD_TESTS, SAIL, SAIL, OSAIL1>( 
+            &gauge,
             &pool,
             lp1_position_id,
             &clock
         );
-        let (earned_lp2, _) = gauge.earned_by_position<USD_TESTS, SAIL, OSAIL1>(
+        let earned_lp2 = minter.earned_by_position<USD_TESTS, SAIL, SAIL, OSAIL1>(
+            &gauge,
             &pool,
             lp2_position_id,
             &clock
@@ -2848,12 +2922,14 @@ fun test_distribute_position_decrease_after_deposit() {
         let gauge = scenario.take_shared<Gauge<USD_TESTS, SAIL>>();
         let minter = scenario.take_shared<Minter<SAIL>>();
 
-        let (earned_lp1, _) = gauge.earned_by_position<USD_TESTS, SAIL, OSAIL1>( 
+        let earned_lp1 = minter.earned_by_position<USD_TESTS, SAIL, SAIL, OSAIL1>( 
+            &gauge,
             &pool,
             lp1_position_id,
             &clock
         );
-        let (earned_lp2, _) = gauge.earned_by_position<USD_TESTS, SAIL, OSAIL1>(
+        let earned_lp2 = minter.earned_by_position<USD_TESTS, SAIL, SAIL, OSAIL1>(
+            &gauge,
             &pool,
             lp2_position_id,
             &clock
@@ -4093,6 +4169,132 @@ fun test_intermittent_active_position_rewards() {
     scenario.next_tx(lp_tight_range); {
         let reward = scenario.take_from_sender<Coin<OSAIL2>>();
         assert!(reward.value() == 0, 2);
+        coin::burn_for_testing(reward);
+    };
+
+    // --- Cleanup ---
+    transfer::public_transfer(usd_treasury_cap, admin);
+    transfer::public_transfer(usd_metadata, admin);
+    test_utils::destroy(aggregator);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_claim_reward_without_distribution_in_next_epoch() {
+    let admin = @0xF1;
+    let user = @0xF2; // User with the lock
+    let lp = @0xF3;  // Liquidity Provider
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+
+    let lock_amount = 50_000;
+    let lock_duration = 182; // ~6 months
+    let first_epoch_emissions = DEFAULT_GAUGE_EMISSIONS;
+
+    // --- 1. Full Setup ---
+    let mut aggregator = setup::full_setup_with_lock<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(
+        &mut scenario,
+        admin,
+        user,
+        &mut clock,
+        lock_amount,
+        lock_duration,
+        first_epoch_emissions,
+        0
+    );
+
+    // --- 2. Distribute Gauge Rewards for Epoch 1 (OSAIL1) ---
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+    };
+
+    // --- 3. LP Creates and Stakes Position ---
+    let position_tick_lower = tick_math::min_tick().as_u32();
+    let position_tick_upper = tick_math::max_tick().as_u32();
+    let position_liquidity = 1_000_000_000u128;
+    let lp_position_id: ID;
+
+    // Create position
+    scenario.next_tx(lp);
+    {
+        setup::create_position_with_liquidity<USD_TESTS, SAIL>(
+            &mut scenario,
+            lp,
+            position_tick_lower,
+            position_tick_upper,
+            position_liquidity,
+            &clock
+        );
+    };
+
+    // Deposit position
+    scenario.next_tx(lp);
+    {
+        lp_position_id = setup::deposit_position<USD_TESTS, SAIL>(&mut scenario, &clock);
+    };
+
+    // --- 4. Advance to end of Epoch 1 ---
+    clock::increment_for_testing(&mut clock, WEEK);
+
+    // --- 5. Advance to Epoch 2 ---
+    // Update Minter Period to OSAIL2
+    scenario.next_tx(admin);
+    {
+        let initial_o_sail2_supply = setup::update_minter_period<SAIL, OSAIL2>(
+            &mut scenario,
+            0, // No initial supply for OSAIL2 needed for this test
+            &clock
+        );
+        coin::burn_for_testing(initial_o_sail2_supply);
+    };
+
+    // --- 6. Advance another week without distributing gauge for Epoch 2 ---
+    clock::increment_for_testing(&mut clock, WEEK);
+
+    // --- 7. Check Earned Rewards ---
+    scenario.next_tx(lp);
+    {
+        let pool = scenario.take_shared<Pool<USD_TESTS, SAIL>>();
+        let gauge = scenario.take_shared<Gauge<USD_TESTS, SAIL>>();
+        let minter = scenario.take_shared<Minter<SAIL>>();
+
+        let earned_osail1 = minter.earned_by_position<USD_TESTS, SAIL, SAIL, OSAIL1>(
+            &gauge,
+            &pool,
+            lp_position_id,
+            &clock
+        );
+        let earned_osail2 = minter.earned_by_position<USD_TESTS, SAIL, SAIL, OSAIL2>(
+            &gauge,
+            &pool,
+            lp_position_id,
+            &clock
+        );
+
+        assert!(earned_osail1 == 0, 1);
+        assert!(first_epoch_emissions - earned_osail2 <= 3, 2);
+
+        test_scenario::return_shared(pool);
+        test_scenario::return_shared(gauge);
+        test_scenario::return_shared(minter);
+    };
+
+    // --- 8. Claim Rewards ---
+    scenario.next_tx(lp);
+    {
+        setup::get_staked_position_reward<USD_TESTS, SAIL, SAIL, OSAIL2>(&mut scenario, &clock);
+    };
+
+    // --- 9. Verify Rewards ---
+    scenario.next_tx(lp);
+    {
+        let reward = scenario.take_from_sender<Coin<OSAIL2>>();
+        // The reward should be equal to the first epoch's emissions.
+        assert!(first_epoch_emissions - reward.value() <= 3, 3);
         coin::burn_for_testing(reward);
     };
 

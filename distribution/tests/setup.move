@@ -1012,7 +1012,6 @@ public fun get_staked_position_reward<CoinTypeA, CoinTypeB, SAIL, RewardCoinType
 
         // USD_TESTS is not a valid reward token
         let reward = minter.get_position_reward<CoinTypeA, CoinTypeB, SAIL, RewardCoinType>(
-            &voter,
             &distribution_config,
             &mut gauge,
             &mut pool,

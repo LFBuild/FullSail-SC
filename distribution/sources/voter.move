@@ -1902,52 +1902,6 @@ module distribution::voter {
         );
     }
 
-    /// Proxy method to be called via Minter
-    public fun get_position_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
-        voter: &Voter,
-        distribute_cap: &distribution::distribute_cap::DistributeCap,
-        distribution_config: &distribution::distribution_config::DistributionConfig,
-        gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
-        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        staked_position: &distribution::gauge::StakedPosition,
-        clock: &sui::clock::Clock,
-        ctx: &mut TxContext
-    ): u64 {
-        distribute_cap.validate_distribute_voter_id(object::id(voter));
-        
-        gauge.get_position_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
-            pool,
-            &voter.voter_cap,
-            distribution_config,
-            staked_position,
-            clock,
-            ctx
-        )
-    }
-
-    /// Proxy method to be called via Minter
-    public fun get_multiple_position_rewards<CoinTypeA, CoinTypeB, RewardCoinType>(
-        voter: &Voter,
-        distribute_cap: &distribution::distribute_cap::DistributeCap,
-        distribution_config: &distribution::distribution_config::DistributionConfig,
-        gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
-        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        staked_positions: &vector<distribution::gauge::StakedPosition>,
-        clock: &sui::clock::Clock,
-        ctx: &mut TxContext
-    ): u64 {
-        distribute_cap.validate_distribute_voter_id(object::id(voter));
-
-        gauge.get_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
-            pool,
-            &voter.voter_cap,
-            distribution_config,
-            staked_positions,
-            clock,
-            ctx
-        )
-    }
-
     #[test_only]
     public fun test_init(ctx: &mut sui::tx_context::TxContext): sui::package::Publisher {
         sui::package::claim<VOTER>(VOTER {}, ctx)

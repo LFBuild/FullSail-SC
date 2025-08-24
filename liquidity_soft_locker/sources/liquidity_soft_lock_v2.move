@@ -1032,7 +1032,6 @@ module liquidity_soft_locker::liquidity_soft_lock_v2 {
         let staking_reward = claim_position_reward_for_staking<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
             locker,
             minter,
-            voter,
             distribution_config,
             gauge,
             pool,
@@ -1379,7 +1378,6 @@ module liquidity_soft_locker::liquidity_soft_lock_v2 {
     public fun claim_position_reward_for_staking<CoinTypeA, CoinTypeB, SailCoinType, RewardCoinType>(
         locker: &SoftLocker,
         minter: &mut distribution::minter::Minter<SailCoinType>,
-        voter: &distribution::voter::Voter,
         distribution_config: &distribution::distribution_config::DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
@@ -1392,7 +1390,6 @@ module liquidity_soft_locker::liquidity_soft_lock_v2 {
 
         distribution::minter::get_position_reward<CoinTypeA, CoinTypeB, SailCoinType, RewardCoinType>(
             minter,
-            voter,
             distribution_config,
             gauge,
             pool,
@@ -1754,7 +1751,6 @@ module liquidity_soft_locker::liquidity_soft_lock_v2 {
         let staking_reward = claim_position_reward_for_staking<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
             locker,
             minter,
-            voter,
             distribution_config,
             gauge,
             pool,
@@ -2169,7 +2165,6 @@ module liquidity_soft_locker::liquidity_soft_lock_v2 {
         let staking_reward = claim_position_reward_for_staking<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
             locker,
             minter,
-            voter,
             distribution_config,
             gauge,
             pool,

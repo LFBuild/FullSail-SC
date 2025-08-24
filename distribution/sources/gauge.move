@@ -47,25 +47,13 @@ module distribution::gauge {
     const EDepositPositionPositionAlreadyStaked: u64 = 9223373175021174786;
     const EDepositPositionHasNoLiquidity: u64 = 9223373172345436343;
 
-    const EEarnedByAccountGaugeDoesNotMatchPool: u64 = 9223372724050001928;
-
     const EEarnedByPositionGaugeDoesNotMatchPool: u64 = 9223372693985230856;
     const EEarnedByPositionNotDepositedPosition: u64 = 9223372698279936004;
 
     const EGetCurrentGrowthGlobalGaugeDoesNotMatchPool: u64 = 319134756481074050;
 
-    const EGetPositionRewardGaugeDoesNotMatchPool: u64 = 922337342842463847;
-    const EGetPositionRewardDistributionConfInvalid: u64 = 12698781401347504;
-    const EGetPositionRewardGaugeNotAlive: u64 = 967793647569473700;
-    const EGetPositionRewardInvalidRewardToken: u64 = 896435666705415200;
-
-    const EGetRewardGaugeDoesNotMatchPool: u64 = 922337345419444224;
-    const EGetRewardDistributionConfInvalid: u64 = 695673975436220400;
-    const EGetRewardGaugeNotAlive: u64 = 993998734106655200;
-    const EGetRewardInvalidRewardToken: u64 = 364572745470385970;
-    const EGetRewardPrevTokenNotClaimed: u64 = 863923888158323800;
-
-    const EPrevRewardClaimedGaugeDoesNotMatchPool: u64 = 555281531268615500;
+    const EUpdateRewardGaugeDoesNotMatchPool: u64 = 922337345419444224;
+    const EGetPositionRewardGaugeDoesNotMatchPool: u64 = 73727195005154130;
 
     const EAllRewardsClaimedGaugeDoesNotMatchPool: u64 = 577203795438525600;
 
@@ -88,7 +76,6 @@ module distribution::gauge {
     const EWithdrawPositionInvalidPool: u64 = 496532944256373500;
 
     const EFullEarnedForTypeGaugeDoesNotMatchPool: u64 = 266845958013316900;
-    const EFullEarnedForTypeNoGrowthGlobalByToken: u64 = 923483942940234034;
 
     public struct AdminCap has store, key {
         id: UID,
@@ -134,13 +121,6 @@ module distribution::gauge {
         last_update_time: u64,
     }
 
-    public struct EventClaimReward has copy, drop, store {
-        from: address,
-        position_id: ID,
-        amount: u64,
-        token: TypeName,
-    }
-
     public struct EventWithdrawPosition has copy, drop, store {
         staked_position_id: ID,
         position_id: ID,
@@ -167,7 +147,6 @@ module distribution::gauge {
         position_id: ID,
         growth_inside: u128,
         amount: u64,
-        token: TypeName,
     }
 
     public struct Locked has copy, drop, store {}
@@ -513,111 +492,26 @@ module distribution::gauge {
         staked_position
     }
 
-    /// Calculates the rewards in RewardCoinType earned by all staked positions.
-    /// Successfull only when previous coin rewards are claimed.
+
+    /// Function to calculate earned rewards for a position.
+    /// Does not consider current epoch oSAIL token.
+    /// This is a complex calculation that takes into account time elapsed,
+    /// global reward growth, and position-specific factors.
     ///
     /// # Arguments
     /// * `gauge` - The gauge instance
     /// * `pool` - The associated pool
-    /// * `staked_positions` - The staked positions to check rewards for
-    /// * `clock` - The system clock
+    /// * `position_id` - ID of the position
+    /// * `time` - Current timestamp in seconds
     ///
     /// # Returns
-    /// The total amount of rewards earned by the account
-    ///
-    /// # Aborts
-    /// * If the gauge does not match the pool
-    public fun earned_by_staked_position<CoinTypeA, CoinTypeB, RewardCoinType>(
-        gauge: &Gauge<CoinTypeA, CoinTypeB>,
-        pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        staked_positions: &vector<StakedPosition>,
-        clock: &sui::clock::Clock
-    ): u64 {
-        assert!(
-            gauge.check_gauger_pool(pool),
-            EEarnedByAccountGaugeDoesNotMatchPool
-        );
-        if (!gauge.is_valid_epoch_token<CoinTypeA, CoinTypeB, RewardCoinType>()) {
-            return 0
-        };
-        let mut i = 0;
-        let mut total_earned = 0;
-        while (i < staked_positions.length()) {
-            let (earned_i, _) = gauge.earned_internal<CoinTypeA, CoinTypeB>(
-                pool, 
-                staked_positions[i].position_id, 
-                clock.timestamp_ms() / 1000
-            );
-            total_earned = total_earned + earned_i;
-
-            i = i + 1;
-        };
-        total_earned
-    }
-
-    /// Calculates the rewards in RewardCoinType earned by all positions with given IDs.
-    ///
-    /// # Arguments
-    /// * `gauge` - The gauge instance
-    /// * `pool` - The associated pool
-    /// * `position_ids` - The IDs of the positions to check
-    /// * `clock` - The system clock
-    /// 
-    /// # Returns
-    /// The total amount of rewards earned by the account
-    ///
-    /// # Aborts
-    /// * If the gauge does not match the pool
-    public fun earned_by_position_ids<CoinTypeA, CoinTypeB, RewardCoinType>(
-        gauge: &Gauge<CoinTypeA, CoinTypeB>,
-        pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        position_ids: &vector<ID>,
-        clock: &sui::clock::Clock
-    ): u64 {
-        assert!(
-            gauge.check_gauger_pool(pool),
-            EEarnedByAccountGaugeDoesNotMatchPool
-        );
-        let coin_type = type_name::get<RewardCoinType>();
-        if (gauge.current_epoch_token.borrow() != coin_type) {
-            return 0
-        };
-        let mut i = 0;
-        let mut total_earned = 0;
-        while (i < position_ids.length()) {
-            let (earned_i, _) = gauge.earned_internal<CoinTypeA, CoinTypeB>(
-                pool, 
-                position_ids[i], 
-                clock.timestamp_ms() / 1000
-            );
-            total_earned = total_earned + earned_i;
-
-            i = i + 1;
-        };
-        total_earned
-    }
-
-    /// Calculates the rewards in RewardCoinType earned by a specific position.
-    ///
-    /// # Arguments
-    /// * `gauge` - The gauge instance
-    /// * `pool` - The associated pool
-    /// * `position_id` - ID of the position to check
-    /// * `clock` - The system clock
-    ///
-    /// # Returns
-    /// The amount of rewards earned by the position and total growth inside of the position
-    /// Ignore growth inside of the position if you don't need it.
-    ///
-    /// # Aborts
-    /// * If the gauge does not match the pool
-    /// * If the position is not deposited in the gauge
-    public fun earned_by_position<CoinTypeA, CoinTypeB, RewardCoinType>(
+    /// * The amount of rewards earned by the position
+    public fun earned<CoinTypeA, CoinTypeB>(
         gauge: &Gauge<CoinTypeA, CoinTypeB>,
         pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         position_id: ID,
         clock: &sui::clock::Clock
-    ): (u64, u128) {
+    ): u64 {
         assert!(
             gauge.check_gauger_pool(pool),
             EEarnedByPositionGaugeDoesNotMatchPool
@@ -626,11 +520,8 @@ module distribution::gauge {
             gauge.staked_positions.contains(position_id),
             EEarnedByPositionNotDepositedPosition
         );
-        if (!gauge.is_valid_epoch_token<CoinTypeA, CoinTypeB, RewardCoinType>()) {
-            return (0, 0)
-        };
-
-        gauge.earned_internal<CoinTypeA, CoinTypeB>(pool, position_id, clock.timestamp_ms() / 1000)
+        let (amount, _) = gauge.earned_internal<CoinTypeA, CoinTypeB>(pool, position_id, clock.timestamp_ms() / 1000);
+        amount
     }
 
     /// Internal function to calculate earned rewards for a position.
@@ -823,147 +714,6 @@ module distribution::gauge {
 
         (0, 0)
     }
-
-    /// Claims rewards for a specific staked position and transfers them to the position owner.
-    /// Should be called in sequence, successfull only when previous coin rewards are claimed.
-    ///
-    /// # Arguments
-    /// * `gauge` - The gauge instance
-    /// * `pool` - The associated pool
-    /// * `position_id` - ID of the position to claim rewards for
-    /// * `clock` - The system clock
-    /// * `ctx` - Transaction context
-    ///
-    /// # Aborts
-    /// * If the gauge does not match the pool
-    /// * If the position is not staked in the gauge
-    public fun get_position_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
-        gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
-        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        voter_cap: &VoterCap,
-        distribution_config: &DistributionConfig,
-        staked_position: &StakedPosition,
-        clock: &sui::clock::Clock,
-        ctx: &mut TxContext
-    ): u64 {
-        gauge.validate_voter_cap(voter_cap);
-        assert!(
-            gauge.check_gauger_pool(pool),
-            EGetPositionRewardGaugeDoesNotMatchPool
-        );
-        assert!(
-            object::id(distribution_config) == gauge.distribution_config,
-            EGetPositionRewardDistributionConfInvalid
-        );
-        assert!(
-            distribution_config.is_gauge_alive(object::id(gauge)),
-            EGetPositionRewardGaugeNotAlive
-        );
-        assert!(
-            gauge.is_valid_epoch_token<CoinTypeA, CoinTypeB, RewardCoinType>(),
-            EGetPositionRewardInvalidRewardToken
-        );
-        let reward_amount = gauge.get_reward_internal<CoinTypeA, CoinTypeB, RewardCoinType>(
-            pool, 
-            staked_position.position_id, 
-            clock, 
-            ctx
-        );
-
-        reward_amount
-    }
-
-    /// Claims rewards in RewardCoinType for all staked positions.
-    /// Should be called in sequence, successfull only when previous epoch coin rewards are claimed.
-    /// Returns only the total amount of oSAIL rewards and doesn't return any coins.
-    /// The coins should be handled by minter.
-    ///
-    /// # Arguments
-    /// * `gauge` - The gauge instance
-    /// * `pool` - The associated pool
-    /// * `staked_positions` - The staked positions to claim rewards for
-    /// * `clock` - The system clock
-    /// * `ctx` - Transaction context
-    ///
-    /// # Aborts
-    /// * If the gauge does not match the pool
-    /// * If the sender has no deposited positions
-    public fun get_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
-        gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
-        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        voter_cap: &VoterCap,
-        distribution_config: &DistributionConfig,
-        staked_positions: &vector<StakedPosition>,
-        clock: &sui::clock::Clock,
-        ctx: &mut TxContext
-    ): u64 {
-        gauge.validate_voter_cap(voter_cap);
-        assert!(gauge.check_gauger_pool(pool), EGetRewardGaugeDoesNotMatchPool);
-        assert!(
-            object::id(distribution_config) == gauge.distribution_config,
-            EGetRewardDistributionConfInvalid
-        );
-        assert!(
-            distribution_config.is_gauge_alive(object::id(gauge)),
-            EGetRewardGaugeNotAlive
-        );
-        assert!(
-            gauge.is_valid_epoch_token<CoinTypeA, CoinTypeB, RewardCoinType>(),
-            EGetRewardInvalidRewardToken
-        );
-
-        let mut total_reward_amount = 0;
-        let mut i = 0;
-        while (i < staked_positions.length()) {
-            total_reward_amount = total_reward_amount + gauge.get_reward_internal<CoinTypeA, CoinTypeB, RewardCoinType>(
-                pool, 
-                staked_positions[i].position_id,
-                clock, 
-                ctx
-            );
-
-            i = i + 1;
-        };
-
-        total_reward_amount
-    }
-
-    /// Internal function to handle reward claiming for a specific position.
-    /// Updates the reward accounting, calculates the earned amount and returns it.
-    /// Should be called in sequence, successfull only when previous epoch coin rewards are claimed.
-    ///
-    /// # Arguments
-    /// * `gauge` - The gauge instance
-    /// * `pool` - The associated pool
-    /// * `position_id` - ID of the position
-    /// * `position_owner` - The owner of the position
-    /// * `clock` - The system clock
-    /// * `ctx` - Transaction context
-    fun get_reward_internal<CoinTypeA, CoinTypeB, RewardCoinType>(
-        gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
-        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        position_id: ID,
-        clock: &sui::clock::Clock,
-        ctx: &TxContext
-    ): u64 {
-        let reward_amount = gauge.update_reward_internal<CoinTypeA, CoinTypeB, RewardCoinType>(
-            pool,
-            position_id,
-            clock
-        );
-        if (reward_amount > 0) {
-            let claim_reward_event = EventClaimReward {
-                from: tx_context::sender(ctx),
-                position_id,
-                amount: reward_amount,
-                token: type_name::get<RewardCoinType>(),
-            };
-            sui::event::emit<EventClaimReward>(claim_reward_event);
-        };
-
-        reward_amount
-    }
-
     /// Collects rewards for a specific pool position.
     /// 
     /// # Arguments
@@ -1425,23 +1175,16 @@ module distribution::gauge {
         sui::object::delete(staked_position_id);
     }
 
-    /// Internal function to update reward accounting for a position and calculate earned rewards.
-    ///
-    /// # Arguments
-    /// * `gauge` - The gauge instance
-    /// * `pool` - The associated pool
-    /// * `position_id` - ID of the position
-    /// * `clock` - The system clock
-    ///
-    /// # Returns
-    /// The amount of oSAIL earned by the position
-    fun update_reward_internal<CoinTypeA, CoinTypeB, RewardCoinType>(
+    /// Internal function to handle reward claiming for a specific position.
+    /// Updates the reward accounting, calculates the earned amount and returns it.
+    /// Does not consider the reward token.
+    public(package) fun update_reward_internal<CoinTypeA, CoinTypeB>(
         gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         position_id: ID,
         clock: &sui::clock::Clock
     ): u64 {
-        let coin_type = type_name::get<RewardCoinType>();
+        assert!(gauge.check_gauger_pool(pool), EUpdateRewardGaugeDoesNotMatchPool);
         let gauge_id = object::id<Gauge<CoinTypeA, CoinTypeB>>(gauge);
         let current_time = clock.timestamp_ms() / 1000;
         let (amount_earned, growth_inside) = gauge.earned_internal<CoinTypeA, CoinTypeB>(pool, position_id, current_time);
@@ -1457,11 +1200,10 @@ module distribution::gauge {
         reward_profile.growth_inside = growth_inside;
         let update_reward_event = EventUpdateRewardPosition {
             gauger_id: gauge_id,
-            pool_id: object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool),
+            pool_id: object::id(pool),
             position_id,
             growth_inside: reward_profile.growth_inside,
             amount: reward_profile.amount,
-            token: coin_type,
         };
         sui::event::emit<EventUpdateRewardPosition>(update_reward_event);
 

@@ -1,10 +1,13 @@
 [package]
 name = "ve"
-edition = "2024.beta" # edition = "legacy" to use legacy (pre-2024) Move
-# license = ""           # e.g., "MIT", "GPL", "Apache 2.0"
-# authors = ["..."]      # e.g., ["Joe Smith (joesmith@noemail.com)", "John Snow (johnsnow@noemail.com)"]
+edition = "2024.beta"
 
-[dependencies]
+[addresses]
+ve = "0x0"
+
+[dev-dependencies]
+
+[dev-addresses]
 
 [dependencies.Sui]
 git = "https://github.com/MystenLabs/sui.git"
@@ -17,11 +20,3 @@ git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
 subdir = "integer_mate"
 rev = "dev"
 override = true
-
-[addresses]
-ve = "0x0"
-
-[dev-dependencies]
-
-[dev-addresses]
-
