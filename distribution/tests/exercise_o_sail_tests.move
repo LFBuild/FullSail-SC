@@ -7,7 +7,6 @@ use distribution::voter::{Self, Voter};
 use ve::voting_escrow::{Self, VotingEscrow, Lock};
 use ve::reward_distributor::{Self, RewardDistributor};
 use distribution::distribution_config::{Self, DistributionConfig};
-use distribution::exercise_fee_reward;
 
 use clmm_pool::pool::{Self, Pool};
 use clmm_pool::config::{Self, GlobalConfig};
@@ -24,6 +23,7 @@ use switchboard::aggregator::{Self, Aggregator};
 use price_monitor::price_monitor::{Self, PriceMonitor};
 
 use clmm_pool::tick_math;
+use distribution::ausd_tests::{Self, AUSD_TESTS};
 
 const WEEK: u64 = 7 * 24 * 60 * 60 * 1000;
 
@@ -49,165 +49,185 @@ public struct AUSD has drop {}
 // ===================================================================================
 
 // Helper to run the calculation test logic
-// fun run_calc_test(
-//     scenario: &mut test_scenario::Scenario,
-//     price_dec_18: u128,
-//     o_sail_amount: u64,
-//     discount_percent: u64,
-//     expected_usd_to_pay: u64,
-//     clock: &Clock
-// ) {
-//     let admin = @0xA0;
-//     let user = @0xA1;
+fun run_calc_test(
+    scenario: &mut test_scenario::Scenario,
+    price_dec_18: u128,
+    pool_price: u128,
+    o_sail_amount: u64,
+    discount_percent: u64,
+    expected_usd_to_pay: u64,
+    clock: &Clock
+) {
+    let admin = @0xA0;
+    let user = @0xA1;
 
-//     // setup distribution config
-//     scenario.next_tx(admin);
-//     {
-//         setup::setup_clmm_factory_with_fee_tier(scenario, admin, 1, 1000);
-//         setup::setup_distribution<SAIL>(scenario, admin, clock);
-//         setup::setup_price_monitor_and_aggregator(scenario, admin, clock);
-//     };
+    // setup distribution config
+    scenario.next_tx(admin);
+    {
+        setup::setup_clmm_factory_with_fee_tier(scenario, admin, 1, 1000);
+        setup::setup_distribution<SAIL>(scenario, admin, clock);
+    };
 
-//     // Pool setup needs a unique TX block
-//     // Calculation doesn't need a new TX block if pool is shared
-//     scenario.next_tx(user);
-//     {
-//         let dummy_o_sail = coin::mint_for_testing<OSAIL1>(o_sail_amount, scenario.ctx());
-//         let mut distribution_config = scenario.take_shared<DistributionConfig>();
-//         let aggregator = scenario.take_from_sender<Aggregator>();
-//         let price_q64 = common::get_time_checked_price_q64(&aggregator, 6, 6, clock);
-//         let calculated_usd = minter::exercise_o_sail_calc<OSAIL1>(
-//             &dummy_o_sail,
-//             discount_percent,
-//             price_q64,
-//         );
-//         test_utils::destroy(aggregator);
+    let (ausd_treasury_cap, ausd_metadata) = ausd_tests::create_ausd_tests(scenario, 6);
 
-//         // Allow for minor rounding differences (e.g., off by 1)
-//         let diff = if (calculated_usd > expected_usd_to_pay) { 
-//             calculated_usd - expected_usd_to_pay 
-//         } else { 
-//             expected_usd_to_pay - calculated_usd 
-//         };
-//         assert!(diff <= 1, 1337);
+    let aggregator = setup::setup_price_monitor_and_aggregator_with_price<SAIL, AUSD_TESTS>(scenario, admin, price_dec_18, pool_price, true, clock);
 
-//         coin::burn_for_testing(dummy_o_sail);
-//         test_scenario::return_shared(distribution_config);
-//     }
-// }
+    // Pool setup needs a unique TX block
+    // Calculation doesn't need a new TX block if pool is shared
+    scenario.next_tx(user);
+    {
+        let dummy_o_sail = coin::mint_for_testing<OSAIL1>(o_sail_amount, scenario.ctx());
+        let mut distribution_config = scenario.take_shared<DistributionConfig>();
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let feed_pool = scenario.take_shared<Pool<SAIL, AUSD_TESTS>>();
+        let mut price_monitor = scenario.take_shared<PriceMonitor>();
+        let (price_q64, is_invalid) = minter.test_get_aggregator_price(&mut price_monitor, &feed_pool, &ausd_metadata, &aggregator, clock);
+        assert!(!is_invalid, 228);
+        
+        let calculated_usd = minter::exercise_o_sail_calc<OSAIL1>(
+            &dummy_o_sail,
+            discount_percent,
+            price_q64,
+        );
+        test_utils::destroy(aggregator);
 
-// #[test]
-// fun test_exercise_o_sail_calc_price_1() {
-//     let admin = @0xC1;
-//     let mut scenario = test_scenario::begin(admin);
-//     let clock = clock::create_for_testing(scenario.ctx());
+        // Allow for minor rounding differences (e.g., off by 1)
+        let diff = if (calculated_usd > expected_usd_to_pay) { 
+            calculated_usd - expected_usd_to_pay 
+        } else { 
+            expected_usd_to_pay - calculated_usd 
+        };
+        assert!(diff <= 1, 1337);
 
-//     let price_dec_18: u128 = setup::one_dec18();
-//     let o_sail_amount = 100_000;
-//     let discount_percent = 50000000; // 50%
-//     // Pay for 50% = 50_000 SAIL. Price = 1 USD/SAIL.
-//     // USD needed = 50_000 SAIL * (1 USD / 1 SAIL) = 50_000 USD
-//     let expected_usd = 50_000;
+        coin::burn_for_testing(dummy_o_sail);
+        test_scenario::return_shared(distribution_config);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(feed_pool);
+        test_scenario::return_shared(price_monitor);
+    };
 
-//     run_calc_test(&mut scenario, price_dec_18, o_sail_amount, discount_percent, expected_usd, &clock);
+    test_utils::destroy(ausd_treasury_cap);
+    test_utils::destroy(ausd_metadata);
+}
 
-//     clock::destroy_for_testing(clock);
-//     scenario.end();
-// }
+#[test]
+fun test_exercise_o_sail_calc_price_1() {
+    let admin = @0xC1;
+    let mut scenario = test_scenario::begin(admin);
+    let clock = clock::create_for_testing(scenario.ctx());
 
-// #[test]
-// fun test_exercise_o_sail_calc_price_4() {
-//     let admin = @0xC3;
-//     let mut scenario = test_scenario::begin(admin);
-//     let clock = clock::create_for_testing(scenario.ctx());
+    let price_dec_18: u128 = setup::one_dec18();
+    let pool_price = 1 << 64;
+    let o_sail_amount = 100_000;
+    let discount_percent = 50000000; // 50%
+    // Pay for 50% = 50_000 SAIL. Price = 1 USD/SAIL.
+    // USD needed = 50_000 SAIL * (1 USD / 1 SAIL) = 50_000 USD
+    let expected_usd = 50_000;
 
-//     let price_dec_18: u128 = 4 * setup::one_dec18();
-//     let o_sail_amount = 100_000;
-//     let discount_percent = 50000000; // 50%
-//     // Pay for 50% = 50_000 SAIL. Price = 4 USD/SAIL.
-//     // USD needed = 50_000 SAIL / 4 = 12_500 USD
-//     let expected_usd = 200_000;
+    run_calc_test(&mut scenario, price_dec_18, pool_price, o_sail_amount, discount_percent, expected_usd, &clock);
 
-//     run_calc_test(&mut scenario, price_dec_18, o_sail_amount, discount_percent, expected_usd, &clock);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
 
-//     clock::destroy_for_testing(clock);
-//     scenario.end();
-// }
+#[test]
+fun test_exercise_o_sail_calc_price_4() {
+    let admin = @0xC3;
+    let mut scenario = test_scenario::begin(admin);
+    let clock = clock::create_for_testing(scenario.ctx());
 
-// #[test]
-// fun test_exercise_o_sail_calc_price_point_25() {
-//     let admin = @0xC4;
-//     let mut scenario = test_scenario::begin(admin);
-//     let clock = clock::create_for_testing(scenario.ctx());
+    let price_dec_18: u128 = 4 * setup::one_dec18();
+    let pool_price = 2 << 64;
+    let o_sail_amount = 100_000;
+    let discount_percent = 50000000; // 50%
+    // Pay for 50% = 50_000 SAIL. Price = 4 USD/SAIL.
+    // USD needed = 50_000 SAIL / 4 = 12_500 USD
+    let expected_usd = 200_000;
 
-//     let price_dec_18: u128 = setup::one_dec18() / 4;
-//     let o_sail_amount = 100_000;
-//     let discount_percent = 50000000; // 50%
-//     // Pay for 50% = 50_000 SAIL. Price = 0.25 USD/SAIL.
-//     // USD needed = 50_000 SAIL * (0.25 USD / 1 SAIL) = 12_500 USD
-//     let expected_usd = 12_500;
+    run_calc_test(&mut scenario, price_dec_18, pool_price, o_sail_amount, discount_percent, expected_usd, &clock);
 
-//     run_calc_test(&mut scenario, price_dec_18, o_sail_amount, discount_percent, expected_usd, &clock);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
 
-//     clock::destroy_for_testing(clock);
-//     scenario.end();
-// }
+#[test]
+fun test_exercise_o_sail_calc_price_point_25() {
+    let admin = @0xC4;
+    let mut scenario = test_scenario::begin(admin);
+    let clock = clock::create_for_testing(scenario.ctx());
 
-// #[test]
-// fun test_exercise_o_sail_calc_discount_75() {
-//     let admin = @0xC5;
-//     let mut scenario = test_scenario::begin(admin);
-//     let clock = clock::create_for_testing(scenario.ctx());
+    let price_dec_18: u128 = setup::one_dec18() / 4;
+    let pool_price = 1 << 63;
+    let o_sail_amount = 100_000;
+    let discount_percent = 50000000; // 50%
+    // Pay for 50% = 50_000 SAIL. Price = 0.25 USD/SAIL.
+    // USD needed = 50_000 SAIL * (0.25 USD / 1 SAIL) = 12_500 USD
+    let expected_usd = 12_500;
 
-//     let price_dec_18: u128 = setup::one_dec18();
-//     let o_sail_amount = 100_000;
-//     let discount_percent = 75000000; // 75%
-//     // Pay for 25% = 25_000 SAIL. Price = 1 USD/SAIL.
-//     // USD needed = 25_000 SAIL * (1 USD / 1 SAIL) = 25_000 USD
-//     let expected_usd = 25_000;
+    run_calc_test(&mut scenario, price_dec_18, pool_price, o_sail_amount, discount_percent, expected_usd, &clock);
 
-//     run_calc_test(&mut scenario, price_dec_18, o_sail_amount, discount_percent, expected_usd, &clock);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
 
-//     clock::destroy_for_testing(clock);
-//     scenario.end();
-// }
+#[test]
+fun test_exercise_o_sail_calc_discount_75() {
+    let admin = @0xC5;
+    let mut scenario = test_scenario::begin(admin);
+    let clock = clock::create_for_testing(scenario.ctx());
+
+    let price_dec_18: u128 = setup::one_dec18();
+    let pool_price = 1 << 64;
+    let o_sail_amount = 100_000;
+    let discount_percent = 75000000; // 75%
+    // Pay for 25% = 25_000 SAIL. Price = 1 USD/SAIL.
+    // USD needed = 25_000 SAIL * (1 USD / 1 SAIL) = 25_000 USD
+    let expected_usd = 25_000;
+
+    run_calc_test(&mut scenario, price_dec_18, pool_price, o_sail_amount, discount_percent, expected_usd, &clock);
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
 
 
-// #[test]
-// fun test_exercise_o_sail_calc_max_price() {
-//     let admin = @0xD1;
-//     let mut scenario = test_scenario::begin(admin);
-//     let clock = clock::create_for_testing(scenario.ctx());
+#[test]
+fun test_exercise_o_sail_calc_max_price() {
+    let admin = @0xD1;
+    let mut scenario = test_scenario::begin(admin);
+    let clock = clock::create_for_testing(scenario.ctx());
 
-//     let price_dec_18 = (1<<60) * setup::one_dec18();
-//     let o_sail_amount = 8;
-//     let discount_percent = 50000000; // 50%
-//     // sail_to_pay = 8 * 50% = 4
-//     let expected_usd = 4 * (1<<60);
+    let price_dec_18 = (1<<40) * setup::one_dec18();
+    let pool_price: u128 = 1<<(20 + 64);
+    let o_sail_amount = 8;
+    let discount_percent = 50000000; // 50%
+    // sail_to_pay = 8 * 50% = 4
+    let expected_usd = 4 * (1<<40);
 
-//     run_calc_test(&mut scenario, price_dec_18, o_sail_amount, discount_percent, expected_usd, &clock);
+    run_calc_test(&mut scenario, price_dec_18, pool_price, o_sail_amount, discount_percent, expected_usd, &clock);
 
-//     clock::destroy_for_testing(clock);
-//     scenario.end();
-// }
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
 
-// #[test]
-// fun test_exercise_o_sail_calc_min_price() {
-//     let admin = @0xD3;
-//     let mut scenario = test_scenario::begin(admin);
-//     let clock = clock::create_for_testing(scenario.ctx());
+#[test]
+fun test_exercise_o_sail_calc_min_price() {
+    let admin = @0xD3;
+    let mut scenario = test_scenario::begin(admin);
+    let clock = clock::create_for_testing(scenario.ctx());
 
-//     let price_dec_18 = 1000;
-//     // Use smaller oSAIL amount
-//     let o_sail_amount = setup::one_dec18() as u64;
-//     let discount_percent = 50000000; // 50%
-//     let expected_usd = 500;
+    let price_dec_18 = 1000;
+    let pool_price = 583337266871;
+    // Use smaller oSAIL amount
+    let o_sail_amount = setup::one_dec18() as u64;
+    let discount_percent = 50000000; // 50%
+    let expected_usd = 500;
 
-//     run_calc_test(&mut scenario, price_dec_18, o_sail_amount, discount_percent, expected_usd, &clock);
+    run_calc_test(&mut scenario, price_dec_18, pool_price, o_sail_amount, discount_percent, expected_usd, &clock);
 
-//     clock::destroy_for_testing(clock);
-//     scenario.end();
-// }
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
 
 // ================================================
 // Integration tests
@@ -230,7 +250,7 @@ fun test_exercise_o_sail() {
         setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
     };
 
-    let mut aggregator = setup::setup_price_monitor_and_aggregator<SAIL, SAIL,USD_TESTS, SAIL>(&mut scenario, admin, &clock);
+    let mut aggregator = setup::setup_price_monitor_and_aggregator<USD_TESTS, SAIL>(&mut scenario, admin, true, &clock);
 
     // Tx 3: Whitelist usd
     scenario.next_tx(admin);
@@ -325,7 +345,7 @@ fun test_exercise_o_sail_fail_not_whitelisted_token() {
         setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
         setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
     };
-    let mut aggregator = setup::setup_price_monitor_and_aggregator<SAIL, SAIL, USD_TESTS, SAIL>(&mut scenario, admin, &clock);
+    let mut aggregator = setup::setup_price_monitor_and_aggregator<USD_TESTS, SAIL>(&mut scenario, admin, true, &clock);
 
     // Tx 4: Activate Minter for Epoch 1 (OSAIL1)
     scenario.next_tx(admin);
@@ -414,7 +434,7 @@ fun test_exercise_o_sail_fail_usd_limit_not_met() {
         setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
     };
 
-    let mut aggregator = setup::setup_price_monitor_and_aggregator<SAIL, SAIL, USD_TESTS, SAIL>(&mut scenario, admin, &clock); 
+    let mut aggregator = setup::setup_price_monitor_and_aggregator<USD_TESTS, SAIL>(&mut scenario, admin, true, &clock); 
 
     // Tx 3: Whitelist usd
     scenario.next_tx(admin);
@@ -488,7 +508,7 @@ fun test_exercise_o_sail_fail_usd_limit_not_met() {
 }
 
 #[test]
-#[expected_failure(abort_code = sui::balance::ENotEnough)] // Expect failure when splitting usd_fee
+#[expected_failure(abort_code = minter::EExerciseUsdLimitReached)] // Expect failure when splitting usd_fee
 fun test_exercise_o_sail_fail_insufficient_usd_fee() {
     let admin = @0x101; // Use a different address
     let user = @0x102;
@@ -504,7 +524,7 @@ fun test_exercise_o_sail_fail_insufficient_usd_fee() {
         setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
         setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
     };
-    let mut aggregator = setup::setup_price_monitor_and_aggregator<SAIL, SAIL, USD_TESTS, SAIL>(&mut scenario, admin, &clock);
+    let mut aggregator = setup::setup_price_monitor_and_aggregator<USD_TESTS, SAIL>(&mut scenario, admin, true, &clock);
     // Tx 3: Whitelist usd
     scenario.next_tx(admin);
     {
@@ -540,7 +560,7 @@ fun test_exercise_o_sail_fail_insufficient_usd_fee() {
 
         // Mint less USD than needed, but set limit high enough
         let usd_fee = coin::mint_for_testing<USD_TESTS>(expected_usd_needed - 1, scenario.ctx()); 
-        let usd_limit = 1_000_000_000;
+        let usd_limit = usd_fee.value();
 
         // Attempt exercise - should fail here due to insufficient balance in usd_fee coin
         let (usd_left, sail_received) = minter::exercise_o_sail<USD_TESTS, SAIL, SAIL, USD_TESTS, OSAIL1>(
@@ -594,7 +614,7 @@ fun test_exercise_o_sail_fail_expired() {
         setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
     };
 
-    let mut aggregator = setup::setup_price_monitor_and_aggregator<SAIL, SAIL, USD_TESTS, SAIL>(&mut scenario, admin, &clock);
+    let mut aggregator = setup::setup_price_monitor_and_aggregator<USD_TESTS, SAIL>(&mut scenario, admin, true, &clock);
 
     // Tx 2: Whitelist USD_TESTS token
     scenario.next_tx(admin);
@@ -679,7 +699,7 @@ fun test_exercise_o_sail_before_expiry() {
         setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
         setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
     };
-    let mut aggregator = setup::setup_price_monitor_and_aggregator<SAIL, SAIL, USD_TESTS, SAIL>(&mut scenario, admin, &clock); 
+    let mut aggregator = setup::setup_price_monitor_and_aggregator<USD_TESTS, SAIL>(&mut scenario, admin, true, &clock); 
     // Tx 2: Whitelist USD_TESTS token
     scenario.next_tx(admin);
     {
@@ -772,7 +792,7 @@ fun test_exercise_o_sail_whitelist_toggle() {
         setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
         setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
     };
-    let mut aggregator = setup::setup_price_monitor_and_aggregator<SAIL, SAIL, USD_TESTS, SAIL>(&mut scenario, admin, &clock); 
+    let mut aggregator = setup::setup_price_monitor_and_aggregator<USD_TESTS, SAIL>(&mut scenario, admin, true, &clock); 
     // Tx 2: Whitelist USD_TESTS token (First time)
     scenario.next_tx(admin);
     {
@@ -1600,7 +1620,7 @@ fun test_exercise_and_lock_after_epoch_update() {
         setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
         setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
     };
-    let mut aggregator = setup::setup_price_monitor_and_aggregator<SAIL, SAIL, USD_TESTS, SAIL>(&mut scenario, admin, &clock); 
+    let mut aggregator = setup::setup_price_monitor_and_aggregator<USD_TESTS, SAIL>(&mut scenario, admin, true, &clock); 
 
     // Tx 2: Whitelist USD_TESTS token
     scenario.next_tx(admin);
@@ -1740,7 +1760,7 @@ fun test_exercise_fee_distribution() {
         setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
     };
 
-    let mut aggregator = setup::setup_price_monitor_and_aggregator<SAIL, SAIL, USD_TESTS, SAIL>(&mut scenario, admin, &clock);
+    let mut aggregator = setup::setup_price_monitor_and_aggregator<USD_TESTS, SAIL>(&mut scenario, admin, true, &clock);
 
     // Tx 2:Set admin as the team wallet
     scenario.next_tx(admin); // New Tx block needed for admin action
@@ -2070,7 +2090,7 @@ fun test_exercise_o_sail_high_price() {
     };
 
     setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
-    let mut aggregator = setup::setup_price_monitor_and_aggregator<SAIL, SAIL, USD_TESTS, SAIL>(&mut scenario, admin, &clock); 
+    let mut aggregator = setup::setup_price_monitor_and_aggregator<USD_TESTS, SAIL>(&mut scenario, admin, true, &clock); 
 
     // Tx 2: Whitelist USD_TESTS token
     scenario.next_tx(admin);
@@ -2165,7 +2185,7 @@ fun test_exercise_o_sail_small_price() {
     };
     
     setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
-    let mut aggregator = setup::setup_price_monitor_and_aggregator<SAIL, SAIL, USD_TESTS, SAIL>(&mut scenario, admin, &clock); 
+    let mut aggregator = setup::setup_price_monitor_and_aggregator<USD_TESTS, SAIL>(&mut scenario, admin, true, &clock); 
 
     // Tx 2: Whitelist USD_TESTS token
     scenario.next_tx(admin);
