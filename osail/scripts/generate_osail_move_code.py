@@ -15,10 +15,17 @@ def get_next_epoch_start(now, duration_hours):
     
     return datetime.fromtimestamp(next_epoch_start_ts, tz=timezone.utc)
 
-def generate_osail_code(expiry_date, icon_number):
-    module_name = f"osail_{expiry_date.strftime('%d%b%Y').lower()}"
-    struct_name = f"OSAIL_{expiry_date.strftime('%d%b%Y').upper()}"
-    token_name_symbol = f"oSAIL-{expiry_date.strftime('%d%b%Y')}"
+def generate_osail_code(expiry_date, icon_number, duration_hours):
+    if duration_hours < 24:
+        date_str = expiry_date.strftime('%d%b%Y_%H%M')
+        symbol_date_str = expiry_date.strftime('%d%b%Y-%H%M')
+    else:
+        date_str = expiry_date.strftime('%d%b%Y')
+        symbol_date_str = expiry_date.strftime('%d%b%Y')
+    
+    module_name = f"osail_{date_str.lower()}"
+    struct_name = f"OSAIL_{date_str.upper()}"
+    token_name_symbol = f"oSAIL-{symbol_date_str}"
     description = f"Full Sail option token, expiration {expiry_date.strftime('%d %b %Y %H:%M:%S')} UTC"
     url = f"https://app.fullsail.finance/static_files/o_sail{icon_number}_test_coin.png"
 
@@ -64,8 +71,8 @@ def main():
 
     for i in range(20):
         expiry_date = first_expiry + i * epoch_duration
-        module_name, code = generate_osail_code(expiry_date, i + 1)
-        file_path = f"osail/sources/{module_name}.move"
+        module_name, code = generate_osail_code(expiry_date, i + 1, duration_hours)
+        file_path = f"../sources/{module_name}.move"
         with open(file_path, "w") as f:
             f.write(code)
         print(f"Generated {file_path}")
