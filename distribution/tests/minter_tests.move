@@ -852,7 +852,7 @@ fun test_distribute_gauge_without_minter_activation_fails() {
     setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
     setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
 
-    let mut aggregator = setup::setup_price_monitor_and_aggregator<SAIL, SAIL, USD_TESTS, SAIL>(&mut scenario, admin, &clock);
+    let mut aggregator = setup::setup_price_monitor_and_aggregator<USD_TESTS, SAIL>(&mut scenario, admin, true, &clock);
 
     scenario.next_tx(admin);
     let pool_sqrt_price: u128 = 1 << 64;

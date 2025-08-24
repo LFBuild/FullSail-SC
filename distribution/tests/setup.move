@@ -1071,152 +1071,163 @@ public fun update_minter_period<SAIL, OSailCoinType>(
         initial_supply
 }
 
-    // CoinTypeA and CoinTypeB - to check that such a pool has already been created
-    // in other cases you can pass any types, so that the USD_TESTS/SAIL pool is created
-    #[test_only]
-    public fun setup_price_monitor_and_aggregator<CoinTypeA, CoinTypeB, USD: drop, SAIL: drop>(
-        scenario: &mut test_scenario::Scenario,
-        sender: address,
-        clock: &Clock,
-    ): Aggregator {
+// CoinTypeA and CoinTypeB - types to create the pool.
+// One of them must be USD kind of type and other SAIL kind of type.
+#[test_only]
+public fun setup_price_monitor_and_aggregator<CoinTypeA: drop, CoinTypeB: drop>(
+    scenario: &mut test_scenario::Scenario,
+    sender: address,
+    create_pool: bool,
+    clock: &Clock,
+): Aggregator {
+    setup_price_monitor_and_aggregator_with_price<CoinTypeA, CoinTypeB>(scenario, sender, one_dec18(), 1 << 64, create_pool, clock)
+}
 
-        // create pool for USD_TESTS/SAIL
-        if (type_name::get<CoinTypeA>() != type_name::get<USD>() || 
-            type_name::get<CoinTypeB>() != type_name::get<SAIL>()) {
+// CoinTypeA and CoinTypeB - to check that such a pool has already been created
+// in other cases you can pass any types, so that the USD_TESTS/SAIL pool is created
+#[test_only]
+public fun setup_price_monitor_and_aggregator_with_price<CoinTypeA: drop, CoinTypeB: drop>(
+    scenario: &mut test_scenario::Scenario,
+    sender: address,
+    price: u128,
+    pool_sqrt_price: u128,
+    create_pool: bool,
+    clock: &Clock,
+): Aggregator {
 
-            // create pool for USD_TESTS/SAIL
-            scenario.next_tx(sender);
-            {
-                let global_config = scenario.take_shared<GlobalConfig>();
-                let mut pools = test_scenario::take_shared<Pools>(scenario);
-                
-                let pool_sqrt_price: u128 = 1 << 64; // Price = 1
-                let sail_stablecoin_pool = create_pool_with_sqrt_price<USD, SAIL>(
-                    &mut pools,
-                    &global_config,
-                    clock,
-                    pool_sqrt_price,
-                    scenario.ctx()
-                );
-
-                test_scenario::return_shared(global_config);
-                test_scenario::return_shared(pools);
-                transfer::public_share_object(sail_stablecoin_pool);
-            };
-        };
-
-        // --- Initialize Price Monitor --- and aggregator
+    if (create_pool) {
+        // create pool
         scenario.next_tx(sender);
         {
-            price_monitor::test_init(scenario.ctx());
-        };
-
-        let aggregator = setup_aggregator(scenario, one_dec18(), clock);
-
-        // --- Price Monitor Setup --- 
-        scenario.next_tx(sender);
-        {
-            let mut price_monitor = scenario.take_shared<price_monitor::PriceMonitor>();
-            let mut distribution_config = scenario.take_shared<DistributionConfig>();
-            let sail_stablecoin_pool = scenario.take_shared<Pool<USD_TESTS, SAIL>>();
+            let global_config = scenario.take_shared<GlobalConfig>();
+            let mut pools = test_scenario::take_shared<Pools>(scenario);
             
-            let pool_id = object::id(&sail_stablecoin_pool);
-
-            price_monitor.add_aggregator(
-                aggregator.id(),
-                vector[pool_id],
+            let sail_stablecoin_pool = create_pool_with_sqrt_price<CoinTypeA, CoinTypeB>(
+                &mut pools,
+                &global_config,
+                clock,
+                pool_sqrt_price,
                 scenario.ctx()
             );
 
-            distribution_config.set_o_sail_price_aggregator(&aggregator);
-            distribution_config.set_sail_price_aggregator(&aggregator);
-
-            test_scenario::return_shared(price_monitor);
-            test_scenario::return_shared(distribution_config);
+            test_scenario::return_shared(global_config);
+            test_scenario::return_shared(pools);
             transfer::public_share_object(sail_stablecoin_pool);
         };
+    };
 
-        aggregator
-    }
+    // --- Initialize Price Monitor --- and aggregator
+    scenario.next_tx(sender);
+    {
+        price_monitor::test_init(scenario.ctx());
+    };
 
-    /// You can create new aggregator just prior to the call that requires it.
-    /// Then just destroy it after the call.
-    /// Aggregators are not shared objects due to missing store capability.
-    public fun setup_aggregator(
-        scenario: &mut test_scenario::Scenario,
-        price: u128, // decimals 18
-        clock: &Clock,
-    ): Aggregator {
-        let owner = scenario.ctx().sender();
+    let aggregator = setup_aggregator(scenario, price, clock);
 
-        let mut aggregator = aggregator::new_aggregator(
-            aggregator::example_queue_id(),
-            std::string::utf8(b"test_aggregator"),
-            owner,
-            vector::empty(),
-            1,
-            1000000000000000,
-            100000000000,
-            5,
-            1000,
-            scenario.ctx(),
+    // --- Price Monitor Setup --- 
+    scenario.next_tx(sender);
+    {
+        let mut price_monitor = scenario.take_shared<price_monitor::PriceMonitor>();
+        let mut distribution_config = scenario.take_shared<DistributionConfig>();
+        let sail_stablecoin_pool = scenario.take_shared<Pool<CoinTypeA, CoinTypeB>>();
+        
+        let pool_id = object::id(&sail_stablecoin_pool);
+
+        price_monitor.add_aggregator(
+            aggregator.id(),
+            vector[pool_id],
+            scenario.ctx()
         );
 
-        // 1 * 10^18
-        let result = decimal::new(price, false);
-        let result_timestamp_ms = clock.timestamp_ms();
-        let min_result = result;
-        let max_result = result;
-        let stdev = decimal::new(0, false);
-        let range = decimal::new(0, false);
-        let mean = result;
+        distribution_config.set_o_sail_price_aggregator(&aggregator);
+        distribution_config.set_sail_price_aggregator(&aggregator);
 
-        aggregator::set_current_value(
-            &mut aggregator,
-            result,
-            result_timestamp_ms,
-            result_timestamp_ms,
-            result_timestamp_ms,
-            min_result,
-            max_result,
-            stdev,
-            range,
-            mean
-        );
+        test_scenario::return_shared(price_monitor);
+        test_scenario::return_shared(distribution_config);
+        transfer::public_share_object(sail_stablecoin_pool);
+    };
 
-        // Return aggregator to the calling function
-        aggregator
-    }
+    aggregator
+}
 
-    public fun aggregator_set_current_value(
-        aggregator: &mut Aggregator,
-        price: u128, // decimals 18
-        result_timestamp_ms: u64,
-    ) {
+/// You can create new aggregator just prior to the call that requires it.
+/// Then just destroy it after the call.
+/// Aggregators are not shared objects due to missing store capability.
+public fun setup_aggregator(
+    scenario: &mut test_scenario::Scenario,
+    price: u128, // decimals 18
+    clock: &Clock,
+): Aggregator {
+    let owner = scenario.ctx().sender();
 
-        // 1 * 10^18
-        let result = decimal::new(price, false);
-        let min_result = result;
-        let max_result = result;
-        let stdev = decimal::new(0, false);
-        let range = decimal::new(0, false);
-        let mean = result;
+    let mut aggregator = aggregator::new_aggregator(
+        aggregator::example_queue_id(),
+        std::string::utf8(b"test_aggregator"),
+        owner,
+        vector::empty(),
+        1,
+        1000000000000000,
+        100000000000,
+        5,
+        1000,
+        scenario.ctx(),
+    );
 
-        aggregator.set_current_value(
-            result,
-            result_timestamp_ms,
-            result_timestamp_ms,
-            result_timestamp_ms,
-            min_result,
-            max_result,
-            stdev,
-            range,
-            mean
-        );
+    // 1 * 10^18
+    let result = decimal::new(price, false);
+    let result_timestamp_ms = clock.timestamp_ms();
+    let min_result = result;
+    let max_result = result;
+    let stdev = decimal::new(0, false);
+    let range = decimal::new(0, false);
+    let mean = result;
 
-        // Return aggregator to the calling function
-        // aggregator
-    }
+    aggregator::set_current_value(
+        &mut aggregator,
+        result,
+        result_timestamp_ms,
+        result_timestamp_ms,
+        result_timestamp_ms,
+        min_result,
+        max_result,
+        stdev,
+        range,
+        mean
+    );
+
+    // Return aggregator to the calling function
+    aggregator
+}
+
+public fun aggregator_set_current_value(
+    aggregator: &mut Aggregator,
+    price: u128, // decimals 18
+    result_timestamp_ms: u64,
+) {
+
+    // 1 * 10^18
+    let result = decimal::new(price, false);
+    let min_result = result;
+    let max_result = result;
+    let stdev = decimal::new(0, false);
+    let range = decimal::new(0, false);
+    let mean = result;
+
+    aggregator.set_current_value(
+        result,
+        result_timestamp_ms,
+        result_timestamp_ms,
+        result_timestamp_ms,
+        min_result,
+        max_result,
+        stdev,
+        range,
+        mean
+    );
+
+    // Return aggregator to the calling function
+    // aggregator
+}
 
 // Utility to call minter.distribute_gauge
 // Assumes Voter, Gauge, Pool, DistributionConfig are shared.
@@ -1418,7 +1429,9 @@ public fun full_setup_with_lock<CoinTypeA: drop, CoinTypeB: drop, SAIL: drop, OS
         // Lock object is automatically transferred to user
     };
 
-    setup_price_monitor_and_aggregator<CoinTypeA, CoinTypeB, USD, SAIL>(scenario, admin, clock)
+    let create_pool = type_name::get<CoinTypeA>() != type_name::get<USD>() || type_name::get<CoinTypeB>() != type_name::get<SAIL>();
+
+    setup_price_monitor_and_aggregator<USD, SAIL>(scenario, admin, create_pool, clock)
 }
 
 public fun vote<SAIL>(

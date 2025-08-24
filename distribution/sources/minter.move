@@ -2139,7 +2139,7 @@ module distribution::minter {
             o_sail_price_q64_decimals,
         );
 
-        assert!(o_sail.value() >= usd_amount_limit, EExerciseUsdLimitHigherThanOSail);
+        assert!(fee.value() >= usd_amount_limit, EExerciseUsdLimitHigherThanOSail);
         assert!(usd_amount_limit >= usd_amount_to_pay, EExerciseUsdLimitReached);
 
         exercise_o_sail_process_payment(
@@ -2844,6 +2844,18 @@ module distribution::minter {
             clock,
             ctx
         );
+    }
+
+    #[test_only]
+    public fun test_get_aggregator_price<FeedPoolCoinTypeA, FeedPoolCoinTypeB, FeedCoin, SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        price_monitor: &mut PriceMonitor,
+        feed_pool: &clmm_pool::pool::Pool<FeedPoolCoinTypeA, FeedPoolCoinTypeB>,
+        metadata: &CoinMetadata<FeedCoin>,
+        aggregator: &Aggregator,
+        clock: &sui::clock::Clock,
+    ): (u128, bool) {
+        minter.get_aggregator_price(price_monitor, feed_pool, metadata, aggregator, clock)
     }
 
 
