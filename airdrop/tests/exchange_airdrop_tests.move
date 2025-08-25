@@ -384,3 +384,53 @@ fun test_withdraw_collected_flow() {
     scenario.end();
     clock.destroy_for_testing();
 }
+
+#[test]
+#[expected_failure(abort_code = 377557558106448800)]
+fun test_withdraw_collected_with_wrong_cap_fails() {
+    let mut scenario = ts::begin(ADMIN);
+    let clock = setup::setup<SAIL>(&mut scenario, ADMIN);
+    let total_airdrop_amount = 1_000_000;
+    let airdrop_coin = coin::mint_for_testing<SAIL>(total_airdrop_amount, scenario.ctx());
+
+    // Create first airdrop.
+    let (exchange_airdrop, withdraw_cap1) = exchange_airdrop::new<PRE_SAIL, SAIL>(airdrop_coin, 0, scenario.ctx());
+    transfer::public_share_object(exchange_airdrop);
+    transfer::public_transfer(withdraw_cap1, ADMIN);
+
+
+    let claim_amount = 100_000;
+
+    // User claims airdrop from the first airdrop object.
+    scenario.next_tx(USER);
+    {
+        let mut voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
+        let coin_in = coin::mint_for_testing<PRE_SAIL>(claim_amount, scenario.ctx());
+        let mut exchange_airdrop = scenario.take_shared<ExchangeAirdrop<PRE_SAIL, SAIL>>();
+        exchange_airdrop.get_airdrop(&mut voting_escrow, coin_in, &clock, scenario.ctx());
+        ts::return_shared(exchange_airdrop);
+        ts::return_shared(voting_escrow);
+    };
+
+    // Admin tries to withdraw with a wrong cap
+    scenario.next_tx(ADMIN);
+    {
+        // Create a second airdrop to get a different cap
+        let airdrop_coin2 = coin::mint_for_testing<SAIL>(1, scenario.ctx());
+        let (exchange_airdrop2, wrong_cap) = exchange_airdrop::new<PRE_SAIL, SAIL>(airdrop_coin2, 0, scenario.ctx());
+        transfer::public_share_object(exchange_airdrop2);
+
+        let mut exchange_airdrop = scenario.take_shared<ExchangeAirdrop<PRE_SAIL, SAIL>>();
+
+        // This should fail because wrong_cap is for exchange_airdrop2, not exchange_airdrop
+        let withdrawn_coin = exchange_airdrop.withdraw_collected(&wrong_cap, claim_amount, scenario.ctx());
+
+        // Cleanup code that won't be reached
+        transfer::public_transfer(withdrawn_coin, ADMIN);
+        ts::return_shared(exchange_airdrop);
+        transfer::public_transfer(wrong_cap, ADMIN);
+    };
+
+    scenario.end();
+    clock.destroy_for_testing();
+}
