@@ -1,15 +1,23 @@
-/// Module: airdrop
+/// Meant to wrap classic merkle airdrop to wrap SAIL into auto max-locked veSAIL.
+/// Also introduces some events to track the airdrop.
 module airdrop::ve_airdrop;
 
 use suitears::airdrop::{Self, Airdrop};
-use sui::coin::{Self, Coin};
-use sui::clock::{Self, Clock};
-use ve::voting_escrow::{Self, Lock, VotingEscrow};
+use sui::coin::{Coin};
+use sui::clock::{Clock};
+use ve::voting_escrow::{VotingEscrow};
 
 public struct EventVeAirdropCreated has copy, drop, store {
+    airdrop_id: ID,
     amount: u64,
     root: vector<u8>,
     start: u64,
+}
+
+public struct EventVeAirdropClaimed has copy, drop, store {
+    airdrop_id: ID,
+    amount: u64,
+    user: address,
 }
 
 public struct VeAirdrop<phantom SailCoinType> has key, store {
@@ -37,14 +45,17 @@ public fun new<SailCoinType>(
     c: &Clock,
     ctx: &mut TxContext,
 ): VeAirdrop<SailCoinType> {
+    let id = object::new(ctx);
+    let inner_id = id.to_inner();
     let event = EventVeAirdropCreated {
+        airdrop_id: inner_id,
         amount: airdrop_coin.value(),
         root,
         start,
     };
     sui::event::emit(event);
     VeAirdrop {
-        id: object::new(ctx),
+        id,
         airdrop: airdrop::new(airdrop_coin, root, start, c, ctx),
     }
 }
@@ -130,6 +141,13 @@ public fun get_airdrop<SailCoinType>(
 ) {
     let sail = self.airdrop.get_airdrop(proof, clock, amount, ctx);
 
+    let event = EventVeAirdropClaimed {
+        airdrop_id: object::id(self),
+        amount,
+        user: ctx.sender(),
+    };
+    sui::event::emit(event);
+    // Creates an auto max-locked veSAIL.
     voting_escrow.create_lock(sail, 365 * 4, true, clock, ctx)
 }
 
