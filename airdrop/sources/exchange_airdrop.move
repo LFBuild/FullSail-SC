@@ -77,8 +77,8 @@ public fun new<CoinIn, SailCoinType>(
 }
 
 public fun withdraw_collected<CoinIn, SailCoinType>(
-    cap: &WithdrawCap,
     self: &mut ExchangeAirdrop<CoinIn, SailCoinType>,
+    cap: &WithdrawCap,
     amount: u64,
     ctx: &mut TxContext
 ): Coin<CoinIn> {
@@ -137,5 +137,5 @@ public fun get_airdrop<CoinIn, SailCoinType>(
         user: ctx.sender(),
     };
     sui::event::emit(event);
-    voting_escrow.create_lock(sail.into_coin(ctx), 365 * 4, true, clock, ctx);
+    voting_escrow.create_lock(sail.into_coin(ctx), 52 * 7 * 4, true, clock, ctx);
 }

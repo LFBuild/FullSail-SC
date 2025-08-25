@@ -148,6 +148,6 @@ public fun get_airdrop<SailCoinType>(
     };
     sui::event::emit(event);
     // Creates an auto max-locked veSAIL.
-    voting_escrow.create_lock(sail, 365 * 4, true, clock, ctx)
+    voting_escrow.create_lock(sail, 52 * 7 * 4, true, clock, ctx)
 }
 
