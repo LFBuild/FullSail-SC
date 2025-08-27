@@ -2456,8 +2456,8 @@ module ve::voting_escrow {
         let point = voting_escrow.point_history.borrow(latest_point_index);
         let mut bias = point.bias;
         let mut slope = point.slope;
-        let point_time = point.ts;
-        let mut point_epoch_time = ve::common::to_period(point_time);
+        let mut last_point_ts = point.ts;
+        let mut point_epoch_time = ve::common::to_period(last_point_ts);
         let mut i = 0;
         while (i < 255) {
             let next_epoch_time = point_epoch_time + ve::common::epoch();
@@ -2475,12 +2475,14 @@ module ve::voting_escrow {
             };
             bias = bias.sub(
                 slope
-                    .mul(integer_mate::i128::from(((point_epoch_time - point_time) as u128)))
+                    .mul(integer_mate::i128::from(((point_epoch_time - last_point_ts) as u128)))
                     .div(integer_mate::i128::from(1 << 64)));
+
             if (point_epoch_time == time) {
                 break
             };
             slope = slope.add(slope_changes);
+            last_point_ts = point_epoch_time;
             i = i + 1;
         };
         if (bias.is_neg()) {
