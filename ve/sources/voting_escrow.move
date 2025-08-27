@@ -9,6 +9,7 @@ module ve::voting_escrow {
     // Error constants
     const ECreateVotingEscrowInvalidPublisher: u64 = 184812403570428600;
     const ESplitOwnerNotFound: u64 = 922337599252162153;
+    const ESplitNulledLock: u64 = 285443173276424000;
     const ESplitNotAllowed: u64 = 922337600111090075;
     const ESplitNotNormalEscrow: u64 = 922337600540613020; 
     const ESplitPositionVoted: u64 = 922337600970122857;
@@ -18,10 +19,14 @@ module ve::voting_escrow {
     const ETransferLockedPosition: u64 = 922337688587377051;
     const ETransferNotOwner: u64 = 922337689875775487;
     const EWithdrawPositionVoted: u64 = 922337640483821980;
+    const EWithdrawNulledLock: u64 = 251507383857110900;
     const EAddAllowedManagerInvalidPublisher: u64 = 277556739040212930;
     const EWithdrawPositionNotNormalEscrow: u64 = 922337640913305602;
     const EWithdrawPermanentPosition: u64 = 922337642201861328;
     const EWithdrawBeforeEndTime: u64 = 922337643060684391;
+    const EDestroyNulledPositionVoted: u64 = 437084245766073300;
+    const EDestroyNulledPositionNotNormalEscrow: u64 = 865327590145207900;
+    const EDestroyNonNulledLock: u64 = 328022942696051000;
     const ECreateLockAmountZero: u64 = 922337438190718157;
     const ECreateLockAmountMismatch: u64 = 922337441626665779;
     const ECreateLockForAmountZero: u64 = 922337425735312998;
@@ -31,6 +36,8 @@ module ve::voting_escrow {
     const ECreateLockLockedExists: u64 = 922337417574848921;
     const ECreateManagedNotAllowedManager: u64 = 922337773627768834;
     const EDepositForDeactivatedLock: u64 = 422370226116838300;
+    const EDepositForNulledLock: u64 = 9713503073035756;
+    const EDelegateNulledLock: u64 = 613271800577612300;
     const EDelegateNotPermanent: u64 = 922337565751338600;
     const EDelegateInvalidDelegatee: u64 = 922337566180861544;
     const EDelegateOwnershipChangeTooRecent: u64 = 922337568328410729;
@@ -38,25 +45,31 @@ module ve::voting_escrow {
     const EDepositManagedNotManagedType: u64 = 922337784794827985;
     const EDepositManagedDeactivated: u64 = 922337785224429573;
     const EDepositManagedNotNormalEscrow: u64 = 922337785653703477;
+    const EDepositManagedNulledLock: u64 = 971567642087872000;
     const EDepositManagedNoBalance: u64 = 922337786512565862;
     const EIncreaseAmountDeactivatedLock: u64 = 686510248139248600;
+    const EIncreaseAmountNulledLock: u64 = 5602953801720378;
     const EIncreaseAmountZero: u64 = 922337446351156019;
     const EIncreaseAmountLockedEscrow: u64 = 922337447210215015;
     const EIncreaseAmountNotExists: u64 = 922337448498613452;
     const EIncreaseAmountNoBalance: u64 = 922337448498718312;
     const EIncreaseTimeNotNormalEscrow: u64 = 922337630175887362;
+    const EIncreaseTimeNulledLock: u64 = 766708045064883300;
     const EIncreaseTimePermanent: u64 = 922337631464443088;
     const EIncreaseTimeExpired: u64 = 922337633182246503;
     const EIncreaseTimeNoBalance: u64 = 922337633611808769;
     const EIncreaseTimeNotLater: u64 = 922337634041436573;
     const EIncreaseTimeTooLong: u64 = 922337634470946410;
     const ELockPermanentNotNormalEscrow: u64 = 922337652509717301;
+    const ELockPermanentNulledLock: u64 = 887642997355636700;
     const ELockPermanentAlreadyPermanent: u64 = 922337653798273027;
     const ELockPermanentExpired: u64 = 922337654227586253;
     const ELockPermanentNoBalance: u64 = 922337654657148520;
     const EMergePositionVoted: u64 = 922337607412573801;
     const EMergeSourceNotNormalEscrow: u64 = 922337607842057423;
     const EMergeTargetNotNormalEscrow: u64 = 922337608271554152;
+    const EMergeSourceNulledLock: u64 = 473735693153592300;
+    const EMergeTargetNulledLock: u64 = 825675751502457500;
     const ERemoveAllowedManagerInvalidPublisher: u64 = 695214134516513500;
     const EMergeSamePosition: u64 = 922337608701247493;
     const EMergeSourcePermanent: u64 = 922337611707593526;
@@ -65,6 +78,7 @@ module ve::voting_escrow {
     const EGrantTeamCapInvalidPublisher: u64 = 823241689916894800;
     const ESetManagedLockAlreadySet: u64 = 922337850507893150;
     const EUnlockPermanentNotNormalEscrow: u64 = 922337666683109378;
+    const EUnlockPermanentNulledLock: u64 = 971567643806120000;
     const EUnlockPermanentPositionVoted: u64 = 922337667112619215;
     const EUnlockPermanentNotPermanent: u64 = 922337667971560245;
     const EUnlockPermanentIsPerpetual: u64 = 625787259881230500;
@@ -166,6 +180,12 @@ module ve::voting_escrow {
         sender: address,
         lock_id: ID,
         amount: u64,
+    }
+
+    public struct EventDestroyNulled has copy, drop, store {
+        sender: address,
+        lock_id: ID,
+        // amount is always zero
     }
 
     public struct EventLockPermanent has copy, drop, store {
@@ -288,13 +308,13 @@ module ve::voting_escrow {
     /// * If the amount to split is zero or exceeds the locked amount
     public fun split<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
-        lock: Lock,
+        lock: &mut Lock,
         amount: u64,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): (ID, ID) {
-        voting_escrow.validate_lock(&lock);
-        let lock_id = object::id<Lock>(&lock);
+        voting_escrow.validate_lock(lock);
+        let lock_id = object::id<Lock>(lock);
         assert!(voting_escrow.owner_of.contains(lock_id), ESplitOwnerNotFound);
         let owner_of_lock = *voting_escrow.owner_of.borrow(lock_id);
         assert!(
@@ -306,6 +326,7 @@ module ve::voting_escrow {
         } else {
             *voting_escrow.escrow_type.borrow(lock_id) == EscrowType::NORMAL
         };
+        assert!(!voting_escrow.is_nulled(lock_id), ESplitNulledLock);
         assert!(is_normal_escrow, ESplitNotNormalEscrow);
         let lock_has_voted = voting_escrow.lock_has_voted(lock_id);
         assert!(!lock_has_voted, ESplitPositionVoted);
@@ -319,7 +340,7 @@ module ve::voting_escrow {
         let lock_escrow_id = lock.escrow;
         let lock_start = lock.start;
         let lock_end = lock.end;
-        voting_escrow.burn_lock_internal(lock, locked_balance, clock, ctx);
+        voting_escrow.null_lock_internal(lock, locked_balance, clock, ctx);
 
         let split_lock_a = voting_escrow.create_split_internal(
             owner_of_lock,
@@ -511,6 +532,7 @@ module ve::voting_escrow {
             ) == EscrowType::NORMAL,
             EWithdrawPositionNotNormalEscrow
         );
+        assert!(!voting_escrow.is_nulled(lock_id), EWithdrawNulledLock);
         let locked_balance = *voting_escrow.locked.borrow(lock_id);
         assert!(!locked_balance.is_permanent, EWithdrawPermanentPosition);
         assert!(ve::common::current_timestamp(clock) >= locked_balance.end, EWithdrawBeforeEndTime);
@@ -535,6 +557,54 @@ module ve::voting_escrow {
             after: current_total_locked - locked_balance.amount,
         };
         sui::event::emit<EventSupply>(supply_event);
+    }
+
+    /// Destroys a nulled lock. Nulled locks don't need to wait for the end of the lock period to be destroyed.
+    ///
+    /// # Arguments
+    /// * `voting_escrow` - The voting escrow instance
+    /// * `lock` - The lock to destroy
+    /// * `clock` - The system clock
+    /// * `ctx` - The transaction context
+    ///
+    /// # Aborts
+    /// * If the lock is not nulled
+    public fun destroy_nulled<SailCoinType>(
+        voting_escrow: &mut VotingEscrow<SailCoinType>,
+        lock: Lock,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        let lock_id = object::id<Lock>(&lock);
+        assert!(voting_escrow.is_nulled(lock_id), EDestroyNonNulledLock);
+        let sender = tx_context::sender(ctx);
+        let lock_has_voted = voting_escrow.lock_has_voted(lock_id);
+        assert!(!lock_has_voted, EDestroyNulledPositionVoted);
+        assert!(
+            !voting_escrow.escrow_type.contains(lock_id) || *voting_escrow.escrow_type.borrow(
+                lock_id
+            ) == EscrowType::NORMAL,
+            EDestroyNulledPositionNotNormalEscrow
+        );
+        // these are the only three things where nulling was different from burning
+        voting_escrow.owner_of.remove(lock_id);
+        voting_escrow.locked.remove(lock_id);
+        let Lock {
+            id,
+            escrow: _,
+            amount: _,
+            start: _,
+            end: _,
+            permanent: _,
+            perpetual: _,
+        } = lock;
+        object::delete(id);
+        let destroy_nulled_event = EventDestroyNulled {
+            sender,
+            lock_id,
+        };
+        sui::event::emit<EventDestroyNulled>(destroy_nulled_event);
+        // total supply is not changing
     }
 
     /// Adds an address to the list of allowed managers that can create managed locks.
@@ -689,6 +759,42 @@ module ve::voting_escrow {
             perpetual: _,
         } = lock;
         object::delete(id);
+    }
+
+    /// Internal function to null the balance of the lock.
+    /// Nulled locks are required as pointers to the unclaimed rewards.
+    fun null_lock_internal<SailCoinType>(
+        voting_escrow: &mut VotingEscrow<SailCoinType>,
+        lock: &mut Lock,
+        current_locked_balance: LockedBalance,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        let lock_id = object::id(lock);
+        voting_escrow.voting_dao.checkpoint_delegator(
+            lock_id,
+            current_locked_balance.amount,
+            object::id_from_address(@0x0),
+            @0x0,
+            clock,
+            ctx
+        );
+        voting_escrow.locked.borrow_mut(lock_id).amount = 0;
+        voting_escrow.checkpoint_internal(
+            option::some<ID>(lock_id),
+            current_locked_balance,
+            locked_balance(0, 0, false, false),
+            clock,
+            ctx
+        );
+        lock.amount = 0;
+    }
+
+    /// Checks if the lock was nulled.
+    /// Nulled locks are required as pointers to the unclaimed rewards.
+    public fun is_nulled<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>, lock_id: ID): bool {
+        let lock = voting_escrow.locked.borrow(lock_id);
+        lock.amount == 0
     }
 
     /// Updates the global checkpoint for the voting escrow.
@@ -1337,6 +1443,7 @@ module ve::voting_escrow {
         ctx: &mut TxContext
     ) {
         let lock_id = object::id<Lock>(lock);
+        assert!(!voting_escrow.is_nulled(lock_id), EDelegateNulledLock);
         let (current_locked_balance, _) = voting_escrow.locked(lock_id);
         assert!(current_locked_balance.is_permanent, EDelegateNotPermanent);
         assert!(
@@ -1390,6 +1497,7 @@ module ve::voting_escrow {
     ) {
         let lock_id = object::id(lock);
         assert!(!voting_escrow.deactivated(lock_id), EDepositForDeactivatedLock);
+        assert!(!voting_escrow.is_nulled(lock_id), EDepositForNulledLock);
         let deposit_amount = coin.value<SailCoinType>();
         voting_escrow.balance.join<SailCoinType>(coin.into_balance());
         voting_escrow.increase_amount_for_internal(
@@ -1490,6 +1598,7 @@ module ve::voting_escrow {
         assert!(voting_escrow.escrow_type(managed_lock_id) == EscrowType::MANAGED, EDepositManagedNotManagedType);
         assert!(!voting_escrow.deactivated(managed_lock_id), EDepositManagedDeactivated);
         assert!(voting_escrow.escrow_type(lock_id) == EscrowType::NORMAL, EDepositManagedNotNormalEscrow);
+        assert!(!voting_escrow.is_nulled(lock_id), EDepositManagedNulledLock);
         assert!(
             voting_escrow.balance_of_nft_at_internal(lock_id, ve::common::current_timestamp(clock)) > 0,
             EDepositManagedNoBalance
@@ -1774,6 +1883,7 @@ module ve::voting_escrow {
     ) {
         let lock_id = object::id(lock);
         assert!(!voting_escrow.deactivated(lock_id), EIncreaseAmountDeactivatedLock);
+        assert!(!voting_escrow.is_nulled(lock_id), EIncreaseAmountNulledLock);
         let amount = coin.value();
         voting_escrow.balance.join(coin.into_balance());
         voting_escrow.increase_amount_for_internal(
@@ -1814,6 +1924,7 @@ module ve::voting_escrow {
         assert!(amount_to_add > 0, EIncreaseAmountZero);
         let escrow_type = voting_escrow.escrow_type(lock_id);
         assert!(escrow_type != EscrowType::LOCKED, EIncreaseAmountLockedEscrow);
+        assert!(!voting_escrow.is_nulled(lock_id), EIncreaseAmountNulledLock);
         let (current_locked_balance, exists) = voting_escrow.locked(lock_id);
         assert!(exists, EIncreaseAmountNotExists);
         assert!(current_locked_balance.amount > 0, EIncreaseAmountNoBalance);
@@ -1868,6 +1979,7 @@ module ve::voting_escrow {
             *voting_escrow.escrow_type.borrow(lock_id) == EscrowType::NORMAL
         };
         assert!(is_normal_escrow, EIncreaseTimeNotNormalEscrow);
+        assert!(!voting_escrow.is_nulled(lock_id), EIncreaseTimeNulledLock);
         let current_locked_balance = *voting_escrow.locked.borrow(lock_id);
         assert!(!current_locked_balance.is_permanent, EIncreaseTimePermanent);
         let current_time = ve::common::current_timestamp(clock);
@@ -2003,6 +2115,7 @@ module ve::voting_escrow {
             *voting_escrow.escrow_type.borrow(lock_id) == EscrowType::NORMAL
         };
         assert!(is_normal_escrow, ELockPermanentNotNormalEscrow);
+        assert!(!voting_escrow.is_nulled(lock_id), ELockPermanentNulledLock);
         let v3 = *voting_escrow.locked.borrow(lock_id);
         assert!(!v3.is_permanent, ELockPermanentAlreadyPermanent);
         assert!(v3.end > ve::common::current_timestamp(clock), ELockPermanentExpired);
@@ -2090,18 +2203,20 @@ module ve::voting_escrow {
     /// * If lock_b has expired and is not permanent
     public fun merge<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
-        lock_a: Lock,
+        lock_a: &mut Lock,
         lock_b: &mut Lock,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        let lock_id_a = object::id<Lock>(&lock_a);
+        let lock_id_a = object::id<Lock>(lock_a);
         let lock_id_b = object::id<Lock>(lock_b);
         let lock_a_voted = voting_escrow.lock_has_voted(lock_id_a);
         assert!(!lock_a_voted, EMergePositionVoted);
         assert!(voting_escrow.escrow_type(lock_id_a) == EscrowType::NORMAL, EMergeSourceNotNormalEscrow);
         assert!(voting_escrow.escrow_type(lock_id_b) == EscrowType::NORMAL, EMergeTargetNotNormalEscrow);
         assert!(lock_id_a != lock_id_b, EMergeSamePosition);
+        assert!(!voting_escrow.is_nulled(lock_id_a), EMergeSourceNulledLock);
+        assert!(!voting_escrow.is_nulled(lock_id_b), EMergeTargetNulledLock);
         let lock_b_balance = *voting_escrow.locked.borrow(lock_id_b);
         assert!(
             lock_b_balance.end > ve::common::current_timestamp(clock) || lock_b_balance.is_permanent == true,
@@ -2115,7 +2230,7 @@ module ve::voting_escrow {
         } else {
             lock_b_balance.end
         };
-        voting_escrow.burn_lock_internal(lock_a, lock_a_balance, clock, ctx);
+        voting_escrow.null_lock_internal(lock_a, lock_a_balance, clock, ctx);
         let result_lock_end_time = if (lock_b_balance.is_permanent) {
             0
         } else {
@@ -2529,6 +2644,7 @@ module ve::voting_escrow {
             *voting_escrow.escrow_type.borrow(lock_id) == EscrowType::NORMAL
         };
         assert!(is_normal_escrow, EUnlockPermanentNotNormalEscrow);
+        assert!(!voting_escrow.is_nulled(lock_id), EUnlockPermanentNulledLock);
         let has_voted = voting_escrow.lock_has_voted(lock_id);
         assert!(!has_voted, EUnlockPermanentPositionVoted);
         let mut old_locked_balance = *voting_escrow.locked.borrow(lock_id);
