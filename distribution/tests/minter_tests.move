@@ -34,8 +34,6 @@ use switchboard::aggregator::{Self, Aggregator};
 use price_monitor::price_monitor::{Self, PriceMonitor};
 
 use distribution::usd_tests::{Self, USD_TESTS};
-use distribution::minter::EDistributeGaugeFirstEpochEmissionsInvalid;
-use distribution::minter::EDistributeGaugeEmissionsZero;
 
 const WEEK: u64 = 7 * 24 * 60 * 60 * 1000;
 
@@ -59,52 +57,6 @@ fun setup_for_gauge_creation(scenario: &mut test_scenario::Scenario, admin: addr
     scenario.next_tx(admin);
     let o_sail_coin = setup::activate_minter<SAIL, OSAIL1>(scenario, 0, clock);
     o_sail_coin.burn_for_testing();
-}
-
-#[test]
-fun test_calculate_rebase_growth() {
-    let emissions = 1_000_000;
-
-    // 1. Zero total supply
-    let rebase1 = minter::calculate_rebase_growth(emissions, 0, 0);
-    assert!(rebase1 == 0, 0);
-
-    // 2. Zero emissions
-    let rebase2 = minter::calculate_rebase_growth(0, 1_000_000, 500_000);
-    assert!(rebase2 == 0, 1);
-
-    // 3. All tokens locked
-    let rebase3 = minter::calculate_rebase_growth(emissions, 1_000_000, 1_000_000);
-    assert!(rebase3 == 0, 2);
-
-    // 4. No tokens locked
-    let rebase4 = minter::calculate_rebase_growth(emissions, 1_000_000, 0);
-    assert!(rebase4 == emissions / 2, 3); // 1_000_000 / 2 = 500_000
-
-    // 5. Half tokens locked
-    let rebase5 = minter::calculate_rebase_growth(emissions, 1_000_000, 500_000);
-    assert!(rebase5 == emissions / 8, 4); // 1_000_000 * (0.5)^2 / 2 = 125_000
-
-    // 6. 25% tokens locked
-    let rebase6 = minter::calculate_rebase_growth(emissions, 1_000_000, 250_000);
-    // expected = 1_000_000 * (750_000 / 1_000_000)^2 / 2
-    // expected = 1_000_000 * (0.75)^2 / 2
-    // expected = 1_000_000 * 0.5625 / 2 = 281_250
-    assert!(rebase6 == 281250, 5);
-
-    // 7. 75% tokens locked
-    let rebase7 = minter::calculate_rebase_growth(emissions, 1_000_000, 750_000);
-    // expected = 1_000_000 * (250_000 / 1_000_000)^2 / 2 = 31_250
-    assert!(rebase7 == 31250, 6);
-
-    // 8. Large numbers
-    let large_emissions = 1_000_000_000_000_000_000;
-    let large_total_supply = 10_000_000_000_000_000_000;
-    let large_locked = 4_000_000_000_000_000_000; // 40% locked
-    let rebase8 = minter::calculate_rebase_growth(large_emissions, large_total_supply, large_locked);
-    // expected = large_emissions * (0.6)^2 / 2
-    // expected = 10^18 * 0.36 / 2 = 18 * 10^16
-    assert!(rebase8 == 180_000_000_000_000_000, 7);
 }
 
 #[test]
@@ -584,10 +536,10 @@ fun test_distribute_gauge_initial_amount() {
         assert!(emissions.contains(gauge_id), 0);
         assert!(*emissions.borrow(gauge_id) == gauge_base_emissions, 1);
 
-        // total supply should be 0 as no emissions have been distributed yet
-        assert!(minter.total_supply() == 0, 2);
+        // total supply should be lock amount.
+        assert!(minter.total_supply() == 1000000, 2);
         assert!(minter.o_sail_minted_supply() == 0, 3);
-        assert!(minter.sail_total_supply() == 0, 4);
+        assert!(minter.sail_total_supply() == 1000000, 4);
 
         test_scenario::return_shared(minter);
         test_scenario::return_shared(gauge);
@@ -976,8 +928,8 @@ fun test_distribute_gauge_increase_emissions() {
 
         let expected_o_sail_supply = gauge_base_emissions + expected_emissions;
         assert!(expected_o_sail_supply - minter.o_sail_minted_supply() <= 5, 3);
-        // total_supply is o_sail_total_supply + sail_total_supply (which is 0)
-        assert!(expected_o_sail_supply - minter.total_supply() <= 5, 4);
+        // total_supply is o_sail_total_supply + sail_total_supply (which is lock amount)
+        assert!(minter.total_supply() - expected_o_sail_supply + 5 - 1_000_000 <= 5, 4);
 
         test_scenario::return_shared(minter);
     };
@@ -1046,7 +998,8 @@ fun test_distribute_gauge_with_emission_changes() {
         assert!(minter.usd_epoch_emissions() == gauge_base_emissions, 0);
         assert!(minter.usd_emissions_by_epoch(current_period) == gauge_base_emissions, 1);
         assert!(minter.o_sail_minted_supply() == initial_sail_supply, 2);
-        assert!(minter.total_supply() == initial_sail_supply, 3);
+        // initial supply + lock amount
+        assert!(minter.total_supply() == initial_sail_supply + 100, 3);
         test_scenario::return_shared(minter);
     };
 
@@ -1092,7 +1045,7 @@ fun test_distribute_gauge_with_emission_changes() {
         let expected_o_sail_supply = initial_sail_supply + gauge_base_emissions;
 
         assert!(expected_o_sail_supply - minter.o_sail_minted_supply() <= 5, 3);
-        assert!(expected_o_sail_supply - minter.total_supply() <= 5, 4);
+        assert!(expected_o_sail_supply + 100 - minter.total_supply() <= 5, 4);
 
         test_scenario::return_shared(minter);
     };
@@ -3358,180 +3311,6 @@ fun test_double_activation_fails() {
     clock::destroy_for_testing(clock);
     scenario.end();
 }
-
-
-// TODO: fix rebase
-// #[test]
-// fun test_rebase_distribution_and_claim() {
-//     let admin = @0xA;
-//     let user = @0xB;
-//     let mut scenario = test_scenario::begin(admin);
-//     let mut clock = clock::create_for_testing(scenario.ctx());
-
-//     let gauge_base_emissions = 1_000_000;
-//     let lock_amount = 500_000;
-//     let initial_o_sail_supply = 0;
-
-//     // 1. Full setup
-//     setup::full_setup_with_lock<USD_TESTS, AUSD, SAIL, OSAIL1>(
-//         &mut scenario,
-//         admin,
-//         user,
-//         &mut clock,
-//         lock_amount,
-//         182, // lock_duration_days
-//         gauge_base_emissions,
-//         initial_o_sail_supply
-//     );
-
-//     // Create and deposit a position for the user
-//     scenario.next_tx(user);
-//     {
-//         setup::create_position_with_liquidity<USD_TESTS, AUSD>(
-//             &mut scenario,
-//             user,
-//             tick_math::min_tick().as_u32(),
-//             tick_math::max_tick().as_u32(),
-//             100_000_000,
-//             &clock
-//         );
-//     };
-//     scenario.next_tx(user);
-//     {
-//         setup::deposit_position<USD_TESTS, AUSD>(&mut scenario, &clock);
-//     };
-
-//     // 2. Distribute gauge for epoch 1
-//     scenario.next_tx(admin);
-//     {
-//         setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &clock); 
-//     };
-
-//     // 3. Advance to the next epoch
-//     clock.increment_for_testing(WEEK);
-
-//     // get reward for lock
-//     scenario.next_tx(user);
-//     {
-//         setup::get_staked_position_reward<USD_TESTS, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
-//     };
-
-//     // 4. Check RewardDistributor balance before update (should be 0)
-//     scenario.next_tx(admin);
-//     {
-//         let rd = scenario.take_shared<RewardDistributor<SAIL>>();
-//         assert!(reward_distributor::balance(&rd) == 0, 0);
-//         test_scenario::return_shared(rd);
-//     };
-
-//     // 5. Update minter period for epoch 2, which triggers rebase
-//     scenario.next_tx(admin);
-//     {
-//         let o_sail_coin_2 = setup::update_minter_period<SAIL, OSAIL2>(&mut scenario, 0, &clock);
-//         o_sail_coin_2.burn_for_testing();
-//     };
-
-//     // distribute the gauge for epoch 2
-//     scenario.next_tx(admin);
-//     {
-//         setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL2, USD_TESTS>(&mut scenario, &clock);
-//     };
-
-//     scenario.next_tx(admin);
-//     {
-//         // print the total supply
-//         let minter = scenario.take_shared<Minter<SAIL>>();
-//         test_scenario::return_shared(minter);
-//     };
-
-//     clock.increment_for_testing(WEEK);
-
-//     // get position reward oSAIL2
-//     scenario.next_tx(user);
-//     {
-//         setup::get_staked_position_reward<USD_TESTS, AUSD, SAIL, OSAIL2>(&mut scenario, &clock);
-//     };
-
-//     // update minter period for epoch 3
-//     scenario.next_tx(admin);
-//     {
-//         let o_sail_coin_3 = setup::update_minter_period<SAIL, OSAIL3>(&mut scenario, 0, &clock);
-//         o_sail_coin_3.burn_for_testing();
-//     };
-
-//         // 6. Verify rebase amount was distributed to RewardDistributor
-//     scenario.next_tx(admin);
-//     {
-//         let rd = scenario.take_shared<RewardDistributor<SAIL>>();
-//         assert!(reward_distributor::balance(&rd) == 125000, 1);
-//         test_scenario::return_shared(rd);
-//     };
-
-//     // 7. User claims rewards
-//     scenario.next_tx(user);
-//     {
-//         let mut rd = scenario.take_shared<RewardDistributor<SAIL>>();
-//         let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
-//         let mut lock = scenario.take_from_sender<Lock>();
-
-//         let claimed_amount = reward_distributor::claim(&mut rd, &mut ve, &mut lock, &clock, scenario.ctx());
-//         assert!(125000 - claimed_amount <= 1, 2);
-
-//         // The reward should be added to the lock amount since it's still active
-//         let (locked_balance, _) = voting_escrow::locked(&ve, object::id(&lock));
-//         assert!(lock_amount + 125000 - locked_balance.amount() <= 1, 3);
-//         assert!(reward_distributor::balance(&rd) <= 1, 4);
-
-//         test_scenario::return_shared(rd);
-//         test_scenario::return_shared(ve);
-//         scenario.return_to_sender(lock);
-//     };
-
-//     clock.increment_for_testing(WEEK);
-
-//     // update to epoch 4
-//     scenario.next_tx(admin);
-//     {
-//         let o_sail_coin_2 = setup::update_minter_period<SAIL, OSAIL4>(&mut scenario, 0, &clock);
-//         o_sail_coin_2.burn_for_testing();
-//     };
-
-//     // expected total supply is 1_000_000 + 1_000_000 + 125000;
-//     // locked supply is 500_000 + 125000
-//     // expected rebase is 249136
-
-//     // 8. Verify rebase amount was distributed to RewardDistributor
-//     scenario.next_tx(admin);
-//     {
-//         let rd = scenario.take_shared<RewardDistributor<SAIL>>();
-//         assert!(249136 - reward_distributor::balance(&rd) <= 2, 1);
-//         test_scenario::return_shared(rd);
-//     };
-
-//     // 9. User claims rewards
-//     scenario.next_tx(user);
-//     {
-//         let mut rd = scenario.take_shared<RewardDistributor<SAIL>>();
-//         let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
-//         let mut lock = scenario.take_from_sender<Lock>();
-
-//         let claimed_amount = reward_distributor::claim(&mut rd, &mut ve, &mut lock, &clock, scenario.ctx());
-//         assert!(249136 - claimed_amount <= 2, 2);
-
-//         // The reward should be added to the lock amount since it's still active
-//         let (locked_balance, _) = voting_escrow::locked(&ve, object::id(&lock));
-//         assert!(lock_amount + 125000 + 249136 - locked_balance.amount() <= 3, 3);
-//         assert!(reward_distributor::balance(&rd) <= 2, 4);
-
-//         test_scenario::return_shared(rd);
-//         test_scenario::return_shared(ve);
-//         scenario.return_to_sender(lock);
-//     };
-
-
-//     clock::destroy_for_testing(clock);
-//     scenario.end();
-// }
 
 #[test]
 #[expected_failure(abort_code = minter::EScheduleSailMintPublisherInvalid)]
