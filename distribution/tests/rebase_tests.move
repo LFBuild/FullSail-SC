@@ -903,3 +903,104 @@ fun test_rebase_distribution_with_two_pools_one_gauge_second_epoch_skipped() {
     clock::destroy_for_testing(clock);
     scenario.end();
 }
+
+#[test]
+fun test_rebase_with_unclaimed_rewards() {
+    let admin = @0xD;
+    let user = @0xE;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    let (usd_tests_cap, usd_tests_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+
+    let gauge_base_emissions = 1_000_000; // Set emissions to zero
+    let lock_amount = 500_000;
+    let initial_o_sail_supply = 0;
+
+    // 1. Full setup. This will create a lock for `user` with `lock_amount`.
+    // The total supply of SAIL will be `lock_amount`. All of it is locked.
+    let mut aggregator = setup::full_setup_with_lock<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(
+        &mut scenario,
+        admin,
+        user,
+        &mut clock,
+        lock_amount,
+        182, // lock_duration_days
+        gauge_base_emissions,
+        initial_o_sail_supply
+    );
+
+    // 2. Create and deposit a position for the user
+    scenario.next_tx(user);
+    {
+        setup::create_position_with_liquidity<USD_TESTS, AUSD>(
+            &mut scenario,
+            user,
+            tick_math::min_tick().as_u32(),
+            tick_math::max_tick().as_u32(),
+            100_000_000,
+            &clock
+        );
+    };
+    scenario.next_tx(user);
+    {
+        setup::deposit_position<USD_TESTS, AUSD>(&mut scenario, &clock);
+    };
+
+    // 3. Distribute gauge for epoch 1. Since base emissions are 0, no new SAIL should be minted.
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_tests_metadata, &mut aggregator, &clock);
+    };
+
+    // 4. Advance to the next epoch
+    clock.increment_for_testing(WEEK);
+
+    // 5. Update minter period for epoch 2. This triggers the first rebase calculation.
+    // Since no new SAIL was minted, total supply should equal locked supply.
+    // Therefore, rebase amount should be 0.
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin_2 = setup::update_minter_period<SAIL, OSAIL2>(&mut scenario, 0, &clock);
+        o_sail_coin_2.burn_for_testing();
+    };
+
+    // 6. Check RebaseDistributor balance. It should be 0.
+    scenario.next_tx(admin);
+    {
+        let rd = scenario.take_shared<RebaseDistributor<SAIL>>();
+        assert!(rd.balance() == 0, 0);
+        test_scenario::return_shared(rd);
+    };
+
+    // 7. Distribute the gauge for epoch 2. Again, no new SAIL should be minted.
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL2, USD_TESTS>(&mut scenario, &usd_tests_metadata, &mut aggregator, &clock);
+    };
+
+    // 8. Advance to the next epoch
+    clock.increment_for_testing(WEEK);
+
+    // 9. Update minter period for epoch 3. Rebase should be 0 again.
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin_3 = setup::update_minter_period<SAIL, OSAIL3>(&mut scenario, 0, &clock);
+        o_sail_coin_3.burn_for_testing();
+    };
+
+    // 10. Verify rebase amount is still 0.
+    scenario.next_tx(admin);
+    {
+        let rd = scenario.take_shared<RebaseDistributor<SAIL>>();
+        assert!(rd.balance() == 0, 1);
+        test_scenario::return_shared(rd);
+    };
+
+    // Cleanup
+    test_utils::destroy(usd_tests_cap);
+    test_utils::destroy(usd_tests_metadata);
+    test_utils::destroy(aggregator);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
