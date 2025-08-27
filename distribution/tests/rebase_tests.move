@@ -872,8 +872,6 @@ fun test_rebase_distribution_with_two_pools_one_gauge_second_epoch_skipped() {
     scenario.next_tx(admin);
     {
         let rd = scenario.take_shared<RebaseDistributor<SAIL>>();
-        std::debug::print(&b"rd.balance()".to_string());
-        std::debug::print(&rd.balance());
         assert!(expected_rebase1 - rd.balance() <= 1, 1);
         test_scenario::return_shared(rd);
     };
