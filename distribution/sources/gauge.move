@@ -817,6 +817,8 @@ module distribution::gauge {
         } else {
             0
         };
+        // essentially = 0
+        gauge.last_distribution_reserve = fullsail_distribution_reserves;
         let ended_epoch_o_sail_emission = current_emission + distribution_reserve_delta;
         gauge.o_sail_emission_by_epoch.add(last_notified_period, ended_epoch_o_sail_emission);
 
