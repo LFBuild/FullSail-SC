@@ -1136,6 +1136,8 @@ public fun setup_price_monitor_and_aggregator_with_price<CoinTypeA: drop, CoinTy
         price_monitor.add_aggregator(
             aggregator.id(),
             vector[pool_id],
+            vector[6],
+            vector[6],
             scenario.ctx()
         );
 

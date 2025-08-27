@@ -21,7 +21,7 @@ def generate_sql_from_osail_info():
     # Regexes for extraction from a block
     re_object_type = re.compile(r'"objectType":string"([^"]+)"')
     re_object_id = re.compile(r'"objectId":string"([^"]+)"')
-    re_token_info = re.compile(r'<(.*::osail(\d+)::OSAIL\d+)>')
+    re_token_info = re.compile(r'<(.*::osail_(\d+)[a-z]+\d+_\d+::OSAIL_\d+[A-Z]+\d+_\d+)>')
 
     for block in object_blocks:
         object_type_match = re_object_type.search(block)
@@ -37,8 +37,17 @@ def generate_sql_from_osail_info():
         full_token_type = token_info_match.group(1)
         token_num = int(token_info_match.group(2))
 
-        if token_num not in tokens_data:
-            tokens_data[token_num] = {}
+        # Extract time slot from the token type (e.g., 0600, 1200, 1800, 0000)
+        time_match = re.search(r'_(\d{4})::', full_token_type)
+        if not time_match:
+            continue
+        time_slot = time_match.group(1)
+        
+        # Create a unique key for each day+time combination
+        token_key = f"{token_num}_{time_slot}"
+        
+        if token_key not in tokens_data:
+            tokens_data[token_key] = {}
             
         object_id_match = re_object_id.search(block)
         if not object_id_match:
@@ -46,27 +55,30 @@ def generate_sql_from_osail_info():
         object_id = object_id_match.group(1)
 
         if 'CoinMetadata' in object_type:
-            tokens_data[token_num]['token_address'] = full_token_type
-            tokens_data[token_num]['coin_metadata'] = object_id
+            tokens_data[token_key]['token_address'] = full_token_type
+            tokens_data[token_key]['coin_metadata'] = object_id
+            tokens_data[token_key]['day'] = token_num
+            tokens_data[token_key]['time_slot'] = time_slot
         elif 'TreasuryCap' in object_type:
-            tokens_data[token_num]['treasury_cap'] = object_id
+            tokens_data[token_key]['treasury_cap'] = object_id
 
-    sorted_tokens = sorted(tokens_data.items())
+    # Sort tokens by day and time slot
+    sorted_tokens = sorted(tokens_data.items(), key=lambda x: (x[1]['day'], x[1]['time_slot']))
     
     if len(sorted_tokens) != 20:
         print(f"Warning: Found {len(sorted_tokens)} tokens, expected 20. SQL file will not be created.")
         return
 
-    base_epoch = 1755885600000
+    base_epoch = 1756296000000+21600000
     epoch_increment = 21600000
 
     sql_header = "INSERT INTO public.osail_distributions (epoch_start, token_address, treasury_cap, coin_metadata)\nVALUES"
     
     values = []
     all_data_found = True
-    for i, (token_num, data) in enumerate(sorted_tokens):
+    for i, (token_key, data) in enumerate(sorted_tokens):
         if not all(k in data for k in ['token_address', 'treasury_cap', 'coin_metadata']):
-            print(f"Warning: Missing data for token osail{token_num}. Skipping.")
+            print(f"Warning: Missing data for token {token_key}. Skipping.")
             all_data_found = False
             continue
 

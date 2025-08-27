@@ -16,19 +16,15 @@ module price_monitor::price_monitor {
     // Bump the `VERSION` of the package.
     const VERSION: u64 = 1;
 
-    use sui::object::{Self, UID, ID};
     use sui::table::{Self, Table};
     use sui::linked_table::{Self, LinkedTable};
     use sui::clock::{Self, Clock};
-    use sui::transfer;
-    use sui::tx_context::{Self, TxContext};
     use sui::event;
     use sui::vec_set::{Self, VecSet};
-    use sui::coin::{Self, CoinMetadata};
-    use std::type_name::{Self, TypeName};
+    use std::type_name::{Self};
 
-    use switchboard::decimal::{Self, Decimal};
-    use switchboard::aggregator::{Self, Aggregator};
+    use switchboard::decimal::{Self};
+    use switchboard::aggregator::{Aggregator};
     use integer_mate::full_math_u128;
     use integer_mate::math_u128;
     use price_monitor::price_monitor_consts;
@@ -43,6 +39,7 @@ module price_monitor::price_monitor {
     const EPackageVersionMismatch: u64 = 93406283690864906;
     const EGetTimeCheckedPriceOutdated: u64 = 93470312203956742;
     const EGetTimeCheckedPriceNegativePrice: u64 = 92834672437062811;
+    const EInvalidPoolDecimal: u64 = 93979479033027843;
 
     // Maximum value for u64 type to prevent overflow
     const MAX_U64: u128 = 0xffffffffffffffff;
@@ -107,6 +104,10 @@ module price_monitor::price_monitor {
         
         // Oracle to pools mapping
         aggregator_to_pools: Table<ID, vector<ID>>,
+        
+        // Pool decimal multipliers mapping (pool_id -> decimal_multiplier_q64)
+        // This multiplier is used to adjust prices when token decimals differ
+        pool_price_decimal_multipliers: Table<ID, u128>,
         
         // Price history as a linked table for efficient FIFO operations
         price_history: LinkedTable<u64, PricePoint>, // timestamp -> price_point
@@ -219,6 +220,7 @@ module price_monitor::price_monitor {
             version: VERSION,
             config,
             aggregator_to_pools: table::new(ctx),
+            pool_price_decimal_multipliers: table::new(ctx),
             price_history: linked_table::new(ctx),
             max_history_size: price_monitor_consts::get_max_price_history_size(),
             anomaly_count: 0,
@@ -254,6 +256,69 @@ module price_monitor::price_monitor {
         assert!(monitor.version == VERSION, EPackageVersionMismatch);
     }
 
+    // ===== DECIMAL MULTIPLIER FUNCTIONS =====
+
+    /// Calculate decimal multiplier in Q64 format for price adjustment
+    /// If token_a_decimals == token_b_decimals, multiplier = 0 (no adjustment needed)
+    /// If token_a_decimals > token_b_decimals, multiplier = 10^(token_a_decimals - token_b_decimals) in Q64
+    /// If token_a_decimals < token_b_decimals, multiplier = 1/10^(token_b_decimals - token_a_decimals) in Q64
+    fun calculate_decimal_multiplier(token_a_decimals: u8, token_b_decimals: u8): u128 {
+        if (token_a_decimals == token_b_decimals) {
+            // No adjustment needed
+            return 0
+        };
+
+        if (token_a_decimals > token_b_decimals) {
+            // Token A has more decimals, need to multiply price by 10^(difference)
+            let decimal_diff = (token_a_decimals - token_b_decimals) as u128;
+            let mut multiplier: u128 = 1;
+            let mut i: u128 = 0;
+            while (i < decimal_diff) {
+                multiplier = multiplier * 10;
+                i = i + 1;
+            };
+            multiplier << 64 // Convert to Q64 format
+        } else {
+            // Token B has more decimals, need to divide price by 10^(difference)
+            // In Q64 format, this means multiplying by 1/10^(difference)
+            let decimal_diff = (token_b_decimals - token_a_decimals) as u128;
+            let mut divisor: u128 = 1;
+            let mut i: u128 = 0;
+            while (i < decimal_diff) {
+                divisor = divisor * 10;
+                i = i + 1;
+            };
+
+            integer_mate::full_math_u128::mul_div_floor(
+                1<<64,
+                1,
+                divisor
+            )
+        }
+    }
+
+    /// Get decimal multiplier for a specific pool
+    public fun get_pool_price_decimal_multiplier(monitor: &PriceMonitor, pool_id: ID): u128 {
+        if (monitor.pool_price_decimal_multipliers.contains(pool_id)) {
+            *monitor.pool_price_decimal_multipliers.borrow(pool_id)
+        } else {
+            0 // Default to no adjustment if pool not found
+        }
+    }
+
+    public fun update_pool_price_decimal_multiplier(
+        monitor: &mut PriceMonitor,
+        pool_id: ID,
+        token_a_decimals: u8,
+        token_b_decimals: u8,
+    ) {
+        if (!monitor.pool_price_decimal_multipliers.contains(pool_id)) {
+            abort
+        };
+        let decimal_multiplier = calculate_decimal_multiplier(token_a_decimals, token_b_decimals);
+        monitor.pool_price_decimal_multipliers.add(pool_id, decimal_multiplier);
+    }
+
     // ===== AGGREGATOR MANAGEMENT =====
 
     /// Add an aggregator with associated pools
@@ -261,10 +326,20 @@ module price_monitor::price_monitor {
         monitor: &mut PriceMonitor,
         aggregator_id: ID,
         pool_ids: vector<ID>,
+        token_a_decimals: vector<u8>,
+        token_b_decimals: vector<u8>,
         ctx: &mut TxContext,
     ) {
         checked_package_version(monitor);
         check_admin(monitor, sui::tx_context::sender(ctx));
+        
+        // Validate input vectors have the same length
+        let pool_ids_len = pool_ids.length();
+        let token_a_decimals_len = token_a_decimals.length();
+        let token_b_decimals_len = token_b_decimals.length();
+        assert!(pool_ids_len == token_a_decimals_len, EInvalidSailPool);
+        assert!(pool_ids_len == token_b_decimals_len, EInvalidSailPool);
+        
         let mut current_pool_ids: vector<ID>;
         if (monitor.aggregator_to_pools.contains(aggregator_id)) {
             current_pool_ids = monitor.aggregator_to_pools.remove(aggregator_id);
@@ -273,9 +348,22 @@ module price_monitor::price_monitor {
         };
 
         let mut i = 0;
-        let new_pool_ids_len = pool_ids.length();
-        while (i < new_pool_ids_len) {
-            current_pool_ids.push_back<ID>(pool_ids[i]);
+        while (i < pool_ids_len) {
+            let pool_id = pool_ids[i];
+            let token_a_dec = token_a_decimals[i];
+            let token_b_dec = token_b_decimals[i];
+            
+            // Calculate decimal multiplier for this pool
+            let decimal_multiplier = calculate_decimal_multiplier(token_a_dec, token_b_dec);
+            
+            // Store the multiplier for this pool
+            if (monitor.pool_price_decimal_multipliers.contains(pool_id)) {
+                assert!(monitor.pool_price_decimal_multipliers.borrow(pool_id) == decimal_multiplier, EInvalidPoolDecimal);
+            } else {
+                monitor.pool_price_decimal_multipliers.add(pool_id, decimal_multiplier);
+            };
+            
+            current_pool_ids.push_back<ID>(pool_id);
             i = i + 1;
         };
 
@@ -290,7 +378,12 @@ module price_monitor::price_monitor {
     ) {
         checked_package_version(monitor);
         check_admin(monitor, sui::tx_context::sender(ctx));
-        monitor.aggregator_to_pools.remove(aggregator_id);
+        let pools = monitor.aggregator_to_pools.remove(aggregator_id);
+        let mut i = 0;
+        while (i < pools.length()) {
+            monitor.pool_price_decimal_multipliers.remove(pools[i]);
+            i = i + 1;
+        };
     }
 
     /// Add a pool to an existing aggregator
@@ -298,6 +391,8 @@ module price_monitor::price_monitor {
         monitor: &mut PriceMonitor,
         aggregator_id: ID,
         pool_id: ID,
+        token_a_decimals: u8,
+        token_b_decimals: u8,
         ctx: &mut TxContext,
     ) {
         checked_package_version(monitor);
@@ -307,6 +402,9 @@ module price_monitor::price_monitor {
         assert!(!is_pool_associated_with_aggregator(monitor, aggregator_id, pool_id), EInvalidSailPool);
         let pools = monitor.aggregator_to_pools.borrow_mut(aggregator_id);
         pools.push_back(pool_id);
+
+        let decimal_multiplier = calculate_decimal_multiplier(token_a_decimals, token_b_decimals);
+        monitor.pool_price_decimal_multipliers.add(pool_id, decimal_multiplier);
     }
 
     /// Remove a pool from an aggregator
@@ -330,6 +428,8 @@ module price_monitor::price_monitor {
             };
             i = i + 1;
         };
+
+        monitor.pool_price_decimal_multipliers.remove(pool_id);
     }
 
     // ===== CORE PRICE MONITORING FUNCTIONS =====
@@ -364,11 +464,18 @@ module price_monitor::price_monitor {
         let current_time_ms = clock::timestamp_ms(clock);
 
         let oracle_price_q64 = get_time_checked_price_q64(
+            monitor,
             aggregator,
             clock
         );
 
-        let pool_price_q64 = get_pool_price_q64<CoinTypeA, CoinTypeB, BaseCoin>(feed_pool);
+        let pool_price_decimal_multiplier_q64 = if(monitor.pool_price_decimal_multipliers.contains(pool_id)) {
+            *monitor.pool_price_decimal_multipliers.borrow(pool_id)
+        } else {
+            0
+        };
+
+        let pool_price_q64 = get_pool_price_q64<CoinTypeA, CoinTypeB, BaseCoin>(feed_pool, pool_price_decimal_multiplier_q64);
 
         // Clean old prices from price history before analysis to ensure data freshness
         clean_old_prices_from_history(monitor, current_time_ms);
@@ -657,15 +764,20 @@ module price_monitor::price_monitor {
         if (history_length == 0) return (0, 0);
         
         let mut sum = 0u128;
+        let mut sum_squared = 0u128;
         let mut count = 0u64;
         
-        // Calculate mean using LinkedTable iteration
+        // Single pass: calculate sum, sum_squared, and count simultaneously
         let mut current_key_opt = monitor.price_history.front();
         while (current_key_opt.is_some()) {
             let current_key = current_key_opt.borrow();
             let price_point = monitor.price_history.borrow(*current_key);
-            sum = sum + price_point.oracle_price_q64;
+            let price = price_point.oracle_price_q64;
+            
+            sum = sum + price;
+            sum_squared = sum_squared + full_math_u128::mul_div_floor(price, price, 1<<64);
             count = count + 1;
+            
             current_key_opt = monitor.price_history.next(*current_key);
         };
         
@@ -673,22 +785,18 @@ module price_monitor::price_monitor {
         
         let mean = sum / (count as u128);
         
-        // Calculate standard deviation using LinkedTable iteration
-        let mut sum_squared_diff = 0u128;
-        current_key_opt = monitor.price_history.front();
-        while (current_key_opt.is_some()) {
-            let current_key = current_key_opt.borrow();
-            let price_point = monitor.price_history.borrow(*current_key);
-            let diff = if (price_point.oracle_price_q64 > mean) {
-                price_point.oracle_price_q64 - mean
-            } else {
-                mean - price_point.oracle_price_q64
-            };
-            sum_squared_diff = sum_squared_diff + (diff * diff);
-            current_key_opt = monitor.price_history.next(*current_key);
+        // Calculate variance using the formula: E[X²] - (E[X])²
+        // This avoids the need for a second iteration
+        let mean_squared = full_math_u128::mul_div_floor(mean, mean, 1<<64);
+        let expected_squared = sum_squared / (count as u128);
+        
+        // Handle potential underflow when mean_squared > expected_squared
+        let variance = if (expected_squared > mean_squared) {
+            expected_squared - mean_squared
+        } else {
+            0
         };
         
-        let variance = sum_squared_diff / (count as u128);
         let std_dev = integer_sqrt(variance);
         
         (mean, std_dev)
@@ -1045,8 +1153,6 @@ module price_monitor::price_monitor {
     public fun get_config(monitor: &PriceMonitor): &PriceMonitorConfig {
         &monitor.config
     }
-
-
 
     /// Update deviation thresholds (warning, critical, emergency) in basis points
     /// 
@@ -1444,6 +1550,7 @@ module price_monitor::price_monitor {
     /// # Returns
     /// The price in Q64.64 format, i.e USD/asset * 2^64 without decimals
     public fun get_time_checked_price_q64(
+        monitor: &PriceMonitor,
         aggregator: &Aggregator,
         clock: &sui::clock::Clock,
     ): u128 {
@@ -1451,7 +1558,7 @@ module price_monitor::price_monitor {
         let current_time = clock.timestamp_ms();
         let price_result_time = price_result.timestamp_ms();
 
-        assert!(price_result_time + price_monitor_consts::get_max_price_age_ms() > current_time, EGetTimeCheckedPriceOutdated);
+        assert!(price_result_time + monitor.config.max_price_age_ms > current_time, EGetTimeCheckedPriceOutdated);
 
         let price_result_price = price_result.result();
         assert!(!price_result_price.neg(), EGetTimeCheckedPriceNegativePrice);
@@ -1472,16 +1579,26 @@ module price_monitor::price_monitor {
     /// 
     /// # Arguments
     /// * `pool` - The CLMM pool containing the trading pair (feed pool)
+    /// * `pool_price_decimal_multiplier_q64` - The decimal multiplier for the pool price
     /// 
     /// # Returns
     /// Pool price in Q64.64 format
     fun get_pool_price_q64<CoinTypeA, CoinTypeB, BaseCoin>(
-        pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>
+        pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        pool_price_decimal_multiplier_q64: u128,
     ): u128 {
 
         let sqrt_price = pool.current_sqrt_price();
 
         let mut pool_price_q64 = (integer_mate::full_math_u128::full_mul(sqrt_price, sqrt_price) >> 64) as u128;
+
+        if (pool_price_decimal_multiplier_q64 != 0) {
+            pool_price_q64 = integer_mate::full_math_u128::mul_div_floor(
+                pool_price_q64,
+                pool_price_decimal_multiplier_q64,
+                1<<64
+            )
+        };
 
         if (type_name::get<CoinTypeA>() == type_name::get<BaseCoin>()) {
             pool_price_q64 = integer_mate::full_math_u128::mul_div_floor(
@@ -1527,6 +1644,7 @@ module price_monitor::price_monitor {
             version: 1,
             config,
             aggregator_to_pools: table::new(ctx),
+            pool_price_decimal_multipliers: table::new(ctx),
             price_history: linked_table::new(ctx),
             max_history_size: price_monitor_consts::get_max_price_history_size(),
             anomaly_count: 0,

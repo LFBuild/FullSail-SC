@@ -186,7 +186,7 @@ public fun calculate_expected_deviation_bps(price1: u128, price2: u128): u64 {
 #[test]
 fun test_validate_price_normal() {
     let mut scenario = test_scenario::begin(@0x1);
-    let (admin, mut clock) = setup_test_environment(&mut scenario);
+    let (admin, clock) = setup_test_environment(&mut scenario);
     
     let (mut monitor, admin_cap) = setup_price_monitor(&mut scenario, admin);
     let (mut pools, global_config, clmm_admin_cap) = setup_clmm_environment(&mut scenario, admin);
@@ -203,7 +203,11 @@ fun test_validate_price_normal() {
         let pool_id = object::id(&pool);
         let mut pool_ids = vector::empty();
         vector::push_back(&mut pool_ids, pool_id);
-        price_monitor::add_aggregator(&mut monitor, object::id(&aggregator), pool_ids, scenario.ctx());
+        let mut token_a_decimals = vector::empty();
+        vector::push_back(&mut token_a_decimals, 18);
+        let mut token_b_decimals = vector::empty();
+        vector::push_back(&mut token_b_decimals, 18);
+        price_monitor::add_aggregator(&mut monitor, object::id(&aggregator), pool_ids, token_a_decimals, token_b_decimals, scenario.ctx());
     };
     
     // Test price validation
@@ -257,7 +261,11 @@ fun test_validate_price_normal_ausd_sail_first() {
         let pool_id = object::id(&pool);
         let mut pool_ids = vector::empty();
         vector::push_back(&mut pool_ids, pool_id);
-        price_monitor::add_aggregator(&mut monitor, object::id(&aggregator), pool_ids, scenario.ctx());
+        let mut token_a_decimals = vector::empty();
+        vector::push_back(&mut token_a_decimals, 6);
+        let mut token_b_decimals = vector::empty();
+        vector::push_back(&mut token_b_decimals, 6);
+        price_monitor::add_aggregator(&mut monitor, object::id(&aggregator), pool_ids, token_a_decimals, token_b_decimals, scenario.ctx());
     };
     
     // Test price validation
@@ -315,7 +323,11 @@ fun test_validate_price_warning_deviation() {
         let pool_id = object::id(&pool);
         let mut pool_ids = vector::empty();
         vector::push_back(&mut pool_ids, pool_id);
-        price_monitor::add_aggregator(&mut monitor, object::id(&aggregator), pool_ids, scenario.ctx());
+        let mut token_a_decimals = vector::empty();
+        vector::push_back(&mut token_a_decimals, 6);
+        let mut token_b_decimals = vector::empty();
+        vector::push_back(&mut token_b_decimals, 6);
+        price_monitor::add_aggregator(&mut monitor, object::id(&aggregator), pool_ids, token_a_decimals, token_b_decimals, scenario.ctx());
     };
     
     // Test price validation
@@ -373,7 +385,11 @@ fun test_validate_price_critical_deviation() {
         let pool_id = object::id(&pool);
         let mut pool_ids = vector::empty();
         vector::push_back(&mut pool_ids, pool_id);
-        price_monitor::add_aggregator(&mut monitor, object::id(&aggregator), pool_ids, scenario.ctx());
+        let mut token_a_decimals = vector::empty();
+        vector::push_back(&mut token_a_decimals, 6);
+        let mut token_b_decimals = vector::empty();
+        vector::push_back(&mut token_b_decimals, 6);
+        price_monitor::add_aggregator(&mut monitor, object::id(&aggregator), pool_ids, token_a_decimals, token_b_decimals, scenario.ctx());
     };
     
     // Test price validation
@@ -439,7 +455,11 @@ fun test_validate_price_emergency_deviation() {
         let pool_id = object::id(&pool);
         let mut pool_ids = vector::empty();
         vector::push_back(&mut pool_ids, pool_id);
-        price_monitor::add_aggregator(&mut monitor, object::id(&aggregator), pool_ids, scenario.ctx());
+        let mut token_a_decimals = vector::empty();
+        vector::push_back(&mut token_a_decimals, 6);
+        let mut token_b_decimals = vector::empty();
+        vector::push_back(&mut token_b_decimals, 6);
+        price_monitor::add_aggregator(&mut monitor, object::id(&aggregator), pool_ids, token_a_decimals, token_b_decimals, scenario.ctx());
     };
     
     // Test price validation
@@ -501,7 +521,11 @@ fun test_validate_price_outdated_oracle() {
         let pool_id = object::id(&pool);
         let mut pool_ids = vector::empty();
         vector::push_back(&mut pool_ids, pool_id);
-        price_monitor::add_aggregator(&mut monitor, object::id(&aggregator), pool_ids, scenario.ctx());
+        let mut token_a_decimals = vector::empty();
+        vector::push_back(&mut token_a_decimals, 6);
+        let mut token_b_decimals = vector::empty();
+        vector::push_back(&mut token_b_decimals, 6);
+        price_monitor::add_aggregator(&mut monitor, object::id(&aggregator), pool_ids, token_a_decimals, token_b_decimals, scenario.ctx());
     };
     
     // Advance time by more than 1 minute (oracle price max age)
@@ -557,7 +581,11 @@ fun test_validate_price_statistical_anomaly() {
         let pool_id = object::id(&pool);
         let mut pool_ids = vector::empty();
         vector::push_back(&mut pool_ids, pool_id);
-        price_monitor::add_aggregator(&mut monitor, object::id(&aggregator), pool_ids, scenario.ctx());
+        let mut token_a_decimals = vector::empty();
+        vector::push_back(&mut token_a_decimals, 6);
+        let mut token_b_decimals = vector::empty();
+        vector::push_back(&mut token_b_decimals, 6);
+        price_monitor::add_aggregator(&mut monitor, object::id(&aggregator), pool_ids, token_a_decimals, token_b_decimals, scenario.ctx());
     };
     
     // Populate price history with normal prices to establish baseline
@@ -589,7 +617,11 @@ fun test_validate_price_statistical_anomaly() {
         let pool_id = object::id(&pool);
         let mut pool_ids = vector::empty();
         vector::push_back(&mut pool_ids, pool_id);
-        price_monitor::add_aggregator(&mut monitor, object::id(&extreme_aggregator), pool_ids, scenario.ctx());
+        let mut token_a_decimals = vector::empty();
+        vector::push_back(&mut token_a_decimals, 6);
+        let mut token_b_decimals = vector::empty();
+        vector::push_back(&mut token_b_decimals, 6);
+        price_monitor::add_aggregator(&mut monitor, object::id(&extreme_aggregator), pool_ids, token_a_decimals, token_b_decimals, scenario.ctx());
     };
     
     // Test price validation with extreme price - should detect statistical anomaly
@@ -644,7 +676,11 @@ fun test_validate_price_circuit_breaker_escalation() {
         let pool_id = object::id(&pool);
         let mut pool_ids = vector::empty();
         vector::push_back(&mut pool_ids, pool_id);
-        price_monitor::add_aggregator(&mut monitor, object::id(&aggregator), pool_ids, scenario.ctx());
+        let mut token_a_decimals = vector::empty();
+        vector::push_back(&mut token_a_decimals, 6);
+        let mut token_b_decimals = vector::empty();
+        vector::push_back(&mut token_b_decimals, 6);
+        price_monitor::add_aggregator(&mut monitor, object::id(&aggregator), pool_ids, token_a_decimals, token_b_decimals, scenario.ctx());
     };
     
     // Trigger multiple critical anomalies to activate circuit breaker
@@ -690,70 +726,90 @@ fun test_validate_price_circuit_breaker_escalation() {
 }
 
 // Test 8: Price history management (size limits)
-// #[test]
-// fun test_validate_price_history_management() {
-//     let mut scenario = test_scenario::begin(@0x1);
-//     let (admin, mut clock) = setup_test_environment(&mut scenario);
+#[test]
+fun test_validate_price_history_management() {
+    let mut scenario = test_scenario::begin(@0x1);
+    let (admin, mut clock) = setup_test_environment(&mut scenario);
     
-//     let (mut monitor, admin_cap) = setup_price_monitor(&mut scenario, admin);
-//     let (mut pools, global_config, clmm_admin_cap) = setup_clmm_environment(&mut scenario, admin);
+    let (mut monitor, admin_cap) = setup_price_monitor(&mut scenario, admin);
+    let (mut pools, global_config, clmm_admin_cap) = setup_clmm_environment(&mut scenario, admin);
     
-//     // Setup aggregator with price 1.0 (1 * 10^18)
-//     let mut aggregator = setup_test_aggregator(&mut scenario, 1000000000000000000, &clock);
+    // Setup aggregator with price 1.0 (1 * 10^18)
+    let mut aggregator = setup_test_aggregator(&mut scenario, 1000000000000000000, &clock);
     
-//     // Setup pool with similar price
-//     let pool = setup_test_pool<USD_TESTS, SAIL>(&mut scenario, 1 << 64, &mut pools, &global_config, &clock);
+    // Setup pool with similar price
+    let pool = setup_test_pool<USD_TESTS, SAIL>(&mut scenario, 1 << 64, &mut pools, &global_config, &clock);
     
-//     // Add aggregator to monitor with this pool
-//     scenario.next_tx(admin);
-//     {
-//         let pool_id = object::id(&pool);
-//         let mut pool_ids = vector::empty();
-//         vector::push_back(&mut pool_ids, pool_id);
-//         price_monitor::add_aggregator(&mut monitor, object::id(&aggregator), pool_ids, scenario.ctx());
-//     };
-    
-//     // Add many price points to test history size management
-//     let mut i = 0;
-//     while (i < 80) {
-//         scenario.next_tx(admin);
-//         {
-//             price_monitor::validate_price<USD_TESTS, SAIL, SAIL>(
-//                 &mut monitor,
-//                 &aggregator,
-//                 &pool,
-//                 &clock
-//             );
-//         };
-        
-//         // Advance time by 1 minute
-//         clock::increment_for_testing(&mut clock, 60000);
+    // Add aggregator to monitor with this pool
+    scenario.next_tx(admin);
+    {
+        monitor.update_anomaly_thresholds(
+            1,
+            1,
+            300000,
+            scenario.ctx()
+        );
 
-//         aggregator_set_current_value(&mut aggregator, 1000000000000000000, clock.timestamp_ms());
+            monitor.update_time_config(
+            6000000*2,
+            3600000*2,
+            60000,
+            70,
+            1,
+            scenario.ctx()
+        );
 
-//         i = i + 1;
-//     };
+        let pool_id = object::id(&pool);
+        let mut pool_ids = vector::empty();
+        vector::push_back(&mut pool_ids, pool_id);
+        let mut token_a_decimals = vector::empty();
+        vector::push_back(&mut token_a_decimals, 6);
+        let mut token_b_decimals = vector::empty();
+        vector::push_back(&mut token_b_decimals, 6);
+        price_monitor::add_aggregator(&mut monitor, object::id(&aggregator), pool_ids, token_a_decimals, token_b_decimals, scenario.ctx());
+    };
     
-//     // Check price statistics to verify history size management
-//     scenario.next_tx(admin);
-//     {
-//         let _stats = price_monitor::get_price_statistics(&monitor);
+    // Add many price points to test history size management
+    let mut i = 0;
+    while (i < 80) {
+        scenario.next_tx(admin);
+        {
+            price_monitor::validate_price<USD_TESTS, SAIL, SAIL>(
+                &mut monitor,
+                &aggregator,
+                &pool,
+                &clock
+            );
+        };
         
-//         // Return objects
-//         test_scenario::return_shared(monitor);
-//         test_scenario::return_shared(pools);
-//         test_scenario::return_shared(global_config);
-//         scenario.return_to_sender(admin_cap);
-//         scenario.return_to_sender(clmm_admin_cap);
-//     };
+        // Advance time by 1 minute
+        clock::increment_for_testing(&mut clock, 60000);
+
+        aggregator_set_current_value(&mut aggregator, 1000000000000000000, clock.timestamp_ms());
+
+        i = i + 1;
+    };
     
-//     // Destroy objects that don't have drop ability
-//     test_utils::destroy(aggregator);
-//     test_utils::destroy(pool);
-//     clock::destroy_for_testing(clock);
+    // Check price statistics to verify history size management
+    scenario.next_tx(admin);
+    {
+        let _stats = price_monitor::get_price_statistics(&monitor);
+        
+        // Return objects
+        test_scenario::return_shared(monitor);
+        test_scenario::return_shared(pools);
+        test_scenario::return_shared(global_config);
+        scenario.return_to_sender(admin_cap);
+        scenario.return_to_sender(clmm_admin_cap);
+    };
     
-//     scenario.end();
-// }
+    // Destroy objects that don't have drop ability
+    test_utils::destroy(aggregator);
+    test_utils::destroy(pool);
+    clock::destroy_for_testing(clock);
+    
+    scenario.end();
+}
 
 // Test 9: Invalid pool (should fail with EInvalidSailPool)
 #[test, expected_failure(abort_code = ::price_monitor::price_monitor::EInvalidSailPool)]
@@ -779,6 +835,122 @@ fun test_validate_price_invalid_pool() {
             &pool,
             &clock
         );
+        
+        // Return objects
+        test_scenario::return_shared(monitor);
+        test_scenario::return_shared(pools);
+        test_scenario::return_shared(global_config);
+        scenario.return_to_sender(admin_cap);
+        scenario.return_to_sender(clmm_admin_cap);
+    };
+    
+    // Destroy objects that don't have drop ability
+    test_utils::destroy(aggregator);
+    test_utils::destroy(pool);
+    clock::destroy_for_testing(clock);
+    
+    scenario.end();
+}
+
+// Test 10: Check correct work with different decimals of pool
+#[test]
+fun test_validate_price_different_decimals() {
+    let mut scenario = test_scenario::begin(@0x1);
+    let (admin, clock) = setup_test_environment(&mut scenario);
+    
+    let (mut monitor, admin_cap) = setup_price_monitor(&mut scenario, admin);
+    let (mut pools, global_config, clmm_admin_cap) = setup_clmm_environment(&mut scenario, admin);
+    
+    // Setup aggregator with price 1.0 (1 * 10^18)
+    let aggregator = setup_test_aggregator(&mut scenario, 1000000000000000000, &clock);
+    
+    // Setup pool with similar price (sqrt_price = 1.0, so price = 1.0)
+    let pool = setup_test_pool<USD_TESTS, SAIL>(&mut scenario, (3162 << 64)/100, &mut pools, &global_config, &clock); // (3162 << 64)/100 == sqrt(1000)
+    
+    // Add aggregator to monitor with this pool
+    scenario.next_tx(admin);
+    {
+        let pool_id = object::id(&pool);
+        let mut pool_ids = vector::empty();
+        vector::push_back(&mut pool_ids, pool_id);
+        let mut token_a_decimals = vector::empty();
+        vector::push_back(&mut token_a_decimals, 15);
+        let mut token_b_decimals = vector::empty();
+        vector::push_back(&mut token_b_decimals, 18);
+        price_monitor::add_aggregator(&mut monitor, object::id(&aggregator), pool_ids, token_a_decimals, token_b_decimals, scenario.ctx());
+    };
+    
+    // Test price validation
+    scenario.next_tx(admin);
+    {
+        let result = price_monitor::validate_price<USD_TESTS, SAIL, SAIL>(
+            &mut monitor,
+            &aggregator,
+            &pool,
+            &clock
+        );
+        
+        // Should be valid since prices are similar
+        assert!(price_monitor::get_is_valid(&result), 0);
+        assert!(!price_monitor::get_escalation_activation(&result), 0);
+        
+        // Return objects
+        test_scenario::return_shared(monitor);
+        test_scenario::return_shared(pools);
+        test_scenario::return_shared(global_config);
+        scenario.return_to_sender(admin_cap);
+        scenario.return_to_sender(clmm_admin_cap);
+    };
+    
+    // Destroy objects that don't have drop ability
+    test_utils::destroy(aggregator);
+    test_utils::destroy(pool);
+    clock::destroy_for_testing(clock);
+    
+    scenario.end();
+}
+
+// Test 10.1: Check correct work with different decimals of pool (AUSD, SAIL first)
+#[test]
+fun test_validate_price_different_decimals_ausd_sail_first() {
+    let mut scenario = test_scenario::begin(@0x1);
+    let (admin, clock) = setup_test_environment(&mut scenario);
+    
+    let (mut monitor, admin_cap) = setup_price_monitor(&mut scenario, admin);
+    let (mut pools, global_config, clmm_admin_cap) = setup_clmm_environment(&mut scenario, admin);
+    
+    // Setup aggregator with price 1.0 (1 * 10^18)
+    let aggregator = setup_test_aggregator(&mut scenario, 1000000000000000000, &clock);
+    
+    // Setup pool with similar price (sqrt_price = 1.0, so price = 1.0)
+    let pool = setup_test_pool<SAIL, AUSD_TESTS>(&mut scenario, (1 << 64)/3162*100, &mut pools, &global_config, &clock);
+    
+    // Add aggregator to monitor with this pool
+    scenario.next_tx(admin);
+    {
+        let pool_id = object::id(&pool);
+        let mut pool_ids = vector::empty();
+        vector::push_back(&mut pool_ids, pool_id);
+        let mut token_a_decimals = vector::empty();
+        vector::push_back(&mut token_a_decimals, 9);
+        let mut token_b_decimals = vector::empty();
+        vector::push_back(&mut token_b_decimals, 6);
+        price_monitor::add_aggregator(&mut monitor, object::id(&aggregator), pool_ids, token_a_decimals, token_b_decimals, scenario.ctx());
+    };
+    
+    // Test price validation
+    scenario.next_tx(admin);
+    {
+        let result = price_monitor::validate_price<SAIL, AUSD_TESTS, SAIL>(
+            &mut monitor,
+            &aggregator,
+            &pool,
+            &clock
+        );
+        
+        // Should be valid since prices are similar
+        assert!(price_monitor::get_is_valid(&result), 0);
+        assert!(!price_monitor::get_escalation_activation(&result), 0);
         
         // Return objects
         test_scenario::return_shared(monitor);
