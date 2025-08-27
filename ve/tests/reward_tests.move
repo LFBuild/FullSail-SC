@@ -3565,3 +3565,80 @@ fun test_claim_rewards_after_200_epochs() {
     clock::destroy_for_testing(clock);
     scenario.end();
 }
+
+#[test]
+fun test_deposit_zero_amount() {
+    let admin = @0x1000;
+    let mut scenario = test_scenario::begin(admin);
+    let clock = clock::create_for_testing(scenario.ctx());
+
+    // Create Reward object and Cap
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, false);
+
+    // Define details
+    let lock_id1: ID = object::id_from_address(@0x201);
+    let lock_id2: ID = object::id_from_address(@0x202);
+    let zero_deposit = 0;
+    let normal_deposit = 5000;
+
+    // --- Test 1: Zero deposit on a new lock ---
+    // Initial state checks
+    assert!(reward_obj.total_supply(&clock) == 0, 1);
+    assert!(reward_obj.balance_of(lock_id1, &clock) == 0, 2);
+
+    // Deposit zero amount
+    reward_obj.deposit(&reward_cap, zero_deposit, lock_id1, &clock, scenario.ctx());
+
+    // Verify state after zero deposit - should remain unchanged
+    assert!(reward_obj.total_supply(&clock) == 0, 3);
+    assert!(reward_obj.balance_of(lock_id1, &clock) == 0, 4);
+    assert!(reward_obj.earned<USD1>(lock_id1, &clock) == 0, 5);
+
+    // --- Test 2: Normal deposit followed by zero deposit ---
+    // Make a normal deposit first
+    reward_obj.deposit(&reward_cap, normal_deposit, lock_id1, &clock, scenario.ctx());
+    assert!(reward_obj.total_supply(&clock) == normal_deposit, 6);
+    assert!(reward_obj.balance_of(lock_id1, &clock) == normal_deposit, 7);
+
+    // Now deposit zero amount - should not change the balance
+    reward_obj.deposit(&reward_cap, zero_deposit, lock_id1, &clock, scenario.ctx());
+    assert!(reward_obj.total_supply(&clock) == normal_deposit, 8);
+    assert!(reward_obj.balance_of(lock_id1, &clock) == normal_deposit, 9);
+
+    // --- Test 3: Zero deposit on a different lock while another has balance ---
+    reward_obj.deposit(&reward_cap, zero_deposit, lock_id2, &clock, scenario.ctx());
+    
+    // lock_id1 should still have its balance, lock_id2 should have zero
+    assert!(reward_obj.balance_of(lock_id1, &clock) == normal_deposit, 10);
+    assert!(reward_obj.balance_of(lock_id2, &clock) == 0, 11);
+    assert!(reward_obj.total_supply(&clock) == normal_deposit, 12);
+
+    // --- Test 4: Zero deposit with reward notifications ---
+    let notify_amount = 1000;
+    let reward_coin = coin::mint_for_testing<USD1>(notify_amount, scenario.ctx());
+    reward::notify_reward_amount_internal<USD1>(
+        &mut reward_obj,
+        &reward_cap,
+        reward_coin.into_balance(),
+        &clock,
+        scenario.ctx()
+    );
+
+    // Deposit zero after reward notification
+    reward_obj.deposit(&reward_cap, zero_deposit, lock_id1, &clock, scenario.ctx());
+    
+    // Balances should remain the same
+    assert!(reward_obj.balance_of(lock_id1, &clock) == normal_deposit, 13);
+    assert!(reward_obj.balance_of(lock_id2, &clock) == 0, 14);
+    assert!(reward_obj.total_supply(&clock) == normal_deposit, 15);
+    
+    // Earned should still be 0 within the same epoch
+    assert!(reward_obj.earned<USD1>(lock_id1, &clock) == 0, 16);
+    assert!(reward_obj.earned<USD1>(lock_id2, &clock) == 0, 17);
+
+    // Cleanup
+    test_utils::destroy(reward_cap);
+    test_utils::destroy(reward_obj);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
