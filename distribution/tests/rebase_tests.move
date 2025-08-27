@@ -3,33 +3,16 @@ module distribution::rebase_tests;
 
 use distribution::minter;
 use sui::coin::{Self, Coin};
-use sui::balance::{Self, Balance};
 use sui::clock::{Self, Clock};
-use sui::transfer::{Self, transfer};
 use sui::test_scenario::{Self, Scenario, ctx};
-use sui::math::sqrt;
-
-use clmm_pool::pool::{Self, Pool};
-use clmm_pool::config as clmm_config;
-use clmm_pool::config::GlobalConfig;
 use clmm_pool::tick_math;
 use sui::test_utils;
 
-use ve::common;
-use distribution::distribute_cap::{Self};
-use distribution::distribution_config::{Self, DistributionConfig};
-use distribution::rebase_distributor::{Self,RebaseDistributor};
-use distribution::gauge::{Self, Gauge, StakedPosition};
-use gauge_cap::gauge_cap::{Self, CreateCap};
-use distribution::minter::{AdminCap, Minter};
-use distribution::voter::{Self, Voter};
+use distribution::rebase_distributor::{RebaseDistributor};
+use distribution::minter::{Minter};
 use ve::voting_escrow::{Self, VotingEscrow, Lock};
 use distribution::setup;
-use sui::sui::SUI;
-use ve::emergency_council;
-
-use switchboard::aggregator::{Self, Aggregator};
-use price_monitor::price_monitor::{Self, PriceMonitor};
+use switchboard::aggregator::{Aggregator};
 
 use distribution::usd_tests::{Self, USD_TESTS};
 
@@ -41,6 +24,7 @@ public struct OSAIL1 has drop, store {}
 public struct OSAIL2 has drop, store {}
 public struct OSAIL3 has drop, store {}
 public struct OSAIL4 has drop, store {}
+public struct BUSD has drop, store {}
 
 #[test]
 fun test_calculate_rebase_growth() {
@@ -278,6 +262,641 @@ fun test_rebase_distribution_and_claim() {
     };
 
 
+    test_utils::destroy(usd_tests_cap);
+    test_utils::destroy(usd_tests_metadata);
+    test_utils::destroy(aggregator);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_rebase_distribution_with_two_pools() {
+    let admin = @0xA;
+    let user1 = @0xB;
+    let user2 = @0xC;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    let (usd_tests_cap, usd_tests_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+
+    let gauge_base_emissions = 1_000_000;
+    let lock_amount = 500_000;
+    let initial_o_sail_supply = 0;
+
+    // 1. Setup
+    scenario.next_tx(admin);
+    {
+        setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+    };
+
+    scenario.next_tx(admin);
+    {
+        setup::setup_distribution_with_initial_supply<SAIL>(&mut scenario, admin, lock_amount, &clock);
+    };
+
+    scenario.next_tx(admin);
+    {
+        setup::setup_pool_with_sqrt_price<USD_TESTS, AUSD>(&mut scenario, 1 << 64, 1);
+    };
+    
+    scenario.next_tx(admin);
+    {
+        setup::setup_pool_with_sqrt_price<USD_TESTS, BUSD>(&mut scenario, 1 << 64, 1);
+    };
+    
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, initial_o_sail_supply, &mut clock);
+        o_sail_coin.burn_for_testing();
+    };
+    
+    scenario.next_tx(admin);
+    {
+        setup::setup_gauge_for_pool<USD_TESTS, AUSD, SAIL>(&mut scenario, gauge_base_emissions, &clock);
+    };
+
+    scenario.next_tx(admin);
+    {
+        setup::setup_gauge_for_pool<USD_TESTS, BUSD, SAIL>(&mut scenario, gauge_base_emissions, &clock);
+    };
+
+    scenario.next_tx(admin);
+    {
+        let sail_coin = scenario.take_from_sender<Coin<SAIL>>();
+        transfer::public_transfer(sail_coin, user1);
+    };
+    scenario.next_tx(user1);
+    {
+        let sail_coin = scenario.take_from_sender<Coin<SAIL>>();
+        setup::create_lock<SAIL>(&mut scenario, sail_coin, 182, &clock);
+    };
+
+    let mut aggregator = setup::setup_price_monitor_and_aggregator<USD_TESTS, SAIL>(&mut scenario, admin, true, &clock);
+
+    // 2. Create and deposit positions
+    scenario.next_tx(user1);
+    {
+        setup::create_position_with_liquidity<USD_TESTS, AUSD>(
+            &mut scenario,
+            user1,
+            tick_math::min_tick().as_u32(),
+            tick_math::max_tick().as_u32(),
+            100_000_000,
+            &clock
+        );
+    };
+    scenario.next_tx(user1);
+    {
+        setup::deposit_position<USD_TESTS, AUSD>(&mut scenario, &clock);
+    };
+    
+    scenario.next_tx(user2);
+    {
+        setup::create_position_with_liquidity<USD_TESTS, BUSD>(
+            &mut scenario,
+            user2,
+            tick_math::min_tick().as_u32(),
+            tick_math::max_tick().as_u32(),
+            100_000_000,
+            &clock
+        );
+    };
+    scenario.next_tx(user2);
+    {
+        setup::deposit_position<USD_TESTS, BUSD>(&mut scenario, &clock);
+    };
+    
+    // 3. Distribute gauges for epoch 1
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_tests_metadata, &mut aggregator, &clock); 
+    };
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge<USD_TESTS, BUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_tests_metadata, &mut aggregator, &clock); 
+    };
+
+    clock.increment_for_testing(WEEK);
+
+    // 4. Claim staking rewards for epoch 1
+    scenario.next_tx(user1);
+    {
+        setup::get_staked_position_reward<USD_TESTS, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
+    };
+     scenario.next_tx(user2);
+    {
+        setup::get_staked_position_reward<USD_TESTS, BUSD, SAIL, OSAIL1>(&mut scenario, &clock);
+    };
+
+    // 5. Update to epoch 2, rebase should be 0
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin_2 = setup::update_minter_period<SAIL, OSAIL2>(&mut scenario, 0, &clock);
+        o_sail_coin_2.burn_for_testing();
+    };
+    scenario.next_tx(admin);
+    {
+        let rd = scenario.take_shared<RebaseDistributor<SAIL>>();
+        assert!(rd.balance() == 0, 0);
+        test_scenario::return_shared(rd);
+    };
+
+    // 6. Distribute gauges for epoch 2
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL2, USD_TESTS>(&mut scenario, &usd_tests_metadata, &mut aggregator, &clock); 
+    };
+     scenario.next_tx(admin);
+    {
+        setup::distribute_gauge<USD_TESTS, BUSD, SAIL, OSAIL2, USD_TESTS>(&mut scenario, &usd_tests_metadata, &mut aggregator, &clock); 
+    };
+
+    clock.increment_for_testing(WEEK);
+
+    // 7. Claim staking rewards for epoch 2
+     scenario.next_tx(user1);
+    {
+        setup::get_staked_position_reward<USD_TESTS, AUSD, SAIL, OSAIL2>(&mut scenario, &clock);
+    };
+     scenario.next_tx(user2);
+    {
+        setup::get_staked_position_reward<USD_TESTS, BUSD, SAIL, OSAIL2>(&mut scenario, &clock);
+    };
+    
+    // 8. Update to epoch 3, trigger rebase
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin_3 = setup::update_minter_period<SAIL, OSAIL3>(&mut scenario, 0, &clock);
+        o_sail_coin_3.burn_for_testing();
+    };
+
+    // 9. Verify and claim first rebase
+    let expected_rebase1 = 790123;
+    scenario.next_tx(admin);
+    {
+        let rd = scenario.take_shared<RebaseDistributor<SAIL>>();
+        assert!(expected_rebase1 - rd.balance() <= 1, 1);
+        test_scenario::return_shared(rd);
+    };
+
+    scenario.next_tx(user1);
+    {
+        let mut rd = scenario.take_shared<RebaseDistributor<SAIL>>();
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let mut lock = scenario.take_from_sender<Lock>();
+
+        let claimed_amount = rd.claim(&mut ve, &mut lock, &clock, scenario.ctx());
+        assert!(expected_rebase1 - claimed_amount <= 10, 2);
+
+        let (locked_balance, _) = voting_escrow::locked(&ve, object::id(&lock));
+        assert!((lock_amount + expected_rebase1) - locked_balance.amount() <= 10, 3);
+        assert!(rd.balance() <= 10, 4);
+
+        test_scenario::return_shared(rd);
+        test_scenario::return_shared(ve);
+        scenario.return_to_sender(lock);
+    };
+
+    // 10. Distribute gauges for epoch 3
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL3, USD_TESTS>(&mut scenario, &usd_tests_metadata, &mut aggregator, &clock); 
+    };
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge<USD_TESTS, BUSD, SAIL, OSAIL3, USD_TESTS>(&mut scenario, &usd_tests_metadata, &mut aggregator, &clock); 
+    };
+
+    clock.increment_for_testing(WEEK);
+
+    // 11. Update to epoch 4, trigger second rebase
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin_4 = setup::update_minter_period<SAIL, OSAIL4>(&mut scenario, 0, &clock);
+        o_sail_coin_4.burn_for_testing();
+    };
+
+    // 12. Verify and claim second rebase
+    let expected_rebase2 = 571726;
+    scenario.next_tx(admin);
+    {
+        let rd = scenario.take_shared<RebaseDistributor<SAIL>>();
+        assert!(rd.balance() - expected_rebase2 <= 10, 5);
+        test_scenario::return_shared(rd);
+    };
+
+    scenario.next_tx(user1);
+    {
+        let mut rd = scenario.take_shared<RebaseDistributor<SAIL>>();
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let mut lock = scenario.take_from_sender<Lock>();
+
+        let claimed_amount = rd.claim(&mut ve, &mut lock, &clock, scenario.ctx());
+        assert!(expected_rebase2 - claimed_amount <= 10, 6);
+
+        let (locked_balance, _) = voting_escrow::locked(&ve, object::id(&lock));
+        assert!((lock_amount + expected_rebase1 + expected_rebase2) - locked_balance.amount() <= 20, 7);
+        assert!(rd.balance() <= 20, 8);
+
+        test_scenario::return_shared(rd);
+        test_scenario::return_shared(ve);
+        scenario.return_to_sender(lock);
+    };
+
+    // Cleanup
+    test_utils::destroy(usd_tests_cap);
+    test_utils::destroy(usd_tests_metadata);
+    test_utils::destroy(aggregator);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+
+#[test]
+fun test_rebase_distribution_with_two_pools_one_gauge_first_epoch_skipped() {
+    let admin = @0xA;
+    let user1 = @0xB;
+    let user2 = @0xC;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    let (usd_tests_cap, usd_tests_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+
+    let gauge_base_emissions = 1_000_000;
+    let lock_amount = 500_000;
+    let initial_o_sail_supply = 0;
+
+    // 1. Setup
+    scenario.next_tx(admin);
+    {
+        setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+    };
+
+    scenario.next_tx(admin);
+    {
+        setup::setup_distribution_with_initial_supply<SAIL>(&mut scenario, admin, lock_amount, &clock);
+    };
+
+    scenario.next_tx(admin);
+    {
+        setup::setup_pool_with_sqrt_price<USD_TESTS, AUSD>(&mut scenario, 1 << 64, 1);
+    };
+    
+    scenario.next_tx(admin);
+    {
+        setup::setup_pool_with_sqrt_price<USD_TESTS, BUSD>(&mut scenario, 1 << 64, 1);
+    };
+    
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, initial_o_sail_supply, &mut clock);
+        o_sail_coin.burn_for_testing();
+    };
+    
+    scenario.next_tx(admin);
+    {
+        setup::setup_gauge_for_pool<USD_TESTS, AUSD, SAIL>(&mut scenario, gauge_base_emissions, &clock);
+    };
+
+    scenario.next_tx(admin);
+    {
+        setup::setup_gauge_for_pool<USD_TESTS, BUSD, SAIL>(&mut scenario, gauge_base_emissions, &clock);
+    };
+
+    scenario.next_tx(admin);
+    {
+        let sail_coin = scenario.take_from_sender<Coin<SAIL>>();
+        transfer::public_transfer(sail_coin, user1);
+    };
+    scenario.next_tx(user1);
+    {
+        let sail_coin = scenario.take_from_sender<Coin<SAIL>>();
+        setup::create_lock<SAIL>(&mut scenario, sail_coin, 182, &clock);
+    };
+
+    let mut aggregator = setup::setup_price_monitor_and_aggregator<USD_TESTS, SAIL>(&mut scenario, admin, true, &clock);
+
+    // 2. Create and deposit positions
+    scenario.next_tx(user1);
+    {
+        setup::create_position_with_liquidity<USD_TESTS, AUSD>(
+            &mut scenario,
+            user1,
+            tick_math::min_tick().as_u32(),
+            tick_math::max_tick().as_u32(),
+            100_000_000,
+            &clock
+        );
+    };
+    scenario.next_tx(user1);
+    {
+        setup::deposit_position<USD_TESTS, AUSD>(&mut scenario, &clock);
+    };
+    
+    scenario.next_tx(user2);
+    {
+        setup::create_position_with_liquidity<USD_TESTS, BUSD>(
+            &mut scenario,
+            user2,
+            tick_math::min_tick().as_u32(),
+            tick_math::max_tick().as_u32(),
+            100_000_000,
+            &clock
+        );
+    };
+    scenario.next_tx(user2);
+    {
+        setup::deposit_position<USD_TESTS, BUSD>(&mut scenario, &clock);
+    };
+    
+    // 3. Distribute gauges for epoch 1
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_tests_metadata, &mut aggregator, &clock); 
+    };
+    // skip the second gauge distribution
+
+    clock.increment_for_testing(WEEK);
+
+    // 4. Claim staking rewards for epoch 1
+    scenario.next_tx(user1);
+    {
+        setup::get_staked_position_reward<USD_TESTS, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
+    };
+     scenario.next_tx(user2);
+    {
+        setup::get_staked_position_reward<USD_TESTS, BUSD, SAIL, OSAIL1>(&mut scenario, &clock);
+    };
+
+    // 5. Update to epoch 2, rebase should be 0
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin_2 = setup::update_minter_period<SAIL, OSAIL2>(&mut scenario, 0, &clock);
+        o_sail_coin_2.burn_for_testing();
+    };
+    scenario.next_tx(admin);
+    {
+        let rd = scenario.take_shared<RebaseDistributor<SAIL>>();
+        assert!(rd.balance() == 0, 0);
+        test_scenario::return_shared(rd);
+    };
+
+    // 6. Distribute gauges for epoch 2
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL2, USD_TESTS>(&mut scenario, &usd_tests_metadata, &mut aggregator, &clock); 
+    };
+     scenario.next_tx(admin);
+    {
+        setup::distribute_gauge<USD_TESTS, BUSD, SAIL, OSAIL2, USD_TESTS>(&mut scenario, &usd_tests_metadata, &mut aggregator, &clock); 
+    };
+
+    clock.increment_for_testing(WEEK);
+
+    // 7. Claim staking rewards for epoch 2
+     scenario.next_tx(user1);
+    {
+        setup::get_staked_position_reward<USD_TESTS, AUSD, SAIL, OSAIL2>(&mut scenario, &clock);
+    };
+     scenario.next_tx(user2);
+    {
+        setup::get_staked_position_reward<USD_TESTS, BUSD, SAIL, OSAIL2>(&mut scenario, &clock);
+    };
+    
+    // 8. Update to epoch 3, trigger rebase
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin_3 = setup::update_minter_period<SAIL, OSAIL3>(&mut scenario, 0, &clock);
+        o_sail_coin_3.burn_for_testing();
+    };
+
+    // 9. Verify and claim first rebase
+    //  1_000_000 * (1 - 500_000/3_500_000)**2 * 0.5
+    // 1m of base because we only distributed 1 gauge during the first epoch
+    let expected_rebase1 = 367347;
+    scenario.next_tx(admin);
+    {
+        let rd = scenario.take_shared<RebaseDistributor<SAIL>>();
+        assert!(expected_rebase1 - rd.balance() <= 1, 1);
+        test_scenario::return_shared(rd);
+    };
+
+    scenario.next_tx(user1);
+    {
+        let mut rd = scenario.take_shared<RebaseDistributor<SAIL>>();
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let mut lock = scenario.take_from_sender<Lock>();
+
+        let claimed_amount = rd.claim(&mut ve, &mut lock, &clock, scenario.ctx());
+        assert!(expected_rebase1 - claimed_amount <= 10, 2);
+
+        let (locked_balance, _) = voting_escrow::locked(&ve, object::id(&lock));
+        assert!((lock_amount + expected_rebase1) - locked_balance.amount() <= 10, 3);
+        assert!(rd.balance() <= 10, 4);
+
+        test_scenario::return_shared(rd);
+        test_scenario::return_shared(ve);
+        scenario.return_to_sender(lock);
+    };
+
+    // Cleanup
+    test_utils::destroy(usd_tests_cap);
+    test_utils::destroy(usd_tests_metadata);
+    test_utils::destroy(aggregator);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_rebase_distribution_with_two_pools_one_gauge_second_epoch_skipped() {
+    let admin = @0xA;
+    let user1 = @0xB;
+    let user2 = @0xC;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    let (usd_tests_cap, usd_tests_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+
+    let gauge_base_emissions = 1_000_000;
+    let lock_amount = 500_000;
+    let initial_o_sail_supply = 0;
+
+    // 1. Setup
+    scenario.next_tx(admin);
+    {
+        setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+    };
+
+    scenario.next_tx(admin);
+    {
+        setup::setup_distribution_with_initial_supply<SAIL>(&mut scenario, admin, lock_amount, &clock);
+    };
+
+    scenario.next_tx(admin);
+    {
+        setup::setup_pool_with_sqrt_price<USD_TESTS, AUSD>(&mut scenario, 1 << 64, 1);
+    };
+    
+    scenario.next_tx(admin);
+    {
+        setup::setup_pool_with_sqrt_price<USD_TESTS, BUSD>(&mut scenario, 1 << 64, 1);
+    };
+    
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, initial_o_sail_supply, &mut clock);
+        o_sail_coin.burn_for_testing();
+    };
+    
+    scenario.next_tx(admin);
+    {
+        setup::setup_gauge_for_pool<USD_TESTS, AUSD, SAIL>(&mut scenario, gauge_base_emissions, &clock);
+    };
+
+    scenario.next_tx(admin);
+    {
+        setup::setup_gauge_for_pool<USD_TESTS, BUSD, SAIL>(&mut scenario, gauge_base_emissions, &clock);
+    };
+
+    scenario.next_tx(admin);
+    {
+        let sail_coin = scenario.take_from_sender<Coin<SAIL>>();
+        transfer::public_transfer(sail_coin, user1);
+    };
+    scenario.next_tx(user1);
+    {
+        let sail_coin = scenario.take_from_sender<Coin<SAIL>>();
+        setup::create_lock<SAIL>(&mut scenario, sail_coin, 182, &clock);
+    };
+
+    let mut aggregator = setup::setup_price_monitor_and_aggregator<USD_TESTS, SAIL>(&mut scenario, admin, true, &clock);
+
+    // 2. Create and deposit positions
+    scenario.next_tx(user1);
+    {
+        setup::create_position_with_liquidity<USD_TESTS, AUSD>(
+            &mut scenario,
+            user1,
+            tick_math::min_tick().as_u32(),
+            tick_math::max_tick().as_u32(),
+            100_000_000,
+            &clock
+        );
+    };
+    scenario.next_tx(user1);
+    {
+        setup::deposit_position<USD_TESTS, AUSD>(&mut scenario, &clock);
+    };
+    
+    scenario.next_tx(user2);
+    {
+        setup::create_position_with_liquidity<USD_TESTS, BUSD>(
+            &mut scenario,
+            user2,
+            tick_math::min_tick().as_u32(),
+            tick_math::max_tick().as_u32(),
+            100_000_000,
+            &clock
+        );
+    };
+    scenario.next_tx(user2);
+    {
+        setup::deposit_position<USD_TESTS, BUSD>(&mut scenario, &clock);
+    };
+    
+    // 3. Distribute gauges for epoch 1
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_tests_metadata, &mut aggregator, &clock); 
+    };
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge<USD_TESTS, BUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_tests_metadata, &mut aggregator, &clock); 
+    };
+
+    clock.increment_for_testing(WEEK);
+
+    // 4. Claim staking rewards for epoch 1
+    scenario.next_tx(user1);
+    {
+        setup::get_staked_position_reward<USD_TESTS, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
+    };
+     scenario.next_tx(user2);
+    {
+        setup::get_staked_position_reward<USD_TESTS, BUSD, SAIL, OSAIL1>(&mut scenario, &clock);
+    };
+
+    // 5. Update to epoch 2, rebase should be 0
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin_2 = setup::update_minter_period<SAIL, OSAIL2>(&mut scenario, 0, &clock);
+        o_sail_coin_2.burn_for_testing();
+    };
+    scenario.next_tx(admin);
+    {
+        let rd = scenario.take_shared<RebaseDistributor<SAIL>>();
+        assert!(rd.balance() == 0, 0);
+        test_scenario::return_shared(rd);
+    };
+
+    // 6. Distribute gauges for epoch 2
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL2, USD_TESTS>(&mut scenario, &usd_tests_metadata, &mut aggregator, &clock); 
+    };
+    // skip the second gauge distribution
+
+    clock.increment_for_testing(WEEK);
+
+    // 7. Claim staking rewards for epoch 2
+     scenario.next_tx(user1);
+    {
+        setup::get_staked_position_reward<USD_TESTS, AUSD, SAIL, OSAIL2>(&mut scenario, &clock);
+    };
+     scenario.next_tx(user2);
+    {
+        setup::get_staked_position_reward<USD_TESTS, BUSD, SAIL, OSAIL2>(&mut scenario, &clock);
+    };
+    
+    // 8. Update to epoch 3, trigger rebase
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin_3 = setup::update_minter_period<SAIL, OSAIL3>(&mut scenario, 0, &clock);
+        o_sail_coin_3.burn_for_testing();
+    };
+
+    // 9. Verify and claim first rebase
+    //  1_000_000 * (1 - 500_000/3_500_000)**2 * 0.5
+    // 1m of base because the gauge was not distributed and we don't have information about it's emissions
+    let expected_rebase1 = 367347;
+    scenario.next_tx(admin);
+    {
+        let rd = scenario.take_shared<RebaseDistributor<SAIL>>();
+        std::debug::print(&b"rd.balance()".to_string());
+        std::debug::print(&rd.balance());
+        assert!(expected_rebase1 - rd.balance() <= 1, 1);
+        test_scenario::return_shared(rd);
+    };
+
+    scenario.next_tx(user1);
+    {
+        let mut rd = scenario.take_shared<RebaseDistributor<SAIL>>();
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let mut lock = scenario.take_from_sender<Lock>();
+
+        let claimed_amount = rd.claim(&mut ve, &mut lock, &clock, scenario.ctx());
+        assert!(expected_rebase1 - claimed_amount <= 10, 2);
+
+        let (locked_balance, _) = voting_escrow::locked(&ve, object::id(&lock));
+        assert!((lock_amount + expected_rebase1) - locked_balance.amount() <= 10, 3);
+        assert!(rd.balance() <= 10, 4);
+
+        test_scenario::return_shared(rd);
+        test_scenario::return_shared(ve);
+        scenario.return_to_sender(lock);
+    };
+
+    // Cleanup
     test_utils::destroy(usd_tests_cap);
     test_utils::destroy(usd_tests_metadata);
     test_utils::destroy(aggregator);
