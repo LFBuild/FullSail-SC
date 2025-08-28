@@ -2,16 +2,14 @@
 
 [move]
 version = 3
-manifest_digest = "5B016F84FDE7D2F7E110839ABB31BCAE24455B9B14A86E4B78173D2C712D7509"
-deps_digest = "D7FB1F2E1A893B9A0E80A392473710373DE5791D3AC8F6D898803754B2ADAE6B"
+manifest_digest = "5291A839DDC4D5184CB2C5B38594D7851AABAAE1DFAA2461A8941AF2110E4BF4"
+deps_digest = "8227D341C0550A37580C10FA45FE148A465225149C69D179737E0FE454AD6AEC"
 dependencies = [
   { id = "Sui", name = "Sui" },
   { id = "clmm_pool", name = "clmm_pool" },
   { id = "distribution", name = "distribution" },
   { id = "gauge_cap", name = "gauge_cap" },
   { id = "integer_mate", name = "integer_mate" },
-  { id = "liquidity_locker", name = "liquidity_locker" },
-  { id = "liquidity_soft_locker", name = "liquidity_soft_locker" },
   { id = "move_stl", name = "move_stl" },
   { id = "price_monitor", name = "price_monitor" },
   { id = "price_provider", name = "price_provider" },
@@ -80,45 +78,6 @@ source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "dev",
 
 dependencies = [
   { id = "Sui", name = "Sui" },
-]
-
-[[move.package]]
-id = "liquidity_locker"
-source = { local = "../liquidity_locker" }
-
-dependencies = [
-  { id = "Sui", name = "Sui" },
-  { id = "Switchboard", name = "Switchboard" },
-  { id = "clmm_pool", name = "clmm_pool" },
-  { id = "distribution", name = "distribution" },
-  { id = "gauge_cap", name = "gauge_cap" },
-  { id = "integer_mate", name = "integer_mate" },
-  { id = "locker_cap", name = "locker_cap" },
-  { id = "price_provider", name = "price_provider" },
-  { id = "ve", name = "ve" },
-]
-
-dev-dependencies = [
-  { id = "price_monitor", name = "price_monitor" },
-]
-
-[[move.package]]
-id = "liquidity_soft_locker"
-source = { local = "../liquidity_soft_locker" }
-
-dependencies = [
-  { id = "Sui", name = "Sui" },
-  { id = "Switchboard", name = "Switchboard" },
-  { id = "clmm_pool", name = "clmm_pool" },
-  { id = "distribution", name = "distribution" },
-  { id = "gauge_cap", name = "gauge_cap" },
-  { id = "integer_mate", name = "integer_mate" },
-  { id = "locker_cap", name = "locker_cap" },
-  { id = "price_provider", name = "price_provider" },
-]
-
-dev-dependencies = [
-  { id = "price_monitor", name = "price_monitor" },
 ]
 
 [[move.package]]
