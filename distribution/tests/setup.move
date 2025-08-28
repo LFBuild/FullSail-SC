@@ -139,10 +139,19 @@ public fun setup_pool_with_sqrt_price<CoinTypeA: drop, CoinTypeB: drop>(
      }
 }
 
-// Sets up the Minter, Voter, VotingEscrow, and RewardDistributor modules for testing.
 public fun setup_distribution<SAIL>(
     scenario: &mut test_scenario::Scenario,
     sender: address,
+    clock: &Clock
+) {
+    setup_distribution_with_initial_supply<SAIL>(scenario, sender, 0, clock);
+}
+
+// Sets up the Minter, Voter, VotingEscrow, and RewardDistributor modules for testing.
+public fun setup_distribution_with_initial_supply<SAIL>(
+    scenario: &mut test_scenario::Scenario,
+    sender: address,
+    initial_sail_supply: u64,
     clock: &Clock
 ) { // No return value
 
@@ -158,7 +167,9 @@ public fun setup_distribution<SAIL>(
     {
         let minter_publisher = minter::test_init(scenario.ctx());
         let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
-        let treasury_cap = coin::create_treasury_cap_for_testing<SAIL>(scenario.ctx());
+        let mut treasury_cap = coin::create_treasury_cap_for_testing<SAIL>(scenario.ctx());
+        let initial_supply = treasury_cap.mint(initial_sail_supply, scenario.ctx());
+        transfer::public_transfer(initial_supply, sender);
         let (minter_obj, minter_admin_cap) = minter::create_test<SAIL>(
             &minter_publisher,
             option::some(treasury_cap),
@@ -896,6 +907,28 @@ fun test_swap_utility() {
     scenario.end();
 }
 
+public fun create_lock<SAIL>(
+    scenario: &mut test_scenario::Scenario,
+    sail_to_lock: Coin<SAIL>,
+    lock_duration_days: u64,
+    clock: &Clock,
+) {
+    let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+
+    // create_lock consumes the coin and transfers the lock to ctx.sender()
+    voting_escrow::create_lock<SAIL>(
+        &mut ve,
+        sail_to_lock,
+        lock_duration_days,
+        false, // permanent lock = false
+        clock,
+        scenario.ctx()
+    );
+
+    // Return shared objects
+    test_scenario::return_shared(ve);
+}
+
 // Mints SAIL and creates a non-permanent lock in the Voting Escrow for the sender.
 public fun mint_and_create_lock<SAIL>(
     scenario: &mut test_scenario::Scenario,
@@ -905,20 +938,12 @@ public fun mint_and_create_lock<SAIL>(
 ) {
     let sail_coin = coin::mint_for_testing<SAIL>(amount_to_lock, scenario.ctx());
 
-    let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
-
-    // create_lock consumes the coin and transfers the lock to ctx.sender()
-    voting_escrow::create_lock<SAIL>(
-        &mut ve,
+    create_lock<SAIL>(
+        scenario,
         sail_coin,
         lock_duration_days,
-        false, // permanent lock = false
-        clock,
-        scenario.ctx()
+        clock
     );
-
-    // Return shared objects
-    test_scenario::return_shared(ve);
     // Lock is automatically transferred to the user (sender of this tx block)
 }
 
@@ -1136,6 +1161,8 @@ public fun setup_price_monitor_and_aggregator_with_price<CoinTypeA: drop, CoinTy
         price_monitor.add_aggregator(
             aggregator.id(),
             vector[pool_id],
+            vector[6],
+            vector[6],
             scenario.ctx()
         );
 
@@ -1385,7 +1412,7 @@ public fun full_setup_with_lock<CoinTypeA: drop, CoinTypeB: drop, SAIL: drop, OS
     // Tx 2: Setup Distribution (admin gets caps)
     {
         // Needs CLMM config initialized
-        setup_distribution<SAIL>(scenario, admin, clock);
+        setup_distribution_with_initial_supply<SAIL>(scenario, admin, lock_amount, clock);
     };
 
     // Tx 3: Setup Pool (CoinTypeA/CoinTypeB, price=1)
@@ -1417,12 +1444,20 @@ public fun full_setup_with_lock<CoinTypeA: drop, CoinTypeB: drop, SAIL: drop, OS
         );
     };
 
+    // Tx 5.5: Send initial supply to user
+    scenario.next_tx(admin);
+    {
+        let sail_coin = scenario.take_from_sender<Coin<SAIL>>();
+        transfer::public_transfer(sail_coin, user);
+    };
+
     // Tx 6: Create Lock for the user
     scenario.next_tx(user); // User needs to be sender to receive the lock
     {
-        mint_and_create_lock<SAIL>(
+        let sail_coin = scenario.take_from_sender<Coin<SAIL>>();
+        create_lock<SAIL>(
             scenario,
-            lock_amount,
+            sail_coin,
             lock_duration_days,
             clock
         );

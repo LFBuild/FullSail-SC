@@ -11751,6 +11751,8 @@ module liquidity_soft_locker::liquidity_soft_lock_v2_tests {
             price_monitor.add_aggregator(
                 aggregator.id(),
                 vector[pool_id],
+                vector[6],
+                vector[6],
                 scenario.ctx()
             );
 

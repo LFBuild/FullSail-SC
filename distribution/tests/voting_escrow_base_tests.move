@@ -1,5 +1,5 @@
 #[test_only]
-module ve::voting_escrow_tests;
+module ve::voting_escrow_base_tests;
 
 use sui::test_scenario::{Self};
 use sui::clock::{Self, Clock};
