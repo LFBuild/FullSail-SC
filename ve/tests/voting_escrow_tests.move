@@ -1774,3 +1774,646 @@ fun test_extend_lock_restores_voting_power() {
     scenario.end();
     test_utils::destroy(clock);
 }
+
+#[test]
+fun test_deposit_increases_voting_power_proportionally() {
+    let mut scenario = ts::begin(ADMIN);
+    let mut clock = setup::setup<SAIL>(&mut scenario, ADMIN);
+
+    let initial_amount = 1_000_000;
+    let deposit_amount = 2_000_000;
+    let four_years_days = 4 * 52 * 7;
+    let two_years_ms = 2 * 52 * 7 * 24 * 60 * 60 * 1000;
+
+    // USER creates a 4-year lock
+    scenario.next_tx(USER);
+    {
+        let sail = coin::mint_for_testing<SAIL>(initial_amount, scenario.ctx());
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        voting_escrow::create_lock<SAIL>(
+            &mut ve,
+            sail,
+            four_years_days,
+            false,
+            &clock,
+            scenario.ctx()
+        );
+        ts::return_shared(ve);
+    };
+
+    // Wait for 2 years
+    clock.increment_for_testing(two_years_ms);
+
+    let lock_id: ID;
+
+    // Check voting power after 2 years
+    scenario.next_tx(USER);
+    {
+        let ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let lock = scenario.take_from_sender<Lock>();
+        lock_id = object::id(&lock);
+        let power_after_two_years = voting_escrow::balance_of_nft_at(&ve, lock_id, clock.timestamp_ms() / 1000);
+
+        // Power should be approx 500,000 (1/2 of original)
+        let expected_power = initial_amount / 2;
+        assert!(expected_power - power_after_two_years <= 1, 0);
+
+        scenario.return_to_sender(lock);
+        ts::return_shared(ve);
+    };
+
+    // Deposit 2,000,000 SAIL into the same lock
+    scenario.next_tx(USER);
+    {
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let mut lock = scenario.take_from_sender_by_id<Lock>(lock_id);
+        let sail = coin::mint_for_testing<SAIL>(deposit_amount, scenario.ctx());
+        voting_escrow::increase_amount<SAIL>(
+            &mut ve,
+            &mut lock,
+            sail,
+            &clock,
+            scenario.ctx()
+        );
+        scenario.return_to_sender(lock);
+        ts::return_shared(ve);
+    };
+
+    // Check voting power after deposit
+    scenario.next_tx(USER);
+    {
+        let ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let power_after_deposit = voting_escrow::balance_of_nft_at(&ve, lock_id, clock.timestamp_ms() / 1000);
+        let total_amount = initial_amount + deposit_amount;
+
+        // Power should be approx 1,500,000 (3M * 2/4)
+        let expected_power_after_deposit = total_amount / 2;
+        assert!(expected_power_after_deposit - power_after_deposit <= 2, 1);
+        
+        ts::return_shared(ve);
+    };
+
+    scenario.end();
+    test_utils::destroy(clock);
+}
+
+#[test]
+fun test_voting_power_decay_with_increase() {
+    let mut scenario = ts::begin(ADMIN);
+    let mut clock = setup::setup<SAIL>(&mut scenario, ADMIN);
+
+    let initial_amount = 1_000_000;
+    let increase_amount = 100_000;
+    let four_years_days = 4 * 52 * 7;
+    let two_years_ms = 2 * 52 * 7 * 24 * 60 * 60 * 1000;
+
+    // USER creates a 4-year lock
+    scenario.next_tx(USER);
+    {
+        let sail = coin::mint_for_testing<SAIL>(initial_amount, scenario.ctx());
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        voting_escrow::create_lock<SAIL>(
+            &mut ve,
+            sail,
+            four_years_days,
+            false,
+            &clock,
+            scenario.ctx()
+        );
+        ts::return_shared(ve);
+    };
+
+    // Wait for 2 years
+    clock.increment_for_testing(two_years_ms);
+
+    let lock_id: ID;
+
+    // Check voting power after 2 years
+    scenario.next_tx(USER);
+    {
+        let ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let lock = scenario.take_from_sender<Lock>();
+        lock_id = object::id(&lock);
+        let power_after_two_years = voting_escrow::balance_of_nft_at(&ve, lock_id, clock.timestamp_ms() / 1000);
+
+        let expected_power = initial_amount / 2;
+        assert!(expected_power - power_after_two_years <= 1, 0);
+
+        scenario.return_to_sender(lock);
+        ts::return_shared(ve);
+    };
+
+    // Increase amount by 100,000
+    scenario.next_tx(USER);
+    {
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let mut lock = scenario.take_from_sender_by_id<Lock>(lock_id);
+        let sail = coin::mint_for_testing<SAIL>(increase_amount, scenario.ctx());
+        voting_escrow::increase_amount<SAIL>(
+            &mut ve,
+            &mut lock,
+            sail,
+            &clock,
+            scenario.ctx()
+        );
+        scenario.return_to_sender(lock);
+        ts::return_shared(ve);
+    };
+
+    // Check voting power after increase
+    scenario.next_tx(USER);
+    {
+        let ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let power_after_increase = voting_escrow::balance_of_nft_at(&ve, lock_id, clock.timestamp_ms() / 1000);
+        let total_amount = initial_amount + increase_amount;
+        let expected_power_after_increase = total_amount / 2;
+        assert!(expected_power_after_increase - power_after_increase <= 2, 1);
+        ts::return_shared(ve);
+    };
+
+    // Wait for another 2 years
+    clock.increment_for_testing(two_years_ms);
+
+    // Check final voting power
+    scenario.next_tx(USER);
+    {
+        let ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let final_power = voting_escrow::balance_of_nft_at(&ve, lock_id, clock.timestamp_ms() / 1000);
+        assert!(final_power == 0, 2);
+        ts::return_shared(ve);
+    };
+
+    scenario.end();
+    test_utils::destroy(clock);
+}
+
+#[test]
+fun test_lock_permanent_restores_voting_power() {
+    let mut scenario = ts::begin(ADMIN);
+    let mut clock = setup::setup<SAIL>(&mut scenario, ADMIN);
+
+    let initial_amount = 1_000_000;
+    let four_years_days = 4 * 52 * 7;
+    let two_years_ms = 2 * 52 * 7 * 24 * 60 * 60 * 1000;
+
+    // USER creates a 4-year lock
+    scenario.next_tx(USER);
+    {
+        let sail = coin::mint_for_testing<SAIL>(initial_amount, scenario.ctx());
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        voting_escrow::create_lock<SAIL>(
+            &mut ve,
+            sail,
+            four_years_days,
+            false,
+            &clock,
+            scenario.ctx()
+        );
+        ts::return_shared(ve);
+    };
+
+    // Wait for 2 years
+    clock.increment_for_testing(two_years_ms);
+
+    let lock_id: ID;
+
+    // Check voting power after 2 years
+    scenario.next_tx(USER);
+    {
+        let ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let lock = scenario.take_from_sender<Lock>();
+        lock_id = object::id(&lock);
+        let power_after_two_years = voting_escrow::balance_of_nft_at(&ve, lock_id, clock.timestamp_ms() / 1000);
+
+        let expected_power = initial_amount / 2;
+        assert!(expected_power - power_after_two_years <= 1, 0);
+
+        scenario.return_to_sender(lock);
+        ts::return_shared(ve);
+    };
+
+    // Make the lock permanent
+    scenario.next_tx(USER);
+    {
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let mut lock = scenario.take_from_sender_by_id<Lock>(lock_id);
+        voting_escrow::lock_permanent<SAIL>(
+            &mut ve,
+            &mut lock,
+            &clock,
+            scenario.ctx()
+        );
+        scenario.return_to_sender(lock);
+        ts::return_shared(ve);
+    };
+
+    // Check voting power and status after making it permanent
+    scenario.next_tx(USER);
+    {
+        let ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let power_after_permanent = voting_escrow::balance_of_nft_at(&ve, lock_id, clock.timestamp_ms() / 1000);
+
+        assert!(power_after_permanent == initial_amount, 1);
+        
+        let (locked_balance, _) = ve.locked(lock_id);
+        assert!(locked_balance.is_permanent(), 2);
+
+        ts::return_shared(ve);
+    };
+
+    scenario.end();
+    test_utils::destroy(clock);
+}
+
+#[test]
+#[expected_failure(abort_code=922337654227586253)]
+fun test_lock_permanent_on_expired_lock_fails() {
+    let mut scenario = ts::begin(ADMIN);
+    let mut clock = setup::setup<SAIL>(&mut scenario, ADMIN);
+
+    let initial_amount = 1_000_000;
+    let four_years_days = 4 * 52 * 7;
+    let four_years_ms = four_years_days * 24 * 60 * 60 * 1000;
+
+    // USER creates a 4-year lock
+    scenario.next_tx(USER);
+    {
+        let sail = coin::mint_for_testing<SAIL>(initial_amount, scenario.ctx());
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        voting_escrow::create_lock<SAIL>(
+            &mut ve,
+            sail,
+            four_years_days,
+            false,
+            &clock,
+            scenario.ctx()
+        );
+        ts::return_shared(ve);
+    };
+
+    // Wait for 4 years for the lock to expire
+    clock.increment_for_testing(four_years_ms);
+
+    let lock_id: ID;
+
+    // Check voting power is zero
+    scenario.next_tx(USER);
+    {
+        let ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let lock = scenario.take_from_sender<Lock>();
+        lock_id = object::id(&lock);
+        let power_after_four_years = voting_escrow::balance_of_nft_at(&ve, lock_id, clock.timestamp_ms() / 1000);
+        assert!(power_after_four_years == 0, 0);
+        scenario.return_to_sender(lock);
+        ts::return_shared(ve);
+    };
+
+    // Attempt to make the expired lock permanent (should fail)
+    scenario.next_tx(USER);
+    {
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let mut lock = scenario.take_from_sender_by_id<Lock>(lock_id);
+        voting_escrow::lock_permanent<SAIL>(
+            &mut ve,
+            &mut lock,
+            &clock,
+            scenario.ctx()
+        );
+        scenario.return_to_sender(lock);
+        ts::return_shared(ve);
+    };
+
+    scenario.end();
+    test_utils::destroy(clock);
+}
+
+#[test]
+fun test_lock_permanent_just_before_expiry_succeeds() {
+    let mut scenario = ts::begin(ADMIN);
+    let mut clock = setup::setup<SAIL>(&mut scenario, ADMIN);
+
+    let initial_amount = 1_000_000;
+    let four_years_days = 4 * 52 * 7;
+    let four_years_less_one_day_ms = (four_years_days - 1) * 24 * 60 * 60 * 1000;
+
+    // USER creates a 4-year lock
+    scenario.next_tx(USER);
+    {
+        let sail = coin::mint_for_testing<SAIL>(initial_amount, scenario.ctx());
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        voting_escrow::create_lock<SAIL>(
+            &mut ve,
+            sail,
+            four_years_days,
+            false,
+            &clock,
+            scenario.ctx()
+        );
+        ts::return_shared(ve);
+    };
+
+    // Wait for 4 years minus one day
+    clock.increment_for_testing(four_years_less_one_day_ms);
+
+    let lock_id: ID;
+
+    // Get the lock ID
+    scenario.next_tx(USER);
+    {
+        let lock = scenario.take_from_sender<Lock>();
+        lock_id = object::id(&lock);
+        scenario.return_to_sender(lock);
+    };
+
+    // Make the lock permanent
+    scenario.next_tx(USER);
+    {
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let mut lock = scenario.take_from_sender_by_id<Lock>(lock_id);
+        voting_escrow::lock_permanent<SAIL>(
+            &mut ve,
+            &mut lock,
+            &clock,
+            scenario.ctx()
+        );
+        scenario.return_to_sender(lock);
+        ts::return_shared(ve);
+    };
+
+    // Check voting power and status after making it permanent
+    scenario.next_tx(USER);
+    {
+        let ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let power_after_permanent = voting_escrow::balance_of_nft_at(&ve, lock_id, clock.timestamp_ms() / 1000);
+
+        assert!(power_after_permanent == initial_amount, 1);
+        
+        let (locked_balance, _) = ve.locked(lock_id);
+        assert!(locked_balance.is_permanent(), 2);
+
+        ts::return_shared(ve);
+    };
+    
+    scenario.end();
+    test_utils::destroy(clock);
+}
+
+#[test]
+fun test_lock_end_dates_are_equal_when_created_apart() {
+    let mut scenario = ts::begin(ADMIN);
+    let mut clock = setup::setup<SAIL>(&mut scenario, ADMIN);
+
+    let initial_amount = 1_000_000;
+    let four_years_days = 4 * 52 * 7;
+
+    // USER creates the first 4-year lock
+    scenario.next_tx(USER);
+    {
+        let sail = coin::mint_for_testing<SAIL>(initial_amount, scenario.ctx());
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        voting_escrow::create_lock<SAIL>(
+            &mut ve,
+            sail,
+            four_years_days,
+            false,
+            &clock,
+            scenario.ctx()
+        );
+        ts::return_shared(ve);
+    };
+
+    // Wait for 1 day
+    clock.increment_for_testing(24 * 60 * 60 * 1000);
+
+    // USER creates the second 4-year lock
+    scenario.next_tx(USER);
+    {
+        let sail = coin::mint_for_testing<SAIL>(initial_amount, scenario.ctx());
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        voting_escrow::create_lock<SAIL>(
+            &mut ve,
+            sail,
+            four_years_days,
+            false,
+            &clock,
+            scenario.ctx()
+        );
+        ts::return_shared(ve);
+    };
+
+    // Check the end dates of the locks
+    scenario.next_tx(USER);
+    {
+        let ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let lock2 = scenario.take_from_sender<Lock>();
+        let lock1 = scenario.take_from_sender<Lock>();
+        
+        let lock1_id = object::id(&lock1);
+        let lock2_id = object::id(&lock2);
+
+        let (balance1, _) = ve.locked(lock1_id);
+        let (balance2, _) = ve.locked(lock2_id);
+
+        assert!(balance1.end() == balance2.end(), 0);
+
+        scenario.return_to_sender(lock1);
+        scenario.return_to_sender(lock2);
+        ts::return_shared(ve);
+    };
+
+    scenario.end();
+    test_utils::destroy(clock);
+}
+
+#[test]
+fun test_voting_power_with_staggered_locks() {
+    let mut scenario = ts::begin(ADMIN);
+    let mut clock = setup::setup<SAIL>(&mut scenario, ADMIN);
+
+    let amount = 1_000_000;
+    let four_years_days = 4 * 52 * 7;
+
+    // USER creates the first 4-year lock
+    scenario.next_tx(USER);
+    {
+        let sail = coin::mint_for_testing<SAIL>(amount, scenario.ctx());
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        voting_escrow::create_lock<SAIL>(
+            &mut ve,
+            sail,
+            four_years_days,
+            false,
+            &clock,
+            scenario.ctx()
+        );
+        ts::return_shared(ve);
+    };
+
+    // Wait for 5 days
+    clock.increment_for_testing(5 * 24 * 60 * 60 * 1000);
+
+    // USER creates the second 4-year lock
+    scenario.next_tx(USER);
+    {
+        let sail = coin::mint_for_testing<SAIL>(amount, scenario.ctx());
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        voting_escrow::create_lock<SAIL>(
+            &mut ve,
+            sail,
+            four_years_days,
+            false,
+            &clock,
+            scenario.ctx()
+        );
+        ts::return_shared(ve);
+    };
+
+    let lock1_id: ID;
+    let lock2_id: ID;
+
+    scenario.next_tx(USER);
+    {
+        let lock2 = scenario.take_from_sender<Lock>();
+        let lock1 = scenario.take_from_sender<Lock>();
+        lock1_id = object::id(&lock1);
+        lock2_id = object::id(&lock2);
+        scenario.return_to_sender(lock1);
+        scenario.return_to_sender(lock2);
+    };
+
+    // Initial power check
+    scenario.next_tx(USER);
+    {
+        let ve = scenario.take_shared<VotingEscrow<SAIL>>();
+
+        let current_time = clock.timestamp_ms() / 1000;
+        let power1 = voting_escrow::balance_of_nft_at(&ve, lock1_id, current_time);
+        let power2 = voting_escrow::balance_of_nft_at(&ve, lock2_id, current_time);
+        let total_supply = voting_escrow::total_supply_at(&ve, current_time);
+
+        assert!(power1 == power2, 0);
+        assert!(total_supply - (power1 + power2) <= 1, 1);
+
+        ts::return_shared(ve);
+    };
+
+    // Wait for 1 month
+    clock.increment_for_testing(30 * 24 * 60 * 60 * 1000);
+
+    // Power check after 1 month
+    scenario.next_tx(USER);
+    {
+        let ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let current_time = clock.timestamp_ms() / 1000;
+        let power1 = voting_escrow::balance_of_nft_at(&ve, lock1_id, current_time);
+        let power2 = voting_escrow::balance_of_nft_at(&ve, lock2_id, current_time);
+        let total_supply = voting_escrow::total_supply_at(&ve, current_time);
+
+        assert!(power1 == power2, 2);
+        assert!(total_supply - (power1 + power2) <= 1, 3);
+        
+        ts::return_shared(ve);
+    };
+
+    scenario.end();
+    test_utils::destroy(clock);
+}
+
+#[test]
+fun test_voting_power_with_staggered_locks_for_two_weeks() {
+    let mut scenario = ts::begin(ADMIN);
+    let mut clock = setup::setup<SAIL>(&mut scenario, ADMIN);
+
+    let amount = 1_000_000;
+    let four_years_days = 4 * 52 * 7;
+
+    // USER creates the first 4-year lock
+    scenario.next_tx(USER);
+    {
+        let sail = coin::mint_for_testing<SAIL>(amount, scenario.ctx());
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        voting_escrow::create_lock<SAIL>(
+            &mut ve,
+            sail,
+            four_years_days,
+            false,
+            &clock,
+            scenario.ctx()
+        );
+        ts::return_shared(ve);
+    };
+
+    // Wait for 7 days
+    clock.increment_for_testing(7 * 24 * 60 * 60 * 1000);
+
+    // USER creates the second 4-year lock
+    scenario.next_tx(USER);
+    {
+        let sail = coin::mint_for_testing<SAIL>(amount, scenario.ctx());
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        voting_escrow::create_lock<SAIL>(
+            &mut ve,
+            sail,
+            four_years_days,
+            false,
+            &clock,
+            scenario.ctx()
+        );
+        ts::return_shared(ve);
+    };
+
+    let lock1_id: ID;
+    let lock2_id: ID;
+
+    scenario.next_tx(USER);
+    {
+        let lock2 = scenario.take_from_sender<Lock>();
+        let lock1 = scenario.take_from_sender<Lock>();
+        lock1_id = object::id(&lock1);
+        lock2_id = object::id(&lock2);
+        scenario.return_to_sender(lock1);
+        scenario.return_to_sender(lock2);
+    };
+
+    // Initial power check
+    scenario.next_tx(USER);
+    {
+        let ve = scenario.take_shared<VotingEscrow<SAIL>>();
+
+        let current_time = clock.timestamp_ms() / 1000;
+        let power1 = voting_escrow::balance_of_nft_at(&ve, lock1_id, current_time);
+        let power2 = voting_escrow::balance_of_nft_at(&ve, lock2_id, current_time);
+        let total_supply = voting_escrow::total_supply_at(&ve, current_time);
+
+        assert!(power1 < power2, 0);
+        assert!(total_supply - (power1 + power2) <= 3, 1);
+        assert!(995193 - power1 <= 1, 2);
+        assert!(1_000_000 - power2 <= 1, 3);
+
+        ts::return_shared(ve);
+    };
+
+    // Wait for 1 month
+    clock.increment_for_testing(30 * 24 * 60 * 60 * 1000);
+
+    // Power check after 1 month
+    scenario.next_tx(USER);
+    {
+        let ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let current_time = clock.timestamp_ms() / 1000;
+        let power1 = voting_escrow::balance_of_nft_at(&ve, lock1_id, current_time);
+        let power2 = voting_escrow::balance_of_nft_at(&ve, lock2_id, current_time);
+        let total_supply = voting_escrow::total_supply_at(&ve, current_time);
+
+        assert!(974588 - power1 <= 2, 2);
+        assert!(979396 - power2 <= 2, 3);
+
+        assert!(power1 < power2, 2);
+        assert!(total_supply - (power1 + power2) <= 3, 3);
+        
+        ts::return_shared(ve);
+    };
+
+    scenario.end();
+    test_utils::destroy(clock);
+}
