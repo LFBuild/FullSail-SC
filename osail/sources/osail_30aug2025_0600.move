@@ -9,7 +9,7 @@ module osail::osail_30aug2025_0600 {
     public struct OSAIL_30AUG2025_0600 has drop {}
 
     fun init(otw: OSAIL_30AUG2025_0600, ctx: &mut TxContext) {
-        let url = url::new_unsafe(ascii::string(b"https://app.fullsail.finance/static_files/o_sail17_test_coin.png"));
+        let url = url::new_unsafe(ascii::string(b"https://app.fullsail.finance/static_files/o_sail6_test_coin.png"));
         let (treasury_cap, metadata) = coin::create_currency<OSAIL_30AUG2025_0600>(
             otw,
             6,

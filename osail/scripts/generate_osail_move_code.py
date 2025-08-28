@@ -27,7 +27,7 @@ def generate_osail_code(expiry_date, icon_number, duration_hours):
     struct_name = f"OSAIL_{date_str.upper()}"
     token_name_symbol = f"oSAIL-{symbol_date_str}"
     description = f"Full Sail option token, expiration {expiry_date.strftime('%d %b %Y %H:%M:%S')} UTC"
-    url = f"https://app.fullsail.finance/static_files/o_sail{icon_number}_test_coin.png"
+    url = f"https://app.fullsail.finance/static_files/o_sail_coin.png"
 
     template = f"""module osail::{module_name} {{
     use sui::coin;
@@ -58,10 +58,15 @@ def generate_osail_code(expiry_date, icon_number, duration_hours):
 
 def main():
     parser = argparse.ArgumentParser(description="Generate oSAIL token Move code.")
-    parser.add_argument("epoch_duration", choices=["6h", "7d"], help="Epoch duration (6h or 7d)")
+    parser.add_argument("epoch_duration", choices=["3h", "6h", "7d"], help="Epoch duration (3h, 6h or 7d)")
     args = parser.parse_args()
 
-    duration_hours = 6 if args.epoch_duration == "6h" else 7 * 24
+    if args.epoch_duration == "3h":
+        duration_hours = 3
+    elif args.epoch_duration == "6h":
+        duration_hours = 6
+    else:
+        duration_hours = 7 * 24
     epoch_duration = timedelta(hours=duration_hours)
 
     now = datetime.now(timezone.utc)
