@@ -3,7 +3,7 @@ name = "integrate"
 edition = "2024"
 
 [addresses]
-integrate = "0x0"
+integrate = "0xae7543cc09062bfca91ac0d33da7d44b2df1659d84cee87489979a05d66fc41d"
 
 [dev-dependencies]
 
@@ -48,5 +48,8 @@ subdir = "price_provider"
 rev = "dev"
 override = true
 
-[dependencies.liquidity_locker]
-local = "../liquidity_locker"
+[dependencies.price_monitor]
+local = "../price_monitor"
+
+[dependencies.ve]
+local = "../ve"

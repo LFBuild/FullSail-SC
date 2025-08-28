@@ -1,8 +1,8 @@
 source ./export.sh
 
-export AMOUNT=1000000000000
+export AMOUNT=1000000000000000
 
 sui client ptb \
---move-call "sui::coin::mint" "<0xbea898c10cbdce78040ca666da2f598703a2f3cd8bbe56c416a22756583f8b30::sui_test::SUI_TEST>" @0x4152116b6393841e680a0553f7f69c52e9799686a3f9cc09d6f0d37d594f922c $AMOUNT \
+--move-call "sui::coin::mint" "<0xda1f9eaf3d10cd6fa609d3061ac48d640c0aeb36fb031125a263736a0ae0be29::token_b::TOKEN_B>" @0x385215d51c2c692e960b3fdd0ccc66cc1600d7758547251898906889753effd7 $AMOUNT \
 --assign new_coins \
---transfer-objects "[new_coins]" @0x7f2bc2cadcead6dc4706c3259ff0e55fcfd6afd5b9134a0978b0ad22453ac486
+--transfer-objects "[new_coins]" @0x8c30bf5bfd2fb00bd9198599ea1bf6ae84f3b1855a238ed458765dd2adce0340

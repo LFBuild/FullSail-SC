@@ -3,9 +3,9 @@ module liquidity_locker::pool_tranche_tests {
     use sui::test_scenario;
     use std::type_name::{Self};
 
-    use liquidity_locker::liquidity_lock_v1;
+    use liquidity_locker::liquidity_lock_v2;
     use liquidity_locker::pool_tranche;
-    use liquidity_locker::time_manager;
+    use ve::common;
     use locker_cap::locker_cap;
     use clmm_pool::factory::{Self as factory, Pools};
     use clmm_pool::config::{Self as config};
@@ -19,6 +19,8 @@ module liquidity_locker::pool_tranche_tests {
     public struct RewardCoinType1 has drop {}
     public struct RewardCoinType2 has drop {}
     public struct RewardCoinType3 has drop {}
+    #[test_only]
+    public struct OSAIL1 has drop {}
 
     #[test]
     fun test_pool_tranche() {
@@ -27,7 +29,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -41,8 +43,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -58,7 +60,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
             &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -168,7 +170,7 @@ module liquidity_locker::pool_tranche_tests {
             let tranche2_id = sui::object::id<pool_tranche::PoolTranche>(tranche_2);
 
             let reward = sui::coin::mint_for_testing<RewardCoinType1>(10000000, scenario.ctx());
-            let after_reward = pool_tranche::set_total_incomed_and_add_reward<RewardCoinType1>(
+            let after_reward = pool_tranche::set_total_incomed_and_add_reward<OSAIL1, RewardCoinType1>(
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 tranche_id,
@@ -279,7 +281,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -293,8 +295,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -310,7 +312,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
                 &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -382,7 +384,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -396,8 +398,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -413,7 +415,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
                 &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -506,7 +508,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -520,8 +522,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -537,7 +539,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
                 &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -590,7 +592,7 @@ module liquidity_locker::pool_tranche_tests {
             let tranche_1 = tranches.borrow_mut(0);
             pool_tranche::fill_tranches(
                 tranche_1,
-                1 << 64
+                10000000 << 64
             );
 
             pool_tranche::update_tranche(
@@ -627,7 +629,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -641,8 +643,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -658,7 +660,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
                 &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -718,7 +720,7 @@ module liquidity_locker::pool_tranche_tests {
             
             // add first reward
             let reward = sui::coin::mint_for_testing<RewardCoinType1>(10000000, scenario.ctx());
-            pool_tranche::set_total_incomed_and_add_reward<RewardCoinType1>(
+            pool_tranche::set_total_incomed_and_add_reward<OSAIL1, RewardCoinType1>(
                 &mut tranche_manager,
                 pool_id,
                 tranche_id,
@@ -772,7 +774,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -786,8 +788,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -803,7 +805,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
                 &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -863,7 +865,7 @@ module liquidity_locker::pool_tranche_tests {
             
             // add first reward
             let reward = sui::coin::mint_for_testing<RewardCoinType1>(10000000, scenario.ctx());
-            pool_tranche::set_total_incomed_and_add_reward<RewardCoinType1>(
+            pool_tranche::set_total_incomed_and_add_reward<OSAIL1, RewardCoinType1>(
                 &mut tranche_manager,
                 pool_id,
                 tranche_id,
@@ -874,7 +876,7 @@ module liquidity_locker::pool_tranche_tests {
             );
 
             let reward = sui::coin::mint_for_testing<RewardCoinType1>(10000000, scenario.ctx());
-            pool_tranche::set_total_incomed_and_add_reward<RewardCoinType1>(
+            pool_tranche::set_total_incomed_and_add_reward<OSAIL1, RewardCoinType1>(
                 &mut tranche_manager,
                 pool_id,
                 tranche_id,
@@ -907,7 +909,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -921,8 +923,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -938,7 +940,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
                 &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -1000,7 +1002,7 @@ module liquidity_locker::pool_tranche_tests {
             {
                 // add first reward
                 let reward = sui::coin::mint_for_testing<RewardCoinType1>(10000000, scenario.ctx());
-                pool_tranche::set_total_incomed_and_add_reward<RewardCoinType1>(
+                pool_tranche::set_total_incomed_and_add_reward<OSAIL1, RewardCoinType1>(
                     &mut tranche_manager,
                     pool_id,
                     tranche_id,
@@ -1033,7 +1035,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -1047,8 +1049,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -1064,7 +1066,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
                 &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -1113,7 +1115,7 @@ module liquidity_locker::pool_tranche_tests {
             // Trying to add reward for non-existent tranche
             let reward = sui::coin::mint_for_testing<RewardCoinType1>(10000000, scenario.ctx());
             let pool_id = sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool);
-            pool_tranche::set_total_incomed_and_add_reward<RewardCoinType1>(
+            pool_tranche::set_total_incomed_and_add_reward<OSAIL1, RewardCoinType1>(
                 &mut tranche_manager,
                 pool_id,
                 pool_id,
@@ -1145,7 +1147,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -1159,8 +1161,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -1176,7 +1178,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
             &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -1233,7 +1235,7 @@ module liquidity_locker::pool_tranche_tests {
             let reward = sui::coin::mint_for_testing<RewardCoinType1>(10000000, scenario.ctx());
 
             
-            pool_tranche::set_total_incomed_and_add_reward<RewardCoinType1>(
+            pool_tranche::set_total_incomed_and_add_reward<OSAIL1, RewardCoinType1>(
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 tranche_id,
@@ -1249,7 +1251,7 @@ module liquidity_locker::pool_tranche_tests {
                 tranche_id,
                 tranche_id,
                 90000, // 100% total_income
-                (clock.timestamp_ms()/1000 + time_manager::epoch_to_seconds(2)),
+                (clock.timestamp_ms()/1000 + common::epoch_to_seconds(2)),
                 scenario.ctx()
             );
 
@@ -1269,14 +1271,14 @@ module liquidity_locker::pool_tranche_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = pool_tranche::ERewardNotEnough)]
-    fun test_reward_not_enough() {
+    #[expected_failure(abort_code = pool_tranche::EInvalidTotalIncome)]
+    fun test_incorrect_total_income() {
         let admin = @0x1;
         let mut scenario = test_scenario::begin(admin);
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -1290,8 +1292,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -1307,7 +1309,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
             &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -1363,7 +1365,7 @@ module liquidity_locker::pool_tranche_tests {
             let tranche_id = sui::object::id<pool_tranche::PoolTranche>(tranches.borrow(0));
             let reward = sui::coin::mint_for_testing<RewardCoinType1>(10000000, scenario.ctx());
             
-            pool_tranche::set_total_incomed_and_add_reward<RewardCoinType1>(
+            pool_tranche::set_total_incomed_and_add_reward<OSAIL1, RewardCoinType1>(
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 tranche_id,
@@ -1406,7 +1408,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -1420,8 +1422,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -1437,7 +1439,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
             &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -1495,7 +1497,7 @@ module liquidity_locker::pool_tranche_tests {
             let reward = sui::coin::mint_for_testing<RewardCoinType1>(10000000, scenario.ctx());
 
             
-            pool_tranche::set_total_incomed_and_add_reward<RewardCoinType1>(
+            pool_tranche::set_total_incomed_and_add_reward<OSAIL1, RewardCoinType1>(
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 tranche_id,
@@ -1538,7 +1540,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -1552,8 +1554,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -1569,7 +1571,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
             &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -1627,7 +1629,7 @@ module liquidity_locker::pool_tranche_tests {
             let reward = sui::coin::mint_for_testing<RewardCoinType1>(10000000, scenario.ctx());
 
             
-            pool_tranche::set_total_incomed_and_add_reward<RewardCoinType1>(
+            pool_tranche::set_total_incomed_and_add_reward<OSAIL1, RewardCoinType1>(
                 &mut tranche_manager,
                 sui::object::id<clmm_pool::pool::Pool<TestCoinB, TestCoinA>>(&pool),
                 tranche_id,
@@ -1671,7 +1673,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -1685,8 +1687,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -1702,7 +1704,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
             &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -1793,7 +1795,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -1807,8 +1809,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -1824,7 +1826,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
             &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -1909,7 +1911,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -1923,8 +1925,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -1940,7 +1942,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
             &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -2030,7 +2032,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -2044,12 +2046,12 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let clock = clock::create_for_testing(scenario.ctx());
 
-            let empty_whitelisted_tokens = tranche_manager.get_whitelisted_tokens();
-            assert!(empty_whitelisted_tokens.length() == 0, 928254);
+            let empty_whitelisted_tokens = tranche_manager.is_token_whitelisted(type_name::get<RewardCoinType1>());
+            assert!(!empty_whitelisted_tokens, 928254);
 
             pool_tranche::add_token_types_to_whitelist(
                 &mut tranche_manager,
@@ -2057,11 +2059,14 @@ module liquidity_locker::pool_tranche_tests {
                 scenario.ctx()
             );
 
-            let whitelisted_tokens = tranche_manager.get_whitelisted_tokens();
-            assert!(whitelisted_tokens.length() == 3, 932469);
-            assert!(whitelisted_tokens[0] == type_name::get<RewardCoinType1>(), 932470);
-            assert!(whitelisted_tokens[1] == type_name::get<RewardCoinType2>(), 932471);
-            assert!(whitelisted_tokens[2] == type_name::get<RewardCoinType3>(), 932472);
+            let whitelisted_tokens = tranche_manager.is_token_whitelisted(type_name::get<RewardCoinType1>());
+            assert!(whitelisted_tokens, 932469);
+
+            let whitelisted_tokens = tranche_manager.is_token_whitelisted(type_name::get<RewardCoinType2>());
+            assert!(whitelisted_tokens, 932469);
+
+            let whitelisted_tokens = tranche_manager.is_token_whitelisted(type_name::get<RewardCoinType3>());
+            assert!(whitelisted_tokens, 932469);
 
             pool_tranche::remove_token_types_from_whitelist(
                 &mut tranche_manager,
@@ -2069,9 +2074,12 @@ module liquidity_locker::pool_tranche_tests {
                 scenario.ctx()
             );
 
-            let whitelisted_tokens = tranche_manager.get_whitelisted_tokens();
-            assert!(whitelisted_tokens.length() == 1, 932469);
-            assert!(whitelisted_tokens[0] == type_name::get<RewardCoinType3>(), 932473);
+            let whitelisted_tokens = tranche_manager.is_token_whitelisted(type_name::get<RewardCoinType1>());
+            assert!(!whitelisted_tokens, 932473);
+            let whitelisted_tokens = tranche_manager.is_token_whitelisted(type_name::get<RewardCoinType2>());
+            assert!(!whitelisted_tokens, 932473);
+            let whitelisted_tokens = tranche_manager.is_token_whitelisted(type_name::get<RewardCoinType3>());
+            assert!(whitelisted_tokens, 932469);
 
             assert!(tranche_manager.get_ignore_whitelist_flag() == false, 932474);
 
@@ -2100,7 +2108,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -2114,8 +2122,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -2131,7 +2139,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
                 &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -2184,7 +2192,7 @@ module liquidity_locker::pool_tranche_tests {
             
             // add first reward
             let reward = sui::coin::mint_for_testing<RewardCoinType1>(10000000, scenario.ctx());
-            pool_tranche::set_total_incomed_and_add_reward<RewardCoinType1>(
+            pool_tranche::set_total_incomed_and_add_reward<OSAIL1, RewardCoinType1>(
                 &mut tranche_manager,
                 pool_id,
                 tranche_id,
@@ -2216,7 +2224,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -2230,8 +2238,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -2247,7 +2255,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
                 &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -2336,7 +2344,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -2350,8 +2358,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -2367,7 +2375,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
                 &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -2426,7 +2434,7 @@ module liquidity_locker::pool_tranche_tests {
             
             // add reward
             let reward = sui::coin::mint_for_testing<RewardCoinType1>(10000000, scenario.ctx());
-            pool_tranche::set_total_incomed_and_add_reward<RewardCoinType1>(
+            pool_tranche::set_total_incomed_and_add_reward<OSAIL1, RewardCoinType1>(
                 &mut tranche_manager,
                 pool_id,
                 tranche_id,
@@ -2457,7 +2465,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -2471,8 +2479,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -2488,7 +2496,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
                 &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -2547,7 +2555,7 @@ module liquidity_locker::pool_tranche_tests {
             
             // add reward
             let reward = sui::coin::mint_for_testing<RewardCoinType1>(10000000, scenario.ctx());
-            pool_tranche::set_total_incomed_and_add_reward<RewardCoinType1>(
+            pool_tranche::set_total_incomed_and_add_reward<OSAIL1, RewardCoinType1>(
                 &mut tranche_manager,
                 pool_id,
                 tranche_id,
@@ -2580,7 +2588,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -2630,7 +2638,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -2669,7 +2677,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -2683,8 +2691,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -2700,7 +2708,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
             &admin_cap,
                 &create_cap,
                 &mut locker,

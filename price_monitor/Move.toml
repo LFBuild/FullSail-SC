@@ -1,0 +1,33 @@
+[package]
+name = "price_monitor"
+edition = "2024"
+
+[addresses]
+price_monitor = "0xa702a912ff18fe4468e12c322a2430080ab38044f6cb33dc13b03649546b4682"
+
+[dev-dependencies]
+
+[dev-addresses]
+
+[dependencies.Sui]
+git = "https://github.com/MystenLabs/sui.git"
+subdir = "crates/sui-framework/packages/sui-framework"
+rev = "framework/mainnet"
+override = true
+
+[dependencies.clmm_pool]
+git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
+subdir = "clmm_pool"
+rev = "dev"
+override = true
+
+[dependencies.integer_mate]
+git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
+subdir = "integer_mate"
+rev = "dev"
+override = true
+
+[dependencies.Switchboard]
+git = "https://github.com/LFBuild/sui.git"
+subdir = "on_demand/"
+rev = "mainnet"

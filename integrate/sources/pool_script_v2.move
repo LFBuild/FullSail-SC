@@ -322,7 +322,7 @@ module integrate::pool_script_v2 {
         );
     }
 
-    fun repay_add_liquidity<CoinTypeA, CoinTypeB>(
+    public(package) fun repay_add_liquidity<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         receipt: clmm_pool::pool::AddLiquidityReceipt<CoinTypeA, CoinTypeB>,
@@ -474,7 +474,7 @@ module integrate::pool_script_v2 {
         transfer::public_transfer<clmm_pool::position::Position>(position, tx_context::sender(ctx));
     }
 
-public fun open_position_with_liquidity_return<CoinTypeA, CoinTypeB>(
+    public fun open_position_with_liquidity_return<CoinTypeA, CoinTypeB>(
         global_config: &clmm_pool::config::GlobalConfig,
         vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
@@ -658,115 +658,187 @@ public fun open_position_with_liquidity_return<CoinTypeA, CoinTypeB>(
         staked_position
     }
 
-    public entry fun open_position_and_lock_with_liquidity_by_fix_coin<CoinTypeA, CoinTypeB>(
+
+    // all rewards for previous epochs must be claimed
+    public fun add_staked_liquidity_by_fix_coin<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
         global_config: &clmm_pool::config::GlobalConfig,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
+        minter: &mut distribution::minter::Minter<SailCoinType>,
         vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        locker: &mut liquidity_locker::liquidity_lock_v1::Locker,
-        pool_tranche_manager: &mut liquidity_locker::pool_tranche::PoolTrancheManager,
-        tick_lower: u32,
-        tick_upper: u32,
+        gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        staked_position: distribution::gauge::StakedPosition,
         coin_a: sui::coin::Coin<CoinTypeA>,
         coin_b: sui::coin::Coin<CoinTypeB>,
         amount_a: u64,
         amount_b: u64,
         fix_amount_a: bool,
-        block_period_index: u64,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
-    ) {
-        let mut position = clmm_pool::pool::open_position<CoinTypeA, CoinTypeB>(
-            global_config,
+    ): distribution::gauge::StakedPosition {
+       let mut reward_coin = distribution::minter::get_position_reward<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
+            minter,
+            distribution_config,
+            gauge,
             pool,
-            tick_lower,
-            tick_upper,
+            &staked_position,
+            clock,
             ctx
         );
-        let amount_to_add = if (fix_amount_a) {
-            amount_a
+        if (reward_coin.value<EpochOSail>() > 0) {
+            transfer::public_transfer<sui::coin::Coin<EpochOSail>>(reward_coin, tx_context::sender(ctx));
         } else {
-            amount_b
+            reward_coin.destroy_zero<EpochOSail>();
         };
-        let receipt = clmm_pool::pool::add_liquidity_fix_coin<CoinTypeA, CoinTypeB>(
+
+        let mut position = distribution::gauge::withdraw_position<CoinTypeA, CoinTypeB>(
+            gauge,
+            distribution_config,
+            pool,
+            staked_position,
+            clock,
+            ctx
+        );
+
+        add_liquidity_by_fix_coin<CoinTypeA, CoinTypeB>(
             global_config,
             vault,
             pool,
             &mut position,
-            amount_to_add,
-            fix_amount_a,
-            clock
-        );
-        repay_add_liquidity<CoinTypeA, CoinTypeB>(
-            global_config,
-            pool,
-            receipt,
             coin_a,
             coin_b,
             amount_a,
             amount_b,
+            fix_amount_a,
+            clock,
             ctx
         );
         
-        let mut lock_positions = liquidity_locker::liquidity_lock_v1::lock_position<CoinTypeA, CoinTypeB>(
+        let new_staked_position = distribution::gauge::deposit_position<CoinTypeA, CoinTypeB>(
             global_config,
-            vault,
-            locker,
-            pool_tranche_manager,
+            distribution_config,
+            gauge,
             pool,
             position,
-            block_period_index,
             clock,
             ctx
         );
 
-        let len = lock_positions.length();
-        let mut i = 0;
-        while (i < len) {
-            transfer::public_transfer<liquidity_locker::liquidity_lock_v1::LockedPosition<CoinTypeA, CoinTypeB>>(
-                lock_positions.pop_back(), 
-                tx_context::sender(ctx)
-            );
-            i = i + 1;
-        };
-        lock_positions.destroy_empty();
+        new_staked_position
     }
 
-    public entry fun lock_position<CoinTypeA, CoinTypeB>(
+    // all rewards for previous epochs must be claimed
+    public fun remove_staked_liquidity_by_fix_coin<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
         global_config: &clmm_pool::config::GlobalConfig,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
+        minter: &mut distribution::minter::Minter<SailCoinType>,
         vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        locker: &mut liquidity_locker::liquidity_lock_v1::Locker,
-        pool_tranche_manager: &mut liquidity_locker::pool_tranche::PoolTrancheManager,
-        position: clmm_pool::position::Position,
-        block_period_index: u64,
+        gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        staked_position: distribution::gauge::StakedPosition,
+        liquidity: u128,
+        min_amount_a: u64,
+        min_amount_b: u64,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ): distribution::gauge::StakedPosition {
+       let mut reward_coin = distribution::minter::get_position_reward<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
+            minter,
+            distribution_config,
+            gauge,
+            pool,
+            &staked_position,
+            clock,
+            ctx
+        );
+        if (reward_coin.value<EpochOSail>() > 0) {
+            transfer::public_transfer<sui::coin::Coin<EpochOSail>>(reward_coin, tx_context::sender(ctx));
+        } else {
+            reward_coin.destroy_zero<EpochOSail>();
+        };
+
+        let mut position = distribution::gauge::withdraw_position<CoinTypeA, CoinTypeB>(
+            gauge,
+            distribution_config,
+            pool,
+            staked_position,
+            clock,
+            ctx
+        );
+
+        remove_liquidity<CoinTypeA, CoinTypeB>(
+            global_config,
+            vault,
+            pool,
+            &mut position,
+            liquidity,
+            min_amount_a,
+            min_amount_b,
+            clock,
+            ctx
+        );
+        
+        let new_staked_position = distribution::gauge::deposit_position<CoinTypeA, CoinTypeB>(
+            global_config,
+            distribution_config,
+            gauge,
+            pool,
+            position,
+            clock,
+            ctx
+        );
+
+        new_staked_position
+    }
+
+    // all rewards for previous epochs must be claimed
+    public fun close_staked_position<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
+        minter: &mut distribution::minter::Minter<SailCoinType>,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        staked_position: distribution::gauge::StakedPosition,
+        min_amount_a: u64,
+        min_amount_b: u64,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        
-        let mut lock_positions = liquidity_locker::liquidity_lock_v1::lock_position<CoinTypeA, CoinTypeB>(
-            global_config,
-            vault,
-            locker,
-            pool_tranche_manager,
+       let mut reward_coin = distribution::minter::get_position_reward<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
+            minter,
+            distribution_config,
+            gauge,
             pool,
-            position,
-            block_period_index,
+            &staked_position,
+            clock,
+            ctx
+        );
+        if (reward_coin.value<EpochOSail>() > 0) {
+            transfer::public_transfer<sui::coin::Coin<EpochOSail>>(reward_coin, tx_context::sender(ctx));
+        } else {
+            reward_coin.destroy_zero<EpochOSail>();
+        };
+
+        let mut position = distribution::gauge::withdraw_position<CoinTypeA, CoinTypeB>(
+            gauge,
+            distribution_config,
+            pool,
+            staked_position,
             clock,
             ctx
         );
 
-        assert!(lock_positions.length() > 0, EFailedLockPosition);
-
-        let len = lock_positions.length();
-        let mut i = 0;
-        while (i < len) {
-            transfer::public_transfer<liquidity_locker::liquidity_lock_v1::LockedPosition<CoinTypeA, CoinTypeB>>(
-                lock_positions.pop_back(), 
-                tx_context::sender(ctx)
-            );
-            i = i + 1;
-        };
-        lock_positions.destroy_empty();
+        close_position<CoinTypeA, CoinTypeB>(
+            global_config,
+            vault,
+            pool,
+            position,
+            min_amount_a,
+            min_amount_b,
+            clock,
+            ctx
+        );
     }
 
     public entry fun pause_pool<CoinTypeA, CoinTypeB>(

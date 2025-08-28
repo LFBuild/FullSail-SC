@@ -1,0 +1,13 @@
+#mainnet
+#these adresses should be updated after calling each of the scripts
+export ADDR=$(sui client active-address)
+
+export PACKAGE=0x0fd9008549755adc08dbb3ca7b2223fda06d4f1c5acbb2e32cd60106ca8ac03c
+export SUPER_ADMIN_CAP_LOCK=0xf5fbacf3c89d3f10496ad67b07cb6d079cf6c81d422c5b5727f04b47c7c76d04
+export SUPER_ADMIN_CAP_TRANCH=0x57698d39c14fe425f24896f1f1b5a81c7523d86942f227f92bd35764ea5a7995
+export LOCKER_V1=0x5cebae2454356598f348fc94953558a57ea7bd3e7a5a85dbb00075ac30c1e6bb
+export POOL_TRANCH_MANAGER=0x732a71c5895c063293454f829bdc435621331d51d0d59959d4587c21de395e28
+export CREATE_LOCKER_CAP=0x48c79b5dc3786d929f3fcd812e42019b3dd3d15a1a861b77c091989cc8d1ec30
+
+export CLOCK=0x6
+# use setup_distribution.sh script in integrate directory to create minter, voter and voting_escrow.

@@ -1,0 +1,18 @@
+[package]
+name = "airdrop"
+edition = "2024.beta"
+
+[addresses]
+airdrop = "0x6bf2bd971122ec1cfafa85a53debdcb284dc6d325d712573969e67bd4a59e20f"
+
+[dev-dependencies]
+
+[dev-addresses]
+
+[dependencies.SuiTears]
+git = "https://github.com/LFBuild/suitears.git"
+subdir = "contracts"
+rev = "main"
+
+[dependencies.ve]
+local = "../ve"

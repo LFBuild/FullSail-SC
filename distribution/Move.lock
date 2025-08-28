@@ -2,8 +2,8 @@
 
 [move]
 version = 3
-manifest_digest = "FDE4FAC787EB981AEFCA6BE1FA810F2226AE608D9658B1C06753A536EBDCAA91"
-deps_digest = "CAFAD8A7CF51067FB4358215BECB86BD100DD64E57C2AC8A7AE7D74B688F5965"
+manifest_digest = "311B7AD3DBDBEFFF60BDDC2CAF7DA3CC958546693CB22EF3EF79AAA6AC06DD65"
+deps_digest = "8227D341C0550A37580C10FA45FE148A465225149C69D179737E0FE454AD6AEC"
 dependencies = [
   { id = "Sui", name = "Sui" },
   { id = "Switchboard", name = "Switchboard" },
@@ -11,7 +11,9 @@ dependencies = [
   { id = "gauge_cap", name = "gauge_cap" },
   { id = "integer_mate", name = "integer_mate" },
   { id = "locker_cap", name = "locker_cap" },
+  { id = "price_monitor", name = "price_monitor" },
   { id = "price_provider", name = "price_provider" },
+  { id = "ve", name = "ve" },
 ]
 
 [[move.package]]
@@ -79,6 +81,17 @@ dependencies = [
 ]
 
 [[move.package]]
+id = "price_monitor"
+source = { local = "../price_monitor" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+  { id = "Switchboard", name = "Switchboard" },
+  { id = "clmm_pool", name = "clmm_pool" },
+  { id = "integer_mate", name = "integer_mate" },
+]
+
+[[move.package]]
 id = "price_provider"
 source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "dev", subdir = "price_provider" }
 
@@ -86,8 +99,17 @@ dependencies = [
   { id = "Sui", name = "Sui" },
 ]
 
+[[move.package]]
+id = "ve"
+source = { local = "../ve" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+  { id = "integer_mate", name = "integer_mate" },
+]
+
 [move.toolchain-version]
-compiler-version = "1.51.2"
+compiler-version = "1.54.1"
 edition = "2024"
 flavor = "sui"
 
@@ -95,6 +117,6 @@ flavor = "sui"
 
 [env.mainnet]
 chain-id = "35834a8a"
-original-published-id = "0x5ee778a0e10b43e6b28367b72cb15731760e4f42d0da4637af5bbecbcd814e8b"
-latest-published-id = "0x5ee778a0e10b43e6b28367b72cb15731760e4f42d0da4637af5bbecbcd814e8b"
+original-published-id = "0x2f3827c5462f19283c33f3fe55169edd49093c18366b831b626ed9517c4baf99"
+latest-published-id = "0x2f3827c5462f19283c33f3fe55169edd49093c18366b831b626ed9517c4baf99"
 published-version = "1"

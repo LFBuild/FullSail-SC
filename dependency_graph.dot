@@ -42,4 +42,14 @@ digraph Dependencies {
     "distribution" -> "gauge_cap";
     "integrate"    -> "gauge_cap";
     "distribution" -> "locker_cap"
+
+    "price_monitor" -> "clmm_pool"
+    "price_monitor" -> "integer_mate"
+    "distribution" -> "price_monitor"
+
+    "ve" -> "integer_mate"
+    "distribution" -> "ve"
+    "integrate" -> "ve"
+    "liquidity_locker_v2" -> "ve"
+
 }
