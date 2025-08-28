@@ -384,3 +384,56 @@ fun test_claim_airdrop_not_started_fails() {
     clock.destroy_for_testing();
     scenario.end();
 }
+
+#[test]
+#[expected_failure(abort_code = airdrop::ve_airdrop::EWrongWithdrawCap)]
+fun test_withdraw_with_wrong_cap_fails() {
+    let mut scenario = ts::begin(ADMIN);
+    let clock = setup::setup<SAIL>(&mut scenario, ADMIN);
+
+    let airdrop_coin1 = coin::mint_for_testing<SAIL>(AMOUNT1, scenario.ctx());
+    let (ve_airdrop1, cap1) = ve_airdrop::new(airdrop_coin1, ROOT, 0, &clock, scenario.ctx());
+
+    let airdrop_coin2 = coin::mint_for_testing<SAIL>(AMOUNT2, scenario.ctx());
+    let (ve_airdrop2, cap2) = ve_airdrop::new(airdrop_coin2, ROOT, 0, &clock, scenario.ctx());
+
+    // This call should fail because we are using cap2 with airdrop1.
+    let remaining = ve_airdrop::withdraw_and_destroy(ve_airdrop1, &cap2, scenario.ctx());
+    coin::burn_for_testing(remaining);
+
+    // Cleanup.
+    let remaining2 = ve_airdrop::withdraw_and_destroy(ve_airdrop2, &cap2, scenario.ctx());
+    coin::burn_for_testing(remaining2);
+
+    transfer::public_transfer(cap1, ADMIN);
+    transfer::public_transfer(cap2, ADMIN);
+
+    clock.destroy_for_testing();
+    scenario.end();
+}
+
+#[test]
+fun test_withdraw_successful_flow() {
+    let mut scenario = ts::begin(ADMIN);
+    let clock = setup::setup<SAIL>(&mut scenario, ADMIN);
+    let airdrop_coin = coin::mint_for_testing<SAIL>(AMOUNT1 + AMOUNT2, scenario.ctx());
+
+    let (ve_airdrop, withdraw_cap) = ve_airdrop::new(airdrop_coin, ROOT, 0, &clock, scenario.ctx());
+    transfer::public_share_object(ve_airdrop);
+
+    // Claim the airdrop for ADDRESS1
+    claim_airdrop<SAIL>(&mut scenario, ADDRESS1, PROOF1, AMOUNT1, &clock);
+
+    // Admin withdraws the remaining funds.
+    scenario.next_tx(ADMIN);
+    {
+        let ve_airdrop = scenario.take_shared<VeAirdrop<SAIL>>();
+        let remaining_coin = ve_airdrop::withdraw_and_destroy(ve_airdrop, &withdraw_cap, scenario.ctx());
+        assert!(coin::value(&remaining_coin) == AMOUNT2, 0);
+        coin::burn_for_testing(remaining_coin);
+        transfer::public_transfer(withdraw_cap, ADMIN);
+    };
+
+    clock.destroy_for_testing();
+    scenario.end();
+}
