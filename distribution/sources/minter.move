@@ -23,6 +23,8 @@ module distribution::minter {
 
     const EGrantDistributeGovernorInvalidPublisher: u64 = 49774594592309590;
 
+    const ESetMaxEmissionChangeRatioInvalidPublisher: u64 = 716496543415068300;
+
     const ERevokeAdminInvalidPublisher: u64 = 729123415718822900;
 
     const ERevokeDistributeGovernorInvalidPublisher: u64 = 639606009071379600;
@@ -143,11 +145,6 @@ module distribution::minter {
 
     const EEmissionStopped: u64 = 123456789012345678;
 
-    const EMintTestSailOutdated: u64 = 89462538442069740;
-    const EMintTestSailPublisherInvalid: u64 = 846785453837100700;
-    const EMintTestSailMinterPaused: u64 = 308702052175391360;
-    const EMintTestSailAmountZero: u64 = 739392658014216400;
-
     const EInvalidSailPool: u64 = 939179427939211244;
 
     const DAYS_IN_WEEK: u64 = 7;
@@ -168,7 +165,7 @@ module distribution::minter {
     const MAX_TEAM_EMISSIONS_RATE: u64 = 500;
     const MAX_PROTOCOL_FEE_RATE: u64 = 3000;
 
-    const MAX_EMISSIONS_CHANGE_RATIO: u64 = 4;
+    const MAX_EMISSIONS_CHANGE_RATIO: u64 = 20;
 
     const MINT_LOCK_TIME_MS: u64 = 24 * 60 * 60 * 1000; // 1 day
 
@@ -414,6 +411,7 @@ module distribution::minter {
         // Epoch start seconds -> sum of oSAIL emissions for all gauges
         total_epoch_o_sail_emissions: Table<u64, u64>,
         distribution_config: ID,
+        max_emission_change_ratio: u64,
         // bag to be preapred for future updates
         bag: sui::bag::Bag,
     }
@@ -633,6 +631,7 @@ module distribution::minter {
             total_epoch_emissions_usd: table::new<u64, u64>(ctx),
             total_epoch_o_sail_emissions: table::new<u64, u64>(ctx),
             distribution_config,
+            max_emission_change_ratio: MAX_EMISSIONS_CHANGE_RATIO,
             bag: sui::bag::new(ctx),
         };
         let admin_cap = AdminCap { id: object::new(ctx) };
@@ -664,6 +663,17 @@ module distribution::minter {
         };
         sui::event::emit<EventGrantDistributeGovernor>(grant_distribute_governor_event);
         transfer::transfer<DistributeGovernorCap>(distribute_governor_cap, who);
+    }
+
+    public fun set_max_emission_change_ratio<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        publisher: &sui::package::Publisher,
+        distribution_config: &DistributionConfig,
+        max_emission_change_ratio: u64
+    ) {
+        distribution_config.checked_package_version();
+        assert!(publisher.from_module<MINTER>(), ESetMaxEmissionChangeRatioInvalidPublisher);
+        minter.max_emission_change_ratio = max_emission_change_ratio;
     }
 
     fun init(otw: MINTER, ctx: &mut TxContext) {
@@ -1361,9 +1371,9 @@ module distribution::minter {
         } else {
             assert!(next_epoch_emissions_usd > 0, EDistributeGaugeEmissionsZero);
             if (prev_epoch_emissions_usd > next_epoch_emissions_usd) {
-                assert!(prev_epoch_emissions_usd / next_epoch_emissions_usd < MAX_EMISSIONS_CHANGE_RATIO, EDistributeGaugeEmissionsChangeTooBig);
+                assert!(prev_epoch_emissions_usd / next_epoch_emissions_usd <= minter.max_emission_change_ratio, EDistributeGaugeEmissionsChangeTooBig);
             } else {
-                assert!(next_epoch_emissions_usd / prev_epoch_emissions_usd < MAX_EMISSIONS_CHANGE_RATIO, EDistributeGaugeEmissionsChangeTooBig);
+                assert!(next_epoch_emissions_usd / prev_epoch_emissions_usd <= minter.max_emission_change_ratio, EDistributeGaugeEmissionsChangeTooBig);
             }
         };
         let ended_epoch_o_sail_emission = voter.distribute_gauge<CoinTypeA, CoinTypeB, CurrentEpochOSail>(
