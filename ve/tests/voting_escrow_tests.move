@@ -2417,3 +2417,153 @@ fun test_voting_power_with_staggered_locks_for_two_weeks() {
     scenario.end();
     test_utils::destroy(clock);
 }
+
+#[test]
+fun test_create_permanent_lock_with_zero_duration_succeeds() {
+    let mut scenario = ts::begin(ADMIN);
+    let clock = setup::setup<SAIL>(&mut scenario, ADMIN);
+
+    let amount = 1_000_000;
+
+    // USER creates a permanent lock with zero duration
+    scenario.next_tx(USER);
+    {
+        let sail = coin::mint_for_testing<SAIL>(amount, scenario.ctx());
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        voting_escrow::create_lock<SAIL>(
+            &mut ve,
+            sail,
+            0, // zero duration
+            true, // permanent
+            &clock,
+            scenario.ctx()
+        );
+        ts::return_shared(ve);
+    };
+
+    // Verify the lock is created and is permanent
+    scenario.next_tx(USER);
+    {
+        let ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let lock = scenario.take_from_sender<Lock>();
+        let lock_id = object::id(&lock);
+        
+        let (locked_balance, exists) = ve.locked(lock_id);
+        assert!(exists, 0);
+        assert!(voting_escrow::is_permanent(&locked_balance), 1);
+        assert!(voting_escrow::amount(&locked_balance) == amount, 2);
+
+        // Voting power should be equal to the amount for a permanent lock
+        let power = voting_escrow::balance_of_nft_at(&ve, lock_id, clock.timestamp_ms() / 1000);
+        assert!(power == amount, 3);
+        
+        scenario.return_to_sender(lock);
+        ts::return_shared(ve);
+    };
+
+    scenario.end();
+    test_utils::destroy(clock);
+}
+
+#[test]
+fun test_create_permanent_lock_with_long_duration_succeeds() {
+    let mut scenario = ts::begin(ADMIN);
+    let clock = setup::setup<SAIL>(&mut scenario, ADMIN);
+
+    let amount = 1_000_000;
+
+    // USER creates a permanent lock with a long duration
+    scenario.next_tx(USER);
+    {
+        let sail = coin::mint_for_testing<SAIL>(amount, scenario.ctx());
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        voting_escrow::create_lock<SAIL>(
+            &mut ve,
+            sail,
+            10000, // long duration
+            true, // permanent
+            &clock,
+            scenario.ctx()
+        );
+        ts::return_shared(ve);
+    };
+
+    // Verify the lock is created and is permanent
+    scenario.next_tx(USER);
+    {
+        let ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let lock = scenario.take_from_sender<Lock>();
+        let lock_id = object::id(&lock);
+        
+        let (locked_balance, exists) = ve.locked(lock_id);
+        assert!(exists, 0);
+        assert!(voting_escrow::is_permanent(&locked_balance), 1);
+        assert!(voting_escrow::amount(&locked_balance) == amount, 2);
+
+        // Voting power should be equal to the amount for a permanent lock
+        let power = voting_escrow::balance_of_nft_at(&ve, lock_id, clock.timestamp_ms() / 1000);
+        assert!(power == amount, 3);
+        
+        scenario.return_to_sender(lock);
+        ts::return_shared(ve);
+    };
+
+    scenario.end();
+    test_utils::destroy(clock);
+}
+
+#[test]
+#[expected_failure(abort_code=922337411132463514)]
+fun test_create_lock_with_long_duration_fails() {
+    let mut scenario = ts::begin(ADMIN);
+    let clock = setup::setup<SAIL>(&mut scenario, ADMIN);
+
+    let amount = 1_000_000;
+
+    // USER creates a lock with a long duration, expecting failure
+    scenario.next_tx(USER);
+    {
+        let sail = coin::mint_for_testing<SAIL>(amount, scenario.ctx());
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        voting_escrow::create_lock<SAIL>(
+            &mut ve,
+            sail,
+            10000, // long duration
+            false, // not permanent
+            &clock,
+            scenario.ctx()
+        );
+        ts::return_shared(ve);
+    };
+
+    scenario.end();
+    test_utils::destroy(clock);
+}
+
+#[test]
+#[expected_failure(abort_code=922337411132463514)]
+fun test_create_lock_with_zero_duration_fails() {
+    let mut scenario = ts::begin(ADMIN);
+    let clock = setup::setup<SAIL>(&mut scenario, ADMIN);
+
+    let amount = 1_000_000;
+
+    // USER creates a lock with a zero duration, expecting failure
+    scenario.next_tx(USER);
+    {
+        let sail = coin::mint_for_testing<SAIL>(amount, scenario.ctx());
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        voting_escrow::create_lock<SAIL>(
+            &mut ve,
+            sail,
+            0, // zero duration
+            false, // not permanent
+            &clock,
+            scenario.ctx()
+        );
+        ts::return_shared(ve);
+    };
+
+    scenario.end();
+    test_utils::destroy(clock);
+}

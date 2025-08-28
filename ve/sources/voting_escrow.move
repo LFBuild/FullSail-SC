@@ -1117,7 +1117,7 @@ module ve::voting_escrow {
         ctx: &mut TxContext
     ) {
         voting_escrow.checked_package_version();
-        voting_escrow.validate_lock_duration(lock_duration_days);
+        voting_escrow.validate_lock_duration(lock_duration_days, permanent, perpetual);
         let lock_amount = coin_to_lock.value();
         assert!(lock_amount > 0, ECreateLockAmountZero);
         let current_time = ve::common::current_timestamp(clock);
@@ -1176,7 +1176,7 @@ module ve::voting_escrow {
         ctx: &mut TxContext
     ) {
         voting_escrow.checked_package_version();
-        voting_escrow.validate_lock_duration(duration_days);
+        voting_escrow.validate_lock_duration(duration_days, permanent, perpetual);
         let lock_amount = coin.value();
         assert!(lock_amount > 0, ECreateLockForAmountZero);
         let start_time = ve::common::current_timestamp(clock);
@@ -2749,10 +2749,20 @@ module ve::voting_escrow {
         assert!(lock.escrow == object::id<VotingEscrow<SailCoinType>>(voting_escrow), EValidateLockInvalidEscrow);
     }
 
-    fun validate_lock_duration<SailCoinType>(_voting_escrow: &VotingEscrow<SailCoinType>, duration_days: u64) {
+    fun validate_lock_duration<SailCoinType>(
+        _voting_escrow: &VotingEscrow<SailCoinType>,
+        duration_days: u64,
+        is_permanent: bool,
+        is_perpetual: bool
+    ) {
+        // if lock is permanent or perpetual, we don't need to check the duration
         assert!(
-            duration_days * ve::common::day() >= ve::common::min_lock_time() &&
-                duration_days * ve::common::day() <= ve::common::max_lock_time(),
+            is_permanent 
+            || is_perpetual
+                || (
+                    duration_days * ve::common::day() >= ve::common::min_lock_time()
+                        && duration_days * ve::common::day() <= ve::common::max_lock_time()
+                ),
             EValidateLockDurationInvalid
         );
     }
