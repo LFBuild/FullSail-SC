@@ -17,7 +17,6 @@ module distribution::gauge {
 
     use sui::object_table::{Self, ObjectTable};
     use sui::table::{Self, Table};
-    use sui::linked_table::{Self, LinkedTable};
     use sui::balance::{Self, Balance};
     use std::type_name::{Self, TypeName};
     use ve::common;
@@ -77,13 +76,22 @@ module distribution::gauge {
 
     const EFullEarnedForTypeGaugeDoesNotMatchPool: u64 = 266845958013316900;
 
+    const ENotOwner: u64 = 9843325239567326443;
+
+    /// Witness type for gauge module initialization.
+    /// Used to ensure proper module initialization and access control.
+    public struct GAUGE has drop {}
+
     public struct AdminCap has store, key {
         id: UID,
     }
 
     public struct StakedPosition has store, key {
         id: sui::object::UID,
-        position_id: sui::object::ID
+        position_id: sui::object::ID,
+        pool_id: sui::object::ID,
+        description: std::string::String,
+        name: std::string::String,
     }
 
     public struct EventNotifyEpochToken has copy, drop, store {
@@ -178,6 +186,69 @@ module distribution::gauge {
         rewards: Table<ID, RewardProfile>,
         // bag to be preapred for future updates
         bag: sui::bag::Bag,
+    }
+
+    /// Initializes the gauge module by setting up display fields and transferring ownership.
+    /// This function is called during module initialization to:
+    /// * Set up display fields for staked position objects
+    /// * Configure metadata display for the Fullsail Finance interface
+    /// * Transfer display and publisher objects to the module owner
+    /// 
+    /// # Arguments
+    /// * `gauge_witness` - Witness type for gauge module initialization
+    /// * `ctx` - Mutable reference to the transaction context
+    /// 
+    /// # Details
+    /// Sets up the following display fields:
+    /// * name - Staked position name
+    /// * link - Staked position link in Fullsail Finance app
+    /// * image_url - Staked position image URL
+    /// * description - Staked position description
+    /// * website - Project website
+    /// * creator - Staked position creator
+    /// 
+    /// # Transfers
+    /// * Transfers the Display<StakedPosition> object to the transaction sender
+    /// * Transfers the Publisher object to the transaction sender
+    fun init(gauge_witness: GAUGE, ctx: &mut sui::tx_context::TxContext) {
+
+        let publisher = sui::package::claim<GAUGE>(gauge_witness, ctx);
+
+        let display = update_display(
+            &publisher,
+            std::string::utf8(b"{name}"),
+            std::string::utf8(b"https://app.fullsail.finance/liquidity/{pool_id}/positions/{position_id}"),
+            std::string::utf8(b"https://app.fullsail.finance/static_files/fullsail_logo.png"),
+            std::string::utf8(b"{description}"),
+            std::string::utf8(b"https://app.fullsail.finance"),
+            std::string::utf8(b"FULLSAIL"),
+            ctx
+        );
+
+        sui::transfer::public_transfer<sui::display::Display<StakedPosition>>(display, sui::tx_context::sender(ctx));
+        sui::transfer::public_transfer<sui::package::Publisher>(publisher, sui::tx_context::sender(ctx));
+    }
+
+    #[test_only]
+    /// Test initialization of the gauge system
+    /// Replicates the init function logic for testing purposes
+    public fun test_init(ctx: &mut sui::tx_context::TxContext) {
+        
+        let publisher = sui::package::claim<GAUGE>(GAUGE{}, ctx);
+
+        let display = update_display(
+            &publisher,
+            std::string::utf8(b"{name}"),
+            std::string::utf8(b"https://app.fullsail.finance/liquidity/{pool_id}/positions/{position_id}"),
+            std::string::utf8(b"https://app.fullsail.finance/static_files/fullsail_logo.png"),
+            std::string::utf8(b"{description}"),
+            std::string::utf8(b"https://app.fullsail.finance"),
+            std::string::utf8(b"FULLSAIL"),
+            ctx
+        );
+
+        sui::transfer::public_transfer<sui::display::Display<StakedPosition>>(display, sui::tx_context::sender(ctx));
+        sui::transfer::public_transfer<sui::package::Publisher>(publisher, sui::tx_context::sender(ctx));
     }
 
     /// Returns the pool ID associated with the gauge.
@@ -450,7 +521,9 @@ module distribution::gauge {
         ctx: &mut TxContext
     ): StakedPosition {
         let position_id = object::id<clmm_pool::position::Position>(&position);
-
+        let pool_id = object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool);
+        assert!(pool_id == position.pool_id(), EDepositPositionGaugeDoesNotMatchPool);
+        
         let (lower_tick, upper_tick) = position.tick_range();
         let gauge_cap = gauge.gauge_cap.borrow();
         pool.update_fullsail_distribution_growth_global(gauge_cap, clock);
@@ -473,12 +546,15 @@ module distribution::gauge {
             clock
         );
 
-        gauge.staked_positions.add(position_id, position);
-
         let staked_position = StakedPosition{
             id: sui::object::new(ctx),
             position_id: position_id,
+            pool_id: position.pool_id(),
+            description: std::string::utf8(b"Fullsail Staked Liquidity Position"),
+            name: new_staked_position_name(pool.index(), position.index()),
         };
+
+        gauge.staked_positions.add(position_id, position);
 
         let deposit_gauge_event = EventDepositGauge {
             gauger_id: object::id<Gauge<CoinTypeA, CoinTypeB>>(gauge),
@@ -492,6 +568,13 @@ module distribution::gauge {
         staked_position
     }
 
+    fun new_staked_position_name(pool_index: u64, position_index: u64): std::string::String {
+        let mut position_name = std::string::utf8(b"Fullsail Staked Position:");
+        std::string::append(&mut position_name, clmm_pool::utils::str(pool_index));
+        std::string::append_utf8(&mut position_name, b"-");
+        std::string::append(&mut position_name, clmm_pool::utils::str(position_index));
+        position_name
+    }
 
     /// Function to calculate earned rewards for a position.
     /// Does not consider current epoch oSAIL token.
@@ -1172,6 +1255,9 @@ module distribution::gauge {
         let StakedPosition{
             id: staked_position_id,
             position_id: _,
+            pool_id: _,
+            description: _,
+            name: _,
         } = staked_positions;        
 
         sui::object::delete(staked_position_id);
@@ -1387,5 +1473,87 @@ module distribution::gauge {
         if (gauge.locked_positions.contains(position_id)) {
             gauge.locked_positions.remove(position_id);
         }
+    }
+
+    fun update_display(
+        publisher: &sui::package::Publisher,
+        name: std::string::String,
+        link: std::string::String,
+        image_url: std::string::String,
+        description: std::string::String,
+        project_url: std::string::String,
+        creator: std::string::String,
+        ctx: &mut sui::tx_context::TxContext
+    ): sui::display::Display<StakedPosition> {
+        let mut keys = std::vector::empty<std::string::String>();
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"name"));
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"link"));
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"image_url"));
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"description"));
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"project_url"));
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"creator"));
+
+        let mut values = std::vector::empty<std::string::String>();
+        std::vector::push_back<std::string::String>(&mut values, name);
+        std::vector::push_back<std::string::String>(&mut values, link);
+        std::vector::push_back<std::string::String>(&mut values, image_url);
+        std::vector::push_back<std::string::String>(&mut values, description);
+        std::vector::push_back<std::string::String>(&mut values, project_url);
+        std::vector::push_back<std::string::String>(&mut values, creator);
+
+        let mut display = sui::display::new_with_fields<StakedPosition>(publisher, keys, values, ctx);
+
+        sui::display::update_version<StakedPosition>(&mut display);
+
+        display
+    }
+
+    /// Sets up display fields for a staked position with custom metadata.
+    /// This function configures how the staked position will be displayed in the Fullsail Finance interface.
+    /// 
+    /// # Arguments
+    /// * `global_config` - Reference to the global configuration
+    /// * `publisher` - Reference to the package publisher
+    /// * `description` - Custom description for the staked position
+    /// * `link` - Custom link to the staked position in Fullsail Finance app
+    /// * `project_url` - URL of the project website
+    /// * `creator` - Name of the staked position creator
+    /// * `ctx` - Mutable reference to the transaction context
+    /// 
+    /// # Details
+    /// Sets up the following display fields:
+    /// * name - Staked position name (template: "{name}")
+    /// * link - Custom staked position link
+    /// * image_url - Staked position image URL (template: "{image_url}")
+    /// * description - Custom description
+    /// * project_url - Custom project website
+    /// * creator - Custom creator name
+    /// 
+    /// # Abort Conditions
+    /// * If the package version check fails
+    public fun set_display(
+        publisher: &sui::package::Publisher,
+        name: std::string::String,
+        link: std::string::String,
+        image_url: std::string::String,
+        description: std::string::String,
+        project_url: std::string::String,
+        creator: std::string::String,
+        ctx: &mut sui::tx_context::TxContext
+    ) {
+        assert!(publisher.from_module<StakedPosition>(), ENotOwner);
+
+        let display = update_display(
+            publisher,
+            name,
+            link,
+            image_url,
+            description,
+            project_url,
+            creator,
+            ctx
+        );
+
+        sui::transfer::public_transfer<sui::display::Display<StakedPosition>>(display, sui::tx_context::sender(ctx));
     }
 }
