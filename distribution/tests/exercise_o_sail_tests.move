@@ -1774,7 +1774,7 @@ fun test_exercise_fee_distribution() {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
         let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
         let distribution_config = scenario.take_shared<DistributionConfig>();
-        minter::set_team_wallet(&mut minter, &distribution_config, &minter_admin_cap, team_wallet);
+        minter::set_team_wallet(&mut minter, &minter_admin_cap,  &distribution_config, team_wallet);
         test_scenario::return_shared(distribution_config);
         test_scenario::return_shared(minter);
         scenario.return_to_sender(minter_admin_cap);

@@ -41,13 +41,14 @@ module integrate::reward_distributor {
     public entry fun claim_and_lock<SailCoinType>(
         rebase_distributor: &mut distribution::rebase_distributor::RebaseDistributor<SailCoinType>,
         voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
         lock: &mut ve::voting_escrow::Lock,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
         let claim_and_lock_event = ClaimAndLock {
             lock_id: object::id<ve::voting_escrow::Lock>(lock),
-            amount: rebase_distributor.claim(voting_escrow, lock, clock, ctx),
+            amount: rebase_distributor.claim(voting_escrow, distribution_config, lock, clock, ctx),
         };
         sui::event::emit<ClaimAndLock>(claim_and_lock_event);
     }

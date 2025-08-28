@@ -803,8 +803,8 @@ module distribution::minter {
     /// Sets the reward distributor capability for the minter.
     public fun set_rebase_distributor_cap<SailCoinType>(
         minter: &mut Minter<SailCoinType>,
-        distribution_config: &DistributionConfig,
         admin_cap: &AdminCap,
+        distribution_config: &DistributionConfig,
         rebase_distributor_cap: distribution::rebase_distributor_cap::RebaseDistributorCap
     ) {
         distribution_config.checked_package_version();
@@ -821,8 +821,8 @@ module distribution::minter {
     /// Sets the distribute capability for the minter.
     public fun set_distribute_cap<SailCoinType>(
         minter: &mut Minter<SailCoinType>,
-        distribution_config: &DistributionConfig,
         admin_cap: &AdminCap,
+        distribution_config: &DistributionConfig,
         distribute_cap: distribution::distribute_cap::DistributeCap
     ) {
         distribution_config.checked_package_version();
@@ -897,8 +897,8 @@ module distribution::minter {
     /// * `team_wallet` - Address of the team wallet
     public fun set_team_wallet<SailCoinType>(
         minter: &mut Minter<SailCoinType>,
-        distribution_config: &DistributionConfig,
         admin_cap: &AdminCap,
+        distribution_config: &DistributionConfig,
         team_wallet: address
     ) {
         distribution_config.checked_package_version();

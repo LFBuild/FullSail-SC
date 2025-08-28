@@ -215,7 +215,7 @@ public fun setup_distribution_with_initial_supply<SAIL>(
         // --- Set Distribute Cap ---
         let mut minter = scenario.take_shared<Minter<SAIL>>();
         let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();   
-        minter.set_distribute_cap(&distribution_config_obj, &minter_admin_cap, distribute_cap);
+        minter.set_distribute_cap(&minter_admin_cap, &distribution_config_obj, distribute_cap);
         test_scenario::return_shared(distribution_config_obj);
         test_scenario::return_shared(minter);
         scenario.return_to_sender(minter_admin_cap);
@@ -258,7 +258,7 @@ public fun setup_distribution_with_initial_supply<SAIL>(
         let mut minter = scenario.take_shared<Minter<SAIL>>();
         let distribution_config_obj = scenario.take_shared<distribution_config::DistributionConfig>();
         let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-        minter.set_rebase_distributor_cap(&distribution_config_obj, &minter_admin_cap, rd_cap);
+        minter.set_rebase_distributor_cap(&minter_admin_cap, &distribution_config_obj, rd_cap);
         test_scenario::return_shared(distribution_config_obj);
         test_scenario::return_shared(minter);
         scenario.return_to_sender(minter_admin_cap);

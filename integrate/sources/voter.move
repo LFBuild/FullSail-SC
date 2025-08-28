@@ -132,6 +132,7 @@ module integrate::voter {
     public fun claim_voting_fee_rewards<SailCoinType, CoinTypeA, CoinTypeB>(
         voter: &mut distribution::voter::Voter,
         voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
         mut locks: vector<ve::voting_escrow::Lock>,
         pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         clock: &sui::clock::Clock,
@@ -140,7 +141,7 @@ module integrate::voter {
         let mut i = 0;
         while (i < locks.length()) {
             let lock = locks.borrow(i);
-            voter.claim_voting_fee_by_pool<CoinTypeA, CoinTypeB, SailCoinType>(voting_escrow, lock, pool, clock, ctx);
+            voter.claim_voting_fee_by_pool<CoinTypeA, CoinTypeB, SailCoinType>(voting_escrow, distribution_config, lock, pool, clock, ctx);
             i = i + 1;
         };
         while (locks.length() > 0) {
@@ -152,12 +153,13 @@ module integrate::voter {
     public fun claim_voting_fee_rewards_single<SailCoinType, CoinTypeA, CoinTypeB>(
         voter: &mut distribution::voter::Voter,
         voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
         lock: &ve::voting_escrow::Lock,
         pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        voter.claim_voting_fee_by_pool<CoinTypeA, CoinTypeB, SailCoinType>(voting_escrow, lock, pool, clock, ctx);
+        voter.claim_voting_fee_by_pool<CoinTypeA, CoinTypeB, SailCoinType>(voting_escrow, distribution_config, lock, pool, clock, ctx);
     }
 
 

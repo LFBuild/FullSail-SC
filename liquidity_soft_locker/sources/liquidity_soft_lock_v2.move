@@ -1422,6 +1422,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2 {
         global_config: &clmm_pool::config::GlobalConfig,
         rewarder_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        distribution_config: &distribution::distribution_config::DistributionConfig,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         lock_position: &SoftLockedPosition<CoinTypeA, CoinTypeB>,
         clock: &sui::clock::Clock
@@ -1435,6 +1436,7 @@ module liquidity_soft_locker::liquidity_soft_lock_v2 {
             global_config,
             rewarder_vault,
             gauge,
+            distribution_config,
             pool,
             staked_position,
             clock
