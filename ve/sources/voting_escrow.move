@@ -2094,14 +2094,13 @@ module ve::voting_escrow {
     }
 
     /// Checks if a locked balance is permanent.
-    ///
-    /// # Arguments
-    /// * `is_permanent` - The locked balance to check
-    ///
-    /// # Returns
-    /// True if the locked balance is permanent, false otherwise
-    public fun is_permanent(is_permanent: &LockedBalance): bool {
-        is_permanent.is_permanent
+    public fun is_permanent(locked_balance: &LockedBalance): bool {
+        locked_balance.is_permanent
+    }
+
+    /// Checks if a locked balance is perpetual.
+    public fun is_perpetual(locked_balance: &LockedBalance): bool {
+        locked_balance.is_perpetual
     }
 
     /// Checks if an address is allowed to split locks.
