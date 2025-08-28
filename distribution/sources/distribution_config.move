@@ -7,11 +7,19 @@ module distribution::distribution_config {
     #[allow(unused_const)]
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
 
+    /// Incremental version of the package.
+    const VERSION: u64 = 1;
+
     use sui::vec_set::{Self, VecSet};
     use switchboard::aggregator::{Aggregator};
 
     /// Error code for attempting to update gauge liveness with an empty list of gauges
     const EUpdateGaugeLivenessNoGauges: u64 = 9223372148523925503;
+    const EInvalidPackageVersion: u64 = 458466182903521300;
+    const ESetPackageVersionInvalidPublisher: u64 = 24442067766657028;
+    const ESetPackageVersionInvalidVersion: u64 = 326963916733903800;
+
+    public struct DISTRIBUTION_CONFIG has drop {}
 
     /// The main configuration object that tracks active gauges in the distribution system
     /// 
@@ -25,6 +33,8 @@ module distribution::distribution_config {
         // But we keep it separate for now to be ready for future changes.
         o_sail_price_aggregator_id: Option<ID>,
         sail_price_aggregator_id: Option<ID>,
+        version: u64,
+        bag: sui::bag::Bag,
     }
 
     /// Initializes the distribution configuration object
@@ -33,12 +43,15 @@ module distribution::distribution_config {
     /// 
     /// # Arguments
     /// * `ctx` - The transaction context
-    fun init(ctx: &mut TxContext) {
+    fun init(otw: DISTRIBUTION_CONFIG, ctx: &mut TxContext) {
+        sui::package::claim_and_keep<DISTRIBUTION_CONFIG>(otw, ctx);
         let distribution_config = DistributionConfig {
             id: object::new(ctx),
             alive_gauges: vec_set::empty<ID>(),
             o_sail_price_aggregator_id: option::none<ID>(),
             sail_price_aggregator_id: option::none<ID>(),
+            version: VERSION,
+            bag: sui::bag::new(ctx),
         };
         transfer::share_object<DistributionConfig>(distribution_config);
     }
@@ -143,8 +156,18 @@ module distribution::distribution_config {
         object::id(aggregator) == distribution_config.sail_price_aggregator_id.borrow()
     }
 
+    public fun checked_package_version(distribution_config: &DistributionConfig) {
+        assert!(distribution_config.version == VERSION, EInvalidPackageVersion);
+    }
+
+    public fun set_package_version(distribution_config: &mut DistributionConfig, publisher: &sui::package::Publisher, version: u64) {
+        assert!(publisher.from_module<DISTRIBUTION_CONFIG>(), ESetPackageVersionInvalidPublisher);
+        assert!(version <= VERSION, ESetPackageVersionInvalidVersion);
+        distribution_config.version = version;
+    }
+
     #[test_only]
     public fun test_init(ctx: &mut TxContext) {
-        init(ctx);
+        init(DISTRIBUTION_CONFIG {}, ctx);
     }
 }

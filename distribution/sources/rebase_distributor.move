@@ -9,6 +9,7 @@ use ve::voting_escrow;
 use ve::reward_distributor_cap::RewardDistributorCap;
 use distribution::rebase_distributor_cap::{Self, RebaseDistributorCap};
 use sui::coin;
+use distribution::distribution_config::{DistributionConfig};
 
 #[allow(unused_const)]
 const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
@@ -73,10 +74,12 @@ public fun create<SailCoinType>(
 public fun claim<SailCoinType>(
     self: &mut RebaseDistributor<SailCoinType>,
     voting_escrow: &mut voting_escrow::VotingEscrow<SailCoinType>,
+    distribution_config: &DistributionConfig,
     lock: &mut voting_escrow::Lock,
     clock: &Clock,
     ctx: &mut TxContext
 ): u64 {
+    distribution_config.checked_package_version();
     let lock_id = object::id<voting_escrow::Lock>(lock);
     assert!(
         self.minter_active_period() >= common::current_period(clock),
@@ -132,6 +135,7 @@ public fun checkpoint_token<SailCoinType>(
     coin: Coin<SailCoinType>,
     clock: &Clock
 ) {
+    // is called by minter so version control is handled by minter
     reward_distributor::checkpoint_token(
         &mut self.reward_distributor,
         &self.reward_distributor_cap,
@@ -162,6 +166,7 @@ public fun start<SailCoinType>(
     minter_active_period: u64,
     clock: &Clock
 ) {
+    // is called by minter so version control is handled by minter
     rebase_distributor_cap.validate(object::id(self));
     reward_distributor::start(&mut self.reward_distributor, &self.reward_distributor_cap, clock);
     self.minter_active_period = minter_active_period;
@@ -181,6 +186,7 @@ public(package) fun update_active_period<SailCoinType>(
     rebase_distributor_cap: &RebaseDistributorCap,
     new_active_period: u64
 ) {
+    // is called by minter so version control is handled by minter
     rebase_distributor_cap.validate(object::id(self));
     self.minter_active_period = new_active_period;
     let event = EventUpdateActivePeriod { minter_active_period: new_active_period };

@@ -11,6 +11,7 @@ module distribution::voter {
     use sui::vec_set::{Self, VecSet};
     use sui::vec_map::{VecMap};
     use std::type_name::{Self, TypeName};
+    use distribution::distribution_config::{DistributionConfig};
     
     const ECreateVoterInvalidPublisher: u64 = 831911472280262500;
     const ESetVotingEscrowCapInvalidPublisher: u64 = 180901439185181760;
@@ -193,16 +194,6 @@ module distribution::voter {
         cap: ID,
     }
 
-    /// Event emitted when a bribe reward is claimed
-    public struct EventClaimBribeReward has copy, drop, store {
-        who: address,
-        amount: u64,
-        pool: ID,
-        gauge: ID,
-        token: TypeName,
-        lock: ID,
-    }
-
     /// Event emitted when a voting fee reward is claimed
     public struct EventClaimVotingFeeReward has copy, drop, store {
         who: address,
@@ -319,6 +310,7 @@ module distribution::voter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        distribution_config.checked_package_version();
         let lock_id = into_lock_id(object::id<ve::voting_escrow::Lock>(lock));
         voter.assert_only_new_epoch(lock_id, clock);
         assert!(voter.voting_escrow_cap.is_some(), EDepositManagedVotingEscrowCapNotSet);
@@ -358,6 +350,7 @@ module distribution::voter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        distribution_config.checked_package_version();
         let lock_id = into_lock_id(object::id<ve::voting_escrow::Lock>(lock));
         voter.assert_only_new_epoch(lock_id, clock);
         assert!(voter.voting_escrow_cap.is_some(), EWithdrawManagedVotingEscrowCapNotSet);
@@ -398,10 +391,12 @@ module distribution::voter {
     /// * If the governor capability doesn't match the voter ID
     public fun add_epoch_governor(
         voter: &mut Voter,
+        distribution_config: &DistributionConfig,
         governor_cap: &distribution::voter_cap::GovernorCap,
         who: address,
         ctx: &mut TxContext
     ) {
+        distribution_config.checked_package_version();
         assert!(
             voter.is_governor(object::id<distribution::voter_cap::GovernorCap>(governor_cap)),
             EAddEpochGovernorInvalidGovernor
@@ -425,9 +420,11 @@ module distribution::voter {
     /// Supposed to be used in emergency case when the gauge create cap is compromised.
     public fun revoke_gauge_create_cap(
         voter: &mut Voter,
+        distribution_config: &DistributionConfig,
         publisher: &sui::package::Publisher,
         create_cap_id: ID
     ) {
+        distribution_config.checked_package_version();
         assert!(publisher.from_module<VOTER>(), ERevokeGaugeCreateCapInvalidPublisher);
         assert!(
             !voter.revoked_gauge_create_caps.contains(&create_cap_id),
@@ -458,10 +455,12 @@ module distribution::voter {
     /// * `EventAddGovernor` when a governor is added
     public fun add_governor(
         voter: &mut Voter,
+        distribution_config: &DistributionConfig,
         publisher: &sui::package::Publisher,
         who: address,
         ctx: &mut TxContext
     ) {
+        distribution_config.checked_package_version();
         assert!(publisher.from_module<VOTER>(), EAddGovernorInvalidPublisher);
         let governor_cap = distribution::voter_cap::create_governor_cap(
             object::id<Voter>(voter),
@@ -555,11 +554,13 @@ module distribution::voter {
     /// * `clock` - The system clock
     public fun notify_exercise_fee_reward_amount<RewardCoinType>(
         voter: &mut Voter,
+        distribution_config: &DistributionConfig,
         distribute_cap: &distribution::distribute_cap::DistributeCap,
         reward: Coin<RewardCoinType>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        distribution_config.checked_package_version();
         distribute_cap.validate_distribute_voter_id(object::id(voter));
         let exercise_fee_reward = &mut voter.exercise_fee_reward;
         exercise_fee_reward
@@ -575,11 +576,13 @@ module distribution::voter {
     /// lock has voted during the week.
     public fun claim_exercise_fee_reward<SailCoinType, RewardCoinType>(
         voter: &mut Voter,
+        distribution_config: &DistributionConfig,
         voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
         lock: &ve::voting_escrow::Lock,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        distribution_config.checked_package_version();
         let amount = voter.exercise_fee_reward.get_reward<SailCoinType, RewardCoinType>(
             &voter.voter_cap,
             voting_escrow,
@@ -661,14 +664,16 @@ module distribution::voter {
     public fun claim_voting_fee_by_pool<CoinTypeA, CoinTypeB, SailCoinType>(
         voter: &mut Voter,
         voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
+        distribution_config: &DistributionConfig,
         lock: &ve::voting_escrow::Lock,
         pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        distribution_config.checked_package_version();
         let pool_id = object::id(pool);
-        claim_voting_fee<SailCoinType, CoinTypeA>(voter, voting_escrow, lock, pool_id, clock, ctx);
-        claim_voting_fee<SailCoinType, CoinTypeB>(voter, voting_escrow, lock, pool_id, clock, ctx);
+        claim_voting_fee<SailCoinType, CoinTypeA>(voter, voting_escrow, distribution_config, lock, pool_id, clock, ctx);
+        claim_voting_fee<SailCoinType, CoinTypeB>(voter, voting_escrow, distribution_config, lock, pool_id, clock, ctx);
     }
 
     /// Claims fee rewards for single pool and single fee coin type.
@@ -686,11 +691,13 @@ module distribution::voter {
     public fun claim_voting_fee<SailCoinType, FeeCoinType>(
         voter: &mut Voter,
         voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
+        distribution_config: &DistributionConfig,
         lock: &ve::voting_escrow::Lock,
         pool_id: ID,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
     ) {
+        distribution_config.checked_package_version();
         let pool_id_obj = into_pool_id(pool_id);
         let gauge_id = *voter.pool_to_gauger.borrow(pool_id_obj);
         let claim_voting_fee_reward_event = EventClaimVotingFeeReward {
@@ -780,6 +787,7 @@ module distribution::voter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): distribution::gauge::Gauge<CoinTypeA, CoinTypeB> {
+        distribution_config.checked_package_version();
         distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
         assert!(
             voter.is_valid_gauge_create_cap(create_cap),
@@ -853,6 +861,7 @@ module distribution::voter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): u64 {
+        // is called by minter so version control is handled by minter
         assert!(voter.is_valid_epoch_token<NextEpochOSail>(), EDistributeGaugeInvalidToken);
         assert!(distribution_config.is_gauge_alive(object::id(gauge)), EDistributeGaugeGaugeIsKilled);
         assert!(gauge.check_gauger_pool(pool), EDistributeGaugeInvalidPool);
@@ -924,6 +933,7 @@ module distribution::voter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        // is called by minter so version control is handled by minter
         assert!(distribution_config.is_gauge_alive(object::id(gauge)), EAdjustGaugeGaugeIsKilled);
 
         gauge.notify_reward_without_claim(
@@ -939,12 +949,14 @@ module distribution::voter {
 
     public fun inject_voting_fee_reward<FeeCoinType>(
         voter: &mut Voter,
+        distribution_config: &DistributionConfig,
         distribute_cap: &distribution::distribute_cap::DistributeCap,
         gauge_id: ID,
         reward: Coin<FeeCoinType>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        distribution_config.checked_package_version();
         distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
         let fee_voting_reward = voter.gauge_to_fee.borrow_mut(into_gauge_id(gauge_id));
 
@@ -1157,6 +1169,7 @@ module distribution::voter {
         distribute_cap: &distribution::distribute_cap::DistributeCap,
         ctx: &mut TxContext,
     ) {
+        // is called by minter so version control is handled by minter
         distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
 
         let coin_type = type_name::get<RewardCoinType>();
@@ -1211,6 +1224,7 @@ module distribution::voter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        distribution_config.checked_package_version();
         let current_time = ve::common::current_timestamp(clock);
         assert!(current_time > ve::common::epoch_vote_start(current_time), EPokeVotingNotStartedYet);
         let voting_power = voting_escrow.get_voting_power(lock_id, clock);
@@ -1341,6 +1355,7 @@ module distribution::voter {
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         clock: &sui::clock::Clock
     ) {
+        // is called by minter so version control is handled by minter
         distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
         let gauge_id = into_gauge_id(
             object::id<distribution::gauge::Gauge<CoinTypeA, CoinTypeB>>(gauge)
@@ -1364,9 +1379,11 @@ module distribution::voter {
     /// * `who` - The ID of the epoch governor to remove
     public fun remove_epoch_governor(
         voter: &mut Voter,
+        distribution_config: &DistributionConfig,
         governor_cap: &distribution::voter_cap::GovernorCap,
         who: ID
     ) {
+        distribution_config.checked_package_version();
         governor_cap.validate_governor_voter_id(object::id<Voter>(voter));
         assert!(
             voter.is_governor(object::id<distribution::voter_cap::GovernorCap>(governor_cap)),
@@ -1385,9 +1402,11 @@ module distribution::voter {
     /// * `who` - The ID of the governor to remove
     public fun remove_governor(
         voter: &mut Voter,
+        distribution_config: &DistributionConfig,
         publisher: &sui::package::Publisher,
         who: ID
     ) {
+        distribution_config.checked_package_version();
         assert!(publisher.from_module<VOTER>(), ERemoveGovernorInvalidPublisher);
         voter.governors.remove<ID>(&who);
         let remove_governor_event = EventRemoveGovernor { cap: who };
@@ -1412,6 +1431,7 @@ module distribution::voter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        distribution_config.checked_package_version();
         let lock_id = into_lock_id(object::id(lock));
         voter.assert_only_new_epoch(lock_id, clock);
         voter.reset_internal(voting_escrow, distribution_config, lock_id, clock, ctx);
@@ -1532,9 +1552,11 @@ module distribution::voter {
     /// * If the new maximum is the same as the current maximum
     public fun set_max_voting_num(
         voter: &mut Voter,
+        distribution_config: &DistributionConfig,
         governor_cap: &distribution::voter_cap::GovernorCap,
         new_max_voting_num: u64
     ) {
+        distribution_config.checked_package_version();
         governor_cap.validate_governor_voter_id(object::id<Voter>(voter));
         assert!(
             voter.is_governor(object::id<distribution::voter_cap::GovernorCap>(governor_cap)),
@@ -1586,6 +1608,7 @@ module distribution::voter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        distribution_config.checked_package_version();
         let lock_id = into_lock_id(object::id(lock));
         voter.assert_only_new_epoch(lock_id, clock);
         voter.check_vote(&pools, &weights, &volumes);
@@ -1785,11 +1808,13 @@ module distribution::voter {
     /// * `EventWhitelistNFT` with whitelist information
     public fun whitelist_nft(
         voter: &mut Voter,
+        distribution_config: &DistributionConfig,
         governor_cap: &distribution::voter_cap::GovernorCap,
         lock_id: ID,
         listed: bool,
         ctx: &mut TxContext
     ) {
+        distribution_config.checked_package_version();
         governor_cap.validate_governor_voter_id(object::id<Voter>(voter));
         assert!(
             voter.is_governor(object::id<distribution::voter_cap::GovernorCap>(governor_cap)),
@@ -1821,10 +1846,12 @@ module distribution::voter {
     /// * If the caller is not a governor
     public fun whitelist_token<CoinToWhitelistType>(
         voter: &mut Voter,
+        distribution_config: &DistributionConfig,
         governor_cap: &distribution::voter_cap::GovernorCap,
         listed: bool,
         ctx: &mut TxContext
     ) {
+        distribution_config.checked_package_version();
         governor_cap.validate_governor_voter_id(object::id<Voter>(voter));
         assert!(
             voter.is_governor(object::id(governor_cap)),
@@ -1863,6 +1890,7 @@ module distribution::voter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        // is called by minter so version control is handled by minter
         distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
         let gauge_id_obj = into_gauge_id(gauge_id);
 
@@ -1888,6 +1916,7 @@ module distribution::voter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        // is called by minter so version control is handled by minter
         distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
 
         let exercise_fee_reward = &mut voter.exercise_fee_reward;

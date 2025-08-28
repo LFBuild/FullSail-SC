@@ -649,6 +649,7 @@ module ve::voting_escrow {
         publisher: &sui::package::Publisher,
         who: address
     ) {
+        voting_escrow.checked_package_version();
         assert!(publisher.from_module<VOTING_ESCROW>(), EAddAllowedManagerInvalidPublisher);
         voting_escrow.allowed_managers.insert(who);
     }
@@ -2356,6 +2357,7 @@ module ve::voting_escrow {
         publisher: &sui::package::Publisher,
         who: address
     ) {
+        voting_escrow.checked_package_version();
         assert!(publisher.from_module<VOTING_ESCROW>(), ERemoveAllowedManagerInvalidPublisher);
         voting_escrow.allowed_managers.remove(&who);
     }
@@ -2372,6 +2374,7 @@ module ve::voting_escrow {
     /// Creates and initializes a Display object for Lock NFTs with Fullsail-specific branding
     /// and transfers it to the transaction sender
     public fun set_display(publisher: &sui::package::Publisher, ctx: &mut TxContext) {
+        // this method is called before VotingEscrow is initialized so we don't check the version here
         assert!(publisher.from_module<VOTING_ESCROW>(), ESetDisplayInvalidPublisher);
         let mut fields = std::vector::empty<std::string::String>();
         fields.push_back(std::string::utf8(b"name"));
@@ -2429,8 +2432,7 @@ module ve::voting_escrow {
         lock_id: ID,
         deactivated: bool
     ) {
-        // we are not checking the version of the package here cas it is an emergency method.
-        // Only emergency council can call this method and he must be aware about the versions
+        voting_escrow.checked_package_version();
         emergency_council_cap.validate_emergency_council_voting_escrow_id(object::id(voting_escrow));
         assert!(voting_escrow.escrow_type(lock_id) == EscrowType::MANAGED, ESetManagedLockNotManagedType);
         assert!(
@@ -2521,6 +2523,7 @@ module ve::voting_escrow {
 
 
     public fun create_team_cap<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>, publisher: &sui::package::Publisher, ctx: &mut TxContext): ve::team_cap::TeamCap {
+        voting_escrow.checked_package_version();
         assert!(publisher.from_module<VOTING_ESCROW>(), EGrantTeamCapInvalidPublisher);
         let team_cap = ve::team_cap::create(object::id(voting_escrow), ctx);
 
