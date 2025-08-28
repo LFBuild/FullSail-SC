@@ -83,8 +83,6 @@ module ve::voting_escrow {
     const EUnlockPermanentNotPermanent: u64 = 922337667971560245;
     const EUnlockPermanentIsPerpetual: u64 = 625787259881230500;
     const EValidateLockInvalidEscrow: u64 = 922337605264919756;
-    const EVotingInvalidVoter: u64 = 922337407696424140;
-    const EWithdrawManagedInvalidVoter: u64 = 922337808417161220;
     const EWithdrawManagedNotManaged: u64 = 922337808846671057;
     const EWithdrawManagedNotLockedType: u64 = 922337809276180894;
     const EWithdrawManagedInvalidManagedLock: u64 = 922337810564657975;
@@ -2331,18 +2329,24 @@ module ve::voting_escrow {
         assert!(publisher.from_module<VOTING_ESCROW>(), ESetDisplayInvalidPublisher);
         let mut fields = std::vector::empty<std::string::String>();
         fields.push_back(std::string::utf8(b"name"));
+        fields.push_back(std::string::utf8(b"description"));
         fields.push_back(std::string::utf8(b"locked_amount"));
         fields.push_back(std::string::utf8(b"unlock_timestamp"));
         fields.push_back(std::string::utf8(b"permanent"));
-        fields.push_back(std::string::utf8(b"url"));
-        fields.push_back(std::string::utf8(b"website"));
+        fields.push_back(std::string::utf8(b"perpetual"));
+        fields.push_back(std::string::utf8(b"link"));
+        fields.push_back(std::string::utf8(b"image_url"));
+        fields.push_back(std::string::utf8(b"project_url"));
         fields.push_back(std::string::utf8(b"creator"));
         let mut values = std::vector::empty<std::string::String>();
+        values.push_back(std::string::utf8(b"Fullsail Lock"));
         values.push_back(std::string::utf8(b"Fullsail Lock"));
         values.push_back(std::string::utf8(b"{amount}"));
         values.push_back(std::string::utf8(b"{end}"));
         values.push_back(std::string::utf8(b"{permanent}"));
-        values.push_back(std::string::utf8(b""));
+        values.push_back(std::string::utf8(b"{perpetual}"));
+        values.push_back(std::string::utf8(b"https://app.fullsail.finance/lock/{id}"));
+        values.push_back(std::string::utf8(b"https://app.fullsail.finance/static_files/fullsail_logo.png"));
         values.push_back(std::string::utf8(b"https://app.fullsail.finance"));
         values.push_back(std::string::utf8(b"FULLSAIL"));
         let mut display = sui::display::new_with_fields<Lock>(
@@ -2352,6 +2356,53 @@ module ve::voting_escrow {
             ctx
         );
         display.update_version();
+        transfer::public_transfer<sui::display::Display<Lock>>(display, tx_context::sender(ctx));
+    }
+
+    public fun update_display(
+        publisher: &sui::package::Publisher,
+        name: std::string::String,
+        description: std::string::String,
+        locked_amount: std::string::String,
+        unlock_timestamp: std::string::String,
+        perpetual: std::string::String,
+        permanent: std::string::String,
+        link: std::string::String,
+        image_url: std::string::String,
+        project_url: std::string::String,
+        creator: std::string::String,
+        ctx: &mut sui::tx_context::TxContext
+    ) {
+        assert!(publisher.from_module<VOTING_ESCROW>(), ESetDisplayInvalidPublisher);
+
+        let mut keys = std::vector::empty<std::string::String>();
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"name"));
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"description"));
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"locked_amount"));
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"unlock_timestamp"));
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"permanent"));
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"perpetual"));
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"link"));
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"image_url"));
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"project_url"));
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"creator"));
+
+        let mut values = std::vector::empty<std::string::String>();
+        std::vector::push_back<std::string::String>(&mut values, name);
+        std::vector::push_back<std::string::String>(&mut values, description);
+        std::vector::push_back<std::string::String>(&mut values, locked_amount);
+        std::vector::push_back<std::string::String>(&mut values, unlock_timestamp);
+        std::vector::push_back<std::string::String>(&mut values, permanent);
+        std::vector::push_back<std::string::String>(&mut values, perpetual);
+        std::vector::push_back<std::string::String>(&mut values, link);
+        std::vector::push_back<std::string::String>(&mut values, image_url);
+        std::vector::push_back<std::string::String>(&mut values, project_url);
+        std::vector::push_back<std::string::String>(&mut values, creator);
+
+        let mut display = sui::display::new_with_fields<Lock>(publisher, keys, values, ctx);
+
+        sui::display::update_version<Lock>(&mut display);
+
         transfer::public_transfer<sui::display::Display<Lock>>(display, tx_context::sender(ctx));
     }
 

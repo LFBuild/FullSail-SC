@@ -1541,7 +1541,7 @@ module distribution::gauge {
         creator: std::string::String,
         ctx: &mut sui::tx_context::TxContext
     ) {
-        assert!(publisher.from_module<StakedPosition>(), ENotOwner);
+        assert!(publisher.from_module<GAUGE>(), ENotOwner);
 
         let display = update_display(
             publisher,

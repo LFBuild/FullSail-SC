@@ -364,7 +364,7 @@ module liquidity_locker::liquidity_lock_v2 {
 
     public fun init_display<CoinTypeA, CoinTypeB>(publisher: &sui::package::Publisher, ctx: &mut sui::tx_context::TxContext) {
 
-        assert!(publisher.from_module<LockedPosition<CoinTypeA, CoinTypeB>>(), ENotOwner);
+        assert!(publisher.from_module<LIQUIDITY_LOCK_V2>(), ENotOwner);
 
         let display = update_display(
             publisher,
@@ -2742,7 +2742,7 @@ module liquidity_locker::liquidity_lock_v2 {
         creator: std::string::String,
         ctx: &mut sui::tx_context::TxContext
     ) {
-        assert!(publisher.from_module<LockedPosition<CoinTypeA, CoinTypeB>>(), ENotOwner);
+        assert!(publisher.from_module<LIQUIDITY_LOCK_V2>(), ENotOwner);
 
         let display = update_display<CoinTypeA, CoinTypeB>(
             publisher,
