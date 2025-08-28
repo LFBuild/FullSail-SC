@@ -53,6 +53,8 @@ Use `sui client publish` command.
 
 #### Publication transactions
 
+- [SAIL](https://suivision.xyz/txblock/8h9AypGsfEz4UEycf6zwNjFehpRxHyNYsc7N7JwxzCi)
+
 - [locker_cap](https://suivision.xyz/txblock/A9ETxo574RNtZYkZULKFA69mLrkhBEYYQ1JtpSyYTXGz)
 - [price_monitor](https://suivision.xyz/txblock/BGgVbGEVY6ykp3vof5KbCppqSXLKgEj1oSR2er6ft1pi)
 - [ve](https://suivision.xyz/txblock/8YKk71XhWNZS6trfWcvqHW2e9SHSc5pTL4kzvnNt7XzQ)
