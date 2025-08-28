@@ -48,12 +48,6 @@ subdir = "price_provider"
 rev = "dev"
 override = true
 
-[dependencies.liquidity_locker]
-local = "../liquidity_locker"
-
-[dependencies.liquidity_soft_locker]
-local = "../liquidity_soft_locker"
-
 [dependencies.price_monitor]
 local = "../price_monitor"
 
