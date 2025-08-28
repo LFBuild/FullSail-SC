@@ -1629,7 +1629,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        voting_escrow.checked_package_version();
+        // this method is supposed to be called only by distribution package, so version control is solved by the distribution package.
         voting_escrow_cap.validate(object::id(voting_escrow));
         let lock_id = object::id<Lock>(lock);
         let managed_lock_id = object::id<Lock>(managed_lock);
@@ -2841,7 +2841,8 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        voting_escrow.checked_package_version();
+        // this method is supposed to be called only by distribution package, so version control is solved by the distribution package.
+        // we don't want to check the version of the package here to avoid broken distribution package.
         let lock_id = object::id<Lock>(lock);
         voting_escrow_cap.validate(object::id(voting_escrow));
         let owner = voting_escrow.validate_ownership(lock, ctx);
