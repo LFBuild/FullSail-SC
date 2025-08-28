@@ -1696,3 +1696,81 @@ fun test_split_lock_verification() {
     scenario.end();
     test_utils::destroy(clock);
 }
+
+#[test]
+fun test_extend_lock_restores_voting_power() {
+    let mut scenario = ts::begin(ADMIN);
+    let mut clock = setup::setup<SAIL>(&mut scenario, ADMIN);
+
+    let initial_amount = 1_000_000;
+    let four_years_days = 4 * 52 * 7;
+
+    // USER creates a 4-year lock
+    scenario.next_tx(USER);
+    {
+        let sail = coin::mint_for_testing<SAIL>(initial_amount, scenario.ctx());
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        voting_escrow::create_lock<SAIL>(
+            &mut ve,
+            sail,
+            four_years_days,
+            false,
+            &clock,
+            scenario.ctx()
+        );
+        ts::return_shared(ve);
+    };
+
+    // Wait for 1 year
+    clock.increment_for_testing(52 * 7 * 24 * 60 * 60 * 1000);
+
+    let lock_id: ID;
+    let power_after_one_year: u64;
+
+    // Check voting power after 1 year
+    scenario.next_tx(USER);
+    {
+        let ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let lock = scenario.take_from_sender<Lock>();
+        lock_id = object::id(&lock);
+        power_after_one_year = voting_escrow::balance_of_nft_at(&ve, lock_id, clock.timestamp_ms() / 1000);
+
+        // Power should be approx 750,000 (3/4 of original)
+        let expected_power = initial_amount * 3 / 4;
+        assert!(expected_power - power_after_one_year <= 1, 0);
+
+        scenario.return_to_sender(lock);
+        ts::return_shared(ve);
+    };
+
+    // Extend the lock back to 4 years
+    scenario.next_tx(USER);
+    {
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let mut lock = scenario.take_from_sender_by_id<Lock>(lock_id);
+        voting_escrow::increase_unlock_time<SAIL>(
+            &mut ve,
+            &mut lock,
+            four_years_days,
+            &clock,
+            scenario.ctx()
+        );
+        scenario.return_to_sender(lock);
+        ts::return_shared(ve);
+    };
+
+    // Check voting power after extension
+    scenario.next_tx(USER);
+    {
+        let ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let power_after_extension = voting_escrow::balance_of_nft_at(&ve, lock_id, clock.timestamp_ms() / 1000);
+
+        // Power should be restored to approx 1,000,000
+        assert!(initial_amount - power_after_extension <= 1, 1);
+        
+        ts::return_shared(ve);
+    };
+
+    scenario.end();
+    test_utils::destroy(clock);
+}

@@ -1990,7 +1990,7 @@ module ve::voting_escrow {
         assert!(current_locked_balance.amount > 0, EIncreaseTimeNoBalance);
         assert!(lock_end_epoch_time > current_locked_balance.end, EIncreaseTimeNotLater);
         assert!(
-            lock_end_epoch_time < current_time + (ve::common::max_lock_time() as u64),
+            lock_end_epoch_time <= current_time + (ve::common::max_lock_time() as u64),
             EIncreaseTimeTooLong
         );
         voting_escrow.deposit_for_internal(
