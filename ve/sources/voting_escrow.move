@@ -1655,6 +1655,9 @@ module ve::voting_escrow {
         voting_escrow.permanent_lock_balance = voting_escrow.permanent_lock_balance + current_locked_amount;
         let mut managed_locked_balance = *voting_escrow.locked.borrow(managed_lock_id);
         managed_locked_balance.amount = managed_locked_balance.amount + current_locked_amount;
+        lock.amount = 0;
+        lock.end = 0;
+        lock.permanent = true;
         let delegatee_id = voting_escrow.voting_dao.delegatee(managed_lock_id);
         voting_escrow.voting_dao.checkpoint_delegatee(delegatee_id, current_locked_amount, true, clock, ctx);
         let old_managed_locked_balance = voting_escrow.locked.remove(managed_lock_id);
@@ -2311,6 +2314,7 @@ module ve::voting_escrow {
             new_locked_balance
         );
         lock_b.amount = new_locked_balance.amount;
+        lock_b.end = new_locked_balance.end;
         let merge_lock_event = EventMerge {
             sender: tx_context::sender(ctx),
             from: lock_id_a,
@@ -2868,7 +2872,6 @@ module ve::voting_escrow {
         lock.amount = new_managed_weight;
         lock.permanent = false;
         lock.end = lock_end_time;
-        managed_lock.amount = managed_lock.amount - managed_weight;
         let lock_balance = voting_escrow.locked.remove(lock_id);
         // this function has already been written in a way that is never returns permanent locks.
         // This is the reason why we create permanent locked balance only if it is already perpetual.
@@ -2883,6 +2886,7 @@ module ve::voting_escrow {
             0
         };
         managed_lock_balance.amount = remaining_amount;
+        managed_lock.amount = remaining_amount;
         let new_weight = if (new_managed_weight < voting_escrow.permanent_lock_balance) {
             new_managed_weight
         } else {
