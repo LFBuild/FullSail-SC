@@ -554,13 +554,12 @@ module distribution::voter {
     /// * `clock` - The system clock
     public fun notify_exercise_fee_reward_amount<RewardCoinType>(
         voter: &mut Voter,
-        distribution_config: &DistributionConfig,
         distribute_cap: &distribution::distribute_cap::DistributeCap,
         reward: Coin<RewardCoinType>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        distribution_config.checked_package_version();
+        // is called by minter so version control is handled by minter
         distribute_cap.validate_distribute_voter_id(object::id(voter));
         let exercise_fee_reward = &mut voter.exercise_fee_reward;
         exercise_fee_reward
@@ -949,14 +948,13 @@ module distribution::voter {
 
     public fun inject_voting_fee_reward<FeeCoinType>(
         voter: &mut Voter,
-        distribution_config: &DistributionConfig,
         distribute_cap: &distribution::distribute_cap::DistributeCap,
         gauge_id: ID,
         reward: Coin<FeeCoinType>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        distribution_config.checked_package_version();
+        // method is called by minter so version control is handled by minter
         distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
         let fee_voting_reward = voter.gauge_to_fee.borrow_mut(into_gauge_id(gauge_id));
 

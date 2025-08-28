@@ -1970,15 +1970,6 @@ module distribution::minter {
         burnt
     }
 
-    /// Burning function, the same as burn_o_sail but for balance
-    fun burn_o_sail_balance<SailCoinType, OSailCoinType>(
-        minter: &mut Minter<SailCoinType>,
-        balance: Balance<OSailCoinType>,
-        ctx: &mut TxContext,
-    ): u64 {
-        minter.burn_o_sail(distribution_config, coin::from_balance(balance, ctx))
-    }
-
     // internal mint function
     fun mint_sail<SailCoinType>(
         minter: &mut Minter<SailCoinType>,
