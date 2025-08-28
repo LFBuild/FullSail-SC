@@ -15,7 +15,7 @@ module integrate::voting_escrow {
         voted_pools: vector<ID>,
     }
 
-    public entry fun transfer<SailCoinType>(
+    public fun transfer<SailCoinType>(
         voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
         lock: ve::voting_escrow::Lock,
         recipient: address,
@@ -29,7 +29,7 @@ module integrate::voting_escrow {
         100000000
     }
 
-    public entry fun create_lock<SailCoinType>(
+    public fun create_lock<SailCoinType>(
         arg0: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
         coins: vector<sui::coin::Coin<SailCoinType>>,
         lock_duration_days: u64,
@@ -46,7 +46,7 @@ module integrate::voting_escrow {
         );
     }
 
-    public entry fun increase_amount<SailCoinType>(
+    public fun increase_amount<SailCoinType>(
         voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
         lock: &mut ve::voting_escrow::Lock,
         coins: vector<sui::coin::Coin<SailCoinType>>,
@@ -56,7 +56,7 @@ module integrate::voting_escrow {
         voting_escrow.increase_amount(lock, integrate::utils::merge_coins<SailCoinType>(coins, ctx), clock, ctx);
     }
 
-    public entry fun increase_unlock_time<SailCoinType>(
+    public fun increase_unlock_time<SailCoinType>(
         voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
         lock: &mut ve::voting_escrow::Lock,
         new_lock_duration_days: u64,
@@ -66,7 +66,7 @@ module integrate::voting_escrow {
         voting_escrow.increase_unlock_time(lock, new_lock_duration_days, clock, ctx);
     }
 
-    public entry fun lock_permanent<SailCoinType>(
+    public fun lock_permanent<SailCoinType>(
         voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
         lock: &mut ve::voting_escrow::Lock,
         clock: &sui::clock::Clock,
@@ -75,7 +75,7 @@ module integrate::voting_escrow {
         voting_escrow.lock_permanent(lock, clock, ctx);
     }
 
-    public entry fun unlock_permanent<SailCoinType>(
+    public fun unlock_permanent<SailCoinType>(
         voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
         lock: &mut ve::voting_escrow::Lock,
         clock: &sui::clock::Clock,
@@ -84,7 +84,7 @@ module integrate::voting_escrow {
         voting_escrow.unlock_permanent(lock, clock, ctx);
     }
 
-    public entry fun create_lock_single_coin<SailCoinType>(
+    public fun create_lock_single_coin<SailCoinType>(
         voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
         coin: sui::coin::Coin<SailCoinType>,
         lock_duration_days: u64,
@@ -97,7 +97,7 @@ module integrate::voting_escrow {
         create_lock<SailCoinType>(voting_escrow, v0, lock_duration_days, permanent, clock, ctx);
     }
 
-    public entry fun increase_amount_single_coin<SailCoinType>(
+    public fun increase_amount_single_coin<SailCoinType>(
         voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
         lock: &mut ve::voting_escrow::Lock,
         coin: sui::coin::Coin<SailCoinType>,
@@ -107,7 +107,7 @@ module integrate::voting_escrow {
         voting_escrow.increase_amount(lock, coin, clock, ctx);
     }
 
-    public entry fun lock_summary<SailCoinType>(
+    public fun lock_summary<SailCoinType>(
         voter: &distribution::voter::Voter,
         voting_escrow: &ve::voting_escrow::VotingEscrow<SailCoinType>,
         rebase_distributor: &distribution::rebase_distributor::RebaseDistributor<SailCoinType>,
@@ -149,9 +149,9 @@ module integrate::voting_escrow {
         }
     }
 
-    public entry fun merge_locks<SailCoinType>(
+    public fun merge_locks<SailCoinType>(
         voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
-        lock_a: ve::voting_escrow::Lock,
+        lock_a: &mut ve::voting_escrow::Lock,
         lock_b: &mut ve::voting_escrow::Lock,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
@@ -159,7 +159,7 @@ module integrate::voting_escrow {
         voting_escrow.merge(lock_a, lock_b, clock, ctx);
     }
 
-    public entry fun summary<SailCoinType>(
+    public fun summary<SailCoinType>(
         minter: &distribution::minter::Minter<SailCoinType>,
         voting_escrow: &ve::voting_escrow::VotingEscrow<SailCoinType>,
         distribution_config: &distribution::distribution_config::DistributionConfig,

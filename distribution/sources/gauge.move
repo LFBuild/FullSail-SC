@@ -401,6 +401,7 @@ module distribution::gauge {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): StakedPosition {
+        distribution_config.checked_package_version();
         let sender = tx_context::sender(ctx);
         let pool_id = object::id(pool);
         let position_id = object::id<clmm_pool::position::Position>(&position);
@@ -471,6 +472,7 @@ module distribution::gauge {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): StakedPosition {
+        // this method is called by the locker package, so version control is solved by the locker package.
         assert!(
             object::id(distribution_config) == gauge.distribution_config,
             EDepositPositionDistributionConfInvalid
@@ -813,10 +815,12 @@ module distribution::gauge {
         global_config: &clmm_pool::config::GlobalConfig,
         rewarder_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
+        distribution_config: &DistributionConfig,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         staked_position: &StakedPosition,
         clock: &sui::clock::Clock
     ): sui::balance::Balance<RewardCoinType> {
+        distribution_config.checked_package_version();
         assert!(
             gauge.check_gauger_pool(pool),
             EGetPositionRewardGaugeDoesNotMatchPool
@@ -853,6 +857,7 @@ module distribution::gauge {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
     ): u64 {
+        // this method is called by the voter package, so version control is solved by the voter package.
         gauge.validate_voter_cap(voter_cap);
         assert!(gauge.check_gauger_pool(pool), ENotifyEpochTokenInvalidPool);
         assert!(
@@ -1333,11 +1338,13 @@ module distribution::gauge {
     /// * If the sender is not the owner of the position
     public fun withdraw_position<CoinTypeA, CoinTypeB>(
         gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
+        distribution_config: &DistributionConfig,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         staked_position: StakedPosition,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): clmm_pool::position::Position {
+        distribution_config.checked_package_version();
         assert!(
             gauge.staked_positions.contains(staked_position.position_id),
             EWithdrawPositionNotDepositedPosition
@@ -1381,6 +1388,7 @@ module distribution::gauge {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
     ): clmm_pool::position::Position {
+        // this method is called by the locker package, so version control is solved by the locker package.
         assert!(
             gauge.staked_positions.contains(staked_position.position_id),
             EWithdrawPositionNotDepositedPosition
@@ -1454,6 +1462,7 @@ module distribution::gauge {
         _locker_cap: &locker_cap::locker_cap::LockerCap,
         position_id: ID,
     ) {
+        // this method is called by the locker package, so version control is solved by the locker package.
         if (!gauge.locked_positions.contains(position_id)) {
             gauge.locked_positions.add(position_id, Locked {});
         }
@@ -1470,6 +1479,7 @@ module distribution::gauge {
         _locker_cap: &locker_cap::locker_cap::LockerCap,
         position_id: ID,
     ) {
+        // this method is called by the locker package, so version control is solved by the locker package.
         if (gauge.locked_positions.contains(position_id)) {
             gauge.locked_positions.remove(position_id);
         }

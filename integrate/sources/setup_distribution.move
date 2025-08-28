@@ -32,9 +32,9 @@ module integrate::setup_distribution {
             clock,
             ctx
         );
-        minter.set_distribute_cap(&admin_cap, distribute_cap);
-        minter.set_rebase_distributor_cap(&admin_cap, rebase_distributor_cap);
-        minter.set_team_wallet(&admin_cap, team_wallet);
+        minter.set_distribute_cap(&admin_cap, distribution_config, distribute_cap);
+        minter.set_rebase_distributor_cap(&admin_cap, distribution_config,  rebase_distributor_cap);
+        minter.set_team_wallet(&admin_cap, distribution_config, team_wallet);
         minter.set_o_sail_price_aggregator(&admin_cap, distribution_config, aggregator);
         minter.set_sail_price_aggregator(&admin_cap, distribution_config, aggregator);
         transfer::public_transfer<distribution::minter::AdminCap>(

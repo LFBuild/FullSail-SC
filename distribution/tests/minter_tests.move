@@ -182,10 +182,12 @@ fun test_create_gauge_revoked_create_cap() {
         let voter_publisher = voter::test_init(scenario.ctx());
         let create_cap = scenario.take_from_sender<CreateCap>();
         let mut voter = scenario.take_shared<Voter>();
-        voter.revoke_gauge_create_cap(&voter_publisher, object::id<CreateCap>(&create_cap));
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        voter.revoke_gauge_create_cap(&distribution_config, &voter_publisher, object::id<CreateCap>(&create_cap));
         test_utils::destroy(voter_publisher);
         test_scenario::return_shared(voter);
         scenario.return_to_sender(create_cap);
+        test_scenario::return_shared(distribution_config);
     };
     
     scenario.next_tx(admin);
@@ -3326,12 +3328,14 @@ fun test_schedule_sail_mint_with_wrong_publisher_fails() {
     scenario.next_tx(admin);
     {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
         
         // Create a publisher from the voter module instead of minter module
         let mut wrong_publisher = voter::test_init(scenario.ctx());
         
         // This should fail because we're using a publisher from the wrong module
         let time_locked_mint = minter.schedule_sail_mint(
+            &distribution_config,
             &mut wrong_publisher,
             1_000_000, // amount
             &clock,
@@ -3342,6 +3346,7 @@ fun test_schedule_sail_mint_with_wrong_publisher_fails() {
         test_utils::destroy(wrong_publisher);
         transfer::public_transfer(time_locked_mint, admin);
         test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
     };
 
     clock::destroy_for_testing(clock);
@@ -3362,12 +3367,14 @@ fun test_schedule_sail_mint_with_zero_amount_fails() {
     scenario.next_tx(admin);
     {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
         
         // Create a valid publisher from the minter module
         let mut publisher = minter::test_init(scenario.ctx());
         
         // This should fail because we're passing zero amount
         let time_locked_mint = minter.schedule_sail_mint(
+            &distribution_config,
             &mut publisher,
             0, // amount
             &clock,
@@ -3378,6 +3385,7 @@ fun test_schedule_sail_mint_with_zero_amount_fails() {
         test_utils::destroy(publisher);
         transfer::public_transfer(time_locked_mint, admin);
         test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
     };
 
     clock::destroy_for_testing(clock);
@@ -3399,9 +3407,11 @@ fun test_execute_sail_mint_before_unlock_time_fails() {
     scenario.next_tx(admin);
     {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
         let mut publisher = minter::test_init(scenario.ctx());
         
         let time_locked_mint = minter.schedule_sail_mint(
+            &distribution_config,
             &mut publisher,
             1_000_000, // amount
             &clock,
@@ -3411,6 +3421,7 @@ fun test_execute_sail_mint_before_unlock_time_fails() {
         test_utils::destroy(publisher);
         transfer::public_transfer(time_locked_mint, admin);
         test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
     };
 
     // Immediately try to execute the mint without waiting for unlock time
@@ -3418,9 +3429,11 @@ fun test_execute_sail_mint_before_unlock_time_fails() {
     {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
         let time_locked_mint = scenario.take_from_sender<minter::TimeLockedSailMint>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
         
         // This should fail because not enough time has passed (need 1 day)
         let sail_coin = minter.execute_sail_mint(
+            &distribution_config,
             time_locked_mint,
             &clock,
             scenario.ctx()
@@ -3429,6 +3442,7 @@ fun test_execute_sail_mint_before_unlock_time_fails() {
         // Cleanup - these lines won't be reached if the test fails as expected
         sail_coin.burn_for_testing();
         test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
     };
 
     clock::destroy_for_testing(clock);
@@ -3450,9 +3464,11 @@ fun test_execute_sail_mint_one_millisecond_before_unlock_fails() {
     scenario.next_tx(admin);
     {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
         let mut publisher = minter::test_init(scenario.ctx());
         
         let time_locked_mint = minter.schedule_sail_mint(
+            &distribution_config,
             &mut publisher,
             1_000_000, // amount
             &clock,
@@ -3462,6 +3478,7 @@ fun test_execute_sail_mint_one_millisecond_before_unlock_fails() {
         test_utils::destroy(publisher);
         transfer::public_transfer(time_locked_mint, admin);
         test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
     };
 
     // Advance time by 24 hours - 1 millisecond (still 1ms short of unlock time)
@@ -3473,9 +3490,11 @@ fun test_execute_sail_mint_one_millisecond_before_unlock_fails() {
     {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
         let time_locked_mint = scenario.take_from_sender<minter::TimeLockedSailMint>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
         
         // This should fail because we're still 1ms short of the unlock time
         let sail_coin = minter.execute_sail_mint(
+            &distribution_config,
             time_locked_mint,
             &clock,
             scenario.ctx()
@@ -3484,6 +3503,7 @@ fun test_execute_sail_mint_one_millisecond_before_unlock_fails() {
         // Cleanup - these lines won't be reached if the test fails as expected
         sail_coin.burn_for_testing();
         test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
     };
 
     clock::destroy_for_testing(clock);
@@ -3506,9 +3526,11 @@ fun test_execute_sail_mint_after_unlock_time_succeeds() {
     scenario.next_tx(admin);
     {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
         let mut publisher = minter::test_init(scenario.ctx());
         
         let time_locked_mint = minter.schedule_sail_mint(
+            &distribution_config,
             &mut publisher,
             mint_amount, // amount
             &clock,
@@ -3518,6 +3540,7 @@ fun test_execute_sail_mint_after_unlock_time_succeeds() {
         test_utils::destroy(publisher);
         transfer::public_transfer(time_locked_mint, admin);
         test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
     };
 
     // Advance time by exactly 24 hours (unlock time)
@@ -3529,9 +3552,11 @@ fun test_execute_sail_mint_after_unlock_time_succeeds() {
     {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
         let time_locked_mint = scenario.take_from_sender<minter::TimeLockedSailMint>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
         
         // This should succeed because exactly 24 hours have passed
         let sail_coin = minter.execute_sail_mint(
+            &distribution_config,
             time_locked_mint,
             &clock,
             scenario.ctx()
@@ -3542,6 +3567,7 @@ fun test_execute_sail_mint_after_unlock_time_succeeds() {
         
         sail_coin.burn_for_testing();
         test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
     };
 
     clock::destroy_for_testing(clock);
@@ -3573,9 +3599,11 @@ fun test_cancel_sail_mint_no_tokens_minted() {
     scenario.next_tx(admin);
     {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
         let mut publisher = minter::test_init(scenario.ctx());
         
         let time_locked_mint = minter.schedule_sail_mint(
+            &distribution_config,
             &mut publisher,
             mint_amount, // amount
             &clock,
@@ -3585,6 +3613,7 @@ fun test_cancel_sail_mint_no_tokens_minted() {
         test_utils::destroy(publisher);
         transfer::public_transfer(time_locked_mint, admin);
         test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
     };
 
     // Cancel the mint
@@ -3592,11 +3621,13 @@ fun test_cancel_sail_mint_no_tokens_minted() {
     {
         let time_locked_mint = scenario.take_from_sender<minter::TimeLockedSailMint>();
         let minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
         
         // Cancel the mint - this should not mint any tokens
         minter::cancel_sail_mint<SAIL>(&minter, time_locked_mint);
 
         test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
     };
 
     // Verify SAIL total supply hasn't changed
@@ -3640,9 +3671,11 @@ fun test_schedule_o_sail_mint_with_wrong_publisher_fails() {
         
         // Create a publisher from the voter module instead of minter module
         let mut wrong_publisher = voter::test_init(scenario.ctx());
+        let distribution_config = scenario.take_shared<DistributionConfig>();
         
         // This should fail because we're using a publisher from the wrong module
         let time_locked_mint = minter.schedule_o_sail_mint<SAIL, OSAIL1>(
+            &distribution_config,
             &mut wrong_publisher,
             1_000_000, // amount
             &clock,
@@ -3653,6 +3686,7 @@ fun test_schedule_o_sail_mint_with_wrong_publisher_fails() {
         test_utils::destroy(wrong_publisher);
         transfer::public_transfer(time_locked_mint, admin);
         test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
     };
 
     clock::destroy_for_testing(clock);
@@ -3681,10 +3715,12 @@ fun test_schedule_o_sail_mint_with_zero_amount_fails() {
     scenario.next_tx(admin);
     {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
         let mut publisher = minter::test_init(scenario.ctx());
         
         // This should fail because we're passing zero amount
         let time_locked_mint = minter.schedule_o_sail_mint<SAIL, OSAIL1>(
+            &distribution_config,
             &mut publisher,
             0, // amount
             &clock,
@@ -3695,6 +3731,7 @@ fun test_schedule_o_sail_mint_with_zero_amount_fails() {
         test_utils::destroy(publisher);
         transfer::public_transfer(time_locked_mint, admin);
         test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
     };
 
     clock::destroy_for_testing(clock);
@@ -3715,10 +3752,12 @@ fun test_schedule_o_sail_mint_with_invalid_o_sail_fails() {
     scenario.next_tx(admin);
     {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
         let mut publisher = minter::test_init(scenario.ctx());
         
         // This should fail because OSAIL1 is not a valid oSAIL type (minter not activated)
         let time_locked_mint = minter.schedule_o_sail_mint<SAIL, OSAIL1>(
+            &distribution_config,
             &mut publisher,
             1_000_000, // amount
             &clock,
@@ -3729,6 +3768,7 @@ fun test_schedule_o_sail_mint_with_invalid_o_sail_fails() {
         test_utils::destroy(publisher);
         transfer::public_transfer(time_locked_mint, admin);
         test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
     };
 
     clock::destroy_for_testing(clock);
@@ -3758,9 +3798,11 @@ fun test_execute_o_sail_mint_before_unlock_time_fails() {
     scenario.next_tx(admin);
     {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
         let mut publisher = minter::test_init(scenario.ctx());
         
         let time_locked_mint = minter.schedule_o_sail_mint<SAIL, OSAIL1>(
+            &distribution_config,
             &mut publisher,
             1_000_000, // amount
             &clock,
@@ -3770,6 +3812,7 @@ fun test_execute_o_sail_mint_before_unlock_time_fails() {
         test_utils::destroy(publisher);
         transfer::public_transfer(time_locked_mint, admin);
         test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
     };
 
     // Immediately try to execute the mint without waiting for unlock time
@@ -3777,14 +3820,17 @@ fun test_execute_o_sail_mint_before_unlock_time_fails() {
     {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
         let time_locked_mint = scenario.take_from_sender<minter::TimeLockedOSailMint<OSAIL1>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
         
         // This should fail because not enough time has passed (need 1 day)
         let o_sail_coin = minter.execute_o_sail_mint<SAIL, OSAIL1>(
+            &distribution_config,
             time_locked_mint,
             &clock,
             scenario.ctx()
         );
         
+        test_scenario::return_shared(distribution_config);
         // Cleanup - these lines won't be reached if the test fails as expected
         o_sail_coin.burn_for_testing();
         test_scenario::return_shared(minter);
@@ -3817,9 +3863,11 @@ fun test_execute_o_sail_mint_one_millisecond_before_unlock_fails() {
     scenario.next_tx(admin);
     {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
         let mut publisher = minter::test_init(scenario.ctx());
         
         let time_locked_mint = minter.schedule_o_sail_mint<SAIL, OSAIL1>(
+            &distribution_config,
             &mut publisher,
             1_000_000, // amount
             &clock,
@@ -3829,6 +3877,7 @@ fun test_execute_o_sail_mint_one_millisecond_before_unlock_fails() {
         test_utils::destroy(publisher);
         transfer::public_transfer(time_locked_mint, admin);
         test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
     };
 
     // Advance time by 24 hours - 1 millisecond (still 1ms short of unlock time)
@@ -3840,9 +3889,11 @@ fun test_execute_o_sail_mint_one_millisecond_before_unlock_fails() {
     {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
         let time_locked_mint = scenario.take_from_sender<minter::TimeLockedOSailMint<OSAIL1>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
         
         // This should fail because we're still 1ms short of the unlock time
         let o_sail_coin = minter.execute_o_sail_mint<SAIL, OSAIL1>(
+            &distribution_config,
             time_locked_mint,
             &clock,
             scenario.ctx()
@@ -3851,6 +3902,7 @@ fun test_execute_o_sail_mint_one_millisecond_before_unlock_fails() {
         // Cleanup - these lines won't be reached if the test fails as expected
         o_sail_coin.burn_for_testing();
         test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
     };
 
     clock::destroy_for_testing(clock);
@@ -3881,9 +3933,11 @@ fun test_execute_o_sail_mint_after_unlock_time_succeeds() {
     scenario.next_tx(admin);
     {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
         let mut publisher = minter::test_init(scenario.ctx());
         
         let time_locked_mint = minter.schedule_o_sail_mint<SAIL, OSAIL1>(
+            &distribution_config,
             &mut publisher,
             mint_amount, // amount
             &clock,
@@ -3893,6 +3947,7 @@ fun test_execute_o_sail_mint_after_unlock_time_succeeds() {
         test_utils::destroy(publisher);
         transfer::public_transfer(time_locked_mint, admin);
         test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
     };
 
     // Advance time by exactly 24 hours (unlock time)
@@ -3904,9 +3959,11 @@ fun test_execute_o_sail_mint_after_unlock_time_succeeds() {
     {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
         let time_locked_mint = scenario.take_from_sender<minter::TimeLockedOSailMint<OSAIL1>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
         
         // This should succeed because exactly 24 hours have passed
         let o_sail_coin = minter.execute_o_sail_mint<SAIL, OSAIL1>(
+            &distribution_config,
             time_locked_mint,
             &clock,
             scenario.ctx()
@@ -3917,6 +3974,7 @@ fun test_execute_o_sail_mint_after_unlock_time_succeeds() {
         
         o_sail_coin.burn_for_testing();
         test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
     };
 
     clock::destroy_for_testing(clock);
@@ -3956,9 +4014,11 @@ fun test_cancel_o_sail_mint_no_tokens_minted() {
     scenario.next_tx(admin);
     {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
         let mut publisher = minter::test_init(scenario.ctx());
         
         let time_locked_mint = minter.schedule_o_sail_mint<SAIL, OSAIL1>(
+            &distribution_config,
             &mut publisher,
             mint_amount, // amount
             &clock,
@@ -3968,15 +4028,18 @@ fun test_cancel_o_sail_mint_no_tokens_minted() {
         test_utils::destroy(publisher);
         transfer::public_transfer(time_locked_mint, admin);
         test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
     };
 
     // Cancel the mint
     scenario.next_tx(admin);
     {
         let time_locked_mint = scenario.take_from_sender<minter::TimeLockedOSailMint<OSAIL1>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
         
         // Cancel the mint - this should not mint any tokens
-        minter::cancel_o_sail_mint(time_locked_mint);
+        minter::cancel_o_sail_mint(&distribution_config, time_locked_mint);
+        test_scenario::return_shared(distribution_config);
     };
 
     // Verify oSAIL total supply hasn't changed

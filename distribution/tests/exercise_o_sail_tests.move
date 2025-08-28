@@ -1039,11 +1039,13 @@ fun create_lock(
 
     assert!(o_sail_coin.value() >= o_sail_to_lock, 0); // Ensure user has enough oSAIL
     let o_sail_for_locking = o_sail_coin.split(o_sail_to_lock, scenario.ctx());
+    let distribution_config = scenario.take_shared<DistributionConfig>();
 
     // Call the function to create the lock
     minter::create_lock_from_o_sail<SAIL, OSAIL1>(
         &mut minter,
         &mut ve,
+        &distribution_config,
         o_sail_for_locking, // This coin will be consumed
         lock_duration_days,
         permanent_lock,
@@ -1056,6 +1058,7 @@ fun create_lock(
     test_scenario::return_shared(ve);
     // Return remaining oSAIL coin
     scenario.return_to_sender(o_sail_coin);
+    test_scenario::return_shared(distribution_config);
 }
 
 fun check_single_non_permanent_lock(
@@ -1582,12 +1585,14 @@ fun test_create_lock_from_invalid_token_fail() {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
         let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
         let random_coin = scenario.take_from_sender<Coin<RANDOM_TOKEN>>(); // Take the random token
+        let distribution_config = scenario.take_shared<DistributionConfig>();
 
         // This call is expected to abort because RANDOM_TOKEN is not the expected OSailCoinType
         // Specifically, the minter::burn_o_sail inside will fail trying to borrow a non-existent cap
         minter::create_lock_from_o_sail<SAIL, RANDOM_TOKEN>( 
             &mut minter,
             &mut ve,
+            &distribution_config,
             random_coin, // Pass the wrong coin type!
             lock_duration_days,
             permanent_lock,
@@ -1596,6 +1601,7 @@ fun test_create_lock_from_invalid_token_fail() {
         );
 
         // Cleanup (won't be reached)
+        test_scenario::return_shared(distribution_config);
         test_scenario::return_shared(minter);
         test_scenario::return_shared(ve);
     };
@@ -1767,7 +1773,9 @@ fun test_exercise_fee_distribution() {
     {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
         let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-        minter::set_team_wallet(&mut minter, &minter_admin_cap, team_wallet);
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        minter::set_team_wallet(&mut minter, &minter_admin_cap,  &distribution_config, team_wallet);
+        test_scenario::return_shared(distribution_config);
         test_scenario::return_shared(minter);
         scenario.return_to_sender(minter_admin_cap);
     };
@@ -1974,8 +1982,10 @@ fun test_exercise_fee_distribution() {
     scenario.next_tx(admin);
     {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
-        minter::distribute_team<SAIL, USD_TESTS>(&mut minter, scenario.ctx());
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        minter::distribute_team<SAIL, USD_TESTS>(&mut minter, &distribution_config, scenario.ctx());
         test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
     };
 
     // Tx: Admin (Team Wallet) verifies received fee
@@ -1996,14 +2006,17 @@ fun test_exercise_fee_distribution() {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
         let mut voter = scenario.take_shared<Voter>();
         let distribute_governor_cap = scenario.take_from_sender<minter::DistributeGovernorCap>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
         minter::finalize_exercise_fee_weights<SAIL>(
             &mut minter, 
             &mut voter, 
+            &distribution_config,
             &distribute_governor_cap, 
             epoch_start,
             &clock, 
             scenario.ctx()
         );
+        test_scenario::return_shared(distribution_config);
         test_scenario::return_shared(minter);
         test_scenario::return_shared(voter);
         scenario.return_to_sender(distribute_governor_cap);
@@ -2018,15 +2031,17 @@ fun test_exercise_fee_distribution() {
         let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
         let lock1 = scenario.take_from_sender<Lock>();
         let earned_fee = voter.earned_exercise_fee<USD_TESTS>(object::id(&lock1), &clock);
+        let distribution_config = scenario.take_shared<DistributionConfig>();
 
         // Claim the reward - this transfers the coin to user1
-        voter::claim_exercise_fee_reward<SAIL, USD_TESTS>(&mut voter, &mut ve, &lock1, &clock, scenario.ctx());
+        voter::claim_exercise_fee_reward<SAIL, USD_TESTS>(&mut voter, &distribution_config, &mut ve, &lock1, &clock, scenario.ctx());
 
         assert!(earned_fee == user1_expected_fee_share, 5); // Verify earned fee
         // Return objects
         scenario.return_to_sender(lock1);
         test_scenario::return_shared(voter);
         test_scenario::return_shared(ve);
+        test_scenario::return_shared(distribution_config);
     };
 
     // Validate user1 earned fee
@@ -2045,15 +2060,17 @@ fun test_exercise_fee_distribution() {
         let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
         let lock2 = scenario.take_from_sender<Lock>();
         let earned_fee = voter.earned_exercise_fee<USD_TESTS>(object::id(&lock2), &clock);
+        let distribution_config = scenario.take_shared<DistributionConfig>();
 
         // Claim the reward - this transfers the coin to user2
-        voter::claim_exercise_fee_reward<SAIL, USD_TESTS>(&mut voter, &mut ve, &lock2, &clock, scenario.ctx());
+        voter::claim_exercise_fee_reward<SAIL, USD_TESTS>(&mut voter, &distribution_config, &mut ve, &lock2, &clock, scenario.ctx());
 
         assert!(earned_fee == user2_expected_fee_share, 6); // Verify earned fee
         // Return objects
         scenario.return_to_sender(lock2);
         test_scenario::return_shared(voter);
         test_scenario::return_shared(ve);
+        test_scenario::return_shared(distribution_config);
     };
 
     // Validate user2 earned fee

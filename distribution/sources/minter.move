@@ -14,6 +14,7 @@ module distribution::minter {
     use price_monitor::price_monitor::{Self, PriceMonitor};
     use switchboard::decimal::{Self, Decimal};
     use switchboard::aggregator::{Aggregator};
+    use distribution::distribution_config::{DistributionConfig};
 
     const ECreateMinterInvalidPublisher: u64 = 695309471293028100;
     const ECreateMinterInvalidSailDecimals: u64 = 744215000566210300;
@@ -21,6 +22,8 @@ module distribution::minter {
     const EGrantAdminInvalidPublisher: u64 = 198127851942335970;
 
     const EGrantDistributeGovernorInvalidPublisher: u64 = 49774594592309590;
+
+    const ESetMaxEmissionChangeRatioInvalidPublisher: u64 = 716496543415068300;
 
     const ERevokeAdminInvalidPublisher: u64 = 729123415718822900;
 
@@ -142,11 +145,6 @@ module distribution::minter {
 
     const EEmissionStopped: u64 = 123456789012345678;
 
-    const EMintTestSailOutdated: u64 = 89462538442069740;
-    const EMintTestSailPublisherInvalid: u64 = 846785453837100700;
-    const EMintTestSailMinterPaused: u64 = 308702052175391360;
-    const EMintTestSailAmountZero: u64 = 739392658014216400;
-
     const EInvalidSailPool: u64 = 939179427939211244;
 
     const DAYS_IN_WEEK: u64 = 7;
@@ -167,7 +165,7 @@ module distribution::minter {
     const MAX_TEAM_EMISSIONS_RATE: u64 = 500;
     const MAX_PROTOCOL_FEE_RATE: u64 = 3000;
 
-    const MAX_EMISSIONS_CHANGE_RATIO: u64 = 4;
+    const MAX_EMISSIONS_CHANGE_RATIO: u64 = 20;
 
     const MINT_LOCK_TIME_MS: u64 = 24 * 60 * 60 * 1000; // 1 day
 
@@ -413,6 +411,7 @@ module distribution::minter {
         // Epoch start seconds -> sum of oSAIL emissions for all gauges
         total_epoch_o_sail_emissions: Table<u64, u64>,
         distribution_config: ID,
+        max_emission_change_ratio: u64,
         // bag to be preapred for future updates
         bag: sui::bag::Bag,
     }
@@ -449,6 +448,7 @@ module distribution::minter {
     public fun activate<SailCoinType, EpochOSail>(
         minter: &mut Minter<SailCoinType>,
         voter: &mut distribution::voter::Voter,
+        distribution_config: &DistributionConfig,
         admin_cap: &AdminCap,
         rebase_distributor: &mut distribution::rebase_distributor::RebaseDistributor<SailCoinType>,
         epoch_o_sail_treasury_cap: TreasuryCap<EpochOSail>,
@@ -456,6 +456,7 @@ module distribution::minter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
     ) {
+        distribution_config.checked_package_version();
         assert!(epoch_o_sail_metadata.get_decimals() == ve::common::sail_decimals(), EActivateMinterInvalidOSailDecimals);
         minter.activate_internal(
             voter,
@@ -579,6 +580,7 @@ module distribution::minter {
         distribution_config: ID,
         ctx: &mut TxContext
     ): (Minter<SailCoinType>, AdminCap) {
+        // method is protected by publisher so we don't need version control here.
         assert!(metadata.get_decimals() == ve::common::sail_decimals(), ECreateMinterInvalidSailDecimals);
         create_internal(publisher, treasury_cap, distribution_config, ctx)
     }
@@ -629,6 +631,7 @@ module distribution::minter {
             total_epoch_emissions_usd: table::new<u64, u64>(ctx),
             total_epoch_o_sail_emissions: table::new<u64, u64>(ctx),
             distribution_config,
+            max_emission_change_ratio: MAX_EMISSIONS_CHANGE_RATIO,
             bag: sui::bag::new(ctx),
         };
         let admin_cap = AdminCap { id: object::new(ctx) };
@@ -638,6 +641,7 @@ module distribution::minter {
     /// Grants and transfers administrative capability to a specified address.
     /// This function is not protected by is_paused to prevent deadlocks.
     public fun grant_admin(publisher: &sui::package::Publisher, who: address, ctx: &mut TxContext) {
+        // method is protected by publisher so we don't need version control here.
         assert!(publisher.from_module<MINTER>(), EGrantAdminInvalidPublisher);
         let admin_cap = AdminCap { id: object::new(ctx) };
         let grant_admin_event = EventGrantAdmin {
@@ -650,6 +654,7 @@ module distribution::minter {
 
     /// Grants and transfers distribute governor capability to a specified address.
     public fun grant_distribute_governor(publisher: &sui::package::Publisher, who: address, ctx: &mut TxContext) {
+        // method is protected by publisher so we don't need version control here.
         assert!(publisher.from_module<MINTER>(), EGrantDistributeGovernorInvalidPublisher);
         let distribute_governor_cap = DistributeGovernorCap { id: object::new(ctx) };
         let grant_distribute_governor_event = EventGrantDistributeGovernor {
@@ -658,6 +663,17 @@ module distribution::minter {
         };
         sui::event::emit<EventGrantDistributeGovernor>(grant_distribute_governor_event);
         transfer::transfer<DistributeGovernorCap>(distribute_governor_cap, who);
+    }
+
+    public fun set_max_emission_change_ratio<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        publisher: &sui::package::Publisher,
+        distribution_config: &DistributionConfig,
+        max_emission_change_ratio: u64
+    ) {
+        distribution_config.checked_package_version();
+        assert!(publisher.from_module<MINTER>(), ESetMaxEmissionChangeRatioInvalidPublisher);
+        minter.max_emission_change_ratio = max_emission_change_ratio;
     }
 
     fun init(otw: MINTER, ctx: &mut TxContext) {
@@ -692,7 +708,7 @@ module distribution::minter {
 
     public fun is_valid_distribution_config<SailCoinType>(
         minter: &Minter<SailCoinType>, 
-        distribution_config: &distribution::distribution_config::DistributionConfig
+        distribution_config: &DistributionConfig
     ): bool {
         minter.distribution_config == object::id(distribution_config)
     }
@@ -714,6 +730,7 @@ module distribution::minter {
         publisher: &sui::package::Publisher,
         cap_id: ID
     ) {
+        // method is protected by publisher so we don't need version control here.
         assert!(publisher.from_module<MINTER>(), ERevokeAdminInvalidPublisher);
         minter.revoked_admins.insert(cap_id);
 
@@ -729,6 +746,7 @@ module distribution::minter {
         publisher: &sui::package::Publisher,
         cap_id: ID
     ) {
+        // method is protected by publisher so we don't need version control here.
         assert!(publisher.from_module<MINTER>(), ERevokeDistributeGovernorInvalidPublisher);
         minter.revoked_distribute_governors.insert(cap_id);
 
@@ -751,10 +769,12 @@ module distribution::minter {
     /// * If the minter already has a minter capability
     public fun set_treasury_cap<SailCoinType>(
         minter: &mut Minter<SailCoinType>,
+        distribution_config: &DistributionConfig,
         admin_cap: &AdminCap,
         treasury_cap: TreasuryCap<SailCoinType>,
         metadata: &CoinMetadata<SailCoinType>
     ) {
+        distribution_config.checked_package_version();
         assert!(metadata.get_decimals() == ve::common::sail_decimals(), ESetTreasuryCapInvalidSailDecimals);
         minter.set_treasury_cap_internal(admin_cap, treasury_cap);
     }
@@ -794,8 +814,10 @@ module distribution::minter {
     public fun set_rebase_distributor_cap<SailCoinType>(
         minter: &mut Minter<SailCoinType>,
         admin_cap: &AdminCap,
+        distribution_config: &DistributionConfig,
         rebase_distributor_cap: distribution::rebase_distributor_cap::RebaseDistributorCap
     ) {
+        distribution_config.checked_package_version();
         minter.check_admin(admin_cap);
         let rebase_distributor_cap_id = object::id(&rebase_distributor_cap);
         minter.rebase_distributor_cap.fill(rebase_distributor_cap);
@@ -810,8 +832,10 @@ module distribution::minter {
     public fun set_distribute_cap<SailCoinType>(
         minter: &mut Minter<SailCoinType>,
         admin_cap: &AdminCap,
+        distribution_config: &DistributionConfig,
         distribute_cap: distribution::distribute_cap::DistributeCap
     ) {
+        distribution_config.checked_package_version();
         assert!(!minter.is_paused(), ESetDistributeCapMinterPaused);
         minter.check_admin(admin_cap);
         let distribute_cap_id = object::id(&distribute_cap);
@@ -839,9 +863,11 @@ module distribution::minter {
     /// * If the team emission rate exceeds 500 basis points
     public fun set_team_emission_rate<SailCoinType>(
         minter: &mut Minter<SailCoinType>,
+        distribution_config: &DistributionConfig,
         admin_cap: &AdminCap,
         team_emission_rate: u64
     ) {
+        distribution_config.checked_package_version();
         minter.check_admin(admin_cap);
         assert!(!minter.is_paused(), ESetTeamEmissionRateMinterPaused);
         assert!(team_emission_rate <= MAX_TEAM_EMISSIONS_RATE, ESetTeamEmissionRateTooBigRate);
@@ -856,9 +882,11 @@ module distribution::minter {
 
     public fun set_protocol_fee_rate<SailCoinType>(
         minter: &mut Minter<SailCoinType>,
+        distribution_config: &DistributionConfig,
         admin_cap: &AdminCap,
         protocol_fee_rate: u64
     ) {
+        distribution_config.checked_package_version();
         minter.check_admin(admin_cap);
         assert!(!minter.is_paused(), ESetProtocolFeeRateMinterPaused);
         assert!(protocol_fee_rate <= MAX_PROTOCOL_FEE_RATE, ESetProtocolFeeRateTooBigRate);
@@ -880,8 +908,10 @@ module distribution::minter {
     public fun set_team_wallet<SailCoinType>(
         minter: &mut Minter<SailCoinType>,
         admin_cap: &AdminCap,
+        distribution_config: &DistributionConfig,
         team_wallet: address
     ) {
+        distribution_config.checked_package_version();
         minter.check_admin(admin_cap);
         assert!(!minter.is_paused(), ESetTeamWalletMinterPaused);
         minter.team_wallet = team_wallet;
@@ -897,8 +927,10 @@ module distribution::minter {
     /// Is public cos team_wallet is predefined
     public fun distribute_team<SailCoinType, ExerciseFeeCoinType>(
         minter: &mut Minter<SailCoinType>,
+        distribution_config: &DistributionConfig,
         ctx: &mut TxContext,
     ) {
+        distribution_config.checked_package_version();
         assert!(!minter.is_paused(), EDistributeTeamMinterPaused);
         assert!(minter.team_wallet != @0x0, ETeamWalletNotSet);
 
@@ -933,7 +965,12 @@ module distribution::minter {
     ///
     /// This is an emergency function that can be used to halt token emissions
     /// in case of security issues or other critical situations.
-    public fun pause<SailCoinType>(minter: &mut Minter<SailCoinType>, admin_cap: &AdminCap) {
+    public fun pause<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        distribution_config: &DistributionConfig,
+        admin_cap: &AdminCap,
+    ) {
+        distribution_config.checked_package_version();
         minter.check_admin(admin_cap);
         minter.paused = true;
         let pause_event = EventPauseEmission {};
@@ -943,7 +980,12 @@ module distribution::minter {
     /// Unpauses token emissions from the minter.
     ///
     /// This function re-enables token emissions after they were paused.
-    public fun unpause<SailCoinType>(minter: &mut Minter<SailCoinType>, admin_cap: &AdminCap) {
+    public fun unpause<SailCoinType>(
+        minter: &mut Minter<SailCoinType>, 
+        distribution_config: &DistributionConfig, 
+        admin_cap: &AdminCap
+    ) {
+        distribution_config.checked_package_version();
         minter.check_admin(admin_cap);
         minter.paused = false;
         let unpaused_event = EventUnpauseEmission {};
@@ -954,7 +996,12 @@ module distribution::minter {
     ///
     /// This is an emergency function that can be used to halt token emissions
     /// when the price oracle is compromised or provides incorrect data.
-    public fun stop_emission<SailCoinType>(minter: &mut Minter<SailCoinType>, admin_cap: &AdminCap) {
+    public fun stop_emission<SailCoinType>(
+        minter: &mut Minter<SailCoinType>, 
+        distribution_config: &DistributionConfig, 
+        admin_cap: &AdminCap
+    ) {
+        distribution_config.checked_package_version();
         minter.check_admin(admin_cap);
         minter.emission_stopped = true;
 
@@ -964,7 +1011,12 @@ module distribution::minter {
     /// Resumes emission after oracle compromise is resolved.
     ///
     /// This function re-enables token emissions after they were stopped due to oracle issues.
-    public fun resume_emission<SailCoinType>(minter: &mut Minter<SailCoinType>, admin_cap: &AdminCap) {
+    public fun resume_emission<SailCoinType>(
+        minter: &mut Minter<SailCoinType>, 
+        distribution_config: &DistributionConfig, 
+        admin_cap: &AdminCap
+    ) {
+        distribution_config.checked_package_version();
         minter.check_admin(admin_cap);
         minter.emission_stopped = false;
 
@@ -1032,7 +1084,7 @@ module distribution::minter {
     public fun update_period<SailCoinType, EpochOSail>(
         minter: &mut Minter<SailCoinType>,
         voter: &mut distribution::voter::Voter,
-        distribution_config: &distribution::distribution_config::DistributionConfig,
+        distribution_config: &DistributionConfig,
         distribute_governor_cap: &DistributeGovernorCap,
         voting_escrow: &ve::voting_escrow::VotingEscrow<SailCoinType>,
         rebase_distributor: &mut distribution::rebase_distributor::RebaseDistributor<SailCoinType>,
@@ -1041,6 +1093,7 @@ module distribution::minter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        distribution_config.checked_package_version();
         assert!(epoch_o_sail_metadata.get_decimals() == ve::common::sail_decimals(), EUpdatePeriodOSailInvalidDecimals);
         minter.update_period_internal(
             voter,
@@ -1059,7 +1112,7 @@ module distribution::minter {
     public fun update_period_test<SailCoinType, EpochOSail>(
         minter: &mut Minter<SailCoinType>,
         voter: &mut distribution::voter::Voter,
-        distribution_config: &distribution::distribution_config::DistributionConfig,
+        distribution_config: &DistributionConfig,
         distribute_governor_cap: &DistributeGovernorCap,
         voting_escrow: &ve::voting_escrow::VotingEscrow<SailCoinType>,
         rebase_distributor: &mut distribution::rebase_distributor::RebaseDistributor<SailCoinType>,
@@ -1067,6 +1120,7 @@ module distribution::minter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        distribution_config.checked_package_version();
         minter.update_period_internal(
             voter,
             distribution_config,
@@ -1082,7 +1136,7 @@ module distribution::minter {
     fun update_period_internal<SailCoinType, EpochOSail>(
         minter: &mut Minter<SailCoinType>,
         voter: &mut distribution::voter::Voter,
-        distribution_config: &distribution::distribution_config::DistributionConfig,
+        distribution_config: &DistributionConfig,
         distribute_governor_cap: &DistributeGovernorCap,
         voting_escrow: &ve::voting_escrow::VotingEscrow<SailCoinType>,
         rebase_distributor: &mut distribution::rebase_distributor::RebaseDistributor<SailCoinType>,
@@ -1183,7 +1237,7 @@ module distribution::minter {
         minter: &mut Minter<SailCoinType>,
         voter: &mut distribution::voter::Voter,
         distribute_governor_cap: &DistributeGovernorCap,
-        distribution_config: &distribution::distribution_config::DistributionConfig,
+        distribution_config: &DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         next_epoch_emissions_usd: u64,
@@ -1193,6 +1247,7 @@ module distribution::minter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
     ) {
+        distribution_config.checked_package_version();
         assert!(!minter.is_paused(), EDistributeGaugeMinterPaused);
         assert!(!minter.is_emission_stopped(), EEmissionStopped);
         minter.check_distribute_governor(distribute_governor_cap);
@@ -1231,7 +1286,7 @@ module distribution::minter {
         minter: &mut Minter<SailCoinType>,
         voter: &mut distribution::voter::Voter,
         distribute_governor_cap: &DistributeGovernorCap,
-        distribution_config: &distribution::distribution_config::DistributionConfig,
+        distribution_config: &DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         sail_pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         next_epoch_emissions_usd: u64,
@@ -1240,6 +1295,7 @@ module distribution::minter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
     ) {
+        distribution_config.checked_package_version();
         assert!(!minter.is_paused(), EDistributeGaugeMinterPaused);
         assert!(!minter.is_emission_stopped(), EEmissionStopped);
         minter.check_distribute_governor(distribute_governor_cap);
@@ -1279,7 +1335,7 @@ module distribution::minter {
     fun distribute_gauge_internal<CoinTypeA, CoinTypeB, SailCoinType, CurrentEpochOSail>(
         minter: &mut Minter<SailCoinType>,
         voter: &mut distribution::voter::Voter,
-        distribution_config: &distribution::distribution_config::DistributionConfig,
+        distribution_config: &DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         next_epoch_emissions_usd: u64,
@@ -1315,9 +1371,9 @@ module distribution::minter {
         } else {
             assert!(next_epoch_emissions_usd > 0, EDistributeGaugeEmissionsZero);
             if (prev_epoch_emissions_usd > next_epoch_emissions_usd) {
-                assert!(prev_epoch_emissions_usd / next_epoch_emissions_usd < MAX_EMISSIONS_CHANGE_RATIO, EDistributeGaugeEmissionsChangeTooBig);
+                assert!(prev_epoch_emissions_usd / next_epoch_emissions_usd <= minter.max_emission_change_ratio, EDistributeGaugeEmissionsChangeTooBig);
             } else {
-                assert!(next_epoch_emissions_usd / prev_epoch_emissions_usd < MAX_EMISSIONS_CHANGE_RATIO, EDistributeGaugeEmissionsChangeTooBig);
+                assert!(next_epoch_emissions_usd / prev_epoch_emissions_usd <= minter.max_emission_change_ratio, EDistributeGaugeEmissionsChangeTooBig);
             }
         };
         let ended_epoch_o_sail_emission = voter.distribute_gauge<CoinTypeA, CoinTypeB, CurrentEpochOSail>(
@@ -1404,7 +1460,7 @@ module distribution::minter {
     public fun increase_gauge_emissions<CoinTypeA, CoinTypeB, SailPoolCoinTypeA, SailPoolCoinTypeB, SailCoinType>(
         minter: &mut Minter<SailCoinType>,
         voter: &distribution::voter::Voter,
-        distribution_config: &distribution::distribution_config::DistributionConfig,
+        distribution_config: &DistributionConfig,
         admin_cap: &AdminCap,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
@@ -1415,6 +1471,7 @@ module distribution::minter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        distribution_config.checked_package_version();
         minter.check_admin(admin_cap);
         assert!(minter.is_valid_distribution_config(distribution_config), EIncreaseEmissionsDistributionConfigInvalid);
         assert!(minter.is_active(clock), EIncreaseEmissionsMinterNotActive);
@@ -1453,7 +1510,7 @@ module distribution::minter {
     public fun increase_gauge_emissions_for_sail_pool<CoinTypeA, CoinTypeB, SailCoinType>(
         minter: &mut Minter<SailCoinType>,
         voter: &distribution::voter::Voter,
-        distribution_config: &distribution::distribution_config::DistributionConfig,
+        distribution_config: &DistributionConfig,
         admin_cap: &AdminCap,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         sail_pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
@@ -1463,6 +1520,7 @@ module distribution::minter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        distribution_config.checked_package_version();
         minter.check_admin(admin_cap);
         assert!(minter.is_valid_distribution_config(distribution_config), EIncreaseEmissionsDistributionConfigInvalid);
         assert!(minter.is_active(clock), EIncreaseEmissionsMinterNotActive);
@@ -1502,7 +1560,7 @@ module distribution::minter {
     fun increase_gauge_emissions_internal<CoinTypeA, CoinTypeB, SailCoinType>(
         minter: &mut Minter<SailCoinType>,
         voter: &distribution::voter::Voter,
-        distribution_config: &distribution::distribution_config::DistributionConfig,
+        distribution_config: &DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         emissions_increase_usd: u64,
@@ -1562,7 +1620,7 @@ module distribution::minter {
     public fun create_gauge<CoinTypeA, CoinTypeB, SailCoinType>(
         minter: &mut Minter<SailCoinType>,
         voter: &mut distribution::voter::Voter,
-        distribution_config: &mut distribution::distribution_config::DistributionConfig,
+        distribution_config: &mut DistributionConfig,
         create_cap: &gauge_cap::gauge_cap::CreateCap,
         admin_cap: &AdminCap,
         voting_escrow: &ve::voting_escrow::VotingEscrow<SailCoinType>,
@@ -1571,6 +1629,7 @@ module distribution::minter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): distribution::gauge::Gauge<CoinTypeA, CoinTypeB> {
+        distribution_config.checked_package_version();
         assert!(!minter.is_paused(), ECreateGaugeMinterPaused);
         minter.check_admin(admin_cap);
         assert!(gauge_base_emissions > 0, ECreateGaugeZeroBaseEmissions);
@@ -1612,10 +1671,11 @@ module distribution::minter {
     /// * `ctx` - The transaction context
     public fun kill_gauge<SailCoinType>(
         minter: &mut Minter<SailCoinType>,
-        distribution_config: &mut distribution::distribution_config::DistributionConfig,
+        distribution_config: &mut DistributionConfig,
         emergency_council_cap: &ve::emergency_council::EmergencyCouncilCap,
         gauge_id: ID,
     ) {
+        distribution_config.checked_package_version();
         emergency_council_cap.validate_emergency_council_minter_id(object::id(minter));
         assert!(
             minter.is_valid_distribution_config(distribution_config),
@@ -1645,10 +1705,11 @@ module distribution::minter {
     /// * `ctx` - The transaction context
     public fun revive_gauge<SailCoinType>(
         minter: &mut Minter<SailCoinType>,
-        distribution_config: &mut distribution::distribution_config::DistributionConfig,
+        distribution_config: &mut DistributionConfig,
         emergency_council_cap: &ve::emergency_council::EmergencyCouncilCap,
         gauge_id: ID,
     ) {
+        distribution_config.checked_package_version();
         emergency_council_cap.validate_emergency_council_minter_id(object::id(minter));
         assert!(
             minter.is_valid_distribution_config(distribution_config),
@@ -1668,7 +1729,7 @@ module distribution::minter {
     }
 
     fun revive_gauge_internal(
-        distribution_config: &mut distribution::distribution_config::DistributionConfig,
+        distribution_config: &mut DistributionConfig,
         gauge_id: ID,
     ) {
         distribution_config.update_gauge_liveness(vector<ID>[gauge_id], true);
@@ -1687,12 +1748,13 @@ module distribution::minter {
     // * `distribution_config` - Configuration for token distribution
     public fun reset_gauge<CoinTypeA, CoinTypeB, SailCoinType>(
         minter: &mut Minter<SailCoinType>,
-        distribution_config: &mut distribution::distribution_config::DistributionConfig,
+        distribution_config: &mut DistributionConfig,
         emergency_council_cap: &ve::emergency_council::EmergencyCouncilCap,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         gauge_base_emissions: u64,
         clock: &sui::clock::Clock
     ) {
+        distribution_config.checked_package_version();
         ve::emergency_council::validate_emergency_council_minter_id(emergency_council_cap, object::id(minter));
         assert!(!minter.is_paused(), EResetGaugeMinterPaused);
         assert!(minter.is_active(clock), EResetGaugeMinterNotActive);
@@ -1751,7 +1813,7 @@ module distribution::minter {
     /// * `clock` - The system clock
     public fun sync_o_sail_distribution_price<CoinTypeA, CoinTypeB, SailPoolCoinTypeA, SailPoolCoinTypeB, SailCoinType>(
         minter: &mut Minter<SailCoinType>,
-        distribution_config: &mut distribution::distribution_config::DistributionConfig,
+        distribution_config: &mut DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         price_monitor: &mut PriceMonitor,
@@ -1759,6 +1821,7 @@ module distribution::minter {
         aggregator: &Aggregator,
         clock: &sui::clock::Clock
     ) {
+        distribution_config.checked_package_version();
         let gauge_id = object::id(gauge);
         assert!(gauge_distributed(minter, gauge_id), EIncreaseEmissionsNotDistributed);
         assert!(minter.is_valid_distribution_config(distribution_config), EIncreaseEmissionsDistributionConfigInvalid);
@@ -1793,13 +1856,14 @@ module distribution::minter {
     /// we need this method if pool and sail_stablecoin_pool are the same pool
     public fun sync_o_sail_distribution_price_for_sail_pool<CoinTypeA, CoinTypeB, SailCoinType>(
         minter: &mut Minter<SailCoinType>,
-        distribution_config: &mut distribution::distribution_config::DistributionConfig,
+        distribution_config: &mut DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         sail_pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         price_monitor: &mut PriceMonitor,
         aggregator: &Aggregator,
         clock: &sui::clock::Clock
     ) {
+        distribution_config.checked_package_version();
         let gauge_id = object::id(gauge);
         assert!(gauge_distributed(minter, gauge_id), EIncreaseEmissionsNotDistributed);
         assert!(minter.is_valid_distribution_config(distribution_config), EIncreaseEmissionsDistributionConfigInvalid);
@@ -1894,8 +1958,8 @@ module distribution::minter {
         cap.mint(amount, ctx)
     }
 
-    /// Burning function. Is public because we don't mind if supply is decreased voluntarily
-    public fun burn_o_sail<SailCoinType, OSailCoinType>(
+    /// Burning function
+    fun burn_o_sail<SailCoinType, OSailCoinType>(
         minter: &mut Minter<SailCoinType>,
         coin: Coin<OSailCoinType>,
     ): u64 {
@@ -1914,15 +1978,6 @@ module distribution::minter {
         sui::event::emit<EventBurn>(event);
 
         burnt
-    }
-
-    /// Burning function, the same as burn_o_sail but for balance
-    public fun burn_o_sail_balance<SailCoinType, OSailCoinType>(
-        minter: &mut Minter<SailCoinType>,
-        balance: Balance<OSailCoinType>,
-        ctx: &mut TxContext,
-    ): u64 {
-        minter.burn_o_sail(coin::from_balance(balance, ctx))
     }
 
     // internal mint function
@@ -1959,12 +2014,14 @@ module distribution::minter {
     public fun create_lock_from_o_sail<SailCoinType, OSailCoinType>(
         minter: &mut Minter<SailCoinType>,
         voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
+        distribution_config: &DistributionConfig,
         o_sail: sui::coin::Coin<OSailCoinType>,
         lock_duration_days: u64,
         permanent: bool,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        distribution_config.checked_package_version();
         assert!(!minter.is_paused(), ECreateLockFromOSailMinterPaused);
         assert!(minter.is_valid_o_sail_type<SailCoinType, OSailCoinType>(), ECreateLockFromOSailInvalidToken);
         let lock_duration_seconds = lock_duration_days * ve::common::day();
@@ -2085,7 +2142,7 @@ module distribution::minter {
     /// * `(usd_left, sail_received)` - The unused USD and the amount of SAIL received
     public fun exercise_o_sail<SailPoolCoinTypeA, SailPoolCoinTypeB, SailCoinType, USDCoinType, OSailCoinType>(
         minter: &mut Minter<SailCoinType>,
-        distribution_config: &distribution::distribution_config::DistributionConfig,
+        distribution_config: &DistributionConfig,
         voter: &mut distribution::voter::Voter,
         o_sail: Coin<OSailCoinType>,
         fee: Coin<USDCoinType>,
@@ -2097,6 +2154,7 @@ module distribution::minter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
     ): (Coin<USDCoinType>, Coin<SailCoinType>) {
+        distribution_config.checked_package_version();
         assert!(!minter.is_paused(), EExerciseOSailMinterPaused);
         assert!(!minter.is_emission_stopped(), EEmissionStopped);
         assert!(minter.is_valid_o_sail_type<SailCoinType, OSailCoinType>(), EExerciseOSailInvalidOSail);
@@ -2258,7 +2316,7 @@ module distribution::minter {
     /// Emissions for the current epoch are not available until the next epoch begins and all gauges in the next epoch are distributed.
     public fun o_sail_epoch_emissions<SailCoinType>(
         minter: &Minter<SailCoinType>,
-        distribution_config: &distribution::distribution_config::DistributionConfig,
+        distribution_config: &DistributionConfig,
     ): u64 {
         let active_period = minter.active_period;
         let prev_active_period = active_period - ve::common::epoch();
@@ -2289,9 +2347,11 @@ module distribution::minter {
     // Allows USD to be used as exercise fee token
     public fun whitelist_usd<SailCoinType, UsdCoinType>(
         minter: &mut Minter<SailCoinType>,
+        distribution_config: &DistributionConfig,
         admin_cap: &AdminCap,
         list: bool,
     ) {
+        distribution_config.checked_package_version();
         minter.whitelist_usd_internal<SailCoinType, UsdCoinType>(
             admin_cap,
             list,
@@ -2340,11 +2400,13 @@ module distribution::minter {
 
     public fun schedule_sail_mint<SailCoinType>(
         minter: &mut Minter<SailCoinType>,
+        distribution_config: &DistributionConfig,
         publisher: &mut sui::package::Publisher,
         amount: u64,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
     ): TimeLockedSailMint {
+        distribution_config.checked_package_version();
         assert!(publisher.from_module<MINTER>(), EScheduleSailMintPublisherInvalid);
         assert!(!minter.is_paused(), EScheduleSailMintMinterPaused);
         assert!(amount > 0, EScheduleSailMintAmountZero);
@@ -2368,10 +2430,12 @@ module distribution::minter {
 
     public fun execute_sail_mint<SailCoinType>(
         minter: &mut Minter<SailCoinType>,
+        distribution_config: &DistributionConfig,
         mint: TimeLockedSailMint,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
     ): Coin<SailCoinType> {
+        distribution_config.checked_package_version();
         assert!(!minter.is_paused(), EExecuteSailMintMinterPaused);
         let TimeLockedSailMint {id, amount, unlock_time} = mint;
         object::delete(id);
@@ -2399,11 +2463,13 @@ module distribution::minter {
 
     public fun schedule_o_sail_mint<SailCoinType, OSailCoinType>(
         minter: &mut Minter<SailCoinType>,
+        distribution_config: &DistributionConfig,
         publisher: &mut sui::package::Publisher,
         amount: u64,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
     ): TimeLockedOSailMint<OSailCoinType> {
+        distribution_config.checked_package_version();
         assert!(publisher.from_module<MINTER>(), EScheduleOSailMintPublisherInvalid);
         assert!(!minter.is_paused(), EScheduleOSailMintMinterPaused);
         assert!(minter.is_valid_o_sail_type<SailCoinType, OSailCoinType>(), EScheduleOSailMintInvalidOSail);
@@ -2428,10 +2494,12 @@ module distribution::minter {
 
     public fun execute_o_sail_mint<SailCoinType, OSailCoinType>(
         minter: &mut Minter<SailCoinType>,
+        distribution_config: &DistributionConfig,
         mint: TimeLockedOSailMint<OSailCoinType>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
     ): Coin<OSailCoinType> {
+        distribution_config.checked_package_version();
         assert!(!minter.is_paused(), EExecuteOSailMintMinterPaused);
         assert!(minter.is_valid_o_sail_type<SailCoinType, OSailCoinType>(), EExecuteOSailMintInvalidOSail);
         let TimeLockedOSailMint {id, amount, unlock_time} = mint;
@@ -2443,8 +2511,10 @@ module distribution::minter {
     }
 
     public fun cancel_o_sail_mint<OSailCoinType>(
+        distribution_config: &DistributionConfig,
         mint: TimeLockedOSailMint<OSailCoinType>,
     ) {
+        distribution_config.checked_package_version();
         let TimeLockedOSailMint {id, amount, unlock_time: _} = mint;
         let inner_id = id.uid_to_inner();
         let event = EventCancelTimeLockedMint {
@@ -2462,9 +2532,10 @@ module distribution::minter {
     public fun set_o_sail_price_aggregator<SailCoinType>(
         minter: &mut Minter<SailCoinType>,
         admin_cap: &AdminCap,
-        distribution_config: &mut distribution::distribution_config::DistributionConfig,
+        distribution_config: &mut DistributionConfig,
         aggregator: &Aggregator,
     ) {
+        distribution_config.checked_package_version();
         minter.check_admin(admin_cap);
         assert!(minter.is_valid_distribution_config(distribution_config), ESetOsailPriceAggregatorInvalidDistrConfig);
         distribution_config.set_o_sail_price_aggregator(aggregator);
@@ -2479,9 +2550,10 @@ module distribution::minter {
     public fun set_sail_price_aggregator<SailCoinType>(
         minter: &mut Minter<SailCoinType>,
         admin_cap: &AdminCap,
-        distribution_config: &mut distribution::distribution_config::DistributionConfig,
+        distribution_config: &mut DistributionConfig,
         aggregator: &Aggregator,
     ) {
+        distribution_config.checked_package_version();
         minter.check_admin(admin_cap);
         assert!(minter.is_valid_distribution_config(distribution_config), ESetSailPriceAggregatorInvalidDistrConfig);
         distribution_config.set_sail_price_aggregator(aggregator);
@@ -2596,13 +2668,14 @@ module distribution::minter {
     /// RewardCoinType is supposed to be the current epoch oSAIL.
     public fun get_position_reward<CoinTypeA, CoinTypeB, SailCoinType, RewardCoinType>(
         minter: &mut Minter<SailCoinType>,
-        distribution_config: &distribution::distribution_config::DistributionConfig,
+        distribution_config: &DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         staked_position: &distribution::gauge::StakedPosition,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): Coin<RewardCoinType> {
+        distribution_config.checked_package_version();
         assert!(minter.is_valid_epoch_token<SailCoinType, RewardCoinType>(), EGetPositionRewardInvalidRewardToken);
         assert!(
             object::id(distribution_config) == minter.distribution_config,
@@ -2629,13 +2702,14 @@ module distribution::minter {
     /// RewardCoinType is supposed to be the current epoch oSAIL.
     public fun get_multiple_position_rewards<CoinTypeA, CoinTypeB, SailCoinType, RewardCoinType>(
         minter: &mut Minter<SailCoinType>,
-        distribution_config: &distribution::distribution_config::DistributionConfig,
+        distribution_config: &DistributionConfig,
         gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         staked_positions: &vector<distribution::gauge::StakedPosition>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): Coin<RewardCoinType> {
+        distribution_config.checked_package_version();
         assert!(minter.is_valid_epoch_token<SailCoinType, RewardCoinType>(), EGetMultiplePositionRewardInvalidRewardToken);
         assert!(
             object::id(distribution_config) == minter.distribution_config,
@@ -2695,6 +2769,7 @@ module distribution::minter {
     public fun update_voted_weights<SailCoinType>(
         minter: &mut Minter<SailCoinType>,
         voter: &mut distribution::voter::Voter,
+        distribution_config: &DistributionConfig,
         distribute_governor_cap: &DistributeGovernorCap,
         gauge_id: ID,
         weights: vector<u64>,
@@ -2703,6 +2778,7 @@ module distribution::minter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        distribution_config.checked_package_version();
         minter.check_distribute_governor(distribute_governor_cap);
 
         let distribute_cap = minter.distribute_cap.borrow();
@@ -2724,12 +2800,14 @@ module distribution::minter {
     public fun finalize_voted_weights<SailCoinType>(
         minter: &mut Minter<SailCoinType>,
         voter: &mut distribution::voter::Voter,
+        distribution_config: &DistributionConfig,
         distribute_governor_cap: &DistributeGovernorCap,
         gauge_id: ID,
         for_epoch_start: u64,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        distribution_config.checked_package_version();
         minter.check_distribute_governor(distribute_governor_cap);
 
         let distribute_cap = minter.distribute_cap.borrow();
@@ -2751,12 +2829,14 @@ module distribution::minter {
     public fun null_exercise_fee_weights<SailCoinType>(
         minter: &mut Minter<SailCoinType>,
         voter: &mut distribution::voter::Voter,
+        distribution_config: &DistributionConfig,
         distribute_governor_cap: &DistributeGovernorCap,
         lock_ids: vector<ID>,
         for_epoch_start: u64,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        distribution_config.checked_package_version();
         minter.check_distribute_governor(distribute_governor_cap);
 
         let distribute_cap = minter.distribute_cap.borrow();
@@ -2783,11 +2863,13 @@ module distribution::minter {
     public fun finalize_exercise_fee_weights<SailCoinType>(
         minter: &mut Minter<SailCoinType>,
         voter: &mut distribution::voter::Voter,
+        distribution_config: &DistributionConfig,
         distribute_governor_cap: &DistributeGovernorCap,
         for_epoch_start: u64,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        distribution_config.checked_package_version();
         minter.check_distribute_governor(distribute_governor_cap);
 
         let distribute_cap = minter.distribute_cap.borrow();
@@ -2803,24 +2885,6 @@ module distribution::minter {
         )
     }
 
-    // TODO: remove in production
-    public fun mint_test_sail<SailCoinType>(
-        minter: &mut Minter<SailCoinType>,
-        publisher: &mut sui::package::Publisher,
-        amount: u64,
-        clock: &sui::clock::Clock,
-        ctx: &mut TxContext,
-    ): Coin<SailCoinType> {
-        // extra safety measure in case we forget to remove this function
-        // 1754784000000 is 2025-08-10 00:00:00 UTC, after this date we will not be able to call this function
-        assert!(clock.timestamp_ms() < 1754784000000, EMintTestSailOutdated);
-        assert!(publisher.from_module<MINTER>(), EMintTestSailPublisherInvalid);
-        assert!(!minter.is_paused(), EMintTestSailMinterPaused);
-        assert!(amount > 0, EMintTestSailAmountZero);
-
-        minter.mint_sail(amount, ctx)
-    }
-
     #[test_only]
     public fun test_init(ctx: &mut sui::tx_context::TxContext): sui::package::Publisher {
          sui::package::claim<MINTER>(MINTER {}, ctx)
@@ -2829,12 +2893,14 @@ module distribution::minter {
     public fun inject_voting_fee_reward<SailCoinType, FeeCoinType>(
         minter: &mut Minter<SailCoinType>,
         voter: &mut distribution::voter::Voter,
+        distribution_config: &DistributionConfig,
         distribute_governor_cap: &DistributeGovernorCap,
         gauge_id: ID,
         reward: Coin<FeeCoinType>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        distribution_config.checked_package_version();
         minter.check_distribute_governor(distribute_governor_cap);
 
         voter.inject_voting_fee_reward(

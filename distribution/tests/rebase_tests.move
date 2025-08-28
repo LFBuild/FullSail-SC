@@ -13,6 +13,7 @@ use distribution::minter::{Minter};
 use ve::voting_escrow::{Self, VotingEscrow, Lock};
 use distribution::setup;
 use switchboard::aggregator::{Aggregator};
+use distribution::distribution_config::{DistributionConfig};
 
 use distribution::usd_tests::{Self, USD_TESTS};
 
@@ -199,8 +200,9 @@ fun test_rebase_distribution_and_claim() {
         let mut rd = scenario.take_shared<RebaseDistributor<SAIL>>();
         let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
         let mut lock = scenario.take_from_sender<Lock>();
+        let mut distribution_config = scenario.take_shared<DistributionConfig>();
 
-        let claimed_amount = rd.claim(&mut ve, &mut lock, &clock, scenario.ctx());
+        let claimed_amount = rd.claim(&mut ve, &distribution_config, &mut lock, &clock, scenario.ctx());
         assert!(320_000 - claimed_amount <= 10, 2);
 
         // The reward should be added to the lock amount since it's still active
@@ -208,6 +210,7 @@ fun test_rebase_distribution_and_claim() {
         assert!(lock_amount + 320_000 - locked_balance.amount() <= 10, 3);
         assert!(rd.balance() <= 10, 4);
 
+        test_scenario::return_shared(distribution_config);
         test_scenario::return_shared(rd);
         test_scenario::return_shared(ve);
         scenario.return_to_sender(lock);
@@ -247,8 +250,9 @@ fun test_rebase_distribution_and_claim() {
         let mut rd = scenario.take_shared<RebaseDistributor<SAIL>>();
         let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
         let mut lock = scenario.take_from_sender<Lock>();
+        let mut distribution_config = scenario.take_shared<DistributionConfig>();
 
-        let claimed_amount = rd.claim(&mut ve, &mut lock, &clock, scenario.ctx());
+        let claimed_amount = rd.claim(&mut ve, &distribution_config, &mut lock, &clock, scenario.ctx());
         assert!(251496 - claimed_amount <= 10, 2);
 
         // The reward should be added to the lock amount since it's still active
@@ -256,6 +260,7 @@ fun test_rebase_distribution_and_claim() {
         assert!(lock_amount + 320_000 + 251496 - locked_balance.amount() <= 20, 3);
         assert!(rd.balance() <= 20, 4);
 
+        test_scenario::return_shared(distribution_config);
         test_scenario::return_shared(rd);
         test_scenario::return_shared(ve);
         scenario.return_to_sender(lock);
@@ -444,14 +449,16 @@ fun test_rebase_distribution_with_two_pools() {
         let mut rd = scenario.take_shared<RebaseDistributor<SAIL>>();
         let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
         let mut lock = scenario.take_from_sender<Lock>();
+        let mut distribution_config = scenario.take_shared<DistributionConfig>();
 
-        let claimed_amount = rd.claim(&mut ve, &mut lock, &clock, scenario.ctx());
+        let claimed_amount = rd.claim(&mut ve, &distribution_config, &mut lock, &clock, scenario.ctx());
         assert!(expected_rebase1 - claimed_amount <= 10, 2);
 
         let (locked_balance, _) = voting_escrow::locked(&ve, object::id(&lock));
         assert!((lock_amount + expected_rebase1) - locked_balance.amount() <= 10, 3);
         assert!(rd.balance() <= 10, 4);
 
+        test_scenario::return_shared(distribution_config);
         test_scenario::return_shared(rd);
         test_scenario::return_shared(ve);
         scenario.return_to_sender(lock);
@@ -490,14 +497,16 @@ fun test_rebase_distribution_with_two_pools() {
         let mut rd = scenario.take_shared<RebaseDistributor<SAIL>>();
         let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
         let mut lock = scenario.take_from_sender<Lock>();
+        let mut distribution_config = scenario.take_shared<DistributionConfig>();
 
-        let claimed_amount = rd.claim(&mut ve, &mut lock, &clock, scenario.ctx());
+        let claimed_amount = rd.claim(&mut ve, &distribution_config, &mut lock, &clock, scenario.ctx());
         assert!(expected_rebase2 - claimed_amount <= 10, 6);
 
         let (locked_balance, _) = voting_escrow::locked(&ve, object::id(&lock));
         assert!((lock_amount + expected_rebase1 + expected_rebase2) - locked_balance.amount() <= 20, 7);
         assert!(rd.balance() <= 20, 8);
 
+        test_scenario::return_shared(distribution_config);
         test_scenario::return_shared(rd);
         test_scenario::return_shared(ve);
         scenario.return_to_sender(lock);
@@ -686,14 +695,16 @@ fun test_rebase_distribution_with_two_pools_one_gauge_first_epoch_skipped() {
         let mut rd = scenario.take_shared<RebaseDistributor<SAIL>>();
         let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
         let mut lock = scenario.take_from_sender<Lock>();
+        let distribution_config = scenario.take_shared<distribution::distribution_config::DistributionConfig>();
 
-        let claimed_amount = rd.claim(&mut ve, &mut lock, &clock, scenario.ctx());
+        let claimed_amount = rd.claim(&mut ve, &distribution_config, &mut lock, &clock, scenario.ctx());
         assert!(expected_rebase1 - claimed_amount <= 10, 2);
 
         let (locked_balance, _) = voting_escrow::locked(&ve, object::id(&lock));
         assert!((lock_amount + expected_rebase1) - locked_balance.amount() <= 10, 3);
         assert!(rd.balance() <= 10, 4);
 
+        test_scenario::return_shared(distribution_config);
         test_scenario::return_shared(rd);
         test_scenario::return_shared(ve);
         scenario.return_to_sender(lock);
@@ -881,8 +892,9 @@ fun test_rebase_distribution_with_two_pools_one_gauge_second_epoch_skipped() {
         let mut rd = scenario.take_shared<RebaseDistributor<SAIL>>();
         let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
         let mut lock = scenario.take_from_sender<Lock>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
 
-        let claimed_amount = rd.claim(&mut ve, &mut lock, &clock, scenario.ctx());
+        let claimed_amount = rd.claim(&mut ve, &distribution_config, &mut lock, &clock, scenario.ctx());
         assert!(expected_rebase1 - claimed_amount <= 10, 2);
 
         let (locked_balance, _) = voting_escrow::locked(&ve, object::id(&lock));
@@ -891,6 +903,7 @@ fun test_rebase_distribution_with_two_pools_one_gauge_second_epoch_skipped() {
 
         test_scenario::return_shared(rd);
         test_scenario::return_shared(ve);
+        test_scenario::return_shared(distribution_config);
         scenario.return_to_sender(lock);
     };
 

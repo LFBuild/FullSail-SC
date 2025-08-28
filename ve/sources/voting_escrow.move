@@ -5,9 +5,14 @@ module ve::voting_escrow {
     #[allow(unused_const)]
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
 
+    /// Incremental version of the package.
+    const VERSION: u64 = 1;
     
     // Error constants
+    const EInvalidPackageVersion: u64 = 209945686090882800;
     const ECreateVotingEscrowInvalidPublisher: u64 = 184812403570428600;
+    const ESetPackageVersionInvalidPublisher: u64 = 985992160729703800;
+    const ESetPackageVersionInvalidVersion: u64 = 624107400921495900;
     const ESplitOwnerNotFound: u64 = 922337599252162153;
     const ESplitNulledLock: u64 = 285443173276424000;
     const ESplitNotAllowed: u64 = 922337600111090075;
@@ -263,6 +268,7 @@ module ve::voting_escrow {
         managed_to_locked: sui::table::Table<ID, ve::locked_managed_reward::LockedManagedReward>,
         managed_to_free: sui::table::Table<ID, ve::free_managed_reward::FreeManagedReward>,
         id_to_managed: sui::table::Table<ID, ID>,
+        version: u64,
         // bag to be preapred for future updates
         bag: sui::bag::Bag,
     }
@@ -283,6 +289,25 @@ module ve::voting_escrow {
             NORMAL,
             LOCKED,
             MANAGED,
+    }
+
+    /// Throws if invalid version of the package is called.
+    /// We are not protecting publisher protected methods from being called with the wrong version of the package.
+    /// And we are not protecting methods that are supposed to be called only by another package.
+    public fun checked_package_version<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>) {
+        assert!(voting_escrow.version == VERSION, EInvalidPackageVersion);
+    }
+
+    /// Sets the version of the package. Only package that is published with the same version can be used after this call.
+    public fun set_package_version<SailCoinType>(
+        voting_escrow: &mut VotingEscrow<SailCoinType>,
+        publisher: &sui::package::Publisher,
+        version: u64
+    ) {
+        assert!(publisher.from_module<VOTING_ESCROW>(), ESetPackageVersionInvalidPublisher);
+        // extra safety to prevent setting of the non-existing version
+        assert!(version <= VERSION, ESetPackageVersionInvalidVersion);
+        voting_escrow.version = version;
     }
 
     /// Split a lock into two separate locks with different amounts. This is useful for dividing
@@ -311,6 +336,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): (ID, ID) {
+        voting_escrow.checked_package_version();
         voting_escrow.validate_lock(lock);
         let lock_id = object::id<Lock>(lock);
         assert!(voting_escrow.owner_of.contains(lock_id), ESplitOwnerNotFound);
@@ -405,6 +431,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        voting_escrow.checked_package_version();
         assert!(lock.escrow == object::id<VotingEscrow<SailCoinType>>(voting_escrow), ETransferInvalidEscrow);
         let lock_id = object::id<Lock>(&lock);
         if (recipient == voting_escrow.owner_of(lock_id) && recipient == tx_context::sender(ctx)) {
@@ -486,6 +513,7 @@ module ve::voting_escrow {
                 ctx
             ),
             id_to_managed: sui::table::new<ID, ID>(ctx),
+            version: VERSION,
             // bag to be preapred for future updates
             bag: sui::bag::new(ctx),
         };
@@ -520,6 +548,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        voting_escrow.checked_package_version();
         let sender = tx_context::sender(ctx);
         let lock_id = object::id<Lock>(&lock);
         let lock_has_voted = voting_escrow.lock_has_voted(lock_id);
@@ -573,6 +602,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        voting_escrow.checked_package_version();
         let lock_id = object::id<Lock>(&lock);
         assert!(voting_escrow.is_nulled(lock_id), EDestroyNonNulledLock);
         let sender = tx_context::sender(ctx);
@@ -617,6 +647,7 @@ module ve::voting_escrow {
         publisher: &sui::package::Publisher,
         who: address
     ) {
+        voting_escrow.checked_package_version();
         assert!(publisher.from_module<VOTING_ESCROW>(), EAddAllowedManagerInvalidPublisher);
         voting_escrow.allowed_managers.insert(who);
     }
@@ -808,6 +839,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        voting_escrow.checked_package_version();
         voting_escrow.checkpoint_internal(
             option::none<ID>(),
             locked_balance(0, 0, false, false),
@@ -1042,6 +1074,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        voting_escrow.checked_package_version();
         voting_escrow.create_lock_advanced(
             coin_to_lock,
             lock_duration_days,
@@ -1081,7 +1114,8 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        voting_escrow.validate_lock_duration(lock_duration_days);
+        voting_escrow.checked_package_version();
+        voting_escrow.validate_lock_duration(lock_duration_days, permanent, perpetual);
         let lock_amount = coin_to_lock.value();
         assert!(lock_amount > 0, ECreateLockAmountZero);
         let current_time = ve::common::current_timestamp(clock);
@@ -1139,7 +1173,8 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        voting_escrow.validate_lock_duration(duration_days);
+        voting_escrow.checked_package_version();
+        voting_escrow.validate_lock_duration(duration_days, permanent, perpetual);
         let lock_amount = coin.value();
         assert!(lock_amount > 0, ECreateLockForAmountZero);
         let start_time = ve::common::current_timestamp(clock);
@@ -1266,6 +1301,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): ID {
+        voting_escrow.checked_package_version();
         let sender = tx_context::sender(ctx);
         assert!(voting_escrow.allowed_managers.contains(&sender), ECreateManagedNotAllowedManager);
         let (lock, create_lock_receipt) = voting_escrow.create_lock_internal(
@@ -1414,6 +1450,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        voting_escrow.checked_package_version();
         voting_escrow.validate_lock(lock);
         voting_escrow.delegate_internal(lock, delegatee, clock, ctx);
     }
@@ -1493,6 +1530,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        voting_escrow.checked_package_version();
         let lock_id = object::id(lock);
         assert!(!voting_escrow.deactivated(lock_id), EDepositForDeactivatedLock);
         assert!(!voting_escrow.is_nulled(lock_id), EDepositForNulledLock);
@@ -1590,6 +1628,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        // this method is supposed to be called only by distribution package, so version control is solved by the distribution package.
         voting_escrow_cap.validate(object::id(voting_escrow));
         let lock_id = object::id<Lock>(lock);
         let managed_lock_id = object::id<Lock>(managed_lock);
@@ -1614,6 +1653,9 @@ module ve::voting_escrow {
         voting_escrow.permanent_lock_balance = voting_escrow.permanent_lock_balance + current_locked_amount;
         let mut managed_locked_balance = *voting_escrow.locked.borrow(managed_lock_id);
         managed_locked_balance.amount = managed_locked_balance.amount + current_locked_amount;
+        lock.amount = 0;
+        lock.end = 0;
+        lock.permanent = true;
         let delegatee_id = voting_escrow.voting_dao.delegatee(managed_lock_id);
         voting_escrow.voting_dao.checkpoint_delegatee(delegatee_id, current_locked_amount, true, clock, ctx);
         let old_managed_locked_balance = voting_escrow.locked.remove(managed_lock_id);
@@ -1718,6 +1760,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        voting_escrow.checked_package_version();
         let owner = voting_escrow.validate_ownership(lock, ctx);
         let lock_id = object::id(lock);
         voting_escrow.managed_to_free.borrow_mut(
@@ -1747,6 +1790,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        voting_escrow.checked_package_version();
         voting_escrow
             .managed_to_free
             .borrow_mut(managed_lock_id)
@@ -1879,6 +1923,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        voting_escrow.checked_package_version();
         let lock_id = object::id(lock);
         assert!(!voting_escrow.deactivated(lock_id), EIncreaseAmountDeactivatedLock);
         assert!(!voting_escrow.is_nulled(lock_id), EIncreaseAmountNulledLock);
@@ -1970,6 +2015,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        voting_escrow.checked_package_version();
         let lock_id = object::id<Lock>(lock);
         let is_normal_escrow = if (!voting_escrow.escrow_type.contains(lock_id)) {
             true
@@ -1988,7 +2034,7 @@ module ve::voting_escrow {
         assert!(current_locked_balance.amount > 0, EIncreaseTimeNoBalance);
         assert!(lock_end_epoch_time > current_locked_balance.end, EIncreaseTimeNotLater);
         assert!(
-            lock_end_epoch_time < current_time + (ve::common::max_lock_time() as u64),
+            lock_end_epoch_time <= current_time + (ve::common::max_lock_time() as u64),
             EIncreaseTimeTooLong
         );
         voting_escrow.deposit_for_internal(
@@ -2046,14 +2092,13 @@ module ve::voting_escrow {
     }
 
     /// Checks if a locked balance is permanent.
-    ///
-    /// # Arguments
-    /// * `is_permanent` - The locked balance to check
-    ///
-    /// # Returns
-    /// True if the locked balance is permanent, false otherwise
-    public fun is_permanent(is_permanent: &LockedBalance): bool {
-        is_permanent.is_permanent
+    public fun is_permanent(locked_balance: &LockedBalance): bool {
+        locked_balance.is_permanent
+    }
+
+    /// Checks if a locked balance is perpetual.
+    public fun is_perpetual(locked_balance: &LockedBalance): bool {
+        locked_balance.is_perpetual
     }
 
     /// Checks if an address is allowed to split locks.
@@ -2106,6 +2151,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        voting_escrow.checked_package_version();
         let lock_id = object::id<Lock>(lock);
         let is_normal_escrow = if (!voting_escrow.escrow_type.contains(lock_id)) {
             true
@@ -2206,6 +2252,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        voting_escrow.checked_package_version();
         let lock_id_a = object::id<Lock>(lock_a);
         let lock_id_b = object::id<Lock>(lock_b);
         let lock_a_voted = voting_escrow.lock_has_voted(lock_id_a);
@@ -2264,6 +2311,7 @@ module ve::voting_escrow {
             new_locked_balance
         );
         lock_b.amount = new_locked_balance.amount;
+        lock_b.end = new_locked_balance.end;
         let merge_lock_event = EventMerge {
             sender: tx_context::sender(ctx),
             from: lock_id_a,
@@ -2310,6 +2358,7 @@ module ve::voting_escrow {
         publisher: &sui::package::Publisher,
         who: address
     ) {
+        voting_escrow.checked_package_version();
         assert!(publisher.from_module<VOTING_ESCROW>(), ERemoveAllowedManagerInvalidPublisher);
         voting_escrow.allowed_managers.remove(&who);
     }
@@ -2326,6 +2375,7 @@ module ve::voting_escrow {
     /// Creates and initializes a Display object for Lock NFTs with Fullsail-specific branding
     /// and transfers it to the transaction sender
     public fun set_display(publisher: &sui::package::Publisher, ctx: &mut TxContext) {
+        // this method is called before VotingEscrow is initialized so we don't check the version here
         assert!(publisher.from_module<VOTING_ESCROW>(), ESetDisplayInvalidPublisher);
         let mut fields = std::vector::empty<std::string::String>();
         fields.push_back(std::string::utf8(b"name"));
@@ -2436,6 +2486,7 @@ module ve::voting_escrow {
         lock_id: ID,
         deactivated: bool
     ) {
+        voting_escrow.checked_package_version();
         emergency_council_cap.validate_emergency_council_voting_escrow_id(object::id(voting_escrow));
         assert!(voting_escrow.escrow_type(lock_id) == EscrowType::MANAGED, ESetManagedLockNotManagedType);
         assert!(
@@ -2526,6 +2577,7 @@ module ve::voting_escrow {
 
 
     public fun create_team_cap<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>, publisher: &sui::package::Publisher, ctx: &mut TxContext): ve::team_cap::TeamCap {
+        voting_escrow.checked_package_version();
         assert!(publisher.from_module<VOTING_ESCROW>(), EGrantTeamCapInvalidPublisher);
         let team_cap = ve::team_cap::create(object::id(voting_escrow), ctx);
 
@@ -2552,6 +2604,7 @@ module ve::voting_escrow {
         who: address,
         allowed: bool
     ) {
+        voting_escrow.checked_package_version();
         team_cap.validate(object::id<VotingEscrow<SailCoinType>>(voting_escrow));
         if (voting_escrow.can_split.contains(who)) {
             voting_escrow.can_split.remove(who);
@@ -2687,6 +2740,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        voting_escrow.checked_package_version();
         let sender = tx_context::sender(ctx);
         let lock_id = object::id<Lock>(lock);
         let is_normal_escrow = if (!voting_escrow.escrow_type.contains(lock_id)) {
@@ -2745,10 +2799,20 @@ module ve::voting_escrow {
         assert!(lock.escrow == object::id<VotingEscrow<SailCoinType>>(voting_escrow), EValidateLockInvalidEscrow);
     }
 
-    fun validate_lock_duration<SailCoinType>(_voting_escrow: &VotingEscrow<SailCoinType>, duration_days: u64) {
+    fun validate_lock_duration<SailCoinType>(
+        _voting_escrow: &VotingEscrow<SailCoinType>,
+        duration_days: u64,
+        is_permanent: bool,
+        is_perpetual: bool
+    ) {
+        // if lock is permanent or perpetual, we don't need to check the duration
         assert!(
-            duration_days * ve::common::day() >= ve::common::min_lock_time() &&
-                duration_days * ve::common::day() <= ve::common::max_lock_time(),
+            is_permanent 
+            || is_perpetual
+                || (
+                    duration_days * ve::common::day() >= ve::common::min_lock_time()
+                        && duration_days * ve::common::day() <= ve::common::max_lock_time()
+                ),
             EValidateLockDurationInvalid
         );
     }
@@ -2776,6 +2840,8 @@ module ve::voting_escrow {
         lock_id: ID,
         is_voting: bool
     ) {
+        // this method is called by the distribution package, so version control is solved by the distribution package.
+        // we don't want to check the version of the package here to avoid broken distribution package.
         voting_escrow_cap.validate(object::id(voting_escrow));
         if (voting_escrow.voted.contains(lock_id)) {
             voting_escrow.voted.remove(lock_id);
@@ -2842,6 +2908,8 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        // this method is supposed to be called only by distribution package, so version control is solved by the distribution package.
+        // we don't want to check the version of the package here to avoid broken distribution package.
         let lock_id = object::id<Lock>(lock);
         voting_escrow_cap.validate(object::id(voting_escrow));
         let owner = voting_escrow.validate_ownership(lock, ctx);
@@ -2864,7 +2932,6 @@ module ve::voting_escrow {
         lock.amount = new_managed_weight;
         lock.permanent = false;
         lock.end = lock_end_time;
-        managed_lock.amount = managed_lock.amount - managed_weight;
         let lock_balance = voting_escrow.locked.remove(lock_id);
         // this function has already been written in a way that is never returns permanent locks.
         // This is the reason why we create permanent locked balance only if it is already perpetual.
@@ -2879,6 +2946,7 @@ module ve::voting_escrow {
             0
         };
         managed_lock_balance.amount = remaining_amount;
+        managed_lock.amount = remaining_amount;
         let new_weight = if (new_managed_weight < voting_escrow.permanent_lock_balance) {
             new_managed_weight
         } else {

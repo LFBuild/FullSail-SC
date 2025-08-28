@@ -693,6 +693,7 @@ module integrate::pool_script_v2 {
 
         let mut position = distribution::gauge::withdraw_position<CoinTypeA, CoinTypeB>(
             gauge,
+            distribution_config,
             pool,
             staked_position,
             clock,
@@ -758,6 +759,7 @@ module integrate::pool_script_v2 {
 
         let mut position = distribution::gauge::withdraw_position<CoinTypeA, CoinTypeB>(
             gauge,
+            distribution_config,
             pool,
             staked_position,
             clock,
@@ -820,6 +822,7 @@ module integrate::pool_script_v2 {
 
         let mut position = distribution::gauge::withdraw_position<CoinTypeA, CoinTypeB>(
             gauge,
+            distribution_config,
             pool,
             staked_position,
             clock,

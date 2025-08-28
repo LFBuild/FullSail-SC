@@ -200,7 +200,6 @@ public fun setup_distribution_with_initial_supply<SAIL>(
         test_scenario::return_shared(global_config_obj);
         let distribution_config_obj = scenario.take_shared<distribution_config::DistributionConfig>();
         let distribution_config_id = object::id(&distribution_config_obj);
-        test_scenario::return_shared(distribution_config_obj);
         let (mut voter_obj, distribute_cap) = voter::create(
             &voter_publisher,
             global_config_id,
@@ -208,15 +207,16 @@ public fun setup_distribution_with_initial_supply<SAIL>(
             scenario.ctx()
         );
 
-        voter_obj.add_governor(&voter_publisher, sender, scenario.ctx());
+        voter_obj.add_governor(&distribution_config_obj, &voter_publisher, sender, scenario.ctx());
 
         test_utils::destroy(voter_publisher);
         transfer::public_share_object(voter_obj);
 
         // --- Set Distribute Cap ---
         let mut minter = scenario.take_shared<Minter<SAIL>>();
-        let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-        minter.set_distribute_cap(&minter_admin_cap, distribute_cap);
+        let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();   
+        minter.set_distribute_cap(&minter_admin_cap, &distribution_config_obj, distribute_cap);
+        test_scenario::return_shared(distribution_config_obj);
         test_scenario::return_shared(minter);
         scenario.return_to_sender(minter_admin_cap);
     };
@@ -256,8 +256,10 @@ public fun setup_distribution_with_initial_supply<SAIL>(
         
         // --- Set Reward Distributor Cap ---
         let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config_obj = scenario.take_shared<distribution_config::DistributionConfig>();
         let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
-        minter.set_rebase_distributor_cap(&minter_admin_cap, rd_cap);
+        minter.set_rebase_distributor_cap(&minter_admin_cap, &distribution_config_obj, rd_cap);
+        test_scenario::return_shared(distribution_config_obj);
         test_scenario::return_shared(minter);
         scenario.return_to_sender(minter_admin_cap);
     };
@@ -388,9 +390,11 @@ public fun whitelist_usd<SailCoinType, UsdCoinType>(
 ) {
     let mut minter = scenario.take_shared<Minter<SailCoinType>>();
     let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
+    let distribution_config_obj = scenario.take_shared<distribution_config::DistributionConfig>();
     
-    minter::whitelist_usd<SailCoinType, UsdCoinType>(&mut minter, &minter_admin_cap, list);
+    minter::whitelist_usd<SailCoinType, UsdCoinType>(&mut minter, &distribution_config_obj, &minter_admin_cap, list);
 
+    test_scenario::return_shared(distribution_config_obj);
     test_scenario::return_shared(minter);
     scenario.return_to_sender(minter_admin_cap);
 }
@@ -1008,9 +1012,11 @@ public fun withdraw_position<CoinTypeA, CoinTypeB, LastRewardCoin>(
     let mut pool = scenario.take_shared<Pool<CoinTypeA, CoinTypeB>>();
     let mut gauge = scenario.take_shared<Gauge<CoinTypeA, CoinTypeB>>();
     let staked_position = scenario.take_from_sender<StakedPosition>();
+    let distribution_config = scenario.take_shared<DistributionConfig>();
 
     let position = gauge::withdraw_position<CoinTypeA, CoinTypeB>(
         &mut gauge,
+        &distribution_config,
         &mut pool,
         staked_position, // Consumes position object
         clock,
@@ -1019,6 +1025,7 @@ public fun withdraw_position<CoinTypeA, CoinTypeB, LastRewardCoin>(
     transfer::public_transfer(position, scenario.ctx().sender());
 
     // Return shared objects
+    test_scenario::return_shared(distribution_config);
     test_scenario::return_shared(pool);
     test_scenario::return_shared(gauge);
 }
