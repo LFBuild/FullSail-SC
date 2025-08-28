@@ -35,6 +35,10 @@ module liquidity_locker::liquidity_lock_v2 {
     // Bump the `VERSION` of the package.
     const VERSION: u64 = 1;
 
+    /// Witness type for locker module initialization.
+    /// Used to ensure proper module initialization and access control.
+    public struct LIQUIDITY_LOCK_V2 has drop {}
+
     const EInvalidPeriodsLength: u64 = 938724658124718472;
     const EInvalidProfitabilitiesLength: u64 = 93877534345684724;
     const ENoRewards: u64 = 93872459482342874;
@@ -58,13 +62,13 @@ module liquidity_locker::liquidity_lock_v2 {
     const EIncorrectSwapResultA: u64 = 9259346230481212;
     const EIncorrectSwapResultB: u64 = 9387240376820348;
     const EPackageVersionMismatch: u64 = 9346920730473042;
-    const ELockerInitialized: u64 = 9329703470234099;
     const EInsufficientBalanceAOutput: u64 = 9367234807236103;
     const EInsufficientBalanceBOutput: u64 = 9247240362830633;
     const EAdminNotWhitelisted: u64 = 9389469239702349;
     const EAddressNotAdmin: u64 = 9630793046376343;
     const EInvalidEpochOSailToken: u64 = 9435974578489789;
     const EInvalidRewardCoinType: u64 = 9230764536453211;
+    const ENotOwner: u64 = 9843325239567326443;
 
     /// Capability for administrative functions in the protocol.
     /// This capability is required for managing global settings and protocol parameters.
@@ -125,6 +129,7 @@ module liquidity_locker::liquidity_lock_v2 {
     /// These rewards are stored during position rebalancing to account for liquidity changes. Reset after each reward claim.
     public struct LockedPosition<phantom CoinTypeA, phantom CoinTypeB> has store, key {
         id: sui::object::UID,
+        pool_id: sui::object::ID,
         position_id: sui::object::ID,
         tranche_id: sui::object::ID,
         start_lock_time: u64,
@@ -138,6 +143,8 @@ module liquidity_locker::liquidity_lock_v2 {
         lock_liquidity_info: LockLiquidityInfo,
         coin_a: sui::balance::Balance<CoinTypeA>,
         coin_b: sui::balance::Balance<CoinTypeB>,
+        name: std::string::String,
+        description: std::string::String,
     }
 
     /// Structure containing information about locked liquidity position.
@@ -313,66 +320,94 @@ module liquidity_locker::liquidity_lock_v2 {
         next_reward_claim_epoch: u64,
     }
 
-    /// Event emitted when a locked position is migrated.
+/// Initializes the liquidity locker module.
     /// 
-    /// # Fields
-    /// * `lock_position_id` - Unique identifier of the migrated position
-    /// * `position_id` - Unique identifier of the underlying liquidity position
-    /// * `total_lock_liquidity` - Total amount of liquidity locked in the position
-    /// * `last_growth_inside` - Last growth inside value
-    public struct MigrateLockPositionEvent has copy, drop {
-        lock_position_id_v1: sui::object::ID,
-        lock_position_id_v2: sui::object::ID,
-        position_id: sui::object::ID,
-        total_lock_liquidity: u128,
-        last_growth_inside: u128,
-    }
-
-    /// Creates a locker v2 with the specified parameters.
-    /// 
-    /// This function creates a new locker with the same parameters as the locker v1,
-    /// but with a different version number. It also initializes the locker v2 and
-    /// emits an initialization event.
-    /// 
-    /// It is necessary because when upgrading, the init function is not called.
+    /// This function creates and initializes the main Locker object with default values,
+    /// creates an SuperAdminCap for administrative control, and emits an initialization event.
     /// 
     /// # Arguments
-    /// * `_admin_cap` - Administrative capability for authorization
-    /// * `locker_v1` - The locker v1 object to create the locker v2 from
-    /// * `create_locker_cap` - Capability to create locker functionality
+    /// * `locker_witness` - Witness for the locker module
     /// * `ctx` - The transaction context
     /// 
-    /// # Aborts
-    /// * If the locker v2 has already been initialized (error code: ELockerInitialized)
-    public fun create_locker(
-        _admin_cap: &mut liquidity_locker::liquidity_lock_v1::SuperAdminCap,
-        locker_v1: &liquidity_locker::liquidity_lock_v1::Locker,
-        create_locker_cap: &locker_cap::locker_cap::CreateCap,
-        ctx: &mut sui::tx_context::TxContext,
-    ) {
-        assert!(!_admin_cap.get_init_locker_v2(), ELockerInitialized);
+    /// # Events
+    /// Emits `InitLockerEvent` with the ID of the created locker
+    fun init(locker_witness: LIQUIDITY_LOCK_V2, ctx: &mut sui::tx_context::TxContext) {
 
-        _admin_cap.init_locker_v2();
+        let publisher = sui::package::claim<LIQUIDITY_LOCK_V2>(locker_witness, ctx);
 
-        let (periods_blocking, periods_post_lockdown) = locker_v1.get_lock_periods();
-        
+        sui::transfer::public_transfer<sui::package::Publisher>(publisher, sui::tx_context::sender(ctx));
+
         let mut locker = Locker {
             id: sui::object::new(ctx),
             locker_cap: option::none<locker_cap::locker_cap::LockerCap>(),
             version: VERSION,
-            admins: sui::vec_set::from_keys<address>(*locker_v1.admins().keys<address>()),
+            admins: sui::vec_set::empty<address>(),
             staked_positions: sui::object_table::new<ID, distribution::gauge::StakedPosition>(ctx),
-            periods_blocking: periods_blocking,
-            periods_post_lockdown: periods_post_lockdown,
-            pause: locker_v1.pause(),
+            periods_blocking: std::vector::empty<u64>(),
+            periods_post_lockdown: std::vector::empty<u64>(),
+            pause: false,
             bag: sui::bag::new(ctx),
         };
+        locker.admins.insert(sui::tx_context::sender(ctx));
 
         let locker_id = sui::object::id<Locker>(&locker);
+        transfer::share_object<Locker>(locker);
+    
+        let admin_cap = SuperAdminCap { 
+            id: sui::object::new(ctx), 
+        };
+        transfer::transfer<SuperAdminCap>(admin_cap, sui::tx_context::sender(ctx));
 
         let event = InitLockerEvent { locker_id };
         sui::event::emit<InitLockerEvent>(event);
+    }
 
+    public fun init_display<CoinTypeA, CoinTypeB>(publisher: &sui::package::Publisher, ctx: &mut sui::tx_context::TxContext) {
+
+        assert!(publisher.from_module<LockedPosition<CoinTypeA, CoinTypeB>>(), ENotOwner);
+
+        let display = update_display(
+            publisher,
+            std::string::utf8(b"{name}"),
+            std::string::utf8(b"https://app.fullsail.finance/liquidity/{pool_id}/positions/{position_id}"),
+            std::string::utf8(b"https://app.fullsail.finance/static_files/fullsail_logo.png"),
+            std::string::utf8(b"{description}"),
+            std::string::utf8(b"https://app.fullsail.finance"),
+            std::string::utf8(b"FULLSAIL"),
+            ctx
+        );
+
+        sui::transfer::public_transfer<sui::display::Display<LockedPosition<CoinTypeA, CoinTypeB>>>(display, sui::tx_context::sender(ctx));
+    }
+
+    /// Initializes the locker with blocking and post-lockdown periods.
+    /// 
+    /// This function should be called after deployment to set up the locker with
+    /// specified blocking and post-lockdown periods. It creates a locker capability
+    /// and configures the time periods for position locking.
+    /// 
+    /// # Arguments
+    /// * `_admin_cap` - Administrative capability for authorization
+    /// * `create_locker_cap` - Capability to create locker functionality
+    /// * `locker` - The locker object to initialize
+    /// * `periods_blocking` - Vector of blocking periods in epochs
+    /// * `periods_post_lockdown` - Vector of post-lockdown periods in epochs
+    /// * `ctx` - The transaction context
+    /// 
+    /// # Aborts
+    /// * If periods_blocking is empty
+    /// * If periods_blocking and periods_post_lockdown have different lengths
+    public fun init_locker(
+        _admin_cap: &SuperAdminCap,
+        create_locker_cap: &locker_cap::locker_cap::CreateCap,
+        locker: &mut Locker, 
+        periods_blocking: vector<u64>,
+        periods_post_lockdown: vector<u64>,
+        ctx: &mut sui::tx_context::TxContext,
+    ) {
+        checked_package_version(locker);
+        assert!(periods_blocking.length() > 0 && 
+            periods_blocking.length() == periods_post_lockdown.length(), EInvalidPeriodsLength);
 
         let locker_cap = create_locker_cap.create_locker_cap(
             ctx
@@ -383,16 +418,11 @@ module liquidity_locker::liquidity_lock_v2 {
         locker.periods_post_lockdown = periods_post_lockdown;
 
         let event = UpdateLockPeriodsEvent {
-            locker_id: locker_id,
+            locker_id: sui::object::id<Locker>(locker),
             periods_blocking,
             periods_post_lockdown,
         };
         sui::event::emit<UpdateLockPeriodsEvent>(event);
-
-        sui::transfer::share_object<Locker>(locker);
-
-        let admin_cap = SuperAdminCap { id: sui::object::new(ctx) };
-        sui::transfer::transfer<SuperAdminCap>(admin_cap, sui::tx_context::sender(ctx));
     }
     
     /// Updates the blocking and post-lockdown periods for the locker.
@@ -744,6 +774,7 @@ module liquidity_locker::liquidity_lock_v2 {
             };
             let mut lock_position = LockedPosition<CoinTypeA, CoinTypeB> {
                 id: sui::object::new(ctx),
+                pool_id: pool_id,
                 position_id: staked_position_for_lock.position_id(),
                 tranche_id: tranche_id,
                 start_lock_time: current_time,
@@ -757,6 +788,8 @@ module liquidity_locker::liquidity_lock_v2 {
                 lock_liquidity_info,
                 coin_a: sui::balance::zero<CoinTypeA>(),
                 coin_b: sui::balance::zero<CoinTypeB>(),
+                description: get_default_description(),
+                name: new_locked_position_name(pool.index(), gauge.position_index(&staked_position_for_lock)),
             };
             lock_position.coin_a.join(remainder_a);
             lock_position.coin_b.join(remainder_b);
@@ -1181,6 +1214,9 @@ module liquidity_locker::liquidity_lock_v2 {
             },
             coin_a: coin_a,
             coin_b: coin_b,
+            description: _,
+            name: _,
+            pool_id: _,
         } = lock_position;
 
         _earned_epoch.drop();
@@ -1545,7 +1581,6 @@ module liquidity_locker::liquidity_lock_v2 {
         distribution_config: &distribution::distribution_config::DistributionConfig,
         minter: &mut distribution::minter::Minter<SailCoinType>,
         vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
-        voter: &distribution::voter::Voter,
         locker: &mut Locker,
         gauge: &mut gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
@@ -1653,6 +1688,9 @@ module liquidity_locker::liquidity_lock_v2 {
             lock_liquidity_info: new_lock_liquidity_info,
             coin_a: lock_position.coin_a.split(new_coin_a_value),
             coin_b: lock_position.coin_b.split(new_coin_b_value),
+            description: get_default_description(),
+            name: new_locked_position_name(pool.index(), gauge.position_index(&staked_position_2)),
+            pool_id: lock_position.pool_id,
         };
 
         new_lock_position.coin_a.join(remainder_a);
@@ -2626,139 +2664,110 @@ module liquidity_locker::liquidity_lock_v2 {
         (remainder_a, remainder_b)
     }
 
-    /// Migrates a locked position from v1 to v2.
+    fun new_locked_position_name(pool_index: u64, position_index: u64): std::string::String {
+        let mut locked_position_name = std::string::utf8(b"Fullsail Locked Position:");
+        std::string::append(&mut locked_position_name, clmm_pool::utils::str(pool_index));
+        std::string::append_utf8(&mut locked_position_name, b"-");
+        std::string::append(&mut locked_position_name, clmm_pool::utils::str(position_index));
+        locked_position_name
+    }
+
+    public fun get_default_description(): std::string::String {
+        std::string::utf8(b"Fullsail Locked Liquidity Position")
+    }
+
+    fun update_display<CoinTypeA, CoinTypeB>(
+        publisher: &sui::package::Publisher,
+        name: std::string::String,
+        link: std::string::String,
+        image_url: std::string::String,
+        description: std::string::String,
+        project_url: std::string::String,
+        creator: std::string::String,
+        ctx: &mut sui::tx_context::TxContext
+    ): sui::display::Display<LockedPosition<CoinTypeA, CoinTypeB>> {
+        let mut keys = std::vector::empty<std::string::String>();
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"name"));
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"link"));
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"image_url"));
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"description"));
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"project_url"));
+        std::vector::push_back<std::string::String>(&mut keys, std::string::utf8(b"creator"));
+
+        let mut values = std::vector::empty<std::string::String>();
+        std::vector::push_back<std::string::String>(&mut values, name);
+        std::vector::push_back<std::string::String>(&mut values, link);
+        std::vector::push_back<std::string::String>(&mut values, image_url);
+        std::vector::push_back<std::string::String>(&mut values, description);
+        std::vector::push_back<std::string::String>(&mut values, project_url);
+        std::vector::push_back<std::string::String>(&mut values, creator);
+
+        let mut display = sui::display::new_with_fields<LockedPosition<CoinTypeA, CoinTypeB>>(publisher, keys, values, ctx);
+
+        sui::display::update_version<LockedPosition<CoinTypeA, CoinTypeB>>(&mut display);
+
+        display
+    }
+
+    /// Sets up display fields for a staked position with custom metadata.
+    /// This function configures how the staked position will be displayed in the Fullsail Finance interface.
     /// 
     /// # Arguments
-    /// * `global_config` - Global configuration for the pool
-    /// * `distribution_config` - Distribution configuration for rewards
-    /// * `locker` - Locker instance managing the position
-    /// * `locker_v1` - Locker v1 instance managing the position
-    /// * `gauge` - Gauge instance for the pool
-    /// * `pool` - The pool containing the position
-    /// * `lock_position_v1` - LockedPosition v1 to migrate
-    /// * `clock` - Clock object
-    /// * `ctx` - Transaction context
+    /// * `global_config` - Reference to the global configuration
+    /// * `publisher` - Reference to the package publisher
+    /// * `description` - Custom description for the staked position
+    /// * `link` - Custom link to the staked position in Fullsail Finance app
+    /// * `project_url` - URL of the project website
+    /// * `creator` - Name of the staked position creator
+    /// * `ctx` - Mutable reference to the transaction context
     /// 
-    /// # Returns
-    /// * New LockedPosition v2
+    /// # Details
+    /// Sets up the following display fields:
+    /// * name - Staked position name (template: "{name}")
+    /// * link - Custom staked position link
+    /// * image_url - Staked position image URL (template: "{image_url}")
+    /// * description - Custom description
+    /// * project_url - Custom project website
+    /// * creator - Custom creator name
     /// 
-    /// # Aborts
-    /// * If the locker is paused
-    /// * If the gauge is invalid
-    /// * If the position is already locked
-    /// * If the lock period has ended
-    public fun lock_position_migrate<CoinTypeA, CoinTypeB>(
-        global_config: &clmm_pool::config::GlobalConfig,
-        distribution_config: &distribution::distribution_config::DistributionConfig,
-        locker_v1: &mut liquidity_locker::liquidity_lock_v1::Locker,
-        locker_v2: &mut Locker,
-        gauge: &mut gauge::Gauge<CoinTypeA, CoinTypeB>,
-        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        mut lock_position_v1: liquidity_locker::liquidity_lock_v1::LockedPosition<CoinTypeA, CoinTypeB>,
-        clock: &sui::clock::Clock,
+    /// # Abort Conditions
+    /// * If the package version check fails
+    public fun set_display<CoinTypeA, CoinTypeB>(
+        publisher: &sui::package::Publisher,
+        name: std::string::String,
+        link: std::string::String,
+        image_url: std::string::String,
+        description: std::string::String,
+        project_url: std::string::String,
+        creator: std::string::String,
         ctx: &mut sui::tx_context::TxContext
-    ): LockedPosition<CoinTypeA, CoinTypeB> {
-        checked_package_version(locker_v2);
-        assert!(!locker_v2.pause, ELockManagerPaused);
-        assert!(gauge::check_gauger_pool(gauge, pool), EInvalidGaugePool);
-        assert!(!locker_v2.staked_positions.contains(lock_position_v1.get_locked_position_id()), EPositionAlreadyLocked);
+    ) {
+        assert!(publisher.from_module<LockedPosition<CoinTypeA, CoinTypeB>>(), ENotOwner);
 
-        let current_time = clock.timestamp_ms()/1000;
-        let start_epoch = common::epoch_start(current_time);
-        let lock_position_id_v1 = object::id<liquidity_locker::liquidity_lock_v1::LockedPosition<CoinTypeA, CoinTypeB>>(&lock_position_v1);
-
-        let (
-            tranche_id, 
-            start_lock_time, 
-            expiration_time, 
-            full_unlocking_time, 
-            coin_a, 
-            coin_b,
-        ) = liquidity_locker::liquidity_lock_v1::get_lock_position_info_for_migrate(&mut lock_position_v1);
-
-        let lock_liquidity_info = LockLiquidityInfo {
-            total_lock_liquidity: 0,   
-            current_lock_liquidity: 0,
-            last_remove_liquidity_time: 0,
-        };
-        let mut lock_position_v2 = LockedPosition<CoinTypeA, CoinTypeB> {
-            id: sui::object::new(ctx),
-            position_id: lock_position_v1.get_locked_position_id(),
-            tranche_id: tranche_id,
-            start_lock_time: start_lock_time,
-            expiration_time: expiration_time,
-            full_unlocking_time: full_unlocking_time,
-            profitability: lock_position_v1.get_profitability(),
-            last_growth_inside: 0,
-            accumulated_amount_earned: 0,
-            earned_epoch: sui::table::new(ctx),
-            last_reward_claim_epoch: start_epoch,
-            lock_liquidity_info,
-            coin_a: coin_a,
-            coin_b: coin_b,
-        };
-
-        let position = liquidity_locker::liquidity_lock_v1::lock_position_migrate(
-            locker_v1,
-            lock_position_v1,
-            clock,
-            ctx
-        );
-        let position_id = object::id<clmm_pool::position::Position>(&position);
-
-        lock_position_v2.lock_liquidity_info.total_lock_liquidity = position.liquidity();
-        lock_position_v2.lock_liquidity_info.current_lock_liquidity = lock_position_v2.lock_liquidity_info.total_lock_liquidity;
-
-        let (collected_fee_a, collected_fee_b) = clmm_pool::pool::collect_fee<CoinTypeA, CoinTypeB>(
-            global_config,
-            pool,
-            &position,
-            true
-        );
-        if (collected_fee_a.value() > 0) {
-            transfer::public_transfer<sui::coin::Coin<CoinTypeA>>(
-                sui::coin::from_balance(collected_fee_a, ctx), 
-                tx_context::sender(ctx)
-            );        
-        } else {
-            collected_fee_a.destroy_zero();
-        };
-
-        if (collected_fee_b.value() > 0) {
-            transfer::public_transfer<sui::coin::Coin<CoinTypeB>>(
-                sui::coin::from_balance(collected_fee_b, ctx), 
-                tx_context::sender(ctx)
-            );
-        } else {
-            collected_fee_b.destroy_zero();
-        };
-
-        // Stake position
-        let staked_position = gauge::deposit_position<CoinTypeA, CoinTypeB>(
-            global_config,
-            distribution_config,
-            gauge,
-            pool,
-            position,
-            clock,
+        let display = update_display<CoinTypeA, CoinTypeB>(
+            publisher,
+            name,
+            link,
+            image_url,
+            description,
+            project_url,
+            creator,
             ctx
         );
 
-        lock_position_v2.last_growth_inside = gauge.get_current_growth_inside(pool, position_id, current_time);
+        sui::transfer::public_transfer<sui::display::Display<LockedPosition<CoinTypeA, CoinTypeB>>>(display, sui::tx_context::sender(ctx));
+    }
 
-        locker_v2.staked_positions.add(position_id, staked_position);
-        gauge.lock_position(locker_v2.locker_cap.borrow(), position_id);
+    public fun name<CoinTypeA, CoinTypeB>(locked_position: &LockedPosition<CoinTypeA, CoinTypeB>): std::string::String {
+        locked_position.name
+    }
 
-        let event = MigrateLockPositionEvent { 
-            lock_position_id_v1: lock_position_id_v1,
-            lock_position_id_v2: object::id<LockedPosition<CoinTypeA, CoinTypeB>>(&lock_position_v2),
-            position_id: position_id,
-            total_lock_liquidity: lock_position_v2.lock_liquidity_info.total_lock_liquidity,
-            last_growth_inside: lock_position_v2.last_growth_inside,
-        };
-        sui::event::emit<MigrateLockPositionEvent>(event);
+    public fun description<CoinTypeA, CoinTypeB>(locked_position: &LockedPosition<CoinTypeA, CoinTypeB>): std::string::String {
+        locked_position.description
+    }
 
-        lock_position_v2
+    public fun get_pool_id<CoinTypeA, CoinTypeB>(locked_position: &LockedPosition<CoinTypeA, CoinTypeB>): sui::object::ID {
+        locked_position.pool_id
     }
 
     #[test_only]
@@ -2782,33 +2791,33 @@ module liquidity_locker::liquidity_lock_v2 {
         sui::transfer::transfer<SuperAdminCap>(admin_cap, sui::tx_context::sender(ctx));
     }
 
-    #[test_only]
-    public fun init_locker(
-        _admin_cap: &SuperAdminCap,
-        create_locker_cap: &locker_cap::locker_cap::CreateCap,
-        locker: &mut Locker, 
-        periods_blocking: vector<u64>,
-        periods_post_lockdown: vector<u64>,
-        ctx: &mut sui::tx_context::TxContext,
-    ) {
-        assert!(periods_blocking.length() > 0 && 
-            periods_blocking.length() == periods_post_lockdown.length(), EInvalidPeriodsLength);
+    // #[test_only]
+    // public fun init_locker(
+    //     _admin_cap: &SuperAdminCap,
+    //     create_locker_cap: &locker_cap::locker_cap::CreateCap,
+    //     locker: &mut Locker, 
+    //     periods_blocking: vector<u64>,
+    //     periods_post_lockdown: vector<u64>,
+    //     ctx: &mut sui::tx_context::TxContext,
+    // ) {
+    //     assert!(periods_blocking.length() > 0 && 
+    //         periods_blocking.length() == periods_post_lockdown.length(), EInvalidPeriodsLength);
 
-        let locker_cap = create_locker_cap.create_locker_cap(
-            ctx
-        );
-        locker.locker_cap.fill(locker_cap);
+    //     let locker_cap = create_locker_cap.create_locker_cap(
+    //         ctx
+    //     );
+    //     locker.locker_cap.fill(locker_cap);
 
-        locker.periods_blocking = periods_blocking;
-        locker.periods_post_lockdown = periods_post_lockdown;
+    //     locker.periods_blocking = periods_blocking;
+    //     locker.periods_post_lockdown = periods_post_lockdown;
 
-        let event = UpdateLockPeriodsEvent {
-            locker_id: sui::object::id<Locker>(locker),
-            periods_blocking,
-            periods_post_lockdown,
-        };
-        sui::event::emit<UpdateLockPeriodsEvent>(event);
-    }
+    //     let event = UpdateLockPeriodsEvent {
+    //         locker_id: sui::object::id<Locker>(locker),
+    //         periods_blocking,
+    //         periods_post_lockdown,
+    //     };
+    //     sui::event::emit<UpdateLockPeriodsEvent>(event);
+    // }
 
     #[test_only]
     public fun get_coins<CoinTypeA, CoinTypeB>(lock: &LockedPosition<CoinTypeA, CoinTypeB>): (u64, u64) {

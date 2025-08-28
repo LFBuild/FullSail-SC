@@ -3,9 +3,9 @@ module liquidity_locker::pool_tranche_tests {
     use sui::test_scenario;
     use std::type_name::{Self};
 
-    use liquidity_locker::liquidity_lock_v1;
+    use liquidity_locker::liquidity_lock_v2;
     use liquidity_locker::pool_tranche;
-    use liquidity_locker::time_manager;
+    use ve::common;
     use locker_cap::locker_cap;
     use clmm_pool::factory::{Self as factory, Pools};
     use clmm_pool::config::{Self as config};
@@ -29,7 +29,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -43,8 +43,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -60,7 +60,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
             &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -281,7 +281,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -295,8 +295,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -312,7 +312,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
                 &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -384,7 +384,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -398,8 +398,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -415,7 +415,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
                 &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -508,7 +508,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -522,8 +522,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -539,7 +539,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
                 &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -629,7 +629,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -643,8 +643,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -660,7 +660,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
                 &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -774,7 +774,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -788,8 +788,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -805,7 +805,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
                 &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -909,7 +909,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -923,8 +923,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -940,7 +940,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
                 &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -1035,7 +1035,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -1049,8 +1049,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -1066,7 +1066,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
                 &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -1147,7 +1147,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -1161,8 +1161,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -1178,7 +1178,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
             &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -1251,7 +1251,7 @@ module liquidity_locker::pool_tranche_tests {
                 tranche_id,
                 tranche_id,
                 90000, // 100% total_income
-                (clock.timestamp_ms()/1000 + time_manager::epoch_to_seconds(2)),
+                (clock.timestamp_ms()/1000 + common::epoch_to_seconds(2)),
                 scenario.ctx()
             );
 
@@ -1278,7 +1278,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -1292,8 +1292,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -1309,7 +1309,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
             &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -1408,7 +1408,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -1422,8 +1422,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -1439,7 +1439,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
             &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -1540,7 +1540,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -1554,8 +1554,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -1571,7 +1571,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
             &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -1673,7 +1673,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -1687,8 +1687,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -1704,7 +1704,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
             &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -1795,7 +1795,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -1809,8 +1809,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -1826,7 +1826,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
             &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -1911,7 +1911,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -1925,8 +1925,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -1942,7 +1942,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
             &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -2032,7 +2032,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -2046,7 +2046,7 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let clock = clock::create_for_testing(scenario.ctx());
 
@@ -2108,7 +2108,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -2122,8 +2122,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -2139,7 +2139,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
                 &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -2224,7 +2224,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -2238,8 +2238,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -2255,7 +2255,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
                 &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -2344,7 +2344,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -2358,8 +2358,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -2375,7 +2375,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
                 &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -2465,7 +2465,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -2479,8 +2479,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -2496,7 +2496,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
                 &admin_cap,
                 &create_cap,
                 &mut locker,
@@ -2588,7 +2588,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -2638,7 +2638,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -2677,7 +2677,7 @@ module liquidity_locker::pool_tranche_tests {
         
         // Initialize
         {
-            liquidity_lock_v1::test_init(scenario.ctx());
+            liquidity_lock_v2::test_init(scenario.ctx());
             pool_tranche::test_init(scenario.ctx());
             locker_cap::init_test(scenario.ctx());
             config::test_init(scenario.ctx());
@@ -2691,8 +2691,8 @@ module liquidity_locker::pool_tranche_tests {
         scenario.next_tx(admin);
         {
             let create_cap = scenario.take_from_sender<locker_cap::CreateCap>();
-            let admin_cap = scenario.take_from_sender<liquidity_lock_v1::SuperAdminCap>();
-            let mut locker = scenario.take_shared<liquidity_lock_v1::Locker>();
+            let admin_cap = scenario.take_from_sender<liquidity_lock_v2::SuperAdminCap>();
+            let mut locker = scenario.take_shared<liquidity_lock_v2::Locker>();
             let mut tranche_manager = scenario.take_shared<pool_tranche::PoolTrancheManager>();
             let tranche_admin_cap = scenario.take_from_sender<pool_tranche::SuperAdminCap>();
             let mut global_config = scenario.take_shared<config::GlobalConfig>();
@@ -2708,7 +2708,7 @@ module liquidity_locker::pool_tranche_tests {
             std::vector::push_back(&mut periods_post_lockdown, 1);
             std::vector::push_back(&mut periods_post_lockdown, 2);
             std::vector::push_back(&mut periods_post_lockdown, 3);
-            liquidity_lock_v1::init_locker(
+            liquidity_lock_v2::init_locker(
             &admin_cap,
                 &create_cap,
                 &mut locker,

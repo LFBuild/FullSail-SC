@@ -569,11 +569,11 @@ module distribution::gauge {
     }
 
     fun new_staked_position_name(pool_index: u64, position_index: u64): std::string::String {
-        let mut position_name = std::string::utf8(b"Fullsail Staked Position:");
-        std::string::append(&mut position_name, clmm_pool::utils::str(pool_index));
-        std::string::append_utf8(&mut position_name, b"-");
-        std::string::append(&mut position_name, clmm_pool::utils::str(position_index));
-        position_name
+        let mut staked_position_name = std::string::utf8(b"Fullsail Staked Position:");
+        std::string::append(&mut staked_position_name, clmm_pool::utils::str(pool_index));
+        std::string::append_utf8(&mut staked_position_name, b"-");
+        std::string::append(&mut staked_position_name, clmm_pool::utils::str(position_index));
+        staked_position_name
     }
 
     /// Function to calculate earned rewards for a position.
@@ -1555,5 +1555,21 @@ module distribution::gauge {
         );
 
         sui::transfer::public_transfer<sui::display::Display<StakedPosition>>(display, sui::tx_context::sender(ctx));
+    }
+
+    public fun name(staked_position: &StakedPosition): std::string::String {
+        staked_position.name
+    }
+
+    public fun description(staked_position: &StakedPosition): std::string::String {
+        staked_position.description
+    }
+
+    public fun get_pool_id(staked_position: &StakedPosition): sui::object::ID {
+        staked_position.pool_id
+    }
+
+    public fun position_index<CoinTypeA, CoinTypeB>(gauge: &Gauge<CoinTypeA, CoinTypeB>, staked_position: &StakedPosition): u64 {
+        gauge.staked_positions.borrow(staked_position.position_id).index()
     }
 }

@@ -35,7 +35,7 @@ module liquidity_locker::pool_tranche {
     
     use std::type_name::{Self, TypeName};
     use liquidity_locker::consts;
-    use liquidity_locker::time_manager;
+    use ve::common;
 
     const ETrancheFilled: u64 = 92357345723427311;
     const ERewardNotFound: u64 = 91235834582491043;
@@ -636,7 +636,7 @@ module liquidity_locker::pool_tranche {
     ): u64 {
         checked_package_version(manager);
         check_admin(manager, sui::tx_context::sender(ctx));
-        let epoch_start = time_manager::epoch_start(epoch_start);
+        let epoch_start = common::epoch_start(epoch_start);
 
         let osail_epoch = type_name::get<EpochOSail>();
         if (!manager.osail_epoch.contains(epoch_start)) {
@@ -686,7 +686,7 @@ module liquidity_locker::pool_tranche {
     ) {
         checked_package_version(manager);
         check_admin(manager, sui::tx_context::sender(ctx));
-        let epoch_start = time_manager::epoch_start(epoch_start);
+        let epoch_start = common::epoch_start(epoch_start);
         
         let tranche = get_tranche_by_id(manager, pool_id, tranche_id);
 
@@ -775,7 +775,7 @@ module liquidity_locker::pool_tranche {
 
         let tranche = get_tranche_by_id(manager, pool_id, tranche_id);
 
-        let epoch_start = time_manager::epoch_start(epoch_start);
+        let epoch_start = common::epoch_start(epoch_start);
         add_reward_internal(tranche, epoch_start, balance, ctx)
     }
     
@@ -840,6 +840,10 @@ module liquidity_locker::pool_tranche {
     /// Mutable reference to vector of pool tranches
     public(package) fun get_tranches(manager: &mut PoolTrancheManager, pool_id: ID): &mut vector<PoolTranche> {
         manager.pool_tranches.borrow_mut(pool_id)
+    }
+
+    public fun get_pool_tranches(manager: &PoolTrancheManager, pool_id: ID): &vector<PoolTranche> {
+        manager.pool_tranches.borrow(pool_id)
     }
 
     /// Checks if a tranche has been filled to its capacity.
@@ -974,7 +978,7 @@ module liquidity_locker::pool_tranche {
         checked_package_version(manager);
         let tranche = get_tranche_by_id(manager, pool_id, tranche_id);
 
-        let epoch_start = time_manager::epoch_start(epoch_start);
+        let epoch_start = common::epoch_start(epoch_start);
         let reward_type = type_name::get<RewardCoinType>();
 
         assert!(!tranche.claimed_rewards.contains(lock_id) ||
