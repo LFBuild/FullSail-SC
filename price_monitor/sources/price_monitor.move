@@ -939,8 +939,12 @@ module price_monitor::price_monitor {
         monitor.price_history.push_front(price_point.timestamp_ms, price_point);
         
         // Remove oldest entry from the end (tail) if we exceed max size
-        if (monitor.price_history.length() > monitor.max_history_size) {
-            monitor.price_history.pop_back();
+        while (true) {
+            if (monitor.price_history.length() > monitor.max_history_size) {
+                monitor.price_history.pop_back();
+            } else {
+                break
+            }
         };
     }
 
