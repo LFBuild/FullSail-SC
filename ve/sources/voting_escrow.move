@@ -5,9 +5,14 @@ module ve::voting_escrow {
     #[allow(unused_const)]
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
 
+    /// Incremental version of the package.
+    const VERSION: u64 = 1;
     
     // Error constants
+    const EInvalidPackageVersion: u64 = 209945686090882800;
     const ECreateVotingEscrowInvalidPublisher: u64 = 184812403570428600;
+    const ESetPackageVersionInvalidPublisher: u64 = 985992160729703800;
+    const ESetPackageVersionInvalidVersion: u64 = 624107400921495900;
     const ESplitOwnerNotFound: u64 = 922337599252162153;
     const ESplitNulledLock: u64 = 285443173276424000;
     const ESplitNotAllowed: u64 = 922337600111090075;
@@ -265,6 +270,7 @@ module ve::voting_escrow {
         managed_to_locked: sui::table::Table<ID, ve::locked_managed_reward::LockedManagedReward>,
         managed_to_free: sui::table::Table<ID, ve::free_managed_reward::FreeManagedReward>,
         id_to_managed: sui::table::Table<ID, ID>,
+        version: u64,
         // bag to be preapred for future updates
         bag: sui::bag::Bag,
     }
@@ -285,6 +291,25 @@ module ve::voting_escrow {
             NORMAL,
             LOCKED,
             MANAGED,
+    }
+
+    /// Throws if invalid version of the package is called.
+    /// We are not protecting publisher protected methods from being called with the wrong version of the package.
+    /// And we are not protecting methods that are supposed to be called only by another package.
+    public fun checked_package_version<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>) {
+        assert!(voting_escrow.version == VERSION, EInvalidPackageVersion);
+    }
+
+    /// Sets the version of the package. Only package that is published with the same version can be used after this call.
+    public fun set_package_version<SailCoinType>(
+        voting_escrow: &mut VotingEscrow<SailCoinType>,
+        publisher: &sui::package::Publisher,
+        version: u64
+    ) {
+        assert!(publisher.from_module<VOTING_ESCROW>(), ESetPackageVersionInvalidPublisher);
+        // extra safety to prevent setting of the non-existing version
+        assert!(version <= VERSION, ESetPackageVersionInvalidVersion);
+        voting_escrow.version = version;
     }
 
     /// Split a lock into two separate locks with different amounts. This is useful for dividing
@@ -313,6 +338,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): (ID, ID) {
+        voting_escrow.checked_package_version();
         voting_escrow.validate_lock(lock);
         let lock_id = object::id<Lock>(lock);
         assert!(voting_escrow.owner_of.contains(lock_id), ESplitOwnerNotFound);
@@ -407,6 +433,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        voting_escrow.checked_package_version();
         assert!(lock.escrow == object::id<VotingEscrow<SailCoinType>>(voting_escrow), ETransferInvalidEscrow);
         let lock_id = object::id<Lock>(&lock);
         if (recipient == voting_escrow.owner_of(lock_id) && recipient == tx_context::sender(ctx)) {
@@ -488,6 +515,7 @@ module ve::voting_escrow {
                 ctx
             ),
             id_to_managed: sui::table::new<ID, ID>(ctx),
+            version: VERSION,
             // bag to be preapred for future updates
             bag: sui::bag::new(ctx),
         };
@@ -522,6 +550,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        voting_escrow.checked_package_version();
         let sender = tx_context::sender(ctx);
         let lock_id = object::id<Lock>(&lock);
         let lock_has_voted = voting_escrow.lock_has_voted(lock_id);
@@ -575,6 +604,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        voting_escrow.checked_package_version();
         let lock_id = object::id<Lock>(&lock);
         assert!(voting_escrow.is_nulled(lock_id), EDestroyNonNulledLock);
         let sender = tx_context::sender(ctx);
@@ -810,6 +840,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        voting_escrow.checked_package_version();
         voting_escrow.checkpoint_internal(
             option::none<ID>(),
             locked_balance(0, 0, false, false),
@@ -1044,6 +1075,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        voting_escrow.checked_package_version();
         voting_escrow.create_lock_advanced(
             coin_to_lock,
             lock_duration_days,
@@ -1083,6 +1115,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        voting_escrow.checked_package_version();
         voting_escrow.validate_lock_duration(lock_duration_days);
         let lock_amount = coin_to_lock.value();
         assert!(lock_amount > 0, ECreateLockAmountZero);
@@ -1141,6 +1174,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        voting_escrow.checked_package_version();
         voting_escrow.validate_lock_duration(duration_days);
         let lock_amount = coin.value();
         assert!(lock_amount > 0, ECreateLockForAmountZero);
@@ -1268,6 +1302,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): ID {
+        voting_escrow.checked_package_version();
         let sender = tx_context::sender(ctx);
         assert!(voting_escrow.allowed_managers.contains(&sender), ECreateManagedNotAllowedManager);
         let (lock, create_lock_receipt) = voting_escrow.create_lock_internal(
@@ -1416,6 +1451,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        voting_escrow.checked_package_version();
         voting_escrow.validate_lock(lock);
         voting_escrow.delegate_internal(lock, delegatee, clock, ctx);
     }
@@ -1495,6 +1531,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        voting_escrow.checked_package_version();
         let lock_id = object::id(lock);
         assert!(!voting_escrow.deactivated(lock_id), EDepositForDeactivatedLock);
         assert!(!voting_escrow.is_nulled(lock_id), EDepositForNulledLock);
@@ -1592,6 +1629,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        voting_escrow.checked_package_version();
         voting_escrow_cap.validate(object::id(voting_escrow));
         let lock_id = object::id<Lock>(lock);
         let managed_lock_id = object::id<Lock>(managed_lock);
@@ -1720,6 +1758,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        voting_escrow.checked_package_version();
         let owner = voting_escrow.validate_ownership(lock, ctx);
         let lock_id = object::id(lock);
         voting_escrow.managed_to_free.borrow_mut(
@@ -1749,6 +1788,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        voting_escrow.checked_package_version();
         voting_escrow
             .managed_to_free
             .borrow_mut(managed_lock_id)
@@ -1881,6 +1921,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        voting_escrow.checked_package_version();
         let lock_id = object::id(lock);
         assert!(!voting_escrow.deactivated(lock_id), EIncreaseAmountDeactivatedLock);
         assert!(!voting_escrow.is_nulled(lock_id), EIncreaseAmountNulledLock);
@@ -1972,6 +2013,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        voting_escrow.checked_package_version();
         let lock_id = object::id<Lock>(lock);
         let is_normal_escrow = if (!voting_escrow.escrow_type.contains(lock_id)) {
             true
@@ -2108,6 +2150,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        voting_escrow.checked_package_version();
         let lock_id = object::id<Lock>(lock);
         let is_normal_escrow = if (!voting_escrow.escrow_type.contains(lock_id)) {
             true
@@ -2208,6 +2251,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        voting_escrow.checked_package_version();
         let lock_id_a = object::id<Lock>(lock_a);
         let lock_id_b = object::id<Lock>(lock_b);
         let lock_a_voted = voting_escrow.lock_has_voted(lock_id_a);
@@ -2385,6 +2429,8 @@ module ve::voting_escrow {
         lock_id: ID,
         deactivated: bool
     ) {
+        // we are not checking the version of the package here cas it is an emergency method.
+        // Only emergency council can call this method and he must be aware about the versions
         emergency_council_cap.validate_emergency_council_voting_escrow_id(object::id(voting_escrow));
         assert!(voting_escrow.escrow_type(lock_id) == EscrowType::MANAGED, ESetManagedLockNotManagedType);
         assert!(
@@ -2501,6 +2547,7 @@ module ve::voting_escrow {
         who: address,
         allowed: bool
     ) {
+        voting_escrow.checked_package_version();
         team_cap.validate(object::id<VotingEscrow<SailCoinType>>(voting_escrow));
         if (voting_escrow.can_split.contains(who)) {
             voting_escrow.can_split.remove(who);
@@ -2636,6 +2683,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        voting_escrow.checked_package_version();
         let sender = tx_context::sender(ctx);
         let lock_id = object::id<Lock>(lock);
         let is_normal_escrow = if (!voting_escrow.escrow_type.contains(lock_id)) {
@@ -2725,6 +2773,8 @@ module ve::voting_escrow {
         lock_id: ID,
         is_voting: bool
     ) {
+        // this method is called by the distribution package, so version control is solved by the distribution package.
+        // we don't want to check the version of the package here to avoid broken distribution package.
         voting_escrow_cap.validate(object::id(voting_escrow));
         if (voting_escrow.voted.contains(lock_id)) {
             voting_escrow.voted.remove(lock_id);
@@ -2791,6 +2841,7 @@ module ve::voting_escrow {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        voting_escrow.checked_package_version();
         let lock_id = object::id<Lock>(lock);
         voting_escrow_cap.validate(object::id(voting_escrow));
         let owner = voting_escrow.validate_ownership(lock, ctx);
