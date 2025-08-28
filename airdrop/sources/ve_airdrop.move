@@ -2,10 +2,16 @@
 /// Also introduces some events to track the airdrop.
 module airdrop::ve_airdrop;
 
-use suitears::airdrop::{Self, Airdrop};
+use airdrop::airdrop::{Self, Airdrop};
 use sui::coin::{Coin};
 use sui::clock::{Clock};
 use ve::voting_escrow::{VotingEscrow};
+
+// === Errors ===
+
+const EWrongWithdrawCap: u64 = 486723797964389060;
+
+// === Events ===
 
 public struct EventVeAirdropCreated has copy, drop, store {
     airdrop_id: ID,
@@ -20,9 +26,19 @@ public struct EventVeAirdropClaimed has copy, drop, store {
     user: address,
 }
 
+public struct EventVeAirdropWithdrawn has copy, drop, store {
+    airdrop_id: ID,
+    amount: u64,
+}
+
 public struct VeAirdrop<phantom SailCoinType> has key, store {
     id: UID,
     airdrop: Airdrop<SailCoinType>,
+}
+
+public struct WithdrawCap has key, store {
+    id: UID,
+    airdrop_id: ID,
 }
 
 /*
@@ -44,7 +60,7 @@ public fun new<SailCoinType>(
     start: u64,
     c: &Clock,
     ctx: &mut TxContext,
-): VeAirdrop<SailCoinType> {
+): (VeAirdrop<SailCoinType>, WithdrawCap) {
     let id = object::new(ctx);
     let inner_id = id.to_inner();
     let event = EventVeAirdropCreated {
@@ -54,10 +70,15 @@ public fun new<SailCoinType>(
         start,
     };
     sui::event::emit(event);
-    VeAirdrop {
+    let ve_airdrop = VeAirdrop {
         id,
         airdrop: airdrop::new(airdrop_coin, root, start, c, ctx),
-    }
+    };
+    let withdraw_cap = WithdrawCap {
+        id: object::new(ctx),
+        airdrop_id: inner_id,
+    };
+    (ve_airdrop, withdraw_cap)
 }
 
 public fun balance<SailCoinType>(self: &VeAirdrop<SailCoinType>): u64 {
@@ -149,5 +170,24 @@ public fun get_airdrop<SailCoinType>(
     sui::event::emit(event);
     // Creates an auto max-locked veSAIL.
     voting_escrow.create_lock(sail, 52 * 7 * 4, true, clock, ctx)
+}
+
+public fun withdraw_and_destroy<SailCoinType>(
+    self: VeAirdrop<SailCoinType>,
+    cap: &WithdrawCap,
+    ctx: &mut TxContext,
+): Coin<SailCoinType> {
+    let inner_id = object::id(&self);
+    assert!(cap.airdrop_id == object::id(&self), EWrongWithdrawCap);
+    let VeAirdrop { id, airdrop } = self;
+    id.delete();
+    let remaining = airdrop.destroy(ctx);
+    let event = EventVeAirdropWithdrawn {
+        airdrop_id: inner_id,
+        amount: remaining.value(),
+    };
+    sui::event::emit(event);
+    
+    remaining
 }
 

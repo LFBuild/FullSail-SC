@@ -1,10 +1,14 @@
 [package]
 name = "airdrop"
-edition = "2024.beta" # edition = "legacy" to use legacy (pre-2024) Move
-# license = ""           # e.g., "MIT", "GPL", "Apache 2.0"
-# authors = ["..."]      # e.g., ["Joe Smith (joesmith@noemail.com)", "John Snow (johnsnow@noemail.com)"]
+edition = "2024.beta"
 
-[dependencies]
+[addresses]
+airdrop = "0x6bf2bd971122ec1cfafa85a53debdcb284dc6d325d712573969e67bd4a59e20f"
+
+[dev-dependencies]
+
+[dev-addresses]
+
 [dependencies.SuiTears]
 git = "https://github.com/LFBuild/suitears.git"
 subdir = "contracts"
@@ -12,11 +16,3 @@ rev = "main"
 
 [dependencies.ve]
 local = "../ve"
-
-[addresses]
-airdrop = "0x0"
-
-[dev-dependencies]
-
-[dev-addresses]
-

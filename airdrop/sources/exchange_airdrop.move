@@ -52,6 +52,11 @@ public struct EventWithdrawCollected has copy, drop, store {
     amount: u64,
 }
 
+public struct EventWithdrawUnclaimed has copy, drop, store {
+    airdrop_id: ID,
+    amount: u64,
+}
+
 /// Event emitted when reserves are deposited into the airdrop.
 public struct EventDepositToDistribute has copy, drop, store {
     airdrop_id: ID,
@@ -123,6 +128,35 @@ public fun withdraw_collected<CoinIn, SailCoinType>(
     };
     sui::event::emit(event);
     collected_balance.into_coin(ctx)
+}
+
+/*
+ * @notice Withdraws unclaimed `SailCoinType` from the airdrop.
+ *
+ * @param self The `ExchangeAirdrop` object.
+ * @param cap The `WithdrawCap` for this airdrop.
+ * @param amount The amount of `SailCoinType` to withdraw.
+ * @return Coin<SailCoinType> The withdrawn coin.
+ *
+ * aborts-if:
+ * - The `cap` is for a different airdrop.
+ * - The `amount` to withdraw is greater than the collected amount.
+ */
+public fun withdraw_unclaimed<CoinIn, SailCoinType>(
+    self: &mut ExchangeAirdrop<CoinIn, SailCoinType>,
+    cap: &WithdrawCap,
+    amount: u64,
+    ctx: &mut TxContext
+): Coin<SailCoinType> {
+    assert!(cap.airdrop_id == object::id(self), EWrongWithdrawCap);
+    assert!(self.reserves.value() >= amount, ENotEnoughReserves);
+    let to_withdraw = self.reserves.split(amount);
+    let event = EventWithdrawUnclaimed {
+        airdrop_id: object::id(self),
+        amount,
+    };
+    sui::event::emit(event);
+    to_withdraw.into_coin(ctx)
 }
 
 /*

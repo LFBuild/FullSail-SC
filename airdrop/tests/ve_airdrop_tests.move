@@ -6,6 +6,7 @@ use sui::clock::{Self, Clock};
 use ve::voting_escrow::{Self, VotingEscrow, Lock};
 use sui::coin::{Self};
 use sui::object::{Self, ID};
+use sui::transfer;
 
 use airdrop::setup::{Self, SAIL};
 
@@ -64,7 +65,8 @@ fun test_ve_airdrop_successful_flow() {
     let clock = setup::setup<SAIL>(&mut scenario, ADMIN);
     let airdrop_coin = coin::mint_for_testing<SAIL>(AMOUNT1 + AMOUNT2, scenario.ctx());
 
-    let ve_airdrop = ve_airdrop::new(airdrop_coin, ROOT, 0, &clock, scenario.ctx());
+    let (ve_airdrop, withdraw_cap) = ve_airdrop::new(airdrop_coin, ROOT, 0, &clock, scenario.ctx());
+    transfer::public_transfer(withdraw_cap, ADMIN);
     transfer::public_share_object(ve_airdrop);
 
     // Claim the airdrop
@@ -146,7 +148,8 @@ fun test_ve_airdrop_successful_flow_tree_2() {
     let total_airdrop_amount = TREE_2_AMOUNT_1 + TREE_2_AMOUNT_2 + TREE_2_AMOUNT_3;
     let airdrop_coin = coin::mint_for_testing<SAIL>(total_airdrop_amount, scenario.ctx());
 
-    let ve_airdrop = ve_airdrop::new(airdrop_coin, TREE_2_ROOT, 0, &clock, scenario.ctx());
+    let (ve_airdrop, withdraw_cap) = ve_airdrop::new(airdrop_coin, TREE_2_ROOT, 0, &clock, scenario.ctx());
+    transfer::public_transfer(withdraw_cap, ADMIN);
     transfer::public_share_object(ve_airdrop);
 
     // Claim the airdrop for TREE_2_ADDRESS_1
@@ -249,13 +252,14 @@ fun test_ve_airdrop_successful_flow_tree_2() {
 }
 
 #[test]
-#[expected_failure(abort_code = suitears::airdrop::EAlreadyClaimed)]
+#[expected_failure(abort_code = airdrop::airdrop::EAlreadyClaimed)]
 fun test_ve_airdrop_double_claim_fails() {
     let mut scenario = ts::begin(ADMIN);
     let clock = setup::setup<SAIL>(&mut scenario, ADMIN);
     let airdrop_coin = coin::mint_for_testing<SAIL>(AMOUNT1, scenario.ctx());
 
-    let ve_airdrop = ve_airdrop::new(airdrop_coin, ROOT, 0, &clock, scenario.ctx());
+    let (ve_airdrop, withdraw_cap) = ve_airdrop::new(airdrop_coin, ROOT, 0, &clock, scenario.ctx());
+    transfer::public_transfer(withdraw_cap, ADMIN);
     transfer::public_share_object(ve_airdrop);
 
     // Claim the airdrop for the first time
@@ -281,7 +285,8 @@ fun test_claim_with_wrong_amount_fails() {
     let clock = setup::setup<SAIL>(&mut scenario, ADMIN);
     let airdrop_coin = coin::mint_for_testing<SAIL>(AMOUNT1 + 1, scenario.ctx());
 
-    let ve_airdrop = ve_airdrop::new(airdrop_coin, ROOT, 0, &clock, scenario.ctx());
+    let (ve_airdrop, withdraw_cap) = ve_airdrop::new(airdrop_coin, ROOT, 0, &clock, scenario.ctx());
+    transfer::public_transfer(withdraw_cap, ADMIN);
     transfer::public_share_object(ve_airdrop);
 
     // Claim the airdrop with a wrong amount - this should fail
@@ -301,7 +306,8 @@ fun test_claim_with_lower_amount_fails() {
     let clock = setup::setup<SAIL>(&mut scenario, ADMIN);
     let airdrop_coin = coin::mint_for_testing<SAIL>(AMOUNT1, scenario.ctx());
 
-    let ve_airdrop = ve_airdrop::new(airdrop_coin, ROOT, 0, &clock, scenario.ctx());
+    let (ve_airdrop, withdraw_cap) = ve_airdrop::new(airdrop_coin, ROOT, 0, &clock, scenario.ctx());
+    transfer::public_transfer(withdraw_cap, ADMIN);
     transfer::public_share_object(ve_airdrop);
 
     // Claim the airdrop with a lower amount - this should fail
@@ -321,7 +327,8 @@ fun test_claim_with_other_users_proof_fails() {
     let clock = setup::setup<SAIL>(&mut scenario, ADMIN);
     let airdrop_coin = coin::mint_for_testing<SAIL>(AMOUNT2, scenario.ctx());
 
-    let ve_airdrop = ve_airdrop::new(airdrop_coin, ROOT, 0, &clock, scenario.ctx());
+    let (ve_airdrop, withdraw_cap) = ve_airdrop::new(airdrop_coin, ROOT, 0, &clock, scenario.ctx());
+    transfer::public_transfer(withdraw_cap, ADMIN);
     transfer::public_share_object(ve_airdrop);
 
     // ADDRESS1 tries to claim the airdrop with proof from ADDRESS2 - this should fail
@@ -341,7 +348,8 @@ fun test_claim_with_wrong_root_fails() {
     let clock = setup::setup<SAIL>(&mut scenario, ADMIN);
     let airdrop_coin = coin::mint_for_testing<SAIL>(AMOUNT1, scenario.ctx());
 
-    let ve_airdrop = ve_airdrop::new(airdrop_coin, TREE_2_ROOT, 0, &clock, scenario.ctx());
+    let (ve_airdrop, withdraw_cap) = ve_airdrop::new(airdrop_coin, TREE_2_ROOT, 0, &clock, scenario.ctx());
+    transfer::public_transfer(withdraw_cap, ADMIN);
     transfer::public_share_object(ve_airdrop);
 
     // ADDRESS1 tries to claim the airdrop from a ve_airdrop with a different root - this should fail
@@ -355,7 +363,7 @@ fun test_claim_with_wrong_root_fails() {
 }
 
 #[test]
-#[expected_failure(abort_code = suitears::airdrop::EHasNotStarted)]
+#[expected_failure(abort_code = airdrop::airdrop::EHasNotStarted)]
 fun test_claim_airdrop_not_started_fails() {
     let mut scenario = ts::begin(ADMIN);
     let clock = setup::setup<SAIL>(&mut scenario, ADMIN);
@@ -363,7 +371,8 @@ fun test_claim_airdrop_not_started_fails() {
 
     // Create an airdrop that starts in the future.
     let future_start_time = clock::timestamp_ms(&clock) + 1000;
-    let ve_airdrop = ve_airdrop::new(airdrop_coin, ROOT, future_start_time, &clock, scenario.ctx());
+    let (ve_airdrop, withdraw_cap) = ve_airdrop::new(airdrop_coin, ROOT, future_start_time, &clock, scenario.ctx());
+    transfer::public_transfer(withdraw_cap, ADMIN);
     transfer::public_share_object(ve_airdrop);
 
     // Try to claim the airdrop before it starts. This should fail.
