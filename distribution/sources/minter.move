@@ -2836,6 +2836,7 @@ module distribution::minter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        distribution_config.checked_package_version();
         minter.check_distribute_governor(distribute_governor_cap);
 
         let distribute_cap = minter.distribute_cap.borrow();
@@ -2868,6 +2869,7 @@ module distribution::minter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
+        distribution_config.checked_package_version();
         minter.check_distribute_governor(distribute_governor_cap);
 
         let distribute_cap = minter.distribute_cap.borrow();
