@@ -62,5 +62,6 @@ Use `sui client publish` command.
 - [integrate](https://suivision.xyz/txblock/824KpqdZAL8ALo3GxUE75s5fMvVFd5MPHmjR13GcPtxg)
 - [airdrop](https://suivision.xyz/txblock/FA7ModSnkR1kFokbpAyRDE6Kw6ewNDr4wpdm4Np8ARif)
 
-- [setup distribtuion tx](https://suiscan.xyz/mainnet/tx/ANbcJt5Yr6zGWabJbt7CbVU2vg4EZ83PHGgpV37qU3wk)
-- [activate minter tx](https://suiscan.xyz/mainnet/tx/CbFUk1GqzXiGe3S1UK5rpTV1bTG9vb57mnzc74SPGrw)
+- [setup distribtuion tx](https://suiscan.xyz/mainnet/tx/jjMGwuNdKE8HkvKdDaxgCMBqvXTQkN6RMZQvvaJS35b)
+- [activate minter tx]()
+- [o_sail]()
