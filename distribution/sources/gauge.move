@@ -552,7 +552,7 @@ module distribution::gauge {
             id: sui::object::new(ctx),
             position_id: position_id,
             pool_id: position.pool_id(),
-            description: std::string::utf8(b"Fullsail Staked Liquidity Position"),
+            description: std::string::utf8(b"Full Sail Staked Liquidity Position"),
             name: new_staked_position_name(pool.index(), position.index()),
         };
 

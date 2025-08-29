@@ -69,8 +69,8 @@ def generate_sql_from_osail_info():
         print(f"Warning: Found {len(sorted_tokens)} tokens, expected 20. SQL file will not be created.")
         return
 
-    base_epoch = 1756296000000+21600000
-    epoch_increment = 21600000
+    base_epoch = 1756404000000
+    epoch_increment = 10800000
 
     sql_header = "INSERT INTO public.osail_distributions (epoch_start, token_address, treasury_cap, coin_metadata)\nVALUES"
     
