@@ -601,10 +601,9 @@ module distribution::gauge {
             gauge.check_gauger_pool(pool),
             EEarnedByPositionGaugeDoesNotMatchPool
         );
-        assert!(
-            gauge.staked_positions.contains(position_id),
-            EEarnedByPositionNotDepositedPosition
-        );
+        if (!gauge.staked_positions.contains(position_id)) {
+            return 0
+        };
         let (amount, _) = gauge.earned_internal<CoinTypeA, CoinTypeB>(pool, position_id, clock.timestamp_ms() / 1000);
         amount
     }
