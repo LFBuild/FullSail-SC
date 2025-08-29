@@ -367,15 +367,6 @@ module distribution::minter {
         pool_id: ID,
         position_id: ID,
         amount: u64,
-        token: TypeName,
-    }
-
-    public struct EventClaimPositionRewardV2 has copy, drop, store {
-        from: address,
-        gauge_id: ID,
-        pool_id: ID,
-        position_id: ID,
-        amount: u64,
         growth_inside: u128,
         token: TypeName,
     }
@@ -2761,7 +2752,7 @@ module distribution::minter {
             clock,
         );
 
-        let event = EventClaimPositionRewardV2 {
+        let event = EventClaimPositionReward {
             from: tx_context::sender(ctx),
             gauge_id: object::id(gauge),
             pool_id: object::id(pool),
@@ -2770,7 +2761,7 @@ module distribution::minter {
             growth_inside,
             token: type_name::get<RewardCoinType>(),
         };
-        sui::event::emit<EventClaimPositionRewardV2>(event);
+        sui::event::emit<EventClaimPositionReward>(event);
         
         reward_amount
     }
