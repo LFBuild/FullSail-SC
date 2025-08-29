@@ -1276,7 +1276,7 @@ module distribution::gauge {
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         position_id: ID,
         clock: &sui::clock::Clock
-    ): u64 {
+    ): (u64, u128) {
         assert!(gauge.check_gauger_pool(pool), EUpdateRewardGaugeDoesNotMatchPool);
         let gauge_id = object::id<Gauge<CoinTypeA, CoinTypeB>>(gauge);
         let current_time = clock.timestamp_ms() / 1000;
@@ -1302,7 +1302,7 @@ module distribution::gauge {
 
         reward_profile.amount = 0;
 
-        amount_to_pay
+        (amount_to_pay, growth_inside)
     }
 
     public fun all_rewards_claimed<CoinTypeA, CoinTypeB>(

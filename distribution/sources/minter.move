@@ -370,6 +370,16 @@ module distribution::minter {
         token: TypeName,
     }
 
+    public struct EventClaimPositionRewardV2 has copy, drop, store {
+        from: address,
+        gauge_id: ID,
+        pool_id: ID,
+        position_id: ID,
+        amount: u64,
+        growth_inside: u128,
+        token: TypeName,
+    }
+
     public struct Minter<phantom SailCoinType> has store, key {
         id: UID,
         revoked_admins: VecSet<ID>,
@@ -2745,21 +2755,22 @@ module distribution::minter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): u64 {
-        let reward_amount = gauge.update_reward_internal<CoinTypeA, CoinTypeB>(
+        let (reward_amount, growth_inside) = gauge.update_reward_internal<CoinTypeA, CoinTypeB>(
             pool,
             position_id,
             clock,
         );
 
-        let event = EventClaimPositionReward {
+        let event = EventClaimPositionRewardV2 {
             from: tx_context::sender(ctx),
             gauge_id: object::id(gauge),
             pool_id: object::id(pool),
             position_id,
             amount: reward_amount,
+            growth_inside,
             token: type_name::get<RewardCoinType>(),
         };
-        sui::event::emit<EventClaimPositionReward>(event);
+        sui::event::emit<EventClaimPositionRewardV2>(event);
         
         reward_amount
     }
