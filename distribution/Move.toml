@@ -3,7 +3,7 @@ name = "distribution"
 edition = "2024"
 
 [addresses]
-distribution = "0x0"
+distribution = "0x2f3827c5462f19283c33f3fe55169edd49093c18366b831b626ed9517c4baf99"
 
 [dev-dependencies]
 

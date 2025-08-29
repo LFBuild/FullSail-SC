@@ -3,7 +3,7 @@ name = "ve"
 edition = "2024.beta"
 
 [addresses]
-ve = "0x0"
+ve = "0xa47eb67ba9072810412acb704da24202a6702b51b0a4d9608850cd2ef53dd08a"
 
 [dev-dependencies]
 
