@@ -18,5 +18,5 @@ override = true
 [dependencies.integer_mate]
 git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
 subdir = "integer_mate"
-rev = "dev"
+rev = "main"
 override = true

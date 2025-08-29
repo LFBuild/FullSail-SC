@@ -16,25 +16,25 @@ override = true
 [dependencies.clmm_pool]
 git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
 subdir = "clmm_pool"
-rev = "dev"
+rev = "main"
 override = true
 
 [dependencies.integer_mate]
 git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
 subdir = "integer_mate"
-rev = "dev"
+rev = "main"
 override = true
 
 [dependencies.gauge_cap]
 git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
 subdir = "gauge_cap"
-rev = "dev"
+rev = "main"
 override = true
 
 [dependencies.price_provider]
 git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
 subdir = "price_provider"
-rev = "dev"
+rev = "main"
 override = true
 
 [dependencies.locker_cap]

@@ -2,7 +2,7 @@
 
 [move]
 version = 3
-manifest_digest = "E9F8C69E57FCA3E9B719FCDB7F7BF73400BD97BF699C69A8219B37BDD99D539F"
+manifest_digest = "B5E696C466DA1E807E0AB3A746925A7433095A9712EF120CA2C0F451E567A1E3"
 deps_digest = "3C4103934B1E040BB6B23F1D610B4EF9F2F1166A50A104EADCF77467C004C600"
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -23,7 +23,7 @@ dependencies = [
 
 [[move.package]]
 id = "integer_mate"
-source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "dev", subdir = "integer_mate" }
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "main", subdir = "integer_mate" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
