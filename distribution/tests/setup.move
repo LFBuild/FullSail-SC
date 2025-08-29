@@ -1003,7 +1003,7 @@ public fun deposit_position<CoinTypeA, CoinTypeB>(
 }
 
 // also claim last reward coin rewards
-public fun withdraw_position<CoinTypeA, CoinTypeB, LastRewardCoin>(
+public fun withdraw_position<CoinTypeA, CoinTypeB>(
     scenario: &mut test_scenario::Scenario,
     clock: &Clock,
 ) {

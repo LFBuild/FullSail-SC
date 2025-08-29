@@ -1334,7 +1334,7 @@ fun test_single_position_withdraw_distribute() {
     // --- Withdraw the position ---
     scenario.next_tx(lp1);
     {
-        setup::withdraw_position<USD_TESTS, SAIL, OSAIL1>(
+        setup::withdraw_position<USD_TESTS, SAIL>(
             &mut scenario,
             &clock,
         );
@@ -1447,7 +1447,7 @@ fun test_single_position_deposit_for_1h() {
     // --- Withdraw the position ---
     scenario.next_tx(lp1); // lp1 checks their rewards
     {
-        setup::withdraw_position<USD_TESTS, SAIL, OSAIL1>(
+        setup::withdraw_position<USD_TESTS, SAIL>(
             &mut scenario,
             &clock,
         );
@@ -1553,7 +1553,7 @@ fun test_position_deposit_for_1h_widthrawal_and_deposit_again_for_1h() {
     // --- Withdraw the position ---
     scenario.next_tx(lp1); // lp1 checks their rewards
     {
-        setup::withdraw_position<USD_TESTS, SAIL, OSAIL1>(
+        setup::withdraw_position<USD_TESTS, SAIL>(
             &mut scenario,
             &clock,
         );
@@ -1592,7 +1592,7 @@ fun test_position_deposit_for_1h_widthrawal_and_deposit_again_for_1h() {
     // --- Withdraw the position ---
     scenario.next_tx(lp1); // lp1 checks their rewards
     {
-        setup::withdraw_position<USD_TESTS, SAIL, OSAIL1>(
+        setup::withdraw_position<USD_TESTS, SAIL>(
             &mut scenario,
             &clock,
         );
@@ -2678,7 +2678,7 @@ fun test_half_epoch_withdrawal_distribute() {
     // lp2 withdraws the position
     scenario.next_tx(lp2);
     {
-        setup::withdraw_position<USD_TESTS, SAIL, OSAIL1>(
+        setup::withdraw_position<USD_TESTS, SAIL>(
             &mut scenario,
             &clock,
         )
@@ -2800,7 +2800,7 @@ fun test_distribute_position_increase_after_deposit() {
     // lp2 withdraws position to increase its liquidity
     scenario.next_tx(lp2);
     {
-        setup::withdraw_position<USD_TESTS, SAIL, OSAIL1>(
+        setup::withdraw_position<USD_TESTS, SAIL>(
             &mut scenario,
             &clock,
         )
@@ -2952,7 +2952,7 @@ fun test_distribute_position_decrease_after_deposit() {
     // lp2 withdraws position to decrease its liquidity
     scenario.next_tx(lp2);
     {
-        setup::withdraw_position<USD_TESTS, SAIL, OSAIL1>(
+        setup::withdraw_position<USD_TESTS, SAIL>(
             &mut scenario,
             &clock,
         )
@@ -3174,7 +3174,7 @@ fun test_distribution_no_rollover() {
     // withdraw position
     scenario.next_tx(lp1);
     {
-        setup::withdraw_position<USD_TESTS, SAIL, OSAIL2>(&mut scenario, &clock);
+        setup::withdraw_position<USD_TESTS, SAIL>(&mut scenario, &clock);
     };
 
     // check emissions are equal to the second epoch emissions
@@ -3247,7 +3247,7 @@ fun test_distribution_rollover_no_rewards_in_non_distributed_epoch() {
     // withdraw position
     scenario.next_tx(lp1);
     {
-        setup::withdraw_position<USD_TESTS, SAIL, OSAIL2>(&mut scenario, &clock);
+        setup::withdraw_position<USD_TESTS, SAIL>(&mut scenario, &clock);
     };
 
     // check emissions are equal to the second epoch emissions
@@ -4301,6 +4301,51 @@ fun test_claim_reward_without_distribution_in_next_epoch() {
     // --- Cleanup ---
     transfer::public_transfer(usd_treasury_cap, admin);
     transfer::public_transfer(usd_metadata, admin);
+    test_utils::destroy(aggregator);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_earned_on_random_position_id_is_zero() {
+    let admin = @0xD1;
+    let user = @0xD2;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    let aggregator = setup::full_setup_with_lock<USD_TESTS, SAIL, SAIL, OSAIL1, USD_TESTS>(
+        &mut scenario, 
+        admin,
+        user,
+        &mut clock,
+        1000,
+        182,
+        DEFAULT_GAUGE_EMISSIONS,
+        0
+    );
+
+    scenario.next_tx(user); // Any user can read shared state
+    {
+        let pool = scenario.take_shared<Pool<USD_TESTS, SAIL>>();
+        let gauge = scenario.take_shared<Gauge<USD_TESTS, SAIL>>();
+        let minter = scenario.take_shared<Minter<SAIL>>();
+
+        let random_position_id = object::id_from_address(@0xDEADBEEF);
+
+        let earned = minter.earned_by_position<USD_TESTS, SAIL, SAIL, OSAIL1>(
+            &gauge,
+            &pool,
+            random_position_id,
+            &clock
+        );
+
+        assert!(earned == 0, 1);
+
+        test_scenario::return_shared(pool);
+        test_scenario::return_shared(gauge);
+        test_scenario::return_shared(minter);
+    };
+
     test_utils::destroy(aggregator);
     clock::destroy_for_testing(clock);
     scenario.end();
