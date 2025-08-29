@@ -22,9 +22,9 @@ use distribution::gauge::{Self, Gauge, StakedPosition};
 use switchboard::aggregator::{Self, Aggregator};
 use switchboard::decimal;
 use price_monitor::price_monitor::{Self, PriceMonitor};
-use std::type_name::{Self, TypeName};
+use std::type_name::{Self};
 
-use distribution::usd_tests::{Self, USD_TESTS};
+use distribution::usd_tests::{USD_TESTS};
 
 const ONE_DEC18: u128 = 1000000000000000000;
 
@@ -1523,4 +1523,67 @@ public fun vote_for_pool<CoinTypeA, CoinTypeB, SAIL>(
 
 public fun one_dec18(): u128 {
     ONE_DEC18
+}
+
+public fun sync_o_sail_distribution_price_for_sail_pool<CoinTypeA, CoinTypeB, SAIL>(
+    scenario: &mut test_scenario::Scenario,
+    aggregator: &mut Aggregator,
+    clock: &Clock,
+) {
+    let mut minter = scenario.take_shared<Minter<SAIL>>();
+    let mut distribution_config = scenario.take_shared<DistributionConfig>();
+    let mut gauge = scenario.take_shared<Gauge<CoinTypeA, CoinTypeB>>();
+    let mut pool = scenario.take_shared<Pool<CoinTypeA, CoinTypeB>>();
+    let mut price_monitor = scenario.take_shared<PriceMonitor>();
+
+    minter.sync_o_sail_distribution_price_for_sail_pool<CoinTypeA, CoinTypeB, SAIL>(
+        &mut distribution_config,
+        &mut gauge,
+        &mut pool,
+        &mut price_monitor,
+        aggregator,
+        clock
+    );
+
+    test_scenario::return_shared(minter);
+    test_scenario::return_shared(distribution_config);
+    test_scenario::return_shared(gauge);
+    test_scenario::return_shared(pool);
+    test_scenario::return_shared(price_monitor);
+}
+
+public fun increase_gauge_emissions_for_sail_pool<CoinTypeA, CoinTypeB, SAIL>(
+    scenario: &mut test_scenario::Scenario,
+    emissions_increase_usd: u64,
+    aggregator: &mut Aggregator,
+    clock: &Clock,
+) {
+    let mut minter = scenario.take_shared<Minter<SAIL>>();
+    let voter = scenario.take_shared<Voter>();
+    let distribution_config = scenario.take_shared<DistributionConfig>();
+    let admin_cap = scenario.take_from_sender<minter::AdminCap>();
+    let mut gauge = scenario.take_shared<Gauge<CoinTypeA, CoinTypeB>>();
+    let mut pool = scenario.take_shared<Pool<CoinTypeA, CoinTypeB>>();
+    let mut price_monitor = scenario.take_shared<PriceMonitor>();
+
+    minter.increase_gauge_emissions_for_sail_pool<CoinTypeA, CoinTypeB, SAIL>(
+        &voter,
+        &distribution_config,
+        &admin_cap,
+        &mut gauge,
+        &mut pool,
+        emissions_increase_usd,
+        &mut price_monitor,
+        aggregator,
+        clock,
+        scenario.ctx()
+    );
+
+    test_scenario::return_shared(minter);
+    test_scenario::return_shared(voter);
+    test_scenario::return_shared(distribution_config);
+    scenario.return_to_sender(admin_cap);
+    test_scenario::return_shared(gauge);
+    test_scenario::return_shared(pool);
+    test_scenario::return_shared(price_monitor);
 }

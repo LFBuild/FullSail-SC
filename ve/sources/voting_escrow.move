@@ -2389,14 +2389,14 @@ module ve::voting_escrow {
         fields.push_back(std::string::utf8(b"project_url"));
         fields.push_back(std::string::utf8(b"creator"));
         let mut values = std::vector::empty<std::string::String>();
-        values.push_back(std::string::utf8(b"Fullsail Lock"));
-        values.push_back(std::string::utf8(b"Fullsail Lock"));
+        values.push_back(std::string::utf8(b"Full Sail veSAIL"));
+        values.push_back(std::string::utf8(b"Full Sail veSAIL"));
         values.push_back(std::string::utf8(b"{amount}"));
         values.push_back(std::string::utf8(b"{end}"));
         values.push_back(std::string::utf8(b"{permanent}"));
         values.push_back(std::string::utf8(b"{perpetual}"));
         values.push_back(std::string::utf8(b"https://app.fullsail.finance/lock/{id}"));
-        values.push_back(std::string::utf8(b"https://app.fullsail.finance/static_files/fullsail_logo.png"));
+        values.push_back(std::string::utf8(b"https://app.fullsail.finance/static_files/ve_sail.png"));
         values.push_back(std::string::utf8(b"https://app.fullsail.finance"));
         values.push_back(std::string::utf8(b"FULLSAIL"));
         let mut display = sui::display::new_with_fields<Lock>(

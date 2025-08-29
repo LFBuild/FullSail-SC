@@ -370,6 +370,16 @@ module distribution::minter {
         token: TypeName,
     }
 
+    public struct EventClaimPositionRewardV2 has copy, drop, store {
+        from: address,
+        gauge_id: ID,
+        pool_id: ID,
+        position_id: ID,
+        amount: u64,
+        growth_inside: u128,
+        token: TypeName,
+    }
+
     public struct Minter<phantom SailCoinType> has store, key {
         id: UID,
         revoked_admins: VecSet<ID>,
@@ -1371,9 +1381,9 @@ module distribution::minter {
         } else {
             assert!(next_epoch_emissions_usd > 0, EDistributeGaugeEmissionsZero);
             if (prev_epoch_emissions_usd > next_epoch_emissions_usd) {
-                assert!(prev_epoch_emissions_usd / next_epoch_emissions_usd <= minter.max_emission_change_ratio, EDistributeGaugeEmissionsChangeTooBig);
+                assert!(prev_epoch_emissions_usd <= minter.max_emission_change_ratio * next_epoch_emissions_usd, EDistributeGaugeEmissionsChangeTooBig);
             } else {
-                assert!(next_epoch_emissions_usd / prev_epoch_emissions_usd <= minter.max_emission_change_ratio, EDistributeGaugeEmissionsChangeTooBig);
+                assert!(next_epoch_emissions_usd <= minter.max_emission_change_ratio * prev_epoch_emissions_usd, EDistributeGaugeEmissionsChangeTooBig);
             }
         };
         let ended_epoch_o_sail_emission = voter.distribute_gauge<CoinTypeA, CoinTypeB, CurrentEpochOSail>(
@@ -1909,7 +1919,7 @@ module distribution::minter {
     ): bool {
         let o_sail_type = type_name::get<OSailCoinType>();
 
-        *minter.borrow_current_epoch_o_sail() == o_sail_type
+        minter.current_epoch_o_sail.is_some() && *minter.borrow_current_epoch_o_sail() == o_sail_type
     }
 
     /// Checks if provided oSAIL type is valid.
@@ -2745,21 +2755,22 @@ module distribution::minter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): u64 {
-        let reward_amount = gauge.update_reward_internal<CoinTypeA, CoinTypeB>(
+        let (reward_amount, growth_inside) = gauge.update_reward_internal<CoinTypeA, CoinTypeB>(
             pool,
             position_id,
             clock,
         );
 
-        let event = EventClaimPositionReward {
+        let event = EventClaimPositionRewardV2 {
             from: tx_context::sender(ctx),
             gauge_id: object::id(gauge),
             pool_id: object::id(pool),
             position_id,
             amount: reward_amount,
+            growth_inside,
             token: type_name::get<RewardCoinType>(),
         };
-        sui::event::emit<EventClaimPositionReward>(event);
+        sui::event::emit<EventClaimPositionRewardV2>(event);
         
         reward_amount
     }
