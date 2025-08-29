@@ -698,7 +698,7 @@ fun test_distribute_gauge_second_epoch_too_big_change_fails() {
     {
         setup::distribute_gauge_emissions_controlled<USD_TESTS, AUSD, SAIL, OSAIL2, USD_TESTS>( 
             &mut scenario,
-            5_000_000, // more than 4x is not allowed
+            20_000_001, // more than 20x is not allowed
             &usd_metadata,
             &mut aggregator,
             &clock
@@ -756,7 +756,7 @@ fun test_distribute_gauge_second_epoch_too_big_change_down_fails() {
     {
         setup::distribute_gauge_emissions_controlled<USD_TESTS, AUSD, SAIL, OSAIL2, USD_TESTS>( 
             &mut scenario,
-            200_000, // more than 4x even down is not allowed
+            49_999, // more than 20x even down is not allowed
             &usd_metadata,
             &mut aggregator,
             &clock
@@ -4054,6 +4054,70 @@ fun test_cancel_o_sail_mint_no_tokens_minted() {
         test_scenario::return_shared(minter);
     };
 
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_earned_on_position_without_minter_activation_succeeds() {
+    // 1. Setup
+    let admin = @0xA;
+    let user = @0xB;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Setup CLMM factory
+    setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+
+    // Setup distribution without activating minter
+    scenario.next_tx(admin);
+    setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+
+    // Setup pool
+    scenario.next_tx(admin);
+    let pool_sqrt_price: u128 = 1 << 64; // Price = 1
+    setup::setup_pool_with_sqrt_price<USD_TESTS, AUSD>(&mut scenario, pool_sqrt_price, 1);
+    
+    // 2. Create gauge
+    scenario.next_tx(admin);
+    let gauge_base_emissions = 1_000_000;
+    setup::setup_gauge_for_pool<USD_TESTS, AUSD, SAIL>(&mut scenario, gauge_base_emissions, &clock);
+
+    // 3. User creates a position
+    scenario.next_tx(user);
+    setup::create_position_with_liquidity<USD_TESTS, AUSD>(
+        &mut scenario,
+        user,
+        tick_math::min_tick().as_u32(),
+        tick_math::max_tick().as_u32(),
+        1000000,
+        &clock
+    );
+
+    // 4. User deposits the position
+    scenario.next_tx(user);
+    {
+        setup::deposit_position<USD_TESTS, AUSD>(&mut scenario, &clock);
+    };
+
+    // 5. Call earned
+    scenario.next_tx(user);
+    {
+        let gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
+        let pool = scenario.take_shared<Pool<USD_TESTS, AUSD>>();
+        let minter = scenario.take_shared<Minter<SAIL>>();
+        let staked_position = scenario.take_from_sender<StakedPosition>();
+        let earned_amount = minter::earned_by_position<USD_TESTS, AUSD, SAIL, OSAIL1>(&minter, &gauge, &pool, staked_position.position_id(), &clock);
+
+        assert!(earned_amount == 0, 0);
+
+        test_scenario::return_shared(gauge);
+        test_scenario::return_shared(pool);
+        test_scenario::return_shared(minter);
+        scenario.return_to_sender(staked_position);
+    };
+
+    // 6. Cleanup
     clock::destroy_for_testing(clock);
     scenario.end();
 }

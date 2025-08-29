@@ -1371,9 +1371,9 @@ module distribution::minter {
         } else {
             assert!(next_epoch_emissions_usd > 0, EDistributeGaugeEmissionsZero);
             if (prev_epoch_emissions_usd > next_epoch_emissions_usd) {
-                assert!(prev_epoch_emissions_usd / next_epoch_emissions_usd <= minter.max_emission_change_ratio, EDistributeGaugeEmissionsChangeTooBig);
+                assert!(prev_epoch_emissions_usd <= minter.max_emission_change_ratio * next_epoch_emissions_usd, EDistributeGaugeEmissionsChangeTooBig);
             } else {
-                assert!(next_epoch_emissions_usd / prev_epoch_emissions_usd <= minter.max_emission_change_ratio, EDistributeGaugeEmissionsChangeTooBig);
+                assert!(next_epoch_emissions_usd <= minter.max_emission_change_ratio * prev_epoch_emissions_usd, EDistributeGaugeEmissionsChangeTooBig);
             }
         };
         let ended_epoch_o_sail_emission = voter.distribute_gauge<CoinTypeA, CoinTypeB, CurrentEpochOSail>(
@@ -1909,7 +1909,7 @@ module distribution::minter {
     ): bool {
         let o_sail_type = type_name::get<OSailCoinType>();
 
-        *minter.borrow_current_epoch_o_sail() == o_sail_type
+        minter.current_epoch_o_sail.is_some() && *minter.borrow_current_epoch_o_sail() == o_sail_type
     }
 
     /// Checks if provided oSAIL type is valid.
