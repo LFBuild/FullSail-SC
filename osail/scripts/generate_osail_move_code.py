@@ -72,7 +72,7 @@ def main():
     now = datetime.now(timezone.utc)
     next_epoch_start = get_next_epoch_start(now, duration_hours)
 
-    first_expiry = next_epoch_start + 5 * epoch_duration
+    first_expiry = next_epoch_start - 1 * epoch_duration
 
     for i in range(20):
         expiry_date = first_expiry + i * epoch_duration
