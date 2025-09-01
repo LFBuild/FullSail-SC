@@ -1,0 +1,54 @@
+[package]
+name = "governance"
+edition = "2024"
+
+[addresses]
+governance = "0x2f3827c5462f19283c33f3fe55169edd49093c18366b831b626ed9517c4baf99"
+
+[dev-dependencies]
+
+[dev-addresses]
+
+[dependencies.Sui]
+git = "https://github.com/MystenLabs/sui.git"
+subdir = "crates/sui-framework/packages/sui-framework"
+rev = "framework/mainnet"
+override = true
+
+[dependencies.clmm_pool]
+git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
+subdir = "clmm_pool"
+rev = "dev"
+override = true
+
+[dependencies.integer_mate]
+git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
+subdir = "integer_mate"
+rev = "dev"
+override = true
+
+[dependencies.gauge_cap]
+git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
+subdir = "gauge_cap"
+rev = "dev"
+override = true
+
+[dependencies.price_provider]
+git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
+subdir = "price_provider"
+rev = "dev"
+override = true
+
+[dependencies.locker_cap]
+local = "../locker_cap"
+
+[dependencies.voting_escrow]
+local = "../voting_escrow"
+
+[dependencies.Switchboard]
+git = "https://github.com/LFBuild/sui.git"
+subdir = "on_demand/"
+rev = "mainnet"
+
+[dependencies.price_monitor]
+local = "../price_monitor"
