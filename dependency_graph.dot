@@ -52,4 +52,6 @@ digraph Dependencies {
     "integrate" -> "ve"
     "liquidity_locker_v2" -> "ve"
 
+    "airdrop" -> "ve"
+
 }
