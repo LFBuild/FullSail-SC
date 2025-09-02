@@ -12,7 +12,7 @@ export COIN_A_1=0x1a8f4bc33f8ef7fbc851f156857aa65d397a6a6fd27a7ac2ca717b51f2fd94
 export COIN_B_1=0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI
 
 export TOTAL_REWARD_AMOUNT_ALKIMI=80000000000000 # set the total reward amount for the pool
-export TOTAL_REWARD_AMOUNT_PRE_SAIL=281952000000 # set the total reward amount for the pool
+export TOTAL_REWARD_AMOUNT_PRE_SAIL=200000000000 # set the total reward amount for the pool
 export DISTRIBUTION_PERIOD_SECONDS=604800 # set the distribution period in seconds
 
 
