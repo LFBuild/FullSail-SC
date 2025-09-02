@@ -3021,6 +3021,28 @@ module governance::minter {
         );
     }
 
+    /// Used to notify exercise fee. Supposed to be used by operations wallet
+    /// to deposit freshly bought SAIL into the reward contract.
+    public fun notify_exercise_fee_reward<SailCoinType, ExerciseFeeCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        voter: &mut governance::voter::Voter,
+        distribution_config: &DistributionConfig,
+        distribute_governor_cap: &DistributeGovernorCap,
+        reward: Coin<ExerciseFeeCoinType>,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        distribution_config.checked_package_version();
+        minter.check_distribute_governor(distribute_governor_cap);
+
+        voter.notify_exercise_fee_reward_amount(
+            minter.distribute_cap.borrow(),
+            reward,
+            clock,
+            ctx,
+        );
+    }
+
     #[test_only]
     public fun test_get_aggregator_price<FeedPoolCoinTypeA, FeedPoolCoinTypeB, FeedCoin, SailCoinType>(
         minter: &mut Minter<SailCoinType>,
