@@ -2,13 +2,14 @@
 
 [move]
 version = 3
-manifest_digest = "311B7AD3DBDBEFFF60BDDC2CAF7DA3CC958546693CB22EF3EF79AAA6AC06DD65"
-deps_digest = "8227D341C0550A37580C10FA45FE148A465225149C69D179737E0FE454AD6AEC"
+manifest_digest = "B41CB75B7D0F0852FA4AF12049E8327BC9F8D2B37CC99B2B737D908620C426D2"
+deps_digest = "CB99E3BEE139471F3765AE330F855F3B376156AA54F37DEDE11BBE5BB0D3BB74"
 dependencies = [
   { id = "Sui", name = "Sui" },
   { id = "Switchboard", name = "Switchboard" },
   { id = "clmm_pool", name = "clmm_pool" },
   { id = "gauge_cap", name = "gauge_cap" },
+  { id = "governance", name = "governance" },
   { id = "integer_mate", name = "integer_mate" },
   { id = "locker_cap", name = "locker_cap" },
   { id = "price_monitor", name = "price_monitor" },
@@ -57,6 +58,22 @@ dependencies = [
 ]
 
 [[move.package]]
+id = "governance"
+source = { local = "../governance" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+  { id = "Switchboard", name = "Switchboard" },
+  { id = "clmm_pool", name = "clmm_pool" },
+  { id = "gauge_cap", name = "gauge_cap" },
+  { id = "integer_mate", name = "integer_mate" },
+  { id = "locker_cap", name = "locker_cap" },
+  { id = "price_monitor", name = "price_monitor" },
+  { id = "price_provider", name = "price_provider" },
+  { id = "voting_escrow", name = "voting_escrow" },
+]
+
+[[move.package]]
 id = "integer_mate"
 source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "dev", subdir = "integer_mate" }
 
@@ -102,6 +119,16 @@ dependencies = [
 [[move.package]]
 id = "ve"
 source = { local = "../ve" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+  { id = "integer_mate", name = "integer_mate" },
+  { id = "voting_escrow", name = "voting_escrow" },
+]
+
+[[move.package]]
+id = "voting_escrow"
+source = { local = "../voting_escrow" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },

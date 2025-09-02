@@ -5,7 +5,7 @@ module liquidity_locker::pool_tranche_tests {
 
     use liquidity_locker::liquidity_lock_v2;
     use liquidity_locker::pool_tranche;
-    use ve::common;
+    use voting_escrow::common;
     use locker_cap::locker_cap;
     use clmm_pool::factory::{Self as factory, Pools};
     use clmm_pool::config::{Self as config};

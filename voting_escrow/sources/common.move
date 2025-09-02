@@ -107,9 +107,9 @@ module voting_escrow::common {
     /// Returns the time required for transaction finality
     /// 
     /// # Returns
-    /// The time in milliseconds required for transaction finality (500)
+    /// The time in milliseconds required for transaction finality (2000)
     public fun get_time_to_finality_ms(): u64 {
-        500
+        2000
     }
 
     /// Returns the number of seconds in an hour

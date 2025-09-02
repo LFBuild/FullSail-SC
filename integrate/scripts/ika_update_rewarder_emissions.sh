@@ -12,7 +12,7 @@ export COIN_B_1=0x00000000000000000000000000000000000000000000000000000000000000
 
 export TOTAL_REWARD_AMOUNT_IKA=500000000000000 # set the total reward amount for the pool
 export TOTAL_REWARD_AMOUNT_PRE_SAIL=734000000000 # set the total reward amount for the pool
-export DISTRIBUTION_PERIOD_SECONDS=604800 # set the distribution period in seconds
+export DISTRIBUTION_PERIOD_SECONDS=604800 # set the governance period in seconds
 
 
 sui client ptb \

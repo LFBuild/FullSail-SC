@@ -45,11 +45,11 @@ git = "https://github.com/LFBuild/sui.git"
 subdir = "on_demand/"
 rev = "mainnet"
 
-[dependencies.distribution]
-local = "../distribution"
+[dependencies.governance]
+local = "../governance"
 
-[dependencies.ve]
-local = "../ve"
+[dependencies.voting_escrow]
+local = "../voting_escrow"
 
 [dev-dependencies.price_monitor]
 local = "../price_monitor"
