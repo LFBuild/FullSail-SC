@@ -8,7 +8,7 @@ module ve::common {
     const HOUR: u64 = 3600;
     const DAY: u64 = 24 * HOUR;
     const WEEK: u64 = 7 * DAY;
-    const EPOCH_DURATION: u64 = DAY / 8;
+    const EPOCH_DURATION: u64 = WEEK;
 
     // OSail params
     const MAX_DISCOUNT: u64 = 100000000;
@@ -89,7 +89,7 @@ module ve::common {
     /// # Returns
     /// The timestamp when voting ends in the current epoch
     public fun epoch_vote_end(timestamp: u64): u64 {
-        epoch_next(timestamp) - HOUR / 4
+        epoch_next(timestamp) - HOUR
     }
 
     /// Calculates the start timestamp of the voting period in the current epoch
@@ -101,7 +101,7 @@ module ve::common {
     /// # Returns
     /// The timestamp when voting starts in the current epoch
     public fun epoch_vote_start(timestamp: u64): u64 {
-        epoch_start(timestamp) + HOUR / 4
+        epoch_start(timestamp) + HOUR
     }
 
     /// Returns the time required for transaction finality
