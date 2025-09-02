@@ -11,7 +11,7 @@ export COIN_A_1=0x7262fb2f7a3a14c888c438a3cd9b912469a58cf60f367352c46584262e8299
 export COIN_B_1=0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI
 
 export TOTAL_REWARD_AMOUNT_IKA=500000000000000 # set the total reward amount for the pool
-export TOTAL_REWARD_AMOUNT_PRE_SAIL=734000000000 # set the total reward amount for the pool
+export TOTAL_REWARD_AMOUNT_PRE_SAIL=632000000000 # set the total reward amount for the pool
 export DISTRIBUTION_PERIOD_SECONDS=604800 # set the distribution period in seconds
 
 
