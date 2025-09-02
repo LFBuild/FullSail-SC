@@ -3,6 +3,11 @@ module governance::exercise_fee_reward {
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
 
     const EValidateVoterCapInvalid: u64 = 667556652936764400;
+    const EValidateVotingEscrowInvalid: u64 = 554217603666293400;
+    const ESailClaimNotAllowed: u64 = 44194154922425176;
+    use voting_escrow::common;
+    use voting_escrow::voting_escrow::{VotingEscrow, Lock};
+    use std::type_name;
 
     public struct ExerciseFeeReward has store, key {
         id: UID,
@@ -60,6 +65,10 @@ module governance::exercise_fee_reward {
     /// * If the voter ID from `voter_cap` does not match `reward.voter`.
     public fun validate_voter_cap(reward: &ExerciseFeeReward, voter_cap: &governance::voter_cap::VoterCap) {
         assert!(voter_cap.get_voter_id() == reward.voter, EValidateVoterCapInvalid);
+    }
+
+    public fun validate_voting_escrow<SailCoinType>(reward: &ExerciseFeeReward, voting_escrow: &VotingEscrow<SailCoinType>) {
+        assert!(reward.voter == voting_escrow.get_voter_id(), EValidateVotingEscrowInvalid);
     }
 
     /// Deposits rewards into the ExerciseFeeReward.
@@ -192,8 +201,12 @@ module governance::exercise_fee_reward {
         ctx: &mut TxContext
     ): u64 {
         reward.validate_voter_cap(voter_cap);
+        reward.validate_voting_escrow<SailCoinType>(voting_escrow);
         let lock_id = object::id<voting_escrow::voting_escrow::Lock>(lock);
         let lock_owner = voting_escrow.owner_of(lock_id, ctx);
+        let sail_coin_type = type_name::get<SailCoinType>();
+        let reward_coin_type = type_name::get<CoinType>();
+        assert!(reward_coin_type != sail_coin_type, ESailClaimNotAllowed);
         let mut reward_balance_opt = reward.reward.get_reward_internal<CoinType>(
             &reward.reward_cap,
             lock_owner,
@@ -211,6 +224,55 @@ module governance::exercise_fee_reward {
                 ),
                 lock_owner
             );
+            amount
+        } else {
+            0
+        };
+        reward_balance_opt.destroy_none();
+        reward_amount
+    }
+
+    public fun get_reward_sail<SailCoinType>(
+        reward: &mut ExerciseFeeReward,
+        // voter emits events so we require voter cap to be passed in
+        voter_cap: &governance::voter_cap::VoterCap,
+        voting_escrow: &mut voting_escrow::voting_escrow::VotingEscrow<SailCoinType>,
+        lock: &mut voting_escrow::voting_escrow::Lock,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ): u64 {
+        reward.validate_voter_cap(voter_cap);
+        reward.validate_voting_escrow<SailCoinType>(voting_escrow);
+        let lock_id = object::id<voting_escrow::voting_escrow::Lock>(lock);
+        let lock_owner = voting_escrow.owner_of(lock_id, ctx);
+        let mut reward_balance_opt = reward.reward.get_reward_internal<SailCoinType>(
+            &reward.reward_cap,
+            lock_owner,
+            lock_id,
+            clock,
+            ctx,
+        );
+        let reward_amount = if (reward_balance_opt.is_some()) {
+            let reward_balance = reward_balance_opt.extract();
+            let reward_coin = sui::coin::from_balance<SailCoinType>(reward_balance, ctx);
+            let amount = reward_coin.value();
+            let (locked_balance, _) = voting_escrow.locked(lock_id);
+            if (
+                common::current_timestamp(clock) >= locked_balance.end()
+                && !locked_balance.is_permanent()
+            ) {
+                transfer::public_transfer(
+                    reward_coin,
+                    voting_escrow.owner_of(lock_id, ctx),
+                );
+            } else {
+                voting_escrow.deposit_for(
+                    lock,
+                    reward_coin,
+                    clock,
+                    ctx,
+                );
+            };
             amount
         } else {
             0

@@ -210,6 +210,7 @@ module governance::voter {
         amount: u64,
         token: TypeName,
         lock: ID,
+        sail_claim: bool,
     }
 
     /// Event emitted when rewards are distributed to a gauge
@@ -577,23 +578,37 @@ module governance::voter {
         voter: &mut Voter,
         distribution_config: &DistributionConfig,
         voting_escrow: &mut voting_escrow::voting_escrow::VotingEscrow<SailCoinType>,
-        lock: &voting_escrow::voting_escrow::Lock,
+        lock: &mut voting_escrow::voting_escrow::Lock,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
         distribution_config.checked_package_version();
-        let amount = voter.exercise_fee_reward.get_reward<SailCoinType, RewardCoinType>(
-            &voter.voter_cap,
-            voting_escrow,
-            lock,
-            clock,
-            ctx,
-        );
+        let sail_coin_type = type_name::get<SailCoinType>();
+        let reward_coin_type = type_name::get<RewardCoinType>();
+        let sail_claim = reward_coin_type == sail_coin_type;
+        let amount = if (sail_claim) {
+            voter.exercise_fee_reward.get_reward_sail<SailCoinType>(
+                &voter.voter_cap,
+                voting_escrow,
+                lock,
+                clock,
+                ctx,
+            )
+        } else {
+            voter.exercise_fee_reward.get_reward<SailCoinType, RewardCoinType>(
+                &voter.voter_cap,
+                voting_escrow,
+                lock,
+                clock,
+                ctx,
+            )
+        };
         let claim_exercise_fee_reward_event = EventClaimExerciseFeeReward {
             who: ctx.sender(),
             amount,
             token: type_name::get<RewardCoinType>(),
             lock: into_lock_id(object::id(lock)).id,
+            sail_claim,
         };
         sui::event::emit<EventClaimExerciseFeeReward>(claim_exercise_fee_reward_event);
     }

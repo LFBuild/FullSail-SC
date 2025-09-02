@@ -3043,6 +3043,28 @@ module governance::minter {
         );
     }
 
+    public fun exercise_fee_protocol_balance<SailCoinType, ExerciseFeeCoinType>(
+        minter: &Minter<SailCoinType>,
+    ): u64 {
+        let coin_type = type_name::get<ExerciseFeeCoinType>();
+        if (minter.exercise_fee_protocol_balances.contains<TypeName>(coin_type)) {
+            minter.exercise_fee_protocol_balances.borrow<TypeName, Balance<ExerciseFeeCoinType>>(coin_type).value()
+        } else {
+            0
+        }
+    }
+
+    public fun exercise_fee_operations_balance<SailCoinType, ExerciseFeeCoinType>(
+        minter: &Minter<SailCoinType>,
+    ): u64 {
+        let coin_type = type_name::get<ExerciseFeeCoinType>();
+        if (minter.exercise_fee_operations_balances.contains<TypeName>(coin_type)) {
+            minter.exercise_fee_operations_balances.borrow<TypeName, Balance<ExerciseFeeCoinType>>(coin_type).value()
+        } else {
+            0
+        }
+    }
+
     #[test_only]
     public fun test_get_aggregator_price<FeedPoolCoinTypeA, FeedPoolCoinTypeB, FeedCoin, SailCoinType>(
         minter: &mut Minter<SailCoinType>,

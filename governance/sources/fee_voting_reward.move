@@ -29,8 +29,6 @@ module governance::fee_voting_reward {
         voter: ID,
         reward: voting_escrow::reward::Reward,
         reward_cap: voting_escrow::reward_cap::RewardCap,
-        // setting to configure whether the SAIL reward is supposed to be claimed as veSAIL or not
-        sail_always_locked: bool,
         // bag to be preapred for future updates
         bag: sui::bag::Bag,
     }
@@ -71,7 +69,6 @@ module governance::fee_voting_reward {
             voter,
             reward,
             reward_cap,
-            sail_always_locked: true,
             bag: sui::bag::new(ctx),
         }
     }
