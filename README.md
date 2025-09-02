@@ -65,5 +65,5 @@ Notable dependencies:
 - [sail](https://suivision.xyz/txblock/HgYJ8hsqrGrbizmNPg3t7WTjz2gNBF1EHXQKvjPvNQbA)
 - [integrate](https://suivision.xyz/txblock/7F6kRV7eh2CmP9jsBz4jfMeYdrGL8xLQEAMYRjxFt3QP)
 
-- [setup distribtuion tx](https://suiscan.xyz/mainnet/tx/)
+- [setup distribtuion tx](https://suiscan.xyz/mainnet/tx/7nr77FFbzqTDSgN5p8PVpxGy3MLeM5mXBQSHKhtwPYgr)
 - [activate minter tx](https://suiscan.xyz/mainnet/tx/)
