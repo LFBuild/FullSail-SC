@@ -19,13 +19,13 @@ export POOL_ID="0x92ed1d78ee3fca845e82c1f19947a7204cf6271355735707fc7d16fc80afdf
 # Gauge ID
 export GAUGE_ID="0x0d5211a477bbd78f58d0210d3664b52e0ca9384eb7e0bc82bd45e960892e17e3"
 
-# Minter ID (from distribution/scripts/export.sh)
+# Minter ID (from governance/scripts/export.sh)
 export MINTER_ID="0x7bf4f0583573e2957fca68460d4c14f3be211dc3c17c06b19916aa209a4e2cfd"
 
-# Voter ID (from distribution/scripts/export.sh)
+# Voter ID (from governance/scripts/export.sh)
 export VOTER_ID="0x51d90050e620b75c3d2bb792113029ba705e15ec17c939636260dd943554d06f"
 
-# Distribution config ID (from distribution/scripts/export.sh)
+# Distribution config ID (from governance/scripts/export.sh)
 export DISTRIBUTION_CONFIG_ID="0x14831b68338f22fe028ff7921cf5d676ac6d1cb505da0c9fc564d5c96c0d3993"
 
 # Token types (replace with real types if needed)
