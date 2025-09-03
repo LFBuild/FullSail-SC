@@ -1,0 +1,4 @@
+export TREASURY_CAP=0x64d5e6f0a934cefd8d63828f8b776be9f2c94884c72ca87543e83200c6860906
+export TO=0xfed1c619fc8dd98367a0422ca9ef53c9825e2893d78dda822106d12687888fb3
+
+sui client ptb --transfer-objects "[@$TREASURY_CAP]" @$TO

@@ -55,7 +55,7 @@ dependencies = [
 
 [[move.package]]
 id = "integer_mate"
-source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "dev", subdir = "integer_mate" }
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "main", subdir = "integer_mate" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
