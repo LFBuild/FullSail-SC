@@ -2,18 +2,18 @@
 
 [move]
 version = 3
-manifest_digest = "DAE7A52AB0FDCDDB2D110F8E99D966370E5EEBEA00AFFE9087C91EC1334D0782"
+manifest_digest = "BE2562A0C58735A71095FAF09CE6C1F57EBA8B2C4B09AE3BAD1C4276A366AAAC"
 deps_digest = "8227D341C0550A37580C10FA45FE148A465225149C69D179737E0FE454AD6AEC"
 dependencies = [
   { id = "Sui", name = "Sui" },
   { id = "clmm_pool", name = "clmm_pool" },
+  { id = "distribution", name = "distribution" },
   { id = "gauge_cap", name = "gauge_cap" },
-  { id = "governance", name = "governance" },
   { id = "integer_mate", name = "integer_mate" },
   { id = "move_stl", name = "move_stl" },
   { id = "price_monitor", name = "price_monitor" },
   { id = "price_provider", name = "price_provider" },
-  { id = "voting_escrow", name = "voting_escrow" },
+  { id = "ve", name = "ve" },
 ]
 
 [[move.package]]
@@ -49,16 +49,8 @@ dependencies = [
 ]
 
 [[move.package]]
-id = "gauge_cap"
-source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "dev", subdir = "gauge_cap" }
-
-dependencies = [
-  { id = "Sui", name = "Sui" },
-]
-
-[[move.package]]
-id = "governance"
-source = { local = "../governance" }
+id = "distribution"
+source = { local = "../distribution" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -69,7 +61,15 @@ dependencies = [
   { id = "locker_cap", name = "locker_cap" },
   { id = "price_monitor", name = "price_monitor" },
   { id = "price_provider", name = "price_provider" },
-  { id = "voting_escrow", name = "voting_escrow" },
+  { id = "ve", name = "ve" },
+]
+
+[[move.package]]
+id = "gauge_cap"
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "main", subdir = "gauge_cap" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
 ]
 
 [[move.package]]
@@ -116,8 +116,8 @@ dependencies = [
 ]
 
 [[move.package]]
-id = "voting_escrow"
-source = { local = "../voting_escrow" }
+id = "ve"
+source = { local = "../ve" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -125,7 +125,7 @@ dependencies = [
 ]
 
 [move.toolchain-version]
-compiler-version = "1.55.0"
+compiler-version = "1.54.1"
 edition = "2024"
 flavor = "sui"
 
@@ -133,6 +133,6 @@ flavor = "sui"
 
 [env.mainnet]
 chain-id = "35834a8a"
-original-published-id = "0xb21fd30f9115df4551e68eb56406ce390e53ef5044b115c02982ecec944d5f64"
-latest-published-id = "0xb21fd30f9115df4551e68eb56406ce390e53ef5044b115c02982ecec944d5f64"
+original-published-id = "0x58263a1a0da01d0ebcb4f61c3dd2ff057bb2fb0bc1cc856ae121d1344ef9461b"
+latest-published-id = "0x58263a1a0da01d0ebcb4f61c3dd2ff057bb2fb0bc1cc856ae121d1344ef9461b"
 published-version = "1"
