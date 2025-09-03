@@ -24,6 +24,8 @@ use price_monitor::price_monitor::{Self, PriceMonitor};
 
 use clmm_pool::tick_math;
 use governance::ausd_tests::{Self, AUSD_TESTS};
+use governance::exercise_fee_reward;
+use governance::voter_cap;
 
 const WEEK: u64 = 7 * 24 * 60 * 60 * 1000;
 
@@ -1752,7 +1754,8 @@ fun test_exercise_fee_distribution() {
     let user1 = @0x212;
     let user2 = @0x213;
     let user3 = @0x214;
-    let team_wallet = @0x215;
+    let protocol_wallet = @0x215;
+    let operations_wallet = @0x216;
     let mut scenario = test_scenario::begin(admin);
 
     let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 9);
@@ -1774,10 +1777,14 @@ fun test_exercise_fee_distribution() {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
         let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
         let distribution_config = scenario.take_shared<DistributionConfig>();
-        minter::set_team_wallet(&mut minter, &minter_admin_cap,  &distribution_config, team_wallet);
+        let minter_publisher = minter::test_init(scenario.ctx());
+        minter::set_protocol_wallet(&mut minter, &minter_admin_cap,  &distribution_config, protocol_wallet);
+        minter::set_operations_wallet(&mut minter, &minter_admin_cap,  &distribution_config, operations_wallet);
+        minter::grant_distribute_governor(&minter_publisher, operations_wallet, scenario.ctx());
         test_scenario::return_shared(distribution_config);
         test_scenario::return_shared(minter);
         scenario.return_to_sender(minter_admin_cap);
+        test_utils::destroy(minter_publisher);
     };
 
     // Tx 4: Whitelist USD1 token
@@ -1907,10 +1914,10 @@ fun test_exercise_fee_distribution() {
     let o_sail_to_exercise_amount = 100_000;
     // Calculate expected USD needed and team fee (assuming default 5% protocol fee)
     let expected_usd_needed = o_sail_to_exercise_amount / 2 * 1000; // Price=1, discount=50%, decimals delta = 3
-    let protocol_fee_rate = 500; // Default rate = 5%
-    assert!(protocol_fee_rate * 100 / minter::rate_denom() == 5, 1); // check decimals are correct
-    let expected_team_fee = expected_usd_needed * protocol_fee_rate / minter::rate_denom();
-    let expected_distributed_fee = expected_usd_needed - expected_team_fee;
+    let protocol_fee_rate = 1000; // Default rate = 10%
+    assert!(protocol_fee_rate * 100 / minter::rate_denom() == 10, 1); // check decimals are correct
+    let expected_protocol_fee = expected_usd_needed * protocol_fee_rate / minter::rate_denom();
+    let expected_distributed_fee = expected_usd_needed - expected_protocol_fee;
 
     // Calculate expected shares for user1 and user2
     let total_voting_power = lock1_amount + lock2_amount;
@@ -1978,24 +1985,56 @@ fun test_exercise_fee_distribution() {
         scenario.return_to_sender(o_sail1_coin); // Return remaining OSAIL1
     };
 
-    // Tx: Distribute team fee
+    // Tx: Distribute protocol fee
     scenario.next_tx(admin);
     {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
         let distribution_config = scenario.take_shared<DistributionConfig>();
-        minter::distribute_team<SAIL, USD_TESTS>(&mut minter, &distribution_config, scenario.ctx());
+        let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
+        minter::distribute_protocol<SAIL, USD_TESTS>(&mut minter,  &minter_admin_cap, &distribution_config, scenario.ctx());
         test_scenario::return_shared(minter);
         test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(minter_admin_cap);
     };
 
-    // Tx: Admin (Team Wallet) verifies received fee
-    scenario.next_tx(team_wallet);
+    // Tx: Distribute operations fee
+    scenario.next_tx(admin);
     {
-        let team_fee_coin = scenario.take_from_sender<Coin<USD_TESTS>>();
-        assert!(team_fee_coin.value() == expected_team_fee, 3); // Verify team received the correct fee
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let minter_admin_cap = scenario.take_from_sender<minter::AdminCap>();
+        minter::distribute_operations<SAIL, USD_TESTS>(&mut minter,  &minter_admin_cap, &distribution_config, scenario.ctx());
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(minter_admin_cap);
+    };
+
+    // Tx: Admin (Protocol Wallet) verifies received fee
+    scenario.next_tx(protocol_wallet);
+    {
+        let protocol_fee_coin = scenario.take_from_sender<Coin<USD_TESTS>>();
+        assert!(protocol_fee_coin.value() == expected_protocol_fee, 3); // Verify team received the correct fee
 
         // Cleanup team fee coin (optional, could transfer elsewhere)
-        coin::burn_for_testing(team_fee_coin); 
+        coin::burn_for_testing(protocol_fee_coin); 
+    };
+
+    // Tx: Admin (Operations Wallet) verifies received fee and notifies exercise fee reward amount
+    scenario.next_tx(operations_wallet);
+    {
+        let operations_fee_coin = scenario.take_from_sender<Coin<USD_TESTS>>();
+        assert!(operations_fee_coin.value() == expected_distributed_fee, 3); // Verify operations received the correct fee
+
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let mut voter = scenario.take_shared<Voter>();
+        let distribute_governor_cap = scenario.take_from_sender<minter::DistributeGovernorCap>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        minter.notify_exercise_fee_reward<SAIL, USD_TESTS>(&mut voter, &distribution_config, &distribute_governor_cap, operations_fee_coin, &clock, scenario.ctx());
+
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(voter);
+        scenario.return_to_sender(distribute_governor_cap);
+        test_scenario::return_shared(distribution_config);
     };
 
     // advances time cos notified rewards are distributed in the next epoch
@@ -2029,12 +2068,12 @@ fun test_exercise_fee_distribution() {
     {
         let mut voter = scenario.take_shared<Voter>();
         let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
-        let lock1 = scenario.take_from_sender<Lock>();
+        let mut lock1 = scenario.take_from_sender<Lock>();
         let earned_fee = voter.earned_exercise_fee<USD_TESTS>(object::id(&lock1), &clock);
         let distribution_config = scenario.take_shared<DistributionConfig>();
 
         // Claim the reward - this transfers the coin to user1
-        voter::claim_exercise_fee_reward<SAIL, USD_TESTS>(&mut voter, &distribution_config, &mut ve, &lock1, &clock, scenario.ctx());
+        voter::claim_exercise_fee_reward<SAIL, USD_TESTS>(&mut voter, &distribution_config, &mut ve, &mut lock1, &clock, scenario.ctx());
 
         assert!(earned_fee == user1_expected_fee_share, 5); // Verify earned fee
         // Return objects
@@ -2058,12 +2097,12 @@ fun test_exercise_fee_distribution() {
     {
         let mut voter = scenario.take_shared<Voter>();
         let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
-        let lock2 = scenario.take_from_sender<Lock>();
+        let mut lock2 = scenario.take_from_sender<Lock>();
         let earned_fee = voter.earned_exercise_fee<USD_TESTS>(object::id(&lock2), &clock);
         let distribution_config = scenario.take_shared<DistributionConfig>();
 
         // Claim the reward - this transfers the coin to user2
-        voter::claim_exercise_fee_reward<SAIL, USD_TESTS>(&mut voter, &distribution_config, &mut ve, &lock2, &clock, scenario.ctx());
+        voter::claim_exercise_fee_reward<SAIL, USD_TESTS>(&mut voter, &distribution_config, &mut ve, &mut lock2, &clock, scenario.ctx());
 
         assert!(earned_fee == user2_expected_fee_share, 6); // Verify earned fee
         // Return objects
@@ -2277,3 +2316,489 @@ fun test_exercise_o_sail_small_price() {
     clock::destroy_for_testing(clock);
     scenario.end();
 }
+
+#[test]
+fun test_exercise_fee_distribution_no_wallets() {
+    let admin = @0x221;
+    let user1 = @0x222;
+    let user2 = @0x223;
+    let user3 = @0x224;
+    let mut scenario = test_scenario::begin(admin);
+
+    let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 9);
+
+    // Create Clock 
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Tx 1: Setup CLMM Factory & Distribution
+    {
+        setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+        setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    };
+
+    let mut aggregator = setup::setup_price_monitor_and_aggregator<USD_TESTS, SAIL>(&mut scenario, admin, true, &clock);
+
+    // Tx 2: Whitelist USD1 token
+    scenario.next_tx(admin);
+    {
+        setup::whitelist_usd<SAIL, USD_TESTS>(&mut scenario, true, &clock);
+    };
+
+    // Tx 3: activate minter for Epoch 1 (OSAIL1)
+    let o_sail_total_supply = 1_000_000; // Define total supply
+    scenario.next_tx(admin);
+    {
+        // Activate minter and mint oSAIL for user3
+        let o_sail_coin = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, o_sail_total_supply, &mut clock);
+        transfer::public_transfer(o_sail_coin, user3);
+    };
+
+    // --- User3 Exercises oSAIL ---
+    let o_sail_to_exercise_amount = 100_000;
+    // Calculate expected USD needed and team fee (assuming default 5% protocol fee)
+    let expected_usd_needed = o_sail_to_exercise_amount / 2 * 1000; // Price=1, discount=50%, decimals delta = 3
+    let expected_protocol_fee = expected_usd_needed / 10;
+    let expected_operations_fee = expected_usd_needed - expected_protocol_fee;
+
+    // Tx: User3 Exercises OSAIL1 using the specific fee coin
+    scenario.next_tx(user3);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let mut voter = scenario.take_shared<Voter>();
+        let mut distribution_config = scenario.take_shared<DistributionConfig>();
+        let mut o_sail1_coin = scenario.take_from_sender<Coin<OSAIL1>>();
+        let usd_fee = coin::mint_for_testing<USD_TESTS>(expected_usd_needed, scenario.ctx());
+
+        let o_sail_to_exercise = o_sail1_coin.split(o_sail_to_exercise_amount, scenario.ctx());
+        let usd_limit = expected_usd_needed; // Limit is exactly the amount needed
+        let mut price_monitor = scenario.take_shared<PriceMonitor>();
+        let sail_stablecoin_pool = scenario.take_shared<Pool<USD_TESTS, SAIL>>();
+
+        setup::aggregator_set_current_value(&mut aggregator,  setup::one_dec18(), clock.timestamp_ms()); 
+
+        // Exercise o_sail
+        let (usd_left, sail_received) = minter::exercise_o_sail<USD_TESTS, SAIL, SAIL, USD_TESTS, OSAIL1>(
+            &mut minter,
+            &distribution_config,
+            &mut voter,
+            o_sail_to_exercise, 
+            usd_fee,
+            &usd_metadata,
+            usd_limit,
+            &mut price_monitor,
+            &sail_stablecoin_pool, 
+            &aggregator,
+            &clock,
+            scenario.ctx()
+        );
+        test_scenario::return_shared(price_monitor);
+        test_scenario::return_shared(sail_stablecoin_pool);
+
+        // --- Assertions --- 
+        assert!(sail_received.value() == o_sail_to_exercise_amount, 1); 
+        assert!(usd_left.value() == 0, 2); 
+
+        // Cleanup
+        coin::destroy_zero(usd_left);
+        transfer::public_transfer(sail_received, user3);
+
+        // Return shared objects & caps
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(voter);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(o_sail1_coin);
+    };
+
+    // Tx: Verify internal balances
+    scenario.next_tx(admin);
+    {
+        let minter = scenario.take_shared<Minter<SAIL>>();
+        let protocol_balance = minter.exercise_fee_protocol_balance<SAIL, USD_TESTS>();
+        let operations_balance = minter.exercise_fee_operations_balance<SAIL, USD_TESTS>();
+
+        assert!(protocol_balance == expected_protocol_fee, 3);
+        assert!(operations_balance == expected_operations_fee, 4);
+
+        test_scenario::return_shared(minter);
+    };
+
+
+    clock::destroy_for_testing(clock);
+    test_utils::destroy(usd_treasury_cap);
+    test_utils::destroy(usd_metadata);
+    test_utils::destroy(aggregator);
+    scenario.end();
+}
+
+#[test]
+#[expected_failure(abort_code = exercise_fee_reward::ESailClaimNotAllowed)]
+fun test_exercise_fee_reward_sail_claim_fail() {
+    let admin = @0x251;
+    let user = @0x252;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Setup distribution
+    scenario.next_tx(admin);
+    {
+        setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+        setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    };
+
+    // Create Voter and VE
+    test_scenario::return_shared(scenario.take_shared<Voter>());
+
+
+    // Create ExerciseFeeReward and notify rewards
+    scenario.next_tx(admin);
+    {
+        let mut voter = scenario.take_shared<Voter>();
+        let voter_id = object::id(&voter);
+        let voter_cap = governance::voter_cap::create_voter_cap(voter_id, scenario.ctx());
+
+        let sail_type_name = std::type_name::get<SAIL>();
+        let mut reward = exercise_fee_reward::create(
+            voter_id,
+            vector[sail_type_name],
+            scenario.ctx()
+        );
+
+        let sail_coin = coin::mint_for_testing<SAIL>(100_000, scenario.ctx());
+
+        exercise_fee_reward::notify_reward_amount<SAIL>(
+            &mut reward,
+            &voter_cap,
+            sail_coin,
+            &clock,
+            scenario.ctx()
+        );
+
+        transfer::public_share_object(reward);
+        test_scenario::return_shared(voter);
+        transfer::public_share_object(voter_cap);
+    };
+
+     // Create lock for user
+    scenario.next_tx(user);
+    {
+        let sail_coin = coin::mint_for_testing<SAIL>(10_000, scenario.ctx());
+        setup::create_lock<SAIL>(&mut scenario, sail_coin, 365, &clock);
+    };
+
+
+    // Attempt to claim SAIL reward
+    scenario.next_tx(user);
+    {
+        let mut reward = scenario.take_shared<exercise_fee_reward::ExerciseFeeReward>();
+        let voter_cap = scenario.take_shared<governance::voter_cap::VoterCap>();
+        let ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let lock = scenario.take_from_sender<Lock>();
+
+        // This should fail
+        exercise_fee_reward::get_reward<SAIL, SAIL>(
+            &mut reward,
+            &voter_cap,
+            &ve,
+            &lock,
+            &clock,
+            scenario.ctx()
+        );
+
+        test_scenario::return_shared(reward);
+        test_scenario::return_shared(ve);
+        scenario.return_to_sender(lock);
+        test_scenario::return_shared(voter_cap);
+    };
+
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_exercise_fee_reward_sail_claim_succeed() {
+    let admin = @0x261;
+    let user = @0x262;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Setup distribution
+    scenario.next_tx(admin);
+    {
+        setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+        setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    };
+
+    // Create ExerciseFeeReward and notify rewards
+    let reward_amount = 100_000;
+    scenario.next_tx(admin);
+    {
+        let voter = scenario.take_shared<Voter>();
+        let voter_id = object::id(&voter);
+        let voter_cap = governance::voter_cap::create_voter_cap(voter_id, scenario.ctx());
+
+        let sail_type_name = std::type_name::get<SAIL>();
+        let mut reward = exercise_fee_reward::create(
+            voter_id,
+            vector[sail_type_name],
+            scenario.ctx()
+        );
+
+        let sail_coin = coin::mint_for_testing<SAIL>(reward_amount, scenario.ctx());
+
+        exercise_fee_reward::notify_reward_amount<SAIL>(
+            &mut reward,
+            &voter_cap,
+            sail_coin,
+            &clock,
+            scenario.ctx()
+        );
+
+        transfer::public_share_object(reward);
+        test_scenario::return_shared(voter);
+        transfer::public_share_object(voter_cap);
+    };
+
+     // Create lock for user
+    let initial_lock_amount = 10_000;
+    scenario.next_tx(user);
+    {
+        let sail_coin = coin::mint_for_testing<SAIL>(initial_lock_amount, scenario.ctx());
+        setup::create_lock<SAIL>(&mut scenario, sail_coin, 365, &clock);
+    };
+
+    // Deposit lock into reward
+    scenario.next_tx(user);
+    {
+        let mut reward = scenario.take_shared<exercise_fee_reward::ExerciseFeeReward>();
+        let voter_cap = scenario.take_shared<governance::voter_cap::VoterCap>();
+        let ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let lock = scenario.take_from_sender<Lock>();
+        let lock_id = object::id(&lock);
+
+        let (locked_balance, _) = voting_escrow::locked(&ve, lock_id);
+
+        exercise_fee_reward::deposit(
+            &mut reward,
+            &voter_cap,
+            locked_balance.amount(),
+            lock_id,
+            &clock,
+            scenario.ctx()
+        );
+
+        test_scenario::return_shared(reward);
+        test_scenario::return_shared(voter_cap);
+        test_scenario::return_shared(ve);
+        scenario.return_to_sender(lock);
+    };
+
+    let epoch_start = common::current_period(&clock);
+
+    // advance time by week
+    clock::increment_for_testing(&mut clock, WEEK);
+
+    // Finalize weights
+    scenario.next_tx(admin);
+    {
+        let mut reward = scenario.take_shared<exercise_fee_reward::ExerciseFeeReward>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let distribute_governor_cap = scenario.take_from_sender<minter::DistributeGovernorCap>();
+        let voter_cap = scenario.take_shared<governance::voter_cap::VoterCap>();
+
+        reward.update_balances(
+            &voter_cap,
+            vector<u64>[],
+            vector<ID>[],
+            epoch_start,
+            true,
+            &clock,
+            scenario.ctx()
+        );
+
+        test_scenario::return_shared(reward);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(distribute_governor_cap);
+        test_scenario::return_shared(voter_cap);
+    };
+
+    // Claim SAIL reward
+    scenario.next_tx(user);
+    {
+        let mut reward = scenario.take_shared<exercise_fee_reward::ExerciseFeeReward>();
+        let voter_cap = scenario.take_shared<governance::voter_cap::VoterCap>();
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let mut lock = scenario.take_from_sender<Lock>();
+
+        // This should succeed
+        let claimed_amount = exercise_fee_reward::get_reward_sail<SAIL>(
+            &mut reward,
+            &voter_cap,
+            &mut ve,
+            &mut lock,
+            &clock,
+            scenario.ctx()
+        );
+
+        // Since there is only one lock, it should get all rewards
+        assert!(claimed_amount == reward_amount, 1);
+
+        let (locked_balance_after, _) = voting_escrow::locked(&ve, object::id(&lock));
+        assert!(locked_balance_after.amount() == initial_lock_amount + reward_amount, 2);
+
+        test_scenario::return_shared(reward);
+        test_scenario::return_shared(ve);
+        scenario.return_to_sender(lock);
+        test_scenario::return_shared(voter_cap);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_exercise_fee_reward_usd_claim_succeed() {
+    let admin = @0x261;
+    let user = @0x262;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Setup distribution
+    scenario.next_tx(admin);
+    {
+        setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+        setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    };
+
+    // Create ExerciseFeeReward and notify rewards
+    let reward_amount = 100_000;
+    scenario.next_tx(admin);
+    {
+        let voter = scenario.take_shared<Voter>();
+        let voter_id = object::id(&voter);
+        let voter_cap = governance::voter_cap::create_voter_cap(voter_id, scenario.ctx());
+
+        let sail_type_name = std::type_name::get<SAIL>();
+        let mut reward = exercise_fee_reward::create(
+            voter_id,
+            vector[sail_type_name],
+            scenario.ctx()
+        );
+
+        let usd_coin = coin::mint_for_testing<AUSD>(reward_amount, scenario.ctx());
+
+        exercise_fee_reward::notify_reward_amount<AUSD>(
+            &mut reward,
+            &voter_cap,
+            usd_coin,
+            &clock,
+            scenario.ctx()
+        );
+
+        transfer::public_share_object(reward);
+        test_scenario::return_shared(voter);
+        transfer::public_share_object(voter_cap);
+    };
+
+     // Create lock for user
+    let initial_lock_amount = 10_000;
+    scenario.next_tx(user);
+    {
+        let sail_coin = coin::mint_for_testing<SAIL>(initial_lock_amount, scenario.ctx());
+        setup::create_lock<SAIL>(&mut scenario, sail_coin, 365, &clock);
+    };
+
+    // Deposit lock into reward
+    scenario.next_tx(user);
+    {
+        let mut reward = scenario.take_shared<exercise_fee_reward::ExerciseFeeReward>();
+        let voter_cap = scenario.take_shared<governance::voter_cap::VoterCap>();
+        let ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let lock = scenario.take_from_sender<Lock>();
+        let lock_id = object::id(&lock);
+
+        let (locked_balance, _) = voting_escrow::locked(&ve, lock_id);
+
+        exercise_fee_reward::deposit(
+            &mut reward,
+            &voter_cap,
+            locked_balance.amount(),
+            lock_id,
+            &clock,
+            scenario.ctx()
+        );
+
+        test_scenario::return_shared(reward);
+        test_scenario::return_shared(voter_cap);
+        test_scenario::return_shared(ve);
+        scenario.return_to_sender(lock);
+    };
+
+    let epoch_start = common::current_period(&clock);
+
+    // advance time by week
+    clock::increment_for_testing(&mut clock, WEEK);
+
+    // Finalize weights
+    scenario.next_tx(admin);
+    {
+        let mut reward = scenario.take_shared<exercise_fee_reward::ExerciseFeeReward>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let distribute_governor_cap = scenario.take_from_sender<minter::DistributeGovernorCap>();
+        let voter_cap = scenario.take_shared<governance::voter_cap::VoterCap>();
+
+        reward.update_balances(
+            &voter_cap,
+            vector<u64>[],
+            vector<ID>[],
+            epoch_start,
+            true,
+            &clock,
+            scenario.ctx()
+        );
+
+        test_scenario::return_shared(reward);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(distribute_governor_cap);
+        test_scenario::return_shared(voter_cap);
+    };
+
+    // Claim USD reward
+    scenario.next_tx(user);
+    {
+        let mut reward = scenario.take_shared<exercise_fee_reward::ExerciseFeeReward>();
+        let voter_cap = scenario.take_shared<governance::voter_cap::VoterCap>();
+        let ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let lock = scenario.take_from_sender<Lock>();
+
+        // This should succeed
+        let claimed_amount = exercise_fee_reward::get_reward<SAIL, AUSD>(
+            &mut reward,
+            &voter_cap,
+            &ve,
+            &lock,
+            &clock,
+            scenario.ctx()
+        );
+
+        // Since there is only one lock, it should get all rewards
+        assert!(claimed_amount == reward_amount, 1);
+
+        test_scenario::return_shared(reward);
+        test_scenario::return_shared(ve);
+        scenario.return_to_sender(lock);
+        test_scenario::return_shared(voter_cap);
+    };
+
+    // Verify user received the correct amount
+    scenario.next_tx(user);
+    {
+        let received_coin = scenario.take_from_sender<Coin<AUSD>>();
+        assert!(received_coin.value() == reward_amount, 1);
+        coin::burn_for_testing(received_coin);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+

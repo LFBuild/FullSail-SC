@@ -93,9 +93,13 @@ module governance::minter {
     const EExerciseUsdLimitReached: u64 = 490517942447480600;
     const EExerciseUsdLimitHigherThanOSail: u64 = 953914262470819500;
 
-    const ETeamWalletNotSet: u64 = 798141442607710900;
-    const EDistributeTeamTokenNotFound: u64 = 962925679282177400;
-    const EDistributeTeamMinterPaused: u64 = 482957361048572639;
+    const EDistributeProtocolTokenNotFound: u64 = 341757784748534300;
+    const EDistributeProtocolMinterPaused: u64 = 410768471077089800;
+    const EDistributeProtocolWalletNotSet: u64 = 987893910474538100;
+
+    const EDistributeOperationsTokenNotFound: u64 = 321746203850562500;
+    const EDistributeOperationsMinterPaused: u64 = 14616427533564292;
+    const EDistributeOperationsWalletNotSet: u64 = 390491624826283500;
 
     const ECreateGaugeMinterPaused: u64 = 173400731963214500;
     const ECreateGaugeZeroBaseEmissions: u64 = 676230237726862100;
@@ -263,8 +267,24 @@ module governance::minter {
         team_wallet: address,
     }
 
-    public struct EventDistributeTeam has copy, drop, store {
-        team_wallet: address,
+    public struct EventSetProtocolWallet has copy, drop, store {
+        admin_cap: ID,
+        protocol_wallet: address,
+    }
+
+    public struct EventSetOperationsWallet has copy, drop, store {
+        admin_cap: ID,
+        operations_wallet: address,
+    }
+
+    public struct EventDistributeProtocol has copy, drop, store {
+        protocol_wallet: address,
+        amount: u64,
+        token_type: TypeName,
+    }
+
+    public struct EventDistributeOperations has copy, drop, store {
+        operations_wallet: address,
         amount: u64,
         token_type: TypeName,
     }
@@ -367,15 +387,6 @@ module governance::minter {
         pool_id: ID,
         position_id: ID,
         amount: u64,
-        token: TypeName,
-    }
-
-    public struct EventClaimPositionRewardV2 has copy, drop, store {
-        from: address,
-        gauge_id: ID,
-        pool_id: ID,
-        position_id: ID,
-        amount: u64,
         growth_inside: u128,
         token: TypeName,
     }
@@ -399,7 +410,12 @@ module governance::minter {
         o_sail_expiry_dates: Table<TypeName, u64>,
         team_emission_rate: u64,
         protocol_fee_rate: u64,
+        // wallet to distribute team emissions to
         team_wallet: address,
+        // wallet to distribute protocol fees to
+        protocol_wallet: address,
+        // wallet that is used to perform operations on behalf of the protocol
+        operations_wallet: address,
         // Map Rebase/ExerciseFee Distributor ID -> Capability
         rebase_distributor_cap: Option<governance::rebase_distributor_cap::RebaseDistributorCap>,
         distribute_cap: Option<governance::distribute_cap::DistributeCap>,
@@ -407,7 +423,11 @@ module governance::minter {
         // we don't need whitelisted tokens, cos
         // pool whitelist also determines token whitelist composed of the pools tokens.
         whitelisted_usd: VecSet<TypeName>,
-        exercise_fee_team_balances: Bag,
+        // these balances are dedicated to the team wallet
+        // They can latter be used to buyback SAIL on the mass unlock event in 4 years.
+        exercise_fee_protocol_balances: Bag,
+        // these balances are supposed to be used to buyback SAIL on a regualar basis
+        exercise_fee_operations_balances: Bag,
         // Gauge Id -> oSAil Emissions
         gauge_epoch_emissions_usd: Table<ID, u64>,
         // Gauge Id -> Minter.active_period during which gauge was distributed
@@ -628,13 +648,16 @@ module governance::minter {
             o_sail_caps: bag::new(ctx),
             o_sail_minted_supply: 0,
             o_sail_expiry_dates: table::new<TypeName, u64>(ctx),
-            team_emission_rate: 500,
-            protocol_fee_rate: 500,
+            team_emission_rate: 0,
+            protocol_fee_rate: 1000,
             team_wallet: @0x0,
+            protocol_wallet: @0x0,
+            operations_wallet: @0x0,
             rebase_distributor_cap: option::none<governance::rebase_distributor_cap::RebaseDistributorCap>(),
             distribute_cap: option::none<governance::distribute_cap::DistributeCap>(),
             whitelisted_usd: vec_set::empty<TypeName>(),
-            exercise_fee_team_balances: bag::new(ctx),
+            exercise_fee_protocol_balances: bag::new(ctx),
+            exercise_fee_operations_balances: bag::new(ctx),
             gauge_epoch_emissions_usd: table::new<ID, u64>(ctx),
             gauge_active_period: table::new<ID, u64>(ctx),
             gauge_epoch_count: table::new<ID, u64>(ctx),
@@ -933,32 +956,106 @@ module governance::minter {
         sui::event::emit<EventSetTeamWallet>(set_team_wallet_event);
     }
 
-    /// Distributes the protocol exercise oSAIL fee to the team wallet.
-    /// Is public cos team_wallet is predefined
-    public fun distribute_team<SailCoinType, ExerciseFeeCoinType>(
+    /// Sets the protocol wallet address that will receive protocol fees.
+    ///
+    /// # Arguments
+    /// * `minter` - The minter instance to modify
+    /// * `admin_cap` - Administrative capability proving authorization
+    /// * `protocol_wallet` - Address of the protocol wallet
+    public fun set_protocol_wallet<SailCoinType>(
         minter: &mut Minter<SailCoinType>,
+        admin_cap: &AdminCap,
+        distribution_config: &DistributionConfig,
+        protocol_wallet: address
+    ) {
+        distribution_config.checked_package_version();
+        minter.check_admin(admin_cap);
+        minter.protocol_wallet = protocol_wallet;
+
+        let set_protocol_wallet_event = EventSetProtocolWallet {
+            admin_cap: object::id(admin_cap),
+            protocol_wallet,
+        };
+        sui::event::emit<EventSetProtocolWallet>(set_protocol_wallet_event);
+    }
+
+    /// Sets the operations wallet address that will perform operations on behalf of the protocol.
+    ///
+    /// # Arguments
+    /// * `minter` - The minter instance to modify
+    /// * `admin_cap` - Administrative capability proving authorization
+    /// * `operations_wallet` - Address of the operations wallet
+    public fun set_operations_wallet<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        admin_cap: &AdminCap,
+        distribution_config: &DistributionConfig,
+        operations_wallet: address
+    ) {
+        distribution_config.checked_package_version();
+        minter.check_admin(admin_cap);
+        minter.operations_wallet = operations_wallet;
+
+        let set_operations_wallet_event = EventSetOperationsWallet {
+            admin_cap: object::id(admin_cap),
+            operations_wallet,
+        };
+        sui::event::emit<EventSetOperationsWallet>(set_operations_wallet_event);
+    }
+
+    public fun distribute_protocol<SailCoinType, ExerciseFeeCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        admin_cap: &AdminCap,
         distribution_config: &DistributionConfig,
         ctx: &mut TxContext,
     ) {
-        distribution_config.checked_package_version();
-        assert!(!minter.is_paused(), EDistributeTeamMinterPaused);
-        assert!(minter.team_wallet != @0x0, ETeamWalletNotSet);
+         distribution_config.checked_package_version();
+        assert!(!minter.is_paused(), EDistributeProtocolMinterPaused);
+        minter.check_admin(admin_cap);
+        assert!(minter.protocol_wallet != @0x0, EDistributeProtocolWalletNotSet);
 
         let coin_type = type_name::get<ExerciseFeeCoinType>();
-        assert!(minter.exercise_fee_team_balances.contains(coin_type), EDistributeTeamTokenNotFound);
-        let balance = minter.exercise_fee_team_balances.remove<TypeName, Balance<ExerciseFeeCoinType>>(coin_type);
+        assert!(minter.exercise_fee_protocol_balances.contains(coin_type), EDistributeProtocolTokenNotFound);
+        let balance = minter.exercise_fee_protocol_balances.remove<TypeName, Balance<ExerciseFeeCoinType>>(coin_type);
         let amount = balance.value();
         transfer::public_transfer<Coin<ExerciseFeeCoinType>>(
             coin::from_balance(balance, ctx), 
-            minter.team_wallet
+            minter.protocol_wallet
         );
 
-        let distribute_team_event = EventDistributeTeam {
-            team_wallet: minter.team_wallet,
+        let event = EventDistributeProtocol {
+            protocol_wallet: minter.protocol_wallet,
             amount,
             token_type: coin_type,
         };
-        sui::event::emit<EventDistributeTeam>(distribute_team_event);
+        sui::event::emit<EventDistributeProtocol>(event);
+    }
+
+    public fun distribute_operations<SailCoinType, ExerciseFeeCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        admin_cap: &AdminCap,
+        distribution_config: &DistributionConfig,
+        ctx: &mut TxContext,
+    ) {
+         distribution_config.checked_package_version();
+        assert!(!minter.is_paused(), EDistributeOperationsMinterPaused);
+        minter.check_admin(admin_cap);
+        assert!(minter.operations_wallet != @0x0, EDistributeOperationsWalletNotSet);
+
+        let coin_type = type_name::get<ExerciseFeeCoinType>();
+        assert!(minter.exercise_fee_operations_balances.contains(coin_type), EDistributeOperationsTokenNotFound);
+        let balance = minter.exercise_fee_operations_balances.remove<TypeName, Balance<ExerciseFeeCoinType>>(coin_type);
+        let amount = balance.value();
+        transfer::public_transfer<Coin<ExerciseFeeCoinType>>(
+            coin::from_balance(balance, ctx), 
+            minter.operations_wallet
+        );
+
+        let event = EventDistributeOperations {
+            operations_wallet: minter.operations_wallet,
+            amount,
+            token_type: coin_type,
+        };
+        sui::event::emit<EventDistributeOperations>(event);
     }
 
     /// Returns the current team emission rate.
@@ -1163,16 +1260,12 @@ module governance::minter {
             minter.active_period + voting_escrow::common::epoch() < current_time,
             EUpdatePeriodNotFinishedYet
         );
-        let rebase_distributor_id = object::id(rebase_distributor);
         assert!(minter.rebase_distributor_cap.is_some(), EUpdatePeriodNoRebaseDistributorCap);
 
         let prev_prev_epoch_emissions = minter.o_sail_epoch_emissions(distribution_config);
         minter.update_o_sail_token(epoch_o_sail_treasury_cap, clock);
-        let rebase_growth = calculate_rebase_growth(
-            prev_prev_epoch_emissions,
-            minter.total_supply(),
-            voting_escrow.total_locked()
-        );
+        // rebase is disabled
+        let rebase_growth = 0;
         let mut team_emissions = 0;
         if (minter.team_emission_rate > 0 && minter.team_wallet != @0x0) {
             team_emissions = integer_mate::full_math_u64::mul_div_floor(
@@ -1183,18 +1276,6 @@ module governance::minter {
             transfer::public_transfer<Coin<SailCoinType>>(
                 minter.mint_sail(team_emissions, ctx),
                 minter.team_wallet
-            );
-        };
-        if (rebase_growth > 0) {
-            let rebase_emissions = minter.mint_sail(
-                rebase_growth,
-                ctx
-            );
-            let rebase_distributor_cap = minter.rebase_distributor_cap.borrow();
-            rebase_distributor.checkpoint_token(
-                rebase_distributor_cap,
-                rebase_emissions,
-                clock
             );
         };
         let distribute_cap = minter.distribute_cap.borrow();
@@ -2233,34 +2314,35 @@ module governance::minter {
     ): (Coin<USDCoinType>, Coin<SailCoinType>) {
         let sail_amount_out = o_sail.value();
         let mut usd_to_pay = usd_in.split(usd_amount_in, ctx);
+        let usd_coin_type = type_name::get<USDCoinType>();
 
         let mut protocol_fee_amount = 0;
-        if (minter.protocol_fee_rate > 0 && minter.team_wallet != @0x0) {
+        if (minter.protocol_fee_rate > 0) {
             protocol_fee_amount = integer_mate::full_math_u64::mul_div_floor(
                 usd_to_pay.value(),
                 minter.protocol_fee_rate,
                 RATE_DENOM,
             );
             let protocol_fee = usd_to_pay.split(protocol_fee_amount, ctx);
-            let usd_coin_type = type_name::get<USDCoinType>();
 
-            if (!minter.exercise_fee_team_balances.contains<TypeName>(usd_coin_type)) {
-                minter.exercise_fee_team_balances.add(usd_coin_type, balance::zero<USDCoinType>());
+            if (!minter.exercise_fee_protocol_balances.contains<TypeName>(usd_coin_type)) {
+                minter.exercise_fee_protocol_balances.add(usd_coin_type, balance::zero<USDCoinType>());
             };
-            let team_fee_balance = minter
-                .exercise_fee_team_balances
+            let protocol_fee_balance = minter
+                .exercise_fee_protocol_balances
                 .borrow_mut<TypeName, Balance<USDCoinType>>(usd_coin_type);
 
-            team_fee_balance.join(protocol_fee.into_balance());
+            protocol_fee_balance.join(protocol_fee.into_balance());
         };
         
         let fee_to_distribute = usd_to_pay.value();
-        voter.notify_exercise_fee_reward_amount(
-            minter.distribute_cap.borrow(),
-            usd_to_pay,
-            clock,
-            ctx,
-        );
+        if (!minter.exercise_fee_operations_balances.contains<TypeName>(usd_coin_type)) {
+            minter.exercise_fee_operations_balances.add(usd_coin_type, balance::zero<USDCoinType>());
+        };
+        let operations_fee_balance = minter
+            .exercise_fee_operations_balances
+            .borrow_mut<TypeName, Balance<USDCoinType>>(usd_coin_type);
+        operations_fee_balance.join(usd_to_pay.into_balance());
 
         minter.burn_o_sail(o_sail);
         let sail_out = minter.mint_sail(sail_amount_out, ctx);
@@ -2761,7 +2843,7 @@ module governance::minter {
             clock,
         );
 
-        let event = EventClaimPositionRewardV2 {
+        let event = EventClaimPositionReward {
             from: tx_context::sender(ctx),
             gauge_id: object::id(gauge),
             pool_id: object::id(pool),
@@ -2770,7 +2852,7 @@ module governance::minter {
             growth_inside,
             token: type_name::get<RewardCoinType>(),
         };
-        sui::event::emit<EventClaimPositionRewardV2>(event);
+        sui::event::emit<EventClaimPositionReward>(event);
         
         reward_amount
     }
@@ -2921,6 +3003,50 @@ module governance::minter {
             clock,
             ctx
         );
+    }
+
+    /// Used to notify exercise fee. Supposed to be used by operations wallet
+    /// to deposit freshly bought SAIL into the reward contract.
+    public fun notify_exercise_fee_reward<SailCoinType, ExerciseFeeCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        voter: &mut governance::voter::Voter,
+        distribution_config: &DistributionConfig,
+        distribute_governor_cap: &DistributeGovernorCap,
+        reward: Coin<ExerciseFeeCoinType>,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        distribution_config.checked_package_version();
+        minter.check_distribute_governor(distribute_governor_cap);
+
+        voter.notify_exercise_fee_reward_amount(
+            minter.distribute_cap.borrow(),
+            reward,
+            clock,
+            ctx,
+        );
+    }
+
+    public fun exercise_fee_protocol_balance<SailCoinType, ExerciseFeeCoinType>(
+        minter: &Minter<SailCoinType>,
+    ): u64 {
+        let coin_type = type_name::get<ExerciseFeeCoinType>();
+        if (minter.exercise_fee_protocol_balances.contains<TypeName>(coin_type)) {
+            minter.exercise_fee_protocol_balances.borrow<TypeName, Balance<ExerciseFeeCoinType>>(coin_type).value()
+        } else {
+            0
+        }
+    }
+
+    public fun exercise_fee_operations_balance<SailCoinType, ExerciseFeeCoinType>(
+        minter: &Minter<SailCoinType>,
+    ): u64 {
+        let coin_type = type_name::get<ExerciseFeeCoinType>();
+        if (minter.exercise_fee_operations_balances.contains<TypeName>(coin_type)) {
+            minter.exercise_fee_operations_balances.borrow<TypeName, Balance<ExerciseFeeCoinType>>(coin_type).value()
+        } else {
+            0
+        }
     }
 
     #[test_only]
