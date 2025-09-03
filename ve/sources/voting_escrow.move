@@ -242,11 +242,6 @@ module ve::voting_escrow {
         lock: ID,
     }
 
-    public struct EventMigrate has copy, drop, store {
-        lock_id: ID,
-        new_lock_id: ID,
-    }
-
     public struct VotingEscrow<phantom SailCoinType> has store, key {
         id: UID,
         voter: ID,
@@ -3027,15 +3022,12 @@ module ve::voting_escrow {
         assert!(voting_escrow.bag.contains(key), EDestroyNonNulledLock);
 
         let lock_id = object::id<Lock>(&lock);
-        let lock_has_voted = voting_escrow.lock_has_voted(lock_id);
-        assert!(!lock_has_voted, EWithdrawPositionVoted);
         assert!(
             !voting_escrow.escrow_type.contains(lock_id) || *voting_escrow.escrow_type.borrow(
                 lock_id
             ) == EscrowType::NORMAL,
             EWithdrawPositionNotNormalEscrow
         );
-        assert!(!voting_escrow.is_nulled(lock_id), EWithdrawNulledLock);
         let locked_balance = *voting_escrow.locked.borrow(lock_id);
 
         let coin = sui::coin::from_balance<SailCoinType>(
@@ -3046,6 +3038,7 @@ module ve::voting_escrow {
         let new_lock = voting_escrow::voting_escrow::create_lock_migration(
             voting_escrow_new,
             voting_escrow.bag.borrow<u64, voting_escrow::voting_escrow_cap::VotingEscrowCap>(key),
+            lock_id,
             coin,
             lock.start,
             lock.end,
@@ -3056,12 +3049,6 @@ module ve::voting_escrow {
         );
 
         let new_lock_id = object::id<voting_escrow::voting_escrow::Lock>(&new_lock);
-
-        let event = EventMigrate {
-            lock_id,
-            new_lock_id,
-        };
-        sui::event::emit<EventMigrate>(event);
 
         voting_escrow.burn_lock_internal(lock, locked_balance, clock, ctx);
 

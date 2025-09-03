@@ -240,6 +240,11 @@ module voting_escrow::voting_escrow {
         lock: ID,
     }
 
+    public struct EventMigrate has copy, drop, store {
+        lock_id: ID,
+        new_lock_id: ID,
+    }
+
     public struct VotingEscrow<phantom SailCoinType> has store, key {
         id: UID,
         voter: ID,
@@ -1209,6 +1214,7 @@ module voting_escrow::voting_escrow {
     public fun create_lock_migration<SailCoinType>(
         voting_escrow: &mut VotingEscrow<SailCoinType>,
         _: &voting_escrow::voting_escrow_cap::VotingEscrowCap,
+        old_lock_id: ID,
         coin: sui::coin::Coin<SailCoinType>,
         start_time: u64,
         end_time: u64,
@@ -1236,6 +1242,12 @@ module voting_escrow::voting_escrow {
         if (permanent) {
             voting_escrow.lock_permanent_internal(&mut lock, clock, ctx);
         };
+
+        let event = EventMigrate {
+            lock_id: old_lock_id,
+            new_lock_id: object::id<Lock>(&lock),
+        };
+        sui::event::emit<EventMigrate>(event);
 
         lock
     }
