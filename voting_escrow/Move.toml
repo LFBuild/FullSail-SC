@@ -2,10 +2,8 @@
 name = "voting_escrow"
 edition = "2024.beta"
 
-[dependencies]
-
 [addresses]
-voting_escrow = "0x01"
+voting_escrow = "0x0"
 
 [dev-dependencies]
 

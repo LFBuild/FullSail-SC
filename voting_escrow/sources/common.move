@@ -8,7 +8,7 @@ module voting_escrow::common {
     const HOUR: u64 = 3600;
     const DAY: u64 = 24 * HOUR;
     const WEEK: u64 = 7 * DAY;
-    const EPOCH_DURATION: u64 = WEEK;
+    const EPOCH_DURATION: u64 = DAY / 8;
 
     // OSail params
     const MAX_DISCOUNT: u64 = 100000000;
@@ -89,7 +89,7 @@ module voting_escrow::common {
     /// # Returns
     /// The timestamp when voting ends in the current epoch
     public fun epoch_vote_end(timestamp: u64): u64 {
-        epoch_next(timestamp) - HOUR
+        epoch_next(timestamp) - HOUR/4
     }
 
     /// Calculates the start timestamp of the voting period in the current epoch
@@ -101,7 +101,7 @@ module voting_escrow::common {
     /// # Returns
     /// The timestamp when voting starts in the current epoch
     public fun epoch_vote_start(timestamp: u64): u64 {
-        epoch_start(timestamp) + HOUR
+        epoch_start(timestamp) + HOUR/4
     }
 
     /// Returns the time required for transaction finality
