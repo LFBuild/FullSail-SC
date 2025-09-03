@@ -3,7 +3,7 @@ name = "integrate"
 edition = "2024"
 
 [addresses]
-integrate = "0x58263a1a0da01d0ebcb4f61c3dd2ff057bb2fb0bc1cc856ae121d1344ef9461b"
+integrate = "0x0"
 
 [dev-dependencies]
 

@@ -3,7 +3,7 @@ name = "voting_escrow"
 edition = "2024.beta"
 
 [addresses]
-voting_escrow = "0x2469959951798462ecba5efc3b93276560472be279494561331d384baeedab4c"
+voting_escrow = "0x0"
 
 [dev-dependencies]
 

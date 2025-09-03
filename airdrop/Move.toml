@@ -3,7 +3,7 @@ name = "airdrop"
 edition = "2024.beta"
 
 [addresses]
-airdrop = "0x6e4182b96a6f0960ff30d52f2ce0133cd182fa8ee5ba2f7cf1cd9d2c2c645edb"
+airdrop = "0x0"
 
 [dev-dependencies]
 
