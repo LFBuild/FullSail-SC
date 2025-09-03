@@ -32,6 +32,10 @@
 /// * Distribution system for reward calculations
 /// * CLMM Pool system for liquidity tracking
 module liquidity_locker::pool_tranche {
+    #[allow(unused_const)]
+    const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
+    #[allow(unused_const)]
+    const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
     
     use std::type_name::{Self, TypeName};
     use liquidity_locker::consts;

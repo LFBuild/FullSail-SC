@@ -3,6 +3,8 @@ module voting_escrow::reward {
 
     #[allow(unused_const)]
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
+    #[allow(unused_const)]
+    const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
 
     const EUpdateBalancesDisabled: u64 = 931921756019291001;
     const EUpdateBalancesEpochStartInvalid: u64 = 97211664930268266;
