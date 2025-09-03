@@ -9,6 +9,7 @@ A Dex Smart Contract implementing ve(4,4) model which is a modification of ve(3,
 ## Prerequisities
 
 Need to have knowledge in
+
 - Blockchain Fundamentals
 - SUI chain
 - Dex(Ve(3,3)) Flow and Logic
@@ -31,19 +32,22 @@ indicates that Integrate depends on clmm_pool.
 ![Dependency Graph](dependency_graph.svg)
 
 Notable dependencies:
+
 - integrate depends on nearly all the contracts.
 
 ## Deployment
 
 ### Initial deployment
+
 - Use the latest version of `sui` CLI.
 - Run the `build_all.sh` script to update the git deps of all the packages.
 - Run `reset_addresses.sh` to set the `[addresses]` value for each package to `0x0` in the `Move.toml` file.
-- Deploy all the packages in an order defined by dependency graph (see [Contract dependencies](#contract-dependencies)). 
-Use `sui client publish` command.
+- Deploy all the packages in an order defined by dependency graph (see [Contract dependencies](#contract-dependencies)).
+  Use `sui client publish` command.
 - Run `update_addresses.sh` to restore the package address `[addresses]` section in the `Move.toml` for each package with the `original-published-id` after publishing. WARNING the `update_addresses.sh` script supports only mainnet environment.
 
 ### Upgrading
+
 - When upgrading, you need to retrieve the UpgradeCap ID of your published package. Automated address management does not track your UpgradeCap.
 - When upgrading, you first need to set the `[addresses]` value for your package to 0x0 in the Move.toml, and restore its ID with the ORIGINAL-ADDRESS after upgrading.
 
@@ -53,15 +57,18 @@ Use `sui client publish` command.
 
 #### Publication transactions
 
-- [SAIL](https://suivision.xyz/txblock/8h9AypGsfEz4UEycf6zwNjFehpRxHyNYsc7N7JwxzCi)
+- [locker_cap](https://suivision.xyz/txblock/A9ETxo574RNtZYkZULKFA69mLrkhBEYYQ1JtpSyYTXGz)
+- [price_monitor](https://suivision.xyz/txblock/AaN3zv8PnJee2SrgbyyX8bCZK7f2kBYBx8hS9Tj97RpW)
+- [ve](https://suivision.xyz/txblock/BUeahndyEufQDW9DuzFpoxXA5U4MZ2uWTyF4d39SVuyM)
+- [distribution](https://suivision.xyz/txblock/HDu925XASPTGHf5NyvXnnauvv5LpTTK5nno7TbTJ38cP)
+- [airdrop](https://suivision.xyz/txblock/GfShfZU7r7HgtGek8A45aRzrFCYGqvdBjUFrQrLZ49uS)
+- [sail](https://suivision.xyz/txblock/HgYJ8hsqrGrbizmNPg3t7WTjz2gNBF1EHXQKvjPvNQbA)
+- [integrate](https://suivision.xyz/txblock/0xb21fd30f9115df4551e68eb56406ce390e53ef5044b115c02982ecec944d5f64)
+- [voting_escrow](https://suivision.xyz/txblock/7Q3snFJtfM3VWUHxetsK23K2gA7pthCSH7suCmnhzAWA)
+- [governance](https://suivision.xyz/txblock/8AAa2dsANuPi83uQbCzBqbapUPQyaxvT3F4mv8XZnjUm)
+- [ve upgrade](https://suivision.xyz/txblock/9b9BSXexvuNnhDp8ptYQxnSzjm2GeKYrtVRvMDUJQsyg)
+- [distribution upgrade](https://suivision.xyz/txblock/J7fhCqTCxy1oEmzoahwc53waXiDGoAnes6mYBY67q4k5)
+- [airdrop upgrade](https://suivision.xyz/txblock/GVcjCc9mUBfTAmPFbB969nNesHRs4CPPFXn9Tn3jkVs1)
 
-- [locker_cap](https://suivision.xyz/txblock/BFiALGxLFUczQVCshPtAEpY5H11kci33FHSTPCZRdYtA)
-- [price_monitor](https://suivision.xyz/txblock/3cLn9fdvXF9Mfn7zGhmqziLEWonbDWeFdWic1GtnaQW4)
-- [ve](https://suivision.xyz/txblock/3HUrksyiojmCAwgQEVfVmMh2sf1TJ6v1oeuiMNPrxume)
-- [distribution](https://suivision.xyz/txblock/DF8EohFmy656d7ax4msy8UffgyLdK1Q9U81avsGvbDNp)
-- [integrate](https://suivision.xyz/txblock/824KpqdZAL8ALo3GxUE75s5fMvVFd5MPHmjR13GcPtxg)
-- [airdrop](https://suivision.xyz/txblock/FA7ModSnkR1kFokbpAyRDE6Kw6ewNDr4wpdm4Np8ARif)
-
-- [setup distribtuion tx](https://suiscan.xyz/mainnet/tx/jjMGwuNdKE8HkvKdDaxgCMBqvXTQkN6RMZQvvaJS35b)
-- [activate minter tx]()
-- [o_sail]()
+- [setup distribtuion tx](https://suiscan.xyz/mainnet/tx/FG2KrtSbTzLp9w27uCPKx2RH8gfwzbbgMa6pgFFnweNi)
+- [activate minter tx](https://suiscan.xyz/mainnet/tx/)

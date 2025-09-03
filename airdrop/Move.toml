@@ -16,3 +16,6 @@ rev = "main"
 
 [dependencies.ve]
 local = "../ve"
+
+[dependencies.voting_escrow]
+local = "../voting_escrow"

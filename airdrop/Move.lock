@@ -2,8 +2,8 @@
 
 [move]
 version = 3
-manifest_digest = "3489E6994EC4E8D0FE3DF5C18689BB39DDF2E77333BDF8CBFB8513FC725B8C0E"
-deps_digest = "52B406A7A21811BEF51751CF88DA0E76DAEFFEAC888D4F4060B1A72BBE7D8D35"
+manifest_digest = "C6ACAA6B8BE039B9354F340656FCD63BB313C8C14964CD763439854C98952E5D"
+deps_digest = "CAFAD8A7CF51067FB4358215BECB86BD100DD64E57C2AC8A7AE7D74B688F5965"
 dependencies = [
   { id = "Bridge", name = "Bridge" },
   { id = "MoveStdlib", name = "MoveStdlib" },
@@ -11,6 +11,7 @@ dependencies = [
   { id = "SuiSystem", name = "SuiSystem" },
   { id = "SuiTears", name = "SuiTears" },
   { id = "ve", name = "ve" },
+  { id = "voting_escrow", name = "voting_escrow" },
 ]
 
 [[move.package]]
@@ -67,10 +68,20 @@ source = { local = "../ve" }
 dependencies = [
   { id = "Sui", name = "Sui" },
   { id = "integer_mate", name = "integer_mate" },
+  { id = "voting_escrow", name = "voting_escrow" },
+]
+
+[[move.package]]
+id = "voting_escrow"
+source = { local = "../voting_escrow" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+  { id = "integer_mate", name = "integer_mate" },
 ]
 
 [move.toolchain-version]
-compiler-version = "1.54.1"
+compiler-version = "1.55.0"
 edition = "2024.beta"
 flavor = "sui"
 
@@ -78,6 +89,6 @@ flavor = "sui"
 
 [env.mainnet]
 chain-id = "35834a8a"
-original-published-id = "0x6e4182b96a6f0960ff30d52f2ce0133cd182fa8ee5ba2f7cf1cd9d2c2c645edb"
-latest-published-id = "0x6e4182b96a6f0960ff30d52f2ce0133cd182fa8ee5ba2f7cf1cd9d2c2c645edb"
-published-version = "1"
+original-published-id = "0xe34258dd742ee90853fdfb708bc438e4b166a0807ca9387b74079af1f4bcb4c6"
+latest-published-id = "0x7f807dfe4134c18055b4e30771788c67b263d00deb961b8603c4a7bfca0bfbff"
+published-version = "2"

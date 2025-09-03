@@ -35,7 +35,7 @@ module liquidity_locker::pool_tranche {
     
     use std::type_name::{Self, TypeName};
     use liquidity_locker::consts;
-    use ve::common;
+    use voting_escrow::common;
 
     const ETrancheFilled: u64 = 92357345723427311;
     const ERewardNotFound: u64 = 91235834582491043;

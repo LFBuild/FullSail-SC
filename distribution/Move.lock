@@ -2,13 +2,14 @@
 
 [move]
 version = 3
-manifest_digest = "37B5083BE069FBF8B8DF3EE72675D488C28A66EDB5FE387530930F5D1776B0E3"
-deps_digest = "8227D341C0550A37580C10FA45FE148A465225149C69D179737E0FE454AD6AEC"
+manifest_digest = "BD0F6F30B6F3759115162A3658E629485F349A35D481479140D2344CEBBA0C52"
+deps_digest = "CB99E3BEE139471F3765AE330F855F3B376156AA54F37DEDE11BBE5BB0D3BB74"
 dependencies = [
   { id = "Sui", name = "Sui" },
   { id = "Switchboard", name = "Switchboard" },
   { id = "clmm_pool", name = "clmm_pool" },
   { id = "gauge_cap", name = "gauge_cap" },
+  { id = "governance", name = "governance" },
   { id = "integer_mate", name = "integer_mate" },
   { id = "locker_cap", name = "locker_cap" },
   { id = "price_monitor", name = "price_monitor" },
@@ -54,6 +55,22 @@ source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "main"
 
 dependencies = [
   { id = "Sui", name = "Sui" },
+]
+
+[[move.package]]
+id = "governance"
+source = { local = "../governance" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+  { id = "Switchboard", name = "Switchboard" },
+  { id = "clmm_pool", name = "clmm_pool" },
+  { id = "gauge_cap", name = "gauge_cap" },
+  { id = "integer_mate", name = "integer_mate" },
+  { id = "locker_cap", name = "locker_cap" },
+  { id = "price_monitor", name = "price_monitor" },
+  { id = "price_provider", name = "price_provider" },
+  { id = "voting_escrow", name = "voting_escrow" },
 ]
 
 [[move.package]]
@@ -106,6 +123,16 @@ source = { local = "../ve" }
 dependencies = [
   { id = "Sui", name = "Sui" },
   { id = "integer_mate", name = "integer_mate" },
+  { id = "voting_escrow", name = "voting_escrow" },
+]
+
+[[move.package]]
+id = "voting_escrow"
+source = { local = "../voting_escrow" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+  { id = "integer_mate", name = "integer_mate" },
 ]
 
 [move.toolchain-version]
@@ -117,6 +144,6 @@ flavor = "sui"
 
 [env.mainnet]
 chain-id = "35834a8a"
-original-published-id = "0x78651a6b80ca0eb35dcb3034a35eac6f18e51992a697427a4d351b9e56b56de5"
-latest-published-id = "0x78651a6b80ca0eb35dcb3034a35eac6f18e51992a697427a4d351b9e56b56de5"
-published-version = "1"
+original-published-id = "0x0000000000000000000000000000000000000000000000000000000000000000"
+latest-published-id = "0xc266831cc10c3ba20d4871c7ae1b5297d63ce20505d08b3f79a3fe05e6545ef1"
+published-version = "2"

@@ -5,285 +5,297 @@
  -->
 <!-- Title: Dependencies Pages: 1 -->
 <svg width="749pt" height="669pt"
- viewBox="0.00 0.00 749.00 668.82" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 664.82)">
+ viewBox="0.00 0.00 749.00 669.14" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 665.14)">
 <title>Dependencies</title>
-<polygon fill="white" stroke="none" points="-4,4 -4,-664.82 745,-664.82 745,4 -4,4"/>
+<polygon fill="white" stroke="none" points="-4,4 -4,-665.14 745,-665.14 745,4 -4,4"/>
 <!-- integrate -->
 <g id="node1" class="node">
 <title>integrate</title>
-<polygon fill="none" stroke="black" points="63.25,-320.82 0,-320.82 0,-284.82 63.25,-284.82 63.25,-320.82"/>
-<text text-anchor="middle" x="31.62" y="-297.77" font-family="Times,serif" font-size="14.00">integrate</text>
+<polygon fill="none" stroke="black" points="63.25,-321.14 0,-321.14 0,-285.14 63.25,-285.14 63.25,-321.14"/>
+<text text-anchor="middle" x="31.62" y="-298.09" font-family="Times,serif" font-size="14.00">integrate</text>
 </g>
 <!-- clmm_pool -->
 <g id="node2" class="node">
 <title>clmm_pool</title>
-<polygon fill="none" stroke="black" points="609.5,-312.82 530.5,-312.82 530.5,-276.82 609.5,-276.82 609.5,-312.82"/>
-<text text-anchor="middle" x="570" y="-289.77" font-family="Times,serif" font-size="14.00">clmm_pool</text>
+<polygon fill="none" stroke="black" points="609.5,-313.14 530.5,-313.14 530.5,-277.14 609.5,-277.14 609.5,-313.14"/>
+<text text-anchor="middle" x="570" y="-290.09" font-family="Times,serif" font-size="14.00">clmm_pool</text>
 </g>
 <!-- integrate&#45;&gt;clmm_pool -->
 <g id="edge17" class="edge">
 <title>integrate&#45;&gt;clmm_pool</title>
-<path fill="none" stroke="black" d="M63.72,-318.3C74.67,-322.97 87.24,-327.48 99.25,-329.82 250.2,-359.24 432.87,-326.55 519.2,-307.12"/>
-<polygon fill="black" stroke="black" points="519.79,-310.58 528.75,-304.93 518.23,-303.76 519.79,-310.58"/>
+<path fill="none" stroke="black" d="M63.72,-318.62C74.67,-323.29 87.24,-327.8 99.25,-330.14 250.2,-359.56 432.87,-326.87 519.2,-307.44"/>
+<polygon fill="black" stroke="black" points="519.79,-310.9 528.75,-305.25 518.23,-304.07 519.79,-310.9"/>
 </g>
 <!-- price_provider -->
 <g id="node3" class="node">
 <title>price_provider</title>
-<polygon fill="none" stroke="black" points="741,-602.82 645.5,-602.82 645.5,-566.82 741,-566.82 741,-602.82"/>
-<text text-anchor="middle" x="693.25" y="-579.77" font-family="Times,serif" font-size="14.00">price_provider</text>
+<polygon fill="none" stroke="black" points="741,-603.14 645.5,-603.14 645.5,-567.14 741,-567.14 741,-603.14"/>
+<text text-anchor="middle" x="693.25" y="-580.09" font-family="Times,serif" font-size="14.00">price_provider</text>
 </g>
 <!-- integrate&#45;&gt;price_provider -->
 <g id="edge2" class="edge">
 <title>integrate&#45;&gt;price_provider</title>
-<path fill="none" stroke="black" d="M33.44,-321.26C36.19,-363.66 48.07,-469.66 99.25,-537.82 161.14,-620.25 192.8,-660.82 295.88,-660.82 295.88,-660.82 295.88,-660.82 434.25,-660.82 510.1,-660.82 593.58,-630.22 644.46,-607.85"/>
-<polygon fill="black" stroke="black" points="645.73,-611.12 653.42,-603.84 642.87,-604.73 645.73,-611.12"/>
+<path fill="none" stroke="black" d="M33.44,-321.58C36.19,-363.98 48.07,-469.97 99.25,-538.14 161.14,-620.57 192.8,-661.14 295.88,-661.14 295.88,-661.14 295.88,-661.14 434.25,-661.14 510.1,-661.14 593.58,-630.53 644.46,-608.17"/>
+<polygon fill="black" stroke="black" points="645.73,-611.43 653.42,-604.15 642.87,-605.05 645.73,-611.43"/>
 </g>
 <!-- liquidity_locker_v1 -->
 <g id="node4" class="node">
 <title>liquidity_locker_v1</title>
-<polygon fill="none" stroke="black" points="494.5,-518.82 372,-518.82 372,-482.82 494.5,-482.82 494.5,-518.82"/>
-<text text-anchor="middle" x="433.25" y="-495.77" font-family="Times,serif" font-size="14.00">liquidity_locker_v1</text>
+<polygon fill="none" stroke="black" points="494.5,-519.14 372,-519.14 372,-483.14 494.5,-483.14 494.5,-519.14"/>
+<text text-anchor="middle" x="433.25" y="-496.09" font-family="Times,serif" font-size="14.00">liquidity_locker_v1</text>
 </g>
 <!-- integrate&#45;&gt;liquidity_locker_v1 -->
 <g id="edge3" class="edge">
 <title>integrate&#45;&gt;liquidity_locker_v1</title>
-<path fill="none" stroke="black" d="M36.76,-320.89C44.17,-349.02 62.53,-402.96 99.25,-430.82 175.08,-488.35 287.38,-501.19 360.19,-502.81"/>
-<polygon fill="black" stroke="black" points="359.96,-506.31 370.01,-502.95 360.07,-499.31 359.96,-506.31"/>
+<path fill="none" stroke="black" d="M36.76,-321.2C44.17,-349.34 62.53,-403.27 99.25,-431.14 175.08,-488.67 287.38,-501.51 360.19,-503.13"/>
+<polygon fill="black" stroke="black" points="359.96,-506.62 370.01,-503.27 360.07,-499.62 359.96,-506.62"/>
 </g>
 <!-- liquidity_locker_v2 -->
 <g id="node5" class="node">
 <title>liquidity_locker_v2</title>
-<polygon fill="none" stroke="black" points="221.75,-320.82 99.25,-320.82 99.25,-284.82 221.75,-284.82 221.75,-320.82"/>
-<text text-anchor="middle" x="160.5" y="-297.77" font-family="Times,serif" font-size="14.00">liquidity_locker_v2</text>
+<polygon fill="none" stroke="black" points="221.75,-321.14 99.25,-321.14 99.25,-285.14 221.75,-285.14 221.75,-321.14"/>
+<text text-anchor="middle" x="160.5" y="-298.09" font-family="Times,serif" font-size="14.00">liquidity_locker_v2</text>
 </g>
 <!-- integrate&#45;&gt;liquidity_locker_v2 -->
 <g id="edge4" class="edge">
 <title>integrate&#45;&gt;liquidity_locker_v2</title>
-<path fill="none" stroke="black" d="M63.66,-302.82C70.98,-302.82 79.07,-302.82 87.37,-302.82"/>
-<polygon fill="black" stroke="black" points="87.25,-306.32 97.25,-302.82 87.25,-299.32 87.25,-306.32"/>
+<path fill="none" stroke="black" d="M63.66,-303.14C70.98,-303.14 79.07,-303.14 87.37,-303.14"/>
+<polygon fill="black" stroke="black" points="87.25,-306.64 97.25,-303.14 87.25,-299.64 87.25,-306.64"/>
 </g>
 <!-- integer_mate -->
 <g id="node6" class="node">
 <title>integer_mate</title>
-<polygon fill="none" stroke="black" points="736.88,-190.82 649.62,-190.82 649.62,-154.82 736.88,-154.82 736.88,-190.82"/>
-<text text-anchor="middle" x="693.25" y="-167.77" font-family="Times,serif" font-size="14.00">integer_mate</text>
+<polygon fill="none" stroke="black" points="736.88,-191.14 649.62,-191.14 649.62,-155.14 736.88,-155.14 736.88,-191.14"/>
+<text text-anchor="middle" x="693.25" y="-168.09" font-family="Times,serif" font-size="14.00">integer_mate</text>
 </g>
 <!-- integrate&#45;&gt;integer_mate -->
 <g id="edge22" class="edge">
 <title>integrate&#45;&gt;integer_mate</title>
-<path fill="none" stroke="black" d="M34.1,-284.46C38.03,-247.54 51.92,-163.78 99.25,-115.82 164.73,-49.47 202.66,-42.82 295.88,-42.82 295.88,-42.82 295.88,-42.82 434.25,-42.82 515.75,-42.82 538.81,-56.26 609.5,-96.82 632.12,-109.8 653.68,-129.95 669.12,-146.24"/>
-<polygon fill="black" stroke="black" points="666.23,-148.27 675.59,-153.24 671.37,-143.52 666.23,-148.27"/>
+<path fill="none" stroke="black" d="M33.97,-284.83C37.68,-247.61 51.22,-162.54 99.25,-114.14 164.7,-48.19 202.96,-43.14 295.88,-43.14 295.88,-43.14 295.88,-43.14 434.25,-43.14 515.75,-43.14 538.81,-56.58 609.5,-97.14 632.12,-110.11 653.68,-130.27 669.12,-146.56"/>
+<polygon fill="black" stroke="black" points="666.23,-148.58 675.59,-153.56 671.37,-143.83 666.23,-148.58"/>
 </g>
 <!-- gauge_cap -->
 <g id="node7" class="node">
 <title>gauge_cap</title>
-<polygon fill="none" stroke="black" points="730.12,-488.82 656.38,-488.82 656.38,-452.82 730.12,-452.82 730.12,-488.82"/>
-<text text-anchor="middle" x="693.25" y="-465.77" font-family="Times,serif" font-size="14.00">gauge_cap</text>
+<polygon fill="none" stroke="black" points="730.12,-489.14 656.38,-489.14 656.38,-453.14 730.12,-453.14 730.12,-489.14"/>
+<text text-anchor="middle" x="693.25" y="-466.09" font-family="Times,serif" font-size="14.00">gauge_cap</text>
 </g>
 <!-- integrate&#45;&gt;gauge_cap -->
 <g id="edge26" class="edge">
 <title>integrate&#45;&gt;gauge_cap</title>
-<path fill="none" stroke="black" d="M35.71,-321.16C42.17,-354.59 59.88,-426.23 99.25,-471.82 165.13,-548.1 195.08,-584.82 295.88,-584.82 295.88,-584.82 295.88,-584.82 434.25,-584.82 514.89,-584.82 537.65,-574.44 609.5,-537.82 630.15,-527.3 650.42,-511.01 665.74,-497.13"/>
-<polygon fill="black" stroke="black" points="668.11,-499.7 673.04,-490.32 663.33,-494.58 668.11,-499.7"/>
+<path fill="none" stroke="black" d="M35.71,-321.47C42.17,-354.91 59.88,-426.55 99.25,-472.14 165.13,-548.42 195.08,-585.14 295.88,-585.14 295.88,-585.14 295.88,-585.14 434.25,-585.14 514.89,-585.14 537.65,-574.75 609.5,-538.14 630.15,-527.61 650.42,-511.32 665.74,-497.44"/>
+<polygon fill="black" stroke="black" points="668.11,-500.02 673.04,-490.64 663.33,-494.9 668.11,-500.02"/>
 </g>
 <!-- distribution -->
 <g id="node9" class="node">
 <title>distribution</title>
-<polygon fill="none" stroke="black" points="336,-274.82 257.75,-274.82 257.75,-238.82 336,-238.82 336,-274.82"/>
-<text text-anchor="middle" x="296.88" y="-251.77" font-family="Times,serif" font-size="14.00">distribution</text>
+<polygon fill="none" stroke="black" points="336,-275.14 257.75,-275.14 257.75,-239.14 336,-239.14 336,-275.14"/>
+<text text-anchor="middle" x="296.88" y="-252.09" font-family="Times,serif" font-size="14.00">distribution</text>
 </g>
 <!-- integrate&#45;&gt;distribution -->
 <g id="edge18" class="edge">
 <title>integrate&#45;&gt;distribution</title>
-<path fill="none" stroke="black" d="M63.53,-288.13C74.57,-283.47 87.25,-278.76 99.25,-275.82 148.21,-263.8 205.77,-259.32 245.91,-257.68"/>
-<polygon fill="black" stroke="black" points="245.88,-261.19 255.75,-257.33 245.63,-254.19 245.88,-261.19"/>
+<path fill="none" stroke="black" d="M63.53,-288.45C74.57,-283.79 87.25,-279.08 99.25,-276.14 148.21,-264.12 205.77,-259.64 245.91,-258"/>
+<polygon fill="black" stroke="black" points="245.88,-261.5 255.75,-257.65 245.63,-254.51 245.88,-261.5"/>
 </g>
 <!-- move_stl -->
 <g id="node10" class="node">
 <title>move_stl</title>
-<polygon fill="none" stroke="black" points="726.38,-79.82 660.12,-79.82 660.12,-43.82 726.38,-43.82 726.38,-79.82"/>
-<text text-anchor="middle" x="693.25" y="-56.77" font-family="Times,serif" font-size="14.00">move_stl</text>
+<polygon fill="none" stroke="black" points="726.38,-80.14 660.12,-80.14 660.12,-44.14 726.38,-44.14 726.38,-80.14"/>
+<text text-anchor="middle" x="693.25" y="-57.09" font-family="Times,serif" font-size="14.00">move_stl</text>
 </g>
 <!-- integrate&#45;&gt;move_stl -->
 <g id="edge20" class="edge">
 <title>integrate&#45;&gt;move_stl</title>
-<path fill="none" stroke="black" d="M34.76,-284.67C41.41,-231.3 63.46,-76.52 99.25,-42.82 164.04,18.2 206.87,-4.82 295.88,-4.82 295.88,-4.82 295.88,-4.82 434.25,-4.82 511.23,-4.82 598.14,-29.31 648.9,-46.19"/>
-<polygon fill="black" stroke="black" points="647.74,-49.49 658.34,-49.38 649.99,-42.86 647.74,-49.49"/>
+<path fill="none" stroke="black" d="M34.74,-284.91C41.34,-231.31 63.27,-75.89 99.25,-42.14 164.11,18.7 206.95,-5.14 295.88,-5.14 295.88,-5.14 295.88,-5.14 434.25,-5.14 511.23,-5.14 598.14,-29.63 648.9,-46.5"/>
+<polygon fill="black" stroke="black" points="647.74,-49.81 658.34,-49.7 649.99,-43.18 647.74,-49.81"/>
 </g>
 <!-- ve -->
 <g id="node12" class="node">
 <title>ve</title>
-<polygon fill="none" stroke="black" points="460.25,-106.82 406.25,-106.82 406.25,-70.82 460.25,-70.82 460.25,-106.82"/>
-<text text-anchor="middle" x="433.25" y="-83.77" font-family="Times,serif" font-size="14.00">ve</text>
+<polygon fill="none" stroke="black" points="460.25,-107.14 406.25,-107.14 406.25,-71.14 460.25,-71.14 460.25,-107.14"/>
+<text text-anchor="middle" x="433.25" y="-84.09" font-family="Times,serif" font-size="14.00">ve</text>
 </g>
 <!-- integrate&#45;&gt;ve -->
 <g id="edge33" class="edge">
 <title>integrate&#45;&gt;ve</title>
-<path fill="none" stroke="black" d="M46.15,-284.36C77.73,-242.92 161.06,-142.88 257.75,-101.82 302.03,-83.01 358.3,-82.5 394.79,-84.84"/>
-<polygon fill="black" stroke="black" points="394.15,-88.31 404.39,-85.57 394.68,-81.33 394.15,-88.31"/>
+<path fill="none" stroke="black" d="M45.83,-284.73C77.07,-242.91 160.25,-141.17 257.75,-100.14 302.06,-81.49 358.32,-81.7 394.8,-84.58"/>
+<polygon fill="black" stroke="black" points="394.12,-88.03 404.4,-85.45 394.75,-81.06 394.12,-88.03"/>
 </g>
 <!-- clmm_pool&#45;&gt;price_provider -->
 <g id="edge1" class="edge">
 <title>clmm_pool&#45;&gt;price_provider</title>
-<path fill="none" stroke="black" d="M583.74,-313.15C592.05,-325.79 602.59,-343.23 609.5,-359.82 633.89,-418.33 622.33,-438.82 645.5,-497.82 653.54,-518.31 665.27,-540.12 674.97,-556.78"/>
-<polygon fill="black" stroke="black" points="671.81,-558.31 679.92,-565.13 677.83,-554.74 671.81,-558.31"/>
+<path fill="none" stroke="black" d="M583.74,-313.46C592.05,-326.1 602.59,-343.55 609.5,-360.14 633.89,-418.64 622.33,-439.14 645.5,-498.14 653.54,-518.62 665.27,-540.44 674.97,-557.1"/>
+<polygon fill="black" stroke="black" points="671.81,-558.63 679.92,-565.45 677.83,-555.06 671.81,-558.63"/>
 </g>
 <!-- clmm_pool&#45;&gt;integer_mate -->
 <g id="edge21" class="edge">
 <title>clmm_pool&#45;&gt;integer_mate</title>
-<path fill="none" stroke="black" d="M589.15,-276.55C609.51,-256.07 642.71,-222.67 665.92,-199.31"/>
-<polygon fill="black" stroke="black" points="668.34,-201.84 672.91,-192.28 663.37,-196.91 668.34,-201.84"/>
+<path fill="none" stroke="black" d="M589.15,-276.87C609.51,-256.39 642.71,-222.98 665.92,-199.63"/>
+<polygon fill="black" stroke="black" points="668.34,-202.16 672.91,-192.6 663.37,-197.22 668.34,-202.16"/>
 </g>
 <!-- clmm_pool&#45;&gt;gauge_cap -->
 <g id="edge24" class="edge">
 <title>clmm_pool&#45;&gt;gauge_cap</title>
-<path fill="none" stroke="black" d="M595.83,-313.23C600.66,-317.4 605.47,-322.03 609.5,-326.82 639.92,-362.98 665.3,-411.85 679.63,-442.34"/>
-<polygon fill="black" stroke="black" points="676.4,-443.7 683.77,-451.31 682.76,-440.77 676.4,-443.7"/>
+<path fill="none" stroke="black" d="M595.83,-313.55C600.66,-317.72 605.47,-322.35 609.5,-327.14 639.92,-363.29 665.3,-412.17 679.63,-442.66"/>
+<polygon fill="black" stroke="black" points="676.4,-444.01 683.77,-451.63 682.76,-441.08 676.4,-444.01"/>
 </g>
 <!-- clmm_pool&#45;&gt;move_stl -->
 <g id="edge19" class="edge">
 <title>clmm_pool&#45;&gt;move_stl</title>
-<path fill="none" stroke="black" d="M579.92,-276.34C593.64,-248.04 620.93,-192.37 645.5,-145.82 655.41,-127.05 667.01,-106.21 676.17,-89.98"/>
-<polygon fill="black" stroke="black" points="679.17,-91.79 681.05,-81.36 673.08,-88.34 679.17,-91.79"/>
+<path fill="none" stroke="black" d="M579.92,-276.65C593.64,-248.36 620.93,-192.68 645.5,-146.14 655.41,-127.37 667.01,-106.52 676.17,-90.29"/>
+<polygon fill="black" stroke="black" points="679.17,-92.1 681.05,-81.68 673.08,-88.65 679.17,-92.1"/>
 </g>
 <!-- liquidity_locker_v1&#45;&gt;clmm_pool -->
 <g id="edge5" class="edge">
 <title>liquidity_locker_v1&#45;&gt;clmm_pool</title>
-<path fill="none" stroke="black" d="M452.19,-482.51C464.92,-468.93 481.92,-449.61 494.5,-430.82 514.18,-401.42 513.48,-390.83 530.5,-359.82 537.22,-347.58 545,-334.29 551.81,-322.93"/>
-<polygon fill="black" stroke="black" points="554.77,-324.79 556.94,-314.42 548.78,-321.18 554.77,-324.79"/>
+<path fill="none" stroke="black" d="M452.19,-482.82C464.92,-469.25 481.92,-449.92 494.5,-431.14 514.18,-401.74 513.48,-391.15 530.5,-360.14 537.22,-347.9 545,-334.6 551.81,-323.24"/>
+<polygon fill="black" stroke="black" points="554.77,-325.11 556.94,-314.74 548.78,-321.49 554.77,-325.11"/>
 </g>
 <!-- liquidity_locker_v1&#45;&gt;price_provider -->
 <g id="edge7" class="edge">
 <title>liquidity_locker_v1&#45;&gt;price_provider</title>
-<path fill="none" stroke="black" d="M490.87,-519.25C533.44,-533.11 591.57,-552.04 634.43,-565.99"/>
-<polygon fill="black" stroke="black" points="633.23,-569.28 643.82,-569.05 635.39,-562.63 633.23,-569.28"/>
+<path fill="none" stroke="black" d="M490.87,-519.57C533.44,-533.43 591.57,-552.36 634.43,-566.31"/>
+<polygon fill="black" stroke="black" points="633.23,-569.6 643.82,-569.37 635.39,-562.94 633.23,-569.6"/>
 </g>
 <!-- liquidity_locker_v1&#45;&gt;integer_mate -->
 <g id="edge6" class="edge">
 <title>liquidity_locker_v1&#45;&gt;integer_mate</title>
-<path fill="none" stroke="black" d="M494.84,-483.83C532.52,-470.43 579.36,-448.16 609.5,-413.82 663.98,-351.75 683.01,-252.05 689.32,-202.61"/>
-<polygon fill="black" stroke="black" points="692.79,-203.02 690.48,-192.68 685.84,-202.2 692.79,-203.02"/>
+<path fill="none" stroke="black" d="M494.84,-484.15C532.52,-470.74 579.36,-448.47 609.5,-414.14 663.98,-352.07 683.01,-252.37 689.32,-202.93"/>
+<polygon fill="black" stroke="black" points="692.79,-203.34 690.48,-193 685.84,-202.52 692.79,-203.34"/>
 </g>
 <!-- liquidity_locker_v1&#45;&gt;gauge_cap -->
 <g id="edge8" class="edge">
 <title>liquidity_locker_v1&#45;&gt;gauge_cap</title>
-<path fill="none" stroke="black" d="M494.74,-493.79C540.48,-488.47 602.42,-481.27 644.66,-476.35"/>
-<polygon fill="black" stroke="black" points="644.99,-479.84 654.52,-475.21 644.18,-472.89 644.99,-479.84"/>
+<path fill="none" stroke="black" d="M494.74,-494.1C540.48,-488.78 602.42,-481.58 644.66,-476.67"/>
+<polygon fill="black" stroke="black" points="644.99,-480.16 654.52,-475.52 644.18,-473.2 644.99,-480.16"/>
 </g>
 <!-- locker_cap -->
 <g id="node8" class="node">
 <title>locker_cap</title>
-<polygon fill="none" stroke="black" points="607.62,-404.82 532.38,-404.82 532.38,-368.82 607.62,-368.82 607.62,-404.82"/>
-<text text-anchor="middle" x="570" y="-381.77" font-family="Times,serif" font-size="14.00">locker_cap</text>
+<polygon fill="none" stroke="black" points="607.62,-405.14 532.38,-405.14 532.38,-369.14 607.62,-369.14 607.62,-405.14"/>
+<text text-anchor="middle" x="570" y="-382.09" font-family="Times,serif" font-size="14.00">locker_cap</text>
 </g>
 <!-- liquidity_locker_v1&#45;&gt;locker_cap -->
 <g id="edge9" class="edge">
 <title>liquidity_locker_v1&#45;&gt;locker_cap</title>
-<path fill="none" stroke="black" d="M475.13,-482.41C481.96,-478.44 488.7,-473.88 494.5,-468.82 515.13,-450.82 511.82,-438.84 530.5,-418.82 532.42,-416.76 534.47,-414.71 536.59,-412.7"/>
-<polygon fill="black" stroke="black" points="538.71,-415.5 543.82,-406.22 534.03,-410.29 538.71,-415.5"/>
+<path fill="none" stroke="black" d="M475.13,-482.73C481.96,-478.75 488.7,-474.2 494.5,-469.14 515.13,-451.13 511.82,-439.16 530.5,-419.14 532.42,-417.08 534.47,-415.03 536.59,-413.02"/>
+<polygon fill="black" stroke="black" points="538.71,-415.82 543.82,-406.54 534.03,-410.61 538.71,-415.82"/>
 </g>
 <!-- liquidity_locker_v2&#45;&gt;clmm_pool -->
 <g id="edge10" class="edge">
 <title>liquidity_locker_v2&#45;&gt;clmm_pool</title>
-<path fill="none" stroke="black" d="M222.07,-301.63C302.67,-300.05 443.73,-297.28 518.75,-295.81"/>
-<polygon fill="black" stroke="black" points="518.76,-299.31 528.69,-295.61 518.62,-292.31 518.76,-299.31"/>
+<path fill="none" stroke="black" d="M222.07,-301.95C302.67,-300.36 443.73,-297.6 518.75,-296.12"/>
+<polygon fill="black" stroke="black" points="518.76,-299.62 528.69,-295.93 518.62,-292.62 518.76,-299.62"/>
 </g>
 <!-- liquidity_locker_v2&#45;&gt;price_provider -->
 <g id="edge12" class="edge">
 <title>liquidity_locker_v2&#45;&gt;price_provider</title>
-<path fill="none" stroke="black" d="M166.89,-321.15C178.32,-357.27 208.07,-438.49 257.75,-488.82 349.58,-581.84 401.26,-579.3 530.5,-598.82 564.75,-603.99 603.4,-600.97 634.33,-596.43"/>
-<polygon fill="black" stroke="black" points="634.52,-599.95 643.85,-594.94 633.43,-593.03 634.52,-599.95"/>
+<path fill="none" stroke="black" d="M166.89,-321.47C178.32,-357.59 208.07,-438.81 257.75,-489.14 349.58,-582.16 401.26,-579.61 530.5,-599.14 564.75,-604.31 603.4,-601.29 634.33,-596.75"/>
+<polygon fill="black" stroke="black" points="634.52,-600.26 643.85,-595.26 633.43,-593.35 634.52,-600.26"/>
 </g>
 <!-- liquidity_locker_v2&#45;&gt;integer_mate -->
 <g id="edge11" class="edge">
 <title>liquidity_locker_v2&#45;&gt;integer_mate</title>
-<path fill="none" stroke="black" d="M179.68,-284.52C213.75,-251.73 291.11,-184.18 372,-160.82 462.52,-134.68 573.4,-148.37 638.11,-160.64"/>
-<polygon fill="black" stroke="black" points="637.28,-164.04 647.77,-162.53 638.63,-157.17 637.28,-164.04"/>
+<path fill="none" stroke="black" d="M183.26,-284.87C202.26,-269.35 230.93,-246.98 257.75,-230.14 290.83,-209.37 303.41,-211.66 336,-190.14 353.38,-178.66 352.48,-167.41 372,-160.14 460.72,-127.06 572.98,-143.7 638.3,-158.57"/>
+<polygon fill="black" stroke="black" points="637.14,-161.9 647.67,-160.78 638.74,-155.08 637.14,-161.9"/>
 </g>
 <!-- liquidity_locker_v2&#45;&gt;gauge_cap -->
 <g id="edge13" class="edge">
 <title>liquidity_locker_v2&#45;&gt;gauge_cap</title>
-<path fill="none" stroke="black" d="M171.45,-321.19C197.3,-366.72 271.65,-484.28 372,-527.82 464.75,-568.06 584.4,-524.14 647.96,-494.09"/>
-<polygon fill="black" stroke="black" points="649.2,-497.38 656.68,-489.88 646.16,-491.08 649.2,-497.38"/>
+<path fill="none" stroke="black" d="M171.45,-321.5C197.3,-367.04 271.65,-484.6 372,-528.14 464.75,-568.38 584.4,-524.45 647.96,-494.41"/>
+<polygon fill="black" stroke="black" points="649.2,-497.7 656.68,-490.19 646.16,-491.39 649.2,-497.7"/>
 </g>
 <!-- liquidity_locker_v2&#45;&gt;locker_cap -->
 <g id="edge15" class="edge">
 <title>liquidity_locker_v2&#45;&gt;locker_cap</title>
-<path fill="none" stroke="black" d="M196.82,-321.16C237.71,-341.29 307.69,-372.4 372,-384.82 421.97,-394.47 480.42,-393.58 520.59,-391.14"/>
-<polygon fill="black" stroke="black" points="520.68,-394.64 530.42,-390.48 520.21,-387.66 520.68,-394.64"/>
+<path fill="none" stroke="black" d="M196.82,-321.47C237.71,-341.6 307.69,-372.71 372,-385.14 421.97,-394.79 480.42,-393.9 520.59,-391.45"/>
+<polygon fill="black" stroke="black" points="520.68,-394.96 530.42,-390.8 520.21,-387.97 520.68,-394.96"/>
 </g>
 <!-- liquidity_locker_v2&#45;&gt;distribution -->
 <g id="edge14" class="edge">
 <title>liquidity_locker_v2&#45;&gt;distribution</title>
-<path fill="none" stroke="black" d="M215.38,-284.37C225.68,-280.85 236.41,-277.18 246.55,-273.7"/>
-<polygon fill="black" stroke="black" points="247.52,-277.07 255.85,-270.52 245.25,-270.45 247.52,-277.07"/>
+<path fill="none" stroke="black" d="M215.38,-284.69C225.68,-281.17 236.41,-277.49 246.55,-274.02"/>
+<polygon fill="black" stroke="black" points="247.52,-277.39 255.85,-270.84 245.25,-270.77 247.52,-277.39"/>
 </g>
 <!-- liquidity_locker_v2&#45;&gt;ve -->
 <g id="edge34" class="edge">
 <title>liquidity_locker_v2&#45;&gt;ve</title>
-<path fill="none" stroke="black" d="M167.54,-284.5C179.42,-251.28 209.01,-181.01 257.75,-142.82 298.02,-111.27 356.82,-98.04 394.82,-92.57"/>
-<polygon fill="black" stroke="black" points="394.94,-96.08 404.4,-91.3 394.03,-89.14 394.94,-96.08"/>
+<path fill="none" stroke="black" d="M174.95,-284.94C192.27,-262.37 224.19,-223.62 257.75,-197.14 288.9,-172.56 303.75,-177.26 336,-154.14 353.64,-141.49 354.27,-133.66 372,-121.14 379.41,-115.9 387.79,-110.93 395.88,-106.54"/>
+<polygon fill="black" stroke="black" points="397.31,-109.74 404.55,-102 394.07,-103.53 397.31,-109.74"/>
 </g>
 <!-- distribution&#45;&gt;clmm_pool -->
 <g id="edge16" class="edge">
 <title>distribution&#45;&gt;clmm_pool</title>
-<path fill="none" stroke="black" d="M336.43,-262.22C384.38,-268.94 466.31,-280.43 519.03,-287.82"/>
-<polygon fill="black" stroke="black" points="518.25,-291.24 528.64,-289.16 519.22,-284.31 518.25,-291.24"/>
+<path fill="none" stroke="black" d="M336.43,-262.54C384.38,-269.26 466.31,-280.74 519.03,-288.13"/>
+<polygon fill="black" stroke="black" points="518.25,-291.56 528.64,-289.48 519.22,-284.62 518.25,-291.56"/>
 </g>
 <!-- distribution&#45;&gt;integer_mate -->
 <g id="edge23" class="edge">
 <title>distribution&#45;&gt;integer_mate</title>
-<path fill="none" stroke="black" d="M312.45,-238.55C326.03,-223.04 347.77,-201.77 372,-191.82 459.73,-155.8 572.44,-159.29 638.08,-165.67"/>
-<polygon fill="black" stroke="black" points="637.57,-169.13 647.88,-166.68 638.29,-162.17 637.57,-169.13"/>
+<path fill="none" stroke="black" d="M320.19,-238.69C325.41,-234.29 330.93,-229.58 336,-225.14 352.32,-210.82 352.01,-200.6 372,-192.14 459.33,-155.15 572.17,-158.96 637.95,-165.66"/>
+<polygon fill="black" stroke="black" points="637.45,-169.13 647.77,-166.73 638.2,-162.17 637.45,-169.13"/>
 </g>
 <!-- distribution&#45;&gt;gauge_cap -->
 <g id="edge25" class="edge">
 <title>distribution&#45;&gt;gauge_cap</title>
-<path fill="none" stroke="black" d="M336.33,-275.1C347.69,-280.18 360.23,-285.49 372,-289.82 475.27,-327.84 519.2,-296.92 609.5,-359.82 640.05,-381.1 663.92,-417.26 678.01,-442.5"/>
-<polygon fill="black" stroke="black" points="674.9,-444.11 682.73,-451.25 681.06,-440.78 674.9,-444.11"/>
+<path fill="none" stroke="black" d="M336.33,-275.41C347.69,-280.5 360.23,-285.81 372,-290.14 475.27,-328.15 519.2,-297.24 609.5,-360.14 640.05,-381.41 663.92,-417.57 678.01,-442.82"/>
+<polygon fill="black" stroke="black" points="674.9,-444.42 682.73,-451.56 681.06,-441.1 674.9,-444.42"/>
 </g>
 <!-- distribution&#45;&gt;locker_cap -->
 <g id="edge27" class="edge">
 <title>distribution&#45;&gt;locker_cap</title>
-<path fill="none" stroke="black" d="M306.23,-275.04C317.65,-297.72 340.39,-335.78 372,-354.82 417.31,-382.11 478.63,-388.23 520.75,-388.73"/>
-<polygon fill="black" stroke="black" points="520.58,-392.23 530.58,-388.73 520.59,-385.23 520.58,-392.23"/>
+<path fill="none" stroke="black" d="M306.23,-275.36C317.65,-298.03 340.39,-336.09 372,-355.14 417.31,-382.43 478.63,-388.55 520.75,-389.04"/>
+<polygon fill="black" stroke="black" points="520.58,-392.54 530.58,-389.05 520.59,-385.54 520.58,-392.54"/>
 </g>
 <!-- price_monitor -->
 <g id="node11" class="node">
 <title>price_monitor</title>
-<polygon fill="none" stroke="black" points="479.88,-236.82 386.62,-236.82 386.62,-200.82 479.88,-200.82 479.88,-236.82"/>
-<text text-anchor="middle" x="433.25" y="-213.77" font-family="Times,serif" font-size="14.00">price_monitor</text>
+<polygon fill="none" stroke="black" points="479.88,-237.14 386.62,-237.14 386.62,-201.14 479.88,-201.14 479.88,-237.14"/>
+<text text-anchor="middle" x="433.25" y="-214.09" font-family="Times,serif" font-size="14.00">price_monitor</text>
 </g>
 <!-- distribution&#45;&gt;price_monitor -->
 <g id="edge30" class="edge">
 <title>distribution&#45;&gt;price_monitor</title>
-<path fill="none" stroke="black" d="M336.38,-245.93C348.62,-242.47 362.42,-238.57 375.66,-234.82"/>
-<polygon fill="black" stroke="black" points="376.48,-238.23 385.15,-232.14 374.57,-231.49 376.48,-238.23"/>
+<path fill="none" stroke="black" d="M336.38,-246.25C348.62,-242.79 362.42,-238.88 375.66,-235.14"/>
+<polygon fill="black" stroke="black" points="376.48,-238.55 385.15,-232.46 374.57,-231.81 376.48,-238.55"/>
 </g>
 <!-- distribution&#45;&gt;ve -->
 <g id="edge32" class="edge">
 <title>distribution&#45;&gt;ve</title>
-<path fill="none" stroke="black" d="M311.2,-238.49C325.78,-218.61 350.03,-186.04 372,-158.82 383.7,-144.32 397.19,-128.57 408.44,-115.68"/>
-<polygon fill="black" stroke="black" points="410.86,-118.23 414.82,-108.4 405.59,-113.62 410.86,-118.23"/>
+<path fill="none" stroke="black" d="M311.2,-238.81C325.78,-218.92 350.03,-186.36 372,-159.14 383.7,-144.64 397.19,-128.88 408.44,-116"/>
+<polygon fill="black" stroke="black" points="410.86,-118.55 414.82,-108.72 405.59,-113.93 410.86,-118.55"/>
 </g>
 <!-- price_monitor&#45;&gt;clmm_pool -->
 <g id="edge28" class="edge">
 <title>price_monitor&#45;&gt;clmm_pool</title>
-<path fill="none" stroke="black" d="M469.44,-237.17C477.7,-241.57 486.44,-246.3 494.5,-250.82 505.74,-257.12 517.8,-264.13 528.89,-270.68"/>
-<polygon fill="black" stroke="black" points="527.05,-273.66 537.43,-275.75 530.62,-267.64 527.05,-273.66"/>
+<path fill="none" stroke="black" d="M469.44,-237.48C477.7,-241.88 486.44,-246.62 494.5,-251.14 505.74,-257.43 517.8,-264.45 528.89,-271"/>
+<polygon fill="black" stroke="black" points="527.05,-273.97 537.43,-276.07 530.62,-267.95 527.05,-273.97"/>
 </g>
 <!-- price_monitor&#45;&gt;integer_mate -->
 <g id="edge29" class="edge">
 <title>price_monitor&#45;&gt;integer_mate</title>
-<path fill="none" stroke="black" d="M480.08,-210.65C524.36,-202.75 591.43,-190.8 638.27,-182.44"/>
-<polygon fill="black" stroke="black" points="638.7,-185.92 647.93,-180.72 637.47,-179.03 638.7,-185.92"/>
+<path fill="none" stroke="black" d="M480.08,-210.97C524.36,-203.07 591.43,-191.11 638.27,-182.76"/>
+<polygon fill="black" stroke="black" points="638.7,-186.24 647.93,-181.04 637.47,-179.35 638.7,-186.24"/>
 </g>
 <!-- ve&#45;&gt;integer_mate -->
 <g id="edge31" class="edge">
 <title>ve&#45;&gt;integer_mate</title>
-<path fill="none" stroke="black" d="M460.63,-90.51C495.68,-93.45 559.05,-101.21 609.5,-120.82 627.01,-127.63 644.86,-138.28 659.47,-148.17"/>
-<polygon fill="black" stroke="black" points="657.13,-150.8 667.33,-153.65 661.13,-145.06 657.13,-150.8"/>
+<path fill="none" stroke="black" d="M460.63,-90.83C495.68,-93.77 559.05,-101.52 609.5,-121.14 627.01,-127.95 644.86,-138.59 659.47,-148.49"/>
+<polygon fill="black" stroke="black" points="657.13,-151.12 667.33,-153.96 661.13,-145.38 657.13,-151.12"/>
+</g>
+<!-- airdrop -->
+<g id="node13" class="node">
+<title>airdrop</title>
+<polygon fill="none" stroke="black" points="324.38,-145.14 269.38,-145.14 269.38,-109.14 324.38,-109.14 324.38,-145.14"/>
+<text text-anchor="middle" x="296.88" y="-122.09" font-family="Times,serif" font-size="14.00">airdrop</text>
+</g>
+<!-- airdrop&#45;&gt;ve -->
+<g id="edge35" class="edge">
+<title>airdrop&#45;&gt;ve</title>
+<path fill="none" stroke="black" d="M324.74,-119.54C344.83,-113.86 372.55,-106.02 394.81,-99.72"/>
+<polygon fill="black" stroke="black" points="395.76,-103.09 404.43,-97 393.85,-96.36 395.76,-103.09"/>
 </g>
 </g>
 </svg>

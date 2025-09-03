@@ -41,7 +41,7 @@ module price_monitor::price_monitor_consts {
     // ===== PRICE HISTORY CONFIGURATION =====
     
     /// Maximum number of price points to store in history
-    const MAX_PRICE_HISTORY_SIZE: u64 = 70;
+    const MAX_PRICE_HISTORY_SIZE: u64 = 50;
     
     /// Minimum number of prices required for statistical analysis
     const MIN_PRICES_FOR_ANALYSIS: u64 = 10;
@@ -114,8 +114,8 @@ module price_monitor::price_monitor_consts {
     /// Maximum age of oracle price after its last update in aggregator in milliseconds (60000 = 1 minute)
     const MAX_PRICE_AGE_MS: u64 = 60000;
     
-    /// Maximum age of prices stored in price history in milliseconds (3600000 = 1 hour)
-    const MAX_PRICE_HISTORY_AGE_MS: u64 = 3600000;
+    /// Maximum age of prices stored in price history in milliseconds (7200000 = 2 hour)
+    const MAX_PRICE_HISTORY_AGE_MS: u64 = 7200000;
     
     /// Minimum interval between price history entries in milliseconds (60000 = 1 minute)
     const MIN_PRICE_INTERVAL_MS: u64 = 60000;

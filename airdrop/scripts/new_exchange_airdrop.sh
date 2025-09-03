@@ -1,6 +1,7 @@
 source ./export.sh
 
-sui client ptb \
-  --move-call $PACKAGE::exchange_airdrop::new "<$COIN_IN, $SAIL_TOKEN_TYPE>" @0x5eab2ecf4c38fd21ea8fc1a0aa4eae8224b6acfb7919e5cc752f81fc107319c4 0 --assign airdrop \
+sui client ptb --split-coins @0xf8cf04ceb3a40eff1b72776c7d75e24f8bd457291845c60aef32c0490d6ca971 "[100000000000]" \
+  --assign new_coins \
+  --move-call $PACKAGE::exchange_airdrop::new "<$COIN_IN, $SAIL_TOKEN_TYPE>" new_coins.0 0 --assign airdrop \
   --move-call  sui::transfer::public_share_object "<$PACKAGE::exchange_airdrop::ExchangeAirdrop<$COIN_IN, $SAIL_TOKEN_TYPE>>" airdrop.0 \
   --transfer-objects "[airdrop.1]" @$ADDR

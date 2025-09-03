@@ -52,3 +52,6 @@ rev = "mainnet"
 
 [dependencies.price_monitor]
 local = "../price_monitor"
+
+[dependencies.governance]
+local = "../governance"

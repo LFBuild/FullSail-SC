@@ -5,7 +5,6 @@ module airdrop::ve_airdrop;
 use airdrop::airdrop::{Self, Airdrop};
 use sui::coin::{Coin};
 use sui::clock::{Clock};
-use ve::voting_escrow::{VotingEscrow};
 
 // === Errors ===
 
@@ -139,6 +138,29 @@ public fun has_account_claimed<SailCoinType>(
 // === Public Mutative Functions ===
 
 /*
+ * @notice Deprecated. Uses deprecated old ve::voting_escrow module
+ */
+public fun get_airdrop<SailCoinType>(
+    self: &mut VeAirdrop<SailCoinType>,
+    voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
+    proof: vector<vector<u8>>,
+    amount: u64,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    let sail = self.airdrop.get_airdrop(proof, clock, amount, ctx);
+
+    let event = EventVeAirdropClaimed {
+        airdrop_id: object::id(self),
+        amount,
+        user: ctx.sender(),
+    };
+    sui::event::emit(event);
+    // Creates an auto max-locked veSAIL.
+    voting_escrow.create_lock(sail, 52 * 7 * 4, true, clock, ctx)
+}
+
+/*
  * @notice Claims airdropped SAIL and locks it into auto max-locked veSAIL.
  *
  * @param self The shared {VeAirdrop<SailCoinType>} object.
@@ -152,9 +174,9 @@ public fun has_account_claimed<SailCoinType>(
  * - The airdrop has not started yet.
  * - The user already claimed it
  */
-public fun get_airdrop<SailCoinType>(
+public fun get_airdrop_v2<SailCoinType>(
     self: &mut VeAirdrop<SailCoinType>,
-    voting_escrow: &mut VotingEscrow<SailCoinType>,
+    voting_escrow: &mut voting_escrow::voting_escrow::VotingEscrow<SailCoinType>,
     proof: vector<vector<u8>>,
     amount: u64,
     clock: &Clock,
