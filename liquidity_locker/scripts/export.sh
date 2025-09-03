@@ -10,4 +10,4 @@ export POOL_TRANCH_MANAGER=0xf283c18f51391987584862c30cf47f9c45b841b42bdc65f4d1b
 export CREATE_LOCKER_CAP=0x08820d0780207de5be91c0247a34d922076a34a7c5d9474c98868e6463829392
 
 export CLOCK=0x6
-# use setup_distribution.sh script in integrate directory to create minter, voter and voting_escrow.
+# use setup_governance.sh script in integrate directory to create minter, voter and voting_escrow.

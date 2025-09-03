@@ -6,7 +6,7 @@ module ve::voting_escrow {
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
 
     /// Incremental version of the package.
-    const VERSION: u64 = 1;
+    const VERSION: u64 = 2;
     
     // Error constants
     const EInvalidPackageVersion: u64 = 209945686090882800;
@@ -3006,6 +3006,64 @@ module ve::voting_escrow {
     #[test_only]
     public fun get_amount(lock: &Lock): u64 {
         lock.amount
+    }
+
+    public fun migrate<SailCoinType>(
+        voting_escrow: &mut VotingEscrow<SailCoinType>,
+        voting_escrow_new: &mut voting_escrow::voting_escrow::VotingEscrow<SailCoinType>,
+        lock: Lock,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ): voting_escrow::voting_escrow::Lock {
+
+        voting_escrow.checked_package_version();
+
+        let key = 1337;
+        assert!(voting_escrow.bag.contains(key), EDestroyNonNulledLock);
+
+        let lock_id = object::id<Lock>(&lock);
+        assert!(
+            !voting_escrow.escrow_type.contains(lock_id) || *voting_escrow.escrow_type.borrow(
+                lock_id
+            ) == EscrowType::NORMAL,
+            EWithdrawPositionNotNormalEscrow
+        );
+        let locked_balance = *voting_escrow.locked.borrow(lock_id);
+
+        let coin = sui::coin::from_balance<SailCoinType>(
+            voting_escrow.balance.split(locked_balance.amount),
+            ctx
+        );
+
+        let new_lock = voting_escrow::voting_escrow::create_lock_migration(
+            voting_escrow_new,
+            voting_escrow.bag.borrow<u64, voting_escrow::voting_escrow_cap::VotingEscrowCap>(key),
+            lock_id,
+            coin,
+            lock.start,
+            lock.end,
+            lock.permanent,
+            lock.perpetual,
+            clock,
+            ctx
+        );
+
+        let new_lock_id = object::id<voting_escrow::voting_escrow::Lock>(&new_lock);
+
+        voting_escrow.burn_lock_internal(lock, locked_balance, clock, ctx);
+
+        new_lock
+    }
+
+    public fun set_voting_escrow_cap<SailCoinType>(
+        voting_escrow: &mut VotingEscrow<SailCoinType>,
+        publisher: &sui::package::Publisher,
+        voting_escrow_cap: voting_escrow::voting_escrow_cap::VotingEscrowCap
+    ) {
+        assert!(publisher.from_module<VOTING_ESCROW>(), EGrantTeamCapInvalidPublisher);
+        let key = 1337;
+        assert!(!voting_escrow.bag.contains(key), EDestroyNonNulledLock);
+        voting_escrow.bag.add(key, voting_escrow_cap);
     }
 }
 

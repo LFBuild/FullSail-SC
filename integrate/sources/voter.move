@@ -33,32 +33,32 @@ module integrate::voter {
         distribution_config: ID,
         ctx: &mut TxContext
     ) {
-        let (voter, distribution_cap) = distribution::voter::create(
+        let (voter, distribution_cap) = governance::voter::create(
             publisher,
             global_config,
             distribution_config,
             ctx
         );
-        transfer::public_share_object<distribution::voter::Voter>(voter);
-        transfer::public_transfer<distribution::distribute_cap::DistributeCap>(
+        transfer::public_share_object<governance::voter::Voter>(voter);
+        transfer::public_transfer<governance::distribute_cap::DistributeCap>(
             distribution_cap,
             tx_context::sender(ctx)
         );
     }
 
     public entry fun create_gauge<CoinTypeA, CoinTypeB, SailCoinType>(
-        minter: &mut distribution::minter::Minter<SailCoinType>,
-        voter: &mut distribution::voter::Voter,
-        distribtuion_config: &mut distribution::distribution_config::DistributionConfig,
+        minter: &mut governance::minter::Minter<SailCoinType>,
+        voter: &mut governance::voter::Voter,
+        distribtuion_config: &mut governance::distribution_config::DistributionConfig,
         create_cap: &gauge_cap::gauge_cap::CreateCap,
-        admin_cap: &distribution::minter::AdminCap,
-        voting_escrow: &ve::voting_escrow::VotingEscrow<SailCoinType>,
+        admin_cap: &governance::minter::AdminCap,
+        voting_escrow: &voting_escrow::voting_escrow::VotingEscrow<SailCoinType>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         gauge_base_emissions: u64,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        transfer::public_share_object<distribution::gauge::Gauge<CoinTypeA, CoinTypeB>>(
+        transfer::public_share_object<governance::gauge::Gauge<CoinTypeA, CoinTypeB>>(
             minter.create_gauge(
                 voter,
                 distribtuion_config, 
@@ -74,10 +74,10 @@ module integrate::voter {
     }
 
     public entry fun poke<SailCoinType>(
-        voter: &mut distribution::voter::Voter,
-        voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
-        distribtuion_config: &distribution::distribution_config::DistributionConfig,
-        lock: &ve::voting_escrow::Lock,
+        voter: &mut governance::voter::Voter,
+        voting_escrow: &mut voting_escrow::voting_escrow::VotingEscrow<SailCoinType>,
+        distribtuion_config: &governance::distribution_config::DistributionConfig,
+        lock: &voting_escrow::voting_escrow::Lock,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
@@ -85,10 +85,10 @@ module integrate::voter {
     }
 
     public entry fun vote<SailCoinType>(
-        voter: &mut distribution::voter::Voter,
-        voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
-        distribtuion_config: &distribution::distribution_config::DistributionConfig,
-        lock: &ve::voting_escrow::Lock,
+        voter: &mut governance::voter::Voter,
+        voting_escrow: &mut voting_escrow::voting_escrow::VotingEscrow<SailCoinType>,
+        distribtuion_config: &governance::distribution_config::DistributionConfig,
+        lock: &voting_escrow::voting_escrow::Lock,
         pools: vector<ID>,
         weights: vector<u64>,
         volumes: vector<u64>,
@@ -108,10 +108,10 @@ module integrate::voter {
     }
 
     public fun batch_vote<SailCoinType> (
-        voter: &mut distribution::voter::Voter,
-        voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
-        distribtuion_config: &distribution::distribution_config::DistributionConfig,
-        mut locks: vector<ve::voting_escrow::Lock>,
+        voter: &mut governance::voter::Voter,
+        voting_escrow: &mut voting_escrow::voting_escrow::VotingEscrow<SailCoinType>,
+        distribtuion_config: &governance::distribution_config::DistributionConfig,
+        mut locks: vector<voting_escrow::voting_escrow::Lock>,
         pools: vector<ID>,
         weights: vector<u64>,
         volumes: vector<u64>,
@@ -123,17 +123,17 @@ module integrate::voter {
         while (i < len) {
             let lock = locks.pop_back();
             voter.vote(voting_escrow, distribtuion_config, &lock, pools, weights, volumes, clock, ctx);
-            lock.transfer(voting_escrow, ctx.sender(), clock, ctx);
+            transfer::public_transfer<voting_escrow::voting_escrow::Lock>(lock, ctx.sender());
             i = i + 1;
         };
         locks.destroy_empty()
     }
 
     public fun claim_voting_fee_rewards<SailCoinType, CoinTypeA, CoinTypeB>(
-        voter: &mut distribution::voter::Voter,
-        voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
-        distribution_config: &distribution::distribution_config::DistributionConfig,
-        mut locks: vector<ve::voting_escrow::Lock>,
+        voter: &mut governance::voter::Voter,
+        voting_escrow: &mut voting_escrow::voting_escrow::VotingEscrow<SailCoinType>,
+        distribution_config: &governance::distribution_config::DistributionConfig,
+        mut locks: vector<voting_escrow::voting_escrow::Lock>,
         pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
@@ -145,16 +145,16 @@ module integrate::voter {
             i = i + 1;
         };
         while (locks.length() > 0) {
-            locks.pop_back().transfer(voting_escrow, tx_context::sender(ctx), clock, ctx);
+            transfer::public_transfer<voting_escrow::voting_escrow::Lock>(locks.pop_back(), tx_context::sender(ctx));
         };
         locks.destroy_empty();
     }
 
     public fun claim_voting_fee_rewards_single<SailCoinType, CoinTypeA, CoinTypeB>(
-        voter: &mut distribution::voter::Voter,
-        voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
-        distribution_config: &distribution::distribution_config::DistributionConfig,
-        lock: &ve::voting_escrow::Lock,
+        voter: &mut governance::voter::Voter,
+        voting_escrow: &mut voting_escrow::voting_escrow::VotingEscrow<SailCoinType>,
+        distribution_config: &governance::distribution_config::DistributionConfig,
+        lock: &voting_escrow::voting_escrow::Lock,
         pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
@@ -164,11 +164,11 @@ module integrate::voter {
 
 
     public entry fun distribute<CoinTypeA, CoinTypeB, SailPoolCoinTypeA, SailPoolCoinTypeB, SailCoinType, EpochOSail>(
-        minter: &mut distribution::minter::Minter<SailCoinType>,
-        voter: &mut distribution::voter::Voter,
-        distribute_governor_cap: &distribution::minter::DistributeGovernorCap,
-        distribtuion_config: &distribution::distribution_config::DistributionConfig,
-        gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        minter: &mut governance::minter::Minter<SailCoinType>,
+        voter: &mut governance::voter::Voter,
+        distribute_governor_cap: &governance::minter::DistributeGovernorCap,
+        distribtuion_config: &governance::distribution_config::DistributionConfig,
+        gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         next_epoch_emissions_usd: u64,
         price_monitor: &mut price_monitor::price_monitor::PriceMonitor,
@@ -177,7 +177,7 @@ module integrate::voter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        if (minter.active_period() + ve::common::epoch() < ve::common::current_timestamp(clock)) {
+        if (minter.active_period() + voting_escrow::common::epoch() < voting_escrow::common::current_timestamp(clock)) {
             abort EDistributeInvalidPeriod;
         };
         assert!(
@@ -206,18 +206,18 @@ module integrate::voter {
         );
         let event_distribute_reward = EventDistributeReward {
             sender: tx_context::sender(ctx),
-            gauge: object::id<distribution::gauge::Gauge<CoinTypeA, CoinTypeB>>(gauge),
+            gauge: object::id<governance::gauge::Gauge<CoinTypeA, CoinTypeB>>(gauge),
             amount: next_epoch_emissions_usd,
         };
         sui::event::emit<EventDistributeReward>(event_distribute_reward);
     }
 
 public entry fun distribute_for_sail_pool<CoinTypeA, CoinTypeB, SailCoinType, EpochOSail>(
-        minter: &mut distribution::minter::Minter<SailCoinType>,
-        voter: &mut distribution::voter::Voter,
-        distribute_governor_cap: &distribution::minter::DistributeGovernorCap,
-        distribtuion_config: &distribution::distribution_config::DistributionConfig,
-        gauge: &mut distribution::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        minter: &mut governance::minter::Minter<SailCoinType>,
+        voter: &mut governance::voter::Voter,
+        distribute_governor_cap: &governance::minter::DistributeGovernorCap,
+        distribtuion_config: &governance::distribution_config::DistributionConfig,
+        gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
         sail_pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         next_epoch_emissions_usd: u64,
         price_monitor: &mut price_monitor::price_monitor::PriceMonitor,
@@ -225,7 +225,7 @@ public entry fun distribute_for_sail_pool<CoinTypeA, CoinTypeB, SailCoinType, Ep
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        if (minter.active_period() + ve::common::epoch() < ve::common::current_timestamp(clock)) {
+        if (minter.active_period() + voting_escrow::common::epoch() < voting_escrow::common::current_timestamp(clock)) {
             abort EDistributeInvalidPeriod
         };
         assert!(
@@ -251,13 +251,13 @@ public entry fun distribute_for_sail_pool<CoinTypeA, CoinTypeB, SailCoinType, Ep
         );
         let event_distribute_reward = EventDistributeReward {
             sender: tx_context::sender(ctx),
-            gauge: object::id<distribution::gauge::Gauge<CoinTypeA, CoinTypeB>>(gauge),
+            gauge: object::id<governance::gauge::Gauge<CoinTypeA, CoinTypeB>>(gauge),
             amount: next_epoch_emissions_usd,
         };
         sui::event::emit<EventDistributeReward>(event_distribute_reward);
     }
 
-    public entry fun get_voting_fee_reward_tokens(voter: &distribution::voter::Voter, lock_id: ID) {
+    public entry fun get_voting_fee_reward_tokens(voter: &governance::voter::Voter, lock_id: ID) {
         let mut reward_tokens_by_pool = sui::vec_map::empty<ID, vector<std::type_name::TypeName>>();
         let voted_pools_ids = voter.voted_pools(lock_id);
         let mut i = 0;
@@ -274,7 +274,7 @@ public entry fun distribute_for_sail_pool<CoinTypeA, CoinTypeB, SailCoinType, Ep
     }
 
     fun claimable_voting_fees_internal<FeeCoinType>(
-        voter: &distribution::voter::Voter,
+        voter: &governance::voter::Voter,
         lock_id: ID,
         pool_id: ID,
         clock: &sui::clock::Clock
@@ -285,7 +285,7 @@ public entry fun distribute_for_sail_pool<CoinTypeA, CoinTypeB, SailCoinType, Ep
     }
 
     public fun claimable_voting_fees_1<FeeCoinType1>(
-        voter: &distribution::voter::Voter,
+        voter: &governance::voter::Voter,
         lock_id: ID,
         pool_id: ID,
         clock: &sui::clock::Clock
@@ -300,7 +300,7 @@ public entry fun distribute_for_sail_pool<CoinTypeA, CoinTypeB, SailCoinType, Ep
     }
 
     public fun claimable_voting_fees_2<FeeCoinType1, FeeCoinType2>(
-        voter: &distribution::voter::Voter,
+        voter: &governance::voter::Voter,
         lock_id: ID,
         pool_id: ID,
         clock: &sui::clock::Clock
@@ -318,7 +318,7 @@ public entry fun distribute_for_sail_pool<CoinTypeA, CoinTypeB, SailCoinType, Ep
         sui::event::emit<ClaimableVotingFees>(claimable_fees_event);
     }
 
-    public entry fun pools_tally(voter: &distribution::voter::Voter, pool_ids: vector<ID>) {
+    public entry fun pools_tally(voter: &governance::voter::Voter, pool_ids: vector<ID>) {
         let mut pool_weights = std::vector::empty<PoolWeight>();
         let mut i = 0;
         while (i < pool_ids.length()) {

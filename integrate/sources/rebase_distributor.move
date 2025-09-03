@@ -10,8 +10,8 @@ module integrate::reward_distributor {
     }
 
     public entry fun claimable<SailCoinType>(
-        rebase_distributor: &distribution::rebase_distributor::RebaseDistributor<SailCoinType>,
-        voting_escrow: &ve::voting_escrow::VotingEscrow<SailCoinType>,
+        rebase_distributor: &governance::rebase_distributor::RebaseDistributor<SailCoinType>,
+        voting_escrow: &voting_escrow::voting_escrow::VotingEscrow<SailCoinType>,
         lock_id: ID
     ) {
         let claimable_event = Claimable {
@@ -26,12 +26,12 @@ module integrate::reward_distributor {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        let (rebase_distributor, rebase_distributor_cap) = distribution::rebase_distributor::create<SailCoinType>(
+        let (rebase_distributor, rebase_distributor_cap) = governance::rebase_distributor::create<SailCoinType>(
             publisher,
             clock,
             ctx
         );
-        transfer::public_transfer<distribution::rebase_distributor_cap::RebaseDistributorCap>(
+        transfer::public_transfer<governance::rebase_distributor_cap::RebaseDistributorCap>(
             rebase_distributor_cap,
             tx_context::sender(ctx)
         );
@@ -39,15 +39,15 @@ module integrate::reward_distributor {
     }
 
     public entry fun claim_and_lock<SailCoinType>(
-        rebase_distributor: &mut distribution::rebase_distributor::RebaseDistributor<SailCoinType>,
-        voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
-        distribution_config: &distribution::distribution_config::DistributionConfig,
-        lock: &mut ve::voting_escrow::Lock,
+        rebase_distributor: &mut governance::rebase_distributor::RebaseDistributor<SailCoinType>,
+        voting_escrow: &mut voting_escrow::voting_escrow::VotingEscrow<SailCoinType>,
+        distribution_config: &governance::distribution_config::DistributionConfig,
+        lock: &mut voting_escrow::voting_escrow::Lock,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
         let claim_and_lock_event = ClaimAndLock {
-            lock_id: object::id<ve::voting_escrow::Lock>(lock),
+            lock_id: object::id<voting_escrow::voting_escrow::Lock>(lock),
             amount: rebase_distributor.claim(voting_escrow, distribution_config, lock, clock, ctx),
         };
         sui::event::emit<ClaimAndLock>(claim_and_lock_event);

@@ -820,6 +820,19 @@ module distribution::minter {
         sui::event::emit<EventSetTreasuryCap>(set_treasury_cap_event);
     }
 
+    public fun get_treasury_cap_internal<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        admin_cap: &AdminCap
+    ): TreasuryCap<SailCoinType> {
+        assert!(!minter.is_paused(), ESetTreasuryCapMinterPaused);
+        minter.check_admin(admin_cap);
+        assert!(
+            !option::is_none<TreasuryCap<SailCoinType>>(&minter.sail_cap),
+            EMinterCapAlreadySet
+        );
+        minter.sail_cap.extract()
+    }
+
     /// Sets the reward distributor capability for the minter.
     public fun set_rebase_distributor_cap<SailCoinType>(
         minter: &mut Minter<SailCoinType>,

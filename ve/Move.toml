@@ -20,3 +20,6 @@ git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
 subdir = "integer_mate"
 rev = "dev"
 override = true
+
+[dependencies.voting_escrow]
+local = "../voting_escrow"

@@ -2,18 +2,18 @@
 
 [move]
 version = 3
-manifest_digest = "75DA1602CA86D41FFE451780D0CFA43F6CEF1B0CB69356E9074E79B8A6F8F698"
+manifest_digest = "CD687022487F4C77F85637162EA987F6117C7999A941F757EC56D9AD64B44F9A"
 deps_digest = "8227D341C0550A37580C10FA45FE148A465225149C69D179737E0FE454AD6AEC"
 dependencies = [
   { id = "Sui", name = "Sui" },
   { id = "clmm_pool", name = "clmm_pool" },
-  { id = "distribution", name = "distribution" },
   { id = "gauge_cap", name = "gauge_cap" },
+  { id = "governance", name = "governance" },
   { id = "integer_mate", name = "integer_mate" },
   { id = "move_stl", name = "move_stl" },
   { id = "price_monitor", name = "price_monitor" },
   { id = "price_provider", name = "price_provider" },
-  { id = "ve", name = "ve" },
+  { id = "voting_escrow", name = "voting_escrow" },
 ]
 
 [[move.package]]
@@ -49,8 +49,16 @@ dependencies = [
 ]
 
 [[move.package]]
-id = "distribution"
-source = { local = "../distribution" }
+id = "gauge_cap"
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "dev", subdir = "gauge_cap" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+]
+
+[[move.package]]
+id = "governance"
+source = { local = "../governance" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -61,15 +69,7 @@ dependencies = [
   { id = "locker_cap", name = "locker_cap" },
   { id = "price_monitor", name = "price_monitor" },
   { id = "price_provider", name = "price_provider" },
-  { id = "ve", name = "ve" },
-]
-
-[[move.package]]
-id = "gauge_cap"
-source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "dev", subdir = "gauge_cap" }
-
-dependencies = [
-  { id = "Sui", name = "Sui" },
+  { id = "voting_escrow", name = "voting_escrow" },
 ]
 
 [[move.package]]
@@ -116,8 +116,8 @@ dependencies = [
 ]
 
 [[move.package]]
-id = "ve"
-source = { local = "../ve" }
+id = "voting_escrow"
+source = { local = "../voting_escrow" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -125,7 +125,7 @@ dependencies = [
 ]
 
 [move.toolchain-version]
-compiler-version = "1.54.1"
+compiler-version = "1.55.0"
 edition = "2024"
 flavor = "sui"
 
