@@ -264,7 +264,7 @@ module governance::voter {
             whitelisted_manager,
             whitelisted_manager_cap,
             is_whitelisted_nft: table::new<LockID, bool>(ctx),
-            max_voting_num: 10,
+            max_voting_num: 20,
             last_voted: table::new<LockID, u64>(ctx),
             pool_vote: table::new<LockID, vector<PoolID>>(ctx),
             gauge_to_fee: table::new<GaugeID, governance::fee_voting_reward::FeeVotingReward>(ctx),
