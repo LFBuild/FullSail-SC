@@ -3016,8 +3016,6 @@ module ve::voting_escrow {
         ctx: &mut TxContext
     ): voting_escrow::voting_escrow::Lock {
 
-        voting_escrow.checked_package_version();
-
         let key = 1337;
         assert!(voting_escrow.bag.contains(key), EDestroyNonNulledLock);
 
