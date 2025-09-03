@@ -1260,16 +1260,12 @@ module governance::minter {
             minter.active_period + voting_escrow::common::epoch() < current_time,
             EUpdatePeriodNotFinishedYet
         );
-        let rebase_distributor_id = object::id(rebase_distributor);
         assert!(minter.rebase_distributor_cap.is_some(), EUpdatePeriodNoRebaseDistributorCap);
 
         let prev_prev_epoch_emissions = minter.o_sail_epoch_emissions(distribution_config);
         minter.update_o_sail_token(epoch_o_sail_treasury_cap, clock);
-        let rebase_growth = calculate_rebase_growth(
-            prev_prev_epoch_emissions,
-            minter.total_supply(),
-            voting_escrow.total_locked()
-        );
+        // rebase is disabled
+        let rebase_growth = 0;
         let mut team_emissions = 0;
         if (minter.team_emission_rate > 0 && minter.team_wallet != @0x0) {
             team_emissions = integer_mate::full_math_u64::mul_div_floor(
@@ -1280,18 +1276,6 @@ module governance::minter {
             transfer::public_transfer<Coin<SailCoinType>>(
                 minter.mint_sail(team_emissions, ctx),
                 minter.team_wallet
-            );
-        };
-        if (rebase_growth > 0) {
-            let rebase_emissions = minter.mint_sail(
-                rebase_growth,
-                ctx
-            );
-            let rebase_distributor_cap = minter.rebase_distributor_cap.borrow();
-            rebase_distributor.checkpoint_token(
-                rebase_distributor_cap,
-                rebase_emissions,
-                clock
             );
         };
         let distribute_cap = minter.distribute_cap.borrow();

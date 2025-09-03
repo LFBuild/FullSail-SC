@@ -2640,8 +2640,6 @@ fun test_exercise_fee_reward_sail_claim_succeed() {
             scenario.ctx()
         );
 
-        std::debug::print(&claimed_amount);
-
         // Since there is only one lock, it should get all rewards
         assert!(claimed_amount == reward_amount, 1);
 
@@ -2782,8 +2780,6 @@ fun test_exercise_fee_reward_usd_claim_succeed() {
             &clock,
             scenario.ctx()
         );
-
-        std::debug::print(&claimed_amount);
 
         // Since there is only one lock, it should get all rewards
         assert!(claimed_amount == reward_amount, 1);
