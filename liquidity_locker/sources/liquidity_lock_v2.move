@@ -370,7 +370,7 @@ module liquidity_locker::liquidity_lock_v2 {
             publisher,
             std::string::utf8(b"{name}"),
             std::string::utf8(b"https://app.fullsail.finance/liquidity/{pool_id}/positions/{position_id}"),
-            std::string::utf8(b"https://app.fullsail.finance/static_files/fullsail_logo.png"),
+            std::string::utf8(b"https://app.fullsail.finance/static_files/locked_position.png"),
             std::string::utf8(b"{description}"),
             std::string::utf8(b"https://app.fullsail.finance"),
             std::string::utf8(b"FULLSAIL"),
