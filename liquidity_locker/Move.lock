@@ -2,18 +2,18 @@
 
 [move]
 version = 3
-manifest_digest = "58B23DB4F1C8E613FA4271844C9575822FFB1137277E929EF3109539B8368D5E"
+manifest_digest = "D296698375721AD23D693D45AF020E983E4E4DF3E266439013DFD392EBFF7360"
 deps_digest = "CB99E3BEE139471F3765AE330F855F3B376156AA54F37DEDE11BBE5BB0D3BB74"
 dependencies = [
   { id = "Sui", name = "Sui" },
   { id = "Switchboard", name = "Switchboard" },
   { id = "clmm_pool", name = "clmm_pool" },
-  { id = "distribution", name = "distribution" },
   { id = "gauge_cap", name = "gauge_cap" },
+  { id = "governance", name = "governance" },
   { id = "integer_mate", name = "integer_mate" },
   { id = "locker_cap", name = "locker_cap" },
   { id = "price_provider", name = "price_provider" },
-  { id = "ve", name = "ve" },
+  { id = "voting_escrow", name = "voting_escrow" },
 ]
 dev-dependencies = [
   { id = "price_monitor", name = "price_monitor" },
@@ -52,8 +52,16 @@ dependencies = [
 ]
 
 [[move.package]]
-id = "distribution"
-source = { local = "../distribution" }
+id = "gauge_cap"
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "main", subdir = "gauge_cap" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+]
+
+[[move.package]]
+id = "governance"
+source = { local = "../governance" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -64,15 +72,7 @@ dependencies = [
   { id = "locker_cap", name = "locker_cap" },
   { id = "price_monitor", name = "price_monitor" },
   { id = "price_provider", name = "price_provider" },
-  { id = "ve", name = "ve" },
-]
-
-[[move.package]]
-id = "gauge_cap"
-source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "main", subdir = "gauge_cap" }
-
-dependencies = [
-  { id = "Sui", name = "Sui" },
+  { id = "voting_escrow", name = "voting_escrow" },
 ]
 
 [[move.package]]
@@ -119,8 +119,8 @@ dependencies = [
 ]
 
 [[move.package]]
-id = "ve"
-source = { local = "../ve" }
+id = "voting_escrow"
+source = { local = "../voting_escrow" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -128,7 +128,7 @@ dependencies = [
 ]
 
 [move.toolchain-version]
-compiler-version = "1.54.1"
+compiler-version = "1.55.0"
 edition = "2024.beta"
 flavor = "sui"
 

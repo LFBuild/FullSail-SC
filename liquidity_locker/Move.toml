@@ -3,7 +3,7 @@ name = "liquidity_locker"
 edition = "2024.beta"
 
 [addresses]
-liquidity_locker = "0x0"
+liquidity_locker = "0x57dda0589452604a58708864dfcf06b174f6c6e90cc50fd6735914f8e248aa4e"
 
 [dev-addresses]
 

@@ -2,11 +2,12 @@
 
 [move]
 version = 3
-manifest_digest = "8B244E257072FFC73E63E80DB7BA55AC6E271E220B025C5F4DA656CC234BE85C"
-deps_digest = "3C4103934B1E040BB6B23F1D610B4EF9F2F1166A50A104EADCF77467C004C600"
+manifest_digest = "7971DD100C7EFF3FF37A1418D8792024BAA26C279D62DD105B629DBC9B1B834A"
+deps_digest = "060AD7E57DFB13104F21BE5F5C3759D03F0553FC3229247D9A7A6B45F50D03A3"
 dependencies = [
   { id = "Sui", name = "Sui" },
   { id = "integer_mate", name = "integer_mate" },
+  { id = "voting_escrow", name = "voting_escrow" },
 ]
 
 [[move.package]]
@@ -29,8 +30,17 @@ dependencies = [
   { id = "Sui", name = "Sui" },
 ]
 
+[[move.package]]
+id = "voting_escrow"
+source = { local = "../voting_escrow" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+  { id = "integer_mate", name = "integer_mate" },
+]
+
 [move.toolchain-version]
-compiler-version = "1.54.1"
+compiler-version = "1.55.0"
 edition = "2024.beta"
 flavor = "sui"
 

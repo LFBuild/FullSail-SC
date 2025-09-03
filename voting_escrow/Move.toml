@@ -3,7 +3,7 @@ name = "voting_escrow"
 edition = "2024.beta"
 
 [addresses]
-voting_escrow = "0x0"
+voting_escrow = "0x2469959951798462ecba5efc3b93276560472be279494561331d384baeedab4c"
 
 [dev-dependencies]
 
@@ -18,5 +18,5 @@ override = true
 [dependencies.integer_mate]
 git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
 subdir = "integer_mate"
-rev = "dev"
+rev = "main"
 override = true
