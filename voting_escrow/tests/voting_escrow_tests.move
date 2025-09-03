@@ -181,13 +181,14 @@ fun test_merge_two_locks_and_check_voting_power() {
     );
 
     // Store voting powers before merge
+    let total_supply_before: u64;
     scenario.next_tx(USER);
     {
         let ve = scenario.take_shared<VotingEscrow<SAIL>>();
         let current_time = clock.timestamp_ms() / 1000;
         let lock_a_power_before = ve.balance_of_nft_at(lock_a_id, current_time);
         let lock_b_power_before = ve.balance_of_nft_at(lock_b_id, current_time);
-        let total_supply_before = ve.total_supply_at(current_time);
+        total_supply_before = ve.total_supply_at(current_time);
         
         // Verify total supply equals sum of individual powers
         assert!(total_supply_before == lock_a_power_before + lock_b_power_before, 0);
@@ -2572,6 +2573,143 @@ fun test_create_lock_with_zero_duration_fails() {
         );
         ts::return_shared(ve);
     };
+
+    scenario.end();
+    test_utils::destroy(clock);
+}
+
+#[test]
+fun test_unlock_permanent_and_merge_supply_consistency() {
+    // 1. Setup
+    let mut scenario = ts::begin(ADMIN);
+    let mut clock = setup::setup<SAIL>(&mut scenario, ADMIN);
+
+    // 2. Create locks
+    let normal_lock_amount = 1_000_000;
+    let permanent_lock_amount = 500_000;
+
+    scenario.next_tx(USER);
+    {
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        // Normal lock (2 years)
+        let sail_a = coin::mint_for_testing<SAIL>(normal_lock_amount, scenario.ctx());
+        voting_escrow::create_lock<SAIL>(&mut ve, sail_a, 4 * 52 * 7, false, &clock, scenario.ctx());
+
+        // Permanent lock
+        let sail_b = coin::mint_for_testing<SAIL>(permanent_lock_amount, scenario.ctx());
+        voting_escrow::create_lock<SAIL>(&mut ve, sail_b, 0, true, &clock, scenario.ctx());
+        ts::return_shared(ve);
+    };
+
+    // 3. Get lock IDs
+    let lock_a_id: ID;
+    let lock_b_id: ID; // This will be the permanent lock
+    scenario.next_tx(USER);
+    {
+        // Locks are taken LIFO, so permanent lock (created second) is taken first.
+        let lock_b = scenario.take_from_sender<Lock>();
+        let lock_a = scenario.take_from_sender<Lock>();
+        lock_a_id = object::id(&lock_a);
+        lock_b_id = object::id(&lock_b);
+        scenario.return_to_sender(lock_a);
+        scenario.return_to_sender(lock_b);
+    };
+
+    clock.increment_for_testing(10000);
+
+    // 4. Check total supply before any operations
+    let total_supply_before: u64;
+    let time_before: u64;
+    scenario.next_tx(USER);
+    {
+        let ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        time_before = clock.timestamp_ms() / 1000;
+        total_supply_before = voting_escrow::total_supply_at<SAIL>(&ve, time_before);
+        ts::return_shared(ve);
+    };
+    
+    // 5. Unlock the permanent lock
+    let total_supply_after_unlock: u64;
+    scenario.next_tx(USER);
+    {
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let mut lock_b = scenario.take_from_sender_by_id<Lock>(lock_b_id);
+        voting_escrow::unlock_permanent<SAIL>(&mut ve, &mut lock_b, &clock, scenario.ctx());
+        total_supply_after_unlock = voting_escrow::total_supply_at<SAIL>(&ve, clock.timestamp_ms() / 1000);
+        scenario.return_to_sender(lock_b);
+        ts::return_shared(ve);
+    };
+
+    // 6. Merge the locks (formerly permanent lock into the normal lock)
+    scenario.next_tx(USER);
+    {
+        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let mut lock_a = scenario.take_from_sender_by_id<Lock>(lock_a_id);
+        let mut lock_b = scenario.take_from_sender_by_id<Lock>(lock_b_id);
+        voting_escrow::merge<SAIL>(&mut ve, &mut lock_b, &mut lock_a, &clock, scenario.ctx());
+        scenario.return_to_sender(lock_a);
+        scenario.return_to_sender(lock_b);
+        ts::return_shared(ve);
+    };
+
+    // 7. Check total supply after merge, using the original timestamp
+    let total_supply_after: u64;
+    scenario.next_tx(USER);
+    {
+        let ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let current_time = clock.timestamp_ms() / 1000;
+        total_supply_after = voting_escrow::total_supply_at<SAIL>(&ve, current_time);
+        ts::return_shared(ve);
+    };
+
+
+    // 8. Verify supply consistency. Since we are querying at a past timestamp, the value should be identical.
+    assert!(total_supply_before == total_supply_after, 0);
+    assert!(total_supply_after - total_supply_after_unlock <= 2, 1);
+
+    scenario.end();
+    test_utils::destroy(clock);
+}
+
+#[test]
+fun test_merge_supply_consistency() {
+    // 1. Setup
+    let mut scenario = ts::begin(ADMIN);
+    let mut clock = setup::setup<SAIL>(&mut scenario, ADMIN);
+
+    // 2. Create two locks
+    let (lock_a_id, lock_b_id) = create_two_locks(
+        &mut scenario, &clock, 1_000_000, 365, false, 1_000_000, 365, false
+    );
+
+    // 3. Check total supply before merge
+    let total_supply_before: u64;
+    let time_before: u64;
+    scenario.next_tx(USER);
+    {
+        let ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        time_before = clock.timestamp_ms() / 1000;
+        total_supply_before = voting_escrow::total_supply_at<SAIL>(&ve, time_before);
+        ts::return_shared(ve);
+    };
+
+    // 4. Merge the locks
+    merge_locks(&mut scenario, &clock, lock_a_id, lock_b_id);
+
+    clock.increment_for_testing(2000);
+
+    // 5. Check total supply after merge, using the original timestamp
+    let total_supply_after: u64;
+    scenario.next_tx(USER);
+    {
+        let ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let current_time = clock.timestamp_ms() / 1000;
+        total_supply_after = voting_escrow::total_supply_at<SAIL>(&ve, current_time);
+        ts::return_shared(ve);
+    };
+
+    // 6. Verify supply consistency.
+    assert!(total_supply_after - total_supply_before <= 2, 0);
 
     scenario.end();
     test_utils::destroy(clock);

@@ -7,6 +7,8 @@ module voting_escrow::voting_escrow {
 
     /// Incremental version of the package.
     const VERSION: u64 = 1;
+
+    const WITHDRAW_LOCK_TIME_MS: u64 = 24 * 60 * 60 * 1000;
     
     // Error constants
     const EInvalidPackageVersion: u64 = 209945686090882800;
@@ -28,6 +30,7 @@ module voting_escrow::voting_escrow {
     const EAddAllowedManagerInvalidPublisher: u64 = 277556739040212930;
     const EWithdrawPositionNotNormalEscrow: u64 = 922337640913305602;
     const EWithdrawPermanentPosition: u64 = 922337642201861328;
+    const EWithdrawPerpetualPosition: u64 = 896364354150284800;
     const EWithdrawBeforeEndTime: u64 = 922337643060684391;
     const EDestroyNulledPositionVoted: u64 = 437084245766073300;
     const EDestroyNulledPositionNotNormalEscrow: u64 = 865327590145207900;
@@ -90,6 +93,10 @@ module voting_escrow::voting_escrow {
     const EWithdrawManagedNotManaged: u64 = 922337808846671057;
     const EWithdrawManagedNotLockedType: u64 = 922337809276180894;
     const EWithdrawManagedInvalidManagedLock: u64 = 922337810564657975;
+    const EScheduleWithdrawInvalidPublisher: u64 = 287647463522008100;
+    const EExecuteTimeLockedEarlyWithdrawStillLocked: u64 = 696051782678871300;
+    const EExecuteTimeLockedEarlyWithdrawInvalidLock: u64 = 835019610037456000;
+    const EExecuteTimeLockedEarlyWithdrawInvalidAmount: u64 = 6035137208728614;
     const EValidateLockDurationInvalid: u64 = 922337411132463514;
     const EGetPastPowerPointError: u64 = 922337711780108697;
     const EGetVotingPowerOwnershipChangeTooRecent: u64 = 922337699754409987;
@@ -224,6 +231,23 @@ module voting_escrow::voting_escrow {
         perpetual: bool,
     }
 
+    public struct EventScheduleTimeLockedEarlyWithdraw has copy, drop, store {
+        lock_id: ID,
+        amount: u64,
+        unlock_time: u64, // time when scheduled withdraw can be executed
+    }
+
+    public struct EventCancelTimeLockedEarlyWithdraw has copy, drop, store {
+        lock_id: ID,
+        amount: u64,
+        unlock_time: u64,
+    }
+
+    public struct EventExecuteTimeLockedEarlyWithdraw has copy, drop, store {
+        lock_id: ID,
+        amount: u64,
+    }
+
     public struct EventMerge has copy, drop, store {
         sender: address,
         from: ID,
@@ -277,6 +301,14 @@ module voting_escrow::voting_escrow {
         ts: u64,
         permanent: u64,
     }
+
+    public struct TimeLockedWithdraw has key, store {
+        id: UID,
+        lock_id: ID,
+        amount: u64,
+        unlock_time: u64,
+    }
+
     public enum DepositType has copy, drop, store {
             DEPOSIT_FOR_TYPE,
             CREATE_LOCK_TYPE,
@@ -583,6 +615,106 @@ module voting_escrow::voting_escrow {
             after: current_total_locked - locked_balance.amount,
         };
         sui::event::emit<EventSupply>(supply_event);
+    }
+
+    /// Method that is meant to be used to unlock some of the tokens from a lock early.
+    /// These freshly unlocked tokens are supposed to be used to source rewards for the protocol.
+    public fun schedule_early_withdraw<SailCoinType>(
+        voting_escrow: &mut VotingEscrow<SailCoinType>,
+        publisher: &sui::package::Publisher,
+        lock_id: ID,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ): TimeLockedWithdraw {
+        voting_escrow.checked_package_version();
+        assert!(publisher.from_module<VOTING_ESCROW>(), EScheduleWithdrawInvalidPublisher);
+
+        let id = object::new(ctx);
+        let unlock_time = clock.timestamp_ms() + WITHDRAW_LOCK_TIME_MS;
+        let (locked_balance, _) = voting_escrow.locked(lock_id);
+        let event = EventScheduleTimeLockedEarlyWithdraw {
+            amount: locked_balance.amount(),
+            lock_id,
+            unlock_time,
+        };
+        sui::event::emit<EventScheduleTimeLockedEarlyWithdraw>(event);
+
+        TimeLockedWithdraw {
+            id,
+            lock_id,
+            unlock_time,
+            amount: locked_balance.amount(),
+        }
+    }
+
+    public fun execute_early_withdraw<SailCoinType>(
+        voting_escrow: &mut VotingEscrow<SailCoinType>,
+        withdraw: TimeLockedWithdraw,
+        mut lock: Lock,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext,
+    ) {
+        voting_escrow.checked_package_version();
+        let TimeLockedWithdraw {id, lock_id, amount, unlock_time} = withdraw;
+        object::delete(id);
+        assert!(unlock_time <= clock.timestamp_ms(), EExecuteTimeLockedEarlyWithdrawStillLocked);
+        assert!(lock_id == object::id(&lock), EExecuteTimeLockedEarlyWithdrawInvalidLock);
+        let locked_balance = *voting_escrow.locked.borrow(lock_id);
+        assert!(!locked_balance.is_perpetual, EWithdrawPerpetualPosition);
+        assert!(!locked_balance.is_permanent, EWithdrawPermanentPosition);
+        
+        assert!(locked_balance.amount() == amount, EExecuteTimeLockedEarlyWithdrawInvalidAmount);
+        let sender = tx_context::sender(ctx);
+        let lock_has_voted = voting_escrow.lock_has_voted(lock_id);
+        assert!(!lock_has_voted, EWithdrawPositionVoted);
+        assert!(
+            !voting_escrow.escrow_type.contains(lock_id) || *voting_escrow.escrow_type.borrow(
+                lock_id
+            ) == EscrowType::NORMAL,
+            EWithdrawPositionNotNormalEscrow
+        );
+        assert!(!voting_escrow.is_nulled(lock_id), EWithdrawNulledLock);
+        let current_total_locked = voting_escrow.total_locked;
+        voting_escrow.total_locked = voting_escrow.total_locked - locked_balance.amount;
+        voting_escrow.burn_lock_internal(lock, locked_balance, clock, ctx);
+        transfer::public_transfer<sui::coin::Coin<SailCoinType>>(
+            sui::coin::from_balance<SailCoinType>(
+                voting_escrow.balance.split(locked_balance.amount),
+                ctx
+            ),
+            sender
+        );
+        let withdraw_event = EventWithdraw {
+            sender,
+            lock_id,
+            amount: locked_balance.amount,
+        };
+        sui::event::emit<EventWithdraw>(withdraw_event);
+        let supply_event = EventSupply {
+            before: current_total_locked,
+            after: current_total_locked - locked_balance.amount,
+        };
+        sui::event::emit<EventSupply>(supply_event);
+        let early_withdraw_event = EventExecuteTimeLockedEarlyWithdraw {
+            lock_id,
+            amount,
+        };
+        sui::event::emit<EventExecuteTimeLockedEarlyWithdraw>(early_withdraw_event);
+    }
+
+    public fun cancel_early_withdraw<SailCoinType>(
+        voting_escrow: &mut VotingEscrow<SailCoinType>,
+        withdraw: TimeLockedWithdraw,
+    ) {
+        voting_escrow.checked_package_version();
+        let TimeLockedWithdraw {id, lock_id, amount, unlock_time} = withdraw;
+        let event = EventCancelTimeLockedEarlyWithdraw {
+            lock_id,
+            amount,
+            unlock_time,
+        };
+        sui::event::emit<EventCancelTimeLockedEarlyWithdraw>(event);
+        object::delete(id);
     }
 
     /// Destroys a nulled lock. Nulled locks don't need to wait for the end of the lock period to be destroyed.
