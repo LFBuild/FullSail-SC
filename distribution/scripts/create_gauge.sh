@@ -1,5 +1,5 @@
 source ./export.sh
-source ./pools/pool_sail_tkna.sh
+source ./pools/pool_tknb_tknc.sh
 
 export GAUGE_BASE_EMISSIONS=10000000000
 

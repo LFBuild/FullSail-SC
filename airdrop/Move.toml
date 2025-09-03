@@ -3,7 +3,7 @@ name = "airdrop"
 edition = "2024.beta"
 
 [addresses]
-airdrop = "0x6bf2bd971122ec1cfafa85a53debdcb284dc6d325d712573969e67bd4a59e20f"
+airdrop = "0x0"
 
 [dev-dependencies]
 
@@ -16,3 +16,7 @@ rev = "main"
 
 [dependencies.ve]
 local = "../ve"
+
+[dependencies.voting_escrow]
+local = "../voting_escrow"
+
