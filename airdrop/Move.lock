@@ -2,8 +2,8 @@
 
 [move]
 version = 3
-manifest_digest = "80A9E07E21D3723019E2363DA21EC8FDF9E86153AE5077E532A5B40369BBA55B"
-deps_digest = "52B406A7A21811BEF51751CF88DA0E76DAEFFEAC888D4F4060B1A72BBE7D8D35"
+manifest_digest = "6A958BAAADF27A24D00E2BF8222A52EA38CCACA2286E8E7DE48AF850E4CB3A91"
+deps_digest = "CAFAD8A7CF51067FB4358215BECB86BD100DD64E57C2AC8A7AE7D74B688F5965"
 dependencies = [
   { id = "Bridge", name = "Bridge" },
   { id = "MoveStdlib", name = "MoveStdlib" },
@@ -11,6 +11,7 @@ dependencies = [
   { id = "SuiSystem", name = "SuiSystem" },
   { id = "SuiTears", name = "SuiTears" },
   { id = "ve", name = "ve" },
+  { id = "voting_escrow", name = "voting_escrow" },
 ]
 
 [[move.package]]
@@ -63,6 +64,16 @@ dependencies = [
 [[move.package]]
 id = "ve"
 source = { local = "../ve" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+  { id = "integer_mate", name = "integer_mate" },
+  { id = "voting_escrow", name = "voting_escrow" },
+]
+
+[[move.package]]
+id = "voting_escrow"
+source = { local = "../voting_escrow" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },

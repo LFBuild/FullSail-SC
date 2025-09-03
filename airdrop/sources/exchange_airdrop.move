@@ -1,7 +1,6 @@
 /// Meant to provide a functionality to exchange preSAIL for auto max-locked veSAIL.
 module airdrop::exchange_airdrop;
 
-use ve::voting_escrow::{VotingEscrow};
 use sui::balance::{Self, Balance};
 use sui::coin::{Coin};
 use sui::clock::{Clock};
@@ -193,6 +192,31 @@ public fun distributed<CoinIn, SailCoinType>(self: &ExchangeAirdrop<CoinIn, Sail
 }
 
 /*
+ * @notice Deprecated. Uses deprecated ve::voting_escrow module.
+ */
+public fun get_airdrop<CoinIn, SailCoinType>(
+    self: &mut ExchangeAirdrop<CoinIn, SailCoinType>,
+    voting_escrow: &mut ve::voting_escrow::VotingEscrow<SailCoinType>,
+    coin_in: Coin<CoinIn>,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    assert!(self.start <= clock.timestamp_ms(), EGetAirdropNotStarted);
+    assert!(self.reserves.value() >= coin_in.value(), ENotEnoughReserves);
+    let amount = coin_in.value();
+    self.collected.join(coin_in.into_balance());
+    let sail = self.reserves.split(amount);
+    self.distributed = self.distributed + amount;
+    let event = EventAirdropClaimed {
+        airdrop_id: object::id(self),
+        amount,
+        user: ctx.sender(),
+    };
+    sui::event::emit(event);
+    voting_escrow.create_lock(sail.into_coin(ctx), 52 * 7 * 4, true, clock, ctx);
+}
+
+/*
  * @notice Claims airdropped SAIL and locks it into auto max-locked veSAIL.
  *
  * @param self The `ExchangeAirdrop` object.
@@ -204,9 +228,9 @@ public fun distributed<CoinIn, SailCoinType>(self: &ExchangeAirdrop<CoinIn, Sail
  * - The airdrop has not started yet.
  * - There are not enough reserves to cover the exchange.
  */
-public fun get_airdrop<CoinIn, SailCoinType>(
+public fun get_airdrop_v2<CoinIn, SailCoinType>(
     self: &mut ExchangeAirdrop<CoinIn, SailCoinType>,
-    voting_escrow: &mut VotingEscrow<SailCoinType>,
+    voting_escrow: &mut voting_escrow::voting_escrow::VotingEscrow<SailCoinType>,
     coin_in: Coin<CoinIn>,
     clock: &Clock,
     ctx: &mut TxContext,
