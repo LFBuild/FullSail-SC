@@ -11,11 +11,11 @@ export POOL1=0x17bac48cb12d565e5f5fdf37da71705de2bf84045fac5630c6d00138387bf46a
 export COIN_A_1=0x1a8f4bc33f8ef7fbc851f156857aa65d397a6a6fd27a7ac2ca717b51f2fd9489::alkimi::ALKIMI
 export COIN_B_1=0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI
 
-export TOTAL_REWARD_AMOUNT_ALKIMI=80000000000000 # set the total reward amount for the pool
-export TOTAL_REWARD_AMOUNT_PRE_SAIL=200000000000 # set the total reward amount for the pool
+#export TOTAL_REWARD_AMOUNT_ALKIMI=80000000000000 # set the total reward amount for the pool
+export TOTAL_REWARD_AMOUNT_PRE_SAIL=0 # set the total reward amount for the pool
 export DISTRIBUTION_PERIOD_SECONDS=604800 # set the distribution period in seconds
 
 
 sui client ptb \
---move-call $PACKAGE::pool_script_v3::update_rewarder_emission "<$COIN_A_1,$COIN_B_1,$ALKIMI_TYPE>" @$GLOBAL_CONFIG @$POOL1 @$REWARDER_GLOBAL_VAULT $TOTAL_REWARD_AMOUNT_ALKIMI $DISTRIBUTION_PERIOD_SECONDS @$CLOCK \
 --move-call $PACKAGE::pool_script_v3::update_rewarder_emission "<$COIN_A_1,$COIN_B_1,$PRE_SAIL_TYPE>" @$GLOBAL_CONFIG @$POOL1 @$REWARDER_GLOBAL_VAULT $TOTAL_REWARD_AMOUNT_PRE_SAIL $DISTRIBUTION_PERIOD_SECONDS @$CLOCK
+#--move-call $PACKAGE::pool_script_v3::update_rewarder_emission "<$COIN_A_1,$COIN_B_1,$ALKIMI_TYPE>" @$GLOBAL_CONFIG @$POOL1 @$REWARDER_GLOBAL_VAULT $TOTAL_REWARD_AMOUNT_ALKIMI $DISTRIBUTION_PERIOD_SECONDS @$CLOCK \
