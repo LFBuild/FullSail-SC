@@ -35,6 +35,10 @@ module governance::fee_voting_reward {
         bag: sui::bag::Bag,
     }
 
+    public fun notices(): (vector<u8>, vector<u8>) {
+        (COPYRIGHT_NOTICE, PATENT_NOTICE)
+    }
+
     /// Returns the balance of a specific fee coin type in the reward
     ///
     /// # Arguments

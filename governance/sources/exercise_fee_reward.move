@@ -25,6 +25,10 @@ module governance::exercise_fee_reward {
         id: ID,
     }
 
+    public fun notices(): (vector<u8>, vector<u8>) {
+        (COPYRIGHT_NOTICE, PATENT_NOTICE)
+    }
+
     /// Creates a new ExerciseFeeReward instance. Supposed to be stored inside Voter,
     /// so it is not linked to VotingEscrow.
     ///

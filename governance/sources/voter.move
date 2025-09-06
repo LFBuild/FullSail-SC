@@ -225,6 +225,10 @@ module governance::voter {
         ended_epoch_o_sail_emission: u64,
     }
 
+    public fun notices(): (vector<u8>, vector<u8>) {
+        (COPYRIGHT_NOTICE, PATENT_NOTICE)
+    }
+
     /// Creates a new Voter contract.
     /// 
     /// # Arguments

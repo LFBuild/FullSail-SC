@@ -25,6 +25,10 @@ public struct DistributeCap has store, key {
     who: ID,
 }
 
+public fun notices(): (vector<u8>, vector<u8>) {
+    (COPYRIGHT_NOTICE, PATENT_NOTICE)
+}
+
 public fun create(
     publisher: &package::Publisher,
     voter_id: ID,

@@ -10,7 +10,7 @@ module governance::distribution_config {
     const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
 
     /// Incremental version of the package.
-    const VERSION: u64 = 1;
+    const VERSION: u64 = 2;
 
     use sui::vec_set::{Self, VecSet};
     use switchboard::aggregator::{Aggregator};
@@ -37,6 +37,10 @@ module governance::distribution_config {
         sail_price_aggregator_id: Option<ID>,
         version: u64,
         bag: sui::bag::Bag,
+    }
+
+    public fun notices(): (vector<u8>, vector<u8>) {
+        (COPYRIGHT_NOTICE, PATENT_NOTICE)
     }
 
     /// Initializes the distribution configuration object

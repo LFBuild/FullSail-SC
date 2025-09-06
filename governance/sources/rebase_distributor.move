@@ -40,6 +40,10 @@ public struct RebaseDistributor<phantom SailCoinType> has key, store {
     bag: sui::bag::Bag,
 }
 
+public fun notices(): (vector<u8>, vector<u8>) {
+    (COPYRIGHT_NOTICE, PATENT_NOTICE)
+}
+
 fun init(otw: REBASE_DISTRIBUTOR, ctx: &mut TxContext) {
     sui::package::claim_and_keep<REBASE_DISTRIBUTOR>(otw, ctx);
 }

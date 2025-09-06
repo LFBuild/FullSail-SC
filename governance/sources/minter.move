@@ -448,6 +448,10 @@ module governance::minter {
         bag: sui::bag::Bag,
     }
 
+    public fun notices(): (vector<u8>, vector<u8>) {
+        (COPYRIGHT_NOTICE, PATENT_NOTICE)
+    }
+
     /// Returns the total supply only of SailCoin managed by this minter.
     public fun sail_total_supply<SailCoinType>(minter: &Minter<SailCoinType>): u64 {
         option::borrow<TreasuryCap<SailCoinType>>(&minter.sail_cap).total_supply()

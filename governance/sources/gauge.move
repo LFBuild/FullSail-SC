@@ -190,6 +190,10 @@ module governance::gauge {
         bag: sui::bag::Bag,
     }
 
+    public fun notices(): (vector<u8>, vector<u8>) {
+        (COPYRIGHT_NOTICE, PATENT_NOTICE)
+    }
+
     /// Initializes the gauge module by setting up display fields and transferring ownership.
     /// This function is called during module initialization to:
     /// * Set up display fields for staked position objects

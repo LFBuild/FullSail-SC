@@ -13,6 +13,10 @@ module governance::rebase_distributor_cap {
         rebase_distributor: ID,
     }
 
+    public fun notices(): (vector<u8>, vector<u8>) {
+        (COPYRIGHT_NOTICE, PATENT_NOTICE)
+    }
+
     public(package) fun create(rebase_distributor_id: ID, ctx: &mut TxContext): RebaseDistributorCap {
         RebaseDistributorCap {
             id: object::new(ctx),
