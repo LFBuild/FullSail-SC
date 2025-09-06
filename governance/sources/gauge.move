@@ -640,10 +640,6 @@ module governance::gauge {
 
         let mut claimed_growth_inside = gauge.rewards.borrow(position_id).growth_inside;
 
-        if (integer_mate::math_u128::is_neg(claimed_growth_inside)) {
-            claimed_growth_inside = 0;
-        };
-
         let growth_inside_diff = integer_mate::math_u128::wrapping_sub(new_growth_inside, claimed_growth_inside);
         // assert!(!integer_mate::math_u128::is_neg(growth_inside_diff), EIncorrectGrowthInside);
         if (integer_mate::math_u128::is_neg(growth_inside_diff)) {
@@ -657,6 +653,16 @@ module governance::gauge {
         ) as u64;
 
         (amount_earned, new_growth_inside)
+    }
+
+    #[test_only]
+    public fun test_earned_internal<CoinTypeA, CoinTypeB>(
+        gauge: &Gauge<CoinTypeA, CoinTypeB>,
+        pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        position_id: ID,
+        time: u64
+    ): (u64, u128) {
+        gauge.earned_internal<CoinTypeA, CoinTypeB>(pool, position_id, time)
     }
 
     /// Calculates the current global growth value for reward distribution.
