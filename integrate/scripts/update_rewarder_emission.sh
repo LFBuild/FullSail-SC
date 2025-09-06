@@ -1,10 +1,10 @@
 source ./export.sh
 
-export POOL1=0x907b98f56f93408d23c98b9745f07cff6a63371a55583341ec9ec28f1c1cd4a4
-export COIN_A_1=0xda1f9eaf3d10cd6fa609d3061ac48d640c0aeb36fb031125a263736a0ae0be29::token_b::TOKEN_B
-export COIN_B_1=0x47890ab723495c669f086fa589e86eac016a77f48db7846fd4a172d1f7390061::token_e::TOKEN_E
-export TOTAL_REWARD_AMOUNT1=10000000000 # set the total reward amount for the pool
-export DISTRIBUTION_PERIOD_SECONDS1=432000 # set the governance period in seconds
+export POOL1=0xc9f0c60fb486c8ba0a2599b22cad60d3223a676c60ef6ed3e559274e544f0eec
+export COIN_A_1=0xfae8dc6bf7b9d8713f31fcf723f57c251c42c067e7e5c4ef68c1de09652db3cf::SAIL::SAIL
+export COIN_B_1=0x1018b0843a724fd966b37f018bbc489918b6594144451cf4b481d392c9a0a463::token_a::TOKEN_A
+export TOTAL_REWARD_AMOUNT1=80000000000 # set the total reward amount for the pool
+export DISTRIBUTION_PERIOD_SECONDS1=2419200 # set the governance period in seconds
 
 sui client ptb \
 --move-call $PACKAGE::pool_script_v3::update_rewarder_emission "<$COIN_A_1,$COIN_B_1,$REWARD_TOKEN_TYPE>" @$GLOBAL_CONFIG @$POOL1 @$REWARDER_GLOBAL_VAULT $TOTAL_REWARD_AMOUNT1 $DISTRIBUTION_PERIOD_SECONDS1 @$CLOCK
