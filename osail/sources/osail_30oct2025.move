@@ -1,4 +1,4 @@
-module osail::osail_05sep2025_0600 {
+module osail::osail_30oct2025 {
     use sui::coin;
     use sui::url;
     use std::ascii;
@@ -6,16 +6,16 @@ module osail::osail_05sep2025_0600 {
     use sui::transfer;
     use sui::tx_context::{Self as tx_context, TxContext};
 
-    public struct OSAIL_05SEP2025_0600 has drop {}
+    public struct OSAIL_30OCT2025 has drop {}
 
-    fun init(otw: OSAIL_05SEP2025_0600, ctx: &mut TxContext) {
+    fun init(otw: OSAIL_30OCT2025, ctx: &mut TxContext) {
         let url = url::new_unsafe(ascii::string(b"https://app.fullsail.finance/static_files/o_sail_coin.png"));
-        let (treasury_cap, metadata) = coin::create_currency<OSAIL_05SEP2025_0600>(
+        let (treasury_cap, metadata) = coin::create_currency<OSAIL_30OCT2025>(
             otw,
             6,
-            b"oSAIL-05Sep2025-0600",
-            b"oSAIL-05Sep2025-0600",
-            b"Full Sail option token, expiration 05 Sep 2025 06:00:00 UTC",
+            b"oSAIL-30Oct2025",
+            b"oSAIL-30Oct2025",
+            b"Full Sail option token, expiration 30 Oct 2025 00:00:00 UTC",
             option::some(url),
             ctx
         );

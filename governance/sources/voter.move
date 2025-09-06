@@ -3,6 +3,8 @@
 module governance::voter {
     #[allow(unused_const)]
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
+    #[allow(unused_const)]
+    const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
 
     use sui::table::{Self, Table};
     use sui::linked_table::{Self, LinkedTable};

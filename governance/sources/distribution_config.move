@@ -6,9 +6,11 @@ module governance::distribution_config {
 
     #[allow(unused_const)]
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
+    #[allow(unused_const)]
+    const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
 
     /// Incremental version of the package.
-    const VERSION: u64 = 2;
+    const VERSION: u64 = 1;
 
     use sui::vec_set::{Self, VecSet};
     use switchboard::aggregator::{Aggregator};

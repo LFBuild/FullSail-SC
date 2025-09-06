@@ -11,6 +11,8 @@ module voting_escrow::whitelisted_tokens {
 
     #[allow(unused_const)]
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
+    #[allow(unused_const)]
+    const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
 
     const EInvalidVoter: u64 = 9223372260193075199;
     const EInvalidToken: u64 = 9223372268783140867;
