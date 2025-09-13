@@ -9,7 +9,7 @@ export COIN_A_1=0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900
 export COIN_B_1=0x7fd8aba1652c58b6397c799fd375e748e5053145cb7e126d303e0a1545fd1fec::usdz::USDZ
 export POOL1=0xe676d09899c8a4f4ecd3e4b9adac181f3f2e1e439db19454cacce1b4ea5b40f4
 
-export TOTAL_REWARD_AMOUNT_SUI=1000000000000 # set the total reward amount for the pool
+export TOTAL_REWARD_AMOUNT_SUI=750000000000 # set the total reward amount for the pool
 export DISTRIBUTION_PERIOD_SECONDS=604800 # set the distribution period in seconds
 
 
