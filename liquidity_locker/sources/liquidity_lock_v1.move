@@ -1119,6 +1119,88 @@ module liquidity_locker::liquidity_lock_v1 {
         (removed_a, removed_b)
     }
 
+    /// Used to close the locking liqudity program
+    public fun remove_lock_liquidity_ignore_locking<CoinTypeA, CoinTypeB>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
+        locker: &mut Locker,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        mut lock_position: LockedPosition<CoinTypeA, CoinTypeB>,
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext,
+    ): (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>) {
+        checked_package_version(locker);
+        let current_time = clock.timestamp_ms() / 1000;
+        assert!(!locker.pause, ELockManagerPaused);
+
+        // full remove regardless of the lock period
+        let full_remove = true;
+
+        // Calculate how much liquidity can be removed
+        let mut remove_liquidity_amount = if (full_remove) {
+            lock_position.lock_liquidity_info.current_lock_liquidity
+        } else {
+            if (lock_position.lock_liquidity_info.last_remove_liquidity_time == 0) {
+                lock_position.lock_liquidity_info.last_remove_liquidity_time = lock_position.expiration_time;
+            };
+            let number_epochs_after_expiration = time_manager::number_epochs_in_timestamp(current_time - lock_position.lock_liquidity_info.last_remove_liquidity_time);
+            assert!(number_epochs_after_expiration > 0, ENoLiquidityToRemove);
+
+            // Calculate portion of total liquidity that can be removed
+            integer_mate::full_math_u128::mul_div_floor(
+                lock_position.lock_liquidity_info.total_lock_liquidity,
+                number_epochs_after_expiration as u128,
+                time_manager::number_epochs_in_timestamp(lock_position.full_unlocking_time - lock_position.expiration_time) as u128,
+            )
+        };
+        assert!(remove_liquidity_amount > 0, ENoLiquidityToRemove);
+        if (remove_liquidity_amount > lock_position.lock_liquidity_info.current_lock_liquidity) {
+            remove_liquidity_amount = lock_position.lock_liquidity_info.current_lock_liquidity;
+        };
+
+        let mut position = locker.positions.remove(lock_position.position_id);
+
+        let (mut removed_a, mut removed_b) = remove_liquidity_and_collect_fee<CoinTypeA, CoinTypeB>(
+            global_config,
+            vault,
+            pool,
+            &mut position,
+            remove_liquidity_amount,
+            clock
+        );
+
+        if (full_remove) {
+            let event = UnlockPositionEvent {
+                lock_position_id: sui::object::id<LockedPosition<CoinTypeA, CoinTypeB>>(&lock_position),
+            };
+
+            let (coin_a, coin_b) = destroy(lock_position);
+
+            removed_a.join(coin_a);
+            removed_b.join(coin_b);
+
+            sui::event::emit<UnlockPositionEvent>(event);
+
+            clmm_pool::pool::close_position<CoinTypeA, CoinTypeB>(global_config, pool, position);
+        } else {
+            locker.positions.add(lock_position.position_id, position);
+
+            lock_position.lock_liquidity_info.current_lock_liquidity = lock_position.lock_liquidity_info.current_lock_liquidity - remove_liquidity_amount;
+            lock_position.lock_liquidity_info.last_remove_liquidity_time = time_manager::epoch_start(current_time);
+            
+            let event = UpdateLockLiquidityEvent {
+                lock_position_id: sui::object::id<LockedPosition<CoinTypeA, CoinTypeB>>(&lock_position),
+                current_lock_liquidity: lock_position.lock_liquidity_info.current_lock_liquidity,
+                last_remove_liquidity_time: lock_position.lock_liquidity_info.last_remove_liquidity_time,
+            };
+            sui::event::emit<UpdateLockLiquidityEvent>(event);
+
+            transfer::public_transfer<LockedPosition<CoinTypeA, CoinTypeB>>(lock_position, sui::tx_context::sender(ctx));
+        };
+
+        (removed_a, removed_b)
+    }
+
     /// Completely unlocks a position and destroys the LockedPosition object.
     /// Full unlocking is only possible after the full_unlocking_time has passed
     /// and all rewards have been claimed.
@@ -1144,6 +1226,27 @@ module liquidity_locker::liquidity_lock_v1 {
         assert!(!locker.pause, ELockManagerPaused);
         // Verify that the full lock period has ended
         assert!(clock.timestamp_ms()/1000 >= lock_position.full_unlocking_time, EFullLockPeriodNotEnded);
+
+        let event = UnlockPositionEvent {
+            lock_position_id: sui::object::id<LockedPosition<CoinTypeA, CoinTypeB>>(&lock_position),
+        };
+        let position_id = lock_position.position_id;
+        let (coin_a, coin_b) = destroy(lock_position);
+
+        sui::event::emit<UnlockPositionEvent>(event);
+
+        (locker.positions.remove(position_id), coin_a, coin_b)
+    }
+
+    /// Used to close the locking liqudity program
+    public fun unlock_position_ignore_locking<CoinTypeA, CoinTypeB>(
+        locker: &mut Locker,
+        lock_position: LockedPosition<CoinTypeA, CoinTypeB>,
+        clock: &sui::clock::Clock
+    ): (clmm_pool::position::Position, sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>) {
+        checked_package_version(locker);
+        assert!(!locker.pause, ELockManagerPaused);
+        // allow withdrawal regardless of the lock period
 
         let event = UnlockPositionEvent {
             lock_position_id: sui::object::id<LockedPosition<CoinTypeA, CoinTypeB>>(&lock_position),
