@@ -1,0 +1,13 @@
+source ./export.sh
+
+export VOTING_ADDRESS=0x2f6af136d3be0f7875143f00310e6587d4a14a54543c6718ddbc51b91418589e
+
+export LOCK_1=0x195bf25cae1849707937e4016c75518919f33a01bb21f4a8b03fb227eac65fda
+export LOCK_2=0x4a46439dc70a979d5eac03fb08aa3ae38b6724969937be00c7cceab99f4354f7
+export LOCK_3=0x5813a1f5a704fbe948bd8654dcabf83bd57c6b646704e82a4bff4aa4964e2869
+export LOCK_4=0x6228535800370edabce4fb55066e783913208565fd7c2f59dcf90bb4d621375d
+export LOCK_5=0xa001accc8c0dbae1b087f693484425405776ee4ed0a0ed34c53c55631d0fbe5d
+
+sui client ptb \
+--sender @0xfed1c619fc8dd98367a0422ca9ef53c9825e2893d78dda822106d12687888fb3 --gas-coin @0xe6600100e23ccefd343837558242768b59dacca73b28132482e1b0ec6370c81b --gas-budget 100000000 --serialize-unsigned-transaction \
+--transfer-objects "[@$LOCK_1, @$LOCK_2, @$LOCK_3, @$LOCK_4, @$LOCK_5]" @$VOTING_ADDRESS
