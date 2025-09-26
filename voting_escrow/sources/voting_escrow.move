@@ -8,7 +8,7 @@ module voting_escrow::voting_escrow {
     const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
 
     /// Incremental version of the package.
-    const VERSION: u64 = 1;
+    const VERSION: u64 = 2;
 
     const WITHDRAW_LOCK_TIME_MS: u64 = 24 * 60 * 60 * 1000;
     

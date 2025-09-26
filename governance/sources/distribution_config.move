@@ -10,7 +10,7 @@ module governance::distribution_config {
     const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
 
     /// Incremental version of the package.
-    const VERSION: u64 = 2;
+    const VERSION: u64 = 3;
 
     use sui::vec_set::{Self, VecSet};
     use switchboard::aggregator::{Aggregator};
