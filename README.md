@@ -6,14 +6,30 @@
 
 A Dex Smart Contract implementing ve(4,4) model which is a modification of ve(3,3) model. On SUI.
 
-## Prerequisities
+## Integration
 
-Need to have knowledge in
-- Blockchain Fundamentals
-- SUI chain
-- Dex(Ve(3,3)) Flow and Logic
-- Ve(4,4) innovations
-- Move Smart Contract language
+Packages that are supposed to be used for integration:
+- `governance` - the main package implementing position staking and voting.
+- `voting_escrow` - package implementing veSAIL locks.
+- `integrate` - utilities to help integrate with smart contracts
+
+### Some key features
+
+- all of the positions must be staked in [Gauges](governance/sources/gauge.move). Unstaked positions earn zero fees.
+- When a position is Staked the underlying `Position` is wrapped into `gauge::StakedPosition` object.
+- Staked positions earn oSAIL tokens instead of fees.
+- Staked positions still earn rewards from Rewarder.
+- Each oSAIL token type has an expiration date. If oSAIL is not expired you can either buy SAIL with 50% discount using it or lock it for 6 mounths, 2 years or 4 years.  If oSAIL is expired you can only lock it for 4 years and receive veSAIL in return. After a veSAIL lock ends you receive a liquid SAIL.
+- There is a new oSAIL type every week. oSAIL type of the claimed rewards is determined by the week you are claiming a position rewards in.
+
+### Position methods
+
+- `gauge::deposit_position` - stakes the position. You need to claim all of the position fees prior to staking.
+- `gauge::withdraw_position` - unstakes the position. You need to claim all of the oSAIL tokens prior to unstaking.
+- `minter::get_position_reward` - claims oSAIL for the position. oSAIL needs to be claimed from oldest one to the newest one. You can't claim the oSAIL of the epoch 2 unless you claimed oSAIL of the epoch 1.
+- `minter::get_pool_reward` - claims Rewarder rewards. These rewards are deposited into pools externally and are distributed with constant speed.
+
+You could also use some utility methods from [integrate package](integrate/sources/staked_position_script.move). These methods just combine listed above or provide more convenient signatures.
 
 ## Installation Instructions
 
