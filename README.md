@@ -9,9 +9,14 @@ A Dex Smart Contract implementing ve(4,4) model which is a modification of ve(3,
 ## Integration
 
 Packages that are supposed to be used for integration:
+
 - `governance` - the main package implementing position staking and voting.
 - `voting_escrow` - package implementing veSAIL locks.
 - `integrate` - utilities to help integrate with smart contracts
+
+Other packages are either irrelevant or deprecated.
+
+Consider reading our [docs](https://docs.fullsail.finance/)
 
 ### Some key features
 
@@ -19,7 +24,7 @@ Packages that are supposed to be used for integration:
 - When a position is Staked the underlying `Position` is wrapped into `gauge::StakedPosition` object.
 - Staked positions earn oSAIL tokens instead of fees.
 - Staked positions still earn rewards from Rewarder.
-- Each oSAIL token type has an expiration date. If oSAIL is not expired you can either buy SAIL with 50% discount using it or lock it for 6 mounths, 2 years or 4 years.  If oSAIL is expired you can only lock it for 4 years and receive veSAIL in return. After a veSAIL lock ends you receive a liquid SAIL.
+- Each oSAIL token type has an expiration date. If oSAIL is not expired you can either buy SAIL with 50% discount using it or lock it for 6 mounths, 2 years or 4 years. If oSAIL is expired you can only lock it for 4 years and receive veSAIL in return. After a veSAIL lock ends you receive a liquid SAIL.
 - There is a new oSAIL type every week. oSAIL type of the claimed rewards is determined by the week you are claiming a position rewards in.
 
 ### Position methods
@@ -47,19 +52,22 @@ indicates that Integrate depends on clmm_pool.
 ![Dependency Graph](dependency_graph.svg)
 
 Notable dependencies:
+
 - integrate depends on nearly all the contracts.
 
 ## Deployment
 
 ### Initial deployment
+
 - Use the latest version of `sui` CLI.
 - Run the `build_all.sh` script to update the git deps of all the packages.
 - Run `reset_addresses.sh` to set the `[addresses]` value for each package to `0x0` in the `Move.toml` file.
-- Deploy all the packages in an order defined by dependency graph (see [Contract dependencies](#contract-dependencies)). 
-Use `sui client publish` command.
+- Deploy all the packages in an order defined by dependency graph (see [Contract dependencies](#contract-dependencies)).
+  Use `sui client publish` command.
 - Run `update_addresses.sh` to restore the package address `[addresses]` section in the `Move.toml` for each package with the `original-published-id` after publishing. WARNING the `update_addresses.sh` script supports only mainnet environment.
 
 ### Upgrading
+
 - When upgrading, you need to retrieve the UpgradeCap ID of your published package. Automated address management does not track your UpgradeCap.
 - When upgrading, you first need to set the `[addresses]` value for your package to 0x0 in the Move.toml, and restore its ID with the ORIGINAL-ADDRESS after upgrading.
 
