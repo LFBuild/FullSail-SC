@@ -1,7 +1,7 @@
 # Get oSAIL type
 
 You'll need a current oSAIL type to claim position rewards. To obtain it make a request to the
-You can use `GET https://staging.fullsail.finance/api/config` to get the list of all oSAIL types.
+You can use `GET https://app.fullsail.finance/api/config` to get the list of all oSAIL types.
 
 To find the current epoch oSAIL you find on oSAIL for which `o_sail.distribution_timestamp === current_epoch.start_time`.
 
