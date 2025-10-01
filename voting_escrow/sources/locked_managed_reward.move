@@ -1,9 +1,7 @@
 /// © 2025 Metabyte Labs, Inc.  All Rights Reserved.
 
 module voting_escrow::locked_managed_reward {
-    #[allow(unused_const)]
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
-    #[allow(unused_const)]
     const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
 
     public struct LockedManagedReward has store, key {
@@ -14,6 +12,10 @@ module voting_escrow::locked_managed_reward {
         reward_cap: voting_escrow::reward_cap::RewardCap,
         // bag to be preapred for future updates
         bag: sui::bag::Bag,
+    }
+
+    public fun notices(): (vector<u8>, vector<u8>) {
+        (COPYRIGHT_NOTICE, PATENT_NOTICE)
     }
 
     public(package) fun create(

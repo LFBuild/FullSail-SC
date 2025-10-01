@@ -1,9 +1,7 @@
 /// © 2025 Metabyte Labs, Inc.  All Rights Reserved.
 module voting_escrow::reward {
 
-    #[allow(unused_const)]
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
-    #[allow(unused_const)]
     const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
 
     const EUpdateBalancesDisabled: u64 = 931921756019291001;
@@ -92,6 +90,10 @@ module voting_escrow::reward {
         epoch_updates_finalized: sui::table::Table<u64, bool>,
         // bag to be preapred for future updates
         bag: sui::bag::Bag,
+    }
+
+    public fun notices(): (vector<u8>, vector<u8>) {
+        (COPYRIGHT_NOTICE, PATENT_NOTICE)
     }
 
     /// Returns the balance of a specific coin type in the reward contract.

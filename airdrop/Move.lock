@@ -2,7 +2,7 @@
 
 [move]
 version = 3
-manifest_digest = "C6ACAA6B8BE039B9354F340656FCD63BB313C8C14964CD763439854C98952E5D"
+manifest_digest = "5E133052951BBBF130520983CD7D7609CAAA05EE49D0D3A7C65F1758F60A2DAF"
 deps_digest = "CAFAD8A7CF51067FB4358215BECB86BD100DD64E57C2AC8A7AE7D74B688F5965"
 dependencies = [
   { id = "Bridge", name = "Bridge" },
@@ -63,7 +63,7 @@ dependencies = [
 
 [[move.package]]
 id = "ve"
-source = { local = "../ve" }
+source = { local = "../legacy/ve" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },

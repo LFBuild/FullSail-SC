@@ -325,6 +325,10 @@ module liquidity_locker::liquidity_lock_v2 {
         next_reward_claim_epoch: u64,
     }
 
+    public fun notices(): (vector<u8>, vector<u8>) {
+        (COPYRIGHT_NOTICE, PATENT_NOTICE)
+    }
+
 /// Initializes the liquidity locker module.
     /// 
     /// This function creates and initializes the main Locker object with default values,

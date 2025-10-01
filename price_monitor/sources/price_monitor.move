@@ -10,9 +10,7 @@
 /// - Real-time monitoring and alerting for security threats
 module price_monitor::price_monitor {
 
-    #[allow(unused_const)]
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
-    #[allow(unused_const)]
     const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
 
     // Bump the `VERSION` of the package.
@@ -189,6 +187,10 @@ module price_monitor::price_monitor {
         monitor_id: ID,
         history_length: u64,
         timestamp_ms: u64,
+    }
+
+    public fun notices(): (vector<u8>, vector<u8>) {
+        (COPYRIGHT_NOTICE, PATENT_NOTICE)
     }
 
     // ===== INITIALIZATION =====

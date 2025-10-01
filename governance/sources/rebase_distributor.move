@@ -11,9 +11,7 @@ use governance::rebase_distributor_cap::{Self, RebaseDistributorCap};
 use sui::coin;
 use governance::distribution_config::{DistributionConfig};
 
-#[allow(unused_const)]
 const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
-#[allow(unused_const)]
 const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
 
 const EMinterNotActive: u64 = 326677348800338700;
