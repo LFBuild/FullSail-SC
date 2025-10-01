@@ -40,10 +40,10 @@ rev = "main"
 override = true
 
 [dependencies.locker_cap]
-local = "../../locker_cap"
+local = "../locker_cap"
 
 [dependencies.ve]
-local = "../ve"
+local = "../legacy/ve"
 
 [dependencies.Switchboard]
 git = "https://github.com/LFBuild/sui.git"
@@ -51,7 +51,7 @@ subdir = "on_demand/"
 rev = "mainnet"
 
 [dependencies.price_monitor]
-local = "../../price_monitor"
+local = "../price_monitor"
 
 [dependencies.governance]
-local = "../../governance"
+local = "../governance"
