@@ -346,7 +346,7 @@ module voting_escrow::reward {
     /// 
     /// # Returns
     /// The amount of coins earned as rewards, first epoch that has not been earned yet.
-    fun earned_internal<CoinType>(reward: &Reward, lock_id: ID, clock: &sui::clock::Clock): (u64, u64) {
+    fun earned_internal<CoinType>(reward: &Reward, lock_id: ID, clock: &sui::clock::Clock, ignore_epoch_final: bool): (u64, u64) {
         let zero_checkpoints = if (!reward.num_checkpoints.contains(lock_id)) {
             true
         } else {
@@ -388,7 +388,7 @@ module voting_escrow::reward {
             while (i < epochs_until_now && i < max_num_iterations) {
                 // stop when we encounter epoch that is not final and reward is configured to wait for balance update.
                 if (
-                    reward.balance_update_enabled && (
+                    reward.balance_update_enabled && !ignore_epoch_final && (
                         !reward.epoch_updates_finalized.contains(next_epoch_time) || 
                         !(*reward.epoch_updates_finalized.borrow(next_epoch_time))
                     )
@@ -431,7 +431,13 @@ module voting_escrow::reward {
     }
 
     public fun earned<CoinType>(reward: &Reward, lock_id: ID, clock: &sui::clock::Clock): u64 {
-        let (earned_amount, _) = reward.earned_internal<CoinType>(lock_id, clock);
+        let (earned_amount, _) = reward.earned_internal<CoinType>(lock_id, clock, false);
+
+        earned_amount
+    }
+
+    public fun earned_ignore_epoch_final<CoinType>(reward: &Reward, lock_id: ID, clock: &sui::clock::Clock): u64 {
+        let (earned_amount, _) = reward.earned_internal<CoinType>(lock_id, clock, true);
 
         earned_amount
     }
@@ -538,7 +544,7 @@ module voting_escrow::reward {
         ctx: &mut TxContext
     ): Option<sui::balance::Balance<CoinType>> {
         reward_cap.validate(object::id(reward));
-        let (reward_amount, first_non_earned_epoch) = reward.earned_internal<CoinType>(lock_id, clock);
+        let (reward_amount, first_non_earned_epoch) = reward.earned_internal<CoinType>(lock_id, clock, false);
         let coin_type_name = std::type_name::get<CoinType>();
         if (!reward.last_earn.contains(coin_type_name)) {
             reward.last_earn.add(coin_type_name, sui::table::new<ID, u64>(ctx));
@@ -697,6 +703,15 @@ module voting_escrow::reward {
             return 0
         };
         *rewards_per_epoch.borrow(epoch_start)
+    }
+
+    /// Returns true if the epoch is finalized.
+    /// 
+    /// # Arguments
+    /// * `reward` - The reward object
+    /// * `epoch_start` - The start time of the epoch
+    public fun is_epoch_final(reward: &Reward, epoch_start: u64): bool {
+        reward.epoch_updates_finalized.contains(epoch_start) && *reward.epoch_updates_finalized.borrow(epoch_start)
     }
 
     /// Returns the total supply of tokens in the reward system based on the latest checkpoint relative to the clock.

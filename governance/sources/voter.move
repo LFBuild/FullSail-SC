@@ -757,6 +757,17 @@ module governance::voter {
         .earned<FeeCoinType>(lock_id, clock)
     }
 
+    public fun earned_voting_fee_ignore_epoch_final<FeeCoinType>(
+        voter: &Voter,
+        lock_id: ID,
+        pool_id: ID,
+        clock: &sui::clock::Clock
+    ): u64 {
+        voter
+        .borrow_fee_voting_reward(voter.pool_to_gauge(pool_id))
+        .earned_ignore_epoch_final<FeeCoinType>(lock_id, clock)
+    }
+
     /// Returns the total voting fee rewards available for a specific epoch for a specific coin type.
     public fun voting_fee_rewards_at_epoch<FeeCoinType>(
         voter: &Voter,
@@ -1758,7 +1769,15 @@ module governance::voter {
                 volume: volumes[i],
             };
             lock_votes.add(pool_id, lock_volume_vote);
-            // we are not depositing to reward contracts as they are updated by backend voting service
+            // Weights inside FeeVotingReward are updated by backend voting service.
+            // However we still need to deposit lock to create a checkpoint to save the fee for our backend service while it updates weights
+            voter.gauge_to_fee.borrow_mut(gauge_id).deposit(
+                &voter.voter_cap,
+                0, // zero cos weights are later updated by backend voting service
+                lock_id.id,
+                clock,
+                ctx
+            );
             lock_used_weights = lock_used_weights + votes_for_pool;
             let voted_event = EventVoted {
                 sender: tx_context::sender(ctx),
