@@ -2,7 +2,7 @@
 
 [move]
 version = 3
-manifest_digest = "27C1FC169E0073067E4493004994928B11B604828EF689400A9C71B067EB8237"
+manifest_digest = "6DB4BEA02358F6115BAD03474018A24EB31F0B21F0338F2E4D1A81FF28DCB1F3"
 deps_digest = "CB99E3BEE139471F3765AE330F855F3B376156AA54F37DEDE11BBE5BB0D3BB74"
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -59,7 +59,7 @@ dependencies = [
 
 [[move.package]]
 id = "governance"
-source = { local = "../governance" }
+source = { local = "../../governance" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -83,7 +83,7 @@ dependencies = [
 
 [[move.package]]
 id = "locker_cap"
-source = { local = "../locker_cap" }
+source = { local = "../../locker_cap" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -99,7 +99,7 @@ dependencies = [
 
 [[move.package]]
 id = "price_monitor"
-source = { local = "../price_monitor" }
+source = { local = "../../price_monitor" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -128,7 +128,7 @@ dependencies = [
 
 [[move.package]]
 id = "voting_escrow"
-source = { local = "../voting_escrow" }
+source = { local = "../../voting_escrow" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -136,7 +136,7 @@ dependencies = [
 ]
 
 [move.toolchain-version]
-compiler-version = "1.55.0"
+compiler-version = "1.56.2"
 edition = "2024"
 flavor = "sui"
 

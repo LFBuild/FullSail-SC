@@ -3,7 +3,7 @@ name = "ve"
 edition = "2024.beta"
 
 [addresses]
-ve = "0x0"
+ve = "0x015e5929cf1236cb4ccb32245cb23091588f55fa540e78d13b452766b0b60f47"
 
 [dev-dependencies]
 
@@ -22,4 +22,4 @@ rev = "main"
 override = true
 
 [dependencies.voting_escrow]
-local = "../voting_escrow"
+local = "../../voting_escrow"

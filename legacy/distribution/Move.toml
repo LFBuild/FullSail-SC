@@ -3,7 +3,7 @@ name = "distribution"
 edition = "2024"
 
 [addresses]
-distribution = "0x0"
+distribution = "0xa359ba449b60c2c304da99b05a539331b02aa84cbc56f5add666f95b0451def4"
 
 [dev-dependencies]
 
@@ -40,7 +40,7 @@ rev = "main"
 override = true
 
 [dependencies.locker_cap]
-local = "../locker_cap"
+local = "../../locker_cap"
 
 [dependencies.ve]
 local = "../ve"
@@ -51,7 +51,7 @@ subdir = "on_demand/"
 rev = "mainnet"
 
 [dependencies.price_monitor]
-local = "../price_monitor"
+local = "../../price_monitor"
 
 [dependencies.governance]
-local = "../governance"
+local = "../../governance"
