@@ -1,8 +1,8 @@
 /// © 2025 Metabyte Labs, Inc.  All Rights Reserved.
 module voting_escrow::reward {
 
-    #[allow(unused_const)]
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
+    const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
 
     const EUpdateBalancesDisabled: u64 = 931921756019291001;
     const EUpdateBalancesEpochStartInvalid: u64 = 97211664930268266;
@@ -90,6 +90,10 @@ module voting_escrow::reward {
         epoch_updates_finalized: sui::table::Table<u64, bool>,
         // bag to be preapred for future updates
         bag: sui::bag::Bag,
+    }
+
+    public fun notices(): (vector<u8>, vector<u8>) {
+        (COPYRIGHT_NOTICE, PATENT_NOTICE)
     }
 
     /// Returns the balance of a specific coin type in the reward contract.
@@ -844,13 +848,21 @@ module voting_escrow::reward {
                 if (num_of_checkpoints == 0) {
                     lock_checkpoints.add(num_of_checkpoints, new_checkpoint);
                 } else {
-                    let mut idx_to_move = prior_idx + 1;
-                    while (idx_to_move < num_of_checkpoints) {
+                    let idx_to_free = if (lock_checkpoints.contains(prior_idx) && lock_checkpoints.borrow(prior_idx).epoch_start < epoch_start) {
+                        prior_idx + 1 
+                    } else {
+                        prior_idx
+                    };
+                    let mut idx_to_move = num_of_checkpoints - 1;
+                    while (idx_to_move >= idx_to_free) {
                         let checkpoint = lock_checkpoints.remove(idx_to_move);
                         lock_checkpoints.add(idx_to_move + 1, checkpoint);
-                        idx_to_move = idx_to_move + 1;
+                        if (idx_to_move == 0) {
+                            break
+                        };
+                        idx_to_move = idx_to_move - 1;
                     };
-                    lock_checkpoints.add(prior_idx + 1, new_checkpoint);
+                    lock_checkpoints.add(idx_to_free, new_checkpoint);
                 };
                 if (reward.num_checkpoints.contains(lock_id)) {
                     reward.num_checkpoints.remove(lock_id);
@@ -903,13 +915,24 @@ module voting_escrow::reward {
                 if (num_of_checkpoints == 0) {
                     reward.supply_checkpoints.add(num_of_checkpoints, new_checkpoint);
                 } else {
-                    let mut idx_to_move = prior_idx + 1;
-                    while (idx_to_move < num_of_checkpoints) {
+                    let idx_to_free = if (
+                        reward.supply_checkpoints.contains(prior_idx) && 
+                        reward.supply_checkpoints.borrow(prior_idx).epoch_start < epoch_start
+                    ) {
+                        prior_idx + 1 
+                    } else {
+                        prior_idx
+                    };
+                    let mut idx_to_move = num_of_checkpoints -1;
+                    while (idx_to_move >= idx_to_free) {
                         let checkpoint = reward.supply_checkpoints.remove(idx_to_move);
                         reward.supply_checkpoints.add(idx_to_move + 1, checkpoint);
-                        idx_to_move = idx_to_move + 1;
+                        if (idx_to_move == 0) {
+                            break
+                        };
+                        idx_to_move = idx_to_move - 1;
                     };
-                    reward.supply_checkpoints.add(prior_idx + 1, new_checkpoint);
+                    reward.supply_checkpoints.add(idx_to_free, new_checkpoint);
                 };
                 reward.supply_num_checkpoints = num_of_checkpoints + 1;
             }

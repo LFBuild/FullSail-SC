@@ -2,11 +2,11 @@
 
 module voting_escrow::voting_escrow {
     use voting_escrow::voting_escrow_cap::{VotingEscrowCap};
-    #[allow(unused_const)]
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
+    const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
 
     /// Incremental version of the package.
-    const VERSION: u64 = 1;
+    const VERSION: u64 = 2;
 
     const WITHDRAW_LOCK_TIME_MS: u64 = 24 * 60 * 60 * 1000;
     
@@ -324,6 +324,10 @@ module voting_escrow::voting_escrow {
             NORMAL,
             LOCKED,
             MANAGED,
+    }
+
+    public fun notices(): (vector<u8>, vector<u8>) {
+        (COPYRIGHT_NOTICE, PATENT_NOTICE)
     }
 
     /// Throws if invalid version of the package is called.

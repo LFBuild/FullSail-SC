@@ -21,8 +21,8 @@
 module voting_escrow::emergency_council {
     use sui::package;
 
-    #[allow(unused_const)]
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
+    const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
 
     const EEmergencyCouncilDoesNotMatchVoter: u64 = 370065501622769400;
     const EEmergencyCouncilDoesNotMatchMinter: u64 = 715059658219014000;
@@ -48,6 +48,10 @@ module voting_escrow::emergency_council {
     }
 
     public struct EMERGENCY_COUNCIL has drop {}
+
+    public fun notices(): (vector<u8>, vector<u8>) {
+        (COPYRIGHT_NOTICE, PATENT_NOTICE)
+    }
 
     public fun validate_emergency_council_voter_id(emergency_council_cap: &EmergencyCouncilCap, voter_id: ID) {
         assert!(emergency_council_cap.voter == voter_id, EEmergencyCouncilDoesNotMatchVoter);

@@ -3,7 +3,7 @@ name = "price_monitor"
 edition = "2024"
 
 [addresses]
-price_monitor = "0x0"
+price_monitor = "0x82fd97f4ab360844693e9bfe655765a7bd1351f18e2a89b2a1eaf694b4390778"
 
 [dev-dependencies]
 

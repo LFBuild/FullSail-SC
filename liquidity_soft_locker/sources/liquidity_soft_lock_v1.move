@@ -22,6 +22,9 @@
 /// * CLMM Pool system for liquidity management
 /// * Pool Tranche system for determining lock profitability
 module liquidity_soft_locker::liquidity_soft_lock_v1 {
+    const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
+    const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
+    
     use liquidity_soft_locker::pool_soft_tranche;
     use liquidity_soft_locker::soft_consts;
     use liquidity_soft_locker::soft_locker_utils;
@@ -343,6 +346,10 @@ module liquidity_soft_locker::liquidity_soft_lock_v1 {
         new_current_lock_liquidity: u128,
         remainder_a: u64,
         remainder_b: u64,
+    }
+
+    public fun notices(): (vector<u8>, vector<u8>) {
+        (COPYRIGHT_NOTICE, PATENT_NOTICE)
     }
     
     /// Initializes the liquidity locker module.

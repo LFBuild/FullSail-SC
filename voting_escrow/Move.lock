@@ -2,7 +2,7 @@
 
 [move]
 version = 3
-manifest_digest = "0F502DD7A6C08D03144BA078BD24E64590E721B46406E7FCF3BBBCBA10C28407"
+manifest_digest = "E8724B22E7C9653AC2A65F410B9E17B36783C9A98E7BE4C54C86218ACB38591A"
 deps_digest = "3C4103934B1E040BB6B23F1D610B4EF9F2F1166A50A104EADCF77467C004C600"
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -23,14 +23,14 @@ dependencies = [
 
 [[move.package]]
 id = "integer_mate"
-source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "dev", subdir = "integer_mate" }
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "main", subdir = "integer_mate" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
 ]
 
 [move.toolchain-version]
-compiler-version = "1.55.0"
+compiler-version = "1.56.2"
 edition = "2024.beta"
 flavor = "sui"
 
@@ -38,6 +38,6 @@ flavor = "sui"
 
 [env.mainnet]
 chain-id = "35834a8a"
-original-published-id = "0x2469959951798462ecba5efc3b93276560472be279494561331d384baeedab4c"
-latest-published-id = "0x2469959951798462ecba5efc3b93276560472be279494561331d384baeedab4c"
+original-published-id = "0xe616397e503278d406e184d2258bcbe7a263d0192cc0848de2b54b518165f832"
+latest-published-id = "0x11b82e23bd704424dc8a8fe9281bf322cce398ce59db1d546cf84455ce26e577"
 published-version = "1"

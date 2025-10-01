@@ -2,7 +2,7 @@
 
 [move]
 version = 3
-manifest_digest = "70BD864A2CD9E724F570E485F4A6615ED9F28AC29B29635379374E8F6C732D03"
+manifest_digest = "D296698375721AD23D693D45AF020E983E4E4DF3E266439013DFD392EBFF7360"
 deps_digest = "CB99E3BEE139471F3765AE330F855F3B376156AA54F37DEDE11BBE5BB0D3BB74"
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -53,7 +53,7 @@ dependencies = [
 
 [[move.package]]
 id = "gauge_cap"
-source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "dev", subdir = "gauge_cap" }
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "main", subdir = "gauge_cap" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -128,6 +128,14 @@ dependencies = [
 ]
 
 [move.toolchain-version]
-compiler-version = "1.55.0"
+compiler-version = "1.56.2"
 edition = "2024.beta"
 flavor = "sui"
+
+[env]
+
+[env.mainnet]
+chain-id = "35834a8a"
+original-published-id = "0x57dda0589452604a58708864dfcf06b174f6c6e90cc50fd6735914f8e248aa4e"
+latest-published-id = "0x3bd8ebd0bed5d8890a1ad3a5f13a935548f4f3c5742945d0bfd6b0edfda8f09b"
+published-version = "3"

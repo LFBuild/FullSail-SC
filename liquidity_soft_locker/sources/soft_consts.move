@@ -12,6 +12,10 @@
 /// These constants are used to ensure consistent calculations and enforce protocol limits
 /// across different operations in the liquidity locker system.
 module liquidity_soft_locker::soft_consts {
+    #[allow(unused_const)]
+    const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
+    #[allow(unused_const)]
+    const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
     
     /// Returns the maximum allowed profitability rate (50% or 0.5)
     public fun max_profitability_rate(): u64 {

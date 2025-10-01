@@ -2,8 +2,8 @@
 
 module voting_escrow::common {
 
-    #[allow(unused_const)]
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
+    const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
 
     const HOUR: u64 = 3600;
     const DAY: u64 = 24 * HOUR;
@@ -17,6 +17,10 @@ module voting_escrow::common {
 
     // We use 6 decimals for all tokens participating in distribution calculations.
     const SAIL_DECIMALS: u8 = 6;
+
+    public fun notices(): (vector<u8>, vector<u8>) {
+        (COPYRIGHT_NOTICE, PATENT_NOTICE)
+    }
 
     /// Returns the current period based on the system time
     /// 

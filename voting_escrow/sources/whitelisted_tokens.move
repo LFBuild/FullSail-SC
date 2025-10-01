@@ -9,8 +9,8 @@ module voting_escrow::whitelisted_tokens {
         listed: bool,
     }
 
-    #[allow(unused_const)]
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
+    const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
 
     const EInvalidVoter: u64 = 9223372260193075199;
     const EInvalidToken: u64 = 9223372268783140867;
@@ -39,6 +39,10 @@ module voting_escrow::whitelisted_tokens {
     public struct WhitelistManagerCap has store, key {
         id: UID,
         whitelist_manager: ID,
+    }
+
+    public fun notices(): (vector<u8>, vector<u8>) {
+        (COPYRIGHT_NOTICE, PATENT_NOTICE)
     }
 
     /// Validates that the provided `WhitelistManagerCap` is valid for the given `WhitelistManager` ID.

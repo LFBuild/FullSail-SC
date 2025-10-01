@@ -2,6 +2,8 @@
 /// 
 /// Constants for the price_monitor module
 module price_monitor::price_monitor_consts {
+    const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
+    const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
 
     // ===== ANOMALY LEVELS =====
     
@@ -124,6 +126,10 @@ module price_monitor::price_monitor_consts {
     
     /// Q64 format shift (2^64)
     const Q64_SHIFT: u128 = 1 << 64;
+
+    public fun notices(): (vector<u8>, vector<u8>) {
+        (COPYRIGHT_NOTICE, PATENT_NOTICE)
+    }
 
     // ===== GETTER METHODS =====
 

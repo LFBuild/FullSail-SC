@@ -2,8 +2,12 @@
 
 module governance::voter_cap {
 
-    #[allow(unused_const)]
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
+    const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
+
+    public fun notices(): (vector<u8>, vector<u8>) {
+        (COPYRIGHT_NOTICE, PATENT_NOTICE)
+    }
 
     const EEpochGovernorVoterIdInvalid: u64 = 9223372307437715457;
     const EGovernorVoterIdInvalid: u64 = 9223372200063533057;

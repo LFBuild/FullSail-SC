@@ -17,8 +17,8 @@
 /// This module works alongside other components such as `voting_escrow`, `voter`, and `gauge` to create
 /// a complete fee-sharing governance system that incentivizes participation in platform governance.
 module governance::fee_voting_reward {
-    #[allow(unused_const)]
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
+    const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
 
     const EValidateVoterCapInvalid: u64 = 785091986893168000;
     const ENotifyRewardAmountTokenNotWhitelisted: u64 = 9223372427696799743;
@@ -31,6 +31,10 @@ module governance::fee_voting_reward {
         reward_cap: voting_escrow::reward_cap::RewardCap,
         // bag to be preapred for future updates
         bag: sui::bag::Bag,
+    }
+
+    public fun notices(): (vector<u8>, vector<u8>) {
+        (COPYRIGHT_NOTICE, PATENT_NOTICE)
     }
 
     /// Returns the balance of a specific fee coin type in the reward

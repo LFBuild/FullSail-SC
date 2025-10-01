@@ -26,6 +26,11 @@
 /// * Distribution system for reward calculations
 /// * Pool Tranche system for determining lock profitability and reward distribution
 module liquidity_locker::liquidity_lock_v2 {
+    #[allow(unused_const)]
+    const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
+    #[allow(unused_const)]
+    const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
+    
     use liquidity_locker::pool_tranche;
     use liquidity_locker::consts;
     use liquidity_locker::locker_utils;
@@ -318,6 +323,10 @@ module liquidity_locker::liquidity_lock_v2 {
         earned_amount_calc: u64,
         last_reward_claim_epoch: u64,
         next_reward_claim_epoch: u64,
+    }
+
+    public fun notices(): (vector<u8>, vector<u8>) {
+        (COPYRIGHT_NOTICE, PATENT_NOTICE)
     }
 
 /// Initializes the liquidity locker module.

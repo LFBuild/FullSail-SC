@@ -2,14 +2,18 @@
 
 module voting_escrow::voting_escrow_cap;
 
-#[allow(unused_const)]
 const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
+const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
 
 const EVotingEscrowCapInvalid: u64 = 145221715012404670;
 
 public struct VotingEscrowCap has store, key {
     id: UID,
     voting_escrow_id: ID,
+}
+
+public fun notices(): (vector<u8>, vector<u8>) {
+    (COPYRIGHT_NOTICE, PATENT_NOTICE)
 }
 
     

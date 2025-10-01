@@ -2,8 +2,8 @@
 
 module voting_escrow::reward_distributor {
 
-    #[allow(unused_const)]
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
+    const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
 
     const ELockedVotingEscrowCannotClaim: u64 = 361242829129750700;
 
@@ -53,6 +53,10 @@ module voting_escrow::reward_distributor {
         balance: Balance<RewardCoinType>,
         // bag to be preapred for future updates
         bag: sui::bag::Bag,
+    }
+
+    public fun notices(): (vector<u8>, vector<u8>) {
+        (COPYRIGHT_NOTICE, PATENT_NOTICE)
     }
 
     /// Returns the current balance of reward tokens in the distributor.

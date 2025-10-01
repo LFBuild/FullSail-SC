@@ -1,8 +1,8 @@
 /// © 2025 Metabyte Labs, Inc.  All Rights Reserved.
 
 module governance::voter {
-    #[allow(unused_const)]
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
+    const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
 
     use sui::table::{Self, Table};
     use sui::linked_table::{Self, LinkedTable};
@@ -221,6 +221,10 @@ module governance::voter {
         fee_b_amount: u64,
         usd_amount: u64,
         ended_epoch_o_sail_emission: u64,
+    }
+
+    public fun notices(): (vector<u8>, vector<u8>) {
+        (COPYRIGHT_NOTICE, PATENT_NOTICE)
     }
 
     /// Creates a new Voter contract.

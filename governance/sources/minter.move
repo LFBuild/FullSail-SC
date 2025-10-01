@@ -1,8 +1,8 @@
 /// © 2025 Metabyte Labs, Inc.  All Rights Reserved.
 module governance::minter {
 
-    #[allow(unused_const)]
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
+    const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
 
     use std::type_name::{Self, TypeName};
     use sui::coin::{Self, TreasuryCap, Coin, CoinMetadata};
@@ -444,6 +444,10 @@ module governance::minter {
         max_emission_change_ratio: u64,
         // bag to be preapred for future updates
         bag: sui::bag::Bag,
+    }
+
+    public fun notices(): (vector<u8>, vector<u8>) {
+        (COPYRIGHT_NOTICE, PATENT_NOTICE)
     }
 
     /// Returns the total supply only of SailCoin managed by this minter.

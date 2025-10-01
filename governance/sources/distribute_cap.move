@@ -9,8 +9,8 @@
 module governance::distribute_cap;
 use sui::package;
 
-#[allow(unused_const)]
 const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
+const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
 
 const EValidateDistributeInvalidVoter: u64 = 421990001503268030;
 const ECreateDistributeCapInvalidPublisher: u64 = 43646573017044340;
@@ -21,6 +21,10 @@ public struct DistributeCap has store, key {
     id: UID,
     voter_id: ID,
     who: ID,
+}
+
+public fun notices(): (vector<u8>, vector<u8>) {
+    (COPYRIGHT_NOTICE, PATENT_NOTICE)
 }
 
 public fun create(

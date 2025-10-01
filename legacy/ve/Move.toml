@@ -1,0 +1,25 @@
+[package]
+name = "ve"
+edition = "2024.beta"
+
+[addresses]
+ve = "0x015e5929cf1236cb4ccb32245cb23091588f55fa540e78d13b452766b0b60f47"
+
+[dev-dependencies]
+
+[dev-addresses]
+
+[dependencies.Sui]
+git = "https://github.com/MystenLabs/sui.git"
+subdir = "crates/sui-framework/packages/sui-framework"
+rev = "framework/mainnet"
+override = true
+
+[dependencies.integer_mate]
+git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
+subdir = "integer_mate"
+rev = "main"
+override = true
+
+[dependencies.voting_escrow]
+local = "../../voting_escrow"

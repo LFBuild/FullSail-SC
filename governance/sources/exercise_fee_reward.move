@@ -1,6 +1,6 @@
 module governance::exercise_fee_reward {
-    #[allow(unused_const)]
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
+    const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
 
     const EValidateVoterCapInvalid: u64 = 667556652936764400;
     const EValidateVotingEscrowInvalid: u64 = 554217603666293400;
@@ -21,6 +21,10 @@ module governance::exercise_fee_reward {
     public struct EventExerciseFeeRewardCreated has copy, drop, store {
         voter: ID,
         id: ID,
+    }
+
+    public fun notices(): (vector<u8>, vector<u8>) {
+        (COPYRIGHT_NOTICE, PATENT_NOTICE)
     }
 
     /// Creates a new ExerciseFeeReward instance. Supposed to be stored inside Voter,
