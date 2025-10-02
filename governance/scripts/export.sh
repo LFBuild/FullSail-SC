@@ -2,7 +2,7 @@
 #these adresses should be updated after calling each of the scripts
 export ADDR=$(sui client active-address)
 #id after upgrade
-export PACKAGE=0x95f00ee871b7c3954d18bca0cc56f0023c10eb796ec0511734205285afe5abbd
+export PACKAGE=0x1cde2f0d4a50700960a8062f4ed7b19258f2a8c5eb4dc798fbda5e8b8d8c0658
 export VE_PACKAGE=0x11b82e23bd704424dc8a8fe9281bf322cce398ce59db1d546cf84455ce26e577
 export FULLSAIL_TOKEN_TYPE="0x1d4a2bdbc1602a0adaa98194942c220202dcc56bb0a205838dfaa63db0d5497e::SAIL::SAIL"
 export VOTING_ESCROW=0xe36c353bf09559253306fcec8ccdd6414ef01c20684f1d31f00ed25034718189
