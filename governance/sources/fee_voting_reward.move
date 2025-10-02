@@ -223,6 +223,20 @@ module governance::fee_voting_reward {
         );
     }
 
+    public fun reset_final(
+        reward: &mut FeeVotingReward,
+        voter_cap: &governance::voter_cap::VoterCap,
+        for_epoch_start: u64,
+        ctx: &mut TxContext
+    ) {
+        reward.validate_voter_cap(voter_cap);
+        reward.reward.reset_final(
+            &reward.reward_cap,
+            for_epoch_start,
+            ctx
+        );
+    }
+
     /// Returns a reference to the underlying reward
     ///
     /// # Arguments

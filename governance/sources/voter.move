@@ -1942,6 +1942,25 @@ module governance::voter {
         );
     }
 
+    // proxy method to be called via Minter
+    public fun reset_final_voted_weights(
+        voter: &mut Voter,
+        distribute_cap: &governance::distribute_cap::DistributeCap,
+        gauge_id: ID,
+        for_epoch_start: u64,
+        ctx: &mut TxContext
+    ) {
+        distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
+        let gauge_id_obj = into_gauge_id(gauge_id);
+
+        let fee_voting_reward = voter.gauge_to_fee.borrow_mut(gauge_id_obj);
+        fee_voting_reward.reset_final(
+            &voter.voter_cap,
+            for_epoch_start,
+            ctx
+        );
+    }
+
     public fun update_exercise_fee_weights(
         voter: &mut Voter,
         distribute_cap: &governance::distribute_cap::DistributeCap,
@@ -1963,6 +1982,22 @@ module governance::voter {
             for_epoch_start,
             final,
             clock,
+            ctx
+        );
+    }
+
+    // proxy method to be called via Minter
+    public fun reset_final_exercise_fee_weights(
+        voter: &mut Voter,
+        distribute_cap: &governance::distribute_cap::DistributeCap,
+        for_epoch_start: u64,
+        ctx: &mut TxContext
+    ) {
+        distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
+        let exercise_fee_reward = &mut voter.exercise_fee_reward;
+        exercise_fee_reward.reset_final(
+            &voter.voter_cap,
+            for_epoch_start,
             ctx
         );
     }

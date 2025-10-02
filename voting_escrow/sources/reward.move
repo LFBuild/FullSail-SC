@@ -10,6 +10,10 @@ module voting_escrow::reward {
     const EUpdateBalancesAlreadyFinal: u64 = 931921756019291000;
     const EUpdateBalancesOnlyFinishedEpochAllowed: u64 = 987934305039328400;
 
+    const EResetFinalNotFinal: u64 = 86720681210724470;
+    const EResetFinalUpdateDisabled: u64 = 87295163281596280;
+    const EResetFinalEpochStartInvalid: u64 = 57465357444921274;
+
     const ERewardPerEpochInvalidToken: u64 = 9223372492121309183;
 
 
@@ -45,6 +49,14 @@ module voting_escrow::reward {
 
 
     public struct EventEpochFinalized has copy, drop, store {
+        // FeeVotingReward, or FreeManagedReward id. Supposed to be used to track for which exactly reward this event is.
+        wrapper_reward_id: ID,
+        // Reward id. Usually this reward is unaccessible cos it is wrapped in other object.
+        internal_reward_id: ID,
+        epoch_start: u64,
+    }
+
+    public struct EventEpochResetFinal has copy, drop, store {
         // FeeVotingReward, or FreeManagedReward id. Supposed to be used to track for which exactly reward this event is.
         wrapper_reward_id: ID,
         // Reward id. Usually this reward is unaccessible cos it is wrapped in other object.
@@ -334,6 +346,34 @@ module voting_escrow::reward {
             };
             sui::event::emit<EventEpochFinalized>(event);
         };
+    }
+
+    /// Resets the final status of an epoch. Supposed to be used when we need to recover the state after problematic balance update.
+    /// 
+    /// # Arguments
+    /// * `reward` - The reward object to reset the final status for
+    /// * `reward_cap` - Capability object for authorization
+    /// * `for_epoch_start` - The epoch start to reset the final status for
+    /// * `ctx` - Transaction context
+    public fun reset_final(
+        reward: &mut Reward,
+        reward_cap: &voting_escrow::reward_cap::RewardCap,
+        for_epoch_start: u64,
+        ctx: &mut TxContext
+    ) {
+        reward_cap.validate(object::id(reward));
+        assert!(for_epoch_start % voting_escrow::common::epoch() == 0, EResetFinalEpochStartInvalid);
+        assert!(reward.epoch_updates_finalized.contains(for_epoch_start), EResetFinalNotFinal);
+        assert!(reward.balance_update_enabled, EResetFinalUpdateDisabled);
+
+        reward.epoch_updates_finalized.remove(for_epoch_start);
+
+        let event = EventEpochResetFinal {
+            wrapper_reward_id: reward.wrapper_reward_id,
+            internal_reward_id: object::id(reward),
+            epoch_start: for_epoch_start,
+        };
+        sui::event::emit<EventEpochResetFinal>(event);
     }
 
     /// Calculates how much reward a lock has earned for a specific coin type.
