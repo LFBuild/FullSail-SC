@@ -120,6 +120,16 @@ module governance::fee_voting_reward {
         reward.reward.earned<FeeCoinType>(lock_id, clock)
     }
 
+    /// Calculates the rewards earned for a specific lock ignoring the epoch finalization
+    ///
+    /// # Arguments
+    /// * `reward` - The fee voting reward instance
+    /// * `lock_id` - The ID of the lock to check rewards for
+    /// * `clock` - The system clock
+    public fun earned_ignore_epoch_final<FeeCoinType>(reward: &FeeVotingReward, lock_id: ID, clock: &sui::clock::Clock): u64 {
+        reward.reward.earned_ignore_epoch_final<FeeCoinType>(lock_id, clock)
+    }
+
     /// Gets the index of the prior balance record for a specific lock at a given time
     ///
     /// # Arguments
@@ -209,6 +219,20 @@ module governance::fee_voting_reward {
             for_epoch_start,
             final,
             clock,
+            ctx
+        );
+    }
+
+    public fun reset_final(
+        reward: &mut FeeVotingReward,
+        voter_cap: &governance::voter_cap::VoterCap,
+        for_epoch_start: u64,
+        ctx: &mut TxContext
+    ) {
+        reward.validate_voter_cap(voter_cap);
+        reward.reward.reset_final(
+            &reward.reward_cap,
+            for_epoch_start,
             ctx
         );
     }

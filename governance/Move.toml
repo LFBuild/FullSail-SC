@@ -3,7 +3,7 @@ name = "governance"
 edition = "2024"
 
 [addresses]
-governance = "0x03fcdcee11f485731170944af3acd26b17d1b96121ce6b756fe8517a95192b3a"
+governance = "0x0"
 
 [dev-dependencies]
 
