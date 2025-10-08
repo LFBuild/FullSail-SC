@@ -1,6 +1,8 @@
 #mainnet
 #these adresses should be updated after calling each of the scripts
 export ADDR=$(sui client active-address)
+# id before any upgrades
+export ORIGINAL_PACKAGE=0x03fcdcee11f485731170944af3acd26b17d1b96121ce6b756fe8517a95192b3a
 #id after upgrade
 export PACKAGE=0x1cde2f0d4a50700960a8062f4ed7b19258f2a8c5eb4dc798fbda5e8b8d8c0658
 export VE_PACKAGE=0xfc410c145e4a9ba8f4aa3cb266bf3e467c35ea39dc90788e9a34f85338b734b7
