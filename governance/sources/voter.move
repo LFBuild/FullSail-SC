@@ -873,7 +873,7 @@ module governance::voter {
     /// * `ctx` - The transaction context
     ///
     /// # Returns
-    /// (amount of distributed rewards, balance containing rewards from previous epoch that were not distributed)
+    /// amount of oSAIL distributed last epoch
     ///
     /// # Aborts
     /// * If the gauge representation is invalid

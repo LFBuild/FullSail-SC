@@ -173,6 +173,11 @@ module governance::minter {
 
     const MINT_LOCK_TIME_MS: u64 = 24 * 60 * 60 * 1000; // 1 day
 
+    // Key to be used to access emissions data in the bag.
+    const EMISSIONS_MONITOR_KEY: u64 = 646519249168201100;
+    // actual emissions are not allowed to be more than expected emissions * EMISSIONS_MONITOR_CAP
+    const EMISSIONS_MONITOR_MAX_ACTUAL_RATIO: u64 = 5;
+
     /// Admin is responsible for initialization functions.
     public struct AdminCap has store, key {
         id: UID,
@@ -389,6 +394,13 @@ module governance::minter {
         amount: u64,
         growth_inside: u128,
         token: TypeName,
+    }
+
+    public struct EmissionsMonitor has copy, drop, store {
+        max_actual_ratio: u64,
+        expected_o_sail_emissions: u64,
+        actual_o_sail_emissions: u64,
+        actual_sail_emissions: u64,
     }
 
     public struct Minter<phantom SailCoinType> has store, key {
@@ -1114,9 +1126,8 @@ module governance::minter {
     ) {
         distribution_config.checked_package_version();
         minter.check_admin(admin_cap);
-        minter.emission_stopped = true;
-
-        sui::event::emit<EventStopEmission>(EventStopEmission {});
+        
+        minter.stop_emission_internal();
     }
 
     /// Resumes emission after oracle compromise is resolved.
@@ -1508,6 +1519,7 @@ module governance::minter {
             0
         };
         minter.total_epoch_emissions_usd.add(minter.active_period, total_epoch_emissions + next_epoch_emissions_usd);
+        minter.add_expected_o_sail_emissions(next_epoch_emissions_usd, o_sail_price_q64);
 
         let event = EventDistributeGauge {
             gauge_id,
@@ -1684,6 +1696,8 @@ module governance::minter {
             clock,
             ctx
         );
+
+        minter.add_expected_o_sail_emissions(emissions_increase_usd, o_sail_price_q64);
 
         let event = EventIncreaseGaugeEmissions {
             gauge_id,
@@ -2040,6 +2054,10 @@ module governance::minter {
         amount: u64,
         ctx: &mut TxContext
     ): Coin<OSailCoinType> {
+        let emissions_stopped = minter.add_validate_actual_o_sail_emissions(amount);
+        if (emissions_stopped) {
+            return coin::zero<OSailCoinType>(ctx)
+        };
         minter.o_sail_minted_supply = minter.o_sail_minted_supply + amount;
         let cap = minter.borrow_mut_o_sail_cap<SailCoinType, OSailCoinType>();
 
@@ -2081,6 +2099,10 @@ module governance::minter {
         amount: u64,
         ctx: &mut TxContext
     ): Coin<SailCoinType> {
+        let emissions_stopped = minter.add_validate_actual_sail_emissions(amount);
+        if (emissions_stopped) {
+            return coin::zero<SailCoinType>(ctx)
+        };
         let cap = minter.sail_cap.borrow_mut();
 
         let event = EventMint {
@@ -3184,13 +3206,122 @@ module governance::minter {
         );
 
         if (price_validation_result.get_escalation_activation()) {
-
-            minter.emission_stopped = true;
-            sui::event::emit<EventStopEmission>(EventStopEmission {});
+            minter.stop_emission_internal();
 
             return (0, true)
         };
 
         (price_validation_result.get_price_q64(), false)
     }
+
+    fun stop_emission_internal<SailCoinType>(
+        minter: &mut Minter<SailCoinType>
+    ) {
+        minter.emission_stopped = true;
+        sui::event::emit<EventStopEmission>(EventStopEmission {});
+    }
+
+    public fun ensure_emissions_monitor_initialized<SailCoinType>(
+        minter: &mut Minter<SailCoinType>
+    ) {
+        if (!minter.bag.contains(EMISSIONS_MONITOR_KEY)) {
+            minter.bag.add(
+                EMISSIONS_MONITOR_KEY,
+                EmissionsMonitor {
+                    max_actual_ratio: EMISSIONS_MONITOR_MAX_ACTUAL_RATIO,
+                    expected_o_sail_emissions: 0,
+                    actual_o_sail_emissions: 0,
+                    actual_sail_emissions: 0,
+                }
+            )
+        }
+    }
+
+    public fun set_emissions_monitor_max_actual_ratio<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        publisher: &sui::package::Publisher,
+        distribution_config: &DistributionConfig,
+        max_actual_emissions_ratio: u64
+    ) {
+        distribution_config.checked_package_version();
+        assert!(publisher.from_module<MINTER>(), ESetMaxEmissionChangeRatioInvalidPublisher);
+        
+        minter.ensure_emissions_monitor_initialized();
+
+        minter.borrow_emissions_monitor_mut().max_actual_ratio = max_actual_emissions_ratio;
+    }
+
+    fun borrow_emissions_monitor_mut<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+    ): &mut EmissionsMonitor {
+        minter.bag.borrow_mut<u64, EmissionsMonitor>(EMISSIONS_MONITOR_KEY)
+    }
+
+    /// Increases oSAIL emission counter and validates if these tokens could be emitted
+    /// 
+    /// Returns wether emissions are stopped
+    fun add_validate_actual_o_sail_emissions<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        emissions_delta: u64,
+    ): bool {
+        let monitor = minter.borrow_emissions_monitor_mut();
+        let actual_emissions = monitor.actual_o_sail_emissions + emissions_delta;
+        let expected_emissions = monitor.expected_o_sail_emissions;
+        let max_ratio = monitor.max_actual_ratio;
+        if (expected_emissions != 0 && actual_emissions >= expected_emissions * max_ratio) {
+            minter.stop_emission_internal();
+            return true
+        };
+
+        monitor.actual_o_sail_emissions = actual_emissions;
+
+        false
+    }
+
+    /// Increases SAIL emission counter and validates if these tokens could be emitted
+    /// 
+    /// Returns wether emissions are stopped
+    fun add_validate_actual_sail_emissions<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        emissions_delta: u64,
+    ): bool {
+        let monitor = minter.borrow_emissions_monitor_mut();
+        let actual_emissions = monitor.actual_sail_emissions + emissions_delta;
+        // oSAIL is converted into SAIL, so we can use expected oSAIL emissions as limit for SAIL emissions
+        let expected_emissions = monitor.expected_o_sail_emissions;
+        let max_ratio = monitor.max_actual_ratio;
+        if (expected_emissions != 0 && actual_emissions >= expected_emissions * max_ratio) {
+            minter.stop_emission_internal();
+            return true
+        };
+
+        monitor.actual_sail_emissions = actual_emissions;
+
+        false
+    }
+
+    fun add_expected_o_sail_emissions<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        usd_emissions_delta: u64,
+        o_sail_price_q64: u128,
+    ) {
+        minter.ensure_emissions_monitor_initialized();
+        let monitor = minter.borrow_emissions_monitor_mut();
+        let usd_emissions_delta_q64: u128 = (usd_emissions_delta as u128) << 64;
+        let o_sail_emissions_delta_q64 = voting_escrow::common::usd_q64_to_asset_q64(usd_emissions_delta_q64, o_sail_price_q64);
+        let o_sail_emissions_delta: u64 = (o_sail_emissions_delta_q64 >> 64) as u64;
+        let expected_emissions = monitor.expected_o_sail_emissions + o_sail_emissions_delta;
+        monitor.expected_o_sail_emissions = expected_emissions;
+    }
+
+    fun emissions_monitor_update_epoch<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+    ) {
+        minter.ensure_emissions_monitor_initialized();
+        let monitor = minter.borrow_emissions_monitor_mut();
+        monitor.expected_o_sail_emissions = 0;
+        monitor.actual_o_sail_emissions = 0;
+        monitor.actual_sail_emissions = 0;
+    }
+
 }
