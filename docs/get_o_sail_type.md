@@ -1,11 +1,63 @@
 # Get oSAIL type
 
-You'll need a current oSAIL type to claim position rewards. To obtain it make a request to the
+You’ll need the current oSAIL type to claim position rewards. There is a new oSAIL every epoch.
+There are two ways to obtain it:
+
+- If you only need the current oSAIL type, choose the first option — it’s the simplest.
+- If you’d like detailed information about all oSAIL tokens, go with the second option.
+
+## Option 1: easy one
+
+Use `minter::borrow_current_epoch_o_sail` method.
+
+Example call
+```typescript
+
+  async getOSail() {
+    const tx = new Transaction()
+
+    const { distribution, simulationAccount } = this.sdk.sdkOptions
+    const { magma_token, minter_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+
+    const functionName = 'borrow_current_epoch_o_sail'
+
+    tx.moveCall({
+      target: `${distribution.published_at}::${Minter}::${functionName}`,
+      typeArguments: [magma_token],
+      arguments: [tx.object(minter_id)],
+    })
+
+    if (!checkInvalidSuiAddress(simulationAccount.address)) {
+      throw new ClmmpoolsError('this config simulationAccount is not set right', ConfigErrorCode.InvalidSimulateAccount)
+    }
+
+    const { results, error } = await this.sdk.fullClient.devInspectTransactionBlock({
+      transactionBlock: tx,
+      sender: simulationAccount.address,
+    })
+
+    if (error != null) {
+      throw new ClmmpoolsError(`getOSail error: ${error ?? 'unknown error'}`)
+    }
+    if (!results || !results.length || !results[0].returnValues) {
+      throw new ClmmpoolsError(`getOSail error: no results found`)
+    }
+
+    const [{ returnValues }] = results
+    const [[value]] = returnValues
+
+    return bcs.string().parse(Uint8Array.from(value))
+  }
+
+```
+
+## Option 2: hard one
+
 You can use `GET https://app.fullsail.finance/api/config` to get the list of all oSAIL types.
 
 To find the current epoch oSAIL you find on oSAIL for which `o_sail.distribution_timestamp === current_epoch.start_time`.
 
-oSAIL expires in 5 weeks from distribution start time.
+Different oSAIL tokens have different expiration dates. The expiration date is set to be 5 weeks from the start of the epoch the distribution starts in.
 
 Example response
 
