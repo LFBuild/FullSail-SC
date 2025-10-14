@@ -2921,6 +2921,28 @@ module governance::minter {
         )
     }
 
+    public fun reset_final_voted_weights<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        voter: &mut governance::voter::Voter,
+        distribution_config: &DistributionConfig,
+        distribute_governor_cap: &DistributeGovernorCap,
+        gauge_id: ID,
+        for_epoch_start: u64,
+        ctx: &mut TxContext
+    ) {
+        distribution_config.checked_package_version();
+        minter.check_distribute_governor(distribute_governor_cap);
+
+        let distribute_cap = minter.distribute_cap.borrow();
+
+        voter.reset_final_voted_weights(
+            distribute_cap,
+            gauge_id,
+            for_epoch_start,
+            ctx
+        );
+    }
+
     /// A method that is supposed to be called by the backend voting service to null unvoted lock weigths.
     /// In turn unvoted locks are not earning exercise fee rewards.
     public fun null_exercise_fee_weights<SailCoinType>(
@@ -2980,6 +3002,26 @@ module governance::minter {
             clock,
             ctx
         )
+    }
+
+    public fun reset_final_exercise_fee_weights<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        voter: &mut governance::voter::Voter,
+        distribution_config: &DistributionConfig,
+        distribute_governor_cap: &DistributeGovernorCap,
+        for_epoch_start: u64,
+        ctx: &mut TxContext
+    ) {
+        distribution_config.checked_package_version();
+        minter.check_distribute_governor(distribute_governor_cap);
+
+        let distribute_cap = minter.distribute_cap.borrow();
+
+        voter.reset_final_exercise_fee_weights(
+            distribute_cap,
+            for_epoch_start,
+            ctx
+        );
     }
 
     #[test_only]

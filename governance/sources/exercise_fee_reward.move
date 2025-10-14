@@ -351,6 +351,20 @@ module governance::exercise_fee_reward {
         );
     }
 
+    public fun reset_final(
+        reward: &mut ExerciseFeeReward,
+        voter_cap: &governance::voter_cap::VoterCap,
+        for_epoch_start: u64,
+        ctx: &mut TxContext
+    ) {
+        reward.validate_voter_cap(voter_cap);
+        reward.reward.reset_final(
+            &reward.reward_cap,
+            for_epoch_start,
+            ctx
+        );
+    }
+
     public fun rewards_at_epoch<FeeCoinType>(
         reward: &ExerciseFeeReward,
         epoch_start: u64

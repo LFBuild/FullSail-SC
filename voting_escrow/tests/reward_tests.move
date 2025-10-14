@@ -4267,3 +4267,108 @@ fun test_complex_deposits_and_balance_update() {
     clock::destroy_for_testing(clock);
     scenario.end();
 }
+
+#[test]
+fun test_reset_final_happy_path() {
+    let admin = @0xAF14;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Create reward with balance_update_enabled = true
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, true);
+
+    let one_week_ms = 7 * 24 * 60 * 60 * 1000;
+    let lock_id1: ID = object::id_from_address(@0xF0D);
+    let deposit_amount = 5000;
+    let notify_amount = 1000;
+
+    // --- Epoch 1: Deposit and Notify ---
+    reward_obj.deposit(&reward_cap, deposit_amount, lock_id1, &clock, scenario.ctx());
+    let epoch1_start = voting_escrow::common::epoch_start(voting_escrow::common::current_timestamp(&clock));
+    let reward_coin = coin::mint_for_testing<USD1>(notify_amount, scenario.ctx());
+    reward::notify_reward_amount_internal<USD1>(&mut reward_obj, &reward_cap, reward_coin.into_balance(), &clock, scenario.ctx());
+
+    // --- Advance to Epoch 2 ---
+    clock.increment_for_testing(one_week_ms);
+
+    // --- In Epoch 2: Finalize Epoch 1 ---
+    let lock_ids = vector[lock_id1];
+    let balances = vector[deposit_amount];
+    reward_obj.update_balances(&reward_cap, balances, lock_ids, epoch1_start, true, &clock, scenario.ctx());
+
+    // Verify epoch is finalized and rewards are claimable
+    assert!(reward_obj.is_epoch_final(epoch1_start), 1);
+    assert!(reward_obj.earned<USD1>(lock_id1, &clock) == notify_amount, 2);
+
+    // --- Reset finalization for Epoch 1 ---
+    reward_obj.reset_final(&reward_cap, epoch1_start, scenario.ctx());
+
+    // Verify epoch is no longer final and rewards are not claimable
+    assert!(!reward_obj.is_epoch_final(epoch1_start), 3);
+    assert!(reward_obj.earned<USD1>(lock_id1, &clock) == 0, 4);
+
+    // --- Try to update balances again for Epoch 1 ---
+    let new_balances = vector[deposit_amount + 1000];
+    reward_obj.update_balances(&reward_cap, new_balances, lock_ids, epoch1_start, true, &clock, scenario.ctx());
+
+    // Verify epoch is finalized again and rewards are claimable
+    assert!(reward_obj.is_epoch_final(epoch1_start), 5);
+    assert!(reward_obj.earned<USD1>(lock_id1, &clock) == notify_amount, 6);
+
+    // Cleanup
+    test_utils::destroy(reward_cap);
+    test_utils::destroy(reward_obj);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+#[expected_failure(abort_code = voting_escrow::reward::EResetFinalNotFinal)]
+fun test_reset_final_not_yet_finalized_fails() {
+    let admin = @0xAF13;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Create reward with balance_update_enabled = true
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, true);
+
+    let one_week_ms = 7 * 24 * 60 * 60 * 1000;
+    let epoch1_start = voting_escrow::common::epoch_start(voting_escrow::common::current_timestamp(&clock));
+    clock.increment_for_testing(one_week_ms);
+
+    // Try to reset final for an epoch that was never finalized
+    reward_obj.reset_final(&reward_cap, epoch1_start, scenario.ctx());
+
+    // Cleanup
+    test_utils::destroy(reward_cap);
+    test_utils::destroy(reward_obj);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+#[expected_failure(abort_code = voting_escrow::reward::EResetFinalEpochStartInvalid)]
+fun test_reset_final_invalid_epoch_start_fails() {
+    let admin = @0xAF12;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Create reward with balance_update_enabled = true
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, true);
+
+    // Finalize an epoch so the first assert passes
+    let one_week_ms = 7 * 24 * 60 * 60 * 1000;
+    let epoch1_start = voting_escrow::common::epoch_start(voting_escrow::common::current_timestamp(&clock));
+    clock.increment_for_testing(one_week_ms);
+    reward_obj.update_balances(&reward_cap, vector[], vector[], epoch1_start, true, &clock, scenario.ctx());
+    assert!(reward_obj.is_epoch_final(epoch1_start), 1);
+
+    // Try to reset final with an invalid epoch start time
+    reward_obj.reset_final(&reward_cap, epoch1_start + 1, scenario.ctx());
+
+    // Cleanup
+    test_utils::destroy(reward_cap);
+    test_utils::destroy(reward_obj);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}

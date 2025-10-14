@@ -62,19 +62,55 @@ You could also use some utility methods from [integrate package](integrate/sourc
 
 ## Latest publication artifacts
 
+### SAIL token
+
+`0x1d4a2bdbc1602a0adaa98194942c220202dcc56bb0a205838dfaa63db0d5497e::SAIL::SAIL`
+
+### Packages
+
+- integrate original id: `0x3d5f22b95e48ba187397e1f573c6931fac5bbb0023e9a753da36da6c93c8f151`
+- integrate latest id: `0x3d5f22b95e48ba187397e1f573c6931fac5bbb0023e9a753da36da6c93c8f151`
+
+- clmm_pool original id: `0xe74104c66dd9f16b3096db2cc00300e556aa92edc871be4bc052b5dfb80db239`
+- clmm_pool latest id: `0xf7ca99f9fd82da76083a52ab56d88aff15d039b76499b85db8b8bc4d4804584a`
+
+- voting_escrow original id: `0xe616397e503278d406e184d2258bcbe7a263d0192cc0848de2b54b518165f832`
+- voting_escrow latest id: `0xfc410c145e4a9ba8f4aa3cb266bf3e467c35ea39dc90788e9a34f85338b734b7`
+
+- governance original id: `0x03fcdcee11f485731170944af3acd26b17d1b96121ce6b756fe8517a95192b3a`
+- governance latest id: `0x1cde2f0d4a50700960a8062f4ed7b19258f2a8c5eb4dc798fbda5e8b8d8c0658`
+
+### Objects
+
+- GlobalConfig: `0xe93baa80cb570b3a494cbf0621b2ba96bc993926d34dc92508c9446f9a05d615`
+- RewarderGlobalVault: `0xfb971d3a2fb98bde74e1c30ba15a3d8bef60a02789e59ae0b91660aeed3e64e1`
+- Stats: `0x6822a33d1d971e040c32f7cc74507010d1fe786f7d06ab89135083ddb07d2dc2`
+- PriceProvider: `0x854b2d2c0381bb656ec962f8b443eb082654384cf97885359d1956c7d76e33c9`
+- Pools: `0x0efb954710df6648d090bdfa4a5e274843212d6eb3efe157ee465300086e3650`
+
+- Voter: `0x266ff531d300f00ed725e801ba2898d926cad17b9406ea2150e1085de255898f`
+- VotingEscrow: `0xe36c353bf09559253306fcec8ccdd6414ef01c20684f1d31f00ed25034718189`
+- DistributionConfig: `0x00c124358cf7145b3b97edd3166054e09c3568e6f6f7ef30ad64c0af74f6f942`
+- Minter: `0x58f1b1c1c3b996ffc6e100131cddd0c9999d10a2744db37b5d2422ae52db97f4`
+- PriceMonitor: `0x1e2b11f45b7d059c55ebaf026b499114f7a4ed0c1fd9d9b4c76b4c759fb63900`
+- RebaseDistributor (unused): `0x3ea124cb8ba5c202eb7f14ef0a6cdcd783f0cfd865f63ad7dd79339b1f0c1918`
+- Switchboard Aggregator: `0x6fad8b69ab1d9550302c610e5a0ffcb81c1e2b218ff05b6ea6cdd236b5963346`
+
 #### Publication transactions
 
 - [SAIL](https://suivision.xyz/txblock/8h9AypGsfEz4UEycf6zwNjFehpRxHyNYsc7N7JwxzCi)
+- [oSAIL](https://suiscan.xyz/mainnet/tx/G2iDDb2zZMn2emhvWx9TrfnCEhzbtDWbUFzoy1S5tuNS)
 
 - [locker_cap](https://suivision.xyz/txblock/BFiALGxLFUczQVCshPtAEpY5H11kci33FHSTPCZRdYtA)
 - [price_monitor](https://suivision.xyz/txblock/3cLn9fdvXF9Mfn7zGhmqziLEWonbDWeFdWic1GtnaQW4)
-- [ve](https://suivision.xyz/txblock/3HUrksyiojmCAwgQEVfVmMh2sf1TJ6v1oeuiMNPrxume)
-- [distribution](https://suivision.xyz/txblock/DF8EohFmy656d7ax4msy8UffgyLdK1Q9U81avsGvbDNp)
+- [ve (legacy)](https://suivision.xyz/txblock/3HUrksyiojmCAwgQEVfVmMh2sf1TJ6v1oeuiMNPrxume)
+- [distribution (legacy)](https://suivision.xyz/txblock/DF8EohFmy656d7ax4msy8UffgyLdK1Q9U81avsGvbDNp)
 - [airdrop](https://suivision.xyz/txblock/FA7ModSnkR1kFokbpAyRDE6Kw6ewNDr4wpdm4Np8ARif)
 - [price_monitor upgrade](https://suivision.xyz/txblock/2Y1yK4JWfYo4eieEC6w3UPQfoZaJBCQkHaRFVrAW1ZKi)
 - [price monitro upgrade 2](https://suivision.xyz/txblock/ADt9FsEJqWabSZnFsyNHBpRZQm8ULjoofSSuXSyZkV3y)
 - [voting_escrow](https://suivision.xyz/txblock/73jixRjwnjjFPFriydMFkywpU4P4yXsZa4ui8pgzNyHr)
 - [voting_escrow upgrade 1](https://suivision.xyz/txblock/72sCTctxRBTwW29nHYShjeAGcpTkFd2d2hhCUquWgCfG)
+- [voting_escrow upgrade 2](https://suivision.xyz/txblock/E2ahiCCBxgtSWWkyiV1HbTWReC1xVhXtPKbHLHqCt3Ee)
 - [governance](https://suivision.xyz/txblock/mZ12h5eUrA7C3AxMVokQDXnEaWSxbnMXwAi5LPSibwa)
 - [ve upgrade](https://suivision.xyz/txblock/CPMXmUU4tK6nAQ4DB9mpyFUnxmTMxboEwwwWNDsy82N8)
 - [distribution upgrade](https://suivision.xyz/txblock/2UYup5jRsdrPQ3eex3aXRdgRTUjpWGfURZUzJ8a5DWix)
@@ -83,6 +119,7 @@ You could also use some utility methods from [integrate package](integrate/sourc
 - [governance upgrade](https://suivision.xyz/txblock/4dUHtr1oy5xNv66PjdcwTUc6BEnPSgCxeUuosk1u5CSi?tab=Changes)
 - [governance upgrade 2](https://suivision.xyz/txblock/AHfTeqNcdEri1jevsFDaKSXbWMTTHrwHw9yDXciKWsU)
 - [governance upgrade 3](https://suivision.xyz/txblock/B3PNsA5zHiYs16risbNvjaf2QLaTRbYW8YYg8mLpwqWj)
+- [governance upgrade 4](https://suivision.xyz/txblock/BqrRF16tR7afaFnW5wPGFXb6CqisWMZDwXtN2KDfqtN7)
 - [integrate](https://suivision.xyz/txblock/63fn6MNR8ykDWdpieKzmdWpP4m8tcxzryoiAwWTAQjCk)
 
 - [setup distribtuion tx](https://suiscan.xyz/mainnet/tx/21y91npsRHWgg5TPnFkFVSWgCFTLhTcvRfGL4bA4ut1p)

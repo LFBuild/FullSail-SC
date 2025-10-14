@@ -10,6 +10,10 @@ module voting_escrow::reward {
     const EUpdateBalancesAlreadyFinal: u64 = 931921756019291000;
     const EUpdateBalancesOnlyFinishedEpochAllowed: u64 = 987934305039328400;
 
+    const EResetFinalNotFinal: u64 = 86720681210724470;
+    const EResetFinalUpdateDisabled: u64 = 87295163281596280;
+    const EResetFinalEpochStartInvalid: u64 = 57465357444921274;
+
     const ERewardPerEpochInvalidToken: u64 = 9223372492121309183;
 
 
@@ -45,6 +49,14 @@ module voting_escrow::reward {
 
 
     public struct EventEpochFinalized has copy, drop, store {
+        // FeeVotingReward, or FreeManagedReward id. Supposed to be used to track for which exactly reward this event is.
+        wrapper_reward_id: ID,
+        // Reward id. Usually this reward is unaccessible cos it is wrapped in other object.
+        internal_reward_id: ID,
+        epoch_start: u64,
+    }
+
+    public struct EventEpochResetFinal has copy, drop, store {
         // FeeVotingReward, or FreeManagedReward id. Supposed to be used to track for which exactly reward this event is.
         wrapper_reward_id: ID,
         // Reward id. Usually this reward is unaccessible cos it is wrapped in other object.
@@ -336,6 +348,34 @@ module voting_escrow::reward {
         };
     }
 
+    /// Resets the final status of an epoch. Supposed to be used when we need to recover the state after problematic balance update.
+    /// 
+    /// # Arguments
+    /// * `reward` - The reward object to reset the final status for
+    /// * `reward_cap` - Capability object for authorization
+    /// * `for_epoch_start` - The epoch start to reset the final status for
+    /// * `ctx` - Transaction context
+    public fun reset_final(
+        reward: &mut Reward,
+        reward_cap: &voting_escrow::reward_cap::RewardCap,
+        for_epoch_start: u64,
+        ctx: &mut TxContext
+    ) {
+        reward_cap.validate(object::id(reward));
+        assert!(for_epoch_start % voting_escrow::common::epoch() == 0, EResetFinalEpochStartInvalid);
+        assert!(reward.epoch_updates_finalized.contains(for_epoch_start), EResetFinalNotFinal);
+        assert!(reward.balance_update_enabled, EResetFinalUpdateDisabled);
+
+        reward.epoch_updates_finalized.remove(for_epoch_start);
+
+        let event = EventEpochResetFinal {
+            wrapper_reward_id: reward.wrapper_reward_id,
+            internal_reward_id: object::id(reward),
+            epoch_start: for_epoch_start,
+        };
+        sui::event::emit<EventEpochResetFinal>(event);
+    }
+
     /// Calculates how much reward a lock has earned for a specific coin type.
     /// This complex function calculates earnings across epochs based on checkpoints and supply ratios.
     /// 
@@ -346,7 +386,7 @@ module voting_escrow::reward {
     /// 
     /// # Returns
     /// The amount of coins earned as rewards, first epoch that has not been earned yet.
-    fun earned_internal<CoinType>(reward: &Reward, lock_id: ID, clock: &sui::clock::Clock): (u64, u64) {
+    fun earned_internal<CoinType>(reward: &Reward, lock_id: ID, clock: &sui::clock::Clock, ignore_epoch_final: bool): (u64, u64) {
         let zero_checkpoints = if (!reward.num_checkpoints.contains(lock_id)) {
             true
         } else {
@@ -388,7 +428,7 @@ module voting_escrow::reward {
             while (i < epochs_until_now && i < max_num_iterations) {
                 // stop when we encounter epoch that is not final and reward is configured to wait for balance update.
                 if (
-                    reward.balance_update_enabled && (
+                    reward.balance_update_enabled && !ignore_epoch_final && (
                         !reward.epoch_updates_finalized.contains(next_epoch_time) || 
                         !(*reward.epoch_updates_finalized.borrow(next_epoch_time))
                     )
@@ -431,7 +471,13 @@ module voting_escrow::reward {
     }
 
     public fun earned<CoinType>(reward: &Reward, lock_id: ID, clock: &sui::clock::Clock): u64 {
-        let (earned_amount, _) = reward.earned_internal<CoinType>(lock_id, clock);
+        let (earned_amount, _) = reward.earned_internal<CoinType>(lock_id, clock, false);
+
+        earned_amount
+    }
+
+    public fun earned_ignore_epoch_final<CoinType>(reward: &Reward, lock_id: ID, clock: &sui::clock::Clock): u64 {
+        let (earned_amount, _) = reward.earned_internal<CoinType>(lock_id, clock, true);
 
         earned_amount
     }
@@ -538,7 +584,7 @@ module voting_escrow::reward {
         ctx: &mut TxContext
     ): Option<sui::balance::Balance<CoinType>> {
         reward_cap.validate(object::id(reward));
-        let (reward_amount, first_non_earned_epoch) = reward.earned_internal<CoinType>(lock_id, clock);
+        let (reward_amount, first_non_earned_epoch) = reward.earned_internal<CoinType>(lock_id, clock, false);
         let coin_type_name = std::type_name::get<CoinType>();
         if (!reward.last_earn.contains(coin_type_name)) {
             reward.last_earn.add(coin_type_name, sui::table::new<ID, u64>(ctx));
@@ -697,6 +743,15 @@ module voting_escrow::reward {
             return 0
         };
         *rewards_per_epoch.borrow(epoch_start)
+    }
+
+    /// Returns true if the epoch is finalized.
+    /// 
+    /// # Arguments
+    /// * `reward` - The reward object
+    /// * `epoch_start` - The start time of the epoch
+    public fun is_epoch_final(reward: &Reward, epoch_start: u64): bool {
+        reward.epoch_updates_finalized.contains(epoch_start) && *reward.epoch_updates_finalized.borrow(epoch_start)
     }
 
     /// Returns the total supply of tokens in the reward system based on the latest checkpoint relative to the clock.
