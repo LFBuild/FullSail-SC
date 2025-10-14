@@ -12,7 +12,7 @@ airdrop = "0x0"
 [dependencies.SuiTears]
 git = "https://github.com/LFBuild/suitears.git"
 subdir = "contracts"
-rev = "main"
+rev = "dev"
 
 [dependencies.ve]
 local = "../legacy/ve"
