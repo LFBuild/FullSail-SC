@@ -237,6 +237,24 @@ module governance::fee_voting_reward {
         );
     }
 
+    public fun update_supply(
+        reward: &mut FeeVotingReward,
+        voter_cap: &governance::voter_cap::VoterCap,
+        for_epoch_start: u64,
+        total_supply: u64,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        reward.validate_voter_cap(voter_cap);
+        reward.reward.update_supply(
+            &reward.reward_cap,
+            for_epoch_start,
+            total_supply,
+            clock,
+            ctx,
+        );
+    }
+
     /// Returns a reference to the underlying reward
     ///
     /// # Arguments
