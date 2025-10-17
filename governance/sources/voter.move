@@ -1967,6 +1967,7 @@ module governance::voter {
         gauge_id: ID,
         for_epoch_start: u64,
         total_supply: u64,
+        clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
         distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
@@ -1977,6 +1978,7 @@ module governance::voter {
             &voter.voter_cap,
             for_epoch_start,
             total_supply,
+            clock,
             ctx
         );
     }
@@ -2027,6 +2029,7 @@ module governance::voter {
         distribute_cap: &governance::distribute_cap::DistributeCap,
         for_epoch_start: u64,
         total_supply: u64,
+        clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
         distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
@@ -2036,6 +2039,7 @@ module governance::voter {
             &voter.voter_cap,
             for_epoch_start,
             total_supply,
+            clock,
             ctx
         );
     }

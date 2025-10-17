@@ -2951,6 +2951,7 @@ module governance::minter {
         gauge_id: ID,
         for_epoch_start: u64,
         total_supply: u64,
+        clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
         distribution_config.checked_package_version();
@@ -2963,6 +2964,7 @@ module governance::minter {
             gauge_id,
             for_epoch_start,
             total_supply,
+            clock,
             ctx
         );
     }
@@ -3055,6 +3057,7 @@ module governance::minter {
         distribute_governor_cap: &DistributeGovernorCap,
         for_epoch_start: u64,
         total_supply: u64,
+        clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
         distribution_config.checked_package_version();
@@ -3066,6 +3069,7 @@ module governance::minter {
             distribute_cap,
             for_epoch_start,
             total_supply,
+            clock,
             ctx
         );
     }
