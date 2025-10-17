@@ -10,6 +10,10 @@ module voting_escrow::reward {
     const EUpdateBalancesAlreadyFinal: u64 = 931921756019291000;
     const EUpdateBalancesOnlyFinishedEpochAllowed: u64 = 987934305039328400;
 
+    const EUpdateSupplyStartInvalid: u64 = 705782693965862900;
+    const EUpdateSupplyAlreadyFinal: u64 = 904903521124960500;
+    const EUpdateSupplyOnlyFinishedEpochAllowed: u64 = 313936473495920450;
+
     const EResetFinalNotFinal: u64 = 86720681210724470;
     const EResetFinalUpdateDisabled: u64 = 87295163281596280;
     const EResetFinalEpochStartInvalid: u64 = 57465357444921274;
@@ -54,6 +58,13 @@ module voting_escrow::reward {
         // Reward id. Usually this reward is unaccessible cos it is wrapped in other object.
         internal_reward_id: ID,
         epoch_start: u64,
+    }
+
+    public struct EventUpdateSupply has copy, drop, store {
+        wrapper_reward_id: ID,
+        internal_reward_id: ID,
+        epoch_start: u64,
+        total_supply: u64,
     }
 
     public struct EventEpochResetFinal has copy, drop, store {
@@ -432,6 +443,50 @@ module voting_escrow::reward {
             };
             sui::event::emit<EventEpochFinalized>(event);
         };
+    }
+
+    /// Updates the total supply for the epoch.
+    /// It is important for total supply to be sum of the weights of the locks 
+    /// previously pushed by update_balances method
+    /// 
+    /// # Arguments
+    /// * `reward` - The reward object
+    /// * `reward_cap` - Capability object for authorization
+    /// * `for_epoch_start` - The epoch start to update the total supply at
+    /// * `total_supply` - The total supply for the epoch
+    /// * `clock` - Clock object for timestamp
+    /// * `ctx` - Transaction context
+    public fun update_supply(
+        reward: &mut Reward,
+        reward_cap: &voting_escrow::reward_cap::RewardCap,
+        for_epoch_start: u64,
+        total_supply: u64,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        reward_cap.validate(object::id(reward));
+        assert!(reward.balance_update_enabled, EUpdateBalancesDisabled);
+        assert!(for_epoch_start % voting_escrow::common::epoch() == 0, EUpdateSupplyStartInvalid);
+        assert!(
+            !reward.epoch_updates_finalized.contains(for_epoch_start) || 
+            !(*reward.epoch_updates_finalized.borrow(for_epoch_start)), 
+            EUpdateSupplyAlreadyFinal
+        );
+        let current_time = voting_escrow::common::current_timestamp(clock);
+        let current_epoch_start = voting_escrow::common::epoch_start(current_time);
+        // balance update is only allowed for finished epochs
+        assert!(for_epoch_start < current_epoch_start, EUpdateSupplyOnlyFinishedEpochAllowed);
+
+        reward.write_supply_checkpoint_internal(for_epoch_start, total_supply);
+        
+        let internal_reward_id = object::id(reward);
+        let event = EventUpdateSupply {
+            wrapper_reward_id: reward.wrapper_reward_id,
+            internal_reward_id,
+            epoch_start: for_epoch_start,
+            total_supply,
+        };
+        sui::event::emit<EventUpdateSupply>(event);
     }
 
     /// Resets the final status of an epoch. Supposed to be used when we need to recover the state after problematic balance update.
