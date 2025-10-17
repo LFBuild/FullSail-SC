@@ -314,20 +314,106 @@ module voting_escrow::reward {
         let current_epoch_start = voting_escrow::common::epoch_start(current_time);
         // balance update is only allowed for finished epochs
         assert!(for_epoch_start < current_epoch_start, EUpdateBalancesOnlyFinishedEpochAllowed);
+
+        // If we are updating past lock checkpoints, we need to update supply for the next epochs.
+        // But only if supply checkpoint for the next epoch exists
+        // and there is no next lock checkpoints before or at next supply checkpoint 
+
+        // the list, containing current supply checkpoint (even if there is no current checkpoint)
+        // and supply chekcpoints after the current one.
+        let mut supply_list = vector::empty<SupplyCheckpoint>();
+
+        // first of all we retrieve current checkpoint and add it to the list
+        let supply_num_checkpoints = reward.supply_num_checkpoints;
+        if (supply_num_checkpoints == 0) {
+            // no checkpoints at all, we create a new one
+            supply_list.push_back(SupplyCheckpoint {
+                epoch_start: for_epoch_start,
+                supply: 0,
+            });
+        } else {
+            // there are checkpoints, so we find the last checkpoint before the current epoch or at the current epoch
+            let supply_idx = reward.get_prior_supply_index(for_epoch_start);
+            let supply_checkpoint = reward.supply_checkpoints.borrow(supply_idx);
+            let mut next_supply_idx;
+            if (supply_idx == 0 && supply_checkpoint.epoch_start > for_epoch_start) {
+                supply_list.push_back(SupplyCheckpoint {
+                    epoch_start: for_epoch_start,
+                    supply: 0,
+                });
+                next_supply_idx = supply_idx;
+            } else {
+                supply_list.push_back(SupplyCheckpoint {
+                    epoch_start: for_epoch_start,
+                    supply: supply_checkpoint.supply,
+                });
+                next_supply_idx = supply_idx + 1;
+            };
+
+            while (next_supply_idx < supply_num_checkpoints) {
+                let next_supply_checkpoint = reward.supply_checkpoints.borrow(next_supply_idx);
+                supply_list.push_back(SupplyCheckpoint {
+                    epoch_start: next_supply_checkpoint.epoch_start,
+                    supply: next_supply_checkpoint.supply,
+                });
+                next_supply_idx = next_supply_idx + 1;
+            }
+        };
         let mut i = 0;
-        let mut total_supply = reward.total_supply_at(for_epoch_start);
         while (i < balances.length()) {
             let lock_id = lock_ids[i];
             let balance = balances[i];
-            let old_balance = reward.balance_of_at(lock_id, for_epoch_start);
-            // change total supply by balance delta. Should never overflow cos old balance is always included in total supply
-            total_supply = total_supply + balance - old_balance;
+            let mut old_balance: u64;
+            // zero means that there are no next checkpoints
+            let mut next_lock_checkpoint_time: u64 = 0;
+            let num_checkpoints = if (reward.num_checkpoints.contains(lock_id)) {
+                *reward.num_checkpoints.borrow(lock_id)
+            } else {
+                0
+            };
+            if (num_checkpoints == 0) {
+                old_balance = 0;
+                // no next lock checkpoints
+            } else {
+                let prior_idx = reward.get_prior_balance_index(lock_id, for_epoch_start);
+                let lock_checkpoints = reward.checkpoints.borrow(lock_id);
+
+                // If prior_idx is 0 and the checkpoint at 0 is for a time after current_time,
+                // it means there are no checkpoints at or before current_time, so balance is 0.
+                let first_checkpoint = lock_checkpoints.borrow(0);
+                if (prior_idx == 0 && first_checkpoint.epoch_start > for_epoch_start) {
+                    old_balance = 0;
+                    next_lock_checkpoint_time = first_checkpoint.epoch_start;
+                } else {
+                    // Otherwise, the checkpoint at prior_idx is the relevant one.
+                    let prior_checkpoint = lock_checkpoints.borrow(prior_idx);
+                    old_balance = prior_checkpoint.balance_of;
+                    if (prior_idx < num_checkpoints - 1) {
+                        // if there is a next checkpoint, we save it
+                        next_lock_checkpoint_time = lock_checkpoints.borrow(prior_idx + 1).epoch_start;
+                    }
+                }
+            };
+            let mut j = 0;
+            while (j < supply_list.length()) {
+                let supply_checkpoint_j = supply_list.borrow_mut(j);
+                if (next_lock_checkpoint_time != 0 && supply_checkpoint_j.epoch_start >= next_lock_checkpoint_time) {
+                    break
+                };
+                // change total supply by balance delta. Should never overflow cos old balance is always included in total supply
+                supply_checkpoint_j.supply = supply_checkpoint_j.supply + balance - old_balance;
+                j = j + 1;
+            };
 
             reward.write_checkpoint_internal(lock_id, balance, for_epoch_start, ctx);
             i = i + 1;
         };
 
-        reward.write_supply_checkpoint_internal(for_epoch_start, total_supply);
+        i = 0;
+        while (i < supply_list.length()) {
+            reward.write_supply_checkpoint_internal(supply_list[i].epoch_start, supply_list[i].supply);
+            i = i + 1;
+        };
         let internal_reward_id = object::id(reward);
         let event = EventUpdateBalances {
             wrapper_reward_id: reward.wrapper_reward_id,
