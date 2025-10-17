@@ -840,5 +840,89 @@ fun test_double_update_after_zero_deposit() {
     scenario.end();
 }
 
+#[test]
+fun test_incremental_updates() {
+    let admin = @0xCAFE;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // 1. Create a Reward object with balance_update_enabled = true.
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, true);
+
+    let one_week_ms = 7 * 24 * 60 * 60 * 1000;
+    let one_week_s = one_week_ms / 1000;
+    let lock_id1: ID = sui::object::id_from_address(@0x1);
+    let lock_id2: ID = sui::object::id_from_address(@0x2);
+    let lock_id3: ID = sui::object::id_from_address(@0x3);
+
+    // --- Epoch 1 ---
+    let deposit1 = 100;
+    let deposit2 = 200;
+    let deposit3 = 300;
+    reward_obj.deposit(&reward_cap, deposit1, lock_id1, &clock, scenario.ctx());
+    reward_obj.deposit(&reward_cap, deposit2, lock_id2, &clock, scenario.ctx());
+    reward_obj.deposit(&reward_cap, deposit3, lock_id3, &clock, scenario.ctx());
+    let epoch1_start = common::epoch_start(common::current_timestamp(&clock));
+    assert!(reward_obj.total_supply_at(epoch1_start) == deposit1 + deposit2 + deposit3, 1);
+    
+    clock::increment_for_testing(&mut clock, one_week_ms);
+
+    // --- Epoch 2 ---
+    let epoch2_start = epoch1_start + one_week_s;
+    let deposit1_e2 = 50;
+    reward_obj.deposit(&reward_cap, deposit1_e2, lock_id1, &clock, scenario.ctx());
+
+    clock::increment_for_testing(&mut clock, one_week_ms);
+    // Now in Epoch 3, can update past epochs
+
+    // --- First Update (lock 1, not final) ---
+    let updated_balance1 = 400;
+    reward_obj.update_balances(&reward_cap, vector[updated_balance1], vector[lock_id1], epoch1_start, false, &clock, scenario.ctx());
+    
+    // Verification 1
+    assert!(reward_obj.balance_of_at(lock_id1, epoch1_start) == updated_balance1, 2);
+    assert!(reward_obj.balance_of_at(lock_id2, epoch1_start) == deposit2, 3);
+    assert!(reward_obj.balance_of_at(lock_id3, epoch1_start) == deposit3, 4);
+    assert!(reward_obj.total_supply_at(epoch1_start) == updated_balance1 + deposit2 + deposit3, 5);
+    assert!(reward_obj.balance_of_at(lock_id1, epoch2_start) == deposit1 + deposit1_e2, 6);
+    assert!(reward_obj.balance_of_at(lock_id2, epoch2_start) == deposit2, 7);
+    assert!(reward_obj.balance_of_at(lock_id3, epoch2_start) == deposit3, 8);
+    assert!(reward_obj.total_supply_at(epoch2_start) == deposit1 + deposit1_e2 + deposit2 + deposit3, 9);
+    
+    // --- Second Update (lock 2, not final) ---
+    let updated_balance2 = 500;
+    reward_obj.update_balances(&reward_cap, vector[updated_balance2], vector[lock_id2], epoch1_start, false, &clock, scenario.ctx());
+
+    // Verification 2
+    assert!(reward_obj.balance_of_at(lock_id1, epoch1_start) == updated_balance1, 10);
+    assert!(reward_obj.balance_of_at(lock_id2, epoch1_start) == updated_balance2, 11);
+    assert!(reward_obj.balance_of_at(lock_id3, epoch1_start) == deposit3, 12);
+    assert!(reward_obj.total_supply_at(epoch1_start) == updated_balance1 + updated_balance2 + deposit3, 13);
+    assert!(reward_obj.balance_of_at(lock_id1, epoch2_start) == deposit1 + deposit1_e2, 14);
+    assert!(reward_obj.balance_of_at(lock_id2, epoch2_start) == updated_balance2, 15);
+    assert!(reward_obj.balance_of_at(lock_id3, epoch2_start) == deposit3, 16);
+    assert!(reward_obj.total_supply_at(epoch2_start) == deposit1 + deposit1_e2 + updated_balance2 + deposit3, 17);
+
+    // --- Third Update (lock 3, final) ---
+    let updated_balance3 = 600;
+    reward_obj.update_balances(&reward_cap, vector[updated_balance3], vector[lock_id3], epoch1_start, true, &clock, scenario.ctx());
+
+    // Verification 3
+    assert!(reward_obj.balance_of_at(lock_id1, epoch1_start) == updated_balance1, 18);
+    assert!(reward_obj.balance_of_at(lock_id2, epoch1_start) == updated_balance2, 19);
+    assert!(reward_obj.balance_of_at(lock_id3, epoch1_start) == updated_balance3, 20);
+    assert!(reward_obj.total_supply_at(epoch1_start) == updated_balance1 + updated_balance2 + updated_balance3, 21);
+    assert!(reward_obj.balance_of_at(lock_id1, epoch2_start) == deposit1 + deposit1_e2, 22);
+    assert!(reward_obj.balance_of_at(lock_id2, epoch2_start) == updated_balance2, 23);
+    assert!(reward_obj.balance_of_at(lock_id3, epoch2_start) == updated_balance3, 24);
+    assert!(reward_obj.total_supply_at(epoch2_start) == deposit1 + deposit1_e2 + updated_balance2 + updated_balance3, 25);
+
+    // Cleanup
+    test_utils::destroy(reward_cap);
+    test_utils::destroy(reward_obj);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
 
 
