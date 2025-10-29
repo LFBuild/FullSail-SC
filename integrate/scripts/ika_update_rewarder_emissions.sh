@@ -7,9 +7,9 @@ export POOL1=0xa7aa7807a87a771206571d3dd40e53ccbc395d7024def57b49ed9200b5b7e4e5 
 export COIN_A_1=0x7262fb2f7a3a14c888c438a3cd9b912469a58cf60f367352c46584262e8299aa::ika::IKA
 export COIN_B_1=0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI
 
-export TOTAL_REWARD_AMOUNT_IKA=901800000000000 # set the total reward amount for the pool
+export TOTAL_REWARD_AMOUNT_IKA=1000000000000000 # set the total reward amount for the pool
 # export TOTAL_REWARD_AMOUNT_PRE_SAIL=0 # set the total reward amount for the pool
-export DISTRIBUTION_PERIOD_SECONDS=1173106 # set the distribution period in seconds
+export DISTRIBUTION_PERIOD_SECONDS=1200600 # set the distribution period in seconds
 
 
 sui client ptb \
