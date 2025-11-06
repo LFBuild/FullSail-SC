@@ -1,7 +1,7 @@
 source ./export.sh
 
 export EXERCISE_FEE_COIN=0x1d4a2bdbc1602a0adaa98194942c220202dcc56bb0a205838dfaa63db0d5497e::SAIL::SAIL
-export COIN=0x45f369bf92534caa1ab227786bafc40188943112c2d9f0b25f52257547704380
+export COIN=0x34993eeba1cc18a1b6dc284d4178c4cced1202f9e9007866b8878af8c7c7e06b
 
 sui client ptb \
 --sender @0xfed1c619fc8dd98367a0422ca9ef53c9825e2893d78dda822106d12687888fb3 --gas-coin @0xe6600100e23ccefd343837558242768b59dacca73b28132482e1b0ec6370c81b --gas-budget 100000000 --serialize-unsigned-transaction \
