@@ -44,7 +44,7 @@ module governance::gauge {
     const EDepositPositionGaugeDoesNotMatchPool: u64 = 9223373162136666120;
     const EDepositPositionPositionDoesNotMatchPool: u64 = 9223373166431764490;
     const EDepositPositionPositionAlreadyStaked: u64 = 9223373175021174786;
-    const EDepositPositionHasNoLiquidity: u64 = 9223373172345436343;
+    const EDepositPositionHasNoLiquidity: u64 = 9497304799939323;
 
     const EEarnedByPositionGaugeDoesNotMatchPool: u64 = 9223372693985230856;
     const EEarnedByPositionNotDepositedPosition: u64 = 9223372698279936004;
@@ -77,6 +77,8 @@ module governance::gauge {
     const EFullEarnedForTypeGaugeDoesNotMatchPool: u64 = 266845958013316900;
 
     const ENotOwner: u64 = 9843325239567326443;
+
+    const EInvalidLiquidity: u64 = 9934967927031223221;
 
     /// Witness type for gauge module initialization.
     /// Used to ensure proper module initialization and access control.
@@ -1366,7 +1368,6 @@ module governance::gauge {
             clock
         );
 
-
         position
     }
 
@@ -1494,6 +1495,87 @@ module governance::gauge {
         }
     }
 
+    public fun decrease_liquidity<CoinTypeA, CoinTypeB>(
+        gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
+        distribution_config: &DistributionConfig,
+        global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        staked_position: &StakedPosition,
+        liquidity: u128,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ): (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>) {
+        assert!(
+            object::id(distribution_config) == gauge.distribution_config,
+            EDepositPositionDistributionConfInvalid
+        );
+        distribution_config.checked_package_version();
+        assert!(
+            distribution_config.is_gauge_alive(object::id(gauge)),
+            EDepositPositionGaugeNotAlive
+        );
+        assert!(
+            gauge.check_gauger_pool(pool),
+            EDepositPositionGaugeDoesNotMatchPool
+        );
+        assert!(
+            gauge.staked_positions.contains(staked_position.position_id),
+            EWithdrawPositionNotDepositedPosition
+        );
+        assert!(!gauge.locked_positions.contains(staked_position.position_id), EWithdrawPositionPositionIsLocked);
+        assert!(gauge.all_rewards_claimed<CoinTypeA, CoinTypeB>(pool, staked_position.position_id, clock), EWithdrawPositionNotAllRewardsClaimed);
+
+        let position_id = staked_position.position_id();
+        let pool_id = object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool);
+
+        let mut position = gauge.staked_positions.remove(staked_position.position_id);
+        assert!(pool_id == position.pool_id(), EDepositPositionGaugeDoesNotMatchPool);
+
+        pool.unstake_from_fullsail_distribution(
+            gauge.gauge_cap.borrow(),
+            &position,
+            clock
+        );
+
+        assert!(liquidity < clmm_pool::position::liquidity(&position), EInvalidLiquidity);
+
+        let (removed_a, removed_b) = clmm_pool::pool::remove_liquidity<CoinTypeA, CoinTypeB>(
+            global_config,
+            vault,
+            pool, 
+            &mut position,
+            liquidity, 
+            clock
+        );
+
+        let (lower_tick, upper_tick) = position.tick_range();
+        let gauge_cap = gauge.gauge_cap.borrow();
+        pool.update_fullsail_distribution_growth_global(gauge_cap, clock);
+        if (!gauge.rewards.contains(position_id)) {
+            let new_reward_profile = RewardProfile {
+                growth_inside: pool.get_fullsail_distribution_growth_inside(lower_tick, upper_tick, 0),
+                amount: 0,
+                last_update_time: clock.timestamp_ms() / 1000,
+            };
+            gauge.rewards.add(position_id, new_reward_profile);
+        } else {
+            let reward_profile = gauge.rewards.borrow_mut(position_id);
+            reward_profile.growth_inside = pool.get_fullsail_distribution_growth_inside(lower_tick, upper_tick, 0);
+            reward_profile.last_update_time = clock.timestamp_ms() / 1000;
+        };
+
+        pool.stake_in_fullsail_distribution(
+            gauge_cap,
+            &position,
+            clock
+        );
+
+        gauge.staked_positions.add(position_id, position);
+
+        (removed_a, removed_b)
+    }
+
     fun update_display(
         publisher: &sui::package::Publisher,
         name: std::string::String,
@@ -1590,5 +1672,12 @@ module governance::gauge {
 
     public fun position_index<CoinTypeA, CoinTypeB>(gauge: &Gauge<CoinTypeA, CoinTypeB>, staked_position: &StakedPosition): u64 {
         gauge.staked_positions.borrow(staked_position.position_id).index()
+    }
+
+    public fun borrow_position<CoinTypeA, CoinTypeB>(
+        gauge: &Gauge<CoinTypeA, CoinTypeB>, 
+        staked_position: &StakedPosition
+    ): &clmm_pool::position::Position {
+        gauge.staked_positions.borrow(staked_position.position_id)
     }
 }

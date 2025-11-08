@@ -1,9 +1,9 @@
 [package]
-name = "distribution"
+name = "vault"
 edition = "2024"
 
 [addresses]
-distribution = "0x02"
+vault = "0x0"
 
 [dev-dependencies]
 
@@ -15,6 +15,11 @@ subdir = "crates/sui-framework/packages/sui-framework"
 rev = "framework/mainnet"
 override = true
 
+[dependencies.Pyth]
+git = "https://github.com/pyth-network/pyth-crosschain.git"
+subdir = "target_chains/sui/contracts"
+rev = "main"
+
 [dependencies.clmm_pool]
 git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
 subdir = "clmm_pool"
@@ -24,6 +29,12 @@ override = true
 [dependencies.integer_mate]
 git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
 subdir = "integer_mate"
+rev = "main"
+override = true
+
+[dependencies.move_stl]
+git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
+subdir = "move_stl"
 rev = "main"
 override = true
 

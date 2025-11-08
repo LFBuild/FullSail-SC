@@ -2,23 +2,35 @@
 
 [move]
 version = 3
-manifest_digest = "CF0082187FFCEB2A66EFC14D1B2C4761CB3A1DD501117AF764EF16C6998D5310"
-deps_digest = "8227D341C0550A37580C10FA45FE148A465225149C69D179737E0FE454AD6AEC"
+manifest_digest = "0EC460A6655099D8B6598BD2F47C3E2B649105245F26F85384173BF81DAEAAA2"
+deps_digest = "8D8E72BAA06E63572166CA7E7F6E159CA2D11E27ADE3961B15E29922A04B0D32"
 dependencies = [
+  { id = "Pyth", name = "Pyth" },
   { id = "Sui", name = "Sui" },
   { id = "Switchboard", name = "Switchboard" },
   { id = "clmm_pool", name = "clmm_pool" },
   { id = "gauge_cap", name = "gauge_cap" },
+  { id = "governance", name = "governance" },
   { id = "integer_mate", name = "integer_mate" },
   { id = "locker_cap", name = "locker_cap" },
+  { id = "move_stl", name = "move_stl" },
   { id = "price_monitor", name = "price_monitor" },
   { id = "price_provider", name = "price_provider" },
-  { id = "voting_escrow", name = "voting_escrow" },
+  { id = "ve", name = "ve" },
 ]
 
 [[move.package]]
 id = "MoveStdlib"
 source = { git = "https://github.com/MystenLabs/sui.git", rev = "framework/mainnet", subdir = "crates/sui-framework/packages/move-stdlib" }
+
+[[move.package]]
+id = "Pyth"
+source = { git = "https://github.com/pyth-network/pyth-crosschain.git", rev = "main", subdir = "target_chains/sui/contracts" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+  { id = "Wormhole", name = "Wormhole" },
+]
 
 [[move.package]]
 id = "Sui"
@@ -31,6 +43,14 @@ dependencies = [
 [[move.package]]
 id = "Switchboard"
 source = { git = "https://github.com/LFBuild/sui.git", rev = "mainnet", subdir = "on_demand/" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+]
+
+[[move.package]]
+id = "Wormhole"
+source = { git = "https://github.com/wormhole-foundation/wormhole.git", rev = "82d82bffd5a8566e4b5d94be4e4678ad55ab1f4f", subdir = "sui/wormhole" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -54,6 +74,22 @@ source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "main"
 
 dependencies = [
   { id = "Sui", name = "Sui" },
+]
+
+[[move.package]]
+id = "governance"
+source = { local = "../governance" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+  { id = "Switchboard", name = "Switchboard" },
+  { id = "clmm_pool", name = "clmm_pool" },
+  { id = "gauge_cap", name = "gauge_cap" },
+  { id = "integer_mate", name = "integer_mate" },
+  { id = "locker_cap", name = "locker_cap" },
+  { id = "price_monitor", name = "price_monitor" },
+  { id = "price_provider", name = "price_provider" },
+  { id = "voting_escrow", name = "voting_escrow" },
 ]
 
 [[move.package]]
@@ -100,6 +136,16 @@ dependencies = [
 ]
 
 [[move.package]]
+id = "ve"
+source = { local = "../legacy/ve" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+  { id = "integer_mate", name = "integer_mate" },
+  { id = "voting_escrow", name = "voting_escrow" },
+]
+
+[[move.package]]
 id = "voting_escrow"
 source = { local = "../voting_escrow" }
 
@@ -109,14 +155,6 @@ dependencies = [
 ]
 
 [move.toolchain-version]
-compiler-version = "1.55.0"
+compiler-version = "1.59.1"
 edition = "2024"
 flavor = "sui"
-
-[env]
-
-[env.mainnet]
-chain-id = "35834a8a"
-original-published-id = "0x03fcdcee11f485731170944af3acd26b17d1b96121ce6b756fe8517a95192b3a"
-latest-published-id = "0x9f31e92a57412e0f4fb937c388a9de3d3932858a26cb5eff6d41fe59504cc020"
-published-version = "6"

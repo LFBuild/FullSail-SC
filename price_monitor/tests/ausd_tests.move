@@ -1,16 +1,16 @@
-#[test_only]
-module price_monitor::ausd_tests;
+// #[test_only]
+// module price_monitor::ausd_tests;
 
-use sui::test_scenario;
-use sui::coin::{Self, CoinMetadata, TreasuryCap};
+// use sui::test_scenario;
+// use sui::coin::{Self, CoinMetadata, TreasuryCap};
 
-#[test_only]
-public struct AUSD_TESTS has drop {} 
+// #[test_only]
+// public struct AUSD_TESTS has drop {} 
 
-public fun create_ausd_tests(
-    scenario: &mut test_scenario::Scenario,
-    decimals: u8,
-): (TreasuryCap<AUSD_TESTS>, CoinMetadata<AUSD_TESTS>) {
+// public fun create_ausd_tests(
+//     scenario: &mut test_scenario::Scenario,
+//     decimals: u8,
+// ): (TreasuryCap<AUSD_TESTS>, CoinMetadata<AUSD_TESTS>) {
 
-    coin::create_currency<AUSD_TESTS>(AUSD_TESTS {}, decimals, b"AUSD_TESTS", b"AUSD_TESTS", b"AUSD_TESTS",std::option::none(), scenario.ctx())
-}
+//     coin::create_currency<AUSD_TESTS>(AUSD_TESTS {}, decimals, b"AUSD_TESTS", b"AUSD_TESTS", b"AUSD_TESTS",std::option::none(), scenario.ctx())
+// }
