@@ -1,7 +1,9 @@
 source ./export.sh
 
-export TOTAL_REWARD_AMOUNT=80000000000 # set the total reward amount
-export COIN_ID=0x9ef638f3f6bc4751b44317c3677c254bfe1c3a2ee9d83c736ea2296477107ca1
+export TOTAL_REWARD_AMOUNT=6000000000000 # set the total reward amount
+export COIN_ID=0xf4d73af2d53b033dfaa6a594c3725cc4a4bdf1cd7d01cb0853319b76214cf928
+
+export REWARD_TOKEN_TYPE=0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI
 
 sui client call \
   --package $PACKAGE \
