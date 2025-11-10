@@ -1512,7 +1512,18 @@ module governance::voter {
                 let weight = voter.weights.remove(gauge_id) - pool_votes;
                 voter.weights.add(gauge_id, weight);
                 voter.votes.borrow_mut(lock_id).remove(pool_id);
-                // we are not withdrawing from reward contracts as they are updated by backend voting service
+
+                let fee_voting_reward = voter.gauge_to_fee.borrow_mut(gauge_id);
+                let deposited_balance = fee_voting_reward
+                    .borrow_reward()
+                    .balance_of(lock_id.id, clock);
+                fee_voting_reward.withdraw(
+                    &voter.voter_cap,
+                    deposited_balance, // zero cos weights are later updated by backend voting service
+                    lock_id.id,
+                    clock,
+                    ctx
+                );
                 total_removed_weight = total_removed_weight + pool_votes;
                 let abstained_event = EventAbstained {
                     sender: tx_context::sender(ctx),

@@ -1587,3 +1587,104 @@ public fun increase_gauge_emissions_for_sail_pool<CoinTypeA, CoinTypeB, SAIL>(
     test_scenario::return_shared(pool);
     test_scenario::return_shared(price_monitor);
 }
+
+public fun inject_voting_fee_reward<CoinTypeA, CoinTypeB, SAIL, FeeCoinType>(
+    scenario: &mut test_scenario::Scenario,
+    fee_amount: u64,
+    clock: &Clock,
+) {
+    let mut minter = scenario.take_shared<Minter<SAIL>>();
+    let mut voter = scenario.take_shared<Voter>();
+    let distribution_config = scenario.take_shared<DistributionConfig>();
+    let distribute_governor_cap = scenario.take_from_sender<minter::DistributeGovernorCap>();
+    let gauge = scenario.take_shared<Gauge<CoinTypeA, CoinTypeB>>();
+    let gauge_id = object::id(&gauge);
+
+    let fee_coin = coin::mint_for_testing<FeeCoinType>(fee_amount, scenario.ctx());
+
+    minter::inject_voting_fee_reward<SAIL, FeeCoinType>(
+        &mut minter,
+        &mut voter,
+        &distribution_config,
+        &distribute_governor_cap,
+        gauge_id,
+        fee_coin,
+        clock,
+        scenario.ctx()
+    );
+
+    test_scenario::return_shared(minter);
+    test_scenario::return_shared(voter);
+    test_scenario::return_shared(distribution_config);
+    scenario.return_to_sender(distribute_governor_cap);
+    test_scenario::return_shared(gauge);
+}
+
+public fun update_and_finalize_voted_weights<CoinTypeA, CoinTypeB, SAIL>(
+    scenario: &mut test_scenario::Scenario,
+    lock_ids: vector<ID>,
+    weights: vector<u64>,
+    vote_epoch: u64,
+    sender: address,
+    clock: &Clock,
+) {
+    // Update voted weights
+    scenario.next_tx(sender);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let mut voter = scenario.take_shared<Voter>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let distribute_governor_cap = scenario.take_from_sender<minter::DistributeGovernorCap>();
+        let gauge = scenario.take_shared<Gauge<CoinTypeA, CoinTypeB>>();
+        let gauge_id = object::id(&gauge);
+
+        minter::update_voted_weights<SAIL>(
+            &mut minter,
+            &mut voter,
+            &distribution_config,
+            &distribute_governor_cap,
+            gauge_id,
+            weights,
+            lock_ids,
+            vote_epoch,
+            clock,
+            scenario.ctx()
+        );
+
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(voter);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(distribute_governor_cap);
+        test_scenario::return_shared(gauge);
+    };
+
+    // Finalize voted weights
+    scenario.next_tx(sender);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let mut voter = scenario.take_shared<Voter>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let distribute_governor_cap = scenario.take_from_sender<minter::DistributeGovernorCap>();
+        let gauge = scenario.take_shared<Gauge<CoinTypeA, CoinTypeB>>();
+        let gauge_id = object::id(&gauge);
+
+        minter::finalize_voted_weights<SAIL>(
+            &mut minter,
+            &mut voter,
+            &distribution_config,
+            &distribute_governor_cap,
+            gauge_id,
+            vote_epoch,
+            clock,
+            scenario.ctx()
+        );
+
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(voter);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(distribute_governor_cap);
+        test_scenario::return_shared(gauge);
+    };
+}
+
+
