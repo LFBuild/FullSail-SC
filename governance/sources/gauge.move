@@ -39,6 +39,11 @@ module governance::gauge {
     const ENotifyRewardInvalidAmount: u64 = 9223373716188102674;
     const ENotifyRewardEpochFinished: u64 = 256780623436252400;
 
+    const ENullRewardGaugeNotAlive: u64 = 928660762884751200;
+    const ENullRewardDistributionConfInvalid: u64 = 803388616803070000;
+    const ENullRewardInvalidPool: u64 = 119295864650511570;
+    const ENullRewardEpochFinished: u64 = 453228670707964700;
+
     const EDepositPositionDistributionConfInvalid: u64 = 9223373183611043839;
     const EDepositPositionGaugeNotAlive: u64 = 9223373157842747416;
     const EDepositPositionGaugeDoesNotMatchPool: u64 = 9223373162136666120;
@@ -155,6 +160,12 @@ module governance::gauge {
         position_id: ID,
         growth_inside: u128,
         amount: u64,
+    }
+
+    public struct EventNullRewards has copy, drop, store {
+        gauge_id: ID,
+        pool_id: ID,
+        rewards_nulled_usd: u64,
     }
 
     public struct Locked has copy, drop, store {}
@@ -979,7 +990,7 @@ module governance::gauge {
         assert!(usd_amount > 0, ENotifyRewardWithoutClaimInvalidAmount);
         gauge.notify_reward_amount_internal<CoinTypeA, CoinTypeB>(usd_amount, clock);
 
-        gauge.sync_o_sail_distribution_price_internal(pool, o_sail_price_q64, clock);
+        gauge.sync_o_sail_distribution_price_internal(pool, o_sail_price_q64, false, clock);
     }
 
     /// Adds new rewards to the gauge, claims accumulated fees, and updates reward rates.
@@ -1021,8 +1032,77 @@ module governance::gauge {
         let (fee_a, fee_b) = gauge.claim_fees_internal(pool);
         gauge.notify_reward_amount_internal<CoinTypeA, CoinTypeB>(usd_amount, clock);
 
-        gauge.sync_o_sail_distribution_price_internal(pool, o_sail_price_q64, clock);
+        gauge.sync_o_sail_distribution_price_internal(pool, o_sail_price_q64, false, clock);
         (fee_a, fee_b)
+    }
+
+    /// Nulls the reward rate of the gauge. Updates all of the emissions counters and emits an event.
+    ///
+    /// # Arguments
+    /// * `gauge` - The gauge instance
+    /// * `pool` - The associated pool
+    /// * `o_sail_price_q64` - The oSAIL price in USD in Q64.64 format, in SAIL token decimals
+    /// * `clock` - The system clock
+    /// * `ctx` - Transaction context
+    ///
+    /// # Returns
+    /// a usd amount of oSAIL that is NOT going to be distributed because of this method call.
+    /// This amount is needed to update counters in the Minter contract.
+    ///
+    /// # Aborts
+    /// * If the voter capability is invalid
+    /// * If the reward amount is invalid (zero)
+    public(package) fun null_rewards<CoinTypeA, CoinTypeB>(
+        gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
+        distribution_config: &DistributionConfig,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        o_sail_price_q64: u128,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ): u64 {
+         assert!(
+            object::id(distribution_config) == gauge.distribution_config,
+            ENullRewardDistributionConfInvalid
+        );
+        assert!(distribution_config.is_gauge_alive(object::id(gauge)), ENullRewardGaugeNotAlive);
+        assert!(gauge.check_gauger_pool(pool), ENullRewardInvalidPool);
+        let current_time = clock.timestamp_ms() / 1000;
+        assert!(current_time < gauge.period_finish, ENullRewardEpochFinished);
+
+        // First: sync oSAIL price to update remaining amounts and distributed amounts.
+        // no event is emitted to not confuse indexers with double events.
+        gauge.sync_o_sail_distribution_price_internal(pool, o_sail_price_q64, true, clock);
+
+        let (future_rewards, _) = calc_future_rewards(gauge, current_time);
+
+        gauge.usd_reward_rate = 0;
+
+        gauge.sync_o_sail_distribution_price_internal(pool, o_sail_price_q64, false, clock);
+
+        let event = EventNullRewards {
+            gauge_id: object::id(gauge),
+            pool_id: object::id(pool),
+            rewards_nulled_usd: future_rewards,
+        };
+        sui::event::emit<EventNullRewards>(event);
+
+        future_rewards
+    }
+
+    // Calculates rewards remaining in the current epoch and time untile the end of the epoch (i.e. until this rewards are disributed)
+    fun calc_future_rewards<CoinTypeA, CoinTypeB>(
+        gauge: &Gauge<CoinTypeA, CoinTypeB>,
+        current_time: u64,
+    ): (u64, u64) {
+        let next_epoch_time = common::epoch_next(current_time);
+        let time_until_next_epoch = next_epoch_time - current_time;
+        let future_rewards_usd = integer_mate::full_math_u128::mul_div_floor(
+            (time_until_next_epoch as u128),
+            gauge.usd_reward_rate,
+            1 << 64
+        );
+
+        (future_rewards_usd as u64, time_until_next_epoch)
     }
 
     /// Internal function to calculate and update reward rates based on new usd rewards.
@@ -1044,15 +1124,9 @@ module governance::gauge {
         clock: &sui::clock::Clock
     ) {
         let current_time = clock.timestamp_ms() / 1000;
-        let next_epoch_time = common::epoch_next(current_time);
-        let time_until_next_epoch = next_epoch_time - current_time;
-        let future_rewards = integer_mate::full_math_u128::mul_div_floor(
-            (time_until_next_epoch as u128),
-            gauge.usd_reward_rate,
-            1 << 64
-        );
+        let (future_rewards, time_until_next_epoch) = calc_future_rewards(gauge, current_time);
         gauge.usd_reward_rate = integer_mate::full_math_u128::mul_div_floor(
-            (usd_amount as u128) + future_rewards,
+            (usd_amount as u128) + (future_rewards as u128),
             1 << 64,
             time_until_next_epoch as u128
         );
@@ -1075,11 +1149,13 @@ module governance::gauge {
     /// * `gauge` - The gauge instance
     /// * `pool` - The associated pool
     /// * `price_q64` - USD amount/oSAIL amount * 2^64 assuming both are in same decimals
+    /// * `no_emit` - If true, no event will be emitted
     /// * `clock` - The system clock
     fun sync_o_sail_distribution_price_internal<CoinTypeA, CoinTypeB>(
         gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         price_q64: u128,
+        no_emit: bool,
         clock: &sui::clock::Clock,
     ) {
         let current_time = clock.timestamp_ms() / 1000;
@@ -1118,14 +1194,16 @@ module governance::gauge {
             clock
         );
 
-        let sync_o_sail_distribution_price_event = EventSyncOSailDistributionPrice {
-            gauge_id: object::id<Gauge<CoinTypeA, CoinTypeB>>(gauge),
-            pool_id: object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool),
-            price_q64,
-            remaining_o_sail_q64: remaining_o_sail_amount_q64,
-            remaining_usd_q64: remaining_usd_amount_q64,
-        };
-        sui::event::emit<EventSyncOSailDistributionPrice>(sync_o_sail_distribution_price_event);
+        if (!no_emit) {
+            let sync_o_sail_distribution_price_event = EventSyncOSailDistributionPrice {
+                gauge_id: object::id<Gauge<CoinTypeA, CoinTypeB>>(gauge),
+                pool_id: object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool),
+                price_q64,
+                remaining_o_sail_q64: remaining_o_sail_amount_q64,
+                remaining_usd_q64: remaining_usd_amount_q64,
+            };
+            sui::event::emit<EventSyncOSailDistributionPrice>(sync_o_sail_distribution_price_event);
+        }
     }
 
     /// Updates the oSAIL distribution rate based on the current price of the oSAIL token.
@@ -1158,7 +1236,7 @@ module governance::gauge {
         assert!(distribution_config.is_gauge_alive(object::id(gauge)), ESyncOsailDistributionPriceGaugeNotAlive);
         assert!(gauge.check_gauger_pool(pool), ESyncOsailDistributionPriceInvalidPool);
 
-        gauge.sync_o_sail_distribution_price_internal(pool, o_sail_price_q64, clock);
+        gauge.sync_o_sail_distribution_price_internal(pool, o_sail_price_q64, false, clock);
     }
 
     public fun o_sail_emission_by_epoch<CoinTypeA, CoinTypeB>(
