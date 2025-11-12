@@ -12,7 +12,7 @@ module voting_escrow::reward {
 
     const EUpdateSupplyStartInvalid: u64 = 705782693965862900;
     const EUpdateSupplyAlreadyFinal: u64 = 904903521124960500;
-    const EUpdateSupplyOnlyFinishedEpochAllowed: u64 = 313936473495920450;
+    const EUpdateSupplyFutureEpochNotAllowed: u64 = 313936473495920450;
 
     const EResetFinalNotFinal: u64 = 86720681210724470;
     const EResetFinalUpdateDisabled: u64 = 87295163281596280;
@@ -284,6 +284,50 @@ module voting_escrow::reward {
         sui::event::emit<EventDeposit>(deposit_event);
     }
 
+    /// The same as update_balances but does not update supply. Used to recover the state
+    /// when supply was broken. The supply needs to be updated manually after that.
+    public fun update_balances_ignore_supply(
+        reward: &mut Reward,
+        reward_cap: &voting_escrow::reward_cap::RewardCap,
+        balances: vector<u64>,
+        lock_ids: vector<ID>,
+        for_epoch_start: u64,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        reward_cap.validate(object::id(reward));
+        assert!(reward.balance_update_enabled, EUpdateBalancesDisabled);
+        assert!(for_epoch_start % voting_escrow::common::epoch() == 0, EUpdateBalancesEpochStartInvalid);
+        assert!(lock_ids.length() == balances.length(), EUpdateBalancesInvalidLocksLength);
+        assert!(
+            !reward.epoch_updates_finalized.contains(for_epoch_start) || 
+            !(*reward.epoch_updates_finalized.borrow(for_epoch_start)), 
+            EUpdateBalancesAlreadyFinal
+        );
+        let current_time = voting_escrow::common::current_timestamp(clock);
+        let current_epoch_start = voting_escrow::common::epoch_start(current_time);
+        // balance update is only allowed for finished epochs
+        assert!(for_epoch_start < current_epoch_start, EUpdateBalancesOnlyFinishedEpochAllowed);
+        let mut i = 0;
+        while (i < balances.length()) {
+            let lock_id = lock_ids[i];
+            let balance = balances[i];
+
+            reward.write_checkpoint_internal(lock_id, balance, for_epoch_start, ctx);
+            i = i + 1;
+        };
+
+        let internal_reward_id = object::id(reward);
+        let event = EventUpdateBalances {
+            wrapper_reward_id: reward.wrapper_reward_id,
+            internal_reward_id,
+            epoch_start: for_epoch_start,
+            balances,
+            lock_ids,
+        };
+        sui::event::emit<EventUpdateBalances>(event);
+    }
+
     /// Function that can rebalance balances of multiple locks at once. Used in cases when 
     /// weights are calculated on the backend and then applied to the reward contract.
     /// 
@@ -474,8 +518,8 @@ module voting_escrow::reward {
         );
         let current_time = voting_escrow::common::current_timestamp(clock);
         let current_epoch_start = voting_escrow::common::epoch_start(current_time);
-        // balance update is only allowed for finished epochs
-        assert!(for_epoch_start < current_epoch_start, EUpdateSupplyOnlyFinishedEpochAllowed);
+        // supply update is prohibited for future epochs
+        assert!(for_epoch_start <= current_epoch_start, EUpdateSupplyFutureEpochNotAllowed);
 
         reward.write_supply_checkpoint_internal(for_epoch_start, total_supply);
         
