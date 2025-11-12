@@ -91,7 +91,7 @@ module governance::minter {
     const EBurnOSailMinterPaused: u64 = 947382564018592637;
 
     const EExerciseUsdLimitReached: u64 = 490517942447480600;
-    const EExerciseUsdLimitHigherThanOSail: u64 = 953914262470819500;
+    const EExerciseUsdLimitHigherThanOSail: u64 = 601485821599794400;
 
     const EDistributeProtocolTokenNotFound: u64 = 341757784748534300;
     const EDistributeProtocolMinterPaused: u64 = 410768471077089800;
