@@ -2892,6 +2892,34 @@ module governance::minter {
         )
     }
 
+    public fun update_voted_weights_ignore_supply<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        voter: &mut governance::voter::Voter,
+        distribution_config: &DistributionConfig,
+        distribute_governor_cap: &DistributeGovernorCap,
+        gauge_id: ID,
+        weights: vector<u64>,
+        lock_ids: vector<ID>,
+        for_epoch_start: u64,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        distribution_config.checked_package_version();
+        minter.check_distribute_governor(distribute_governor_cap);
+
+        let distribute_cap = minter.distribute_cap.borrow();
+
+        voter.update_voted_weights_ignore_supply(
+            distribute_cap,
+            gauge_id,
+            weights,
+            lock_ids,
+            for_epoch_start,
+            clock,
+            ctx
+        )
+    }
+
     // A method to finalize voted weights for a specific gauge.
     // Users will be able to claim rewards only after the epoch is finalized.
     public fun finalize_voted_weights<SailCoinType>(
@@ -2998,6 +3026,37 @@ module governance::minter {
             lock_ids,
             for_epoch_start,
             false,
+            clock,
+            ctx,
+        )
+    }
+
+    public fun null_exercise_fee_weights_ignore_supply<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        voter: &mut governance::voter::Voter,
+        distribution_config: &DistributionConfig,
+        distribute_governor_cap: &DistributeGovernorCap,
+        lock_ids: vector<ID>,
+        for_epoch_start: u64,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        distribution_config.checked_package_version();
+        minter.check_distribute_governor(distribute_governor_cap);
+
+        let distribute_cap = minter.distribute_cap.borrow();
+        let mut weights = vector::empty();
+        let mut i = 0;
+        while (i < lock_ids.length()) {
+            weights.push_back(0);
+            i = i + 1;
+        };
+
+        voter.update_exercise_fee_weights_ignore_supply(
+            distribute_cap,
+            weights,
+            lock_ids,
+            for_epoch_start,
             clock,
             ctx,
         )
