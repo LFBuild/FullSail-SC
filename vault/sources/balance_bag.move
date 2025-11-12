@@ -10,10 +10,13 @@ module vault::balance_bag {
     
     public(package) fun join<CoinType>(balance_bag: &mut BalanceBag, balance: sui::balance::Balance<CoinType>) { 
         let type_name = std::type_name::with_defining_ids<CoinType>();
-        if (sui::vec_map::contains<std::type_name::TypeName, u64>(&balance_bag.balances, &type_name)) {
-            *sui::vec_map::get_mut<std::type_name::TypeName, u64>(&mut balance_bag.balances, &type_name) = vault::vault_utils::add_balance_to_bag<CoinType>(&mut balance_bag.bag, balance);
+        if (balance_bag.balances.contains(&type_name)) {
+            *sui::vec_map::get_mut<std::type_name::TypeName, u64>(
+                &mut balance_bag.balances, 
+                &type_name
+            ) = vault::vault_utils::add_balance_to_bag<CoinType>(&mut balance_bag.bag, balance);
         } else {
-            sui::vec_map::insert<std::type_name::TypeName, u64>(&mut balance_bag.balances, type_name, vault::vault_utils::add_balance_to_bag<CoinType>(&mut balance_bag.bag, balance));
+            balance_bag.balances.insert(type_name, vault::vault_utils::add_balance_to_bag<CoinType>(&mut balance_bag.bag, balance));
         };
     }
     
@@ -27,7 +30,7 @@ module vault::balance_bag {
     public(package) fun split<CoinType>(balance_bag: &mut BalanceBag, amount: u64) : sui::balance::Balance<CoinType> {
         let (balance, new_balance) = vault::vault_utils::remove_balance_from_bag<CoinType>(&mut balance_bag.bag, amount, false);
         let type_name = std::type_name::with_defining_ids<CoinType>(); 
-        if (sui::vec_map::contains<std::type_name::TypeName, u64>(&balance_bag.balances, &type_name)) {
+        if (balance_bag.balances.contains(&type_name)) {
             *sui::vec_map::get_mut<std::type_name::TypeName, u64>(&mut balance_bag.balances, &type_name) = new_balance;
         };
         balance

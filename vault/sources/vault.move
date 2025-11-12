@@ -2,7 +2,7 @@ module vault::vault {
     public struct LiquidityRange has drop, store {
         lower_offset: u32,
         upper_offset: u32,
-        rebalance_threshold: u32, // минимальное отклонение тиков для ребаланса
+        rebalance_threshold: u32, // minimum tick deviation required for rebalancing
     }
     
     public struct ClmmVault has store {
@@ -24,6 +24,35 @@ module vault::vault {
         amount_b: u64,
     }
 
+    /// Initializes a new `ClmmVault` and stakes an initial position in the CLMM pool.
+    ///
+    /// Opens a position using the provided tick offsets, deposits the starting
+    /// balances, stakes the position in the gauge, and returns a vault object
+    /// encapsulating the staking state.
+    ///
+    /// # Arguments
+    /// * `clmm_global_config` – global configuration of the CLMM module
+    /// * `clmm_vault` – global reward vault for CLMM incentives
+    /// * `distribution_config` – reward distribution configuration used when staking
+    /// * `gauge` – gauge receiving the staked position
+    /// * `pool` – CLMM pool where the position is opened
+    /// * `lower_offset` – lower tick offset from the current price
+    /// * `upper_offset` – upper tick offset from the current price
+    /// * `rebalance_threshold` – threshold that triggers future rebalancing
+    /// * `start_balance_a` – initial balance for coin `CoinTypeA`
+    /// * `start_balance_b` – initial balance for coin `CoinTypeB`
+    /// * `clock` – clock object for time-based validations
+    /// * `ctx` – transaction context
+    ///
+    /// # Type Parameters
+    /// * `CoinTypeA` – first coin type in the pool
+    /// * `CoinTypeB` – second coin type in the pool
+    ///
+    /// # Returns
+    /// * newly constructed `ClmmVault` containing the staked position
+    ///
+    /// # Aborts
+    /// * if opening the position or increasing liquidity aborts internally
     public fun new<CoinTypeA, CoinTypeB>(
         clmm_global_config: &clmm_pool::config::GlobalConfig,
         clmm_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
@@ -43,9 +72,51 @@ module vault::vault {
             upper_offset        : upper_offset, 
             rebalance_threshold : rebalance_threshold,
         };
-        let (tick_lower, tick_upper) = next_position_range(
+        
+        let (staked_position, start_balance_a, start_balance_b) = create_staked_position<CoinTypeA, CoinTypeB>(
+            distribution_config,
+            gauge,
+            clmm_global_config, 
+            clmm_vault,
+            pool,
             liquidity_range.lower_offset, 
-            liquidity_range.upper_offset, 
+            liquidity_range.upper_offset,
+            start_balance_a,
+            start_balance_b,
+            clock,
+            ctx
+        );
+
+        transfer::public_transfer<sui::coin::Coin<CoinTypeA>>(sui::coin::from_balance<CoinTypeA>(start_balance_a, ctx), ctx.sender());
+        transfer::public_transfer<sui::coin::Coin<CoinTypeB>>(sui::coin::from_balance<CoinTypeB>(start_balance_b, ctx), ctx.sender());
+        
+        ClmmVault{
+            pool_id          : sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool),
+            coin_a           : std::type_name::with_defining_ids<CoinTypeA>(), 
+            coin_b           : std::type_name::with_defining_ids<CoinTypeB>(), 
+            liquidity_range  : liquidity_range, 
+            wrapped_position : std::option::some<governance::gauge::StakedPosition>(
+                staked_position
+            ),
+        }
+    }
+
+    fun create_staked_position<CoinTypeA, CoinTypeB>(
+        distribution_config: &governance::distribution_config::DistributionConfig,
+        gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        clmm_global_config: &clmm_pool::config::GlobalConfig,
+        clmm_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        lower_offset: u32,
+        upper_offset: u32,
+        mut start_balance_a: sui::balance::Balance<CoinTypeA>,
+        mut start_balance_b: sui::balance::Balance<CoinTypeB>,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) : (governance::gauge::StakedPosition, sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>) {
+        let (tick_lower, tick_upper) = next_position_range(
+            lower_offset, 
+            upper_offset, 
             pool.tick_spacing(), 
             pool.current_tick_index()
         );
@@ -65,8 +136,6 @@ module vault::vault {
             &mut start_balance_b, 
             clock
         );
-        transfer::public_transfer<sui::coin::Coin<CoinTypeA>>(sui::coin::from_balance<CoinTypeA>(start_balance_a, ctx), ctx.sender());
-        transfer::public_transfer<sui::coin::Coin<CoinTypeB>>(sui::coin::from_balance<CoinTypeB>(start_balance_b, ctx), ctx.sender());
 
         let staked_position = governance::gauge::deposit_position<CoinTypeA, CoinTypeB>(
             clmm_global_config,
@@ -77,18 +146,23 @@ module vault::vault {
             clock,
             ctx
         );
-        
-        ClmmVault{
-            pool_id          : sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool),
-            coin_a           : std::type_name::with_defining_ids<CoinTypeA>(), 
-            coin_b           : std::type_name::with_defining_ids<CoinTypeB>(), 
-            liquidity_range  : liquidity_range, 
-            wrapped_position : std::option::some<governance::gauge::StakedPosition>(
-                staked_position
-            ),
-        }
+
+        (staked_position, start_balance_a, start_balance_b)
     }
 
+    /// Calculates the next tick range for a CLMM position using offsets.
+    ///
+    /// Adjusts the current tick by the provided offsets and rounds the resulting bounds
+    /// to the pool’s tick spacing.
+    ///
+    /// # Arguments
+    /// * `lower_offset` – number of ticks to subtract from the current tick
+    /// * `upper_offset` – number of ticks to add to the current tick
+    /// * `tick_spacing` – pool tick spacing used for rounding
+    /// * `current_tick` – current pool tick
+    ///
+    /// # Returns
+    /// * tuple `(tick_lower, tick_upper)` representing the rounded range
     public fun next_position_range(
         lower_offset: u32, 
         upper_offset: u32, 
@@ -115,6 +189,36 @@ module vault::vault {
         }
     }
 
+    /// Rebalances the vault position to a new tick range and returns leftover balances.
+    ///
+    /// Withdraws the staked position from the gauge, removes existing liquidity,
+    /// closes the old position, opens a new one with provided ticks, reinvests the
+    /// available balances, re-stakes the position, and returns remaining balances
+    /// alongside migration metadata.
+    ///
+    /// # Arguments
+    /// * `vault` – mutable reference to the `ClmmVault` being rebalanced
+    /// * `distribution_config` – reward distribution configuration used during staking
+    /// * `gauge` – gauge controlling the staked position
+    /// * `clmm_global_config` – global configuration for the CLMM module
+    /// * `clmm_vault` – global reward vault for CLMM incentives
+    /// * `pool` – CLMM pool in which the position exists
+    /// * `balance_a` – buffer balance for coin `CoinTypeA`
+    /// * `balance_b` – buffer balance for coin `CoinTypeB`
+    /// * `tick_lower` – lower tick for the new position
+    /// * `tick_upper` – upper tick for the new position
+    /// * `clock` – clock object for time-based validations
+    /// * `ctx` – transaction context
+    ///
+    /// # Type Parameters
+    /// * `CoinTypeA` – first coin type in the pool
+    /// * `CoinTypeB` – second coin type in the pool
+    ///
+    /// # Returns
+    /// * tuple `(balance_a, balance_b, migrate_info)` with leftover balances and migration data
+    ///
+    /// # Aborts
+    /// * if removing or adding liquidity, or staking operations abort internally
     public fun rebalance<CoinTypeA, CoinTypeB>(
         vault: &mut ClmmVault, 
         distribution_config: &governance::distribution_config::DistributionConfig,
@@ -129,6 +233,7 @@ module vault::vault {
         clock: &sui::clock::Clock, 
         ctx: &mut TxContext
     ) : (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>, MigrateLiquidity) {
+        assert!(vault.wrapped_position.is_some(), vault::error::vault_stopped());
         let staked_position = std::option::extract<governance::gauge::StakedPosition>(&mut vault.wrapped_position);
         let mut position = gauge.withdraw_position<CoinTypeA, CoinTypeB>(
             distribution_config,
@@ -142,7 +247,6 @@ module vault::vault {
         let (old_tick_lower, old_tick_upper) = clmm_pool::position::tick_range(&position);
         let liquidity = clmm_pool::position::liquidity(&position);
         if (liquidity > 0) {
-            std::debug::print(&std::string::utf8("remove_liquidity"));
             let (removed_a, removed_b) = clmm_pool::pool::remove_liquidity<CoinTypeA, CoinTypeB>(
                 clmm_global_config,
                 clmm_vault,
@@ -156,6 +260,7 @@ module vault::vault {
         };
         let amount_a = sui::balance::value<CoinTypeA>(&balance_a);
         let amount_b = sui::balance::value<CoinTypeB>(&balance_b);
+
         clmm_pool::pool::close_position<CoinTypeA, CoinTypeB>(
             clmm_global_config, 
             pool,
@@ -205,6 +310,31 @@ module vault::vault {
         (balance_a, balance_b, migrate_liquidity)
     }
 
+    /// Removes liquidity from the staked position and returns withdrawn balances.
+    ///
+    /// Delegates to the gauge to decrease liquidity for the wrapped position while
+    /// maintaining staking state.
+    ///
+    /// # Arguments
+    /// * `vault` – mutable reference to the `ClmmVault` holding the staked position
+    /// * `distribution_config` – reward distribution configuration
+    /// * `gauge` – gauge managing the staked position
+    /// * `clmm_global_config` – CLMM configuration parameters
+    /// * `clmm_vault` – CLMM reward vault
+    /// * `pool` – CLMM pool associated with the position
+    /// * `liquidity` – amount of liquidity to remove
+    /// * `clock` – clock object for time-based validations
+    /// * `ctx` – transaction context
+    ///
+    /// # Type Parameters
+    /// * `CoinTypeA` – first coin type in the pool
+    /// * `CoinTypeB` – second coin type in the pool
+    ///
+    /// # Returns
+    /// * tuple of balances `(balance_a, balance_b)` withdrawn from the pool
+    ///
+    /// # Aborts
+    /// * if the gauge operation aborts internally
     public fun decrease_liquidity<CoinTypeA, CoinTypeB>(
         vault: &mut ClmmVault,
         distribution_config: &governance::distribution_config::DistributionConfig,
@@ -216,6 +346,7 @@ module vault::vault {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) : (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>) {
+        assert!(vault.wrapped_position.is_some(), vault::error::vault_stopped());
         gauge.decrease_liquidity<CoinTypeA, CoinTypeB>(
             distribution_config,
             clmm_global_config,
@@ -228,6 +359,32 @@ module vault::vault {
         )
     }
 
+    /// Adds liquidity to the staked position using buffered balances.
+    ///
+    /// Temporarily withdraws the position from the gauge, increases liquidity with the
+    /// provided balances, re-stakes the position, and returns the amounts consumed.
+    ///
+    /// # Arguments
+    /// * `vault` – mutable reference to the `ClmmVault` with the staked position
+    /// * `clmm_global_config` – CLMM configuration parameters
+    /// * `clmm_vault` – CLMM reward vault used when adding liquidity
+    /// * `distribution_config` – reward distribution configuration
+    /// * `gauge` – gauge managing the staked position
+    /// * `pool` – CLMM pool where liquidity is added
+    /// * `balance_a` – mutable balance of coin `CoinTypeA` used for the operation
+    /// * `balance_b` – mutable balance of coin `CoinTypeB` used for the operation
+    /// * `clock` – clock object for time-based validations
+    /// * `ctx` – transaction context
+    ///
+    /// # Type Parameters
+    /// * `CoinTypeA` – first coin type in the pool
+    /// * `CoinTypeB` – second coin type in the pool
+    ///
+    /// # Returns
+    /// * tuple `(amount_a, amount_b, liquidity_added)` describing the resources consumed
+    ///
+    /// # Aborts
+    /// * if gauge or CLMM operations abort internally
     public fun increase_liquidity<CoinTypeA, CoinTypeB>(
         vault: &mut ClmmVault,
         clmm_global_config: &clmm_pool::config::GlobalConfig,
@@ -240,6 +397,7 @@ module vault::vault {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) : (u64, u64, u128) {
+        assert!(vault.wrapped_position.is_some(), vault::error::vault_stopped());
         let mut position = gauge.withdraw_position<CoinTypeA, CoinTypeB>(
             distribution_config,
             pool,
@@ -331,7 +489,156 @@ module vault::vault {
         );
         (pay_amount_a, pay_amount_b, liqudity_calc_finish)
     }
-    
+
+    /// Halts the CLMM vault by withdrawing the entire staked position’s liquidity,
+    /// closing the position, and returning the extracted balances.
+    ///
+    /// Pulls the position out of the gauge, removes any remaining liquidity from the pool,
+    /// and closes the underlying CLMM position. The vault’s `wrapped_position` is cleared
+    /// in the process.
+    ///
+    /// # Arguments
+    /// * `vault` – mutable reference to the `ClmmVault` that currently holds a position
+    /// * `clmm_global_config` – CLMM global configuration
+    /// * `clmm_vault` – CLMM rewarder global vault used for liquidity incentives
+    /// * `distribution_config` – governance distribution configuration
+    /// * `gauge` – gauge managing the staked position
+    /// * `pool` – CLMM pool from which liquidity is removed
+    /// * `clock` – clock resource for time-based validations
+    /// * `ctx` – transaction context
+    ///
+    /// # Type Parameters
+    /// * `CoinTypeA` – first coin type in the CLMM pair
+    /// * `CoinTypeB` – second coin type in the CLMM pair
+    ///
+    /// # Returns
+    /// * tuple containing the balances withdrawn from the position
+    public fun stop_vault<CoinTypeA, CoinTypeB>(
+        vault: &mut ClmmVault,
+        clmm_global_config: &clmm_pool::config::GlobalConfig,
+        clmm_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
+        distribution_config: &governance::distribution_config::DistributionConfig,
+        gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext,
+    ) : (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>) {
+
+        assert!(vault.wrapped_position.is_some(), vault::error::vault_stopped());
+
+        let mut position = gauge.withdraw_position<CoinTypeA, CoinTypeB>(
+            distribution_config,
+            pool,
+            vault.wrapped_position.extract(),
+            clock,
+            ctx
+        );
+
+        let mut balance_a = sui::balance::zero<CoinTypeA>();
+        let mut balance_b = sui::balance::zero<CoinTypeB>();
+        let liquidity = clmm_pool::position::liquidity(&position);
+        if (liquidity > 0) {
+            let (removed_a, removed_b) = clmm_pool::pool::remove_liquidity<CoinTypeA, CoinTypeB>(
+                clmm_global_config,
+                clmm_vault,
+                pool, 
+                &mut position, 
+                liquidity, 
+                clock
+            );
+            balance_a.join(removed_a); 
+            balance_b.join(removed_b);
+        };
+
+        clmm_pool::pool::close_position<CoinTypeA, CoinTypeB>(
+            clmm_global_config, 
+            pool,
+            position
+        );
+
+        (balance_a, balance_b)
+    }
+
+    /// Starts the CLMM vault by creating and staking a new position, returning any unused
+    /// portions of the supplied starting balances.
+    ///
+    /// Delegates the bootstrap to `create_staked_position`, which deposits liquidity into
+    /// the pool, configures the tick range, and registers the staked position in the gauge.
+    /// After this call the vault stores the resulting `wrapped_position`.
+    ///
+    /// # Arguments
+    /// * `vault` – mutable reference to the `ClmmVault` that must not already contain a position
+    /// * `clmm_global_config` – CLMM global configuration
+    /// * `clmm_vault` – CLMM rewarder global vault used for liquidity incentives
+    /// * `distribution_config` – governance distribution configuration
+    /// * `gauge` – gauge responsible for managing the staked position
+    /// * `pool` – CLMM pool that receives the liquidity
+    /// * `start_balance_a` – starting balance for the first coin type
+    /// * `start_balance_b` – starting balance for the second coin type
+    /// * `clock` – clock resource for time-based validations
+    /// * `ctx` – transaction context
+    ///
+    /// # Type Parameters
+    /// * `CoinTypeA` – first coin type in the CLMM pair
+    /// * `CoinTypeB` – second coin type in the CLMM pair
+    ///
+    /// # Returns
+    /// * tuple containing the remaining balances after the position is created
+    public fun start_vault<CoinTypeA, CoinTypeB>(
+        vault: &mut ClmmVault,
+        clmm_global_config: &clmm_pool::config::GlobalConfig,
+        clmm_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
+        distribution_config: &governance::distribution_config::DistributionConfig,
+        gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        start_balance_a: sui::balance::Balance<CoinTypeA>,
+        start_balance_b: sui::balance::Balance<CoinTypeB>,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext,
+    ) : (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>) {
+        assert!(vault.wrapped_position.is_none(), vault::error::vault_started());
+
+        let (staked_position, start_balance_a, start_balance_b) = create_staked_position<CoinTypeA, CoinTypeB>(
+            distribution_config,
+            gauge,
+            clmm_global_config,
+            clmm_vault,
+            pool,
+            vault.liquidity_range.lower_offset,
+            vault.liquidity_range.upper_offset,
+            start_balance_a,
+            start_balance_b,
+            clock,
+            ctx
+        );
+
+        std::option::fill<governance::gauge::StakedPosition>(&mut vault.wrapped_position, staked_position);
+
+        (start_balance_a, start_balance_b)
+    }
+
+    /// Collects OSAIL rewards earned by the vault’s staked position.
+    ///
+    /// Delegates reward retrieval to the minter via the gauge and returns the result as
+    /// a balance.
+    ///
+    /// # Arguments
+    /// * `vault` – reference to the `ClmmVault` holding the staked position
+    /// * `minter` – minter responsible for distributing Sail/OSAIL rewards
+    /// * `distribution_config` – reward distribution configuration
+    /// * `gauge` – gauge managing the staked position
+    /// * `pool` – CLMM pool associated with the position
+    /// * `clock` – clock object for time-based validations
+    /// * `ctx` – transaction context
+    ///
+    /// # Type Parameters
+    /// * `CoinTypeA` – first coin type in the pool
+    /// * `CoinTypeB` – second coin type in the pool
+    /// * `SailCoinType` – Sail token type handled by the minter
+    /// * `OsailCoinType` – epoch-specific OSAIL token type
+    ///
+    /// # Returns
+    /// * balance of OSAIL rewards collected for the position
     public fun collect_position_reward<CoinTypeA, CoinTypeB, SailCoinType, OsailCoinType>(
         vault: &ClmmVault,
         minter: &mut governance::minter::Minter<SailCoinType>,
@@ -341,17 +648,42 @@ module vault::vault {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) : sui::balance::Balance<OsailCoinType> {
-       sui::coin::into_balance<OsailCoinType>(governance::minter::get_position_reward<CoinTypeA, CoinTypeB, SailCoinType, OsailCoinType>(
-            minter,
-            distribution_config,
-            gauge,
-            pool,
-            std::option::borrow<governance::gauge::StakedPosition>(&vault.wrapped_position),
-            clock,
-            ctx
-        ))
+        assert!(vault.wrapped_position.is_some(), vault::error::vault_stopped());
+
+        sui::coin::into_balance<OsailCoinType>(
+            governance::minter::get_position_reward<CoinTypeA, CoinTypeB, SailCoinType, OsailCoinType>(
+                minter,
+                distribution_config,
+                gauge,
+                pool,
+                std::option::borrow<governance::gauge::StakedPosition>(&vault.wrapped_position),
+                clock,
+                ctx
+            )
+        )
     }
     
+    /// Collects pool reward balances earned by the staked position.
+    ///
+    /// Pulls rewards via the gauge from the CLMM rewarder vault and returns them as a
+    /// balance.
+    ///
+    /// # Arguments
+    /// * `vault` – reference to the `ClmmVault` holding the staked position
+    /// * `distribution_config` – reward distribution configuration
+    /// * `gauge` – gauge managing the staked position
+    /// * `clmm_global_config` – CLMM configuration parameters
+    /// * `rewarder_vault` – CLMM rewarder global vault
+    /// * `pool` – CLMM pool associated with the position
+    /// * `clock` – clock object for time-based validations
+    ///
+    /// # Type Parameters
+    /// * `CoinTypeA` – first coin type in the pool
+    /// * `CoinTypeB` – second coin type in the pool
+    /// * `RewardCoinType` – reward coin type being collected
+    ///
+    /// # Returns
+    /// * balance of rewards collected for the position
     public fun collect_pool_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
         vault: &ClmmVault, 
         distribution_config: &governance::distribution_config::DistributionConfig,
@@ -361,6 +693,7 @@ module vault::vault {
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         clock: &sui::clock::Clock
     ) : sui::balance::Balance<RewardCoinType> {
+        assert!(vault.wrapped_position.is_some(), vault::error::vault_stopped());
 
         governance::gauge::get_pool_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
             clmm_global_config,
@@ -373,37 +706,9 @@ module vault::vault {
         )
     }
     
-    // public fun assert_fee_reward_claimed<CoinTypeA, CoinTypeB>(
-    //     vault: &ClmmVault, 
-    //     clmm_global_config: &clmm_pool::config::GlobalConfig,
-    //     clmm_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
-    //     pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>, 
-    //     clock: &sui::clock::Clock
-    //     ) {
-    //     let staked_position = std::option::borrow<governance::gauge::StakedPosition>(&vault.wrapped_position);
-    //     let staked_position_id = sui::object::id<governance::gauge::StakedPosition>(staked_position);
-    //     let (fee_a, fee_b) = clmm_pool::pool::calculate_and_update_fee<CoinTypeA, CoinTypeB>(
-    //         clmm_global_config, 
-    //         pool, 
-    //         staked_position_id
-    //     );
-    //     assert!(fee_a == 0 && fee_b == 0, vault::error::fee_claim_err());
-    //     let rewards = clmm_pool::pool::calculate_and_update_rewards<CoinTypeA, CoinTypeB>(
-    //         clmm_global_config,
-    //         clmm_vault,
-    //         pool,
-    //         staked_position.position_id(),
-    //         clock
-    //     );
-    //     let i = 0; 
-    //     while (i < std::vector::length<u64>(&rewards)) {
-    //         let reward = std::vector::borrow<u64>(&rewards, i);
-    //         assert!(reward == 0, vault::error::mining_claim_err());    
-    //         i = i + 1;
-    //     };
-    // }
-    
     public fun borrow_staked_position(vault: &ClmmVault) : &governance::gauge::StakedPosition {
+        assert!(vault.wrapped_position.is_some(), vault::error::vault_stopped());
+
         vault.wrapped_position.borrow()
     }
     
@@ -418,7 +723,8 @@ module vault::vault {
     public fun get_position_liquidity<CoinTypeA, CoinTypeB>(
         vault: &ClmmVault, 
         gauge: &governance::gauge::Gauge<CoinTypeA, CoinTypeB>
-        ) : u128 {
+    ) : u128 {
+        assert!(vault.wrapped_position.is_some(), vault::error::vault_stopped());
         clmm_pool::position::liquidity(
             gauge.borrow_position<CoinTypeA, CoinTypeB>(
                 std::option::borrow<governance::gauge::StakedPosition>(&vault.wrapped_position)
@@ -429,7 +735,8 @@ module vault::vault {
     public fun get_position_tick_range<CoinTypeA, CoinTypeB>(
         vault: &ClmmVault, 
         gauge: &governance::gauge::Gauge<CoinTypeA, CoinTypeB>
-        ) : (integer_mate::i32::I32, integer_mate::i32::I32) {
+    ) : (integer_mate::i32::I32, integer_mate::i32::I32) {
+        assert!(vault.wrapped_position.is_some(), vault::error::vault_stopped());
         clmm_pool::position::tick_range(
             gauge.borrow_position<CoinTypeA, CoinTypeB>(
                 std::option::borrow<governance::gauge::StakedPosition>(&vault.wrapped_position)
@@ -442,6 +749,8 @@ module vault::vault {
         gauge: &governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>
     ) : (u64, u64) {
+        assert!(vault.wrapped_position.is_some(), vault::error::vault_stopped());
+
         let position = gauge.borrow_position<CoinTypeA, CoinTypeB>(
             std::option::borrow<governance::gauge::StakedPosition>(&vault.wrapped_position)
         );
@@ -472,6 +781,10 @@ module vault::vault {
     
     public fun update_rebalance_threshold(vault: &mut ClmmVault, rebalance_threshold: u32) {
         vault.liquidity_range.rebalance_threshold = rebalance_threshold;
+    }
+
+    public fun is_stopped(vault: &ClmmVault) : bool {
+        vault.wrapped_position.is_none()
     }
 }
 

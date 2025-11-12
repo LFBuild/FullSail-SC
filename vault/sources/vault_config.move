@@ -9,7 +9,7 @@ module vault::vault_config {
     const ROLE_POOL_MANAGER: u8 = 3;
     const ROLE_ORACLE_MANAGER: u8 = 4;
 
-    const DEFAULT_SWAP_SLIPPAGE: u64 = 50;
+    const DEFAULT_SWAP_SLIPPAGE: u64 = 50; // 0.5%
 
     /// Witness type for locker module initialization.
     /// Used to ensure proper module initialization and access control.
@@ -189,6 +189,10 @@ module vault::vault_config {
     public fun get_protocol_fee_denominator() : u64 {
         10000
     }
+
+    public fun get_swap_slippage_denominator() : u64 {
+        10000
+    }
     
     public fun get_protocol_fee_rate(global_config: &GlobalConfig) : u64 {
         global_config.protocol_fee_rate
@@ -214,15 +218,15 @@ module vault::vault_config {
     ) {
         checked_package_version(global_config);
         check_pool_manager_role(global_config, sui::tx_context::sender(ctx));
+        assert!(new_slippage <= get_swap_slippage_denominator(), vault::error::invalid_swap_slippage());
         let type_name = std::type_name::with_defining_ids<CoinType>();
         let mut old_slippage = 0;
-        if (sui::vec_map::contains<std::type_name::TypeName, u64>(&global_config.swap_slippages, &type_name)) {
-            let slippage = sui::vec_map::get_mut<std::type_name::TypeName, u64>(&mut global_config.swap_slippages, &type_name);
-            old_slippage = *slippage; 
-            *slippage = new_slippage; 
-        } else {
-            sui::vec_map::insert<std::type_name::TypeName, u64>(&mut global_config.swap_slippages, type_name, new_slippage);
+        if (global_config.swap_slippages.contains(&type_name)) {
+            (_, old_slippage) = global_config.swap_slippages.remove(&type_name);
         };
+
+        global_config.swap_slippages.insert(type_name, new_slippage);
+        
         let event = SetSwapSlippageEvent{
             type_name    : type_name, 
             old_slippage : old_slippage, 
