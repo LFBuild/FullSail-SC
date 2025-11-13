@@ -288,7 +288,58 @@ module vault::pyth_oracle {
         )
     }
 
-    fun update_price_from_type<CoinType>(pyth_oracle: &mut PythOracle, price_info_object: &PriceInfoObject, clock: &sui::clock::Clock) : Price {
+    /// Synchronises the cached price inside `PythOracle` when an off-chain updater
+    /// has already refreshed the corresponding `PriceInfoObject` in the same transaction.
+    ///
+    /// Performs a package version check, verifies that oracle configuration for the
+    /// requested coin exists, and ensures the supplied price info is not older than
+    /// the configured `usd_price_age`. Emits an `UpdatePriceEvent` so downstream
+    /// contracts can safely consume the fresh quote without calling Pyth on-chain.
+    ///
+    /// # Arguments
+    /// * `pyth_oracle` – oracle instance storing cached prices
+    /// * `global_config` – global configuration used for version validation
+    /// * `price_info_object` – externally updated price object for the coin
+    /// * `clock` – Sui clock providing the current timestamp
+    ///
+    /// # Type Parameters
+    /// * `CoinType` – coin whose cached price should be synchronised
+    ///
+    /// # Aborts
+    /// * if oracle info for the given coin is missing
+    /// * if the provided price object is older than `usd_price_age`
+    public fun external_update_price<CoinType>(
+        pyth_oracle: &mut PythOracle, 
+        global_config: &vault::vault_config::GlobalConfig, 
+        price_info_object: &PriceInfoObject, 
+        clock: &sui::clock::Clock
+    ) {
+        vault::vault_config::checked_package_version(global_config);
+        let type_name = std::type_name::with_defining_ids<CoinType>();
+        assert!(pyth_oracle.oracle_infos.contains(type_name), vault::error::oracle_info_not_exists());
+
+        let oracle_info = pyth_oracle.oracle_infos.borrow(type_name);
+        let price_info = price_info_object.get_price_info_from_price_info_object();
+        let price_feed_ref = price_info.get_price_feed();
+        let price_timestamp = price_feed_ref.get_price().get_timestamp();
+        let now = sui::clock::timestamp_ms(clock) / 1000;
+        let delta = if (now >= price_timestamp) { now - price_timestamp } else { 0 };
+        assert!(delta <= oracle_info.usd_price_age, vault::error::price_not_updated());
+
+        let price = update_price_from_type<CoinType>(pyth_oracle, price_info_object, clock);
+        let event = UpdatePriceEvent{
+            coin_type        : type_name, 
+            price            : price.price, 
+            last_update_time : price.last_update_time,
+        };
+        sui::event::emit<UpdatePriceEvent>(event);
+    }
+
+    fun update_price_from_type<CoinType>(
+        pyth_oracle: &mut PythOracle,
+        price_info_object: &PriceInfoObject, 
+        clock: &sui::clock::Clock
+    ) : Price {
         let type_name = std::type_name::with_defining_ids<CoinType>(); 
         assert!(pyth_oracle.oracle_infos.contains(type_name), vault::error::oracle_info_not_exists());  
         let oracle_info = pyth_oracle.oracle_infos.borrow(type_name); 
