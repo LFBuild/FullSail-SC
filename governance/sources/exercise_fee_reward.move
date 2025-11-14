@@ -351,6 +351,26 @@ module governance::exercise_fee_reward {
         );
     }
 
+    public fun update_balances_ignore_supply(
+        reward: &mut ExerciseFeeReward,
+        voter_cap: &governance::voter_cap::VoterCap,
+        balances: vector<u64>,
+        lock_ids: vector<ID>,
+        for_epoch_start: u64,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        reward.validate_voter_cap(voter_cap);
+        reward.reward.update_balances_ignore_supply(
+            &reward.reward_cap,
+            balances,
+            lock_ids,
+            for_epoch_start,
+            clock,
+            ctx
+        );
+    }
+
     public fun reset_final(
         reward: &mut ExerciseFeeReward,
         voter_cap: &governance::voter_cap::VoterCap,

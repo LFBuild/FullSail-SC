@@ -4372,3 +4372,139 @@ fun test_reset_final_invalid_epoch_start_fails() {
     clock::destroy_for_testing(clock);
     scenario.end();
 }
+
+#[test]
+fun test_update_balances_ignore_supply() {
+    let admin = @0xFA;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Step 1: Create Reward with balance updates enabled
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, true);
+
+    let one_week_ms = 7 * 24 * 60 * 60 * 1000;
+    let lock_id1: ID = object::id_from_address(@0xF0E);
+    let deposit1 = 1000;
+
+    // --- Epoch 1 ---
+    // Step 2: Deposit a lock
+    reward_obj.deposit(&reward_cap, deposit1, lock_id1, &clock, scenario.ctx());
+    let epoch1_start = voting_escrow::common::epoch_start(voting_escrow::common::current_timestamp(&clock));
+    let initial_total_supply = reward_obj.total_supply_at(epoch1_start);
+    assert!(initial_total_supply == deposit1, 0);
+
+    // Step 3: Advance to the next epoch
+    clock.increment_for_testing(one_week_ms);
+    let epoch2_start = voting_escrow::common::epoch_start(voting_escrow::common::current_timestamp(&clock));
+
+    // Step 4: Update balances for the first epoch, ignoring supply
+    let updated_balance1 = 9000; // Custom balance for epoch 1
+    let lock_ids = vector[lock_id1];
+    let balances1 = vector[updated_balance1];
+    reward_obj.update_balances_ignore_supply(
+        &reward_cap,
+        balances1,
+        lock_ids,
+        epoch1_start,
+        &clock,
+        scenario.ctx()
+    );
+
+    // Step 5: Verify balance of the lock is updated, but total supply is not
+    assert!(reward_obj.balance_of_at(lock_id1, epoch1_start) == updated_balance1, 1);
+    assert!(reward_obj.total_supply_at(epoch1_start) == initial_total_supply, 2);
+    // also check for the next epoch, it should not be affected as well
+    assert!(reward_obj.total_supply_at(epoch2_start) == initial_total_supply, 3);
+    // and current total supply should not be affected
+    assert!(reward_obj.total_supply(&clock) == initial_total_supply, 4);
+
+    // Cleanup
+    test_utils::destroy(reward_cap);
+    test_utils::destroy(reward_obj);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_update_supply_for_current_epoch() {
+    let admin = @0xFB;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Step 1: Create Reward with balance updates enabled
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, true);
+
+    let lock_id1: ID = object::id_from_address(@0xF0F);
+    let deposit_amount = 5000;
+    let new_supply = 15000;
+
+    // --- Epoch 1 ---
+    // Step 2: Deposit a lock
+    reward_obj.deposit(&reward_cap, deposit_amount, lock_id1, &clock, scenario.ctx());
+    let epoch1_start = voting_escrow::common::epoch_start(voting_escrow::common::current_timestamp(&clock));
+
+    // Step 3: Check initial supply
+    let initial_supply = reward_obj.total_supply_at(epoch1_start);
+    assert!(initial_supply == deposit_amount, 1);
+    assert!(reward_obj.total_supply(&clock) == deposit_amount, 2);
+
+    // Step 4: Update supply for the current epoch (before it has ended)
+    reward_obj.update_supply(
+        &reward_cap,
+        epoch1_start,
+        new_supply,
+        &clock,
+        scenario.ctx()
+    );
+
+    // Step 5: Check supply after update (still in Epoch 1)
+    assert!(reward_obj.total_supply_at(epoch1_start) == new_supply, 3);
+    assert!(reward_obj.total_supply(&clock) == new_supply, 4);
+
+    // Step 6: Advance to Epoch 2 and check again
+    let one_week_ms = 7 * 24 * 60 * 60 * 1000;
+    clock.increment_for_testing(one_week_ms);
+    let epoch2_start = voting_escrow::common::epoch_start(voting_escrow::common::current_timestamp(&clock));
+
+    assert!(reward_obj.total_supply_at(epoch1_start) == new_supply, 5);
+    assert!(reward_obj.total_supply_at(epoch2_start) == new_supply, 6);
+    assert!(reward_obj.total_supply(&clock) == new_supply, 7);
+
+    // Cleanup
+    test_utils::destroy(reward_cap);
+    test_utils::destroy(reward_obj);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+#[expected_failure(abort_code = voting_escrow::reward::EUpdateSupplyFutureEpochNotAllowed)]
+fun test_update_supply_for_future_epoch_fails() {
+    let admin = @0xFC;
+    let mut scenario = test_scenario::begin(admin);
+    let clock = clock::create_for_testing(scenario.ctx());
+
+    // Step 1: Create Reward with balance updates enabled
+    let (mut reward_obj, reward_cap) = create_default_reward(&mut scenario, true);
+
+    let new_supply = 15000;
+    let one_week_ms = 7 * 24 * 60 * 60 * 1000;
+    let current_epoch_start = voting_escrow::common::epoch_start(voting_escrow::common::current_timestamp(&clock));
+    let future_epoch_start = current_epoch_start + (one_week_ms / 1000);
+
+    // Step 2: Try to update supply for a future epoch
+    reward_obj.update_supply(
+        &reward_cap,
+        future_epoch_start,
+        new_supply,
+        &clock,
+        scenario.ctx()
+    );
+
+    // This part of the code should not be reached
+    // Cleanup
+    test_utils::destroy(reward_cap);
+    test_utils::destroy(reward_obj);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
