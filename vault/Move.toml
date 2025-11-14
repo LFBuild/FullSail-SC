@@ -18,7 +18,7 @@ override = true
 [dependencies.Pyth]
 git = "https://github.com/pyth-network/pyth-crosschain.git"
 subdir = "target_chains/sui/contracts"
-rev = "main"
+rev = "sui-contract-mainnet"
 
 [dependencies.clmm_pool]
 git = "https://github.com/LFBuild/FullSail-CLMM-SC.git"
