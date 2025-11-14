@@ -1513,10 +1513,6 @@ module governance::gauge {
         );
         distribution_config.checked_package_version();
         assert!(
-            distribution_config.is_gauge_alive(object::id(gauge)),
-            EDepositPositionGaugeNotAlive
-        );
-        assert!(
             gauge.check_gauger_pool(pool),
             EDepositPositionGaugeDoesNotMatchPool
         );
