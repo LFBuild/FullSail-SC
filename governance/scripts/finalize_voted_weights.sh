@@ -1,7 +1,7 @@
 source ./export.sh
 source ./pools/pool_wbtc_usdc.sh
 
-export EPOCH_START=1758153600
+export EPOCH_START=1761782400
 export DISTRIBUTE_GOVERNOR_CAP=0xf5f335807046541711fbb00021927baad8798944eceb0cd4986e229def484ab6
 
 sui client ptb \
