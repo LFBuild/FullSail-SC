@@ -377,7 +377,7 @@ module vault::vault_tests;
              let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             // let pyth_oracle = scenario.take_shared<pyth_oracle::PythOracle>();
 
-            vault_global_config.add_role(&admin_cap, admin, vault_config::get_role_rebalance());
+            // vault_global_config.add_role(&admin_cap, admin, vault_config::get_role_rebalance());
 
             port.update_position_reward<TestCoinB, TestCoinA, LP_TESTS, SailCoinType, OSAIL1>(
                 &vault_global_config,
@@ -1206,6 +1206,7 @@ module vault::vault_tests;
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
 
+            port.remove_manager(&vault_global_config, admin, scenario.ctx());
             vault_global_config.add_role(&admin_cap, admin, vault_config::get_role_rebalance());
 
             port.update_position_reward<TestCoinB, TestCoinA, LP_TESTS, SailCoinType, OSAIL1>(
@@ -1739,6 +1740,137 @@ module vault::vault_tests;
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
             vault_global_config.add_role(&admin_cap, admin, vault_config::get_role_rebalance());
+
+            port.rebalance<TestCoinB, TestCoinA, LP_TESTS>(
+                &distribution_config,
+                &mut gauge,
+                &vault_global_config,
+                &mut clmm_vault,
+                &clmm_global_config,
+                &mut pool,
+                &clock,
+                scenario.ctx()
+            );
+
+            transfer::public_transfer(pool, admin);
+            transfer::public_transfer(gauge, admin);
+            test_scenario::return_shared(port);
+            test_scenario::return_shared(vault_global_config);
+            test_scenario::return_shared(clmm_global_config);
+            test_scenario::return_shared(clmm_vault);
+            transfer::public_transfer(admin_cap, admin);
+            test_scenario::return_shared(distribution_config);
+        };
+
+        transfer::public_transfer(usd_treasury_cap, admin);
+        transfer::public_transfer(usd_metadata, admin);
+        test_utils::destroy(aggregator);
+        clock::destroy_for_testing(clock);
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = vault::error::NO_OPERATION_MANAGER_PERMISSION)] 
+    fun test_rebalance_not_manager() {
+        let admin = @0x1234;
+        let mut scenario = test_scenario::begin(admin);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        
+        // Initialize
+        {
+            port::test_init(scenario.ctx());
+            vault_config::test_init(scenario.ctx());
+            config::test_init(scenario.ctx());
+            distribution_config::test_init(scenario.ctx());
+            factory::test_init(scenario.ctx());
+            gauge_cap::gauge_cap::init_test(scenario.ctx());
+            stats::init_test(scenario.ctx());
+            price_provider::init_test(scenario.ctx());
+            rewarder::test_init(scenario.ctx());
+        };
+
+        let (usd_treasury_cap, usd_metadata) = usdt_tests::create_usdt_tests(&mut scenario, 6);
+        let mut aggregator = setup_price_monitor_and_aggregator<TestCoinA, SailCoinType, USDT_TESTS, SailCoinType>(
+            &mut scenario, 
+            admin, 
+            &clock
+        );
+
+        scenario.next_tx(admin);
+        {
+            full_setup_with_osail(
+                &mut scenario, 
+                admin, 
+                1000, 
+                182, 
+                18584142135623730951, 
+                10_000_000_000_000,
+                &usd_metadata,
+                &mut aggregator,
+                &mut clock
+            );
+        };
+
+        // create_port
+        scenario.next_tx(admin);
+        {
+            let vault_global_config = scenario.take_shared<vault::vault_config::GlobalConfig>();
+            let mut port_registry = scenario.take_shared<port::PortRegistry>();
+            let clmm_global_config = scenario.take_shared<config::GlobalConfig>();
+            let mut clmm_vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
+            let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
+            let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
+            let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
+
+            let (lp_treasury_cap, lp_metadata) = lp_tests::create_lp_tests(&mut scenario, 6);
+            transfer::public_transfer(lp_metadata, admin);
+
+            let coin_a = sui::coin::mint_for_testing<TestCoinB>(10_000_000, scenario.ctx());
+            let coin_b = sui::coin::mint_for_testing<TestCoinA>(10_000_000, scenario.ctx());
+
+            port::test_create_port_internal<TestCoinB, TestCoinA, LP_TESTS>(
+                &vault_global_config,
+                &mut port_registry,
+                lp_treasury_cap,
+                &clmm_global_config,
+                &mut clmm_vault,
+                &distribution_config,
+                &mut gauge,
+                &mut pool,
+                100,
+                100,
+                5,
+                true,
+                1000000000,
+                100,
+                coin_a.into_balance(),
+                coin_b.into_balance(),
+                &clock,
+                scenario.ctx()
+            );
+
+            transfer::public_transfer(pool, admin);
+            transfer::public_transfer(gauge, admin);
+            test_scenario::return_shared(port_registry);
+            test_scenario::return_shared(vault_global_config);
+            test_scenario::return_shared(clmm_global_config);
+            test_scenario::return_shared(clmm_vault);
+            test_scenario::return_shared(distribution_config);
+        };
+
+        // rebalance
+        scenario.next_tx(admin);
+        {
+            let mut vault_global_config = scenario.take_shared<vault::vault_config::GlobalConfig>();
+            let admin_cap = scenario.take_from_sender<vault::vault_config::AdminCap>();
+            let mut port = scenario.take_shared<port::Port<LP_TESTS>>();
+            let clmm_global_config = scenario.take_shared<config::GlobalConfig>();
+            let mut clmm_vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
+            let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
+            let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
+            let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
+
+            port.remove_manager(&vault_global_config, admin, scenario.ctx());
 
             port.rebalance<TestCoinB, TestCoinA, LP_TESTS>(
                 &distribution_config,

@@ -2,7 +2,7 @@
 
 [move]
 version = 3
-manifest_digest = "0EC460A6655099D8B6598BD2F47C3E2B649105245F26F85384173BF81DAEAAA2"
+manifest_digest = "F1EC1AF132DF282EBEB1C487D5299D01DFF1A6C2D6DA813B30F183D2A6DF142C"
 deps_digest = "8D8E72BAA06E63572166CA7E7F6E159CA2D11E27ADE3961B15E29922A04B0D32"
 dependencies = [
   { id = "Pyth", name = "Pyth" },
@@ -16,7 +16,7 @@ dependencies = [
   { id = "move_stl", name = "move_stl" },
   { id = "price_monitor", name = "price_monitor" },
   { id = "price_provider", name = "price_provider" },
-  { id = "ve", name = "ve" },
+  { id = "voting_escrow", name = "voting_escrow" },
 ]
 
 [[move.package]]
@@ -136,16 +136,6 @@ dependencies = [
 ]
 
 [[move.package]]
-id = "ve"
-source = { local = "../legacy/ve" }
-
-dependencies = [
-  { id = "Sui", name = "Sui" },
-  { id = "integer_mate", name = "integer_mate" },
-  { id = "voting_escrow", name = "voting_escrow" },
-]
-
-[[move.package]]
 id = "voting_escrow"
 source = { local = "../voting_escrow" }
 
@@ -153,3 +143,8 @@ dependencies = [
   { id = "Sui", name = "Sui" },
   { id = "integer_mate", name = "integer_mate" },
 ]
+
+[move.toolchain-version]
+compiler-version = "1.60.0"
+edition = "2024"
+flavor = "sui"

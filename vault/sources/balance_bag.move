@@ -1,7 +1,15 @@
 module vault::balance_bag {
+
+    const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
+    const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
+
     public struct BalanceBag has store {
         balances: sui::vec_map::VecMap<std::type_name::TypeName, u64>,
         bag: sui::bag::Bag,
+    }
+
+    public fun notices(): (vector<u8>, vector<u8>) {
+        (COPYRIGHT_NOTICE, PATENT_NOTICE)
     }
     
     public fun balances(balance_bag: &BalanceBag) : &sui::vec_map::VecMap<std::type_name::TypeName, u64> {

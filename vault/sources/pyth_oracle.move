@@ -1,4 +1,8 @@
 module vault::pyth_oracle {
+
+    const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
+    const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
+
     use pyth::price_info::{Self, PriceInfo, PriceInfoObject};
     use pyth::state::State;
     use pyth::hot_potato_vector::{Self, HotPotatoVector};
@@ -55,6 +59,10 @@ module vault::pyth_oracle {
         coin_type: std::type_name::TypeName,
         price: u64,
         last_update_time: u64,
+    }
+
+    public fun notices(): (vector<u8>, vector<u8>) {
+        (COPYRIGHT_NOTICE, PATENT_NOTICE)
     }
 
     fun init(ctx: &mut sui::tx_context::TxContext) {

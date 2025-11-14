@@ -1,4 +1,8 @@
 module vault::vault {
+
+    const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
+    const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
+
     public struct LiquidityRange has drop, store {
         lower_offset: u32,
         upper_offset: u32,
@@ -22,6 +26,10 @@ module vault::vault {
         new_tick_lower: integer_mate::i32::I32,
         amount_a: u64,
         amount_b: u64,
+    }
+
+    public fun notices(): (vector<u8>, vector<u8>) {
+        (COPYRIGHT_NOTICE, PATENT_NOTICE)
     }
 
     /// Initializes a new `ClmmVault` and stakes an initial position in the CLMM pool.
@@ -62,8 +70,8 @@ module vault::vault {
         lower_offset: u32,
         upper_offset: u32, 
         rebalance_threshold: u32,
-        mut start_balance_a: sui::balance::Balance<CoinTypeA>,
-        mut start_balance_b: sui::balance::Balance<CoinTypeB>,
+        start_balance_a: sui::balance::Balance<CoinTypeA>,
+        start_balance_b: sui::balance::Balance<CoinTypeB>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) : ClmmVault {

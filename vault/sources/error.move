@@ -64,6 +64,7 @@ module vault::error {
     const VAULT_STARTED: u64 = 61;
     const INVALID_SWAP_SLIPPAGE: u64 = 62;
     const NOT_OWNER: u64 = 63;
+    const NO_PORT_CREATOR_PERMISSION: u64 = 64;
 
     public fun amount_in_above_max_limit() : u64 {
         abort AMOUNT_IN_ABOVE_MAX_LIMIT
@@ -319,6 +320,10 @@ module vault::error {
 
     public fun not_owner() : u64 {
         abort NOT_OWNER
+    }
+
+    public fun no_port_creator_permission() : u64 {
+        abort NO_PORT_CREATOR_PERMISSION
     }
 }
 
