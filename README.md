@@ -112,6 +112,7 @@ You could also use some utility methods from [integrate package](integrate/sourc
 - [voting_escrow upgrade 1](https://suivision.xyz/txblock/72sCTctxRBTwW29nHYShjeAGcpTkFd2d2hhCUquWgCfG)
 - [voting_escrow upgrade 2](https://suivision.xyz/txblock/E2ahiCCBxgtSWWkyiV1HbTWReC1xVhXtPKbHLHqCt3Ee)
 - [voting escrow upgrade 3](https://suivision.xyz/txblock/HT147M3zLTWyVEJ4AGVT1MD4U3NymuKNbkdYKrU2Htj5)
+- [voting escrow upgrade 4](https://suivision.xyz/txblock/Bezad6dbuPHtE4r8xvVwyjEZDQiVMGZEvPHLayveEYe9)
 - [governance](https://suivision.xyz/txblock/mZ12h5eUrA7C3AxMVokQDXnEaWSxbnMXwAi5LPSibwa)
 - [ve upgrade](https://suivision.xyz/txblock/CPMXmUU4tK6nAQ4DB9mpyFUnxmTMxboEwwwWNDsy82N8)
 - [distribution upgrade](https://suivision.xyz/txblock/2UYup5jRsdrPQ3eex3aXRdgRTUjpWGfURZUzJ8a5DWix)
@@ -122,7 +123,8 @@ You could also use some utility methods from [integrate package](integrate/sourc
 - [governance upgrade 3](https://suivision.xyz/txblock/B3PNsA5zHiYs16risbNvjaf2QLaTRbYW8YYg8mLpwqWj)
 - [governance upgrade 4](https://suivision.xyz/txblock/BqrRF16tR7afaFnW5wPGFXb6CqisWMZDwXtN2KDfqtN7)
 - [governance upgrade 5](https://suivision.xyz/txblock/FcykJyQs7gJwX3NJTDtaoZy1yVfM7oyjYMvk335Xw3nX?tab=Changes)
-- [integrate](https://suivision.xyz/txblock/HjsDT5VE82gCLELzZ8qcQxdWUvREChy6yTnT4pS6ZAth)
+- [governance upgrade 6](https://suiscan.xyz/mainnet/tx/B8r4BzfPboP1j2h9JHY9j8cVZTrPPGk6ZWXnJHj6TMaM)
+- [integrate](https://suivision.xyz/txblock/66DcHUBhvbTztWTB5iCkD9GpULirchBGMGvTuWN3qF6n)
 
 - [setup distribtuion tx](https://suiscan.xyz/mainnet/tx/21y91npsRHWgg5TPnFkFVSWgCFTLhTcvRfGL4bA4ut1p)
 - [activate minter tx](https://suiscan.xyz/mainnet/tx/A3bugfXoFzC5YfDEfDd1QBqqTu3dB1XJuT2mRLknKZr2)
