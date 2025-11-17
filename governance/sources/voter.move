@@ -975,6 +975,43 @@ module governance::voter {
         );
     }
 
+    /// Nulls the reward rate of the gauge. Updates all of the emissions counters and emits an event.
+    ///
+    /// # Arguments
+    /// * `voter` - The voter instance
+    /// * `gauge` - The gauge instance
+    /// * `pool` - The associated pool
+    /// * `o_sail_price_q64` - The oSAIL price in USD in Q64.64 format, in SAIL token decimals
+    /// * `clock` - The system clock
+    /// * `ctx` - Transaction context
+    ///
+    /// # Returns
+    /// a usd amount of oSAIL that is NOT going to be distributed because of this method call.
+    /// This amount is needed to update counters in the Minter contract.
+    ///
+    /// # Aborts
+    /// * If the voter capability is invalid
+    /// * If the reward amount is invalid (zero)
+    public(package) fun null_gauge_rewards<CoinTypeA, CoinTypeB>(
+        voter: &Voter,
+        distribution_config: &governance::distribution_config::DistributionConfig,
+        gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        o_sail_price_q64: u128,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ): u64 {
+        assert!(distribution_config.is_gauge_alive(object::id(gauge)), EAdjustGaugeGaugeIsKilled);
+
+        gauge.null_rewards(
+            distribution_config,
+            pool,
+            o_sail_price_q64,
+            clock,
+            ctx
+        )
+    }
+
 
     public fun inject_voting_fee_reward<FeeCoinType>(
         voter: &mut Voter,
