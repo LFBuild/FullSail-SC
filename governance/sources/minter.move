@@ -69,8 +69,17 @@ module governance::minter {
 
     const EIncreaseEmissionsNotDistributed: u64 = 243036335954370780;
     const EIncreaseEmissionsDistributionConfigInvalid: u64 = 578889065004501400;
+    const EIncreaseEmissionsInvalidAggregator: u64 = 371600893769831900;
     const EIncreaseEmissionsMinterNotActive: u64 = 204872681976552500;
     const EIncreaseEmissionsMinterPaused: u64 = 566083930742334200;
+
+    const ENullEmissionsInvalidAggregator: u64 = 615720519320343900;
+    const ENullEmissionsMinterNotActive: u64 = 331184800637416260;
+    const ENullEmissionsMinterPaused: u64 = 822945392897831400;
+    const ENullEmissionsDistributionConfigInvalid: u64 = 999449428985169400;
+    const ENullGaugeEmissionsNotDistributed: u64 = 993690112178294400;
+    const ENullGaugeEmissionsDeltaTooBigForGauge: u64 = 898366676764968400;
+    const ENullGaugeEmissionsDeltaTooBigForTotal: u64 = 608854472762321500;
 
     const ECheckAdminRevoked: u64 = 922337280994888908;
     const ECheckDistributeGovernorRevoked: u64 = 369612027923601500;
@@ -316,6 +325,14 @@ module governance::minter {
         pool_id: ID,
         emissions_increase_usd: u64,
         o_sail_type: TypeName,
+    }
+
+    public struct EventNullGaugeEmissions has copy, drop, store {
+        gauge_id: ID,
+        pool_id: ID,
+        rewards_nulled_usd: u64,
+        new_gauge_epoch_emissions_usd: u64,
+        new_total_epoch_emissions_usd: u64,
     }
 
     public struct EventCreateLockFromOSail has copy, drop, store {
@@ -1622,7 +1639,7 @@ module governance::minter {
         assert!(!minter.is_paused(), EIncreaseEmissionsMinterPaused);
         assert!(!minter.is_emission_stopped(), EEmissionStopped);
 
-        assert!(distribution_config.is_valid_sail_price_aggregator(aggregator), EExerciseOSailInvalidAggregator);
+        assert!(distribution_config.is_valid_sail_price_aggregator(aggregator), EIncreaseEmissionsInvalidAggregator);
 
         assert!(type_name::get<SailPoolCoinTypeA>() == type_name::get<SailCoinType>() || 
             type_name::get<SailPoolCoinTypeB>() == type_name::get<SailCoinType>(), EInvalidSailPool);
@@ -1671,7 +1688,7 @@ module governance::minter {
         assert!(!minter.is_paused(), EIncreaseEmissionsMinterPaused);
         assert!(!minter.is_emission_stopped(), EEmissionStopped);
 
-        assert!(distribution_config.is_valid_sail_price_aggregator(aggregator), EExerciseOSailInvalidAggregator);
+        assert!(distribution_config.is_valid_sail_price_aggregator(aggregator), EIncreaseEmissionsInvalidAggregator);
 
         assert!(
             type_name::get<CoinTypeA>() == type_name::get<SailCoinType>() || 
@@ -1742,6 +1759,144 @@ module governance::minter {
         };
 
         sui::event::emit<EventIncreaseGaugeEmissions>(event);
+    }
+
+    public fun null_gauge_emissions<CoinTypeA, CoinTypeB, SailPoolCoinTypeA, SailPoolCoinTypeB, SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        voter: &governance::voter::Voter,
+        distribution_config: &DistributionConfig,
+        admin_cap: &AdminCap,
+        gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        price_monitor: &mut PriceMonitor,
+        sail_stablecoin_pool: &clmm_pool::pool::Pool<SailPoolCoinTypeA, SailPoolCoinTypeB>,
+        aggregator: &Aggregator,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        distribution_config.checked_package_version();
+        minter.check_admin(admin_cap);
+        assert!(minter.is_valid_distribution_config(distribution_config), ENullEmissionsDistributionConfigInvalid);
+        assert!(minter.is_active(clock), ENullEmissionsMinterNotActive);
+        assert!(!minter.is_paused(), ENullEmissionsMinterPaused);
+        assert!(!minter.is_emission_stopped(), EEmissionStopped);
+
+        assert!(distribution_config.is_valid_sail_price_aggregator(aggregator), ENullEmissionsInvalidAggregator);
+
+        assert!(type_name::get<SailPoolCoinTypeA>() == type_name::get<SailCoinType>() || 
+            type_name::get<SailPoolCoinTypeB>() == type_name::get<SailCoinType>(), EInvalidSailPool);
+        
+        let (o_sail_price_q64, is_price_invalid) = minter.get_aggregator_price_without_decimals<SailPoolCoinTypeA, SailPoolCoinTypeB, SailCoinType>(
+            price_monitor,
+            sail_stablecoin_pool,
+            aggregator,
+            clock
+        );
+
+        if (is_price_invalid) {
+            return 
+        };
+
+        minter.null_gauge_emissions_internal(
+            voter,
+            distribution_config,
+            gauge,
+            pool,
+            o_sail_price_q64,
+            clock,
+            ctx
+        );
+    }
+
+    public fun null_gauge_emissions_for_sail_pool<CoinTypeA, CoinTypeB, SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        voter: &governance::voter::Voter,
+        distribution_config: &DistributionConfig,
+        admin_cap: &AdminCap,
+        gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        sail_pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        price_monitor: &mut PriceMonitor,
+        aggregator: &Aggregator,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        distribution_config.checked_package_version();
+        minter.check_admin(admin_cap);
+        assert!(minter.is_valid_distribution_config(distribution_config), ENullEmissionsDistributionConfigInvalid);
+        assert!(minter.is_active(clock), ENullEmissionsMinterNotActive);
+        assert!(!minter.is_paused(), ENullEmissionsMinterPaused);
+        assert!(!minter.is_emission_stopped(), EEmissionStopped);
+
+        assert!(distribution_config.is_valid_sail_price_aggregator(aggregator), ENullEmissionsInvalidAggregator);
+
+        assert!(type_name::get<CoinTypeA>() == type_name::get<SailCoinType>() || 
+            type_name::get<CoinTypeB>() == type_name::get<SailCoinType>(), EInvalidSailPool);
+        
+        let (o_sail_price_q64, is_price_invalid) = minter.get_aggregator_price_without_decimals<CoinTypeA, CoinTypeB, SailCoinType>(
+            price_monitor,
+            sail_pool,
+            aggregator,
+            clock
+        );
+
+        if (is_price_invalid) {
+            return 
+        };
+
+        minter.null_gauge_emissions_internal(
+            voter,
+            distribution_config,
+            gauge,
+            sail_pool,
+            o_sail_price_q64,
+            clock,
+            ctx
+        );
+    }
+
+    fun null_gauge_emissions_internal<CoinTypeA, CoinTypeB, SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        voter: &governance::voter::Voter,
+        distribution_config: &DistributionConfig,
+        gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        o_sail_price_q64: u128,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        let gauge_id = object::id(gauge);
+        assert!(gauge_distributed(minter, gauge_id), ENullGaugeEmissionsNotDistributed);
+
+        let distribute_cap = minter.distribute_cap.borrow();
+        distribute_cap.validate_distribute_voter_id(object::id<governance::voter::Voter>(voter));
+
+        let delta_usd = voter.null_gauge_rewards(
+            distribution_config,
+            gauge,
+            pool,
+            o_sail_price_q64,
+            clock,
+            ctx
+        );
+
+        let old_gauge_epoch_emissions_usd = minter.gauge_epoch_emissions_usd.remove(gauge_id);
+        assert!(old_gauge_epoch_emissions_usd >= delta_usd, ENullGaugeEmissionsDeltaTooBigForGauge);
+        let new_gauge_epoch_emissions_usd = old_gauge_epoch_emissions_usd - delta_usd;
+        minter.gauge_epoch_emissions_usd.add(gauge_id, new_gauge_epoch_emissions_usd);
+
+        let old_total_epoch_emissions_usd = minter.total_epoch_emissions_usd.remove(minter.active_period);
+        assert!(old_total_epoch_emissions_usd >= delta_usd, ENullGaugeEmissionsDeltaTooBigForTotal);
+        let new_total_epoch_emissions_usd = old_total_epoch_emissions_usd - delta_usd;
+        minter.total_epoch_emissions_usd.add(minter.active_period, new_total_epoch_emissions_usd);
+
+        let event = EventNullGaugeEmissions {
+            gauge_id,
+            pool_id: object::id(pool),
+            rewards_nulled_usd: delta_usd,
+            new_gauge_epoch_emissions_usd,
+            new_total_epoch_emissions_usd,
+        };
+        sui::event::emit<EventNullGaugeEmissions>(event);
     }
     
     /// Creates a new gauge for a pool with specified base emissions.
