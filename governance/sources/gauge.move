@@ -39,7 +39,6 @@ module governance::gauge {
     const ENotifyRewardInvalidAmount: u64 = 9223373716188102674;
     const ENotifyRewardEpochFinished: u64 = 256780623436252400;
 
-    const ENullRewardGaugeNotAlive: u64 = 928660762884751200;
     const ENullRewardDistributionConfInvalid: u64 = 803388616803070000;
     const ENullRewardInvalidPool: u64 = 119295864650511570;
     const ENullRewardEpochFinished: u64 = 453228670707964700;
@@ -1064,7 +1063,6 @@ module governance::gauge {
             object::id(distribution_config) == gauge.distribution_config,
             ENullRewardDistributionConfInvalid
         );
-        assert!(distribution_config.is_gauge_alive(object::id(gauge)), ENullRewardGaugeNotAlive);
         assert!(gauge.check_gauger_pool(pool), ENullRewardInvalidPool);
         let current_time = clock.timestamp_ms() / 1000;
         assert!(current_time < gauge.period_finish, ENullRewardEpochFinished);

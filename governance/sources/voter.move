@@ -1001,7 +1001,7 @@ module governance::voter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): u64 {
-        assert!(distribution_config.is_gauge_alive(object::id(gauge)), EAdjustGaugeGaugeIsKilled);
+        // we allow nulling emissions of killed gauges, otherwise there is no way to reset emissions after gauge is killed. 
 
         gauge.null_rewards(
             distribution_config,
