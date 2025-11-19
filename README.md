@@ -68,17 +68,17 @@ You could also use some utility methods from [integrate package](integrate/sourc
 
 ### Packages
 
-- integrate original id: `0x45d26cb841183264ea0f61e7ad022015203ac6aa8fdf1706493a24ba3b38d4fa`
-- integrate latest id: `0x45d26cb841183264ea0f61e7ad022015203ac6aa8fdf1706493a24ba3b38d4fa`
+- integrate original id: `0x3d5f22b95e48ba187397e1f573c6931fac5bbb0023e9a753da36da6c93c8f151`
+- integrate latest id: `0x3d5f22b95e48ba187397e1f573c6931fac5bbb0023e9a753da36da6c93c8f151`
 
 - clmm_pool original id: `0xe74104c66dd9f16b3096db2cc00300e556aa92edc871be4bc052b5dfb80db239`
 - clmm_pool latest id: `0xf7ca99f9fd82da76083a52ab56d88aff15d039b76499b85db8b8bc4d4804584a`
 
 - voting_escrow original id: `0xe616397e503278d406e184d2258bcbe7a263d0192cc0848de2b54b518165f832`
-- voting_escrow latest id: `0xd28ec3bedbf5c072ebb40997e66379b4a537452c7c11b5d00f600b613b320a4f`
+- voting_escrow latest id: `0xfc410c145e4a9ba8f4aa3cb266bf3e467c35ea39dc90788e9a34f85338b734b7`
 
 - governance original id: `0x03fcdcee11f485731170944af3acd26b17d1b96121ce6b756fe8517a95192b3a`
-- governance latest id: `0x9f31e92a57412e0f4fb937c388a9de3d3932858a26cb5eff6d41fe59504cc020`
+- governance latest id: `0x1cde2f0d4a50700960a8062f4ed7b19258f2a8c5eb4dc798fbda5e8b8d8c0658`
 
 ### Objects
 
