@@ -223,6 +223,26 @@ module governance::fee_voting_reward {
         );
     }
 
+    public fun update_balances_ignore_supply(
+        reward: &mut FeeVotingReward,
+        voter_cap: &governance::voter_cap::VoterCap,
+        balances: vector<u64>,
+        lock_ids: vector<ID>,
+        for_epoch_start: u64,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        reward.validate_voter_cap(voter_cap);
+        reward.reward.update_balances_ignore_supply(
+            &reward.reward_cap,
+            balances,
+            lock_ids,
+            for_epoch_start,
+            clock,
+            ctx
+        );
+    }
+
     public fun reset_final(
         reward: &mut FeeVotingReward,
         voter_cap: &governance::voter_cap::VoterCap,
@@ -234,6 +254,24 @@ module governance::fee_voting_reward {
             &reward.reward_cap,
             for_epoch_start,
             ctx
+        );
+    }
+
+    public fun update_supply(
+        reward: &mut FeeVotingReward,
+        voter_cap: &governance::voter_cap::VoterCap,
+        for_epoch_start: u64,
+        total_supply: u64,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        reward.validate_voter_cap(voter_cap);
+        reward.reward.update_supply(
+            &reward.reward_cap,
+            for_epoch_start,
+            total_supply,
+            clock,
+            ctx,
         );
     }
 

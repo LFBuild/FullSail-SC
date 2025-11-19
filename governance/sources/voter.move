@@ -1512,7 +1512,18 @@ module governance::voter {
                 let weight = voter.weights.remove(gauge_id) - pool_votes;
                 voter.weights.add(gauge_id, weight);
                 voter.votes.borrow_mut(lock_id).remove(pool_id);
-                // we are not withdrawing from reward contracts as they are updated by backend voting service
+
+                let fee_voting_reward = voter.gauge_to_fee.borrow_mut(gauge_id);
+                let deposited_balance = fee_voting_reward
+                    .borrow_reward()
+                    .balance_of(lock_id.id, clock);
+                fee_voting_reward.withdraw(
+                    &voter.voter_cap,
+                    deposited_balance, // zero cos weights are later updated by backend voting service
+                    lock_id.id,
+                    clock,
+                    ctx
+                );
                 total_removed_weight = total_removed_weight + pool_votes;
                 let abstained_event = EventAbstained {
                     sender: tx_context::sender(ctx),
@@ -1943,6 +1954,32 @@ module governance::voter {
     }
 
     // proxy method to be called via Minter
+    public fun update_voted_weights_ignore_supply(
+        voter: &mut Voter,
+        distribute_cap: &governance::distribute_cap::DistributeCap,
+        gauge_id: ID,
+        weights: vector<u64>,
+        lock_ids: vector<ID>,
+        for_epoch_start: u64,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        // is called by minter so version control is handled by minter
+        distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
+        let gauge_id_obj = into_gauge_id(gauge_id);
+
+        let fee_voting_reward = voter.gauge_to_fee.borrow_mut(gauge_id_obj);
+        fee_voting_reward.update_balances_ignore_supply(
+            &voter.voter_cap,
+            weights,
+            lock_ids,
+            for_epoch_start,
+            clock,
+            ctx
+        );
+    }
+
+    // proxy method to be called via Minter
     public fun reset_final_voted_weights(
         voter: &mut Voter,
         distribute_cap: &governance::distribute_cap::DistributeCap,
@@ -1957,6 +1994,28 @@ module governance::voter {
         fee_voting_reward.reset_final(
             &voter.voter_cap,
             for_epoch_start,
+            ctx
+        );
+    }
+
+    public fun update_supply_voted_weights(
+        voter: &mut Voter,
+        distribute_cap: &governance::distribute_cap::DistributeCap,
+        gauge_id: ID,
+        for_epoch_start: u64,
+        total_supply: u64,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
+        let gauge_id_obj = into_gauge_id(gauge_id);
+
+        let fee_voting_reward = voter.gauge_to_fee.borrow_mut(gauge_id_obj);
+        fee_voting_reward.update_supply(
+            &voter.voter_cap,
+            for_epoch_start,
+            total_supply,
+            clock,
             ctx
         );
     }
@@ -1986,6 +2045,29 @@ module governance::voter {
         );
     }
 
+    public fun update_exercise_fee_weights_ignore_supply(
+        voter: &mut Voter,
+        distribute_cap: &governance::distribute_cap::DistributeCap,
+        weights: vector<u64>,
+        lock_ids: vector<ID>,
+        for_epoch_start: u64,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        // is called by minter so version control is handled by minter
+        distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
+
+        let exercise_fee_reward = &mut voter.exercise_fee_reward;
+        exercise_fee_reward.update_balances_ignore_supply(
+            &voter.voter_cap,
+            weights,
+            lock_ids,
+            for_epoch_start,
+            clock,
+            ctx
+        );
+    }
+
     // proxy method to be called via Minter
     public fun reset_final_exercise_fee_weights(
         voter: &mut Voter,
@@ -1998,6 +2080,26 @@ module governance::voter {
         exercise_fee_reward.reset_final(
             &voter.voter_cap,
             for_epoch_start,
+            ctx
+        );
+    }
+
+    public fun update_supply_exercise_fee_weights(
+        voter: &mut Voter,
+        distribute_cap: &governance::distribute_cap::DistributeCap,
+        for_epoch_start: u64,
+        total_supply: u64,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        distribute_cap.validate_distribute_voter_id(object::id<Voter>(voter));
+
+        let exercise_fee_reward = &mut voter.exercise_fee_reward;
+        exercise_fee_reward.update_supply(
+            &voter.voter_cap,
+            for_epoch_start,
+            total_supply,
+            clock,
             ctx
         );
     }

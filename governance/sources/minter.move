@@ -91,7 +91,7 @@ module governance::minter {
     const EBurnOSailMinterPaused: u64 = 947382564018592637;
 
     const EExerciseUsdLimitReached: u64 = 490517942447480600;
-    const EExerciseUsdLimitHigherThanOSail: u64 = 953914262470819500;
+    const EExerciseUsdLimitHigherThanOSail: u64 = 601485821599794400;
 
     const EDistributeProtocolTokenNotFound: u64 = 341757784748534300;
     const EDistributeProtocolMinterPaused: u64 = 410768471077089800;
@@ -2892,6 +2892,34 @@ module governance::minter {
         )
     }
 
+    public fun update_voted_weights_ignore_supply<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        voter: &mut governance::voter::Voter,
+        distribution_config: &DistributionConfig,
+        distribute_governor_cap: &DistributeGovernorCap,
+        gauge_id: ID,
+        weights: vector<u64>,
+        lock_ids: vector<ID>,
+        for_epoch_start: u64,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        distribution_config.checked_package_version();
+        minter.check_distribute_governor(distribute_governor_cap);
+
+        let distribute_cap = minter.distribute_cap.borrow();
+
+        voter.update_voted_weights_ignore_supply(
+            distribute_cap,
+            gauge_id,
+            weights,
+            lock_ids,
+            for_epoch_start,
+            clock,
+            ctx
+        )
+    }
+
     // A method to finalize voted weights for a specific gauge.
     // Users will be able to claim rewards only after the epoch is finalized.
     public fun finalize_voted_weights<SailCoinType>(
@@ -2943,6 +2971,32 @@ module governance::minter {
         );
     }
 
+    public fun update_supply_voted_weights<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        voter: &mut governance::voter::Voter,
+        distribution_config: &DistributionConfig,
+        distribute_governor_cap: &DistributeGovernorCap,
+        gauge_id: ID,
+        for_epoch_start: u64,
+        total_supply: u64,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        distribution_config.checked_package_version();
+        minter.check_distribute_governor(distribute_governor_cap);
+
+        let distribute_cap = minter.distribute_cap.borrow();
+
+        voter.update_supply_voted_weights(
+            distribute_cap,
+            gauge_id,
+            for_epoch_start,
+            total_supply,
+            clock,
+            ctx
+        );
+    }
+
     /// A method that is supposed to be called by the backend voting service to null unvoted lock weigths.
     /// In turn unvoted locks are not earning exercise fee rewards.
     public fun null_exercise_fee_weights<SailCoinType>(
@@ -2972,6 +3026,37 @@ module governance::minter {
             lock_ids,
             for_epoch_start,
             false,
+            clock,
+            ctx,
+        )
+    }
+
+    public fun null_exercise_fee_weights_ignore_supply<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        voter: &mut governance::voter::Voter,
+        distribution_config: &DistributionConfig,
+        distribute_governor_cap: &DistributeGovernorCap,
+        lock_ids: vector<ID>,
+        for_epoch_start: u64,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        distribution_config.checked_package_version();
+        minter.check_distribute_governor(distribute_governor_cap);
+
+        let distribute_cap = minter.distribute_cap.borrow();
+        let mut weights = vector::empty();
+        let mut i = 0;
+        while (i < lock_ids.length()) {
+            weights.push_back(0);
+            i = i + 1;
+        };
+
+        voter.update_exercise_fee_weights_ignore_supply(
+            distribute_cap,
+            weights,
+            lock_ids,
+            for_epoch_start,
             clock,
             ctx,
         )
@@ -3020,6 +3105,30 @@ module governance::minter {
         voter.reset_final_exercise_fee_weights(
             distribute_cap,
             for_epoch_start,
+            ctx
+        );
+    }
+
+    public fun update_supply_exercise_fee_weights<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        voter: &mut governance::voter::Voter,
+        distribution_config: &DistributionConfig,
+        distribute_governor_cap: &DistributeGovernorCap,
+        for_epoch_start: u64,
+        total_supply: u64,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        distribution_config.checked_package_version();
+        minter.check_distribute_governor(distribute_governor_cap);
+
+        let distribute_cap = minter.distribute_cap.borrow();
+
+        voter.update_supply_exercise_fee_weights(
+            distribute_cap,
+            for_epoch_start,
+            total_supply,
+            clock,
             ctx
         );
     }
