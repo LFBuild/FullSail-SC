@@ -101,6 +101,8 @@ module governance::minter {
     const EDistributeOperationsMinterPaused: u64 = 14616427533564292;
     const EDistributeOperationsWalletNotSet: u64 = 390491624826283500;
 
+    const EDistributeExerciseFeeMinterPaused: u64 = 790727734853938600;
+
     const ECreateGaugeMinterPaused: u64 = 173400731963214500;
     const ECreateGaugeZeroBaseEmissions: u64 = 676230237726862100;
 
@@ -285,6 +287,12 @@ module governance::minter {
 
     public struct EventDistributeOperations has copy, drop, store {
         operations_wallet: address,
+        amount: u64,
+        token_type: TypeName,
+    }
+
+    public struct EventDistributeExerciseFeeToReward has copy, drop, store {
+        admin_cap_id: ID,
         amount: u64,
         token_type: TypeName,
     }
@@ -1040,7 +1048,7 @@ module governance::minter {
         distribution_config: &DistributionConfig,
         ctx: &mut TxContext,
     ) {
-         distribution_config.checked_package_version();
+        distribution_config.checked_package_version();
         assert!(!minter.is_paused(), EDistributeOperationsMinterPaused);
         minter.check_admin(admin_cap);
         assert!(minter.operations_wallet != @0x0, EDistributeOperationsWalletNotSet);
@@ -1060,6 +1068,47 @@ module governance::minter {
             token_type: coin_type,
         };
         sui::event::emit<EventDistributeOperations>(event);
+    }
+
+
+    /// Distributes the collected exercise fee directly to the voters via exercise fee reward.
+    ///
+    /// # Arguments
+    /// * `minter` - The minter instance to modify
+    /// * `admin_cap` - Administrative capability proving authorization
+    /// * `distribution_config` - The distribution configuration
+    /// * `amount` - The amount of exercise fee to distribute
+    /// * `ctx` - The transaction context
+    public fun distribute_exercise_fee_to_reward<SailCoinType, ExerciseFeeCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        voter: &mut governance::voter::Voter,
+        admin_cap: &AdminCap,
+        distribution_config: &DistributionConfig,
+        amount: u64,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext,
+    ) {
+        distribution_config.checked_package_version();
+        assert!(!minter.is_paused(), EDistributeExerciseFeeMinterPaused);
+        minter.check_admin(admin_cap);
+
+        let coin_type = type_name::get<ExerciseFeeCoinType>();
+        let balance_mut = minter.exercise_fee_operations_balances.borrow_mut<TypeName, Balance<ExerciseFeeCoinType>>(coin_type);
+        let reward_coin = coin::from_balance(balance_mut.split(amount), ctx);
+
+        voter.notify_exercise_fee_reward_amount(
+            minter.distribute_cap.borrow(),
+            reward_coin,
+            clock,
+            ctx,
+        );
+
+        let event = EventDistributeExerciseFeeToReward {
+            admin_cap_id: object::id(admin_cap),
+            amount,
+            token_type: coin_type,
+        };
+        sui::event::emit<EventDistributeExerciseFeeToReward>(event);
     }
 
     /// Returns the current team emission rate.
