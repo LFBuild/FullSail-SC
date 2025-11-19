@@ -1564,7 +1564,7 @@ module price_monitor::price_monitor {
     ): u128 {
         let price_result = aggregator.current_result();
         let current_time = clock.timestamp_ms();
-        let price_result_time = price_result.timestamp_ms();
+        let price_result_time = price_result.max_timestamp_ms();
 
         assert!(price_result_time + monitor.config.max_price_age_ms > current_time, EGetTimeCheckedPriceOutdated);
 
