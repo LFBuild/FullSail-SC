@@ -68,17 +68,17 @@ You could also use some utility methods from [integrate package](integrate/sourc
 
 ### Packages
 
-- integrate original id: `0x45d26cb841183264ea0f61e7ad022015203ac6aa8fdf1706493a24ba3b38d4fa`
-- integrate latest id: `0x45d26cb841183264ea0f61e7ad022015203ac6aa8fdf1706493a24ba3b38d4fa`
+- integrate original id: `0x1d75557190b509bf8e987057f0488608b4d04c2f96f21703fc8a1a87463887db`
+- integrate latest id: `0x1d75557190b509bf8e987057f0488608b4d04c2f96f21703fc8a1a87463887db`
 
 - clmm_pool original id: `0xe74104c66dd9f16b3096db2cc00300e556aa92edc871be4bc052b5dfb80db239`
 - clmm_pool latest id: `0xf7ca99f9fd82da76083a52ab56d88aff15d039b76499b85db8b8bc4d4804584a`
 
 - voting_escrow original id: `0xe616397e503278d406e184d2258bcbe7a263d0192cc0848de2b54b518165f832`
-- voting_escrow latest id: `0xd28ec3bedbf5c072ebb40997e66379b4a537452c7c11b5d00f600b613b320a4f`
+- voting_escrow latest id: `0xbb8767be468a72918bd4cefd66c49952dea98a18b8f7f4bf15ba6e1fd683ee5e`
 
 - governance original id: `0x03fcdcee11f485731170944af3acd26b17d1b96121ce6b756fe8517a95192b3a`
-- governance latest id: `0x9f31e92a57412e0f4fb937c388a9de3d3932858a26cb5eff6d41fe59504cc020`
+- governance latest id: `0xf145bf4de434224aac6de2b5c396d0aafaef8e635a7e9014d072969c20a9b577`
 
 ### Objects
 
@@ -126,7 +126,7 @@ You could also use some utility methods from [integrate package](integrate/sourc
 - [governance upgrade 5](https://suivision.xyz/txblock/FcykJyQs7gJwX3NJTDtaoZy1yVfM7oyjYMvk335Xw3nX?tab=Changes)
 - [governance upgrade 6](https://suiscan.xyz/mainnet/tx/B8r4BzfPboP1j2h9JHY9j8cVZTrPPGk6ZWXnJHj6TMaM)
 - [governance upgrade 7](https://suiscan.xyz/mainnet/tx/DECRtUGNB1ZC1CbtBvgbGVWrwgN91MYjLU7TBrLquYTo)
-- [integrate](https://suivision.xyz/txblock/66DcHUBhvbTztWTB5iCkD9GpULirchBGMGvTuWN3qF6n)
+- [integrate](https://suivision.xyz/txblock/4HA3oEaUw6D8eo1iFVveMY2tDXNZogQXemGyEXxfeCVK)
 
 - [setup distribtuion tx](https://suiscan.xyz/mainnet/tx/21y91npsRHWgg5TPnFkFVSWgCFTLhTcvRfGL4bA4ut1p)
 - [activate minter tx](https://suiscan.xyz/mainnet/tx/A3bugfXoFzC5YfDEfDd1QBqqTu3dB1XJuT2mRLknKZr2)
