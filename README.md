@@ -125,6 +125,7 @@ You could also use some utility methods from [integrate package](integrate/sourc
 - [governance upgrade 4](https://suivision.xyz/txblock/BqrRF16tR7afaFnW5wPGFXb6CqisWMZDwXtN2KDfqtN7)
 - [governance upgrade 5](https://suivision.xyz/txblock/FcykJyQs7gJwX3NJTDtaoZy1yVfM7oyjYMvk335Xw3nX?tab=Changes)
 - [governance upgrade 6](https://suiscan.xyz/mainnet/tx/B8r4BzfPboP1j2h9JHY9j8cVZTrPPGk6ZWXnJHj6TMaM)
+- [governance upgrade 7](https://suiscan.xyz/mainnet/tx/DECRtUGNB1ZC1CbtBvgbGVWrwgN91MYjLU7TBrLquYTo)
 - [integrate](https://suivision.xyz/txblock/66DcHUBhvbTztWTB5iCkD9GpULirchBGMGvTuWN3qF6n)
 
 - [setup distribtuion tx](https://suiscan.xyz/mainnet/tx/21y91npsRHWgg5TPnFkFVSWgCFTLhTcvRfGL4bA4ut1p)
