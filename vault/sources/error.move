@@ -45,9 +45,9 @@ module vault::error {
     const NOT_UPDATED_OSAIL_GROWTH_TIME: u64 = 42;
     const REWARD_GROWTH_NOT_MATCH: u64 = 43;
     const OSAIL_GROWTH_NOT_MATCH: u64 = 44;
-    const PORT_ENTRY_LP_TOKENS_NOT_EMPTY: u64 = 45;
-    const PORT_ENTRY_LP_TOKENS_EMPTY: u64 = 46;
-    const PORT_ENTRY_LP_TOKENS_NOT_MATCH: u64 = 47;
+    const PORT_ENTRY_VOLUME_NOT_EMPTY: u64 = 45;
+    const PORT_ENTRY_VOLUME_EMPTY: u64 = 46;
+    const PORT_ENTRY_VOLUME_NOT_MATCH: u64 = 47;
     const OSAIL_WITHDRAW_CERT_POOL_ID_NOT_MATCH: u64 = 48;
     const OSAIL_WITHDRAW_CERT_NOT_MATCH: u64 = 49;
     const OSAIL_REWARD_EMPTY: u64 = 50;
@@ -246,16 +246,16 @@ module vault::error {
         abort OSAIL_GROWTH_NOT_MATCH
     }
 
-    public fun port_entry_lp_tokens_not_empty() : u64 {
-        abort PORT_ENTRY_LP_TOKENS_NOT_EMPTY
+    public fun port_entry_volume_not_empty() : u64 {
+        abort PORT_ENTRY_VOLUME_NOT_EMPTY
     }
 
-    public fun port_entry_lp_tokens_empty() : u64 {
-        abort PORT_ENTRY_LP_TOKENS_EMPTY
+    public fun port_entry_volume_empty() : u64 {
+        abort PORT_ENTRY_VOLUME_EMPTY
     }
 
-    public fun port_entry_lp_tokens_not_match() : u64 {
-        abort PORT_ENTRY_LP_TOKENS_NOT_MATCH
+    public fun port_entry_volume_not_match() : u64 {
+        abort PORT_ENTRY_VOLUME_NOT_MATCH
     }
 
     public fun osail_withdraw_cert_pool_id_not_match() : u64 {

@@ -28,7 +28,6 @@ module vault::vault_tests;
     use vault::pyth_oracle;
 
     use vault::usdt_tests::{Self, USDT_TESTS};
-    use vault::lp_tests::{Self, LP_TESTS};
 
     use pyth::setup::{Self, DeployerCap};
     use pyth::state;
@@ -76,10 +75,10 @@ module vault::vault_tests;
         let governance_emitter_chain_id= 1111;
         let governance_emitter_address = admin.to_bytes();
         let mut data_sources = vector::empty();
-        data_sources.push_back(pyth::data_source::new_data_source_for_test(
-            governance_emitter_chain_id,
-            external_address::from_address(admin)
-        ));
+        // data_sources.push_back(pyth::data_source::new_data_source_for_test(
+        //     governance_emitter_chain_id,
+        //     external_address::from_address(admin)
+        // ));
         let initial_guardians =
             vector[
                 x"1337133713371337133713371337133713371337",
@@ -166,16 +165,12 @@ module vault::vault_tests;
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
-            let (lp_treasury_cap, lp_metadata) = lp_tests::create_lp_tests(&mut scenario, 6);
-            transfer::public_transfer(lp_metadata, admin);
-
             let coin_a = sui::coin::mint_for_testing<TestCoinB>(10000, scenario.ctx());
             let coin_b = sui::coin::mint_for_testing<TestCoinA>(10000, scenario.ctx());
 
-            port::test_create_port_internal<TestCoinB, TestCoinA, LP_TESTS>(
+            port::test_create_port_internal<TestCoinB, TestCoinA>(
                 &vault_global_config,
                 &mut port_registry,
-                lp_treasury_cap,
                 &clmm_global_config,
                 &mut clmm_vault,
                 &distribution_config,
@@ -269,20 +264,14 @@ module vault::vault_tests;
             let price_feed_id = price_identifier_id.to_inner().to_bytes();
             let price_identifier = pyth::price_identifier::from_byte_vec(price_feed_id);
 
-            // Register price info object in pyth state
-            pyth_state.register_price_info_object_for_test(
-                price_identifier,
-                price_identifier_id.to_inner()
-            );
-
-            pyth_oracle.add_oracle_info<USDT_TESTS>(
-                &vault_global_config,
-                &pyth_state,
-                &usd_metadata,
-                price_feed_id,
-                1000,
-                scenario.ctx()
-            );
+            // pyth_oracle.add_oracle_info<USDT_TESTS>(
+            //     &vault_global_config,
+            //     &pyth_state,
+            //     &usd_metadata,
+            //     price_feed_id,
+            //     1000,
+            //     scenario.ctx()
+            // );
 
             // let mut verified_vaas = get_verified_test_vaas(
             //     &worm_state, 
@@ -368,7 +357,7 @@ module vault::vault_tests;
         {
             let mut vault_global_config = scenario.take_shared<vault::vault_config::GlobalConfig>();
             let admin_cap = scenario.take_from_sender<vault::vault_config::AdminCap>();
-            let mut port = scenario.take_shared<port::Port<LP_TESTS>>();
+            let mut port = scenario.take_shared<port::Port>();
             let clmm_global_config = scenario.take_shared<config::GlobalConfig>();
             let mut clmm_vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
             let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
@@ -379,7 +368,7 @@ module vault::vault_tests;
 
             // vault_global_config.add_role(&admin_cap, admin, vault_config::get_role_rebalance());
 
-            port.update_position_reward<TestCoinB, TestCoinA, LP_TESTS, SailCoinType, OSAIL1>(
+            port.update_position_reward<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &vault_global_config,
                 &mut minter,
                 &distribution_config,
@@ -389,7 +378,7 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            port.update_pool_reward<TestCoinB, TestCoinA, LP_TESTS, RewardCoinType1>(
+            port.update_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
@@ -399,7 +388,7 @@ module vault::vault_tests;
                 &clock
             );
 
-            port.rebalance<TestCoinB, TestCoinA, LP_TESTS>(
+            port.rebalance<TestCoinB, TestCoinA>(
                 &distribution_config,
                 &mut gauge,
                 &vault_global_config,
@@ -410,13 +399,13 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            let (tick_lower, tick_upper) = port.get_position_tick_range<TestCoinB, TestCoinA, LP_TESTS>(
+            let (tick_lower, tick_upper) = port.get_position_tick_range<TestCoinB, TestCoinA>(
                 &gauge
             );
             assert!(tick_lower.eq(integer_mate::i32::from_u32(57)), 44444);
             assert!(tick_upper.eq(integer_mate::i32::from_u32(257)), 55555);
 
-            port.update_liquidity_offset<TestCoinB, TestCoinA, LP_TESTS>(
+            port.update_liquidity_offset<TestCoinB, TestCoinA>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
@@ -462,7 +451,7 @@ module vault::vault_tests;
         clock::increment_for_testing(&mut clock, 172_800*1000/2); // 1 day
         scenario.next_tx(admin);
         {
-            let mut port = scenario.take_shared<port::Port<LP_TESTS>>();
+            let mut port = scenario.take_shared<port::Port>();
             let mut vault_global_config = scenario.take_shared<vault::vault_config::GlobalConfig>();
             let clmm_global_config = scenario.take_shared<config::GlobalConfig>();
             let mut clmm_vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -471,7 +460,7 @@ module vault::vault_tests;
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
 
-            port.update_position_reward<TestCoinB, TestCoinA, LP_TESTS, SailCoinType, OSAIL1>(
+            port.update_position_reward<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &vault_global_config,
                 &mut minter,
                 &distribution_config,
@@ -481,7 +470,7 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            port.update_pool_reward<TestCoinB, TestCoinA, LP_TESTS, RewardCoinType1>(
+            port.update_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
@@ -504,7 +493,7 @@ module vault::vault_tests;
         // deposit
         scenario.next_tx(admin);
         {
-            let mut port = scenario.take_shared<port::Port<LP_TESTS>>();
+            let mut port = scenario.take_shared<port::Port>();
             let mut vault_global_config = scenario.take_shared<vault::vault_config::GlobalConfig>();
             let clmm_global_config = scenario.take_shared<config::GlobalConfig>();
             let mut clmm_vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -518,7 +507,7 @@ module vault::vault_tests;
             let price_a = vault::pyth_oracle::new_price(1000000000000000000, 18);
             let price_b = vault::pyth_oracle::new_price(1000000000000000000, 18);
 
-            port::test_calculate_aum<TestCoinB, TestCoinA, LP_TESTS>(
+            port::test_calculate_aum<TestCoinB, TestCoinA>(
                 &mut port,
                 &vault_global_config,
                 &mut pool,
@@ -527,7 +516,7 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            let port_entry = port::test_deposit<TestCoinB, TestCoinA, LP_TESTS>(
+            let port_entry = port::test_deposit<TestCoinB, TestCoinA>(
                 &mut port,
                 &mut vault_global_config,
                 &clmm_global_config,
@@ -544,10 +533,10 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            let lp_total_supply = port.lp_total_supply();
-            let lp_tokens_value = port_entry.get_lp_tokens_value();
+            let total_volume = port.total_volume();
+            let volume = port_entry.get_volume();
 
-            assert!((lp_total_supply)/lp_tokens_value == 6, 77777); // total_tvl/tvl = 6      600_000/100_000 = 6
+            assert!((total_volume)/volume == 6, 77777); // total_tvl/tvl = 6      600_000/100_000 = 6
 
             transfer::public_transfer(port_entry, admin);
             test_scenario::return_shared(port);
@@ -577,7 +566,7 @@ module vault::vault_tests;
         // increase liquidity
         scenario.next_tx(admin);
         {
-            let mut port = scenario.take_shared<port::Port<LP_TESTS>>();
+            let mut port = scenario.take_shared<port::Port>();
             let mut vault_global_config = scenario.take_shared<vault::vault_config::GlobalConfig>();
             let clmm_global_config = scenario.take_shared<config::GlobalConfig>();
             let mut clmm_vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -585,7 +574,7 @@ module vault::vault_tests;
             let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
-            let mut port_entry = scenario.take_from_sender<port::PortEntry<LP_TESTS>>();
+            let mut port_entry = scenario.take_from_sender<port::PortEntry>();
 
             let coin_a = sui::coin::mint_for_testing<TestCoinB>(2_000_00, scenario.ctx());
             let coin_b = sui::coin::mint_for_testing<TestCoinA>(5_000_00, scenario.ctx());
@@ -593,7 +582,7 @@ module vault::vault_tests;
             let price_a = vault::pyth_oracle::new_price(1000000000000000000, 18);
             let price_b = vault::pyth_oracle::new_price(1000000000000000000, 18);
 
-            // port.update_position_reward<TestCoinB, TestCoinA, LP_TESTS, SailCoinType, OSAIL1>(
+            // port.update_position_reward<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
             //     &vault_global_config,
             //     &mut minter,
             //     &distribution_config,
@@ -604,7 +593,7 @@ module vault::vault_tests;
             // );
 
             // rewards are updated when claiming
-            let osail_reward = port::claim_position_reward<TestCoinB, TestCoinA, LP_TESTS, SailCoinType, OSAIL1>(
+            let osail_reward = port::claim_position_reward<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &vault_global_config,
                 &mut port,
                 &mut port_entry,
@@ -618,7 +607,7 @@ module vault::vault_tests;
 
             transfer::public_transfer(osail_reward, admin);
 
-            port.update_pool_reward<TestCoinB, TestCoinA, LP_TESTS, RewardCoinType1>(
+            port.update_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
@@ -628,7 +617,7 @@ module vault::vault_tests;
                 &clock
             );
 
-            let pool_reward = port::claim_pool_reward<TestCoinB, TestCoinA, LP_TESTS, RewardCoinType1>(
+            let pool_reward = port::claim_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &mut port,
                 &mut port_entry,
@@ -641,7 +630,7 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            let pool_reward_2 = port::claim_pool_reward<TestCoinB, TestCoinA, LP_TESTS, TestCoinB>(
+            let pool_reward_2 = port::claim_pool_reward<TestCoinB, TestCoinA, TestCoinB>(
                 &vault_global_config,
                 &mut port,
                 &mut port_entry,
@@ -657,7 +646,7 @@ module vault::vault_tests;
             transfer::public_transfer(pool_reward, admin);
             transfer::public_transfer(pool_reward_2, admin);
 
-            port.update_pool_reward<TestCoinB, TestCoinA, LP_TESTS, TestCoinB>(
+            port.update_pool_reward<TestCoinB, TestCoinA, TestCoinB>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
@@ -667,7 +656,7 @@ module vault::vault_tests;
                 &clock
             );
 
-            port::test_calculate_aum<TestCoinB, TestCoinA, LP_TESTS>(
+            port::test_calculate_aum<TestCoinB, TestCoinA>(
                 &mut port,
                 &vault_global_config,
                 &mut pool,
@@ -676,7 +665,7 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            port.test_increase_liquidity<TestCoinB, TestCoinA, LP_TESTS>(
+            port.test_increase_liquidity<TestCoinB, TestCoinA>(
                 &mut vault_global_config,
                 &clmm_global_config,
                 &mut clmm_vault,
@@ -693,9 +682,9 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            let lp_total_supply = port.lp_total_supply();
-            let lp_tokens_value = port_entry.get_lp_tokens_value();
-            assert!((lp_total_supply*10/lp_tokens_value) == 35, 77778); // total_tvl/(tvl1+tvl2) = 3,5  700_000/(100_000+100_000) = 3,5
+            let total_volume = port.total_volume();
+            let volume = port_entry.get_volume();
+            assert!((total_volume*10/volume) == 35, 77778); // total_tvl/(tvl1+tvl2) = 3,5  700_000/(100_000+100_000) = 3,5
 
             transfer::public_transfer(port_entry, admin);
             test_scenario::return_shared(port);
@@ -712,7 +701,7 @@ module vault::vault_tests;
         // claim rewards
         scenario.next_tx(admin);
         {
-            let mut port = scenario.take_shared<port::Port<LP_TESTS>>();
+            let mut port = scenario.take_shared<port::Port>();
             let mut vault_global_config = scenario.take_shared<vault::vault_config::GlobalConfig>();
             let clmm_global_config = scenario.take_shared<config::GlobalConfig>();
             let mut clmm_vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -720,9 +709,9 @@ module vault::vault_tests;
             let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
-            let mut port_entry = scenario.take_from_sender<port::PortEntry<LP_TESTS>>();
+            let mut port_entry = scenario.take_from_sender<port::PortEntry>();
 
-            port.update_pool_reward<TestCoinB, TestCoinA, LP_TESTS, RewardCoinType1>(
+            port.update_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
@@ -731,7 +720,7 @@ module vault::vault_tests;
                 &mut pool,
                 &clock
             );
-            port.update_pool_reward<TestCoinB, TestCoinA, LP_TESTS, TestCoinB>(
+            port.update_pool_reward<TestCoinB, TestCoinA, TestCoinB>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
@@ -740,7 +729,7 @@ module vault::vault_tests;
                 &mut pool,
                 &clock
             );
-            port.update_position_reward<TestCoinB, TestCoinA, LP_TESTS, SailCoinType, OSAIL1>(
+            port.update_position_reward<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &vault_global_config,
                 &mut minter,
                 &distribution_config,
@@ -750,7 +739,7 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            let osail_reward = port::claim_position_reward<TestCoinB, TestCoinA, LP_TESTS, SailCoinType, OSAIL1>(
+            let osail_reward = port::claim_position_reward<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &vault_global_config,
                 &mut port,
                 &mut port_entry,
@@ -762,7 +751,7 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            let pool_reward = port::claim_pool_reward<TestCoinB, TestCoinA, LP_TESTS, RewardCoinType1>(
+            let pool_reward = port::claim_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &mut port,
                 &mut port_entry,
@@ -775,7 +764,7 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            let pool_reward_2 = port::claim_pool_reward<TestCoinB, TestCoinA, LP_TESTS, TestCoinB>(
+            let pool_reward_2 = port::claim_pool_reward<TestCoinB, TestCoinA, TestCoinB>(
                 &vault_global_config,
                 &mut port,
                 &mut port_entry,
@@ -792,10 +781,10 @@ module vault::vault_tests;
             transfer::public_transfer(pool_reward, admin);
             transfer::public_transfer(pool_reward_2, admin);
 
-            let lp_tokens_value = port_entry.get_lp_tokens_value();
+            let volume = port_entry.get_volume();
 
             // withdraw half of the liquidity
-            let (withdrawn_coin_type_b, withdrawn_coin_type_a) = port.withdraw<TestCoinB, TestCoinA, LP_TESTS>(
+            let (withdrawn_coin_type_b, withdrawn_coin_type_a) = port.withdraw<TestCoinB, TestCoinA>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
@@ -803,7 +792,7 @@ module vault::vault_tests;
                 &mut clmm_vault,
                 &mut pool,
                 &mut port_entry,
-                lp_tokens_value/2,
+                volume/2,
                 &clock,
                 scenario.ctx()
             );
@@ -818,8 +807,10 @@ module vault::vault_tests;
             transfer::public_transfer(withdrawn_coin_type_b, admin);
             transfer::public_transfer(withdrawn_coin_type_a, admin);
 
-            let lp_tokens_value = port_entry.get_lp_tokens_value();
-            assert!(lp_tokens_value == 20, 777458);
+            let volume = port_entry.get_volume();
+            assert!(volume == 20, 777458);
+            let total_volume = port.total_volume();
+            assert!(total_volume == 120, 777459);
 
             transfer::public_transfer(port_entry, admin);
             test_scenario::return_shared(port);
@@ -837,14 +828,14 @@ module vault::vault_tests;
         // update osail rewards so that in the next epoch osail1 reward can be claimed
         scenario.next_tx(admin);
         {
-            let mut port = scenario.take_shared<port::Port<LP_TESTS>>();
+            let mut port = scenario.take_shared<port::Port>();
             let vault_global_config = scenario.take_shared<vault::vault_config::GlobalConfig>();
             let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
-            port.update_position_reward<TestCoinB, TestCoinA, LP_TESTS, SailCoinType, OSAIL1>(
+            port.update_position_reward<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &vault_global_config,
                 &mut minter,
                 &distribution_config,
@@ -887,7 +878,7 @@ module vault::vault_tests;
         // claim new osail reward
         scenario.next_tx(admin);
         {
-            let mut port = scenario.take_shared<port::Port<LP_TESTS>>();
+            let mut port = scenario.take_shared<port::Port>();
             let mut vault_global_config = scenario.take_shared<vault::vault_config::GlobalConfig>();
             let clmm_global_config = scenario.take_shared<config::GlobalConfig>();
             let mut clmm_vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -895,9 +886,9 @@ module vault::vault_tests;
             let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
-            let mut port_entry = scenario.take_from_sender<port::PortEntry<LP_TESTS>>();
+            let mut port_entry = scenario.take_from_sender<port::PortEntry>();
 
-            port.update_position_reward<TestCoinB, TestCoinA, LP_TESTS, SailCoinType, OSAIL2>(
+            port.update_position_reward<TestCoinB, TestCoinA, SailCoinType, OSAIL2>(
                 &vault_global_config,
                 &mut minter,
                 &distribution_config,
@@ -907,15 +898,15 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            let osail_type = port.get_osail_type_to_claim<LP_TESTS>(&port_entry);
+            let osail_type = port.get_osail_type_to_claim(&port_entry);
             assert!(osail_type == std::type_name::with_defining_ids<OSAIL1>(), 1234);
 
-            let (osail1_reward_amount, osail1_growth) = port.get_osail_amount_to_claim<LP_TESTS, OSAIL1>(
+            let (osail1_reward_amount, osail1_growth) = port.get_osail_amount_to_claim<OSAIL1>(
                 &port_entry,
                 &clock
             );
 
-            let (osail2_reward_amount, osail2_growth) = port.get_osail_amount_to_claim<LP_TESTS, OSAIL2>(
+            let (osail2_reward_amount, osail2_growth) = port.get_osail_amount_to_claim<OSAIL2>(
                 &port_entry,
                 &clock
             );
@@ -923,7 +914,7 @@ module vault::vault_tests;
             assert!(osail1_reward_amount == 238095631760, 1235);
             assert!(osail2_reward_amount == 714284139560, 1236);
 
-            let osail1_reward = port::claim_position_reward<TestCoinB, TestCoinA, LP_TESTS, SailCoinType, OSAIL1>(
+            let osail1_reward = port::claim_position_reward<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &vault_global_config,
                 &mut port,
                 &mut port_entry,
@@ -939,14 +930,14 @@ module vault::vault_tests;
 
             transfer::public_transfer(osail1_reward, admin);
 
-            let (osail1_reward_amount_zero, osail1_growth) = port.get_osail_amount_to_claim<LP_TESTS, OSAIL1>(
+            let (osail1_reward_amount_zero, osail1_growth) = port.get_osail_amount_to_claim<OSAIL1>(
                 &port_entry,
                 &clock
             );
 
             assert!(osail1_reward_amount_zero == 0, 12363);
 
-            let osail2_reward = port::claim_position_reward<TestCoinB, TestCoinA, LP_TESTS, SailCoinType, OSAIL2>(
+            let osail2_reward = port::claim_position_reward<TestCoinB, TestCoinA, SailCoinType, OSAIL2>(
                 &vault_global_config,
                 &mut port,
                 &mut port_entry,
@@ -962,14 +953,14 @@ module vault::vault_tests;
 
             transfer::public_transfer(osail2_reward, admin);
 
-            let (osail2_reward_amount_zero, osail2_growth) = port.get_osail_amount_to_claim<LP_TESTS, OSAIL2>(
+            let (osail2_reward_amount_zero, osail2_growth) = port.get_osail_amount_to_claim<OSAIL2>(
                 &port_entry,
                 &clock
             );
 
             assert!(osail2_reward_amount_zero == 0, 12362);
 
-            port.update_pool_reward<TestCoinB, TestCoinA, LP_TESTS, TestCoinB>(
+            port.update_pool_reward<TestCoinB, TestCoinA, TestCoinB>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
@@ -979,7 +970,7 @@ module vault::vault_tests;
                 &clock
             );
 
-            port.update_pool_reward<TestCoinB, TestCoinA, LP_TESTS, RewardCoinType1>(
+            port.update_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
@@ -989,7 +980,7 @@ module vault::vault_tests;
                 &clock
             );
 
-            let pool_reward = port::claim_pool_reward<TestCoinB, TestCoinA, LP_TESTS, RewardCoinType1>(
+            let pool_reward = port::claim_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &mut port,
                 &mut port_entry,
@@ -1002,7 +993,7 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            let pool_reward_2 = port::claim_pool_reward<TestCoinB, TestCoinA, LP_TESTS, TestCoinB>(
+            let pool_reward_2 = port::claim_pool_reward<TestCoinB, TestCoinA, TestCoinB>(
                 &vault_global_config,
                 &mut port,
                 &mut port_entry,
@@ -1018,10 +1009,10 @@ module vault::vault_tests;
             transfer::public_transfer(pool_reward, admin);
             transfer::public_transfer(pool_reward_2, admin);
 
-            let lp_tokens_value = port_entry.get_lp_tokens_value();
+            let volume = port_entry.get_volume();
 
             // withdraw all of the liquidity
-            let (withdrawn_coin_type_b, withdrawn_coin_type_a) = port.withdraw<TestCoinB, TestCoinA, LP_TESTS>(
+            let (withdrawn_coin_type_b, withdrawn_coin_type_a) = port.withdraw<TestCoinB, TestCoinA>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
@@ -1029,7 +1020,7 @@ module vault::vault_tests;
                 &mut clmm_vault,
                 &mut pool,
                 &mut port_entry,
-                lp_tokens_value,
+                volume,
                 &clock,
                 scenario.ctx()
             );
@@ -1044,8 +1035,8 @@ module vault::vault_tests;
             transfer::public_transfer(withdrawn_coin_type_b, admin);
             transfer::public_transfer(withdrawn_coin_type_a, admin);
 
-            let lp_tokens_value = port_entry.get_lp_tokens_value();
-            assert!(lp_tokens_value == 0, 99939);
+            let volume = port_entry.get_volume();
+            assert!(volume == 0, 99939);
 
             port.destory_port_entry(&vault_global_config, port_entry);
 
@@ -1119,16 +1110,12 @@ module vault::vault_tests;
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
-            let (lp_treasury_cap, lp_metadata) = lp_tests::create_lp_tests(&mut scenario, 6);
-            transfer::public_transfer(lp_metadata, admin);
-
             let coin_a = sui::coin::mint_for_testing<TestCoinB>(10_000_000, scenario.ctx());
             let coin_b = sui::coin::mint_for_testing<TestCoinA>(10_000_000, scenario.ctx());
 
-            port::test_create_port_internal<TestCoinB, TestCoinA, LP_TESTS>(
+            port::test_create_port_internal<TestCoinB, TestCoinA>(
                 &vault_global_config,
                 &mut port_registry,
-                lp_treasury_cap,
                 &clmm_global_config,
                 &mut clmm_vault,
                 &distribution_config,
@@ -1198,7 +1185,7 @@ module vault::vault_tests;
         {
             let mut vault_global_config = scenario.take_shared<vault::vault_config::GlobalConfig>();
             let admin_cap = scenario.take_from_sender<vault::vault_config::AdminCap>();
-            let mut port = scenario.take_shared<port::Port<LP_TESTS>>();
+            let mut port = scenario.take_shared<port::Port>();
             let clmm_global_config = scenario.take_shared<config::GlobalConfig>();
             let mut clmm_vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
             let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
@@ -1209,7 +1196,7 @@ module vault::vault_tests;
             port.remove_manager(&vault_global_config, admin, scenario.ctx());
             vault_global_config.add_role(&admin_cap, admin, vault_config::get_role_rebalance());
 
-            port.update_position_reward<TestCoinB, TestCoinA, LP_TESTS, SailCoinType, OSAIL1>(
+            port.update_position_reward<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &vault_global_config,
                 &mut minter,
                 &distribution_config,
@@ -1219,7 +1206,7 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            port.update_pool_reward<TestCoinB, TestCoinA, LP_TESTS, RewardCoinType1>(
+            port.update_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
@@ -1230,7 +1217,7 @@ module vault::vault_tests;
             );
 
             // with rebalance
-            port.update_liquidity_offset<TestCoinB, TestCoinA, LP_TESTS>(
+            port.update_liquidity_offset<TestCoinB, TestCoinA>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
@@ -1262,8 +1249,8 @@ module vault::vault_tests;
             assert!(rebalance_threshold == 1, 66667);
 
             // check how many unused assets are left in the buffer
-            let buffer_balance_a = port.get_buffer_asset_value<LP_TESTS, TestCoinB>();
-            let buffer_balance_b = port.get_buffer_asset_value<LP_TESTS, TestCoinA>();
+            let buffer_balance_a = port.get_buffer_asset_value<TestCoinB>();
+            let buffer_balance_b = port.get_buffer_asset_value<TestCoinA>();
 
             assert!(buffer_balance_a == 730792, 77777);
             assert!(buffer_balance_b == 0, 88888);
@@ -1295,7 +1282,7 @@ module vault::vault_tests;
             let price_coin_out = vault::pyth_oracle::new_price(1000000000000000000, 18);
             let loan_amount = buffer_balance_a*47/100;
 
-            let (coin_a_out, flash_loan_cert) = port.test_flash_loan<TestCoinB, TestCoinA, LP_TESTS>(
+            let (coin_a_out, flash_loan_cert) = port.test_flash_loan<TestCoinB, TestCoinA>(
                 &vault_global_config,
                 price_coin_in,
                 price_coin_out,
@@ -1307,20 +1294,20 @@ module vault::vault_tests;
 
             let repay_coin = sui::coin::mint_for_testing<TestCoinA>(flash_loan_cert.get_repay_amount(), scenario.ctx());
 
-            port.repay_flash_loan<LP_TESTS, TestCoinA>(
+            port.repay_flash_loan<TestCoinA>(
                 &vault_global_config,
                 flash_loan_cert,
                 repay_coin,
                 scenario.ctx()
             );
 
-            let buffer_balance_a = port.get_buffer_asset_value<LP_TESTS, TestCoinB>();
-            let buffer_balance_b = port.get_buffer_asset_value<LP_TESTS, TestCoinA>();
+            let buffer_balance_a = port.get_buffer_asset_value<TestCoinB>();
+            let buffer_balance_b = port.get_buffer_asset_value<TestCoinA>();
 
             assert!(buffer_balance_a == 387320, 77777);
             assert!(buffer_balance_b == 341755, 88888);
 
-            port.test_add_liquidity<TestCoinB, TestCoinA, LP_TESTS>(
+            port.test_add_liquidity<TestCoinB, TestCoinA>(
                 &vault_global_config,
                 &clmm_global_config,
                 &mut clmm_vault,
@@ -1333,8 +1320,8 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            let buffer_balance_a = port.get_buffer_asset_value<LP_TESTS, TestCoinB>();
-            let buffer_balance_b = port.get_buffer_asset_value<LP_TESTS, TestCoinA>();
+            let buffer_balance_a = port.get_buffer_asset_value<TestCoinB>();
+            let buffer_balance_b = port.get_buffer_asset_value<TestCoinA>();
 
             assert!(buffer_balance_a == 78460, 77777);
             assert!(buffer_balance_b == 0, 88888);
@@ -1357,7 +1344,7 @@ module vault::vault_tests;
         {
             let vault_global_config = scenario.take_shared<vault::vault_config::GlobalConfig>();
             let admin_cap = scenario.take_from_sender<vault::vault_config::AdminCap>();
-            let mut port = scenario.take_shared<port::Port<LP_TESTS>>();
+            let mut port = scenario.take_shared<port::Port>();
             let clmm_global_config = scenario.take_shared<config::GlobalConfig>();
             let mut clmm_vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
             let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
@@ -1365,7 +1352,7 @@ module vault::vault_tests;
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
 
-            port.update_pool_reward<TestCoinB, TestCoinA, LP_TESTS, RewardCoinType1>(
+            port.update_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
@@ -1375,7 +1362,7 @@ module vault::vault_tests;
                 &clock
             );
 
-            port.update_position_reward<TestCoinB, TestCoinA, LP_TESTS, SailCoinType, OSAIL1>(
+            port.update_position_reward<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &vault_global_config,
                 &mut minter,
                 &distribution_config,
@@ -1385,7 +1372,7 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            port.stop_vault<TestCoinB, TestCoinA, LP_TESTS>(
+            port.stop_vault<TestCoinB, TestCoinA>(
                 &vault_global_config,
                 &clmm_global_config,
                 &mut clmm_vault,
@@ -1396,10 +1383,10 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            assert!(port.is_stopped<LP_TESTS>(), 100000);
+            assert!(port.is_stopped(), 100000);
 
-            let buffer_balance_a = port.get_buffer_asset_value<LP_TESTS, TestCoinB>();
-            let buffer_balance_b = port.get_buffer_asset_value<LP_TESTS, TestCoinA>();
+            let buffer_balance_a = port.get_buffer_asset_value<TestCoinB>();
+            let buffer_balance_b = port.get_buffer_asset_value<TestCoinA>();
 
             assert!(buffer_balance_a == 9425592, 77667);
             assert!(buffer_balance_b == 10342652, 866688);
@@ -1422,14 +1409,14 @@ module vault::vault_tests;
         {
             let vault_global_config = scenario.take_shared<vault::vault_config::GlobalConfig>();
             let admin_cap = scenario.take_from_sender<vault::vault_config::AdminCap>();
-            let mut port = scenario.take_shared<port::Port<LP_TESTS>>();
+            let mut port = scenario.take_shared<port::Port>();
             let clmm_global_config = scenario.take_shared<config::GlobalConfig>();
             let mut clmm_vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
             let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
-            port.start_vault<TestCoinB, TestCoinA, LP_TESTS>(
+            port.start_vault<TestCoinB, TestCoinA>(
                 &vault_global_config,
                 &clmm_global_config,
                 &mut clmm_vault,
@@ -1440,10 +1427,10 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            assert!(!port.is_stopped<LP_TESTS>(), 100000);
+            assert!(!port.is_stopped(), 100000);
 
-            let buffer_balance_a = port.get_buffer_asset_value<LP_TESTS, TestCoinB>();
-            let buffer_balance_b = port.get_buffer_asset_value<LP_TESTS, TestCoinA>();
+            let buffer_balance_a = port.get_buffer_asset_value<TestCoinB>();
+            let buffer_balance_b = port.get_buffer_asset_value<TestCoinA>();
 
             assert!(buffer_balance_a == 78460, 773367);
             assert!(buffer_balance_b == 0, 844488);
@@ -1518,16 +1505,12 @@ module vault::vault_tests;
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
-            let (lp_treasury_cap, lp_metadata) = lp_tests::create_lp_tests(&mut scenario, 6);
-            transfer::public_transfer(lp_metadata, admin);
-
             let coin_a = sui::coin::mint_for_testing<TestCoinB>(10_000_000, scenario.ctx());
             let coin_b = sui::coin::mint_for_testing<TestCoinA>(10_000_000, scenario.ctx());
 
-            port::test_create_port_internal<TestCoinB, TestCoinA, LP_TESTS>(
+            port::test_create_port_internal<TestCoinB, TestCoinA>(
                 &vault_global_config,
                 &mut port_registry,
-                lp_treasury_cap,
                 &clmm_global_config,
                 &mut clmm_vault,
                 &distribution_config,
@@ -1574,7 +1557,7 @@ module vault::vault_tests;
         {
             let mut vault_global_config = scenario.take_shared<vault::vault_config::GlobalConfig>();
             let admin_cap = scenario.take_from_sender<vault::vault_config::AdminCap>();
-            let mut port = scenario.take_shared<port::Port<LP_TESTS>>();
+            let mut port = scenario.take_shared<port::Port>();
             let clmm_global_config = scenario.take_shared<config::GlobalConfig>();
             let mut clmm_vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
             let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
@@ -1582,7 +1565,7 @@ module vault::vault_tests;
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
 
-            port.update_pool_reward<TestCoinB, TestCoinA, LP_TESTS, TestCoinB>(
+            port.update_pool_reward<TestCoinB, TestCoinA, TestCoinB>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
@@ -1595,13 +1578,13 @@ module vault::vault_tests;
             vault_global_config.add_role(&admin_cap, admin, vault_config::get_role_rebalance());
 
             // check how many unused assets are left in the buffer
-            let buffer_balance_a = port.get_buffer_asset_value<LP_TESTS, TestCoinB>();
+            let buffer_balance_a = port.get_buffer_asset_value<TestCoinB>();
 
             let price_coin_in = vault::pyth_oracle::new_price(1000000000000000000, 18);
             let price_coin_out = vault::pyth_oracle::new_price(1000000000000000000, 18);
             let loan_amount = buffer_balance_a*30/100;
 
-            let (coin_a_out, flash_loan_cert) = port.test_flash_loan<TestCoinB, TestCoinA, LP_TESTS>(
+            let (coin_a_out, flash_loan_cert) = port.test_flash_loan<TestCoinB, TestCoinA>(
                 &vault_global_config,
                 price_coin_in,
                 price_coin_out,
@@ -1613,7 +1596,7 @@ module vault::vault_tests;
 
             let repay_coin = sui::coin::mint_for_testing<TestCoinA>(flash_loan_cert.get_repay_amount()-1, scenario.ctx()); // -1 to test the abort
 
-            port.repay_flash_loan<LP_TESTS, TestCoinA>(
+            port.repay_flash_loan<TestCoinA>(
                 &vault_global_config,
                 flash_loan_cert,
                 repay_coin,
@@ -1691,16 +1674,12 @@ module vault::vault_tests;
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
-            let (lp_treasury_cap, lp_metadata) = lp_tests::create_lp_tests(&mut scenario, 6);
-            transfer::public_transfer(lp_metadata, admin);
-
             let coin_a = sui::coin::mint_for_testing<TestCoinB>(10_000_000, scenario.ctx());
             let coin_b = sui::coin::mint_for_testing<TestCoinA>(10_000_000, scenario.ctx());
 
-            port::test_create_port_internal<TestCoinB, TestCoinA, LP_TESTS>(
+            port::test_create_port_internal<TestCoinB, TestCoinA>(
                 &vault_global_config,
                 &mut port_registry,
-                lp_treasury_cap,
                 &clmm_global_config,
                 &mut clmm_vault,
                 &distribution_config,
@@ -1732,7 +1711,7 @@ module vault::vault_tests;
         {
             let mut vault_global_config = scenario.take_shared<vault::vault_config::GlobalConfig>();
             let admin_cap = scenario.take_from_sender<vault::vault_config::AdminCap>();
-            let mut port = scenario.take_shared<port::Port<LP_TESTS>>();
+            let mut port = scenario.take_shared<port::Port>();
             let clmm_global_config = scenario.take_shared<config::GlobalConfig>();
             let mut clmm_vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
             let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
@@ -1741,7 +1720,7 @@ module vault::vault_tests;
 
             vault_global_config.add_role(&admin_cap, admin, vault_config::get_role_rebalance());
 
-            port.rebalance<TestCoinB, TestCoinA, LP_TESTS>(
+            port.rebalance<TestCoinB, TestCoinA>(
                 &distribution_config,
                 &mut gauge,
                 &vault_global_config,
@@ -1822,16 +1801,12 @@ module vault::vault_tests;
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
-            let (lp_treasury_cap, lp_metadata) = lp_tests::create_lp_tests(&mut scenario, 6);
-            transfer::public_transfer(lp_metadata, admin);
-
             let coin_a = sui::coin::mint_for_testing<TestCoinB>(10_000_000, scenario.ctx());
             let coin_b = sui::coin::mint_for_testing<TestCoinA>(10_000_000, scenario.ctx());
 
-            port::test_create_port_internal<TestCoinB, TestCoinA, LP_TESTS>(
+            port::test_create_port_internal<TestCoinB, TestCoinA>(
                 &vault_global_config,
                 &mut port_registry,
-                lp_treasury_cap,
                 &clmm_global_config,
                 &mut clmm_vault,
                 &distribution_config,
@@ -1863,7 +1838,7 @@ module vault::vault_tests;
         {
             let mut vault_global_config = scenario.take_shared<vault::vault_config::GlobalConfig>();
             let admin_cap = scenario.take_from_sender<vault::vault_config::AdminCap>();
-            let mut port = scenario.take_shared<port::Port<LP_TESTS>>();
+            let mut port = scenario.take_shared<port::Port>();
             let clmm_global_config = scenario.take_shared<config::GlobalConfig>();
             let mut clmm_vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
             let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
@@ -1872,7 +1847,7 @@ module vault::vault_tests;
 
             port.remove_manager(&vault_global_config, admin, scenario.ctx());
 
-            port.rebalance<TestCoinB, TestCoinA, LP_TESTS>(
+            port.rebalance<TestCoinB, TestCoinA>(
                 &distribution_config,
                 &mut gauge,
                 &vault_global_config,
@@ -1953,16 +1928,12 @@ module vault::vault_tests;
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
-            let (lp_treasury_cap, lp_metadata) = lp_tests::create_lp_tests(&mut scenario, 6);
-            transfer::public_transfer(lp_metadata, admin);
-
             let coin_a = sui::coin::mint_for_testing<TestCoinB>(10_000_000, scenario.ctx());
             let coin_b = sui::coin::mint_for_testing<TestCoinA>(10_000_000, scenario.ctx());
 
-            port::test_create_port_internal<TestCoinB, TestCoinA, LP_TESTS>(
+            port::test_create_port_internal<TestCoinB, TestCoinA>(
                 &vault_global_config,
                 &mut port_registry,
-                lp_treasury_cap,
                 &clmm_global_config,
                 &mut clmm_vault,
                 &distribution_config,
@@ -1994,7 +1965,7 @@ module vault::vault_tests;
         // deposit
         scenario.next_tx(admin);
         {
-            let mut port = scenario.take_shared<port::Port<LP_TESTS>>();
+            let mut port = scenario.take_shared<port::Port>();
             let mut vault_global_config = scenario.take_shared<vault::vault_config::GlobalConfig>();
             let clmm_global_config = scenario.take_shared<config::GlobalConfig>();
             let mut clmm_vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -2003,7 +1974,7 @@ module vault::vault_tests;
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
 
-            port.update_position_reward<TestCoinB, TestCoinA, LP_TESTS, SailCoinType, OSAIL1>(
+            port.update_position_reward<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &vault_global_config,
                 &mut minter,
                 &distribution_config,
@@ -2019,7 +1990,7 @@ module vault::vault_tests;
             let price_a = vault::pyth_oracle::new_price(1000000000000000000, 18);
             let price_b = vault::pyth_oracle::new_price(1000000000000000000, 18);
 
-            port::test_calculate_aum<TestCoinB, TestCoinA, LP_TESTS>(
+            port::test_calculate_aum<TestCoinB, TestCoinA>(
                 &mut port,
                 &vault_global_config,
                 &mut pool,
@@ -2028,7 +1999,7 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            let port_entry = port::test_deposit<TestCoinB, TestCoinA, LP_TESTS>(
+            let port_entry = port::test_deposit<TestCoinB, TestCoinA>(
                 &mut port,
                 &mut vault_global_config,
                 &clmm_global_config,
@@ -2074,7 +2045,7 @@ module vault::vault_tests;
         // increase liquidity
         scenario.next_tx(admin);
         {
-            let mut port = scenario.take_shared<port::Port<LP_TESTS>>();
+            let mut port = scenario.take_shared<port::Port>();
             let mut vault_global_config = scenario.take_shared<vault::vault_config::GlobalConfig>();
             let clmm_global_config = scenario.take_shared<config::GlobalConfig>();
             let mut clmm_vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -2082,7 +2053,7 @@ module vault::vault_tests;
             let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
-            let mut port_entry = scenario.take_from_sender<port::PortEntry<LP_TESTS>>();
+            let mut port_entry = scenario.take_from_sender<port::PortEntry>();
 
             let coin_a = sui::coin::mint_for_testing<TestCoinB>(2_000_00, scenario.ctx());
             let coin_b = sui::coin::mint_for_testing<TestCoinA>(5_000_00, scenario.ctx());
@@ -2090,7 +2061,7 @@ module vault::vault_tests;
             let price_a = vault::pyth_oracle::new_price(1000000000000000000, 18);
             let price_b = vault::pyth_oracle::new_price(1000000000000000000, 18);
 
-            // port::test_calculate_aum<TestCoinB, TestCoinA, LP_TESTS>(
+            // port::test_calculate_aum<TestCoinB, TestCoinA>(
             //     &mut port,
             //     &vault_global_config,
             //     &mut pool,
@@ -2099,7 +2070,7 @@ module vault::vault_tests;
             //     scenario.ctx()
             // );
 
-            port.test_increase_liquidity<TestCoinB, TestCoinA, LP_TESTS>(
+            port.test_increase_liquidity<TestCoinB, TestCoinA>(
                 &mut vault_global_config,
                 &clmm_global_config,
                 &mut clmm_vault,
@@ -2187,16 +2158,12 @@ module vault::vault_tests;
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
-            let (lp_treasury_cap, lp_metadata) = lp_tests::create_lp_tests(&mut scenario, 6);
-            transfer::public_transfer(lp_metadata, admin);
-
             let coin_a = sui::coin::mint_for_testing<TestCoinB>(10_000_000, scenario.ctx());
             let coin_b = sui::coin::mint_for_testing<TestCoinA>(10_000_000, scenario.ctx());
 
-            port::test_create_port_internal<TestCoinB, TestCoinA, LP_TESTS>(
+            port::test_create_port_internal<TestCoinB, TestCoinA>(
                 &vault_global_config,
                 &mut port_registry,
-                lp_treasury_cap,
                 &clmm_global_config,
                 &mut clmm_vault,
                 &distribution_config,
@@ -2228,7 +2195,7 @@ module vault::vault_tests;
         // deposit
         scenario.next_tx(admin);
         {
-            let mut port = scenario.take_shared<port::Port<LP_TESTS>>();
+            let mut port = scenario.take_shared<port::Port>();
             let mut vault_global_config = scenario.take_shared<vault::vault_config::GlobalConfig>();
             let clmm_global_config = scenario.take_shared<config::GlobalConfig>();
             let mut clmm_vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -2237,7 +2204,7 @@ module vault::vault_tests;
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
 
-            port.update_position_reward<TestCoinB, TestCoinA, LP_TESTS, SailCoinType, OSAIL1>(
+            port.update_position_reward<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &vault_global_config,
                 &mut minter,
                 &distribution_config,
@@ -2253,7 +2220,7 @@ module vault::vault_tests;
             let price_a = vault::pyth_oracle::new_price(1000000000000000000, 18);
             let price_b = vault::pyth_oracle::new_price(1000000000000000000, 18);
 
-            port::test_calculate_aum<TestCoinB, TestCoinA, LP_TESTS>(
+            port::test_calculate_aum<TestCoinB, TestCoinA>(
                 &mut port,
                 &vault_global_config,
                 &mut pool,
@@ -2262,7 +2229,7 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            let port_entry = port::test_deposit<TestCoinB, TestCoinA, LP_TESTS>(
+            let port_entry = port::test_deposit<TestCoinB, TestCoinA>(
                 &mut port,
                 &mut vault_global_config,
                 &clmm_global_config,
@@ -2307,16 +2274,16 @@ module vault::vault_tests;
 
         scenario.next_tx(admin);
         {
-            let mut port = scenario.take_shared<port::Port<LP_TESTS>>();
+            let mut port = scenario.take_shared<port::Port>();
             let mut vault_global_config = scenario.take_shared<vault::vault_config::GlobalConfig>();
             let clmm_global_config = scenario.take_shared<config::GlobalConfig>();
             let mut clmm_vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
             let distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
-            let mut port_entry = scenario.take_from_sender<port::PortEntry<LP_TESTS>>();
+            let mut port_entry = scenario.take_from_sender<port::PortEntry>();
 
-            port.update_pool_reward<TestCoinB, TestCoinA, LP_TESTS, RewardCoinType1>(
+            port.update_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
@@ -2326,7 +2293,7 @@ module vault::vault_tests;
                 &clock
             );
 
-            let pool_reward = port::claim_pool_reward<TestCoinB, TestCoinA, LP_TESTS, RewardCoinType1>(
+            let pool_reward = port::claim_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &mut port,
                 &mut port_entry,
@@ -2356,7 +2323,7 @@ module vault::vault_tests;
         // increase liquidity
         scenario.next_tx(admin);
         {
-            let mut port = scenario.take_shared<port::Port<LP_TESTS>>();
+            let mut port = scenario.take_shared<port::Port>();
             let mut vault_global_config = scenario.take_shared<vault::vault_config::GlobalConfig>();
             let clmm_global_config = scenario.take_shared<config::GlobalConfig>();
             let mut clmm_vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -2364,7 +2331,7 @@ module vault::vault_tests;
             let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
-            let mut port_entry = scenario.take_from_sender<port::PortEntry<LP_TESTS>>();
+            let mut port_entry = scenario.take_from_sender<port::PortEntry>();
 
             let coin_a = sui::coin::mint_for_testing<TestCoinB>(2_000_00, scenario.ctx());
             let coin_b = sui::coin::mint_for_testing<TestCoinA>(5_000_00, scenario.ctx());
@@ -2372,7 +2339,7 @@ module vault::vault_tests;
             let price_a = vault::pyth_oracle::new_price(1000000000000000000, 18);
             let price_b = vault::pyth_oracle::new_price(1000000000000000000, 18);
 
-            port.update_position_reward<TestCoinB, TestCoinA, LP_TESTS, SailCoinType, OSAIL1>(
+            port.update_position_reward<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &vault_global_config,
                 &mut minter,
                 &distribution_config,
@@ -2382,7 +2349,7 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            port::test_calculate_aum<TestCoinB, TestCoinA, LP_TESTS>(
+            port::test_calculate_aum<TestCoinB, TestCoinA>(
                 &mut port,
                 &vault_global_config,
                 &mut pool,
@@ -2391,7 +2358,7 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            port.test_increase_liquidity<TestCoinB, TestCoinA, LP_TESTS>(
+            port.test_increase_liquidity<TestCoinB, TestCoinA>(
                 &mut vault_global_config,
                 &clmm_global_config,
                 &mut clmm_vault,
@@ -2479,16 +2446,12 @@ module vault::vault_tests;
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
-            let (lp_treasury_cap, lp_metadata) = lp_tests::create_lp_tests(&mut scenario, 6);
-            transfer::public_transfer(lp_metadata, admin);
-
             let coin_a = sui::coin::mint_for_testing<TestCoinB>(10_000_000, scenario.ctx());
             let coin_b = sui::coin::mint_for_testing<TestCoinA>(10_000_000, scenario.ctx());
 
-            port::test_create_port_internal<TestCoinB, TestCoinA, LP_TESTS>(
+            port::test_create_port_internal<TestCoinB, TestCoinA>(
                 &vault_global_config,
                 &mut port_registry,
-                lp_treasury_cap,
                 &clmm_global_config,
                 &mut clmm_vault,
                 &distribution_config,
@@ -2533,7 +2496,7 @@ module vault::vault_tests;
         // deposit
         scenario.next_tx(admin);
         {
-            let mut port = scenario.take_shared<port::Port<LP_TESTS>>();
+            let mut port = scenario.take_shared<port::Port>();
             let mut vault_global_config = scenario.take_shared<vault::vault_config::GlobalConfig>();
             let clmm_global_config = scenario.take_shared<config::GlobalConfig>();
             let mut clmm_vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -2542,7 +2505,7 @@ module vault::vault_tests;
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
 
-            port.update_position_reward<TestCoinB, TestCoinA, LP_TESTS, SailCoinType, OSAIL1>(
+            port.update_position_reward<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &vault_global_config,
                 &mut minter,
                 &distribution_config,
@@ -2552,7 +2515,7 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            port.update_pool_reward<TestCoinB, TestCoinA, LP_TESTS, RewardCoinType1>(
+            port.update_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
@@ -2568,7 +2531,7 @@ module vault::vault_tests;
             let price_a = vault::pyth_oracle::new_price(1000000000000000000, 18);
             let price_b = vault::pyth_oracle::new_price(1000000000000000000, 18);
 
-            port::test_calculate_aum<TestCoinB, TestCoinA, LP_TESTS>(
+            port::test_calculate_aum<TestCoinB, TestCoinA>(
                 &mut port,
                 &vault_global_config,
                 &mut pool,
@@ -2577,7 +2540,7 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            let port_entry = port::test_deposit<TestCoinB, TestCoinA, LP_TESTS>(
+            let port_entry = port::test_deposit<TestCoinB, TestCoinA>(
                 &mut port,
                 &mut vault_global_config,
                 &clmm_global_config,
@@ -2610,7 +2573,7 @@ module vault::vault_tests;
         // withdraw liquidity
         scenario.next_tx(admin);
         {
-            let mut port = scenario.take_shared<port::Port<LP_TESTS>>();
+            let mut port = scenario.take_shared<port::Port>();
             let mut vault_global_config = scenario.take_shared<vault::vault_config::GlobalConfig>();
             let clmm_global_config = scenario.take_shared<config::GlobalConfig>();
             let mut clmm_vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -2618,12 +2581,12 @@ module vault::vault_tests;
             let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
-            let mut port_entry = scenario.take_from_sender<port::PortEntry<LP_TESTS>>();
+            let mut port_entry = scenario.take_from_sender<port::PortEntry>();
 
-            let lp_tokens_value = port_entry.get_lp_tokens_value();
+            let volume = port_entry.get_volume();
 
             // withdraw all of the liquidity
-            let (withdrawn_coin_type_b, withdrawn_coin_type_a) = port.withdraw<TestCoinB, TestCoinA, LP_TESTS>(
+            let (withdrawn_coin_type_b, withdrawn_coin_type_a) = port.withdraw<TestCoinB, TestCoinA>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
@@ -2631,7 +2594,7 @@ module vault::vault_tests;
                 &mut clmm_vault,
                 &mut pool,
                 &mut port_entry,
-                lp_tokens_value,
+                volume,
                 &clock,
                 scenario.ctx()
             );
@@ -2710,16 +2673,12 @@ module vault::vault_tests;
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
-            let (lp_treasury_cap, lp_metadata) = lp_tests::create_lp_tests(&mut scenario, 6);
-            transfer::public_transfer(lp_metadata, admin);
-
             let coin_a = sui::coin::mint_for_testing<TestCoinB>(10_000_000, scenario.ctx());
             let coin_b = sui::coin::mint_for_testing<TestCoinA>(10_000_000, scenario.ctx());
 
-            port::test_create_port_internal<TestCoinB, TestCoinA, LP_TESTS>(
+            port::test_create_port_internal<TestCoinB, TestCoinA>(
                 &vault_global_config,
                 &mut port_registry,
-                lp_treasury_cap,
                 &clmm_global_config,
                 &mut clmm_vault,
                 &distribution_config,
@@ -2764,7 +2723,7 @@ module vault::vault_tests;
         // deposit
         scenario.next_tx(admin);
         {
-            let mut port = scenario.take_shared<port::Port<LP_TESTS>>();
+            let mut port = scenario.take_shared<port::Port>();
             let mut vault_global_config = scenario.take_shared<vault::vault_config::GlobalConfig>();
             let clmm_global_config = scenario.take_shared<config::GlobalConfig>();
             let mut clmm_vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -2773,7 +2732,7 @@ module vault::vault_tests;
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
 
-            port.update_position_reward<TestCoinB, TestCoinA, LP_TESTS, SailCoinType, OSAIL1>(
+            port.update_position_reward<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &vault_global_config,
                 &mut minter,
                 &distribution_config,
@@ -2783,7 +2742,7 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            port.update_pool_reward<TestCoinB, TestCoinA, LP_TESTS, RewardCoinType1>(
+            port.update_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
@@ -2799,7 +2758,7 @@ module vault::vault_tests;
             let price_a = vault::pyth_oracle::new_price(1000000000000000000, 18);
             let price_b = vault::pyth_oracle::new_price(1000000000000000000, 18);
 
-            port::test_calculate_aum<TestCoinB, TestCoinA, LP_TESTS>(
+            port::test_calculate_aum<TestCoinB, TestCoinA>(
                 &mut port,
                 &vault_global_config,
                 &mut pool,
@@ -2808,7 +2767,7 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            let port_entry = port::test_deposit<TestCoinB, TestCoinA, LP_TESTS>(
+            let port_entry = port::test_deposit<TestCoinB, TestCoinA>(
                 &mut port,
                 &mut vault_global_config,
                 &clmm_global_config,
@@ -2841,7 +2800,7 @@ module vault::vault_tests;
         // withdraw liquidity
         scenario.next_tx(admin);
         {
-            let mut port = scenario.take_shared<port::Port<LP_TESTS>>();
+            let mut port = scenario.take_shared<port::Port>();
             let mut vault_global_config = scenario.take_shared<vault::vault_config::GlobalConfig>();
             let clmm_global_config = scenario.take_shared<config::GlobalConfig>();
             let mut clmm_vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -2849,9 +2808,9 @@ module vault::vault_tests;
             let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
-            let mut port_entry = scenario.take_from_sender<port::PortEntry<LP_TESTS>>();
+            let mut port_entry = scenario.take_from_sender<port::PortEntry>();
 
-            port.update_position_reward<TestCoinB, TestCoinA, LP_TESTS, SailCoinType, OSAIL1>(
+            port.update_position_reward<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &vault_global_config,
                 &mut minter,
                 &distribution_config,
@@ -2861,10 +2820,10 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            let lp_tokens_value = port_entry.get_lp_tokens_value();
+            let volume = port_entry.get_volume();
 
             // withdraw all of the liquidity
-            let (withdrawn_coin_type_b, withdrawn_coin_type_a) = port.withdraw<TestCoinB, TestCoinA, LP_TESTS>(
+            let (withdrawn_coin_type_b, withdrawn_coin_type_a) = port.withdraw<TestCoinB, TestCoinA>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
@@ -2872,7 +2831,7 @@ module vault::vault_tests;
                 &mut clmm_vault,
                 &mut pool,
                 &mut port_entry,
-                lp_tokens_value,
+                volume,
                 &clock,
                 scenario.ctx()
             );
@@ -2951,16 +2910,12 @@ module vault::vault_tests;
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
-            let (lp_treasury_cap, lp_metadata) = lp_tests::create_lp_tests(&mut scenario, 6);
-            transfer::public_transfer(lp_metadata, admin);
-
             let coin_a = sui::coin::mint_for_testing<TestCoinB>(10_000_000, scenario.ctx());
             let coin_b = sui::coin::mint_for_testing<TestCoinA>(10_000_000, scenario.ctx());
 
-            port::test_create_port_internal<TestCoinB, TestCoinA, LP_TESTS>(
+            port::test_create_port_internal<TestCoinB, TestCoinA>(
                 &vault_global_config,
                 &mut port_registry,
-                lp_treasury_cap,
                 &clmm_global_config,
                 &mut clmm_vault,
                 &distribution_config,
@@ -3005,7 +2960,7 @@ module vault::vault_tests;
         // deposit
         scenario.next_tx(admin);
         {
-            let mut port = scenario.take_shared<port::Port<LP_TESTS>>();
+            let mut port = scenario.take_shared<port::Port>();
             let mut vault_global_config = scenario.take_shared<vault::vault_config::GlobalConfig>();
             let clmm_global_config = scenario.take_shared<config::GlobalConfig>();
             let mut clmm_vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -3014,7 +2969,7 @@ module vault::vault_tests;
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
 
-            port.update_position_reward<TestCoinB, TestCoinA, LP_TESTS, SailCoinType, OSAIL1>(
+            port.update_position_reward<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &vault_global_config,
                 &mut minter,
                 &distribution_config,
@@ -3024,7 +2979,7 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            port.update_pool_reward<TestCoinB, TestCoinA, LP_TESTS, RewardCoinType1>(
+            port.update_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
@@ -3040,7 +2995,7 @@ module vault::vault_tests;
             let price_a = vault::pyth_oracle::new_price(1000000000000000000, 18);
             let price_b = vault::pyth_oracle::new_price(1000000000000000000, 18);
 
-            port::test_calculate_aum<TestCoinB, TestCoinA, LP_TESTS>(
+            port::test_calculate_aum<TestCoinB, TestCoinA>(
                 &mut port,
                 &vault_global_config,
                 &mut pool,
@@ -3049,7 +3004,7 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            let port_entry = port::test_deposit<TestCoinB, TestCoinA, LP_TESTS>(
+            let port_entry = port::test_deposit<TestCoinB, TestCoinA>(
                 &mut port,
                 &mut vault_global_config,
                 &clmm_global_config,
@@ -3082,7 +3037,7 @@ module vault::vault_tests;
         // withdraw liquidity
         scenario.next_tx(admin);
         {
-            let mut port = scenario.take_shared<port::Port<LP_TESTS>>();
+            let mut port = scenario.take_shared<port::Port>();
             let vault_global_config = scenario.take_shared<vault::vault_config::GlobalConfig>();
             let clmm_global_config = scenario.take_shared<config::GlobalConfig>();
             let mut clmm_vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -3090,9 +3045,9 @@ module vault::vault_tests;
             let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
-            let mut port_entry = scenario.take_from_sender<port::PortEntry<LP_TESTS>>();
+            let mut port_entry = scenario.take_from_sender<port::PortEntry>();
 
-            port.update_position_reward<TestCoinB, TestCoinA, LP_TESTS, SailCoinType, OSAIL1>(
+            port.update_position_reward<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &vault_global_config,
                 &mut minter,
                 &distribution_config,
@@ -3102,7 +3057,7 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            port.update_pool_reward<TestCoinB, TestCoinA, LP_TESTS, RewardCoinType1>(
+            port.update_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
@@ -3112,10 +3067,10 @@ module vault::vault_tests;
                 &clock
             );
 
-            let lp_tokens_value = port_entry.get_lp_tokens_value();
+            let volume = port_entry.get_volume();
 
             // withdraw all of the liquidity
-            let (withdrawn_coin_type_b, withdrawn_coin_type_a) = port.withdraw<TestCoinB, TestCoinA, LP_TESTS>(
+            let (withdrawn_coin_type_b, withdrawn_coin_type_a) = port.withdraw<TestCoinB, TestCoinA>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
@@ -3123,7 +3078,7 @@ module vault::vault_tests;
                 &mut clmm_vault,
                 &mut pool,
                 &mut port_entry,
-                lp_tokens_value,
+                volume,
                 &clock,
                 scenario.ctx()
             );
@@ -3202,16 +3157,12 @@ module vault::vault_tests;
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
 
-            let (lp_treasury_cap, lp_metadata) = lp_tests::create_lp_tests(&mut scenario, 6);
-            transfer::public_transfer(lp_metadata, admin);
-
             let coin_a = sui::coin::mint_for_testing<TestCoinB>(10_000_000, scenario.ctx());
             let coin_b = sui::coin::mint_for_testing<TestCoinA>(10_000_000, scenario.ctx());
 
-            port::test_create_port_internal<TestCoinB, TestCoinA, LP_TESTS>(
+            port::test_create_port_internal<TestCoinB, TestCoinA>(
                 &vault_global_config,
                 &mut port_registry,
-                lp_treasury_cap,
                 &clmm_global_config,
                 &mut clmm_vault,
                 &distribution_config,
@@ -3256,7 +3207,7 @@ module vault::vault_tests;
         // deposit
         scenario.next_tx(admin);
         {
-            let mut port = scenario.take_shared<port::Port<LP_TESTS>>();
+            let mut port = scenario.take_shared<port::Port>();
             let mut vault_global_config = scenario.take_shared<vault::vault_config::GlobalConfig>();
             let clmm_global_config = scenario.take_shared<config::GlobalConfig>();
             let mut clmm_vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -3265,7 +3216,7 @@ module vault::vault_tests;
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
 
-            port.update_position_reward<TestCoinB, TestCoinA, LP_TESTS, SailCoinType, OSAIL1>(
+            port.update_position_reward<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &vault_global_config,
                 &mut minter,
                 &distribution_config,
@@ -3275,7 +3226,7 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            port.update_pool_reward<TestCoinB, TestCoinA, LP_TESTS, RewardCoinType1>(
+            port.update_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
@@ -3291,7 +3242,7 @@ module vault::vault_tests;
             let price_a = vault::pyth_oracle::new_price(1000000000000000000, 18);
             let price_b = vault::pyth_oracle::new_price(1000000000000000000, 18);
 
-            port::test_calculate_aum<TestCoinB, TestCoinA, LP_TESTS>(
+            port::test_calculate_aum<TestCoinB, TestCoinA>(
                 &mut port,
                 &vault_global_config,
                 &mut pool,
@@ -3300,7 +3251,7 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            let port_entry = port::test_deposit<TestCoinB, TestCoinA, LP_TESTS>(
+            let port_entry = port::test_deposit<TestCoinB, TestCoinA>(
                 &mut port,
                 &mut vault_global_config,
                 &clmm_global_config,
@@ -3333,7 +3284,7 @@ module vault::vault_tests;
         // withdraw liquidity
         scenario.next_tx(admin);
         {
-            let mut port = scenario.take_shared<port::Port<LP_TESTS>>();
+            let mut port = scenario.take_shared<port::Port>();
             let vault_global_config = scenario.take_shared<vault::vault_config::GlobalConfig>();
             let clmm_global_config = scenario.take_shared<config::GlobalConfig>();
             let mut clmm_vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
@@ -3341,9 +3292,9 @@ module vault::vault_tests;
             let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
-            let mut port_entry = scenario.take_from_sender<port::PortEntry<LP_TESTS>>();
+            let mut port_entry = scenario.take_from_sender<port::PortEntry>();
 
-            port.update_position_reward<TestCoinB, TestCoinA, LP_TESTS, SailCoinType, OSAIL1>(
+            port.update_position_reward<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &vault_global_config,
                 &mut minter,
                 &distribution_config,
@@ -3353,7 +3304,7 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            port.update_pool_reward<TestCoinB, TestCoinA, LP_TESTS, RewardCoinType1>(
+            port.update_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
@@ -3363,7 +3314,7 @@ module vault::vault_tests;
                 &clock
             );
 
-            let osail_reward = port::claim_position_reward<TestCoinB, TestCoinA, LP_TESTS, SailCoinType, OSAIL1>(
+            let osail_reward = port::claim_position_reward<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &vault_global_config,
                 &mut port,
                 &mut port_entry,
@@ -3377,10 +3328,10 @@ module vault::vault_tests;
 
             transfer::public_transfer(osail_reward, admin);
 
-            let lp_tokens_value = port_entry.get_lp_tokens_value();
+            let volume = port_entry.get_volume();
 
             // withdraw all of the liquidity
-            let (withdrawn_coin_type_b, withdrawn_coin_type_a) = port.withdraw<TestCoinB, TestCoinA, LP_TESTS>(
+            let (withdrawn_coin_type_b, withdrawn_coin_type_a) = port.withdraw<TestCoinB, TestCoinA>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
@@ -3388,7 +3339,7 @@ module vault::vault_tests;
                 &mut clmm_vault,
                 &mut pool,
                 &mut port_entry,
-                lp_tokens_value,
+                volume,
                 &clock,
                 scenario.ctx()
             );

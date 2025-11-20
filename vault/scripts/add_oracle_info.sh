@@ -5,7 +5,7 @@ export COIN_TYPE=0x0000000000000000000000000000000000000000000000000000000000000
 export COIN_METADATA=0x9258181f5ceac8dbffb7030890243caed69a9599d2886d957a9cb7656af3bdb3
 
 # export COIN_TYPE=0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC
-# export COIN_METADATA=
+# export COIN_METADATA=0x69b7a7c3c200439c1b5f3b19d7d495d5966d5f08de66c69276152f8db3992ec6
 
 # export COIN_TYPE=0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT
 # export COIN_METADATA=0xda61b33ac61ed4c084bbda65a2229459ed4eb2185729e70498538f0688bec3cc
@@ -28,18 +28,32 @@ export COIN_METADATA=0x9258181f5ceac8dbffb7030890243caed69a9599d2886d957a9cb7656
 # Pyth price feed ID
 # https://docs.pyth.network/price-feeds/core/price-feeds/price-feed-ids
 # https://insights.pyth.network/price-feeds
-export PRICE_FEED_ID=0x23d7315113f5b1d3ba7a83604c44b94d79f4fd69af77f804fc7f920a6dc65744
 
 # feed price in USD
 ########
-# SUI 0x23d7315113f5b1d3ba7a83604c44b94d79f4fd69af77f804fc7f920a6dc65744
-# USDC 0xeaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a
-# USDT 0x2b89b9dc8fdf9f34709a5b106b472f0f39bb6ca9ce04b0fd7f2e971688e2e53b
-# ETH 0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace
-# BTC 0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43
-# IKA 0x2b529621fa6e2c8429f623ba705572aa64175d7768365ef829df6a12c9f365f4
-# WAL 0xeba0732395fae9dec4bae12e52760b35fc1c5671e2da8b449c9af4efe5d54341
-# DEEP 0x29bdd5248234e33bd93d3b81100b5fa32eaa5997843847e2c2cb16d7c6d9f7ff
+# SUI
+export PRICE_FEED_ID=0x23d7315113f5b1d3ba7a83604c44b94d79f4fd69af77f804fc7f920a6dc65744
+
+# USDC 
+# export PRICE_FEED_ID=0xeaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a
+
+# USDT 
+# export PRICE_FEED_ID=0x2b89b9dc8fdf9f34709a5b106b472f0f39bb6ca9ce04b0fd7f2e971688e2e53b
+
+# ETH 
+# export PRICE_FEED_ID=0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace
+
+# BTC 
+# export PRICE_FEED_ID=0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43
+
+# IKA 
+# export PRICE_FEED_ID=0x2b529621fa6e2c8429f623ba705572aa64175d7768365ef829df6a12c9f365f4
+
+# WAL 
+# export PRICE_FEED_ID=0xeba0732395fae9dec4bae12e52760b35fc1c5671e2da8b449c9af4efe5d54341
+
+# DEEP 
+# export PRICE_FEED_ID=0x29bdd5248234e33bd93d3b81100b5fa32eaa5997843847e2c2cb16d7c6d9f7ff
 
 # Maximum age of price in seconds (e.g., 60 = 60 seconds = 1 minute)
 export PRICE_AGE=60
@@ -47,12 +61,21 @@ export PRICE_AGE=60
 # Get coin metadata object ID (shared object)
 # Coin metadata is a shared object that can be obtained via: sui client object <COIN_METADATA_ID>
 # Or it's automatically resolved when using the coin type in Move calls
+
+# Convert hex string to array of bytes (remove 0x prefix and convert to comma-separated decimal bytes)
+PRICE_FEED_ID_HEX=${PRICE_FEED_ID#0x}  # Remove 0x prefix
+# Convert hex string to array of decimal bytes separated by commas
+# Split hex string into pairs, convert each to decimal, join with commas
+PRICE_FEED_BYTES=$(echo "$PRICE_FEED_ID_HEX" | sed 's/../0x& /g' | xargs -n1 printf '%d ' | sed 's/ $//' | sed 's/ /,/g')
+
 sui client ptb \
+  --make-move-vec "<u8>" "[$PRICE_FEED_BYTES]" \
+  --assign price_feed_id_vec \
   --move-call $PACKAGE::pyth_oracle::add_oracle_info "<$COIN_TYPE>" \
     @$PYTH_ORACLE \
     @$VAULT_CONFIG \
     @$PYTH_STATE \
     @$COIN_METADATA \
-    "vector['$PRICE_FEED_ID_HEX']" \
+    price_feed_id_vec \
     $PRICE_AGE
 
