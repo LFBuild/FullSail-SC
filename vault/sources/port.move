@@ -56,6 +56,7 @@ module vault::port {
     public struct CreateEvent has copy, drop {
         id: ID,
         pool: ID,
+        vault_position_id: ID,
         lower_offset: u32,
         upper_offset: u32,
         rebalance_threshold: u32,
@@ -113,6 +114,8 @@ module vault::port {
         liquidity: u128,
         amount_a: u64,
         amount_b: u64,
+        remained_a: u64,
+        remained_b: u64,
     }
 
     public struct PortEntryDestroyedEvent has copy, drop {
@@ -191,6 +194,8 @@ module vault::port {
     public struct RebalanceEvent has copy, drop {
         port_id: ID,
         data: vault::vault::MigrateLiquidity,
+        remained_a: u64,
+        remained_b: u64,
     }
     
     public struct UpdateLiquidityOffsetEvent has copy, drop {
@@ -480,10 +485,13 @@ module vault::port {
         );
 
         transfer::public_transfer(lp_tokens, sui::tx_context::sender(ctx));
+
+        let vault_position_id = new_port.vault.borrow_staked_position().position_id();
         
         let event = CreateEvent{
             id                  : sui::object::id<Port<LpCoin>>(&new_port), 
-            pool                : sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool), 
+            pool                : sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool),
+            vault_position_id   : vault_position_id,
             lower_offset        : lower_offset, 
             upper_offset        : upper_offset, 
             rebalance_threshold : rebalance_threshold, 
@@ -601,14 +609,16 @@ module vault::port {
             ctx
         );
 
+        port.buffer_assets.join<CoinTypeA>(balance_a);
+        port.buffer_assets.join<CoinTypeB>(balance_b);
+
         let event = RebalanceEvent{
             port_id : sui::object::id<Port<LpCoin>>(port), 
             data    : migrate_liquidity,
+            remained_a         : port.buffer_assets.value<CoinTypeA>(),
+            remained_b         : port.buffer_assets.value<CoinTypeB>(),
         };
         sui::event::emit<RebalanceEvent>(event);
-
-        port.buffer_assets.join<CoinTypeA>(balance_a);
-        port.buffer_assets.join<CoinTypeB>(balance_b);
     }
 
     /// Updates the target liquidity range for the port and optionally rebalances.
@@ -1956,6 +1966,9 @@ module vault::port {
         coin_a_balance.join(liquidity_balance_a);
         coin_b_balance.join(liquidity_balance_b);
 
+        let remained_a = port.buffer_assets.value<CoinTypeA>();
+        let remained_b = port.buffer_assets.value<CoinTypeB>();
+
         let event = WithdrawEvent{
             port_id   : sui::object::id<Port<LpCoin>>(port),
             port_entry_id: sui::object::id<PortEntry<LpCoin>>(port_entry),
@@ -1963,6 +1976,8 @@ module vault::port {
             liquidity : liquidity, 
             amount_a  : coin_a_balance.value(), 
             amount_b  : coin_b_balance.value(),
+            remained_a  : remained_a,
+            remained_b  : remained_b,
         };
         sui::event::emit<WithdrawEvent>(event);
 
@@ -2498,6 +2513,62 @@ module vault::port {
             update_time : sui::clock::timestamp_ms(clock),
         };
         sui::event::emit<UpdatePoolRewardEvent>(event);
+    }
+
+    /// Computes the claimable pool reward amount for a port entry.
+    ///
+    /// Confirms rewards were refreshed, verifies growth ordering, calculates the
+    /// accrued reward delta, and returns both the claimable amount and the latest
+    /// growth value.
+    ///
+    /// # Arguments
+    /// * `port` – mutable reference to the port maintaining growth state
+    /// * `port_entry` – entry requesting the reward calculation
+    /// * `clock` – clock object ensuring reward freshness
+    ///
+    /// # Type Parameters
+    /// * `LpCoin` – LP token associated with the port
+    /// * `RewardCoinType` – reward coin type being claimed
+    ///
+    /// # Returns
+    /// * tuple `(amount, growth)` indicating claimable pool reward and updated growth
+    ///
+    /// # Aborts
+    /// * if the port is paused, rewards are stale, or growth order is violated
+    public fun get_pool_reward_amount_to_claim<LpCoin, RewardCoinType>(
+        global_config: &vault::vault_config::GlobalConfig,
+        port: &mut Port<LpCoin>,
+        port_entry: &mut PortEntry<LpCoin>,
+        clock: &sui::clock::Clock
+    ) : (u64, u128) {
+        global_config.checked_package_version();
+        assert!(!port.is_pause, vault::error::port_is_pause());
+        assert!(port_entry.port_id == sui::object::id<Port<LpCoin>>(port), vault::error::port_entry_port_id_not_match());
+        let reward_coin_type = with_defining_ids<RewardCoinType>();
+        assert!(
+            port.last_update_growth_time_ms.contains(&reward_coin_type) &&
+            *port.last_update_growth_time_ms.get(&reward_coin_type) == clock.timestamp_ms(), 
+            vault::error::port_entry_time_not_match()
+        );
+        assert!(port_entry.lp_tokens.value() != 0, vault::error::port_entry_lp_tokens_not_empty());
+        
+        let start_growth = if (port_entry.entry_reward_growth.contains(&reward_coin_type)) {
+            let (_, _start_growth) = port_entry.entry_reward_growth.remove(&reward_coin_type);
+            _start_growth
+        } else {
+            0
+        };
+        
+        let current_growth = if (port.reward_growth.contains(&reward_coin_type)) {
+            *port.reward_growth.get(&reward_coin_type)
+        } else {
+            0
+        };
+        let accumulated_growth_reward = current_growth - start_growth;
+        let (reward_amount , overflow) = integer_mate::math_u64::overflowing_mul(port_entry.lp_tokens.value(), (accumulated_growth_reward as u64));
+        assert!(!overflow, vault::error::token_amount_overflow());
+
+        (reward_amount, current_growth)
     }
 
     /// Claims pool rewards for a port entry based on LP ownership.
