@@ -25,7 +25,7 @@ module vault::vault_tests;
     use std::type_name::{Self, TypeName};
     use vault::port;
     use vault::vault_config;
-    use vault::pyth_oracle;
+    use vault::port_oracle;
 
     use vault::usdt_tests::{Self, USDT_TESTS};
 
@@ -96,7 +96,7 @@ module vault::vault_tests;
             base_update_fee,
             to_mint
         );
-        pyth_oracle::test_init(scenario.ctx());
+        port_oracle::test_init(scenario.ctx());
 
         /*
         scenario.next_tx(admin);
@@ -253,7 +253,7 @@ module vault::vault_tests;
         */
         scenario.next_tx(admin);
         {
-            let mut pyth_oracle = scenario.take_shared<pyth_oracle::PythOracle>();
+            let mut port_oracle = scenario.take_shared<port_oracle::PortOracle>();
             let vault_global_config = scenario.take_shared<vault::vault_config::GlobalConfig>();
             // let mut pyth_state = scenario.take_shared<pyth::state::State>();
             let (mut pyth_state, worm_state) = take_wormhole_and_pyth_states(&scenario);
@@ -264,7 +264,7 @@ module vault::vault_tests;
             let price_feed_id = price_identifier_id.to_inner().to_bytes();
             let price_identifier = pyth::price_identifier::from_byte_vec(price_feed_id);
 
-            // pyth_oracle.add_oracle_info<USDT_TESTS>(
+            // port_oracle.add_oracle_info<USDT_TESTS>(
             //     &vault_global_config,
             //     &pyth_state,
             //     &usd_metadata,
@@ -286,7 +286,7 @@ module vault::vault_tests;
             //     &clock
             // );
 
-            // let hp = pyth_oracle.update_price<USDT_TESTS>(
+            // let hp = port_oracle.update_price<USDT_TESTS>(
             //     &vault_global_config,
             //     &pyth_state,
             //     auth_price_infos,
@@ -299,7 +299,7 @@ module vault::vault_tests;
 
             // vector::destroy_empty(verified_vaas);
             sui::object::delete(price_identifier_id);
-            test_scenario::return_shared(pyth_oracle);
+            test_scenario::return_shared(port_oracle);
             // test_scenario::return_shared(pyth_price_info_obj);
             test_scenario::return_shared(pyth_state);
             test_scenario::return_shared(worm_state);
@@ -364,7 +364,7 @@ module vault::vault_tests;
             let mut gauge = scenario.take_from_sender<gauge::Gauge<TestCoinB, TestCoinA>>();
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
              let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
-            // let pyth_oracle = scenario.take_shared<pyth_oracle::PythOracle>();
+            // let port_oracle = scenario.take_shared<port_oracle::PortOracle>();
 
             // vault_global_config.add_role(&admin_cap, admin, vault_config::get_role_rebalance());
 
@@ -444,7 +444,7 @@ module vault::vault_tests;
             test_scenario::return_shared(clmm_vault);
             transfer::public_transfer(admin_cap, admin);
             test_scenario::return_shared(distribution_config);
-            // test_scenario::return_shared(pyth_oracle);
+            // test_scenario::return_shared(port_oracle);
         };
 
         // skip some time in order to claim rewards
@@ -504,8 +504,8 @@ module vault::vault_tests;
             let coin_a = sui::coin::mint_for_testing<TestCoinB>(2_000_000, scenario.ctx());
             let coin_b = sui::coin::mint_for_testing<TestCoinA>(5_000_000, scenario.ctx());
             let tvl = 100_000;
-            let price_a = vault::pyth_oracle::new_price(1000000000000000000, 18);
-            let price_b = vault::pyth_oracle::new_price(1000000000000000000, 18);
+            let price_a = vault::port_oracle::new_price(1000000000000000000, 18);
+            let price_b = vault::port_oracle::new_price(1000000000000000000, 18);
 
             port::test_calculate_aum<TestCoinB, TestCoinA>(
                 &mut port,
@@ -579,8 +579,8 @@ module vault::vault_tests;
             let coin_a = sui::coin::mint_for_testing<TestCoinB>(2_000_00, scenario.ctx());
             let coin_b = sui::coin::mint_for_testing<TestCoinA>(5_000_00, scenario.ctx());
             let tvl = 100_000;
-            let price_a = vault::pyth_oracle::new_price(1000000000000000000, 18);
-            let price_b = vault::pyth_oracle::new_price(1000000000000000000, 18);
+            let price_a = vault::port_oracle::new_price(1000000000000000000, 18);
+            let price_b = vault::port_oracle::new_price(1000000000000000000, 18);
 
             // port.update_position_reward<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
             //     &vault_global_config,
@@ -1278,8 +1278,8 @@ module vault::vault_tests;
 
             assert!(free_balance_b_after_swap > buffer_balance_b, 100000);
 
-            let price_coin_in = vault::pyth_oracle::new_price(1000000000000000000, 18);
-            let price_coin_out = vault::pyth_oracle::new_price(1000000000000000000, 18);
+            let price_coin_in = vault::port_oracle::new_price(1000000000000000000, 18);
+            let price_coin_out = vault::port_oracle::new_price(1000000000000000000, 18);
             let loan_amount = buffer_balance_a*47/100;
 
             let (coin_a_out, flash_loan_cert) = port.test_flash_loan<TestCoinB, TestCoinA>(
@@ -1580,8 +1580,8 @@ module vault::vault_tests;
             // check how many unused assets are left in the buffer
             let buffer_balance_a = port.get_buffer_asset_value<TestCoinB>();
 
-            let price_coin_in = vault::pyth_oracle::new_price(1000000000000000000, 18);
-            let price_coin_out = vault::pyth_oracle::new_price(1000000000000000000, 18);
+            let price_coin_in = vault::port_oracle::new_price(1000000000000000000, 18);
+            let price_coin_out = vault::port_oracle::new_price(1000000000000000000, 18);
             let loan_amount = buffer_balance_a*30/100;
 
             let (coin_a_out, flash_loan_cert) = port.test_flash_loan<TestCoinB, TestCoinA>(
@@ -1987,8 +1987,8 @@ module vault::vault_tests;
             let coin_a = sui::coin::mint_for_testing<TestCoinB>(2_000_000, scenario.ctx());
             let coin_b = sui::coin::mint_for_testing<TestCoinA>(5_000_000, scenario.ctx());
             let tvl = 100_000;
-            let price_a = vault::pyth_oracle::new_price(1000000000000000000, 18);
-            let price_b = vault::pyth_oracle::new_price(1000000000000000000, 18);
+            let price_a = vault::port_oracle::new_price(1000000000000000000, 18);
+            let price_b = vault::port_oracle::new_price(1000000000000000000, 18);
 
             port::test_calculate_aum<TestCoinB, TestCoinA>(
                 &mut port,
@@ -2058,8 +2058,8 @@ module vault::vault_tests;
             let coin_a = sui::coin::mint_for_testing<TestCoinB>(2_000_00, scenario.ctx());
             let coin_b = sui::coin::mint_for_testing<TestCoinA>(5_000_00, scenario.ctx());
             let tvl = 100_000;
-            let price_a = vault::pyth_oracle::new_price(1000000000000000000, 18);
-            let price_b = vault::pyth_oracle::new_price(1000000000000000000, 18);
+            let price_a = vault::port_oracle::new_price(1000000000000000000, 18);
+            let price_b = vault::port_oracle::new_price(1000000000000000000, 18);
 
             // port::test_calculate_aum<TestCoinB, TestCoinA>(
             //     &mut port,
@@ -2217,8 +2217,8 @@ module vault::vault_tests;
             let coin_a = sui::coin::mint_for_testing<TestCoinB>(2_000_000, scenario.ctx());
             let coin_b = sui::coin::mint_for_testing<TestCoinA>(5_000_000, scenario.ctx());
             let tvl = 100_000;
-            let price_a = vault::pyth_oracle::new_price(1000000000000000000, 18);
-            let price_b = vault::pyth_oracle::new_price(1000000000000000000, 18);
+            let price_a = vault::port_oracle::new_price(1000000000000000000, 18);
+            let price_b = vault::port_oracle::new_price(1000000000000000000, 18);
 
             port::test_calculate_aum<TestCoinB, TestCoinA>(
                 &mut port,
@@ -2336,8 +2336,8 @@ module vault::vault_tests;
             let coin_a = sui::coin::mint_for_testing<TestCoinB>(2_000_00, scenario.ctx());
             let coin_b = sui::coin::mint_for_testing<TestCoinA>(5_000_00, scenario.ctx());
             let tvl = 100_000;
-            let price_a = vault::pyth_oracle::new_price(1000000000000000000, 18);
-            let price_b = vault::pyth_oracle::new_price(1000000000000000000, 18);
+            let price_a = vault::port_oracle::new_price(1000000000000000000, 18);
+            let price_b = vault::port_oracle::new_price(1000000000000000000, 18);
 
             port.update_position_reward<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &vault_global_config,
@@ -2528,8 +2528,8 @@ module vault::vault_tests;
             let coin_a = sui::coin::mint_for_testing<TestCoinB>(2_000_000, scenario.ctx());
             let coin_b = sui::coin::mint_for_testing<TestCoinA>(5_000_000, scenario.ctx());
             let tvl = 100_000;
-            let price_a = vault::pyth_oracle::new_price(1000000000000000000, 18);
-            let price_b = vault::pyth_oracle::new_price(1000000000000000000, 18);
+            let price_a = vault::port_oracle::new_price(1000000000000000000, 18);
+            let price_b = vault::port_oracle::new_price(1000000000000000000, 18);
 
             port::test_calculate_aum<TestCoinB, TestCoinA>(
                 &mut port,
@@ -2755,8 +2755,8 @@ module vault::vault_tests;
             let coin_a = sui::coin::mint_for_testing<TestCoinB>(2_000_000, scenario.ctx());
             let coin_b = sui::coin::mint_for_testing<TestCoinA>(5_000_000, scenario.ctx());
             let tvl = 100_000;
-            let price_a = vault::pyth_oracle::new_price(1000000000000000000, 18);
-            let price_b = vault::pyth_oracle::new_price(1000000000000000000, 18);
+            let price_a = vault::port_oracle::new_price(1000000000000000000, 18);
+            let price_b = vault::port_oracle::new_price(1000000000000000000, 18);
 
             port::test_calculate_aum<TestCoinB, TestCoinA>(
                 &mut port,
@@ -2992,8 +2992,8 @@ module vault::vault_tests;
             let coin_a = sui::coin::mint_for_testing<TestCoinB>(2_000_000, scenario.ctx());
             let coin_b = sui::coin::mint_for_testing<TestCoinA>(5_000_000, scenario.ctx());
             let tvl = 100_000;
-            let price_a = vault::pyth_oracle::new_price(1000000000000000000, 18);
-            let price_b = vault::pyth_oracle::new_price(1000000000000000000, 18);
+            let price_a = vault::port_oracle::new_price(1000000000000000000, 18);
+            let price_b = vault::port_oracle::new_price(1000000000000000000, 18);
 
             port::test_calculate_aum<TestCoinB, TestCoinA>(
                 &mut port,
@@ -3239,8 +3239,8 @@ module vault::vault_tests;
             let coin_a = sui::coin::mint_for_testing<TestCoinB>(2_000_000, scenario.ctx());
             let coin_b = sui::coin::mint_for_testing<TestCoinA>(5_000_000, scenario.ctx());
             let tvl = 100_000;
-            let price_a = vault::pyth_oracle::new_price(1000000000000000000, 18);
-            let price_b = vault::pyth_oracle::new_price(1000000000000000000, 18);
+            let price_a = vault::port_oracle::new_price(1000000000000000000, 18);
+            let price_b = vault::port_oracle::new_price(1000000000000000000, 18);
 
             port::test_calculate_aum<TestCoinB, TestCoinA>(
                 &mut port,

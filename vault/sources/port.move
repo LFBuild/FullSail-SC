@@ -47,7 +47,7 @@ module vault::port {
     }
     
     public struct Status has store {
-        last_aum: u128,
+        last_aum: u128, // only pool assets
         last_calculate_aum_tx: vector<u8>,
         last_deposit_tx: vector<u8>,
         last_withdraw_tx: vector<u8>,
@@ -273,7 +273,7 @@ module vault::port {
     /// # Arguments
     /// * `global_config` – global configuration of the `vault` module
     /// * `port_registry` – registry that stores created ports
-    /// * `pyth_oracle` – price oracle used to value assets
+    /// * `port_oracle` – price oracle used to value assets
     /// * `treasury_cap` – `TreasuryCap` for minting the port LP tokens
     /// * `clmm_global_config` – global configuration of the CLMM pool
     /// * `clmm_vault` – CLMM global reward vault
@@ -299,7 +299,7 @@ module vault::port {
     public fun create_port<CoinTypeA, CoinTypeB>(
         global_config: &vault::vault_config::GlobalConfig, 
         port_registry: &mut PortRegistry,
-        pyth_oracle: &vault::pyth_oracle::PythOracle,
+        port_oracle: &vault::port_oracle::PortOracle,
         clmm_global_config: &clmm_pool::config::GlobalConfig,
         clmm_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         distribution_config: &governance::distribution_config::DistributionConfig,
@@ -326,7 +326,7 @@ module vault::port {
             std::option::some<TypeName>(with_defining_ids<CoinTypeB>())
         };
 
-        let tvl = calculate_tvl_base_on_quote(pyth_oracle, &balances, quote_type, clock);
+        let tvl = calculate_tvl_base_on_quote(port_oracle, &balances, quote_type, clock);
 
         create_port_internal<CoinTypeA, CoinTypeB>(
             global_config,
@@ -768,7 +768,7 @@ module vault::port {
     /// # Arguments
     /// * `port` – mutable reference to the port whose AUM is computed
     /// * `global_config` – configuration enforcing package version checks
-    /// * `pyth_oracle` – price oracle used for valuation
+    /// * `port_oracle` – price oracle used for valuation
     /// * `gauge` – gauge managing the port’s CLMM position
     /// * `pool` – CLMM pool associated with the port
     /// * `clock` – clock object for oracle freshness checks
@@ -784,7 +784,7 @@ module vault::port {
     public fun calculate_aum<CoinTypeA, CoinTypeB>(
         port: &mut Port,
         global_config: &vault::vault_config::GlobalConfig, 
-        pyth_oracle: &vault::pyth_oracle::PythOracle,
+        port_oracle: &vault::port_oracle::PortOracle,
         gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>, 
         clock: &sui::clock::Clock, 
@@ -822,14 +822,14 @@ module vault::port {
                     pool_coin_amount = amount + amount_b;
                 };
             };
-            if (!pyth_oracle.contain_oracle_info(type_name) || pool_coin_amount == 0) {
+            if (!port_oracle.contain_oracle_info(type_name) || pool_coin_amount == 0) {
                 i = i + 1;
                 continue
             };
             balances.insert(type_name, pool_coin_amount); 
             i = i + 1;
         };
-        port.status.last_aum = calculate_tvl_base_on_quote(pyth_oracle, &balances, port.quote_type, clock); 
+        port.status.last_aum = calculate_tvl_base_on_quote(port_oracle, &balances, port.quote_type, clock); 
         let digest = *ctx.digest();
         assert!(digest != port.status.last_calculate_aum_tx, vault::error::operation_not_allowed());
         port.status.last_calculate_aum_tx = digest;
@@ -856,19 +856,19 @@ module vault::port {
     }
     
     fun calculate_tvl_base_on_quote(
-        pyth_oracle: &vault::pyth_oracle::PythOracle, 
+        port_oracle: &vault::port_oracle::PortOracle, 
         balances: &sui::vec_map::VecMap<TypeName, u64>, 
         quote_type: std::option::Option<TypeName>, 
         clock: &sui::clock::Clock
     ) : u128 {
-        let price = if (std::option::is_none<TypeName>(&quote_type)) {
-            vault::pyth_oracle::new_price(
-                1 * std::u64::pow(10, vault::pyth_oracle::price_multiplier_decimal()), 
-                vault::pyth_oracle::price_multiplier_decimal()
+        let quote_price = if (std::option::is_none<TypeName>(&quote_type)) {
+            vault::port_oracle::new_price(
+                1 * std::u64::pow(10, vault::port_oracle::price_multiplier_decimal()), 
+                vault::port_oracle::price_multiplier_decimal()
             )
         } else {
-            vault::pyth_oracle::get_price_by_type(
-                pyth_oracle, 
+            vault::port_oracle::get_price_by_type(
+                port_oracle, 
                 *std::option::borrow<TypeName>(&quote_type), 
                 clock
             )
@@ -877,16 +877,28 @@ module vault::port {
         let mut i = 0;
         while (i < sui::vec_map::length<TypeName, u64>(balances)) {
             let (type_name, type_balance) = sui::vec_map::get_entry_by_idx<TypeName, u64>(balances, i);
-            let price_by_type = vault::pyth_oracle::get_price_by_type(pyth_oracle, *type_name, clock);
-            let (price_in_quote, _) = vault::pyth_oracle::calculate_prices(&price_by_type, &price);
+            let price_by_type = vault::port_oracle::get_price_by_type(port_oracle, *type_name, clock);
+            let (price_in_quote, _) = vault::port_oracle::calculate_prices(&price_by_type, &quote_price);
             tvl = tvl + integer_mate::full_math_u128::mul_div_floor(
                 (price_in_quote as u128), 
                 (*type_balance as u128), 
-                (std::u64::pow(10, vault::pyth_oracle::price_multiplier_decimal()) as u128)
+                (std::u64::pow(10, vault::port_oracle::price_multiplier_decimal()) as u128)
             );
+
             i = i + 1;
         };
+
         tvl
+    }
+
+    #[test_only]
+    public fun test_calculate_tvl_base_on_quote(
+        port_oracle: &vault::port_oracle::PortOracle, 
+        balances: &sui::vec_map::VecMap<TypeName, u64>, 
+        quote_type: std::option::Option<TypeName>, 
+        clock: &sui::clock::Clock
+    ) : u128 {
+        calculate_tvl_base_on_quote(port_oracle, balances, quote_type, clock)
     }
     
     /// Claims accumulated protocol fees for the port.
@@ -938,7 +950,7 @@ module vault::port {
     /// # Arguments
     /// * `port` – mutable reference to the port receiving liquidity
     /// * `global_config` – global configuration updated during the deposit
-    /// * `pyth_oracle` – price oracle used to value the incoming assets
+    /// * `port_oracle` – price oracle used to value the incoming assets
     /// * `clmm_global_config` – configuration for the CLMM module
     /// * `clmm_vault` – CLMM reward vault tracking incentives
     /// * `distribution_config` – reward distribution parameters
@@ -961,7 +973,7 @@ module vault::port {
     public fun deposit<CoinTypeA, CoinTypeB>(
         port: &mut Port, 
         global_config: &mut vault::vault_config::GlobalConfig, 
-        pyth_oracle: &vault::pyth_oracle::PythOracle, 
+        port_oracle: &vault::port_oracle::PortOracle, 
         clmm_global_config: &clmm_pool::config::GlobalConfig, 
         clmm_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         distribution_config: &governance::distribution_config::DistributionConfig,
@@ -980,7 +992,7 @@ module vault::port {
         balances.insert(with_defining_ids<CoinTypeA>(), sui::coin::value<CoinTypeA>(&coin_a)); 
         balances.insert(with_defining_ids<CoinTypeB>(), sui::coin::value<CoinTypeB>(&coin_b));
 
-        let tvl = calculate_tvl_base_on_quote(pyth_oracle, &balances, port.quote_type, clock);
+        let tvl = calculate_tvl_base_on_quote(port_oracle, &balances, port.quote_type, clock);
 
         port.deposit_internal(
             global_config,
@@ -992,8 +1004,8 @@ module vault::port {
             coin_a,
             coin_b,
             tvl,
-            pyth_oracle.get_price<CoinTypeA>(clock),
-            pyth_oracle.get_price<CoinTypeB>(clock),
+            port_oracle.get_price<CoinTypeA>(clock),
+            port_oracle.get_price<CoinTypeB>(clock),
             clock,
             ctx
         )
@@ -1011,8 +1023,8 @@ module vault::port {
         coin_a: Coin<CoinTypeA>, 
         coin_b: Coin<CoinTypeB>, 
         tvl: u128,
-        price_a: vault::pyth_oracle::Price,
-        price_b: vault::pyth_oracle::Price,
+        price_a: vault::port_oracle::Price,
+        price_b: vault::port_oracle::Price,
         clock: &sui::clock::Clock, 
         ctx: &mut TxContext
     ) : PortEntry {
@@ -1048,8 +1060,8 @@ module vault::port {
         coin_a: Coin<CoinTypeA>, 
         coin_b: Coin<CoinTypeB>,
         tvl: u128,
-        price_a: vault::pyth_oracle::Price,
-        price_b: vault::pyth_oracle::Price,
+        price_a: vault::port_oracle::Price,
+        price_b: vault::port_oracle::Price,
         clock: &sui::clock::Clock, 
         ctx: &mut TxContext
     ) : PortEntry {
@@ -1126,7 +1138,7 @@ module vault::port {
     /// # Arguments
     /// * `port` – mutable reference to the port managing the position
     /// * `global_config` – global configuration updated during liquidity changes
-    /// * `pyth_oracle` – oracle providing prices for valuation
+    /// * `port_oracle` – oracle providing prices for valuation
     /// * `clmm_global_config` – CLMM configuration parameters
     /// * `clmm_vault` – CLMM reward vault used when adding liquidity
     /// * `distribution_config` – reward distribution settings
@@ -1147,7 +1159,7 @@ module vault::port {
     public fun increase_liquidity<CoinTypeA, CoinTypeB>(
         port: &mut Port, 
         global_config: &mut vault::vault_config::GlobalConfig, 
-        pyth_oracle: &vault::pyth_oracle::PythOracle, 
+        port_oracle: &vault::port_oracle::PortOracle, 
         clmm_global_config: &clmm_pool::config::GlobalConfig,
         clmm_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         distribution_config: &governance::distribution_config::DistributionConfig,
@@ -1168,10 +1180,10 @@ module vault::port {
         balances.insert(with_defining_ids<CoinTypeA>(), sui::coin::value<CoinTypeA>(&coin_a)); 
         balances.insert(with_defining_ids<CoinTypeB>(), sui::coin::value<CoinTypeB>(&coin_b));
 
-        let tvl = calculate_tvl_base_on_quote(pyth_oracle, &balances, port.quote_type, clock);
+        let tvl = calculate_tvl_base_on_quote(port_oracle, &balances, port.quote_type, clock);
 
-        let price_a = pyth_oracle.get_price<CoinTypeA>(clock);
-        let price_b = pyth_oracle.get_price<CoinTypeB>(clock);
+        let price_a = port_oracle.get_price<CoinTypeA>(clock);
+        let price_b = port_oracle.get_price<CoinTypeB>(clock);
 
         let volume = before_increase_liquidity(
             port, 
@@ -1217,7 +1229,7 @@ module vault::port {
 
     #[test_only]
     public fun test_increase_liquidity<CoinTypeA, CoinTypeB>(
-        port: &mut Port, 
+        port: &mut Port,
         global_config: &mut vault::vault_config::GlobalConfig, 
         clmm_global_config: &clmm_pool::config::GlobalConfig,
         clmm_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
@@ -1228,8 +1240,8 @@ module vault::port {
         tvl: u128,
         coin_a: Coin<CoinTypeA>,
         coin_b: Coin<CoinTypeB>,
-        price_a: vault::pyth_oracle::Price,
-        price_b: vault::pyth_oracle::Price,
+        price_a: vault::port_oracle::Price,
+        price_b: vault::port_oracle::Price,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
@@ -1283,7 +1295,7 @@ module vault::port {
         coin_b: Coin<CoinTypeB>,
         tvl: u128,
         clock: &sui::clock::Clock,
-        ctx: &mut TxContext
+        ctx: &TxContext
     ) : u64 {
         global_config.checked_package_version();
         assert!(!port.is_pause, vault::error::port_is_pause());
@@ -1304,7 +1316,7 @@ module vault::port {
 
         let volume = get_volume_by_tvl(total_volume, tvl, port.status.last_aum);
         assert!(volume > 0, vault::error::token_amount_is_zero()); 
-        assert!(volume < vault::vault_utils::uint64_max() - 1 - (total_volume as u128), vault::error::token_amount_overflow());
+        assert!(volume < (1<<64) - 1 - (total_volume as u128), vault::error::token_amount_overflow());
         port.buffer_assets.join<CoinTypeA>(coin_a.into_balance());
         port.buffer_assets.join<CoinTypeB>(coin_b.into_balance());
 
@@ -1340,7 +1352,7 @@ module vault::port {
     /// * `distribution_config` – reward distribution settings
     /// * `gauge` – gauge managing the CLMM stake
     /// * `pool` – CLMM pool where liquidity is provided
-    /// * `pyth_oracle` – oracle providing prices for valuation
+    /// * `port_oracle` – oracle providing prices for valuation
     /// * `clock` – clock object ensuring price freshness
     /// * `ctx` – transaction context
     ///
@@ -1360,7 +1372,7 @@ module vault::port {
         distribution_config: &governance::distribution_config::DistributionConfig,
         gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        pyth_oracle: &vault::pyth_oracle::PythOracle,
+        port_oracle: &vault::port_oracle::PortOracle,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
@@ -1368,8 +1380,8 @@ module vault::port {
         assert!(!port.is_pause, vault::error::port_is_pause());
         assert!(sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool) == port.vault.pool_id(), vault::error::clmm_pool_not_match());
 
-        let price_a = pyth_oracle.get_price<CoinTypeA>(clock);
-        let price_b = pyth_oracle.get_price<CoinTypeB>(clock);
+        let price_a = port_oracle.get_price<CoinTypeA>(clock);
+        let price_b = port_oracle.get_price<CoinTypeB>(clock);
 
         port.add_liquidity_internal<CoinTypeA, CoinTypeB>(
             global_config, 
@@ -1396,8 +1408,8 @@ module vault::port {
         distribution_config: &governance::distribution_config::DistributionConfig,
         gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        price_a: vault::pyth_oracle::Price,
-        price_b: vault::pyth_oracle::Price,
+        price_a: vault::port_oracle::Price,
+        price_b: vault::port_oracle::Price,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
@@ -1438,7 +1450,7 @@ module vault::port {
     ) {
         let diff_price = integer_mate::full_math_u64::mul_div_floor(
             price_a, 
-            std::u64::pow(10, vault::pyth_oracle::price_multiplier_decimal()),
+            std::u64::pow(10, vault::port_oracle::price_multiplier_decimal()),
             price_b
         );
         if (
@@ -1449,7 +1461,7 @@ module vault::port {
                         pool.current_sqrt_price(), 
                         coin_a_decimal,
                         coin_b_decimal,
-                        vault::pyth_oracle::price_multiplier_decimal()
+                        vault::port_oracle::price_multiplier_decimal()
                     )
                 ) / (diff_price as u128) 
             ) > (
@@ -1661,7 +1673,7 @@ module vault::port {
     /// # Arguments
     /// * `port` – mutable reference to the port providing the flash loan
     /// * `global_config` – global configuration for version and role checks
-    /// * `pyth_oracle` – oracle used to price the loaned and repayment assets
+    /// * `port_oracle` – oracle used to price the loaned and repayment assets
     /// * `loan_amount` – amount of `CoinTypeOut` requested
     /// * `clock` – clock object for oracle freshness checks
     /// * `ctx` – transaction context
@@ -1679,7 +1691,7 @@ module vault::port {
     public fun flash_loan<CoinTypeOut, CoinTypeIn>(
         port: &mut Port,
         global_config: &vault::vault_config::GlobalConfig,  
-        pyth_oracle: &vault::pyth_oracle::PythOracle, 
+        port_oracle: &vault::port_oracle::PortOracle, 
         loan_amount: u64,
         clock: &sui::clock::Clock, 
         ctx: &mut TxContext 
@@ -1694,8 +1706,8 @@ module vault::port {
         assert!(!port.is_pause, vault::error::port_is_pause());
         port.is_pause = true;
         assert!(loan_amount > 0, vault::error::token_amount_is_zero());
-        let price_coin_in = vault::pyth_oracle::get_price<CoinTypeIn>(pyth_oracle, clock); 
-        let price_coin_out = vault::pyth_oracle::get_price<CoinTypeOut>(pyth_oracle, clock); 
+        let price_coin_in = port_oracle.get_price<CoinTypeIn>(clock); 
+        let price_coin_out = port_oracle.get_price<CoinTypeOut>(clock); 
 
         flash_loan_internal<CoinTypeOut, CoinTypeIn>(
             port,
@@ -1711,8 +1723,8 @@ module vault::port {
     public fun test_flash_loan<CoinTypeOut, CoinTypeIn>(
         port: &mut Port,
         global_config: &vault::vault_config::GlobalConfig,  
-        price_coin_in: vault::pyth_oracle::Price,
-        price_coin_out: vault::pyth_oracle::Price,
+        price_coin_in: vault::port_oracle::Price,
+        price_coin_out: vault::port_oracle::Price,
         loan_amount: u64,
         ctx: &mut TxContext 
     ) : (Coin<CoinTypeOut>, FlashLoanCert) {
@@ -1740,17 +1752,17 @@ module vault::port {
     fun flash_loan_internal<CoinTypeOut, CoinTypeIn>(
         port: &mut Port,
         global_config: &vault::vault_config::GlobalConfig,  
-        price_coin_in: vault::pyth_oracle::Price,
-        price_coin_out: vault::pyth_oracle::Price,
+        price_coin_in: vault::port_oracle::Price,
+        price_coin_out: vault::port_oracle::Price,
         loan_amount: u64,
         ctx: &mut TxContext 
     ) : (Coin<CoinTypeOut>, FlashLoanCert) {
-        let (price_coin_out_in_quote, _) = vault::pyth_oracle::calculate_prices(&price_coin_out, &price_coin_in);
+        let (price_coin_out_in_quote, _) = vault::port_oracle::calculate_prices(&price_coin_out, &price_coin_in);
         let repay_amount = integer_mate::full_math_u64::mul_div_ceil(
             integer_mate::full_math_u64::mul_div_floor(
                 price_coin_out_in_quote, 
                 loan_amount, 
-                std::u64::pow(10, vault::pyth_oracle::price_multiplier_decimal())
+                std::u64::pow(10, vault::port_oracle::price_multiplier_decimal())
             ),
             vault::vault_config::get_swap_slippage_denominator() - (global_config.get_swap_slippage<CoinTypeOut>() + global_config.get_swap_slippage<CoinTypeIn>()) / 2, 
             vault::vault_config::get_swap_slippage_denominator()
@@ -1771,8 +1783,8 @@ module vault::port {
             loan_amount         : loan_amount, 
             repay_amount        : repay_amount, 
             base_to_quote_price : price_coin_out_in_quote, 
-            base_price          : vault::pyth_oracle::price_value(&price_coin_out), 
-            quote_price         : vault::pyth_oracle::price_value(&price_coin_in),
+            base_price          : price_coin_out.price_value(), 
+            quote_price         : price_coin_in.price_value(),
         };
         sui::event::emit<FlashLoanEvent>(flash_loan_event);
 

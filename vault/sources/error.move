@@ -65,7 +65,11 @@ module vault::error {
     const INVALID_SWAP_SLIPPAGE: u64 = 62;
     const NOT_OWNER: u64 = 63;
     const NO_PORT_CREATOR_PERMISSION: u64 = 64;
-
+    const SWITCHBOARD_AGGREGATOR_NOT_MATCH: u64 = 65;
+    const SWITCHBOARD_ORACLE_INFO_ALREADY_EXISTS: u64 = 66;
+    const PYTH_ORACLE_INFO_ALREADY_EXISTS: u64 = 67;
+    const INVALID_AGGREGATOR_PRICE: u64 = 68;
+    
     public fun amount_in_above_max_limit() : u64 {
         abort AMOUNT_IN_ABOVE_MAX_LIMIT
     }
@@ -324,6 +328,22 @@ module vault::error {
 
     public fun no_port_creator_permission() : u64 {
         abort NO_PORT_CREATOR_PERMISSION
+    }
+
+    public fun switchboard_aggregator_not_match() : u64 {
+        abort SWITCHBOARD_AGGREGATOR_NOT_MATCH
+    }
+
+    public fun switchboard_oracle_info_already_exists() : u64 {
+        abort SWITCHBOARD_ORACLE_INFO_ALREADY_EXISTS
+    }
+
+    public fun pyth_oracle_info_already_exists() : u64 {
+        abort PYTH_ORACLE_INFO_ALREADY_EXISTS
+    }
+
+    public fun invalid_aggregator_price() : u64 {
+        abort INVALID_AGGREGATOR_PRICE
     }
 }
 
