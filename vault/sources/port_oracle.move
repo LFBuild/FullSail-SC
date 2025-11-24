@@ -387,6 +387,18 @@ module vault::port_oracle {
     public fun price_pyth_feed_id(oracle_info: &OracleInfo) : Option<vector<u8>> {
         oracle_info.price_pyth_feed_id
     }
+
+    public fun get_price_pyth_feed_id<CoinType>(port_oracle: &PortOracle) : Option<vector<u8>> {
+        port_oracle.oracle_infos.borrow(std::type_name::with_defining_ids<CoinType>()).price_pyth_feed_id
+    }
+
+    public fun price_aggregator_id(oracle_info: &OracleInfo) : Option<ID> {
+        oracle_info.price_aggregator_id
+    }
+
+    public fun get_price_aggregator_id<CoinType>(port_oracle: &PortOracle) : Option<ID> {
+        oracle_info<CoinType>(port_oracle).price_aggregator_id
+    }
     
     public fun price_info_object_id(oracle_info: &OracleInfo) : Option<ID> {
         oracle_info.price_info_object_id
