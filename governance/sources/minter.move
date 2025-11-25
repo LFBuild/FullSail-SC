@@ -92,6 +92,7 @@ module governance::minter {
     const EDepositOSailInvalidToken: u64 = 930930427300172700;
     const EDepositOSailBalanceNotExist: u64 = 4573731802313574;
     const EDepositOSailLockNotPermanent: u64 = 240260341661373800;
+    const EDepositOSailZeroAmount: u64 = 581468583996395500;
 
     const EExerciseOSailFreeTooBigPercent: u64 = 410835752553141860;
     const EExerciseOSailExpired: u64 = 738843771743325200;
@@ -2424,6 +2425,8 @@ module governance::minter {
         let percent_to_receive = voting_escrow::common::persent_denominator();
 
         let o_sail_amount_in = o_sail.value();
+        assert!(o_sail_amount_in > 0, EDepositOSailZeroAmount);
+        
         let sail_to_lock = minter.exercise_o_sail_free_internal(o_sail, percent_to_receive, clock, ctx);
         let sail_amount_to_lock = sail_to_lock.value();
 
