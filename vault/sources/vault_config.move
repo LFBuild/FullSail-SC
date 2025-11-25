@@ -22,7 +22,7 @@ module vault::vault_config {
         id: sui::object::UID,
         swap_slippages: sui::vec_map::VecMap<std::type_name::TypeName, u64>,
         protocol_fee_rate: u64,
-        max_price_deviation_bps: u64,
+        max_price_deviation_bps: u64, // maximum allowed deviation of oracle price from pool price, default is 2%
         package_version: u64,
         acl: vault::vault_acl::ACL,
     }
@@ -264,6 +264,45 @@ module vault::vault_config {
         sui::event::emit<SetSwapSlippageEvent>(event);
     }
     
+    /// Updates the maximum allowed price deviation between oracle price and pool price.
+    ///
+    /// This method sets the threshold for price validation when adding liquidity to the vault.
+    /// Before executing liquidity operations, the protocol compares the oracle price with the
+    /// current pool price. If the deviation exceeds this threshold, the operation is aborted
+    /// to protect against price manipulation attacks or stale oracle data.
+    ///
+    /// # Arguments
+    /// * `global_config` - mutable reference to the global configuration
+    /// * `new_max_price_deviation_bps` - new maximum price deviation in basis points (BPS)
+    /// * `ctx` - transaction context
+    ///
+    /// # Values for new_max_price_deviation_bps
+    /// The value must be specified in basis points (BPS), where denominator = 10000:
+    /// * `100` = 1% (100 / 10000)
+    /// * `200` = 2% (200 / 10000) - default value
+    /// * `500` = 5% (500 / 10000)
+    /// * `1000` = 10% (1000 / 10000)
+    ///
+    /// Calculation formula: `max_deviation_percentage = new_max_price_deviation_bps / 10000`
+    ///
+    /// # How it works
+    /// When adding liquidity, the protocol calculates the deviation between:
+    /// - Oracle price (from Pyth oracle)
+    /// - Pool price (current sqrt_price converted to price)
+    ///
+    /// If `|oracle_price - pool_price| / oracle_price * 10000 > new_max_price_deviation_bps`,
+    /// the operation is rejected.
+    ///
+    /// # Requirements
+    /// * Caller must have the `ROLE_POOL_MANAGER` role
+    /// * Package version must be up to date
+    ///
+    /// # Events
+    /// Emits `UpdateMaxPriceDeviationEvent` with the previous and new deviation threshold values.
+    ///
+    /// # Aborts
+    /// * If caller does not have the `ROLE_POOL_MANAGER` role
+    /// * If package version is deprecated
     public fun update_max_price_deviation_bps(global_config: &mut GlobalConfig, new_max_price_deviation_bps: u64, ctx: &mut sui::tx_context::TxContext) {
         checked_package_version(global_config); 
         check_pool_manager_role(global_config, sui::tx_context::sender(ctx)); 
@@ -287,6 +326,39 @@ module vault::vault_config {
         sui::event::emit<SetPackageVersionEvent>(event);
     }
     
+    /// Updates the protocol fee rate in the global configuration.
+    ///
+    /// This method allows changing the percentage of fees that the protocol charges on operations.
+    /// The fee is used to cover protocol maintenance costs and can be distributed to participants
+    /// with the ROLE_PROTOCOL_FEE_CLAIM role.
+    ///
+    /// # Arguments
+    /// * `global_config` - mutable reference to the global configuration
+    /// * `new_protocol_fee_rate` - new protocol fee rate in basis points (BPS)
+    /// * `ctx` - transaction context
+    ///
+    /// # Values for new_protocol_fee_rate
+    /// The value must be specified in basis points (BPS), where denominator = 10000:
+    /// * `0` = 0% (no fee)
+    /// * `100` = 1% (100 / 10000)
+    /// * `500` = 5% (500 / 10000)
+    /// * `1000` = 10% (1000 / 10000)
+    /// * `5000` = 50% (5000 / 10000) - maximum value
+    ///
+    /// Calculation formula: `actual_fee_percentage = new_protocol_fee_rate / 10000`
+    ///
+    /// # Requirements
+    /// * Caller must have the `ROLE_POOL_MANAGER` role
+    /// * `new_protocol_fee_rate` must not exceed 5000 (maximum 50%)
+    /// * Package version must be up to date
+    ///
+    /// # Events
+    /// Emits `UpdateFeeRateEvent` with the previous and new fee rate values.
+    ///
+    /// # Aborts
+    /// * If caller does not have the `ROLE_POOL_MANAGER` role
+    /// * If `new_protocol_fee_rate > 5000`
+    /// * If package version is deprecated
     public fun update_protocol_fee_rate(global_config: &mut GlobalConfig, new_protocol_fee_rate: u64, ctx: &mut sui::tx_context::TxContext) {
         checked_package_version(global_config);
         check_pool_manager_role(global_config, sui::tx_context::sender(ctx));

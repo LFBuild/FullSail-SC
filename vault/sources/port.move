@@ -17,19 +17,19 @@ module vault::port {
         ports: sui::table::Table<ID, ID>,
     }
     
-    public struct Port<phantom LpCoinType> has key {
+    public struct Port has key {
         id: sui::object::UID,
         is_pause: bool,
         vault: vault::vault::ClmmVault,
-        lp_token_treasury: sui::coin::TreasuryCap<LpCoinType>,
         buffer_assets: vault::balance_bag::BalanceBag,
         protocol_fees: sui::bag::Bag,
         hard_cap: u128,
         quote_type: std::option::Option<TypeName>,
         status: Status,
         protocol_fee_rate: u64,
+        total_volume: u64,
 
-        reward_growth: sui::vec_map::VecMap<TypeName, u128>, // per lp
+        reward_growth: sui::vec_map::VecMap<TypeName, u128>, // per volume
         last_update_growth_time_ms: sui::vec_map::VecMap<TypeName, u64>,
 
         osail_reward_balances: vault::balance_bag::BalanceBag,
@@ -39,15 +39,15 @@ module vault::port {
         managers: move_stl::linked_table::LinkedTable<address, bool>,
     }
 
-    public struct PortEntry<phantom LpCoinType> has store, key {
+    public struct PortEntry has store, key {
         id: sui::object::UID,
         port_id: ID,
-        lp_tokens: Balance<LpCoinType>,
+        volume: u64,
         entry_reward_growth: sui::vec_map::VecMap<TypeName, u128>
     }
     
     public struct Status has store {
-        last_aum: u128,
+        last_aum: u128, // only pool assets
         last_calculate_aum_tx: vector<u8>,
         last_deposit_tx: vector<u8>,
         last_withdraw_tx: vector<u8>,
@@ -56,13 +56,13 @@ module vault::port {
     public struct CreateEvent has copy, drop {
         id: ID,
         pool: ID,
+        vault_position_id: ID,
         lower_offset: u32,
         upper_offset: u32,
         rebalance_threshold: u32,
-        lp_token_treasury: ID,
         quote_type: std::option::Option<TypeName>,
         hard_cap: u128,
-        start_lp_amount: u64,
+        start_volume: u64,
     }
     
     public struct InitEvent has copy, drop {
@@ -86,7 +86,7 @@ module vault::port {
     public struct PortEntryCreatedEvent has copy, drop {
         port_id: ID,
         port_entry_id: ID,
-        lp_tokens_amount: u64,
+        volume: u64,
         entry_reward_growth: sui::vec_map::VecMap<TypeName, u128>,
     }
     
@@ -94,8 +94,8 @@ module vault::port {
         port_id: ID,
         before_aum: u128,
         user_tvl: u128,
-        before_supply: u64,
-        lp_amount: u64,
+        before_total_volume: u64,
+        volume: u64,
         amount_a: u64,
         amount_b: u64,
     }
@@ -103,16 +103,18 @@ module vault::port {
     public struct PortEntryIncreasedLiquidityEvent has copy, drop {
         port_id: ID,
         port_entry_id: ID,
-        lp_tokens_amount: u64,
+        volume: u64,
     }
     
     public struct WithdrawEvent has copy, drop {
         port_id: ID,
         port_entry_id: ID,
-        lp_amount: u64,
+        volume_withdraw: u64,
         liquidity: u128,
         amount_a: u64,
         amount_b: u64,
+        remained_a: u64,
+        remained_b: u64,
     }
 
     public struct PortEntryDestroyedEvent has copy, drop {
@@ -183,7 +185,7 @@ module vault::port {
         amount_b: u64,
         delta_liquidity: u128,
         current_sqrt_price: u128,
-        lp_supply: u64,
+        total_volume: u64,
         remained_a: u64,
         remained_b: u64,
     }
@@ -191,6 +193,8 @@ module vault::port {
     public struct RebalanceEvent has copy, drop {
         port_id: ID,
         data: vault::vault::MigrateLiquidity,
+        remained_a: u64,
+        remained_b: u64,
     }
     
     public struct UpdateLiquidityOffsetEvent has copy, drop {
@@ -269,7 +273,7 @@ module vault::port {
     /// # Arguments
     /// * `global_config` – global configuration of the `vault` module
     /// * `port_registry` – registry that stores created ports
-    /// * `pyth_oracle` – price oracle used to value assets
+    /// * `port_oracle` – price oracle used to value assets
     /// * `treasury_cap` – `TreasuryCap` for minting the port LP tokens
     /// * `clmm_global_config` – global configuration of the CLMM pool
     /// * `clmm_vault` – CLMM global reward vault
@@ -289,15 +293,13 @@ module vault::port {
     /// # Type Parameters
     /// * `CoinTypeA` – first coin type in the pair
     /// * `CoinTypeB` – second coin type in the pair
-    /// * `LpCoin` – LP token issued by the port
     ///
     /// # Aborts
     /// * if TVL calculation or port creation in the helper function fails
-    public fun create_port<CoinTypeA, CoinTypeB, LpCoin>(
+    public fun create_port<CoinTypeA, CoinTypeB>(
         global_config: &vault::vault_config::GlobalConfig, 
         port_registry: &mut PortRegistry,
-        pyth_oracle: &vault::pyth_oracle::PythOracle,
-        treasury_cap: sui::coin::TreasuryCap<LpCoin>, 
+        port_oracle: &vault::port_oracle::PortOracle,
         clmm_global_config: &clmm_pool::config::GlobalConfig,
         clmm_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         distribution_config: &governance::distribution_config::DistributionConfig,
@@ -324,12 +326,11 @@ module vault::port {
             std::option::some<TypeName>(with_defining_ids<CoinTypeB>())
         };
 
-        let tvl = calculate_tvl_base_on_quote(pyth_oracle, &balances, quote_type, clock);
+        let tvl = calculate_tvl_base_on_quote(port_oracle, &balances, quote_type, clock);
 
-        create_port_internal<CoinTypeA, CoinTypeB, LpCoin>(
+        create_port_internal<CoinTypeA, CoinTypeB>(
             global_config,
             port_registry,
-            treasury_cap,
             clmm_global_config,
             clmm_vault,
             distribution_config,
@@ -349,10 +350,9 @@ module vault::port {
     }
 
     #[test_only]
-    public fun test_create_port_internal<CoinTypeA, CoinTypeB, LpCoin>(
+    public fun test_create_port_internal<CoinTypeA, CoinTypeB>(
         global_config: &vault::vault_config::GlobalConfig, 
         port_registry: &mut PortRegistry,
-        treasury_cap: sui::coin::TreasuryCap<LpCoin>, 
         clmm_global_config: &clmm_pool::config::GlobalConfig,
         clmm_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         distribution_config: &governance::distribution_config::DistributionConfig,
@@ -369,10 +369,9 @@ module vault::port {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        create_port_internal<CoinTypeA, CoinTypeB, LpCoin>(
+        create_port_internal<CoinTypeA, CoinTypeB>(
             global_config,
             port_registry,
-            treasury_cap,
             clmm_global_config,
             clmm_vault,
             distribution_config,
@@ -391,10 +390,9 @@ module vault::port {
         );
     }
 
-    fun create_port_internal<CoinTypeA, CoinTypeB, LpCoin>(
+    fun create_port_internal<CoinTypeA, CoinTypeB>(
         global_config: &vault::vault_config::GlobalConfig, 
         port_registry: &mut PortRegistry, 
-        treasury_cap: sui::coin::TreasuryCap<LpCoin>, 
         clmm_global_config: &clmm_pool::config::GlobalConfig,
         clmm_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         distribution_config: &governance::distribution_config::DistributionConfig,
@@ -412,7 +410,6 @@ module vault::port {
         ctx: &mut TxContext
     ) {
         global_config.checked_package_version();
-        assert!(sui::coin::total_supply<LpCoin>(&treasury_cap) == 0, vault::error::treasury_cap_illegal());
 
         let quote_type = if (quote_type_a) {
             std::option::some<TypeName>(with_defining_ids<CoinTypeA>())
@@ -420,8 +417,7 @@ module vault::port {
             std::option::some<TypeName>(with_defining_ids<CoinTypeB>())
         };
         let current_time = clock.timestamp_ms();
-        let lp_token_treasury = sui::object::id<sui::coin::TreasuryCap<LpCoin>>(&treasury_cap);
-        let mut new_port = Port<LpCoin>{
+        let mut new_port = Port{
             id                : sui::object::new(ctx), 
             is_pause          : false, 
             vault             : vault::vault::new<CoinTypeA, CoinTypeB>(
@@ -438,9 +434,9 @@ module vault::port {
                 clock,
                 ctx
             ), 
-            lp_token_treasury : treasury_cap, 
             buffer_assets     : vault::balance_bag::new_balance_bag(ctx),
             protocol_fees     : sui::bag::new(ctx),
+            total_volume      : 0,
             hard_cap          : hard_cap, 
             quote_type        : quote_type, 
             status            : new_status(), 
@@ -457,7 +453,7 @@ module vault::port {
         new_port.buffer_assets.join<CoinTypeA>(sui::balance::zero<CoinTypeA>()); 
         new_port.buffer_assets.join<CoinTypeB>(sui::balance::zero<CoinTypeB>());
         port_registry.ports.add<ID, ID>(
-            sui::object::id<Port<LpCoin>>(&new_port), 
+            sui::object::id<Port>(&new_port), 
             sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool)
         );
 
@@ -472,28 +468,25 @@ module vault::port {
             i = i + 1;
         };
 
-        let lp_amount = get_lp_amount_by_tvl(lp_total_supply<LpCoin>(&new_port), tvl, new_port.status.last_aum);
-        let lp_tokens = sui::coin::mint<LpCoin>(
-            &mut new_port.lp_token_treasury,
-            (lp_amount as u64),
-            ctx
-        );
+        let start_volume = get_volume_by_tvl(new_port.total_volume, tvl, new_port.status.last_aum);
 
-        transfer::public_transfer(lp_tokens, sui::tx_context::sender(ctx));
+        new_port.total_volume = start_volume as u64;
+
+        let vault_position_id = new_port.vault.borrow_staked_position().position_id();
         
         let event = CreateEvent{
-            id                  : sui::object::id<Port<LpCoin>>(&new_port), 
-            pool                : sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool), 
+            id                  : sui::object::id<Port>(&new_port), 
+            pool                : sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool),
+            vault_position_id   : vault_position_id,
             lower_offset        : lower_offset, 
             upper_offset        : upper_offset, 
             rebalance_threshold : rebalance_threshold, 
-            lp_token_treasury   : lp_token_treasury,
             quote_type          : quote_type, 
             hard_cap            : hard_cap,
-            start_lp_amount     : (lp_amount as u64),
+            start_volume        : start_volume as u64,
         };
         sui::event::emit<CreateEvent>(event);
-        sui::transfer::share_object<Port<LpCoin>>(new_port);
+        sui::transfer::share_object<Port>(new_port);
     }
 
     fun new_status() : Status {
@@ -526,13 +519,12 @@ module vault::port {
     /// # Type Parameters
     /// * `CoinTypeA` – first coin type in the pool pair
     /// * `CoinTypeB` – second coin type in the pool pair
-    /// * `LpCoin` – LP token associated with the port
     ///
     /// # Aborts
     /// * if the package version, caller role, or pool state checks fail
     /// * if rebalancing is not required according to `check_need_rebalance`
-    public fun rebalance<CoinTypeA, CoinTypeB, LpCoin>(
-        port: &mut Port<LpCoin>, 
+    public fun rebalance<CoinTypeA, CoinTypeB>(
+        port: &mut Port, 
         distribution_config: &governance::distribution_config::DistributionConfig,
         gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
         global_config: &vault::vault_config::GlobalConfig, 
@@ -551,7 +543,7 @@ module vault::port {
         );
         assert!(!port.is_pause, vault::error::port_is_pause());
         assert!(sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool) == port.vault.pool_id(), vault::error::clmm_pool_not_match());
-        let (need_rebalance, tick_lower, tick_upper) = check_need_rebalance<CoinTypeA, CoinTypeB, LpCoin>(
+        let (need_rebalance, tick_lower, tick_upper) = check_need_rebalance<CoinTypeA, CoinTypeB>(
             port,
             gauge,
             pool.tick_spacing(), 
@@ -559,7 +551,7 @@ module vault::port {
             port.vault.rebalance_threshold()
         );
         assert!(need_rebalance, vault::error::pool_not_need_rebalance());
-        rebalance_internal<CoinTypeA, CoinTypeB, LpCoin>(
+        rebalance_internal<CoinTypeA, CoinTypeB>(
             port, 
             distribution_config,
             gauge,
@@ -573,8 +565,8 @@ module vault::port {
         );
     }
 
-    fun rebalance_internal<CoinTypeA, CoinTypeB, LpCoin>(
-        port: &mut Port<LpCoin>,
+    fun rebalance_internal<CoinTypeA, CoinTypeB>(
+        port: &mut Port,
         distribution_config: &governance::distribution_config::DistributionConfig,
         gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
         clmm_global_config: &clmm_pool::config::GlobalConfig,
@@ -601,14 +593,16 @@ module vault::port {
             ctx
         );
 
-        let event = RebalanceEvent{
-            port_id : sui::object::id<Port<LpCoin>>(port), 
-            data    : migrate_liquidity,
-        };
-        sui::event::emit<RebalanceEvent>(event);
-
         port.buffer_assets.join<CoinTypeA>(balance_a);
         port.buffer_assets.join<CoinTypeB>(balance_b);
+
+        let event = RebalanceEvent{
+            port_id : sui::object::id<Port>(port), 
+            data    : migrate_liquidity,
+            remained_a         : port.buffer_assets.value<CoinTypeA>(),
+            remained_b         : port.buffer_assets.value<CoinTypeB>(),
+        };
+        sui::event::emit<RebalanceEvent>(event);
     }
 
     /// Updates the target liquidity range for the port and optionally rebalances.
@@ -633,14 +627,13 @@ module vault::port {
     /// # Type Parameters
     /// * `CoinTypeA` – first coin type in the pool pair
     /// * `CoinTypeB` – second coin type in the pool pair
-    /// * `LpCoin` – LP token associated with the port
     ///
     /// # Aborts
     /// * if the caller lacks the pool manager role or the port is paused
     /// * if the offsets are unchanged
     /// * if the internal rebalance aborts
-    public fun update_liquidity_offset<CoinTypeA, CoinTypeB, LpCoin>(
-        port: &mut Port<LpCoin>,
+    public fun update_liquidity_offset<CoinTypeA, CoinTypeB>(
+        port: &mut Port,
         global_config: &vault::vault_config::GlobalConfig, 
         distribution_config: &governance::distribution_config::DistributionConfig,
         gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
@@ -664,7 +657,7 @@ module vault::port {
         assert!(lower_offset != current_lower_offset || upper_offset != current_upper_offset, vault::error::liquidity_range_not_change());
         port.vault.update_liquidity_offset(lower_offset, upper_offset);
 
-        let (need_rebalance, tick_lower, tick_upper) = check_need_rebalance<CoinTypeA, CoinTypeB, LpCoin>(
+        let (need_rebalance, tick_lower, tick_upper) = check_need_rebalance<CoinTypeA, CoinTypeB>(
             port,
             gauge,
             pool.tick_spacing(), 
@@ -672,7 +665,7 @@ module vault::port {
             1
         );
         if (need_rebalance) {
-            rebalance_internal<CoinTypeA, CoinTypeB, LpCoin>(
+            rebalance_internal<CoinTypeA, CoinTypeB>(
                 port, 
                 distribution_config,
                 gauge,
@@ -686,7 +679,7 @@ module vault::port {
             );
         };
         let event = UpdateLiquidityOffsetEvent{
-            port_id          : sui::object::id<Port<LpCoin>>(port), 
+            port_id          : sui::object::id<Port>(port), 
             old_lower_offset : current_lower_offset, 
             old_upper_offset : current_upper_offset, 
             new_lower_offset : lower_offset, 
@@ -695,8 +688,8 @@ module vault::port {
         sui::event::emit<UpdateLiquidityOffsetEvent>(event);
     }
 
-    fun check_need_rebalance<CoinTypeA, CoinTypeB, LpCoin>(
-        port: &Port<LpCoin>, 
+    fun check_need_rebalance<CoinTypeA, CoinTypeB>(
+        port: &Port, 
         gauge: &governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
         tick_spacing: u32, 
         current_tick: integer_mate::i32::I32, 
@@ -738,12 +731,11 @@ module vault::port {
     /// * `ctx` – transaction context
     ///
     /// # Type Parameters
-    /// * `LpCoin` – LP token associated with the port
     ///
     /// # Aborts
     /// * if the caller lacks the pool manager role or the port is paused
-    public fun update_rebalance_threshold<LpCoin>(
-        port: &mut Port<LpCoin>,
+    public fun update_rebalance_threshold(
+        port: &mut Port,
         global_config: &vault::vault_config::GlobalConfig,
         rebalance_threshold: u32,
         ctx: &mut TxContext
@@ -759,7 +751,7 @@ module vault::port {
         let (_, _, current_rebalance_threshold) = port.vault.get_liquidity_range();
         port.vault.update_rebalance_threshold(rebalance_threshold);
         let event = UpdateRebalanceThresholdEvent{
-            port_id                 : sui::object::id<Port<LpCoin>>(port), 
+            port_id                 : sui::object::id<Port>(port), 
             old_rebalance_threshold : current_rebalance_threshold, 
             new_rebalance_threshold : rebalance_threshold,
         };
@@ -776,7 +768,7 @@ module vault::port {
     /// # Arguments
     /// * `port` – mutable reference to the port whose AUM is computed
     /// * `global_config` – configuration enforcing package version checks
-    /// * `pyth_oracle` – price oracle used for valuation
+    /// * `port_oracle` – price oracle used for valuation
     /// * `gauge` – gauge managing the port’s CLMM position
     /// * `pool` – CLMM pool associated with the port
     /// * `clock` – clock object for oracle freshness checks
@@ -785,15 +777,14 @@ module vault::port {
     /// # Type Parameters
     /// * `CoinTypeA` – first coin type in the pool pair
     /// * `CoinTypeB` – second coin type in the pool pair
-    /// * `LpCoin` – LP token associated with the port
     ///
     /// # Aborts
     /// * if the port is paused or linked to a different pool
     /// * if the calculation is attempted repeatedly within the same transaction
-    public fun calculate_aum<CoinTypeA, CoinTypeB, LpCoin>(
-        port: &mut Port<LpCoin>,
+    public fun calculate_aum<CoinTypeA, CoinTypeB>(
+        port: &mut Port,
         global_config: &vault::vault_config::GlobalConfig, 
-        pyth_oracle: &vault::pyth_oracle::PythOracle,
+        port_oracle: &vault::port_oracle::PortOracle,
         gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>, 
         clock: &sui::clock::Clock, 
@@ -831,22 +822,22 @@ module vault::port {
                     pool_coin_amount = amount + amount_b;
                 };
             };
-            if (!pyth_oracle.contain_oracle_info(type_name) || pool_coin_amount == 0) {
+            if (!port_oracle.contain_oracle_info(type_name) || pool_coin_amount == 0) {
                 i = i + 1;
                 continue
             };
             balances.insert(type_name, pool_coin_amount); 
             i = i + 1;
         };
-        port.status.last_aum = calculate_tvl_base_on_quote(pyth_oracle, &balances, port.quote_type, clock); 
+        port.status.last_aum = calculate_tvl_base_on_quote(port_oracle, &balances, port.quote_type, clock); 
         let digest = *ctx.digest();
         assert!(digest != port.status.last_calculate_aum_tx, vault::error::operation_not_allowed());
         port.status.last_calculate_aum_tx = digest;
     }
 
     #[test_only]
-    public fun test_calculate_aum<CoinTypeA, CoinTypeB, LpCoin>(
-        port: &mut Port<LpCoin>,
+    public fun test_calculate_aum<CoinTypeA, CoinTypeB>(
+        port: &mut Port,
         global_config: &vault::vault_config::GlobalConfig, 
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         tvl: u128,
@@ -865,19 +856,19 @@ module vault::port {
     }
     
     fun calculate_tvl_base_on_quote(
-        pyth_oracle: &vault::pyth_oracle::PythOracle, 
+        port_oracle: &vault::port_oracle::PortOracle, 
         balances: &sui::vec_map::VecMap<TypeName, u64>, 
         quote_type: std::option::Option<TypeName>, 
         clock: &sui::clock::Clock
     ) : u128 {
-        let price = if (std::option::is_none<TypeName>(&quote_type)) {
-            vault::pyth_oracle::new_price(
-                1 * std::u64::pow(10, vault::pyth_oracle::price_multiplier_decimal()), 
-                vault::pyth_oracle::price_multiplier_decimal()
+        let quote_price = if (std::option::is_none<TypeName>(&quote_type)) {
+            vault::port_oracle::new_price(
+                1 * std::u64::pow(10, vault::port_oracle::price_multiplier_decimal()), 
+                vault::port_oracle::price_multiplier_decimal()
             )
         } else {
-            vault::pyth_oracle::get_price_by_type(
-                pyth_oracle, 
+            vault::port_oracle::get_price_by_type(
+                port_oracle, 
                 *std::option::borrow<TypeName>(&quote_type), 
                 clock
             )
@@ -886,16 +877,28 @@ module vault::port {
         let mut i = 0;
         while (i < sui::vec_map::length<TypeName, u64>(balances)) {
             let (type_name, type_balance) = sui::vec_map::get_entry_by_idx<TypeName, u64>(balances, i);
-            let price_by_type = vault::pyth_oracle::get_price_by_type(pyth_oracle, *type_name, clock);
-            let (price_in_quote, _) = vault::pyth_oracle::calculate_prices(&price_by_type, &price);
+            let price_by_type = vault::port_oracle::get_price_by_type(port_oracle, *type_name, clock);
+            let (price_in_quote, _) = vault::port_oracle::calculate_prices(&price_by_type, &quote_price);
             tvl = tvl + integer_mate::full_math_u128::mul_div_floor(
                 (price_in_quote as u128), 
                 (*type_balance as u128), 
-                (std::u64::pow(10, vault::pyth_oracle::price_multiplier_decimal()) as u128)
+                (std::u64::pow(10, vault::port_oracle::price_multiplier_decimal()) as u128)
             );
+
             i = i + 1;
         };
+
         tvl
+    }
+
+    #[test_only]
+    public fun test_calculate_tvl_base_on_quote(
+        port_oracle: &vault::port_oracle::PortOracle, 
+        balances: &sui::vec_map::VecMap<TypeName, u64>, 
+        quote_type: std::option::Option<TypeName>, 
+        clock: &sui::clock::Clock
+    ) : u128 {
+        calculate_tvl_base_on_quote(port_oracle, balances, quote_type, clock)
     }
     
     /// Claims accumulated protocol fees for the port.
@@ -909,13 +912,12 @@ module vault::port {
     /// * `ctx` – transaction context used to mint the returned coin
     ///
     /// # Type Parameters
-    /// * `LpCoin` – LP token associated with the port
     /// * `ProtocolFeeCoin` – coin type in which protocol fees are accumulated
     ///
     /// # Aborts
     /// * if the caller lacks permission to claim protocol fees
-    public fun claim_protocol_fee<LpCoin, ProtocolFeeCoin>(
-        port: &mut Port<LpCoin>, 
+    public fun claim_protocol_fee<ProtocolFeeCoin>(
+        port: &mut Port, 
         global_config: &vault::vault_config::GlobalConfig, 
         ctx: &mut TxContext
     ) : Coin<ProtocolFeeCoin> {
@@ -924,9 +926,9 @@ module vault::port {
             global_config.is_protocol_fee_claim_role(sui::tx_context::sender(ctx)),
             vault::error::no_protocol_fee_claim_permission()
         );
-        let protocol_fee = port.take_protocol_asset<LpCoin, ProtocolFeeCoin>();
+        let protocol_fee = port.take_protocol_asset<ProtocolFeeCoin>();
         let event = ClaimProtocolFeeEvent{
-            port_id : sui::object::id<Port<LpCoin>>(port), 
+            port_id : sui::object::id<Port>(port), 
             amount  : sui::balance::value<ProtocolFeeCoin>(&protocol_fee), 
             type_name : with_defining_ids<ProtocolFeeCoin>(),
         };
@@ -934,7 +936,7 @@ module vault::port {
         sui::coin::from_balance<ProtocolFeeCoin>(protocol_fee, ctx)
     }
 
-    fun take_protocol_asset<LpCoin, RewardCoinType>(port: &mut Port<LpCoin>) : Balance<RewardCoinType> {
+    fun take_protocol_asset<RewardCoinType>(port: &mut Port) : Balance<RewardCoinType> {
         let (balance, _) = vault::vault_utils::remove_balance_from_bag<RewardCoinType>(&mut port.protocol_fees, 0, true); 
         balance
     }
@@ -948,7 +950,7 @@ module vault::port {
     /// # Arguments
     /// * `port` – mutable reference to the port receiving liquidity
     /// * `global_config` – global configuration updated during the deposit
-    /// * `pyth_oracle` – price oracle used to value the incoming assets
+    /// * `port_oracle` – price oracle used to value the incoming assets
     /// * `clmm_global_config` – configuration for the CLMM module
     /// * `clmm_vault` – CLMM reward vault tracking incentives
     /// * `distribution_config` – reward distribution parameters
@@ -962,17 +964,16 @@ module vault::port {
     /// # Type Parameters
     /// * `CoinTypeA` – first coin type in the pair
     /// * `CoinTypeB` – second coin type in the pair
-    /// * `LpCoin` – LP token associated with the port
     ///
     /// # Returns
     /// * Newly minted `PortEntry` NFT representing the depositor’s position
     ///
     /// # Aborts
     /// * if internal deposit or oracle lookups fail
-    public fun deposit<CoinTypeA, CoinTypeB, LpCoin>(
-        port: &mut Port<LpCoin>, 
+    public fun deposit<CoinTypeA, CoinTypeB>(
+        port: &mut Port, 
         global_config: &mut vault::vault_config::GlobalConfig, 
-        pyth_oracle: &vault::pyth_oracle::PythOracle, 
+        port_oracle: &vault::port_oracle::PortOracle, 
         clmm_global_config: &clmm_pool::config::GlobalConfig, 
         clmm_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         distribution_config: &governance::distribution_config::DistributionConfig,
@@ -982,7 +983,7 @@ module vault::port {
         coin_b: Coin<CoinTypeB>, 
         clock: &sui::clock::Clock, 
         ctx: &mut TxContext
-    ) : PortEntry<LpCoin> {
+    ) : PortEntry {
         global_config.checked_package_version();
         assert!(!port.is_pause, vault::error::port_is_pause());
         assert!(sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool) == port.vault.pool_id(), vault::error::clmm_pool_not_match());
@@ -991,7 +992,7 @@ module vault::port {
         balances.insert(with_defining_ids<CoinTypeA>(), sui::coin::value<CoinTypeA>(&coin_a)); 
         balances.insert(with_defining_ids<CoinTypeB>(), sui::coin::value<CoinTypeB>(&coin_b));
 
-        let tvl = calculate_tvl_base_on_quote(pyth_oracle, &balances, port.quote_type, clock);
+        let tvl = calculate_tvl_base_on_quote(port_oracle, &balances, port.quote_type, clock);
 
         port.deposit_internal(
             global_config,
@@ -1003,16 +1004,16 @@ module vault::port {
             coin_a,
             coin_b,
             tvl,
-            pyth_oracle.get_price<CoinTypeA>(clock),
-            pyth_oracle.get_price<CoinTypeB>(clock),
+            port_oracle.get_price<CoinTypeA>(clock),
+            port_oracle.get_price<CoinTypeB>(clock),
             clock,
             ctx
         )
     }
 
     #[test_only]
-    public fun test_deposit<CoinTypeA, CoinTypeB, LpCoin>(
-        port: &mut Port<LpCoin>, 
+    public fun test_deposit<CoinTypeA, CoinTypeB>(
+        port: &mut Port, 
         global_config: &mut vault::vault_config::GlobalConfig, 
         clmm_global_config: &clmm_pool::config::GlobalConfig, 
         clmm_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
@@ -1022,11 +1023,11 @@ module vault::port {
         coin_a: Coin<CoinTypeA>, 
         coin_b: Coin<CoinTypeB>, 
         tvl: u128,
-        price_a: vault::pyth_oracle::Price,
-        price_b: vault::pyth_oracle::Price,
+        price_a: vault::port_oracle::Price,
+        price_b: vault::port_oracle::Price,
         clock: &sui::clock::Clock, 
         ctx: &mut TxContext
-    ) : PortEntry<LpCoin> {
+    ) : PortEntry {
         global_config.checked_package_version();
         assert!(!port.is_pause, vault::error::port_is_pause());
         assert!(sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool) == port.vault.pool_id(), vault::error::clmm_pool_not_match());
@@ -1048,8 +1049,8 @@ module vault::port {
         )
     }
 
-    fun deposit_internal<CoinTypeA, CoinTypeB, LpCoin>(
-        port: &mut Port<LpCoin>, 
+    fun deposit_internal<CoinTypeA, CoinTypeB>(
+        port: &mut Port, 
         global_config: &vault::vault_config::GlobalConfig, 
         clmm_global_config: &clmm_pool::config::GlobalConfig, 
         clmm_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
@@ -1059,13 +1060,13 @@ module vault::port {
         coin_a: Coin<CoinTypeA>, 
         coin_b: Coin<CoinTypeB>,
         tvl: u128,
-        price_a: vault::pyth_oracle::Price,
-        price_b: vault::pyth_oracle::Price,
+        price_a: vault::port_oracle::Price,
+        price_b: vault::port_oracle::Price,
         clock: &sui::clock::Clock, 
         ctx: &mut TxContext
-    ) : PortEntry<LpCoin> {
+    ) : PortEntry {
 
-        let lp_tokens = before_increase_liquidity(
+        let volume = before_increase_liquidity(
             port, 
             global_config,
             pool,
@@ -1097,20 +1098,20 @@ module vault::port {
 
         let port_entry = PortEntry {
             id: sui::object::new(ctx),
-            port_id: sui::object::id<Port<LpCoin>>(port),
-            lp_tokens: lp_tokens.into_balance(),
+            port_id: sui::object::id<Port>(port),
+            volume: volume,
             entry_reward_growth,
         };
 
         let event = PortEntryCreatedEvent{
-            port_id: sui::object::id<Port<LpCoin>>(port),
-            port_entry_id: sui::object::id<PortEntry<LpCoin>>(&port_entry),
-            lp_tokens_amount: port_entry.lp_tokens.value(),
+            port_id: sui::object::id<Port>(port),
+            port_entry_id: sui::object::id<PortEntry>(&port_entry),
+            volume: port_entry.volume,
             entry_reward_growth,
         };
         sui::event::emit<PortEntryCreatedEvent>(event);
     
-        port.add_liquidity_internal<CoinTypeA, CoinTypeB, LpCoin>(
+        port.add_liquidity_internal<CoinTypeA, CoinTypeB>(
             global_config,  
             clmm_global_config,
             clmm_vault,
@@ -1137,7 +1138,7 @@ module vault::port {
     /// # Arguments
     /// * `port` – mutable reference to the port managing the position
     /// * `global_config` – global configuration updated during liquidity changes
-    /// * `pyth_oracle` – oracle providing prices for valuation
+    /// * `port_oracle` – oracle providing prices for valuation
     /// * `clmm_global_config` – CLMM configuration parameters
     /// * `clmm_vault` – CLMM reward vault used when adding liquidity
     /// * `distribution_config` – reward distribution settings
@@ -1152,20 +1153,19 @@ module vault::port {
     /// # Type Parameters
     /// * `CoinTypeA` – first coin type in the pool pair
     /// * `CoinTypeB` – second coin type in the pool pair
-    /// * `LpCoin` – LP token associated with the port
     ///
     /// # Aborts
     /// * if reward checks or internal liquidity adjustments fail
-    public fun increase_liquidity<CoinTypeA, CoinTypeB, LpCoin>(
-        port: &mut Port<LpCoin>, 
+    public fun increase_liquidity<CoinTypeA, CoinTypeB>(
+        port: &mut Port, 
         global_config: &mut vault::vault_config::GlobalConfig, 
-        pyth_oracle: &vault::pyth_oracle::PythOracle, 
+        port_oracle: &vault::port_oracle::PortOracle, 
         clmm_global_config: &clmm_pool::config::GlobalConfig,
         clmm_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         distribution_config: &governance::distribution_config::DistributionConfig,
         gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>, 
-        port_entry: &mut PortEntry<LpCoin>,
+        port_entry: &mut PortEntry,
         coin_a: Coin<CoinTypeA>,
         coin_b: Coin<CoinTypeB>,
         clock: &sui::clock::Clock,
@@ -1174,18 +1174,18 @@ module vault::port {
         global_config.checked_package_version();
         assert!(!port.is_pause, vault::error::port_is_pause());
         assert!(sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool) == port.vault.pool_id(), vault::error::clmm_pool_not_match());
-        assert!(port_entry.port_id == sui::object::id<Port<LpCoin>>(port), vault::error::port_entry_port_id_not_match());
+        assert!(port_entry.port_id == sui::object::id<Port>(port), vault::error::port_entry_port_id_not_match());
 
         let mut balances = sui::vec_map::empty<TypeName, u64>(); 
         balances.insert(with_defining_ids<CoinTypeA>(), sui::coin::value<CoinTypeA>(&coin_a)); 
         balances.insert(with_defining_ids<CoinTypeB>(), sui::coin::value<CoinTypeB>(&coin_b));
 
-        let tvl = calculate_tvl_base_on_quote(pyth_oracle, &balances, port.quote_type, clock);
+        let tvl = calculate_tvl_base_on_quote(port_oracle, &balances, port.quote_type, clock);
 
-        let price_a = pyth_oracle.get_price<CoinTypeA>(clock);
-        let price_b = pyth_oracle.get_price<CoinTypeB>(clock);
+        let price_a = port_oracle.get_price<CoinTypeA>(clock);
+        let price_b = port_oracle.get_price<CoinTypeB>(clock);
 
-        let lp_tokens = before_increase_liquidity(
+        let volume = before_increase_liquidity(
             port, 
             global_config,
             pool,
@@ -1202,16 +1202,16 @@ module vault::port {
             clock
         );
 
-        port_entry.lp_tokens.join(lp_tokens.into_balance());
+        port_entry.volume = port_entry.volume + volume;
 
         let event = PortEntryIncreasedLiquidityEvent{
-            port_id: sui::object::id<Port<LpCoin>>(port),
-            port_entry_id: sui::object::id<PortEntry<LpCoin>>(port_entry),
-            lp_tokens_amount: port_entry.lp_tokens.value(),
+            port_id: sui::object::id<Port>(port),
+            port_entry_id: sui::object::id<PortEntry>(port_entry),
+            volume: port_entry.volume,
         };
         sui::event::emit<PortEntryIncreasedLiquidityEvent>(event);
 
-        port.add_liquidity_internal<CoinTypeA, CoinTypeB, LpCoin>(
+        port.add_liquidity_internal<CoinTypeA, CoinTypeB>(
             global_config, 
             clmm_global_config, 
             clmm_vault,
@@ -1228,24 +1228,24 @@ module vault::port {
     }
 
     #[test_only]
-    public fun test_increase_liquidity<CoinTypeA, CoinTypeB, LpCoin>(
-        port: &mut Port<LpCoin>, 
+    public fun test_increase_liquidity<CoinTypeA, CoinTypeB>(
+        port: &mut Port,
         global_config: &mut vault::vault_config::GlobalConfig, 
         clmm_global_config: &clmm_pool::config::GlobalConfig,
         clmm_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         distribution_config: &governance::distribution_config::DistributionConfig,
         gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>, 
-        port_entry: &mut PortEntry<LpCoin>,
+        port_entry: &mut PortEntry,
         tvl: u128,
         coin_a: Coin<CoinTypeA>,
         coin_b: Coin<CoinTypeB>,
-        price_a: vault::pyth_oracle::Price,
-        price_b: vault::pyth_oracle::Price,
+        price_a: vault::port_oracle::Price,
+        price_b: vault::port_oracle::Price,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
-        let lp_tokens = before_increase_liquidity(
+        let volume = before_increase_liquidity(
             port, 
             global_config,
             pool,
@@ -1262,16 +1262,16 @@ module vault::port {
             clock
         );
 
-        port_entry.lp_tokens.join(lp_tokens.into_balance());
+        port_entry.volume = port_entry.volume + volume;
 
         let event = PortEntryIncreasedLiquidityEvent{
-            port_id: sui::object::id<Port<LpCoin>>(port),
-            port_entry_id: sui::object::id<PortEntry<LpCoin>>(port_entry),
-            lp_tokens_amount: port_entry.lp_tokens.value(),
+            port_id: sui::object::id<Port>(port),
+            port_entry_id: sui::object::id<PortEntry>(port_entry),
+            volume: port_entry.volume,
         };
         sui::event::emit<PortEntryIncreasedLiquidityEvent>(event);
 
-        port.add_liquidity_internal<CoinTypeA, CoinTypeB, LpCoin>(
+        port.add_liquidity_internal<CoinTypeA, CoinTypeB>(
             global_config, 
             clmm_global_config, 
             clmm_vault,
@@ -1287,16 +1287,16 @@ module vault::port {
         );
     }
 
-    fun before_increase_liquidity<CoinTypeA, CoinTypeB, LpCoin>(
-        port: &mut Port<LpCoin>, 
+    fun before_increase_liquidity<CoinTypeA, CoinTypeB>(
+        port: &mut Port, 
         global_config: &vault::vault_config::GlobalConfig,
         pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         coin_a: Coin<CoinTypeA>,
         coin_b: Coin<CoinTypeB>,
         tvl: u128,
         clock: &sui::clock::Clock,
-        ctx: &mut TxContext
-    ) : Coin<LpCoin> {
+        ctx: &TxContext
+    ) : u64 {
         global_config.checked_package_version();
         assert!(!port.is_pause, vault::error::port_is_pause());
         let amount_a = sui::coin::value<CoinTypeA>(&coin_a);
@@ -1311,21 +1311,21 @@ module vault::port {
 
         port.status.last_deposit_tx = digest;
 
-        let lp_supply = lp_total_supply<LpCoin>(port);
+        let total_volume = port.total_volume;
         assert!(port.hard_cap == 0 || (port.status.last_aum + tvl <= port.hard_cap), vault::error::hard_cap_reached());
 
-        let lp_amount = get_lp_amount_by_tvl(lp_supply, tvl, port.status.last_aum);
-        assert!(lp_amount > 0, vault::error::token_amount_is_zero()); 
-        assert!(lp_amount < vault::vault_utils::uint64_max() - 1 - (lp_supply as u128), vault::error::token_amount_overflow());
+        let volume = get_volume_by_tvl(total_volume, tvl, port.status.last_aum);
+        assert!(volume > 0, vault::error::token_amount_is_zero()); 
+        assert!(volume < (1<<64) - 1 - (total_volume as u128), vault::error::token_amount_overflow());
         port.buffer_assets.join<CoinTypeA>(coin_a.into_balance());
         port.buffer_assets.join<CoinTypeB>(coin_b.into_balance());
 
         let event = IncreaseLiquidityEvent{
-            port_id       : sui::object::id<Port<LpCoin>>(port), 
+            port_id       : sui::object::id<Port>(port), 
             before_aum    : port.status.last_aum, 
             user_tvl      : tvl, 
-            before_supply : lp_supply, 
-            lp_amount     : (lp_amount as u64), 
+            before_total_volume : total_volume, 
+            volume     : (volume as u64), 
             amount_a      : amount_a, 
             amount_b      : amount_b,
         };
@@ -1333,13 +1333,9 @@ module vault::port {
 
         port.status.last_aum = port.status.last_aum + tvl;
 
-        let lp_tokens = sui::coin::mint<LpCoin>(
-            &mut port.lp_token_treasury,
-            (lp_amount as u64),
-            ctx
-        );
+        port.total_volume = port.total_volume + (volume as u64);
 
-        lp_tokens
+        volume as u64
     }
 
     /// Moves buffered assets into the CLMM pool and emits an `AddLiquidityEvent`.
@@ -1356,28 +1352,27 @@ module vault::port {
     /// * `distribution_config` – reward distribution settings
     /// * `gauge` – gauge managing the CLMM stake
     /// * `pool` – CLMM pool where liquidity is provided
-    /// * `pyth_oracle` – oracle providing prices for valuation
+    /// * `port_oracle` – oracle providing prices for valuation
     /// * `clock` – clock object ensuring price freshness
     /// * `ctx` – transaction context
     ///
     /// # Type Parameters
     /// * `CoinTypeA` – first coin type in the pool pair
     /// * `CoinTypeB` – second coin type in the pool pair
-    /// * `LpCoin` – LP token associated with the port
     ///
     /// # Aborts
     /// * if the port is paused or bound to a different pool
     /// * if price deviation exceeds the configured limits
     /// 
-    public fun add_liquidity<CoinTypeA, CoinTypeB, LpCoin>(
-        port: &mut Port<LpCoin>, 
+    public fun add_liquidity<CoinTypeA, CoinTypeB>(
+        port: &mut Port, 
         global_config: &vault::vault_config::GlobalConfig, 
         clmm_global_config: &clmm_pool::config::GlobalConfig,
         clmm_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         distribution_config: &governance::distribution_config::DistributionConfig,
         gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        pyth_oracle: &vault::pyth_oracle::PythOracle,
+        port_oracle: &vault::port_oracle::PortOracle,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
@@ -1385,10 +1380,10 @@ module vault::port {
         assert!(!port.is_pause, vault::error::port_is_pause());
         assert!(sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool) == port.vault.pool_id(), vault::error::clmm_pool_not_match());
 
-        let price_a = pyth_oracle.get_price<CoinTypeA>(clock);
-        let price_b = pyth_oracle.get_price<CoinTypeB>(clock);
+        let price_a = port_oracle.get_price<CoinTypeA>(clock);
+        let price_b = port_oracle.get_price<CoinTypeB>(clock);
 
-        port.add_liquidity_internal<CoinTypeA, CoinTypeB, LpCoin>(
+        port.add_liquidity_internal<CoinTypeA, CoinTypeB>(
             global_config, 
             clmm_global_config, 
             clmm_vault,
@@ -1405,16 +1400,16 @@ module vault::port {
     }
 
     #[test_only]
-    public fun test_add_liquidity<CoinTypeA, CoinTypeB, LpCoin>(
-        port: &mut Port<LpCoin>, 
+    public fun test_add_liquidity<CoinTypeA, CoinTypeB>(
+        port: &mut Port, 
         global_config: &vault::vault_config::GlobalConfig, 
         clmm_global_config: &clmm_pool::config::GlobalConfig,
         clmm_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         distribution_config: &governance::distribution_config::DistributionConfig,
         gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        price_a: vault::pyth_oracle::Price,
-        price_b: vault::pyth_oracle::Price,
+        price_a: vault::port_oracle::Price,
+        price_b: vault::port_oracle::Price,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
@@ -1422,7 +1417,7 @@ module vault::port {
         assert!(!port.is_pause, vault::error::port_is_pause());
         assert!(sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool) == port.vault.pool_id(), vault::error::clmm_pool_not_match());
 
-        port.add_liquidity_internal<CoinTypeA, CoinTypeB, LpCoin>(
+        port.add_liquidity_internal<CoinTypeA, CoinTypeB>(
             global_config, 
             clmm_global_config, 
             clmm_vault,
@@ -1438,8 +1433,8 @@ module vault::port {
         );
     }
 
-    fun add_liquidity_internal<CoinTypeA, CoinTypeB, LpCoin>(
-        port: &mut Port<LpCoin>, 
+    fun add_liquidity_internal<CoinTypeA, CoinTypeB>(
+        port: &mut Port, 
         global_config: &vault::vault_config::GlobalConfig, 
         clmm_global_config: &clmm_pool::config::GlobalConfig,
         clmm_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
@@ -1455,7 +1450,7 @@ module vault::port {
     ) {
         let diff_price = integer_mate::full_math_u64::mul_div_floor(
             price_a, 
-            std::u64::pow(10, vault::pyth_oracle::price_multiplier_decimal()),
+            std::u64::pow(10, vault::port_oracle::price_multiplier_decimal()),
             price_b
         );
         if (
@@ -1466,7 +1461,7 @@ module vault::port {
                         pool.current_sqrt_price(), 
                         coin_a_decimal,
                         coin_b_decimal,
-                        vault::pyth_oracle::price_multiplier_decimal()
+                        vault::port_oracle::price_multiplier_decimal()
                     )
                 ) / (diff_price as u128) 
             ) > (
@@ -1492,26 +1487,26 @@ module vault::port {
         port.buffer_assets.join<CoinTypeA>(balance_a);
         port.buffer_assets.join<CoinTypeB>(balance_b);
         let event = AddLiquidityEvent{
-            port_id            : sui::object::id<Port<LpCoin>>(port),
+            port_id            : sui::object::id<Port>(port),
             amount_a           : amount_a, 
             amount_b           : amount_b, 
             delta_liquidity    : delta_liquidity, 
             current_sqrt_price : clmm_pool::pool::current_sqrt_price<CoinTypeA, CoinTypeB>(pool), 
-            lp_supply          : lp_total_supply<LpCoin>(port),
+            total_volume       : port.total_volume,
             remained_a         : port.buffer_assets.value<CoinTypeA>(),
             remained_b         : port.buffer_assets.value<CoinTypeB>(),
         };
         sui::event::emit<AddLiquidityEvent>(event);
     }
 
-    fun get_lp_amount_by_tvl(lp_supply: u64, tvl: u128, last_aum: u128) : u128 {
-        if (lp_supply == 0) {
+    fun get_volume_by_tvl(total_volume: u64, tvl: u128, last_aum: u128) : u128 {
+        if (total_volume == 0) {
             return tvl
         };
         if (last_aum == 0) {
             abort vault::error::invalid_last_aum()
         };
-        integer_mate::full_math_u128::mul_div_round((lp_supply as u128), tvl, last_aum)
+        integer_mate::full_math_u128::mul_div_round((total_volume as u128), tvl, last_aum)
     }
 
     /// Stops the CLMM vault and buffers the withdrawn assets.
@@ -1537,14 +1532,13 @@ module vault::port {
     /// # Type Parameters
     /// * `CoinTypeA` – first coin type in the pool pair
     /// * `CoinTypeB` – second coin type in the pool pair
-    /// * `LpCoin` – LP token associated with the port
     ///
     /// # Aborts
     /// * if the caller lacks the operator role
     /// * if the port is paused
     /// * if the provided pool does not match the port configuration
-    public fun stop_vault<CoinTypeA, CoinTypeB, LpCoin>(
-        port: &mut Port<LpCoin>,
+    public fun stop_vault<CoinTypeA, CoinTypeB>(
+        port: &mut Port,
         global_config: &vault::vault_config::GlobalConfig,
         clmm_global_config: &clmm_pool::config::GlobalConfig,
         clmm_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
@@ -1575,7 +1569,7 @@ module vault::port {
         );
 
         let event = StopVaultEvent{
-            port_id: sui::object::id<Port<LpCoin>>(port),
+            port_id: sui::object::id<Port>(port),
             buffer_balance_a: port.buffer_assets.value<CoinTypeA>(),
             buffer_balance_b: port.buffer_assets.value<CoinTypeB>(),
         };
@@ -1608,14 +1602,13 @@ module vault::port {
     /// # Type Parameters
     /// * `CoinTypeA` – first coin type in the pool pair
     /// * `CoinTypeB` – second coin type in the pool pair
-    /// * `LpCoin` – LP token associated with the port
     ///
     /// # Aborts
     /// * if the caller lacks the operator role
     /// * if the port is paused
     /// * if the provided pool does not match the port configuration
-    public fun start_vault<CoinTypeA, CoinTypeB, LpCoin>(
-        port: &mut Port<LpCoin>,
+    public fun start_vault<CoinTypeA, CoinTypeB>(
+        port: &mut Port,
         global_config: &vault::vault_config::GlobalConfig,
         clmm_global_config: &clmm_pool::config::GlobalConfig,
         clmm_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
@@ -1659,7 +1652,7 @@ module vault::port {
         };
 
         let event = StartVaultEvent{
-            port_id: sui::object::id<Port<LpCoin>>(port),
+            port_id: sui::object::id<Port>(port),
             buffer_balance_a: port.buffer_assets.value<CoinTypeA>(),
             buffer_balance_b: port.buffer_assets.value<CoinTypeB>(),
         };
@@ -1667,7 +1660,7 @@ module vault::port {
         sui::event::emit<StartVaultEvent>(event);
     }
 
-    public fun is_stopped<LpCoin>(port: &Port<LpCoin>) : bool {
+    public fun is_stopped(port: &Port) : bool {
         port.vault.is_stopped()
     }
     
@@ -1680,7 +1673,7 @@ module vault::port {
     /// # Arguments
     /// * `port` – mutable reference to the port providing the flash loan
     /// * `global_config` – global configuration for version and role checks
-    /// * `pyth_oracle` – oracle used to price the loaned and repayment assets
+    /// * `port_oracle` – oracle used to price the loaned and repayment assets
     /// * `loan_amount` – amount of `CoinTypeOut` requested
     /// * `clock` – clock object for oracle freshness checks
     /// * `ctx` – transaction context
@@ -1688,7 +1681,6 @@ module vault::port {
     /// # Type Parameters
     /// * `CoinTypeOut` – asset borrowed from the port
     /// * `CoinTypeIn` – asset required for repayment
-    /// * `LpCoin` – LP token associated with the port
     ///
     /// # Returns
     /// * tuple containing the borrowed coin and a `FlashLoanCert`
@@ -1696,10 +1688,10 @@ module vault::port {
     /// # Aborts
     /// * if the caller lacks operation permissions or the port is paused
     /// * if the loan amount is zero or the repayment asset type is invalid
-    public fun flash_loan<CoinTypeOut, CoinTypeIn, LpCoin>(
-        port: &mut Port<LpCoin>,
+    public fun flash_loan<CoinTypeOut, CoinTypeIn>(
+        port: &mut Port,
         global_config: &vault::vault_config::GlobalConfig,  
-        pyth_oracle: &vault::pyth_oracle::PythOracle, 
+        port_oracle: &vault::port_oracle::PortOracle, 
         loan_amount: u64,
         clock: &sui::clock::Clock, 
         ctx: &mut TxContext 
@@ -1714,10 +1706,10 @@ module vault::port {
         assert!(!port.is_pause, vault::error::port_is_pause());
         port.is_pause = true;
         assert!(loan_amount > 0, vault::error::token_amount_is_zero());
-        let price_coin_in = vault::pyth_oracle::get_price<CoinTypeIn>(pyth_oracle, clock); 
-        let price_coin_out = vault::pyth_oracle::get_price<CoinTypeOut>(pyth_oracle, clock); 
+        let price_coin_in = port_oracle.get_price<CoinTypeIn>(clock); 
+        let price_coin_out = port_oracle.get_price<CoinTypeOut>(clock); 
 
-        flash_loan_internal<CoinTypeOut, CoinTypeIn, LpCoin>(
+        flash_loan_internal<CoinTypeOut, CoinTypeIn>(
             port,
             global_config,
             price_coin_in,
@@ -1728,11 +1720,11 @@ module vault::port {
     }
 
     #[test_only]
-    public fun test_flash_loan<CoinTypeOut, CoinTypeIn, LpCoin>(
-        port: &mut Port<LpCoin>,
+    public fun test_flash_loan<CoinTypeOut, CoinTypeIn>(
+        port: &mut Port,
         global_config: &vault::vault_config::GlobalConfig,  
-        price_coin_in: vault::pyth_oracle::Price,
-        price_coin_out: vault::pyth_oracle::Price,
+        price_coin_in: vault::port_oracle::Price,
+        price_coin_out: vault::port_oracle::Price,
         loan_amount: u64,
         ctx: &mut TxContext 
     ) : (Coin<CoinTypeOut>, FlashLoanCert) {
@@ -1747,7 +1739,7 @@ module vault::port {
         port.is_pause = true;
         assert!(loan_amount > 0, vault::error::token_amount_is_zero());
 
-        flash_loan_internal<CoinTypeOut, CoinTypeIn, LpCoin>(
+        flash_loan_internal<CoinTypeOut, CoinTypeIn>(
             port,
             global_config,
             price_coin_in,
@@ -1757,20 +1749,20 @@ module vault::port {
         )
     }
 
-    fun flash_loan_internal<CoinTypeOut, CoinTypeIn, LpCoin>(
-        port: &mut Port<LpCoin>,
+    fun flash_loan_internal<CoinTypeOut, CoinTypeIn>(
+        port: &mut Port,
         global_config: &vault::vault_config::GlobalConfig,  
-        price_coin_in: vault::pyth_oracle::Price,
-        price_coin_out: vault::pyth_oracle::Price,
+        price_coin_in: vault::port_oracle::Price,
+        price_coin_out: vault::port_oracle::Price,
         loan_amount: u64,
         ctx: &mut TxContext 
     ) : (Coin<CoinTypeOut>, FlashLoanCert) {
-        let (price_coin_out_in_quote, _) = vault::pyth_oracle::calculate_prices(&price_coin_out, &price_coin_in);
+        let (price_coin_out_in_quote, _) = vault::port_oracle::calculate_prices(&price_coin_out, &price_coin_in);
         let repay_amount = integer_mate::full_math_u64::mul_div_ceil(
             integer_mate::full_math_u64::mul_div_floor(
                 price_coin_out_in_quote, 
                 loan_amount, 
-                std::u64::pow(10, vault::pyth_oracle::price_multiplier_decimal())
+                std::u64::pow(10, vault::port_oracle::price_multiplier_decimal())
             ),
             vault::vault_config::get_swap_slippage_denominator() - (global_config.get_swap_slippage<CoinTypeOut>() + global_config.get_swap_slippage<CoinTypeIn>()) / 2, 
             vault::vault_config::get_swap_slippage_denominator()
@@ -1780,19 +1772,19 @@ module vault::port {
         let (coin_type_a, coin_type_b) = port.vault.coin_types();
         assert!(repay_type == coin_type_a || repay_type == coin_type_b, vault::error::incorrect_repay_type());
         let flash_loan_cert = FlashLoanCert{
-            port_id      : sui::object::id<Port<LpCoin>>(port),  
+            port_id      : sui::object::id<Port>(port),  
             repay_type   : repay_type,  
             repay_amount : repay_amount,
         };
         let flash_loan_event = FlashLoanEvent{
-            port_id             : sui::object::id<Port<LpCoin>>(port), 
+            port_id             : sui::object::id<Port>(port), 
             loan_type           : with_defining_ids<CoinTypeOut>(), 
             repay_type          : repay_type, 
             loan_amount         : loan_amount, 
             repay_amount        : repay_amount, 
             base_to_quote_price : price_coin_out_in_quote, 
-            base_price          : vault::pyth_oracle::price_value(&price_coin_out), 
-            quote_price         : vault::pyth_oracle::price_value(&price_coin_in),
+            base_price          : price_coin_out.price_value(), 
+            quote_price         : price_coin_in.price_value(),
         };
         sui::event::emit<FlashLoanEvent>(flash_loan_event);
 
@@ -1817,14 +1809,13 @@ module vault::port {
     /// * `ctx` – transaction context
     ///
     /// # Type Parameters
-    /// * `LpCoin` – LP token associated with the port
     /// * `RepayCoinType` – coin type used to repay the flash loan
     ///
     /// # Aborts
     /// * if the caller lacks operation permissions
     /// * if the repayment type, amount, or port identifier is invalid
-    public fun repay_flash_loan<LpCoin, RepayCoinType>(
-        port: &mut Port<LpCoin>,
+    public fun repay_flash_loan<RepayCoinType>(
+        port: &mut Port,
         global_config: &vault::vault_config::GlobalConfig,
         flash_loan_cert: FlashLoanCert, 
         coin: Coin<RepayCoinType>, 
@@ -1842,7 +1833,7 @@ module vault::port {
 
         assert!(with_defining_ids<RepayCoinType>() == flash_loan_cert.repay_type, vault::error::incorrect_repay_type());
         assert!(coin.value() >= flash_loan_cert.repay_amount, vault::error::incorrect_repay_amount());
-        assert!(sui::object::id<Port<LpCoin>>(port) == flash_loan_cert.port_id, vault::error::incorrect_repay_port_id());
+        assert!(sui::object::id<Port>(port) == flash_loan_cert.port_id, vault::error::incorrect_repay_port_id());
 
         let _repay_amount = coin.value();
         port.buffer_assets.join<RepayCoinType>(coin.into_balance()); 
@@ -1854,7 +1845,7 @@ module vault::port {
         } = flash_loan_cert;
         
         let event = RepayFlashLoanEvent{
-            port_id      : sui::object::id<Port<LpCoin>>(port), 
+            port_id      : sui::object::id<Port>(port), 
             repay_type   : with_defining_ids<RepayCoinType>(), 
             repay_amount : _repay_amount,
         };
@@ -1876,14 +1867,13 @@ module vault::port {
     /// * `clmm_vault` – CLMM reward vault interacting with liquidity
     /// * `pool` – CLMM pool from which liquidity is withdrawn
     /// * `port_entry` – depositor’s entry being reduced
-    /// * `lp_token_amount` – amount of LP tokens to burn
+    /// * `volume_withdraw` – amount of volume to withdraw
     /// * `clock` – clock object used in reward checks
     /// * `ctx` – transaction context
     ///
     /// # Type Parameters
     /// * `CoinTypeA` – first coin type in the pool pair
     /// * `CoinTypeB` – second coin type in the pool pair
-    /// * `LpCoin` – LP token associated with the port
     ///
     /// # Returns
     /// * tuple of coins `CoinTypeA` and `CoinTypeB` representing withdrawn assets
@@ -1891,16 +1881,16 @@ module vault::port {
     /// # Aborts
     /// * if the port is paused, LP amount is invalid, or the transaction repeats
     /// * if reward checks or internal liquidity updates fail
-    public fun withdraw<CoinTypeA, CoinTypeB, LpCoin>(
-        port: &mut Port<LpCoin>, 
+    public fun withdraw<CoinTypeA, CoinTypeB>(
+        port: &mut Port, 
         global_config: &vault::vault_config::GlobalConfig,
         distribution_config: &governance::distribution_config::DistributionConfig,
         gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
         clmm_global_config: &clmm_pool::config::GlobalConfig,
         clmm_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        port_entry: &mut PortEntry<LpCoin>,
-        lp_token_amount: u64,
+        port_entry: &mut PortEntry,
+        volume_withdraw: u64,
         clock: &sui::clock::Clock, 
         ctx: &mut TxContext
     ) : (Coin<CoinTypeA>, Coin<CoinTypeB>) {
@@ -1910,10 +1900,8 @@ module vault::port {
             sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool) == port.vault.pool_id(),
             vault::error::clmm_pool_not_match()
         );
-        assert!(lp_token_amount > 0, vault::error::token_amount_is_zero());
-        assert!(lp_token_amount <= port_entry.lp_tokens.value(), vault::error::token_amount_not_enough()); 
-        let lp_token = port_entry.lp_tokens.split(lp_token_amount);
-        let lp_amount = lp_token.value();
+        assert!(volume_withdraw > 0, vault::error::token_amount_is_zero());
+        assert!(volume_withdraw <= port_entry.volume, vault::error::token_amount_not_enough());  
         let digest = *sui::tx_context::digest(ctx);
         assert!(digest != port.status.last_deposit_tx, vault::error::operation_not_allowed()); 
         assert!(digest != port.status.last_withdraw_tx, vault::error::operation_not_allowed()); 
@@ -1926,19 +1914,21 @@ module vault::port {
             clock
         );
 
-        let lp_supply = lp_total_supply<LpCoin>(port); 
+        port_entry.volume = port_entry.volume - volume_withdraw;
+
+        let total_volume = port.total_volume; 
         let mut balances = *port.buffer_assets.balances();
         let coin_a_type = with_defining_ids<CoinTypeA>(); 
         let (_, coin_a_amount) = balances.remove( &coin_a_type);
         let coin_b_type = with_defining_ids<CoinTypeB>();
         let (_, coin_b_amount) = balances.remove(&coin_b_type);
         let mut coin_a_balance = port.buffer_assets.split<CoinTypeA>(
-            (get_user_share_by_lp_amount(lp_supply, lp_amount, (coin_a_amount as u128)) as u64)
+            (get_user_share_by_volume(total_volume, volume_withdraw, (coin_a_amount as u128)) as u64)
         );
         let mut coin_b_balance = port.buffer_assets.split<CoinTypeB>(
-            (get_user_share_by_lp_amount(lp_supply, lp_amount, (coin_b_amount as u128)) as u64)
+            (get_user_share_by_volume(total_volume, volume_withdraw, (coin_b_amount as u128)) as u64)
         );
-        let liquidity = get_user_share_by_lp_amount(lp_supply, lp_amount, port.vault.get_position_liquidity(gauge));
+        let liquidity = get_user_share_by_volume(total_volume, volume_withdraw, port.vault.get_position_liquidity(gauge));
         let (liquidity_balance_a, liquidity_balance_b) = if (liquidity > 0) {
             port.vault.decrease_liquidity<CoinTypeA, CoinTypeB>(
                 distribution_config,
@@ -1956,17 +1946,22 @@ module vault::port {
         coin_a_balance.join(liquidity_balance_a);
         coin_b_balance.join(liquidity_balance_b);
 
+        let remained_a = port.buffer_assets.value<CoinTypeA>();
+        let remained_b = port.buffer_assets.value<CoinTypeB>();
+
         let event = WithdrawEvent{
-            port_id   : sui::object::id<Port<LpCoin>>(port),
-            port_entry_id: sui::object::id<PortEntry<LpCoin>>(port_entry),
-            lp_amount : lp_amount,
+            port_id   : sui::object::id<Port>(port),
+            port_entry_id: sui::object::id<PortEntry>(port_entry),
+            volume_withdraw : volume_withdraw,
             liquidity : liquidity, 
             amount_a  : coin_a_balance.value(), 
             amount_b  : coin_b_balance.value(),
+            remained_a  : remained_a,
+            remained_b  : remained_b,
         };
         sui::event::emit<WithdrawEvent>(event);
 
-        port.lp_token_treasury.burn(lp_token.into_coin(ctx));
+        port.total_volume = port.total_volume - volume_withdraw;
 
         (
             sui::coin::from_balance<CoinTypeA>(coin_a_balance, ctx), 
@@ -1974,10 +1969,10 @@ module vault::port {
         )
     }
 
-    fun check_claimed_rewards<CoinTypeA, CoinTypeB, LpCoin>(
-        port: &Port<LpCoin>,
+    fun check_claimed_rewards<CoinTypeA, CoinTypeB>(
+        port: &Port,
         pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        port_entry: &PortEntry<LpCoin>,
+        port_entry: &PortEntry,
         clock: &sui::clock::Clock
     ) {
         assert!(!port.is_pause, vault::error::port_is_pause());
@@ -2026,33 +2021,27 @@ module vault::port {
     /// * `global_config` – global configuration enforcing version checks
     /// * `port_entry` – entry to be destroyed
     ///
-    /// # Type Parameters
-    /// * `LpCoin` – LP token associated with the port
-    ///
     /// # Aborts
     /// * if the port is paused or the entry is not empty or mismatched
-    public fun destory_port_entry<LpCoin>(
-        port: &Port<LpCoin>, 
+    public fun destory_port_entry(
+        port: &Port, 
         global_config: &vault::vault_config::GlobalConfig, 
-        port_entry: PortEntry<LpCoin>
+        port_entry: PortEntry
     ) {
         global_config.checked_package_version();
         assert!(!port.is_pause, vault::error::port_is_pause());
-        assert!(port_entry.port_id == sui::object::id<Port<LpCoin>>(port), vault::error::port_entry_port_id_not_match());
-        assert!(port_entry.lp_tokens.value() == 0, vault::error::port_entry_lp_tokens_not_empty());
-        // check_claimed_rewards
+        assert!(port_entry.port_id == sui::object::id<Port>(port), vault::error::port_entry_port_id_not_match());
+        assert!(port_entry.volume == 0, vault::error::port_entry_volume_not_empty());
 
         let PortEntry {
             id              : port_entry_id,
             port_id         : _,
-            lp_tokens       : lp_tokens,
+            volume          : _,
             entry_reward_growth : _,
         } = port_entry;
 
-        lp_tokens.destroy_zero();
-
         let event = PortEntryDestroyedEvent{
-            port_id: sui::object::id<Port<LpCoin>>(port),
+            port_id: sui::object::id<Port>(port),
             port_entry_id: *sui::object::uid_as_inner(&port_entry_id),
         };
         sui::event::emit<PortEntryDestroyedEvent>(event);
@@ -2079,15 +2068,14 @@ module vault::port {
     /// # Type Parameters
     /// * `CoinTypeA` – first coin type of the pool
     /// * `CoinTypeB` – second coin type of the pool
-    /// * `LpCoin` – LP token associated with the port
     /// * `SailCoinType` – Sail token type handled by the minter
     /// * `CurrentOsailCoinType` – current epoch-specific OSAIL token type
     ///
     /// # Aborts
     /// * if the port is paused or linked to a different pool
     /// * if growth calculations overflow
-    public fun update_position_reward<CoinTypeA, CoinTypeB, LpCoin, SailCoinType, CurrentOsailCoinType>(
-        port: &mut Port<LpCoin>,
+    public fun update_position_reward<CoinTypeA, CoinTypeB, SailCoinType, CurrentOsailCoinType>(
+        port: &mut Port,
         global_config: &vault::vault_config::GlobalConfig, 
         minter: &mut governance::minter::Minter<SailCoinType>,
         distribution_config: &governance::distribution_config::DistributionConfig,
@@ -2112,12 +2100,12 @@ module vault::port {
             clock,
             ctx
         );
-        merge_protocol_asset<LpCoin, CurrentOsailCoinType>(port, &mut osail_reward); 
+        merge_protocol_asset<CurrentOsailCoinType>(port, &mut osail_reward); 
         let amount_osail = sui::balance::value<CurrentOsailCoinType>(&osail_reward);
 
         port.osail_reward_balances.join<CurrentOsailCoinType>(osail_reward);
 
-        let lp_supply = lp_total_supply<LpCoin>(port);
+        let total_volume = port.total_volume;
         let current_growth = if (port.osail_growth_global.contains(osail_coin_type)) {
             port.osail_growth_global.remove(osail_coin_type)
         } else {
@@ -2136,7 +2124,7 @@ module vault::port {
             integer_mate::full_math_u128::mul_div_floor(
                 (amount_osail as u128), 
                 1, 
-                (lp_supply as u128)
+                (total_volume as u128)
             )
         );
         assert!(!overflow, vault::error::growth_overflow());
@@ -2144,7 +2132,7 @@ module vault::port {
         port.last_update_osail_growth_time_ms = sui::clock::timestamp_ms(clock); 
 
         let event = OsailRewardUpdatedEvent{
-            port_id  : sui::object::id<Port<LpCoin>>(port),
+            port_id  : sui::object::id<Port>(port),
             osail_coin_type: osail_coin_type,
             amount_osail : amount_osail, 
             new_growth : new_growth,
@@ -2166,12 +2154,11 @@ module vault::port {
     /// # Type Parameters
     /// * `CoinTypeA` – first coin type in the pool pair
     /// * `CoinTypeB` – second coin type in the pool pair
-    /// * `LpCoin` – LP token associated with the port
     ///
     /// # Aborts
     /// * if the port is paused or growth timestamps do not match the clock
-    public fun check_updated_rewards<CoinTypeA, CoinTypeB, LpCoin>(
-        port: &Port<LpCoin>,
+    public fun check_updated_rewards<CoinTypeA, CoinTypeB>(
+        port: &Port,
         pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         clock: &sui::clock::Clock
     ) {
@@ -2209,7 +2196,6 @@ module vault::port {
     /// # Type Parameters
     /// * `CoinTypeA` – first coin type in the pool
     /// * `CoinTypeB` – second coin type in the pool
-    /// * `LpCoin` – LP token associated with the port
     /// * `SailCoinType` – Sail token type
     /// * `OsailCoinType` – epoch-specific OSAIL token type
     ///
@@ -2219,10 +2205,10 @@ module vault::port {
     /// # Aborts
     /// * if the port is paused or the entry is invalid
     /// * if rewards are not updated or no OSAIL is available
-    public fun claim_position_reward<CoinTypeA, CoinTypeB, LpCoin, SailCoinType, OsailCoinType>(
+    public fun claim_position_reward<CoinTypeA, CoinTypeB, SailCoinType, OsailCoinType>(
         global_config: &vault::vault_config::GlobalConfig,
-        port: &mut Port<LpCoin>,
-        port_entry: &mut PortEntry<LpCoin>,
+        port: &mut Port,
+        port_entry: &mut PortEntry,
         minter: &mut governance::minter::Minter<SailCoinType>,
         distribution_config: &governance::distribution_config::DistributionConfig,
         gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
@@ -2232,10 +2218,10 @@ module vault::port {
     ) : Coin<OsailCoinType> {
         global_config.checked_package_version();
         assert!(!port.is_pause, vault::error::port_is_pause());
-        assert!(port_entry.port_id == sui::object::id<Port<LpCoin>>(port), vault::error::port_entry_port_id_not_match());
+        assert!(port_entry.port_id == sui::object::id<Port>(port), vault::error::port_entry_port_id_not_match());
 
         if (port.last_update_osail_growth_time_ms != clock.timestamp_ms()) { 
-            update_position_reward<CoinTypeA, CoinTypeB, LpCoin, SailCoinType, OsailCoinType>(
+            update_position_reward<CoinTypeA, CoinTypeB, SailCoinType, OsailCoinType>(
                 port,
                 global_config,
                 minter,
@@ -2247,7 +2233,7 @@ module vault::port {
             );
         };
         assert!(port.last_update_osail_growth_time_ms == clock.timestamp_ms(), vault::error::not_updated_osail_growth_time());
-        assert!(port_entry.lp_tokens.value() != 0, vault::error::port_entry_lp_tokens_empty());
+        assert!(port_entry.volume != 0, vault::error::port_entry_volume_empty()); 
 
         let osail_coin_type = with_defining_ids<OsailCoinType>();
         assert!(port.osail_growth_global.contains(osail_coin_type), vault::error::osail_growth_not_match());
@@ -2265,7 +2251,7 @@ module vault::port {
             );
         };  
 
-        let (osail_reward_amount, osail_growth) = get_osail_amount_to_claim<LpCoin, OsailCoinType>(port, port_entry, clock);
+        let (osail_reward_amount, osail_growth) = get_osail_amount_to_claim<OsailCoinType>(port, port_entry, clock);
 
         assert!(osail_reward_amount > 0, vault::error::osail_reward_empty());
 
@@ -2278,8 +2264,8 @@ module vault::port {
         port_entry.entry_reward_growth.insert(osail_coin_type, osail_growth);
 
         let event = OsailRewardClaimedEvent{
-            port_id  : sui::object::id<Port<LpCoin>>(port),
-            port_entry_id: sui::object::id<PortEntry<LpCoin>>(port_entry),
+            port_id  : sui::object::id<Port>(port),
+            port_entry_id: sui::object::id<PortEntry>(port_entry),
             osail_coin_type: osail_coin_type,
             amount_osail : osail_reward_amount, 
             new_growth : osail_growth,
@@ -2299,20 +2285,17 @@ module vault::port {
     /// * `port` – mutable reference to the port maintaining reward growth
     /// * `port_entry` – entry requesting the next claimable OSAIL type
     ///
-    /// # Type Parameters
-    /// * `LpCoin` – LP token associated with the port
-    ///
     /// # Returns
     /// * type identifier of the claimable OSAIL reward
     ///
     /// # Aborts
     /// * if the port is paused, entry does not belong to the port, or no rewards remain
-    public fun get_osail_type_to_claim<LpCoin>(
-        port: &Port<LpCoin>,
-        port_entry: &PortEntry<LpCoin>
+    public fun get_osail_type_to_claim(
+        port: &Port,
+        port_entry: &PortEntry
     ) : TypeName {
         assert!(!port.is_pause, vault::error::port_is_pause());
-        assert!(port_entry.port_id == sui::object::id<Port<LpCoin>>(port), vault::error::port_entry_port_id_not_match());
+        assert!(port_entry.port_id == sui::object::id<Port>(port), vault::error::port_entry_port_id_not_match());
 
         let mut last_osail_type_opt = port.osail_growth_global.back();
         while (last_osail_type_opt.is_some()) {
@@ -2349,7 +2332,6 @@ module vault::port {
     /// * `clock` – clock object ensuring reward freshness
     ///
     /// # Type Parameters
-    /// * `LpCoin` – LP token associated with the port
     /// * `OsailCoinType` – OSAIL token type being claimed
     ///
     /// # Returns
@@ -2357,15 +2339,15 @@ module vault::port {
     ///
     /// # Aborts
     /// * if the port is paused, rewards are stale, or growth order is violated
-    public fun get_osail_amount_to_claim<LpCoin, OsailCoinType>(
-        port: &Port<LpCoin>,
-        port_entry: &PortEntry<LpCoin>,
+    public fun get_osail_amount_to_claim<OsailCoinType>(
+        port: &Port,
+        port_entry: &PortEntry,
         clock: &sui::clock::Clock
     ) : (u64, u128) {
         assert!(!port.is_pause, vault::error::port_is_pause());
-        assert!(port_entry.port_id == sui::object::id<Port<LpCoin>>(port), vault::error::port_entry_port_id_not_match());
+        assert!(port_entry.port_id == sui::object::id<Port>(port), vault::error::port_entry_port_id_not_match());
         assert!(port.last_update_osail_growth_time_ms == clock.timestamp_ms(), vault::error::not_updated_osail_growth_time());
-        if (port_entry.lp_tokens.value() == 0) {
+        if (port_entry.volume == 0) {
             return (0, 0)
         };
 
@@ -2392,7 +2374,7 @@ module vault::port {
 
         let accumulated_osail_reward_growth = *osail_growth - entry_osail_growth;
         let (osail_reward_amount , overflow) = integer_mate::math_u64::overflowing_mul(
-            port_entry.lp_tokens.value(), 
+            port_entry.volume,
             (accumulated_osail_reward_growth as u64)
         );
         assert!(!overflow, vault::error::token_amount_overflow());
@@ -2419,14 +2401,13 @@ module vault::port {
     /// # Type Parameters
     /// * `CoinTypeA` – first coin type in the pool
     /// * `CoinTypeB` – second coin type in the pool
-    /// * `LpCoin` – LP token associated with the port
     /// * `RewardCoinType` – coin type of the accrued reward
     ///
     /// # Aborts
     /// * if the port is paused or bound to a different pool
     /// * if growth calculations overflow
-    public fun update_pool_reward<CoinTypeA, CoinTypeB, LpCoin, RewardCoinType>(
-        port: &mut Port<LpCoin>, 
+    public fun update_pool_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
+        port: &mut Port, 
         global_config: &vault::vault_config::GlobalConfig,
         distribution_config: &governance::distribution_config::DistributionConfig,
         gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
@@ -2452,10 +2433,10 @@ module vault::port {
         let reward_type = with_defining_ids<RewardCoinType>();
         let amount = reward_balance.value();
         let (new_growth) = if (amount > 0) {
-            merge_protocol_asset<LpCoin, RewardCoinType>(port, &mut reward_balance); 
+            merge_protocol_asset<RewardCoinType>(port, &mut reward_balance); 
             port.buffer_assets.join<RewardCoinType>(reward_balance);
 
-            let lp_supply = lp_total_supply<LpCoin>(port);
+            let total_volume = port.total_volume;
             
             let current_growth = if (port.reward_growth.contains(&reward_type)) {
                 let (_, _current_growth) =  port.reward_growth.remove(&reward_type);
@@ -2468,7 +2449,7 @@ module vault::port {
                 integer_mate::full_math_u128::mul_div_floor(
                     (amount as u128), 
                     1, 
-                    (lp_supply as u128)
+                    (total_volume as u128)
                 )
             );
             assert!(!overflow, vault::error::growth_overflow());
@@ -2491,13 +2472,68 @@ module vault::port {
         port.last_update_growth_time_ms.insert(reward_type, clock.timestamp_ms());
     
         let event = UpdatePoolRewardEvent{
-            port_id     : sui::object::id<Port<LpCoin>>(port),
+            port_id     : sui::object::id<Port>(port),
             reward_type : with_defining_ids<RewardCoinType>(), 
             amount      : amount, 
             new_growth  : new_growth,
             update_time : sui::clock::timestamp_ms(clock),
         };
         sui::event::emit<UpdatePoolRewardEvent>(event);
+    }
+
+    /// Computes the claimable pool reward amount for a port entry.
+    ///
+    /// Confirms rewards were refreshed, verifies growth ordering, calculates the
+    /// accrued reward delta, and returns both the claimable amount and the latest
+    /// growth value.
+    ///
+    /// # Arguments
+    /// * `port` – mutable reference to the port maintaining growth state
+    /// * `port_entry` – entry requesting the reward calculation
+    /// * `clock` – clock object ensuring reward freshness
+    ///
+    /// # Type Parameters
+    /// * `RewardCoinType` – reward coin type being claimed
+    ///
+    /// # Returns
+    /// * tuple `(amount, growth)` indicating claimable pool reward and updated growth
+    ///
+    /// # Aborts
+    /// * if the port is paused, rewards are stale, or growth order is violated
+    public fun get_pool_reward_amount_to_claim<RewardCoinType>(
+        global_config: &vault::vault_config::GlobalConfig,
+        port: &mut Port,
+        port_entry: &mut PortEntry,
+        clock: &sui::clock::Clock
+    ) : (u64, u128) {
+        global_config.checked_package_version();
+        assert!(!port.is_pause, vault::error::port_is_pause());
+        assert!(port_entry.port_id == sui::object::id<Port>(port), vault::error::port_entry_port_id_not_match());
+        let reward_coin_type = with_defining_ids<RewardCoinType>();
+        assert!(
+            port.last_update_growth_time_ms.contains(&reward_coin_type) &&
+            *port.last_update_growth_time_ms.get(&reward_coin_type) == clock.timestamp_ms(), 
+            vault::error::port_entry_time_not_match()
+        );
+        assert!(port_entry.volume != 0, vault::error::port_entry_volume_not_empty());
+        
+        let start_growth = if (port_entry.entry_reward_growth.contains(&reward_coin_type)) {
+            let (_, _start_growth) = port_entry.entry_reward_growth.remove(&reward_coin_type);
+            _start_growth
+        } else {
+            0
+        };
+        
+        let current_growth = if (port.reward_growth.contains(&reward_coin_type)) {
+            *port.reward_growth.get(&reward_coin_type)
+        } else {
+            0
+        };
+        let accumulated_growth_reward = current_growth - start_growth;
+        let (reward_amount , overflow) = integer_mate::math_u64::overflowing_mul(port_entry.volume, (accumulated_growth_reward as u64));
+        assert!(!overflow, vault::error::token_amount_overflow());
+
+        (reward_amount, current_growth)
     }
 
     /// Claims pool rewards for a port entry based on LP ownership.
@@ -2521,7 +2557,6 @@ module vault::port {
     /// # Type Parameters
     /// * `CoinTypeA` – first coin type in the pool
     /// * `CoinTypeB` – second coin type in the pool
-    /// * `LpCoin` – LP token associated with the port
     /// * `RewardCoinType` – reward coin type being claimed
     ///
     /// # Returns
@@ -2529,10 +2564,10 @@ module vault::port {
     ///
     /// # Aborts
     /// * if the port is paused, entry is invalid, or growth timestamps mismatch
-    public fun claim_pool_reward<CoinTypeA, CoinTypeB, LpCoin, RewardCoinType>(
+    public fun claim_pool_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
         global_config: &vault::vault_config::GlobalConfig,
-        port: &mut Port<LpCoin>,
-        port_entry: &mut PortEntry<LpCoin>,
+        port: &mut Port,
+        port_entry: &mut PortEntry,
         distribution_config: &governance::distribution_config::DistributionConfig,
         gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
         clmm_global_config: &clmm_pool::config::GlobalConfig,
@@ -2543,9 +2578,9 @@ module vault::port {
     ) : Coin<RewardCoinType> {
         global_config.checked_package_version();
         assert!(!port.is_pause, vault::error::port_is_pause());
-        assert!(port_entry.port_id == sui::object::id<Port<LpCoin>>(port), vault::error::port_entry_port_id_not_match());
+        assert!(port_entry.port_id == sui::object::id<Port>(port), vault::error::port_entry_port_id_not_match());
 
-        update_pool_reward<CoinTypeA, CoinTypeB, LpCoin, RewardCoinType>(
+        update_pool_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
             port,
             global_config,
             distribution_config,
@@ -2561,7 +2596,7 @@ module vault::port {
             *port.last_update_growth_time_ms.get(&reward_coin_type) == clock.timestamp_ms(), 
             vault::error::port_entry_time_not_match()
         );
-        assert!(port_entry.lp_tokens.value() != 0, vault::error::port_entry_lp_tokens_not_empty());
+        assert!(port_entry.volume != 0, vault::error::port_entry_volume_not_empty());
         
         let start_growth = if (port_entry.entry_reward_growth.contains(&reward_coin_type)) {
             let (_, _start_growth) = port_entry.entry_reward_growth.remove(&reward_coin_type);
@@ -2576,13 +2611,13 @@ module vault::port {
             0
         };
         let accumulated_growth_reward = current_growth - start_growth;
-        let (reward_amount , overflow) = integer_mate::math_u64::overflowing_mul(port_entry.lp_tokens.value(), (accumulated_growth_reward as u64));
+        let (reward_amount , overflow) = integer_mate::math_u64::overflowing_mul(port_entry.volume, (accumulated_growth_reward as u64));
         assert!(!overflow, vault::error::token_amount_overflow());
         port_entry.entry_reward_growth.insert(with_defining_ids<RewardCoinType>(), current_growth);
 
-        let port_entry_id = sui::object::id<PortEntry<LpCoin>>(port_entry);
+        let port_entry_id = sui::object::id<PortEntry>(port_entry);
         let event = PoolRewardClaimedEvent{
-            port_id     : sui::object::id<Port<LpCoin>>(port),
+            port_id     : sui::object::id<Port>(port),
             port_entry_id : port_entry_id,
             reward_type : with_defining_ids<RewardCoinType>(),
             amount      : reward_amount, 
@@ -2598,7 +2633,7 @@ module vault::port {
         }
     }
     
-    fun merge_protocol_asset<LpCoin, RewardCoinType>(port: &mut Port<LpCoin>, reward_balance: &mut Balance<RewardCoinType>) {
+    fun merge_protocol_asset<RewardCoinType>(port: &mut Port, reward_balance: &mut Balance<RewardCoinType>) {
         let amount = reward_balance.value();
         vault::vault_utils::add_balance_to_bag<RewardCoinType>(
             &mut port.protocol_fees, 
@@ -2612,8 +2647,8 @@ module vault::port {
         );
     }
     
-    public fun lp_total_supply<LpCoin>(port: &Port<LpCoin>) : u64 {
-        port.lp_token_treasury.total_supply()
+    public fun total_volume(port: &Port) : u64 {
+        port.total_volume
     }
     
     /// Updates the hard cap for the port and emits a corresponding event.
@@ -2627,13 +2662,10 @@ module vault::port {
     /// * `new_hard_cap` – updated capacity limit
     /// * `ctx` – transaction context
     ///
-    /// # Type Parameters
-    /// * `LpCoin` – LP token associated with the port
-    ///
     /// # Aborts
     /// * if the caller lacks manager permissions or the port is paused
-    public fun update_hard_cap<LpCoin>(
-        port: &mut Port<LpCoin>,
+    public fun update_hard_cap(
+        port: &mut Port,
         global_config: &vault::vault_config::GlobalConfig, 
         new_hard_cap: u128, 
         ctx: &mut TxContext
@@ -2649,7 +2681,7 @@ module vault::port {
         let old_hard_cap = port.hard_cap;
         port.hard_cap = new_hard_cap;
         let event = UpdateHardCapEvent{
-            port_id      : sui::object::id<Port<LpCoin>>(port), 
+            port_id      : sui::object::id<Port>(port), 
             old_hard_cap : old_hard_cap, 
             new_hard_cap : new_hard_cap,
         };
@@ -2667,13 +2699,10 @@ module vault::port {
     /// * `new_protocol_fee_rate` – new protocol fee rate in BPS
     /// * `ctx` – transaction context
     ///
-    /// # Type Parameters
-    /// * `LpCoin` – LP token associated with the port
-    ///
     /// # Aborts
     /// * if the caller lacks manager permissions, the port is paused, or the rate exceeds the maximum
-    public fun update_protocol_fee<LpCoin>(
-        port: &mut Port<LpCoin>,
+    public fun update_protocol_fee(
+        port: &mut Port,
         global_config: &vault::vault_config::GlobalConfig,
         new_protocol_fee_rate: u64,
         ctx: &mut TxContext
@@ -2685,18 +2714,18 @@ module vault::port {
         let old_protocol_fee_rate = port.protocol_fee_rate;
         port.protocol_fee_rate = new_protocol_fee_rate;
         let event = UpdateProtocolFeeEvent{
-            port_id               : sui::object::id<Port<LpCoin>>(port), 
+            port_id               : sui::object::id<Port>(port), 
             old_protocol_fee_rate : old_protocol_fee_rate, 
             new_protocol_fee_rate : new_protocol_fee_rate,
         };
         sui::event::emit<UpdateProtocolFeeEvent>(event);
     }
 
-    fun get_user_share_by_lp_amount(lp_supply: u64, lp_amount: u64, total_amount: u128) : u128 {
-        integer_mate::full_math_u128::mul_div_round((lp_amount as u128), total_amount, (lp_supply as u128))
+    fun get_user_share_by_volume(total_volume: u64, volume: u64, total_amount: u128) : u128 {
+        integer_mate::full_math_u128::mul_div_round((volume as u128), total_amount, (total_volume as u128))
     }
 
-    public fun pause<LpCoin>(port: &mut Port<LpCoin>, global_config: &vault::vault_config::GlobalConfig, ctx: &mut TxContext) {
+    public fun pause(port: &mut Port, global_config: &vault::vault_config::GlobalConfig, ctx: &mut TxContext) {
         global_config.checked_package_version();
         assert!(
             global_config.is_pool_manager_role(sui::tx_context::sender(ctx))
@@ -2705,11 +2734,11 @@ module vault::port {
             vault::error::no_pool_manager_permission()
         );
         port.is_pause = true;
-        let event = PauseEvent{port_id: sui::object::id<Port<LpCoin>>(port)};
+        let event = PauseEvent{port_id: sui::object::id<Port>(port)};
         sui::event::emit<PauseEvent>(event);
     }
 
-    public fun unpause<LpCoin>(port: &mut Port<LpCoin>, global_config: &vault::vault_config::GlobalConfig, ctx: &mut TxContext) {
+    public fun unpause(port: &mut Port, global_config: &vault::vault_config::GlobalConfig, ctx: &mut TxContext) {
         global_config.checked_package_version();
         assert!(
             global_config.is_pool_manager_role(sui::tx_context::sender(ctx))
@@ -2718,62 +2747,62 @@ module vault::port {
             vault::error::no_pool_manager_permission()
         );
         port.is_pause = false;
-        let event = UnpauseEvent{port_id: sui::object::id<Port<LpCoin>>(port)};
+        let event = UnpauseEvent{port_id: sui::object::id<Port>(port)};
         sui::event::emit<UnpauseEvent>(event);
     }
 
-    public fun get_position_tick_range<CoinTypeA, CoinTypeB, LpCoin>(
-        port: &Port<LpCoin>,
+    public fun get_position_tick_range<CoinTypeA, CoinTypeB>(
+        port: &Port,
         gauge: &governance::gauge::Gauge<CoinTypeA, CoinTypeB>
     ) : (integer_mate::i32::I32, integer_mate::i32::I32) {
         port.vault.get_position_tick_range<CoinTypeA, CoinTypeB>(gauge)
     }
 
-    public fun rebalance_threshold<LpCoin>(port: &Port<LpCoin>) : u32 {
+    public fun rebalance_threshold(port: &Port) : u32 {
         port.vault.rebalance_threshold()
     }
 
-    public fun get_port_pause_status<LpCoin>(port: &Port<LpCoin>) : bool {
+    public fun get_port_pause_status(port: &Port) : bool {
         port.is_pause 
     }
 
-    public fun get_buffer_asset_value<LpCoin, CoinType>(port: &Port<LpCoin>) : u64 {
+    public fun get_buffer_asset_value<CoinType>(port: &Port) : u64 {
         port.buffer_assets.value<CoinType>()
     }
 
-    public fun get_protocol_fees_value<LpCoin, CoinType>(port: &Port<LpCoin>) : u64 {
+    public fun get_protocol_fees_value<CoinType>(port: &Port) : u64 {
         let balance = port.protocol_fees.borrow<TypeName, sui::balance::Balance<CoinType>>(with_defining_ids<CoinType>());
         balance.value()
     }
 
-    public fun get_protocol_fee_rate<LpCoin>(port: &Port<LpCoin>) : u64 {
+    public fun get_protocol_fee_rate(port: &Port) : u64 {
         port.protocol_fee_rate
     }
 
-    public fun get_hard_cap<LpCoin>(port: &Port<LpCoin>) : u128 {
+    public fun get_hard_cap(port: &Port) : u128 {
         port.hard_cap
     }
     
-    public fun get_port_quote_type<LpCoin>(port: &Port<LpCoin>) : std::option::Option<TypeName> {
+    public fun get_port_quote_type(port: &Port) : std::option::Option<TypeName> {
         port.quote_type
     }
 
-    public fun get_port_status_last_aum<LpCoin>(port: &Port<LpCoin>) : u128 {
+    public fun get_port_status_last_aum(port: &Port) : u128 {
         port.status.last_aum
     }
 
-    public fun get_port_status_last_calculate_aum_tx<LpCoin>(port: &Port<LpCoin>) : vector<u8> {
+    public fun get_port_status_last_calculate_aum_tx(port: &Port) : vector<u8> {
         port.status.last_calculate_aum_tx
     }
-    public fun get_port_status_last_deposit_tx<LpCoin>(port: &Port<LpCoin>) : vector<u8> {
+    public fun get_port_status_last_deposit_tx(port: &Port) : vector<u8> {
         port.status.last_deposit_tx
     }
 
-    public fun get_port_status_last_withdraw_tx<LpCoin>(port: &Port<LpCoin>) : vector<u8> {
+    public fun get_port_status_last_withdraw_tx(port: &Port) : vector<u8> {
         port.status.last_withdraw_tx
     }
 
-    public fun get_port_reward_growth<LpCoin, RewardCoinType>(port: &Port<LpCoin>) : u128 {
+    public fun get_port_reward_growth<RewardCoinType>(port: &Port) : u128 {
         let reward_coin_type = with_defining_ids<RewardCoinType>();
         if (port.reward_growth.contains(&reward_coin_type)) {
             *port.reward_growth.get(&reward_coin_type)
@@ -2782,7 +2811,7 @@ module vault::port {
         }
     }
 
-    public fun get_port_last_update_growth_time_ms<LpCoin, RewardCoinType>(port: &Port<LpCoin>) : u64 {
+    public fun get_port_last_update_growth_time_ms<RewardCoinType>(port: &Port) : u64 {
         let reward_coin_type = with_defining_ids<RewardCoinType>();
         if (port.last_update_growth_time_ms.contains(&reward_coin_type)) {
             *port.last_update_growth_time_ms.get(&reward_coin_type)
@@ -2791,11 +2820,11 @@ module vault::port {
         }
     }
 
-    public fun get_osail_reward_balances_value<LpCoin, OsailCoinType>(port: &Port<LpCoin>) : u64 { 
+    public fun get_osail_reward_balances_value<OsailCoinType>(port: &Port) : u64 { 
         port.osail_reward_balances.value<OsailCoinType>()
     }
 
-    public fun get_port_osail_growth_global<LpCoin, OsailCoinType>(port: &Port<LpCoin>) : u128 {
+    public fun get_port_osail_growth_global<OsailCoinType>(port: &Port) : u128 {
         let osail_coin_type = with_defining_ids<OsailCoinType>();
         if (port.osail_growth_global.contains(osail_coin_type)) {
             *port.osail_growth_global.borrow(osail_coin_type)
@@ -2804,19 +2833,19 @@ module vault::port {
         }
     }
 
-    public fun get_port_last_update_osail_growth_time_ms<LpCoin>(port: &Port<LpCoin>) : u64 {
+    public fun get_port_last_update_osail_growth_time_ms(port: &Port) : u64 {
         port.last_update_osail_growth_time_ms
     }
 
-    public fun get_port_id<LpCoin>(port_entry: &PortEntry<LpCoin>) : ID {
+    public fun get_port_id(port_entry: &PortEntry) : ID {
         port_entry.port_id
     }
 
-    public fun get_lp_tokens_value<LpCoin>(port_entry: &PortEntry<LpCoin>) : u64 {
-        port_entry.lp_tokens.value()
+    public fun get_volume(port_entry: &PortEntry) : u64 {
+        port_entry.volume
     }
 
-    public fun get_entry_reward_growth<LpCoin, RewardCoinType>(port_entry: &PortEntry<LpCoin>) : u128 {
+    public fun get_entry_reward_growth<RewardCoinType>(port_entry: &PortEntry) : u128 {
         let reward_coin_type = with_defining_ids<RewardCoinType>();
         if (port_entry.entry_reward_growth.contains(&reward_coin_type)) {
             *port_entry.entry_reward_growth.get(&reward_coin_type)
@@ -2833,7 +2862,7 @@ module vault::port {
         flash_loan_cert.repay_amount
     }
 
-    fun update_display<LpCoin>(
+    fun update_display(
         publisher: &sui::package::Publisher,
         name: std::string::String,
         link: std::string::String,
@@ -2842,7 +2871,7 @@ module vault::port {
         project_url: std::string::String,
         creator: std::string::String,
         ctx: &mut sui::tx_context::TxContext
-    ): sui::display::Display<PortEntry<LpCoin>> {
+    ): sui::display::Display<PortEntry> {
         let mut keys = std::vector::empty<std::string::String>();
         keys.push_back(std::string::utf8(b"name"));
         keys.push_back(std::string::utf8(b"link"));
@@ -2859,13 +2888,13 @@ module vault::port {
         values.push_back(project_url);
         values.push_back(creator);
 
-        let mut display = sui::display::new_with_fields<PortEntry<LpCoin>>(publisher, keys, values, ctx);
-        sui::display::update_version<PortEntry<LpCoin>>(&mut display);
+        let mut display = sui::display::new_with_fields<PortEntry>(publisher, keys, values, ctx);
+        sui::display::update_version<PortEntry>(&mut display);
 
         display
     }
 
-    public fun set_display<LpCoin>(
+    public fun set_display(
         publisher: &sui::package::Publisher,
         name: std::string::String,
         link: std::string::String,
@@ -2877,7 +2906,7 @@ module vault::port {
     ) {
         assert!(publisher.from_module<PORT>(), vault::error::not_owner());
 
-        let display = update_display<LpCoin>(
+        let display = update_display(
             publisher,
             name,
             link,
@@ -2888,11 +2917,11 @@ module vault::port {
             ctx
         );
 
-        sui::transfer::public_transfer<sui::display::Display<PortEntry<LpCoin>>>(display, sui::tx_context::sender(ctx));
+        sui::transfer::public_transfer<sui::display::Display<PortEntry>>(display, sui::tx_context::sender(ctx));
     }
 
-    public fun add_manager<LpCoin>(
-        port: &mut Port<LpCoin>, 
+    public fun add_manager(
+        port: &mut Port, 
         global_config: &vault::vault_config::GlobalConfig, 
         manager: address, 
         ctx: &mut TxContext
@@ -2905,8 +2934,8 @@ module vault::port {
         };
     }
 
-    public fun remove_manager<LpCoin>(
-        port: &mut Port<LpCoin>, 
+    public fun remove_manager(
+        port: &mut Port, 
         global_config: &vault::vault_config::GlobalConfig, 
         manager: address, 
         ctx: &mut TxContext
@@ -2919,11 +2948,11 @@ module vault::port {
         };
     }
 
-    public fun check_manager<LpCoin>(port: &Port<LpCoin>, manager: address) : bool {
+    public fun check_manager(port: &Port, manager: address) : bool {
         port.managers.contains(manager)
     }
 
-    public fun get_managers<LpCoin>(port: &Port<LpCoin>) : vector<address> {
+    public fun get_managers(port: &Port) : vector<address> {
         let mut managers = std::vector::empty<address>();
         let mut head = port.managers.head();
         while (head.is_some()) {

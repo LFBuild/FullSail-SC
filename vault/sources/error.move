@@ -45,9 +45,9 @@ module vault::error {
     const NOT_UPDATED_OSAIL_GROWTH_TIME: u64 = 42;
     const REWARD_GROWTH_NOT_MATCH: u64 = 43;
     const OSAIL_GROWTH_NOT_MATCH: u64 = 44;
-    const PORT_ENTRY_LP_TOKENS_NOT_EMPTY: u64 = 45;
-    const PORT_ENTRY_LP_TOKENS_EMPTY: u64 = 46;
-    const PORT_ENTRY_LP_TOKENS_NOT_MATCH: u64 = 47;
+    const PORT_ENTRY_VOLUME_NOT_EMPTY: u64 = 45;
+    const PORT_ENTRY_VOLUME_EMPTY: u64 = 46;
+    const PORT_ENTRY_VOLUME_NOT_MATCH: u64 = 47;
     const OSAIL_WITHDRAW_CERT_POOL_ID_NOT_MATCH: u64 = 48;
     const OSAIL_WITHDRAW_CERT_NOT_MATCH: u64 = 49;
     const OSAIL_REWARD_EMPTY: u64 = 50;
@@ -65,7 +65,11 @@ module vault::error {
     const INVALID_SWAP_SLIPPAGE: u64 = 62;
     const NOT_OWNER: u64 = 63;
     const NO_PORT_CREATOR_PERMISSION: u64 = 64;
-
+    const SWITCHBOARD_AGGREGATOR_NOT_MATCH: u64 = 65;
+    const SWITCHBOARD_ORACLE_INFO_ALREADY_EXISTS: u64 = 66;
+    const PYTH_ORACLE_INFO_ALREADY_EXISTS: u64 = 67;
+    const INVALID_AGGREGATOR_PRICE: u64 = 68;
+    
     public fun amount_in_above_max_limit() : u64 {
         abort AMOUNT_IN_ABOVE_MAX_LIMIT
     }
@@ -246,16 +250,16 @@ module vault::error {
         abort OSAIL_GROWTH_NOT_MATCH
     }
 
-    public fun port_entry_lp_tokens_not_empty() : u64 {
-        abort PORT_ENTRY_LP_TOKENS_NOT_EMPTY
+    public fun port_entry_volume_not_empty() : u64 {
+        abort PORT_ENTRY_VOLUME_NOT_EMPTY
     }
 
-    public fun port_entry_lp_tokens_empty() : u64 {
-        abort PORT_ENTRY_LP_TOKENS_EMPTY
+    public fun port_entry_volume_empty() : u64 {
+        abort PORT_ENTRY_VOLUME_EMPTY
     }
 
-    public fun port_entry_lp_tokens_not_match() : u64 {
-        abort PORT_ENTRY_LP_TOKENS_NOT_MATCH
+    public fun port_entry_volume_not_match() : u64 {
+        abort PORT_ENTRY_VOLUME_NOT_MATCH
     }
 
     public fun osail_withdraw_cert_pool_id_not_match() : u64 {
@@ -324,6 +328,22 @@ module vault::error {
 
     public fun no_port_creator_permission() : u64 {
         abort NO_PORT_CREATOR_PERMISSION
+    }
+
+    public fun switchboard_aggregator_not_match() : u64 {
+        abort SWITCHBOARD_AGGREGATOR_NOT_MATCH
+    }
+
+    public fun switchboard_oracle_info_already_exists() : u64 {
+        abort SWITCHBOARD_ORACLE_INFO_ALREADY_EXISTS
+    }
+
+    public fun pyth_oracle_info_already_exists() : u64 {
+        abort PYTH_ORACLE_INFO_ALREADY_EXISTS
+    }
+
+    public fun invalid_aggregator_price() : u64 {
+        abort INVALID_AGGREGATOR_PRICE
     }
 }
 

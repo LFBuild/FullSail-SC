@@ -96,6 +96,12 @@ You could also use some utility methods from [integrate package](integrate/sourc
 - RebaseDistributor (unused): `0x3ea124cb8ba5c202eb7f14ef0a6cdcd783f0cfd865f63ad7dd79339b1f0c1918`
 - Switchboard Aggregator: `0x6fad8b69ab1d9550302c610e5a0ffcb81c1e2b218ff05b6ea6cdd236b5963346`
 
+Vaults (beta):
+
+- port::PortRegistry: `0x4925ac9f2b82168400cb3dc4ed45b79a41d89fb45a6583af316d5bf977c2cb56`
+- pyth_oracle::PythOracle: `0x64ec76c07949ff00783d7323a05da1717b90249877497e283950e3861fffaeb2`
+- vault_config::GlobalConfig: `0x7d935faa38042b17ff55c3e9910d4b2fef546d637d87025a714762d6bdcee957`
+
 #### Publication transactions
 
 - [SAIL](https://suivision.xyz/txblock/8h9AypGsfEz4UEycf6zwNjFehpRxHyNYsc7N7JwxzCi)

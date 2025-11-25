@@ -20,6 +20,7 @@ module vault::vault {
     public struct MigrateLiquidity has copy, drop {
         old_position: sui::object::ID,
         new_position: sui::object::ID,
+        new_staked_position: sui::object::ID,
         old_tick_lower: integer_mate::i32::I32,
         old_tick_upper: integer_mate::i32::I32,
         new_tick_upper: integer_mate::i32::I32,
@@ -303,11 +304,14 @@ module vault::vault {
             ctx
         );
 
+        let new_staked_position_id = sui::object::id<governance::gauge::StakedPosition>(&new_staked_position);
+
         std::option::fill<governance::gauge::StakedPosition>(&mut vault.wrapped_position, new_staked_position);
 
         let migrate_liquidity = MigrateLiquidity{
             old_position   : old_position_id, 
             new_position   : new_position_id,
+            new_staked_position : new_staked_position_id,
             old_tick_lower : old_tick_lower, 
             old_tick_upper : old_tick_upper, 
             new_tick_upper : tick_upper, 
