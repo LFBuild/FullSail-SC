@@ -68,20 +68,17 @@ You could also use some utility methods from [integrate package](integrate/sourc
 
 ### Packages
 
-- integrate original id: `0x1d75557190b509bf8e987057f0488608b4d04c2f96f21703fc8a1a87463887db`
-- integrate latest id: `0x1d75557190b509bf8e987057f0488608b4d04c2f96f21703fc8a1a87463887db`
+- integrate original id: `0x3d5f22b95e48ba187397e1f573c6931fac5bbb0023e9a753da36da6c93c8f151`
+- integrate latest id: `0x3d5f22b95e48ba187397e1f573c6931fac5bbb0023e9a753da36da6c93c8f151`
 
 - clmm_pool original id: `0xe74104c66dd9f16b3096db2cc00300e556aa92edc871be4bc052b5dfb80db239`
 - clmm_pool latest id: `0xf7ca99f9fd82da76083a52ab56d88aff15d039b76499b85db8b8bc4d4804584a`
 
 - voting_escrow original id: `0xe616397e503278d406e184d2258bcbe7a263d0192cc0848de2b54b518165f832`
-- voting_escrow latest id: `0xbb8767be468a72918bd4cefd66c49952dea98a18b8f7f4bf15ba6e1fd683ee5e`
+- voting_escrow latest id: `0xfc410c145e4a9ba8f4aa3cb266bf3e467c35ea39dc90788e9a34f85338b734b7`
 
 - governance original id: `0x03fcdcee11f485731170944af3acd26b17d1b96121ce6b756fe8517a95192b3a`
-- governance latest id: `0xf145bf4de434224aac6de2b5c396d0aafaef8e635a7e9014d072969c20a9b577`
-
-- vaults (beta) original id: `0xd37913bb6fd4669751ea4acb408a39a69214c38aebb88127577fde04b9f6e17c`
-- vaults (beta) latest id: `0xd37913bb6fd4669751ea4acb408a39a69214c38aebb88127577fde04b9f6e17c`
+- governance latest id: `0x1cde2f0d4a50700960a8062f4ed7b19258f2a8c5eb4dc798fbda5e8b8d8c0658`
 
 ### Objects
 
@@ -110,34 +107,11 @@ Vaults (beta):
 - [SAIL](https://suivision.xyz/txblock/8h9AypGsfEz4UEycf6zwNjFehpRxHyNYsc7N7JwxzCi)
 - [oSAIL](https://suiscan.xyz/mainnet/tx/G2iDDb2zZMn2emhvWx9TrfnCEhzbtDWbUFzoy1S5tuNS)
 
-- [locker_cap](https://suivision.xyz/txblock/BFiALGxLFUczQVCshPtAEpY5H11kci33FHSTPCZRdYtA)
-- [price_monitor](https://suivision.xyz/txblock/3cLn9fdvXF9Mfn7zGhmqziLEWonbDWeFdWic1GtnaQW4)
-- [ve (legacy)](https://suivision.xyz/txblock/3HUrksyiojmCAwgQEVfVmMh2sf1TJ6v1oeuiMNPrxume)
-- [distribution (legacy)](https://suivision.xyz/txblock/DF8EohFmy656d7ax4msy8UffgyLdK1Q9U81avsGvbDNp)
-- [airdrop](https://suivision.xyz/txblock/FA7ModSnkR1kFokbpAyRDE6Kw6ewNDr4wpdm4Np8ARif)
-- [price_monitor upgrade](https://suivision.xyz/txblock/2Y1yK4JWfYo4eieEC6w3UPQfoZaJBCQkHaRFVrAW1ZKi)
-- [price monitro upgrade 2](https://suivision.xyz/txblock/ADt9FsEJqWabSZnFsyNHBpRZQm8ULjoofSSuXSyZkV3y)
-- [price monitor upgrade 3](https://suivision.xyz/txblock/J3Rx1acCDMYSFZ9kV7qPQiZ2Bu6WXcF7gAKUgorBnmvR)
-- [voting_escrow](https://suivision.xyz/txblock/73jixRjwnjjFPFriydMFkywpU4P4yXsZa4ui8pgzNyHr)
-- [voting_escrow upgrade 1](https://suivision.xyz/txblock/72sCTctxRBTwW29nHYShjeAGcpTkFd2d2hhCUquWgCfG)
-- [voting_escrow upgrade 2](https://suivision.xyz/txblock/E2ahiCCBxgtSWWkyiV1HbTWReC1xVhXtPKbHLHqCt3Ee)
-- [voting escrow upgrade 3](https://suivision.xyz/txblock/HT147M3zLTWyVEJ4AGVT1MD4U3NymuKNbkdYKrU2Htj5)
-- [voting escrow upgrade 4](https://suivision.xyz/txblock/Bezad6dbuPHtE4r8xvVwyjEZDQiVMGZEvPHLayveEYe9)
-- [governance](https://suivision.xyz/txblock/mZ12h5eUrA7C3AxMVokQDXnEaWSxbnMXwAi5LPSibwa)
-- [ve upgrade](https://suivision.xyz/txblock/CPMXmUU4tK6nAQ4DB9mpyFUnxmTMxboEwwwWNDsy82N8)
-- [distribution upgrade](https://suivision.xyz/txblock/2UYup5jRsdrPQ3eex3aXRdgRTUjpWGfURZUzJ8a5DWix)
-- [airdrop upgrade 1](https://suivision.xyz/txblock/CvpiuNxB2VFtCXS8nSiVwjmF5ScDei6QDVStLr9i9L3u)
-- [airdrop upgrade 2](https://suivision.xyz/txblock/8PWdRjk9Ch7mEFoLRAEGCBufp8xiVrQZkvqqhMtZuNPk)
-- [governance upgrade](https://suivision.xyz/txblock/4dUHtr1oy5xNv66PjdcwTUc6BEnPSgCxeUuosk1u5CSi?tab=Changes)
-- [governance upgrade 2](https://suivision.xyz/txblock/AHfTeqNcdEri1jevsFDaKSXbWMTTHrwHw9yDXciKWsU)
-- [governance upgrade 3](https://suivision.xyz/txblock/B3PNsA5zHiYs16risbNvjaf2QLaTRbYW8YYg8mLpwqWj)
-- [governance upgrade 4](https://suivision.xyz/txblock/BqrRF16tR7afaFnW5wPGFXb6CqisWMZDwXtN2KDfqtN7)
-- [governance upgrade 5](https://suivision.xyz/txblock/FcykJyQs7gJwX3NJTDtaoZy1yVfM7oyjYMvk335Xw3nX?tab=Changes)
-- [governance upgrade 6](https://suiscan.xyz/mainnet/tx/B8r4BzfPboP1j2h9JHY9j8cVZTrPPGk6ZWXnJHj6TMaM)
-- [governance upgrade 7](https://suiscan.xyz/mainnet/tx/DECRtUGNB1ZC1CbtBvgbGVWrwgN91MYjLU7TBrLquYTo)
-- [integrate](https://suivision.xyz/txblock/4HA3oEaUw6D8eo1iFVveMY2tDXNZogQXemGyEXxfeCVK)
+- [locker_cap](https://suivision.xyz/txblock/6VdLrhi9PGWyRrSJqPF2PcebWmSH23zB4KDGheXBwUgD)
+- [price_monitor](https://suivision.xyz/txblock/8thaqiGYsL3cX1T8n9W8xZFyAvkyPy9BzR1nCP27ugXc)
+- [airdrop](https://suivision.xyz/txblock/GVr2x4Wm9bosocNZWdfGfgn5rdfGzrnkmDB4nNoenivH)
+- [voting_escrow](https://suivision.xyz/txblock/GVr2x4Wm9bosocNZWdfGfgn5rdfGzrnkmDB4nNoenivH)
+- [governance](https://suivision.xyz/txblock/HftW78RqSSDU3CT8dBLGxNLgiBBXeqFsfhnDmDSYKXk9)
+- [integrate](https://suivision.xyz/txblock/63fn6MNR8ykDWdpieKzmdWpP4m8tcxzryoiAwWTAQjCk)
 
-- [setup distribtuion tx](https://suiscan.xyz/mainnet/tx/21y91npsRHWgg5TPnFkFVSWgCFTLhTcvRfGL4bA4ut1p)
-- [activate minter tx](https://suiscan.xyz/mainnet/tx/A3bugfXoFzC5YfDEfDd1QBqqTu3dB1XJuT2mRLknKZr2)
-
-- [vaults (beta)](https://suiscan.xyz/mainnet/tx/4bSdwmDqK9T2D12RMbUa72yZzLZcaASMHrH9AsDGMikw)
+- [setup distribtuion tx](https://suiscan.xyz/mainnet/tx/2vY5dZCRPqFFQ9z4Mx2izukKeTkQEn6c4RUq4moUtM5C)
