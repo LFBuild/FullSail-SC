@@ -2320,6 +2320,47 @@ module vault::port {
         abort vault::error::no_available_osail_reward()
     }
 
+    /// Returns a vector of OSAIL types that are eligible to claim.
+    ///
+    /// Traverses the recorded growth history to find all OSAIL types that have not
+    /// been fully claimed, respecting the order in which rewards accrued.
+    ///
+    /// # Arguments
+    /// * `port` – mutable reference to the port maintaining reward growth
+    /// * `port_entry` – entry requesting the next claimable OSAIL type
+    ///
+    /// # Returns
+    /// * vector of type identifiers of the claimable OSAIL rewards
+    ///   Important: the returned vector is ordered in reverse; claiming should start from the end of the vector
+    ///
+    /// # Aborts
+    /// * if the port is paused or the entry does not belong to the port
+    public fun get_osail_types_to_claim(
+        port: &Port,
+        port_entry: &PortEntry
+    ) : vector<TypeName> {
+        assert!(!port.is_pause, vault::error::port_is_pause());
+        assert!(port_entry.port_id == sui::object::id<Port>(port), vault::error::port_entry_port_id_not_match());
+
+        let mut osail_types = vector::empty<TypeName>();
+        let mut last_osail_type_opt = port.osail_growth_global.back();
+        while (last_osail_type_opt.is_some()) {
+            let last_osail_type = last_osail_type_opt.borrow();
+            if (port_entry.entry_reward_growth.contains(last_osail_type)) {
+                if (port.osail_growth_global.borrow(*last_osail_type) == port_entry.entry_reward_growth.get(last_osail_type)) {
+                    break
+                } else {
+                    osail_types.push_back(*last_osail_type);
+                }
+            } else {
+                osail_types.push_back(*last_osail_type);
+                last_osail_type_opt = port.osail_growth_global.prev(*last_osail_type);
+            };
+        };
+
+        return osail_types
+    }
+
     /// Computes the claimable OSAIL amount for a port entry.
     ///
     /// Confirms rewards were refreshed, verifies growth ordering, calculates the
