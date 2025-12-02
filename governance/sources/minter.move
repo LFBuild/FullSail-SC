@@ -88,6 +88,12 @@ module governance::minter {
     const ECreateLockFromOSailInvalidToken: u64 = 916284390763921500;
     const ECreateLockFromOSailInvalidDuraton: u64 = 68567430268160480;
 
+    const EDepositOSailMinterPaused: u64 = 817316631458528500;
+    const EDepositOSailInvalidToken: u64 = 930930427300172700;
+    const EDepositOSailBalanceNotExist: u64 = 4573731802313574;
+    const EDepositOSailLockNotPermanent: u64 = 240260341661373800;
+    const EDepositOSailZeroAmount: u64 = 581468583996395500;
+
     const EExerciseOSailFreeTooBigPercent: u64 = 410835752553141860;
     const EExerciseOSailExpired: u64 = 738843771743325200;
     const EExerciseOSailInvalidOSail: u64 = 320917362365364070;
@@ -342,6 +348,13 @@ module governance::minter {
         o_sail_expired: bool,
         duration: u64,
         permanent: bool,
+    }
+
+    public struct EventDepositOSailIntoLock has copy, drop, store {
+        o_sail_amount_in: u64,
+        o_sail_type: TypeName,
+        sail_amount_to_lock: u64,
+        lock_id: ID,
     }
 
     public struct EventExerciseOSail has copy, drop, store {
@@ -2384,6 +2397,49 @@ module governance::minter {
             permanent,
         };
         sui::event::emit<EventCreateLockFromOSail>(event);
+    }
+
+    public fun deposit_o_sail_into_lock<SailCoinType, OSailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        voting_escrow: &mut voting_escrow::voting_escrow::VotingEscrow<SailCoinType>,
+        distribution_config: &DistributionConfig,
+        lock: &mut voting_escrow::voting_escrow::Lock,
+        o_sail: Coin<OSailCoinType>,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext,
+    ) {
+        distribution_config.checked_package_version();
+        assert!(!minter.is_paused(), EDepositOSailMinterPaused);
+        assert!(minter.is_valid_o_sail_type<SailCoinType, OSailCoinType>(), EDepositOSailInvalidToken);
+
+        let lock_id = object::id(lock);
+
+        let (locked_balance, exist) = voting_escrow.locked(lock_id);
+        assert!(exist, EDepositOSailBalanceNotExist);
+
+        // it only makes sense to deposit oSAIL into a permanent lock.
+        // Other locks are valid only for 1 second, cos they have exactly 6 or 24 mounths left for 1 second.
+        assert!(locked_balance.is_permanent(), EDepositOSailLockNotPermanent);
+
+        // permanent locks provide 100% conversion of oSAIL to SAIL
+        let percent_to_receive = voting_escrow::common::persent_denominator();
+
+        let o_sail_amount_in = o_sail.value();
+        assert!(o_sail_amount_in > 0, EDepositOSailZeroAmount);
+        
+        let sail_to_lock = minter.exercise_o_sail_free_internal(o_sail, percent_to_receive, clock, ctx);
+        let sail_amount_to_lock = sail_to_lock.value();
+
+        voting_escrow.deposit_for(lock, sail_to_lock, clock, ctx);
+
+        let event = EventDepositOSailIntoLock {
+            o_sail_amount_in,
+            o_sail_type: type_name::get<OSailCoinType>(),
+            sail_amount_to_lock,
+            lock_id,
+        };
+
+        sui::event::emit<EventDepositOSailIntoLock>(event);
     }
 
     // method that burns oSAIL and mints SAIL

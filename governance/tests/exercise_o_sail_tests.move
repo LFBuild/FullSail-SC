@@ -1649,7 +1649,7 @@ fun test_exercise_and_lock_after_epoch_update() {
     {
         let minter = scenario.take_shared<Minter<SAIL>>();
         let current_epoch_token = minter.borrow_current_epoch_o_sail();
-        assert!(current_epoch_token == std::type_name::get<OSAIL1>(), 1);
+        assert!(current_epoch_token == std::type_name::with_defining_ids<OSAIL1>(), 1);
         test_scenario::return_shared(minter);
     };
 
@@ -1669,7 +1669,7 @@ fun test_exercise_and_lock_after_epoch_update() {
     {
         let minter = scenario.take_shared<Minter<SAIL>>();
         let current_epoch_token = minter.borrow_current_epoch_o_sail();
-        assert!(current_epoch_token == std::type_name::get<OSAIL2>(), 1);
+        assert!(current_epoch_token == std::type_name::with_defining_ids<OSAIL2>(), 1);
         test_scenario::return_shared(minter);
     };
 
@@ -2810,7 +2810,7 @@ fun test_exercise_fee_reward_sail_claim_fail() {
         let voter_id = object::id(&voter);
         let voter_cap = governance::voter_cap::create_voter_cap(voter_id, scenario.ctx());
 
-        let sail_type_name = std::type_name::get<SAIL>();
+        let sail_type_name = std::type_name::with_defining_ids<SAIL>();
         let mut reward = exercise_fee_reward::create(
             voter_id,
             vector[sail_type_name],
@@ -2891,7 +2891,7 @@ fun test_exercise_fee_reward_sail_claim_succeed() {
         let voter_id = object::id(&voter);
         let voter_cap = governance::voter_cap::create_voter_cap(voter_id, scenario.ctx());
 
-        let sail_type_name = std::type_name::get<SAIL>();
+        let sail_type_name = std::type_name::with_defining_ids<SAIL>();
         let mut reward = exercise_fee_reward::create(
             voter_id,
             vector[sail_type_name],
@@ -3032,7 +3032,7 @@ fun test_exercise_fee_reward_usd_claim_succeed() {
         let voter_id = object::id(&voter);
         let voter_cap = governance::voter_cap::create_voter_cap(voter_id, scenario.ctx());
 
-        let sail_type_name = std::type_name::get<SAIL>();
+        let sail_type_name = std::type_name::with_defining_ids<SAIL>();
         let mut reward = exercise_fee_reward::create(
             voter_id,
             vector[sail_type_name],
@@ -3155,4 +3155,3 @@ fun test_exercise_fee_reward_usd_claim_succeed() {
     clock::destroy_for_testing(clock);
     scenario.end();
 }
-
