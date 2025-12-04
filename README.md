@@ -68,8 +68,8 @@ You could also use some utility methods from [integrate package](integrate/sourc
 
 ### Packages
 
-- integrate original id: `0x1d75557190b509bf8e987057f0488608b4d04c2f96f21703fc8a1a87463887db`
-- integrate latest id: `0x1d75557190b509bf8e987057f0488608b4d04c2f96f21703fc8a1a87463887db`
+- integrate original id: `0xcd472ac46bb870cac34e5ab0213fb33d1421d6c9ca3c155687fa287c6ef9c4b0`
+- integrate latest id: `0xcd472ac46bb870cac34e5ab0213fb33d1421d6c9ca3c155687fa287c6ef9c4b0`
 
 - clmm_pool original id: `0xe74104c66dd9f16b3096db2cc00300e556aa92edc871be4bc052b5dfb80db239`
 - clmm_pool latest id: `0xf7ca99f9fd82da76083a52ab56d88aff15d039b76499b85db8b8bc4d4804584a`
@@ -78,7 +78,7 @@ You could also use some utility methods from [integrate package](integrate/sourc
 - voting_escrow latest id: `0xbb8767be468a72918bd4cefd66c49952dea98a18b8f7f4bf15ba6e1fd683ee5e`
 
 - governance original id: `0x03fcdcee11f485731170944af3acd26b17d1b96121ce6b756fe8517a95192b3a`
-- governance latest id: `0xf145bf4de434224aac6de2b5c396d0aafaef8e635a7e9014d072969c20a9b577`
+- governance latest id: `0x6aaf1e9ecabf1a07516a3667538c740cb021b6ad95b57d7010b10eebc00eeb6d`
 
 - vaults (beta) original id: `0xd37913bb6fd4669751ea4acb408a39a69214c38aebb88127577fde04b9f6e17c`
 - vaults (beta) latest id: `0xd37913bb6fd4669751ea4acb408a39a69214c38aebb88127577fde04b9f6e17c`
@@ -135,7 +135,8 @@ Vaults (beta):
 - [governance upgrade 5](https://suivision.xyz/txblock/FcykJyQs7gJwX3NJTDtaoZy1yVfM7oyjYMvk335Xw3nX?tab=Changes)
 - [governance upgrade 6](https://suiscan.xyz/mainnet/tx/B8r4BzfPboP1j2h9JHY9j8cVZTrPPGk6ZWXnJHj6TMaM)
 - [governance upgrade 7](https://suiscan.xyz/mainnet/tx/DECRtUGNB1ZC1CbtBvgbGVWrwgN91MYjLU7TBrLquYTo)
-- [integrate](https://suivision.xyz/txblock/4HA3oEaUw6D8eo1iFVveMY2tDXNZogQXemGyEXxfeCVK)
+- [governance upgrade 8](https://suiscan.xyz/mainnet/tx/AKtCptAcxMCZLeasnZAmzahodc1NvCrDtsCdjXQT6jMY)
+- [integrate](https://suiscan.xyz/mainnet/tx/7ej2kQP31mmXDxVwGnCG77ErMDSc9D5WNqmN4w4Y8SYB)
 
 - [setup distribtuion tx](https://suiscan.xyz/mainnet/tx/21y91npsRHWgg5TPnFkFVSWgCFTLhTcvRfGL4bA4ut1p)
 - [activate minter tx](https://suiscan.xyz/mainnet/tx/A3bugfXoFzC5YfDEfDd1QBqqTu3dB1XJuT2mRLknKZr2)
