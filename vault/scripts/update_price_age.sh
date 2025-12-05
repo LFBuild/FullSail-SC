@@ -8,8 +8,8 @@ export COIN_TYPE=0x0000000000000000000000000000000000000000000000000000000000000
 export PRICE_AGE=60
 
 sui client ptb \
-  --move-call $PACKAGE::pyth_oracle::update_price_age "<$COIN_TYPE>" \
-    @$PYTH_ORACLE \
+  --move-call $PACKAGE::port_oracle::update_price_age "<$COIN_TYPE>" \
+    @$PORT_ORACLE \
     @$VAULT_CONFIG \
     $PRICE_AGE
 

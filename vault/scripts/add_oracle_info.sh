@@ -71,8 +71,8 @@ PRICE_FEED_BYTES=$(echo "$PRICE_FEED_ID_HEX" | sed 's/../0x& /g' | xargs -n1 pri
 sui client ptb \
   --make-move-vec "<u8>" "[$PRICE_FEED_BYTES]" \
   --assign price_feed_id_vec \
-  --move-call $PACKAGE::pyth_oracle::add_oracle_info "<$COIN_TYPE>" \
-    @$PYTH_ORACLE \
+  --move-call $PACKAGE::port_oracle::add_pyth_oracle_info "<$COIN_TYPE>" \
+    @$PORT_ORACLE \
     @$VAULT_CONFIG \
     @$PYTH_STATE \
     @$COIN_METADATA \
