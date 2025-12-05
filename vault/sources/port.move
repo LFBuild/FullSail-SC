@@ -36,7 +36,7 @@ module vault::port {
         osail_growth_global: LinkedTable<TypeName, u128>,
         last_update_osail_growth_time_ms: u64,
 
-        managers: move_stl::linked_table::LinkedTable<address, bool>,
+        managers: LinkedTable<address, bool>,
     }
 
     public struct PortEntry has store, key {
@@ -446,7 +446,7 @@ module vault::port {
             osail_reward_balances : vault::balance_bag::new_balance_bag(ctx),
             last_update_growth_time_ms: sui::vec_map::empty<TypeName, u64>(),
             last_update_osail_growth_time_ms: current_time,
-            managers: move_stl::linked_table::new<address, bool>(ctx),
+            managers: linked_table::new<address, bool>(ctx),
         };
         new_port.managers.push_back(sui::tx_context::sender(ctx), true);
 
@@ -2995,11 +2995,11 @@ module vault::port {
 
     public fun get_managers(port: &Port) : vector<address> {
         let mut managers = std::vector::empty<address>();
-        let mut head = port.managers.head();
+        let mut head = port.managers.front();
         while (head.is_some()) {
             let manager = *head.borrow();
             managers.push_back(manager);
-            head = port.managers.borrow_node(manager).next();
+            head = port.managers.next(manager);
         };
         managers
     }

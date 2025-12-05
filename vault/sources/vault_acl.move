@@ -1,4 +1,5 @@
 module vault::vault_acl {
+    use sui::linked_table::{Self, LinkedTable};
 
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
     const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
@@ -9,7 +10,7 @@ module vault::vault_acl {
     const U128_MAX: u128 = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
 
     public struct ACL has store {
-        permissions: move_stl::linked_table::LinkedTable<address, u128>,
+        permissions: LinkedTable<address, u128>,
     }
     
     public struct Member has copy, drop, store {
@@ -22,7 +23,7 @@ module vault::vault_acl {
     }
     
     public fun new(ctx: &mut sui::tx_context::TxContext) : ACL {
-        ACL{permissions: move_stl::linked_table::new<address, u128>(ctx)}
+        ACL{permissions: linked_table::new(ctx)}
     }
     
     public fun add_role(acl: &mut ACL, member: address, role: u8) {
@@ -37,16 +38,16 @@ module vault::vault_acl {
     
     public fun get_members(acl: &ACL) : vector<Member> {
         let mut members = std::vector::empty<Member>(); 
-        let mut head = acl.permissions.head();
-        while (std::option::is_some<address>(&head)) {
-            let member = *std::option::borrow<address>(&head);
-            let permission = acl.permissions.borrow_node(member);
+        let mut head = acl.permissions.front();
+        while (std::option::is_some<address>(head)) {
+            let member_addr = *std::option::borrow<address>(head);
+            let permission = acl.permissions.borrow(member_addr);
             let member = Member{
-                address    : member, 
-                permission : *permission.borrow_value(),
+                address    : member_addr, 
+                permission : *permission,
             };
             std::vector::push_back<Member>(&mut members, member);
-            head = permission.next();
+            head = acl.permissions.next(member_addr);
         };
         members
     }
