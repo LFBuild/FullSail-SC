@@ -688,6 +688,20 @@ module vault::port {
         sui::event::emit<UpdateLiquidityOffsetEvent>(event);
     }
 
+    public fun check_need_rebalance_port<CoinTypeA, CoinTypeB>(
+        port: &Port, 
+        gauge: &governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+    ) : (bool, integer_mate::i32::I32, integer_mate::i32::I32) {
+        check_need_rebalance(
+            port, 
+            gauge, 
+            pool.tick_spacing(), 
+            pool.current_tick_index(), 
+            port.vault.rebalance_threshold()
+        )
+    }
+
     fun check_need_rebalance<CoinTypeA, CoinTypeB>(
         port: &Port, 
         gauge: &governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
