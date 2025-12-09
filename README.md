@@ -68,8 +68,8 @@ You could also use some utility methods from [integrate package](integrate/sourc
 
 ### Packages
 
-- integrate original id: `0xcd472ac46bb870cac34e5ab0213fb33d1421d6c9ca3c155687fa287c6ef9c4b0`
-- integrate latest id: `0xcd472ac46bb870cac34e5ab0213fb33d1421d6c9ca3c155687fa287c6ef9c4b0`
+- integrate original id: `0x6ca82e57c3c428980a9de2705f8818a360640bd23540a599452622942fd7170d`
+- integrate latest id: `0x6ca82e57c3c428980a9de2705f8818a360640bd23540a599452622942fd7170d`
 
 - clmm_pool original id: `0xe74104c66dd9f16b3096db2cc00300e556aa92edc871be4bc052b5dfb80db239`
 - clmm_pool latest id: `0xf7ca99f9fd82da76083a52ab56d88aff15d039b76499b85db8b8bc4d4804584a`
@@ -136,7 +136,7 @@ Vaults (beta):
 - [governance upgrade 6](https://suiscan.xyz/mainnet/tx/B8r4BzfPboP1j2h9JHY9j8cVZTrPPGk6ZWXnJHj6TMaM)
 - [governance upgrade 7](https://suiscan.xyz/mainnet/tx/DECRtUGNB1ZC1CbtBvgbGVWrwgN91MYjLU7TBrLquYTo)
 - [governance upgrade 8](https://suiscan.xyz/mainnet/tx/AKtCptAcxMCZLeasnZAmzahodc1NvCrDtsCdjXQT6jMY)
-- [integrate](https://suiscan.xyz/mainnet/tx/7ej2kQP31mmXDxVwGnCG77ErMDSc9D5WNqmN4w4Y8SYB)
+- [integrate](https://suiscan.xyz/mainnet/tx/6UtGNBUaNz6PzLZ8LTgJ5oH1PTYWVYxiex9b8p6mQzbc)
 
 - [setup distribtuion tx](https://suiscan.xyz/mainnet/tx/21y91npsRHWgg5TPnFkFVSWgCFTLhTcvRfGL4bA4ut1p)
 - [activate minter tx](https://suiscan.xyz/mainnet/tx/A3bugfXoFzC5YfDEfDd1QBqqTu3dB1XJuT2mRLknKZr2)
