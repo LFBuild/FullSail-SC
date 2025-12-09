@@ -22,7 +22,7 @@ def generate_sql_from_osail_info():
     # Regexes for extraction from a block
     re_object_type = re.compile(r'"objectType":string"([^"]+)"')
     re_object_id = re.compile(r'"objectId":string"([^"]+)"')
-    re_token_info = re.compile(r'<(.*::osail_(\d+[a-z]+\d+)::OSAIL_\d+[A-Z]+\d+)>')
+    re_token_info = re.compile(r'<(.*::osail_(\d+[a-z]+\d+_\d+)::OSAIL_\d+[A-Z]+\d+_\d+)>')
 
     for block in object_blocks:
         object_type_match = re_object_type.search(block)
@@ -40,8 +40,8 @@ def generate_sql_from_osail_info():
 
         # Parse the date from the token name
         try:
-            # Parse the date part (e.g., "04dec2025")
-            date_obj = datetime.strptime(date_str, '%d%b%Y')
+            # Parse the date part (e.g., "04dec2025_0900")
+            date_obj = datetime.strptime(date_str, '%d%b%Y_%H%M')
             
             # Create a unique key for each date
             token_key = f"{date_str}"
@@ -75,12 +75,13 @@ def generate_sql_from_osail_info():
     
     sorted_tokens = sorted(tokens_data.items(), key=sort_key)
     
+    print(f"Found {len(sorted_tokens)} tokens")
     if len(sorted_tokens) != 20:
         print(f"Warning: Found {len(sorted_tokens)} tokens, expected 20. SQL file will not be created.")
         return
 
-    base_epoch = 1756944000000
-    epoch_increment = 604800000
+    base_epoch = 1757322000000+10800000
+    epoch_increment = 10800000
 
     sql_header = "INSERT INTO public.osail_distributions (epoch_start, token_address, treasury_cap, coin_metadata)\nVALUES"
     
