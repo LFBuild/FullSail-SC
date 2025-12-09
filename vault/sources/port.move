@@ -8,6 +8,7 @@ module vault::port {
     use sui::balance::Balance;
     use sui::linked_table::{Self, LinkedTable};
     use sui::tx_context::TxContext;
+    use clmm_pool::pool::is_pause;
 
     public struct PORT has drop {}
 
@@ -504,6 +505,8 @@ module vault::port {
     /// rebalancing is required, and delegates the actual liquidity adjustments to
     /// `rebalance_internal`. It ensures the caller has the proper role, the port is
     /// active, and the associated CLMM pool matches the stored port state.
+    /// Callers should make sure all position (osail/position rewards) and pool rewards 
+    /// have been updated before invoking this function.
     ///
     /// # Arguments
     /// * `port` – mutable reference to the port that will be rebalanced
@@ -653,6 +656,10 @@ module vault::port {
             vault::error::no_pool_manager_permission()
         );
         assert!(!port.is_pause, vault::error::port_is_pause());
+        assert!(
+            sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool) == port.vault.pool_id(), 
+            vault::error::clmm_pool_not_match()
+        );
         let (current_lower_offset, current_upper_offset, _) = port.vault.get_liquidity_range();
         assert!(lower_offset != current_lower_offset || upper_offset != current_upper_offset, vault::error::liquidity_range_not_change());
         port.vault.update_liquidity_offset(lower_offset, upper_offset);
@@ -693,6 +700,14 @@ module vault::port {
         gauge: &governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
     ) : (bool, integer_mate::i32::I32, integer_mate::i32::I32) {
+        assert!(!port.is_pause, vault::error::port_is_pause());
+        assert!(
+            sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool) == port.vault.pool_id(), 
+            vault::error::clmm_pool_not_match()
+        );
+        if (port.vault.is_stopped()) {
+            return (false, integer_mate::i32::zero(), integer_mate::i32::zero())
+        };
         check_need_rebalance(
             port, 
             gauge, 
@@ -2232,6 +2247,10 @@ module vault::port {
     ) : Coin<OsailCoinType> {
         global_config.checked_package_version();
         assert!(!port.is_pause, vault::error::port_is_pause());
+        assert!(
+            sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool) == port.vault.pool_id(), 
+            vault::error::clmm_pool_not_match()
+        );
         assert!(port_entry.port_id == sui::object::id<Port>(port), vault::error::port_entry_port_id_not_match());
 
         if (port.last_update_osail_growth_time_ms != clock.timestamp_ms()) { 
@@ -2633,6 +2652,10 @@ module vault::port {
     ) : Coin<RewardCoinType> {
         global_config.checked_package_version();
         assert!(!port.is_pause, vault::error::port_is_pause());
+        assert!(
+            sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool) == port.vault.pool_id(), 
+            vault::error::clmm_pool_not_match()
+        );
         assert!(port_entry.port_id == sui::object::id<Port>(port), vault::error::port_entry_port_id_not_match());
 
         update_pool_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
@@ -2811,6 +2834,26 @@ module vault::port {
         gauge: &governance::gauge::Gauge<CoinTypeA, CoinTypeB>
     ) : (integer_mate::i32::I32, integer_mate::i32::I32) {
         port.vault.get_position_tick_range<CoinTypeA, CoinTypeB>(gauge)
+    }
+
+    public fun get_position_liquidity<CoinTypeA, CoinTypeB>(
+        port: &Port,
+        gauge: &governance::gauge::Gauge<CoinTypeA, CoinTypeB>
+    ) : u128 {
+        port.vault.get_position_liquidity<CoinTypeA, CoinTypeB>(gauge)
+    }
+
+    public fun get_position_amounts<CoinTypeA, CoinTypeB>(
+        port: &Port,
+        pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>
+    ) : (u64, u64) {
+        assert!(!port.vault.is_stopped(), vault::error::vault_is_stopped());
+        assert!(
+            sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool) == port.vault.pool_id(), 
+            vault::error::clmm_pool_not_match()
+        );
+        let staked_position = port.vault.borrow_staked_position();
+        clmm_pool::pool::get_position_amounts(pool, staked_position.position_id())
     }
 
     public fun rebalance_threshold(port: &Port) : u32 {

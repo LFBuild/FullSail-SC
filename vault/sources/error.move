@@ -69,6 +69,7 @@ module vault::error {
     const SWITCHBOARD_ORACLE_INFO_ALREADY_EXISTS: u64 = 66;
     const PYTH_ORACLE_INFO_ALREADY_EXISTS: u64 = 67;
     const INVALID_AGGREGATOR_PRICE: u64 = 68;
+    const VAULT_IS_STOPPED: u64 = 69;
     
     public fun amount_in_above_max_limit() : u64 {
         abort AMOUNT_IN_ABOVE_MAX_LIMIT
@@ -344,6 +345,10 @@ module vault::error {
 
     public fun invalid_aggregator_price() : u64 {
         abort INVALID_AGGREGATOR_PRICE
+    }
+
+    public fun vault_is_stopped() : u64 {
+        abort VAULT_IS_STOPPED
     }
 }
 
