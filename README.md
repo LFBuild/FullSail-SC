@@ -68,8 +68,8 @@ You could also use some utility methods from [integrate package](integrate/sourc
 
 ### Packages
 
-- integrate original id: `0x3d5f22b95e48ba187397e1f573c6931fac5bbb0023e9a753da36da6c93c8f151`
-- integrate latest id: `0x3d5f22b95e48ba187397e1f573c6931fac5bbb0023e9a753da36da6c93c8f151`
+- integrate original id: `0x4307327d839e5a8f3e6ea6f069ef9b2112577219be25668875d97deb35ec0193`
+- integrate latest id: `0x4307327d839e5a8f3e6ea6f069ef9b2112577219be25668875d97deb35ec0193`
 
 - clmm_pool original id: `0xe74104c66dd9f16b3096db2cc00300e556aa92edc871be4bc052b5dfb80db239`
 - clmm_pool latest id: `0xf7ca99f9fd82da76083a52ab56d88aff15d039b76499b85db8b8bc4d4804584a`
@@ -112,6 +112,6 @@ Vaults (beta):
 - [airdrop](https://suivision.xyz/txblock/GVr2x4Wm9bosocNZWdfGfgn5rdfGzrnkmDB4nNoenivH)
 - [voting_escrow](https://suivision.xyz/txblock/GVr2x4Wm9bosocNZWdfGfgn5rdfGzrnkmDB4nNoenivH)
 - [governance](https://suivision.xyz/txblock/HftW78RqSSDU3CT8dBLGxNLgiBBXeqFsfhnDmDSYKXk9)
-- [integrate](https://suivision.xyz/txblock/63fn6MNR8ykDWdpieKzmdWpP4m8tcxzryoiAwWTAQjCk)
+- [integrate](https://suivision.xyz/txblock/35B4T1WoymG67XroZnRCi8S7giW8EvfDvDv7bBontS31)
 
 - [setup distribtuion tx](https://suiscan.xyz/mainnet/tx/2vY5dZCRPqFFQ9z4Mx2izukKeTkQEn6c4RUq4moUtM5C)
