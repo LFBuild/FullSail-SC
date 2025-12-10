@@ -8,7 +8,6 @@ module vault::port {
     use sui::balance::Balance;
     use sui::linked_table::{Self, LinkedTable};
     use sui::tx_context::TxContext;
-    use clmm_pool::pool::is_pause;
 
     public struct PORT has drop {}
 
