@@ -256,6 +256,16 @@ module vault::vault {
         let (old_tick_lower, old_tick_upper) = clmm_pool::position::tick_range(&position);
         let liquidity = clmm_pool::position::liquidity(&position);
         if (liquidity > 0) {
+            let (collected_fee_a, collected_fee_b) = clmm_pool::pool::collect_fee<CoinTypeA, CoinTypeB>(
+                clmm_global_config,
+                pool,
+                &position,
+                true
+            );
+
+            balance_a.join(collected_fee_a); 
+            balance_b.join(collected_fee_b);
+
             let (removed_a, removed_b) = clmm_pool::pool::remove_liquidity<CoinTypeA, CoinTypeB>(
                 clmm_global_config,
                 clmm_vault,
@@ -264,6 +274,7 @@ module vault::vault {
                 liquidity, 
                 clock
             );
+
             balance_a.join(removed_a); 
             balance_b.join(removed_b);
         };
@@ -550,6 +561,16 @@ module vault::vault {
         let mut balance_b = sui::balance::zero<CoinTypeB>();
         let liquidity = clmm_pool::position::liquidity(&position);
         if (liquidity > 0) {
+            let (collected_fee_a, collected_fee_b) = clmm_pool::pool::collect_fee<CoinTypeA, CoinTypeB>(
+                clmm_global_config,
+                pool,
+                &position,
+                true
+            );
+
+            balance_a.join(collected_fee_a); 
+            balance_b.join(collected_fee_b);
+            
             let (removed_a, removed_b) = clmm_pool::pool::remove_liquidity<CoinTypeA, CoinTypeB>(
                 clmm_global_config,
                 clmm_vault,
