@@ -196,6 +196,11 @@ module vault::port {
         remained_a: u64,
         remained_b: u64,
     }
+
+    public struct NewVaultPositionEvent has copy, drop {
+        port_id: ID,
+        vault_position_id: sui::object::ID,
+    }
     
     public struct UpdateLiquidityOffsetEvent has copy, drop {
         port_id: ID,
@@ -599,6 +604,8 @@ module vault::port {
         port.buffer_assets.join<CoinTypeA>(balance_a);
         port.buffer_assets.join<CoinTypeB>(balance_b);
 
+        let vault_position_id = port.vault.borrow_staked_position().position_id();
+
         let event = RebalanceEvent{
             port_id : sui::object::id<Port>(port), 
             data    : migrate_liquidity,
@@ -606,6 +613,12 @@ module vault::port {
             remained_b         : port.buffer_assets.value<CoinTypeB>(),
         };
         sui::event::emit<RebalanceEvent>(event);
+
+        let event = NewVaultPositionEvent{
+            port_id : sui::object::id<Port>(port), 
+            vault_position_id : vault_position_id,
+        };
+        sui::event::emit<NewVaultPositionEvent>(event);
     }
 
     /// Updates the target liquidity range for the port and optionally rebalances.
@@ -1630,15 +1643,15 @@ module vault::port {
             ctx
         );
 
+        port.buffer_assets.join<CoinTypeA>(balance_a);
+        port.buffer_assets.join<CoinTypeB>(balance_b);
+
         let event = StopVaultEvent{
             port_id: sui::object::id<Port>(port),
             buffer_balance_a: port.buffer_assets.value<CoinTypeA>(),
             buffer_balance_b: port.buffer_assets.value<CoinTypeB>(),
         };
-
-        port.buffer_assets.join<CoinTypeA>(balance_a);
-        port.buffer_assets.join<CoinTypeB>(balance_b);
-
+        
         sui::event::emit<StopVaultEvent>(event);
     }
 
@@ -1721,6 +1734,12 @@ module vault::port {
         };
 
         sui::event::emit<StartVaultEvent>(event);
+
+        let event = NewVaultPositionEvent{
+            port_id : sui::object::id<Port>(port), 
+            vault_position_id : port.vault.borrow_staked_position().position_id(),
+        };
+        sui::event::emit<NewVaultPositionEvent>(event);
     }
 
     public fun is_stopped(port: &Port) : bool {
@@ -2329,8 +2348,8 @@ module vault::port {
             let prev_osail_type = prev_osail_type_opt.borrow();
             let prev_osail_growth = port.osail_growth_global.borrow(*prev_osail_type_opt.borrow());
             assert!(
-                port_entry.entry_reward_growth.contains(prev_osail_type) 
-                &&
+                !port_entry.entry_reward_growth.contains(prev_osail_type)
+                ||
                 port_entry.entry_reward_growth.get(prev_osail_type) == prev_osail_growth, 
                 vault::error::not_claimed_previous_osail_reward()
             );
@@ -2520,7 +2539,8 @@ module vault::port {
                     break
                 } else {
                     osail_types.push_back(*last_osail_type);
-                    last_osail_type_opt = port.osail_growth_global.prev(*last_osail_type);
+
+                    break
                 }
             } else {
                 osail_types.push_back(*last_osail_type);
@@ -2602,6 +2622,21 @@ module vault::port {
         let mut entry_osail_growth = if (port_entry.entry_reward_growth.contains(&osail_coin_type)) {
             *port_entry.entry_reward_growth.get(&osail_coin_type)
         } else {
+            // check that OSAIL is actually available to claim
+            let mut prev_osail_type_opt = port.osail_growth_global.prev(osail_coin_type);
+            while (prev_osail_type_opt.is_some()) {
+                if (port_entry.entry_reward_growth.contains(prev_osail_type_opt.borrow())) {
+                    break
+                };
+
+                prev_osail_type_opt = port.osail_growth_global.prev(*prev_osail_type_opt.borrow());
+            };
+            // if there was no positive growth for OSAIL before this,
+            // it means this OSAIL was issued before the PortEntry was created
+            if (prev_osail_type_opt.is_none()) {
+                return (0, 0)
+            };
+
             0
         };
         if (entry_osail_growth >= osail_growth) {
@@ -2610,9 +2645,9 @@ module vault::port {
 
         let prev_osail_type_opt = port.osail_growth_global.prev(osail_coin_type);
         if (prev_osail_type_opt.is_some()) {
-            let prev_osail_growth = port.osail_growth_global.borrow(*prev_osail_type_opt.borrow());
-            if (*prev_osail_growth > entry_osail_growth) {
-                entry_osail_growth = *prev_osail_growth;
+            let prev_osail_growth = *port.osail_growth_global.borrow(*prev_osail_type_opt.borrow());
+            if (prev_osail_growth > entry_osail_growth) {
+                entry_osail_growth = prev_osail_growth;
             }
         };   
 

@@ -964,6 +964,18 @@ module vault::vault_tests;
 
             assert!(osail1_reward_amount_zero == 0, 12363);
 
+            let (osail2_reward_amount, _) = port.get_osail_amount_to_claim<TestCoinB, TestCoinA, SailCoinType, OSAIL2, OSAIL2>(
+                &port_entry,
+                &vault_global_config,
+                &mut minter,
+                &distribution_config,
+                &mut gauge,
+                &mut pool,
+                &clock,
+                scenario.ctx()
+            );
+            assert!(osail2_reward_amount == 714284139560, 4363443);
+
             let osail2_reward = port::claim_position_reward<TestCoinB, TestCoinA, SailCoinType, OSAIL2, OSAIL2>(
                 &vault_global_config,
                 &mut port,
