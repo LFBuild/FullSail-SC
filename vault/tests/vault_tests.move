@@ -932,8 +932,8 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            assert!(osail1_reward_amount == 238095631760, 1235);
-            assert!(osail2_reward_amount == 714284139560, 1236);
+            assert!(osail1_reward_amount == 238095631771, 1235);
+            assert!(osail2_reward_amount == 714284139579, 1236);
 
             let osail1_reward = port::claim_position_reward<TestCoinB, TestCoinA, SailCoinType, OSAIL1, OSAIL1>(
                 &vault_global_config,
@@ -974,7 +974,8 @@ module vault::vault_tests;
                 &clock,
                 scenario.ctx()
             );
-            assert!(osail2_reward_amount == 714284139560, 4363443);
+
+            assert!(osail2_reward_amount == 714284139579, 4363443);
 
             let osail2_reward = port::claim_position_reward<TestCoinB, TestCoinA, SailCoinType, OSAIL2, OSAIL2>(
                 &vault_global_config,
@@ -1420,7 +1421,7 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            assert!(osail1_reward_amount == 238095631760, 232324433);
+            assert!(osail1_reward_amount == 238095631771, 232324433);
 
             // rewards are updated when claiming
             let osail_reward = port::claim_position_reward<TestCoinB, TestCoinA, SailCoinType, OSAIL1, OSAIL1>(
@@ -1435,7 +1436,7 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            assert!(osail_reward.value() == 238095631760, 976856);
+            assert!(osail_reward.value() == 238095631771, 976856);
 
             transfer::public_transfer(osail_reward, admin);
 
@@ -1450,7 +1451,7 @@ module vault::vault_tests;
                 &mut pool,
                 &clock
             );
-            assert!(pool_reward_amount == 14380, 7457445);
+            assert!(pool_reward_amount == 14399, 7457445);
 
             let pool_reward = port::claim_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
@@ -1465,7 +1466,7 @@ module vault::vault_tests;
                 scenario.ctx()
             );
             
-            assert!(pool_reward.value() == 14380, 4574657);
+            assert!(pool_reward.value() == 14399, 4574657);
 
             transfer::public_transfer(pool_reward, admin);
 

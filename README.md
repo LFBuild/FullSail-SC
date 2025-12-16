@@ -81,7 +81,7 @@ You could also use some utility methods from [integrate package](integrate/sourc
 - governance latest id: `0x1cde2f0d4a50700960a8062f4ed7b19258f2a8c5eb4dc798fbda5e8b8d8c0658`
 
 - vaults(beta) original id: `0xb9edebb239552dea0f88dc74a92ec79dbfc0f43c249d784bb5931e1f9b198359`
-- vaults(beta) latest id: `0xf0c7db38f3290042540fa44604f0de3c5548e23ee67591a148d218f25de280be`
+- vaults(beta) latest id: `0x8374abb598c2f87a2fd4a055c3a5c96e8698dce0289242a99eef1e335d914ceb`
 
 ### Objects
 

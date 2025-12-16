@@ -29,11 +29,11 @@ module vault::port {
         protocol_fee_rate: u64,
         total_volume: u64,
 
-        reward_growth: sui::vec_map::VecMap<TypeName, u128>, // per volume
+        reward_growth: sui::vec_map::VecMap<TypeName, u128>, // per volume, Q64.64
         last_update_growth_time_ms: sui::vec_map::VecMap<TypeName, u64>,
 
         osail_reward_balances: vault::balance_bag::BalanceBag,
-        osail_growth_global: LinkedTable<TypeName, u128>,
+        osail_growth_global: LinkedTable<TypeName, u128>, // Q64.64
         last_update_osail_growth_time_ms: u64,
 
         managers: LinkedTable<address, bool>,
@@ -467,7 +467,7 @@ module vault::port {
         while (i < pool_rewarders.length()) {
             let rewarder = pool_rewarders.borrow(i);
             let rewarder_type = clmm_pool::rewarder::reward_coin(rewarder);
-            new_port.reward_growth.insert(rewarder_type, rewarder.growth_global());
+            new_port.reward_growth.insert(rewarder_type, rewarder.growth_global() << 64);
             new_port.last_update_growth_time_ms.insert(rewarder_type, current_time);
 
             i = i + 1;
@@ -718,9 +718,6 @@ module vault::port {
             sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool) == port.vault.pool_id(), 
             vault::error::clmm_pool_not_match()
         );
-        if (port.vault.is_stopped()) {
-            return (false, integer_mate::i32::zero(), integer_mate::i32::zero())
-        };
         check_need_rebalance(
             port, 
             gauge, 
@@ -737,6 +734,9 @@ module vault::port {
         current_tick: integer_mate::i32::I32, 
         rebalance_threshold: u32
     ) : (bool, integer_mate::i32::I32, integer_mate::i32::I32) {
+        if (port.vault.is_stopped()) {
+            return (false, integer_mate::i32::zero(), integer_mate::i32::zero())
+        };
         let (lower_offset, upper_offset, _) = port.vault.get_liquidity_range();
         let (next_tick_lower, next_tick_upper) = vault::vault::next_position_range(
             lower_offset, 
@@ -1388,7 +1388,7 @@ module vault::port {
 
         let volume = get_volume_by_tvl(total_volume, tvl, port.status.last_aum);
         assert!(volume > 0, vault::error::token_amount_is_zero()); 
-        assert!(volume < (1<<64) - 1 - (total_volume as u128), vault::error::token_amount_overflow());
+        assert!(volume < (1 << 64) - 1 - (total_volume as u128), vault::error::token_amount_overflow());
         port.buffer_assets.join<CoinTypeA>(coin_a.into_balance());
         port.buffer_assets.join<CoinTypeB>(coin_b.into_balance());
 
@@ -1651,7 +1651,7 @@ module vault::port {
             buffer_balance_a: port.buffer_assets.value<CoinTypeA>(),
             buffer_balance_b: port.buffer_assets.value<CoinTypeB>(),
         };
-        
+
         sui::event::emit<StopVaultEvent>(event);
     }
 
@@ -2213,7 +2213,7 @@ module vault::port {
                 current_growth,
                 integer_mate::full_math_u128::mul_div_floor(
                     (amount_osail as u128), 
-                    1, 
+                    1 << 64, 
                     (total_volume as u128)
                 )
             );
@@ -2639,9 +2639,6 @@ module vault::port {
 
             0
         };
-        if (entry_osail_growth >= osail_growth) {
-            return (0, osail_growth)
-        };
 
         let prev_osail_type_opt = port.osail_growth_global.prev(osail_coin_type);
         if (prev_osail_type_opt.is_some()) {
@@ -2649,14 +2646,17 @@ module vault::port {
             if (prev_osail_growth > entry_osail_growth) {
                 entry_osail_growth = prev_osail_growth;
             }
-        };   
+        };
+        if (entry_osail_growth >= osail_growth) {
+            return (0, osail_growth)
+        };
 
         let accumulated_osail_reward_growth = osail_growth - entry_osail_growth;
-        let (osail_reward_amount , overflow) = integer_mate::math_u64::overflowing_mul(
-            port_entry.volume,
-            (accumulated_osail_reward_growth as u64)
-        );
-        assert!(!overflow, vault::error::token_amount_overflow());
+        let osail_reward_amount = integer_mate::full_math_u128::mul_div_floor(
+            (port_entry.volume as u128),
+            accumulated_osail_reward_growth,
+            1 << 64
+        ) as u64;
 
         (osail_reward_amount, osail_growth)
     }
@@ -2743,7 +2743,7 @@ module vault::port {
                     current_growth,
                     integer_mate::full_math_u128::mul_div_floor(
                         (amount as u128), 
-                        1, 
+                        1 << 64, 
                         (total_volume as u128)
                     )
                 );
@@ -2863,9 +2863,16 @@ module vault::port {
         } else {
             0
         };
+        if (current_growth <= start_growth) {
+            return (0, current_growth)
+        };
+
         let accumulated_growth_reward = current_growth - start_growth;
-        let (reward_amount , overflow) = integer_mate::math_u64::overflowing_mul(port_entry.volume, (accumulated_growth_reward as u64));
-        assert!(!overflow, vault::error::token_amount_overflow());
+        let reward_amount =integer_mate::full_math_u128::mul_div_floor(
+            (port_entry.volume as u128),
+            accumulated_growth_reward,
+            1 << 64
+        ) as u64;
 
         (reward_amount, current_growth)
     }
@@ -3155,6 +3162,8 @@ module vault::port {
         port.status.last_withdraw_tx
     }
 
+    /// Returns the reward growth for a given reward coin type.
+    /// The growth is stored as a Q64.64 value.
     public fun get_port_reward_growth<RewardCoinType>(port: &Port) : u128 {
         let reward_coin_type = with_defining_ids<RewardCoinType>();
         if (port.reward_growth.contains(&reward_coin_type)) {
@@ -3177,6 +3186,8 @@ module vault::port {
         port.osail_reward_balances.value<OsailCoinType>()
     }
 
+    /// Returns the OSAIL growth global for a given OSAIL coin type.
+    /// The growth is stored as a Q64.64 value.
     public fun get_port_osail_growth_global<OsailCoinType>(port: &Port) : u128 {
         let osail_coin_type = with_defining_ids<OsailCoinType>();
         if (port.osail_growth_global.contains(osail_coin_type)) {
@@ -3198,6 +3209,8 @@ module vault::port {
         port_entry.volume
     }
 
+    /// Returns the reward growth for a given reward coin type.
+    /// The growth is stored as a Q64.64 value.
     public fun get_entry_reward_growth<RewardCoinType>(port_entry: &PortEntry) : u128 {
         let reward_coin_type = with_defining_ids<RewardCoinType>();
         if (port_entry.entry_reward_growth.contains(&reward_coin_type)) {
