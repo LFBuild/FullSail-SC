@@ -734,9 +734,6 @@ module vault::port {
         current_tick: integer_mate::i32::I32, 
         rebalance_threshold: u32
     ) : (bool, integer_mate::i32::I32, integer_mate::i32::I32) {
-        if (port.vault.is_stopped()) {
-            return (false, integer_mate::i32::zero(), integer_mate::i32::zero())
-        };
         let (lower_offset, upper_offset, _) = port.vault.get_liquidity_range();
         let (next_tick_lower, next_tick_upper) = vault::vault::next_position_range(
             lower_offset, 
@@ -744,6 +741,9 @@ module vault::port {
             tick_spacing, 
             current_tick
         );
+        if (port.vault.is_stopped()) {
+            return (false, next_tick_lower, next_tick_upper)
+        };
         let (current_tick_lower, current_tick_upper) = port.vault.get_position_tick_range(gauge); 
         if (integer_mate::i32::lte(next_tick_upper, current_tick_lower) || integer_mate::i32::gte(next_tick_lower, current_tick_upper)) {
             return (true, next_tick_lower, next_tick_upper)
