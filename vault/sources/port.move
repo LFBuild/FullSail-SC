@@ -2207,7 +2207,7 @@ module vault::port {
         let osail_coin_type = with_defining_ids<CurrentOsailCoinType>();
 
         // assume that update_position_reward is called almost always
-        port.rewarder.settle(port.total_volume, clock.timestamp_ms());
+        port.rewarder.settle(port.total_volume, clock.timestamp_ms() / 1000);
 
         let (amount_osail, new_growth) = if (!port.is_stopped()) {
             let mut osail_reward = port.vault.collect_position_reward<CoinTypeA, CoinTypeB, SailCoinType, CurrentOsailCoinType>(
@@ -2294,8 +2294,9 @@ module vault::port {
         clock: &sui::clock::Clock
     ) {
         assert!(!port.is_pause, vault::error::port_is_pause());
-        assert!(port.last_update_osail_growth_time_ms == clock.timestamp_ms(), vault::error::not_updated_osail_growth_time());
-        assert!(port.rewarder.last_update_growth_time_ms() == clock.timestamp_ms(), vault::error::not_updated_incentive_reward_growth_time());
+        let current_time = clock.timestamp_ms();
+        assert!(port.last_update_osail_growth_time_ms == current_time, vault::error::not_updated_osail_growth_time());
+        assert!(port.rewarder.last_update_growth_time() == current_time / 1000, vault::error::not_updated_incentive_reward_growth_time());
 
         let pool_rewarders = pool.rewarder_manager().rewarders();
         let mut i = 0;
@@ -2305,7 +2306,7 @@ module vault::port {
             assert!(
                 port.last_update_growth_time_ms.contains(&rewarder.reward_coin())
                 &&
-                *port.last_update_growth_time_ms.get(&rewarder.reward_coin()) == clock.timestamp_ms(), 
+                *port.last_update_growth_time_ms.get(&rewarder.reward_coin()) == current_time, 
                 vault::error::not_updated_reward_growth_time()
             );
 
@@ -2315,7 +2316,7 @@ module vault::port {
         let mut i = 0;
         while (i < port.last_update_growth_time_ms.length()) {
             let (_, current_growth_time_ms) = port.last_update_growth_time_ms.get_entry_by_idx(i);
-            assert!(current_growth_time_ms == clock.timestamp_ms(), vault::error::not_updated_reward_growth_time());
+            assert!(current_growth_time_ms == current_time, vault::error::not_updated_reward_growth_time());
             i = i + 1;
         };
     }
@@ -3077,7 +3078,7 @@ module vault::port {
         assert!(port_entry.port_id == sui::object::id<Port>(port), vault::error::port_entry_port_id_not_match());
         let reward_coin_type = with_defining_ids<RewardCoinType>();
 
-        port.rewarder.settle(port.total_volume, clock.timestamp_ms());
+        port.rewarder.settle(port.total_volume, clock.timestamp_ms() / 1000);
         let current_incentive_reward_growth = port.rewarder.growth_global<RewardCoinType>();
         if (port_entry.volume == 0) {
             return (0, current_incentive_reward_growth)
@@ -3535,7 +3536,7 @@ module vault::port {
     }
 
     // reward_manager
-    public fun deposit_reward<RewardCoinType>(
+    public fun rewarder_deposit_reward<RewardCoinType>(
         global_config: &vault::vault_config::GlobalConfig,
         port: &mut Port,
         reward_coin: sui::balance::Balance<RewardCoinType>,
@@ -3548,7 +3549,7 @@ module vault::port {
         port.rewarder.deposit_reward<RewardCoinType>(reward_coin);
     }
 
-    public fun update_emission<RewardCoinType>(
+    public fun rewarder_update_emission<RewardCoinType>(
         global_config: &vault::vault_config::GlobalConfig,
         port: &mut Port,
         new_emission_rate: u128,
@@ -3562,11 +3563,11 @@ module vault::port {
         port.rewarder.update_emission<RewardCoinType>(
             port.total_volume,
             new_emission_rate,
-            clock.timestamp_ms()
+            clock.timestamp_ms() / 1000
         );
     }
 
-    public fun emergent_withdraw<RewardCoinType>(
+    public fun rewarder_emergent_withdraw<RewardCoinType>(
         global_config: &vault::vault_config::GlobalConfig,
         port: &mut Port,
         withdraw_amount: u64,
@@ -3580,15 +3581,15 @@ module vault::port {
         port.rewarder.emergent_withdraw<RewardCoinType>(
             withdraw_amount,
             port.total_volume,
-            clock.timestamp_ms()
+            clock.timestamp_ms() / 1000
         )
     }
 
-    public fun balance_of<RewardCoinType>(port: &Port): u64 {
+    public fun rewarder_balance_of<RewardCoinType>(port: &Port): u64 {
         port.rewarder.balance_of<RewardCoinType>()
     }
 
-    public fun available_balance_of<RewardCoinType>(port: &Port): u128 {
+    public fun rewarder_available_balance_of<RewardCoinType>(port: &Port): u128 {
         port.rewarder.available_balance_of<RewardCoinType>()
     }
 
@@ -3596,11 +3597,7 @@ module vault::port {
         port.rewarder.emissions_per_second<RewardCoinType>()
     }
 
-    public fun growth_global<RewardCoinType>(port: &Port): u128 {
+    public fun rewarder_growth_global<RewardCoinType>(port: &Port): u128 {
         port.rewarder.growth_global<RewardCoinType>()
-    }
-
-    public fun last_update_growth_time_ms(port: &Port): u64 {
-        port.rewarder.last_update_growth_time_ms()
     }
 }

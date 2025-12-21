@@ -15,14 +15,14 @@ module vault::reward_manager {
     /// * `available_balance` - Table tracking available reward balances in Q64 format, used to monitor and control reward distribution
     /// * `emissions_per_second` - Table tracking emission rate per second for each reward token, Q64.64
     /// * `growth_global` - Table tracking growth global for each reward token, Q64.64
-    /// * `last_update_growth_time_ms` - Timestamp of last update for growth global
+    /// * `last_update_growth_time` - Timestamp of last update for growth global in seconds
     public struct RewarderManager has store {
         types: vector<std::type_name::TypeName>,
         balances: sui::bag::Bag,
         available_balance: sui::table::Table<std::type_name::TypeName, u128>,
         emissions_per_second: sui::table::Table<std::type_name::TypeName, u128>,
         growth_global: sui::table::Table<std::type_name::TypeName, u128>,
-        last_update_growth_time_ms: u64,
+        last_update_growth_time: u64,
     }
 
     /// Event emitted when the rewarder is initialized.
@@ -106,7 +106,7 @@ module vault::reward_manager {
             available_balance: sui::table::new(ctx),
             emissions_per_second: sui::table::new(ctx),
             growth_global: sui::table::new(ctx),
-            last_update_growth_time_ms: 0,
+            last_update_growth_time: 0,
         }
     }
 
@@ -171,7 +171,7 @@ module vault::reward_manager {
     /// # Arguments
     /// * `manager` - Mutable reference to the rewarder manager
     /// * `liquidity` - Current liquidity value
-    /// * `current_time` - Current timestamp
+    /// * `current_time` - Current timestamp in seconds
     /// 
     /// # Abort Conditions
     public(package) fun settle(
@@ -179,10 +179,10 @@ module vault::reward_manager {
         total_volume: u64,
         current_time: u64
     ) {
-        let last_time = rewarder_manager.last_update_growth_time_ms;
+        let last_time = rewarder_manager.last_update_growth_time;
         assert!(last_time <= current_time, vault::error::invalid_time());
 
-        rewarder_manager.last_update_growth_time_ms = current_time;
+        rewarder_manager.last_update_growth_time = current_time;
         if (total_volume == 0 || last_time == current_time) {
             return
         };
@@ -244,7 +244,7 @@ module vault::reward_manager {
     /// * `rewarder_manager` - Mutable reference to the rewarder manager
     /// * `liquidity` - Current liquidity value
     /// * `emission_rate` - New emission rate Q64.64
-    /// * `current_time` - Current timestamp
+    /// * `current_time` - Current timestamp in seconds
     /// 
     /// # Abort Conditions
     public(package) fun update_emission<RewardCoinType>(
@@ -296,10 +296,10 @@ module vault::reward_manager {
     /// Performs an emergency withdrawal of reward tokens.
     /// 
     /// # Arguments
-    /// * `admin_cap` - Reference to the admin capability
-    /// * `global_config` - Reference to the global configuration
-    /// * `rewarder_vault` - Mutable reference to the rewarder global vault
+    /// * `rewarder_manager` - Mutable reference to the rewarder manager
     /// * `withdraw_amount` - Amount of tokens to withdraw
+    /// * `total_volume` - Current total volume
+    /// * `current_time` - Current timestamp in seconds
     /// 
     /// # Returns
     /// Balance of withdrawn reward tokens
@@ -393,9 +393,9 @@ module vault::reward_manager {
     /// * `rewarder_manager` - Reference to the rewarder manager
     /// 
     /// # Returns
-    /// The timestamp of the last update
-    public fun last_update_growth_time_ms(rewarder_manager: &RewarderManager): u64 {
-        rewarder_manager.last_update_growth_time_ms
+    /// The timestamp of the last update in seconds
+    public fun last_update_growth_time(rewarder_manager: &RewarderManager): u64 {
+        rewarder_manager.last_update_growth_time
     }
 
     public fun get_rewards_info(rewarder_manager: &RewarderManager): (vector<std::type_name::TypeName>, vector<u128>, vector<u128>) {
