@@ -510,6 +510,7 @@ module vault::vault_tests;
             port::test_calculate_aum<TestCoinB, TestCoinA>(
                 &mut port,
                 &vault_global_config,
+                &mut gauge,
                 &mut pool,
                 500_000,
                 &clock,
@@ -659,6 +660,7 @@ module vault::vault_tests;
             port::test_calculate_aum<TestCoinB, TestCoinA>(
                 &mut port,
                 &vault_global_config,
+                &mut gauge,
                 &mut pool,
                 600_000,
                 &clock,
@@ -1266,6 +1268,7 @@ module vault::vault_tests;
             port::test_calculate_aum<TestCoinB, TestCoinA>(
                 &mut port,
                 &vault_global_config,
+                &mut gauge,
                 &mut pool,
                 500_000,
                 &clock,
@@ -1473,6 +1476,7 @@ module vault::vault_tests;
             port::test_calculate_aum<TestCoinB, TestCoinA>(
                 &mut port,
                 &vault_global_config,
+                &mut gauge,
                 &mut pool,
                 600_000,
                 &clock,
@@ -1705,6 +1709,7 @@ module vault::vault_tests;
             port::test_calculate_aum<TestCoinB, TestCoinA>(
                 &mut port,
                 &vault_global_config,
+                &mut gauge,
                 &mut pool,
                 500_000,
                 &clock,
@@ -2795,6 +2800,7 @@ module vault::vault_tests;
             port::test_calculate_aum<TestCoinB, TestCoinA>(
                 &mut port,
                 &vault_global_config,
+                &mut gauge,
                 &mut pool,
                 500_000,
                 &clock,
@@ -3025,6 +3031,7 @@ module vault::vault_tests;
             port::test_calculate_aum<TestCoinB, TestCoinA>(
                 &mut port,
                 &vault_global_config,
+                &mut gauge,
                 &mut pool,
                 500_000,
                 &clock,
@@ -3154,6 +3161,7 @@ module vault::vault_tests;
             port::test_calculate_aum<TestCoinB, TestCoinA>(
                 &mut port,
                 &vault_global_config,
+                &mut gauge,
                 &mut pool,
                 600_000,
                 &clock,
@@ -3336,6 +3344,7 @@ module vault::vault_tests;
             port::test_calculate_aum<TestCoinB, TestCoinA>(
                 &mut port,
                 &vault_global_config,
+                &mut gauge,
                 &mut pool,
                 500_000,
                 &clock,
@@ -3563,6 +3572,7 @@ module vault::vault_tests;
             port::test_calculate_aum<TestCoinB, TestCoinA>(
                 &mut port,
                 &vault_global_config,
+                &mut gauge,
                 &mut pool,
                 500_000,
                 &clock,
@@ -3800,6 +3810,7 @@ module vault::vault_tests;
             port::test_calculate_aum<TestCoinB, TestCoinA>(
                 &mut port,
                 &vault_global_config,
+                &mut gauge,
                 &mut pool,
                 500_000,
                 &clock,
@@ -4047,6 +4058,7 @@ module vault::vault_tests;
             port::test_calculate_aum<TestCoinB, TestCoinA>(
                 &mut port,
                 &vault_global_config,
+                &mut gauge,
                 &mut pool,
                 500_000,
                 &clock,

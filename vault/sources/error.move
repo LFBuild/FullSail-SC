@@ -71,7 +71,14 @@ module vault::error {
     const INVALID_AGGREGATOR_PRICE: u64 = 68;
     const VAULT_IS_STOPPED: u64 = 69;
     const VAULT_NOT_STOPPED: u64 =70;
-    
+    const NOT_UPDATED_INCENTIVE_REWARD_GROWTH_TIME: u64 = 71;
+    const INVALID_TIME: u64 = 72;
+    const INSUFFICIENT_INCENTIVE_BALANCE: u64 = 73;
+    const INCENTIVE_REWARD_NOT_FOUND: u64 = 74;
+    const AVAILABLE_BALANCE_OVERFLOW: u64 = 75;
+    const INCORRECT_WITHDRAW_AMOUNT: u64 = 76;
+    const INCENTIVE_REWARD_NOT_CLAIMED: u64 = 77;
+
     public fun amount_in_above_max_limit() : u64 {
         abort AMOUNT_IN_ABOVE_MAX_LIMIT
     }
@@ -354,6 +361,34 @@ module vault::error {
 
     public fun vault_not_stopped() : u64 {
         abort VAULT_NOT_STOPPED
+    }
+
+    public fun not_updated_incentive_reward_growth_time() : u64 {
+        abort NOT_UPDATED_INCENTIVE_REWARD_GROWTH_TIME
+    }
+
+    public fun invalid_time() : u64 {
+        abort INVALID_TIME
+    }
+
+    public fun insufficient_incentive_balance() : u64 {
+        abort INSUFFICIENT_INCENTIVE_BALANCE
+    }
+
+    public fun incentive_reward_not_found() : u64 {
+        abort INCENTIVE_REWARD_NOT_FOUND
+    }
+
+    public fun available_balance_overflow() : u64 {
+        abort AVAILABLE_BALANCE_OVERFLOW
+    }
+
+    public fun incorrect_withdraw_amount() : u64 {
+        abort INCORRECT_WITHDRAW_AMOUNT
+    }
+
+    public fun incentive_reward_not_claimed() : u64 {
+        abort INCENTIVE_REWARD_NOT_CLAIMED
     }
 }
 
