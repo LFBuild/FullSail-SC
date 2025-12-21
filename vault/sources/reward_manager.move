@@ -11,6 +11,7 @@ module vault::reward_manager {
     /// Contains information about all rewarders, points, and timing.
     /// 
     /// # Fields
+    /// * `types` - Vector containing the types of reward tokens
     /// * `balances` - Bag containing reward token balances
     /// * `available_balance` - Table tracking available reward balances in Q64 format, used to monitor and control reward distribution
     /// * `emissions_per_second` - Table tracking emission rate per second for each reward token, Q64.64
@@ -23,14 +24,6 @@ module vault::reward_manager {
         emissions_per_second: sui::table::Table<std::type_name::TypeName, u128>,
         growth_global: sui::table::Table<std::type_name::TypeName, u128>,
         last_update_growth_time: u64,
-    }
-
-    /// Event emitted when the rewarder is initialized.
-    /// 
-    /// # Fields
-    /// * `global_vault_id` - ID of the initialized global vault
-    public struct RewarderInitEvent has copy, drop {
-        global_vault_id: sui::object::ID,
     }
 
     /// Event emitted when rewards are deposited.
@@ -73,32 +66,11 @@ module vault::reward_manager {
         (COPYRIGHT_NOTICE, PATENT_NOTICE)
     }
 
-    /// Initializes the rewarder module and creates the global vault.
-    /// 
-    /// # Arguments
-    /// * `ctx` - Mutable reference to the transaction context
-    fun init(ctx: &mut sui::tx_context::TxContext) {
-        // let vault = RewarderGlobalVault {
-        //     id: sui::object::new(ctx),
-        //     balances: sui::bag::new(ctx),
-        //     available_balance: sui::table::new(ctx),
-        // };
-        // let global_vault_id = sui::object::id<RewarderGlobalVault>(&vault);
-        // sui::transfer::share_object<RewarderGlobalVault>(vault);
-        // let event = RewarderInitEvent { global_vault_id };
-        // sui::event::emit<RewarderInitEvent>(event);
-    }
-
     /// Creates a new RewarderManager instance with default values.
     /// Initializes all fields to their zero values.
     /// 
     /// # Returns
-    /// A new RewarderManager instance with:
-    /// * Empty balances bag
-    /// * Empty available balance table
-    /// * Empty emissions per second table
-    /// * Empty growth global table
-    /// * Empty last update growth time ms table
+    /// A new RewarderManager instance
     public(package) fun new(ctx: &mut sui::tx_context::TxContext): RewarderManager {
         RewarderManager {
             types: vector::empty(),
@@ -113,13 +85,12 @@ module vault::reward_manager {
     /// Deposits reward tokens into the rewarder manager.
     /// 
     /// # Arguments
-    /// * `global_config` - Reference to the global configuration
     /// * `rewarder_manager` - Mutable reference to the rewarder manager
     /// * `balance` - Balance of reward tokens to deposit
     /// 
     /// # Returns
     /// The total amount after deposit
-    public fun deposit_reward<RewardCoinType>(
+    public(package) fun deposit_reward<RewardCoinType>(
         rewarder_manager: &mut RewarderManager,
         balance: sui::balance::Balance<RewardCoinType>
     ): u64 {
@@ -166,14 +137,12 @@ module vault::reward_manager {
         after_amount
     }
 
-    /// Settles reward calculations based on time elapsed and liquidity.
+    /// Settles reward calculations based on time elapsed and total volume.
     /// 
     /// # Arguments
     /// * `manager` - Mutable reference to the rewarder manager
-    /// * `liquidity` - Current liquidity value
+    /// * `total_volume` - Current total volume
     /// * `current_time` - Current timestamp in seconds
-    /// 
-    /// # Abort Conditions
     public(package) fun settle(
         rewarder_manager: &mut RewarderManager, 
         total_volume: u64,
@@ -240,13 +209,10 @@ module vault::reward_manager {
     /// Updates the emission rate for a specific reward token.
     /// 
     /// # Arguments
-    /// * `rewarder_vault` - Reference to the rewarder global vault
     /// * `rewarder_manager` - Mutable reference to the rewarder manager
-    /// * `liquidity` - Current liquidity value
+    /// * `total_volume` - Current total volume
     /// * `emission_rate` - New emission rate Q64.64
     /// * `current_time` - Current timestamp in seconds
-    /// 
-    /// # Abort Conditions
     public(package) fun update_emission<RewardCoinType>(
         rewarder_manager: &mut RewarderManager,
         total_volume: u64,
@@ -275,14 +241,14 @@ module vault::reward_manager {
         rewarder_manager.emissions_per_second.add(reward_type, new_emission_rate);
     }
 
-    /// Withdraws reward tokens from the vault.
+    /// Withdraws reward tokens from the rewarder manager.
     /// 
     /// # Arguments
-    /// * `rewarder_vault` - Mutable reference to the rewarder global vault
+    /// * `rewarder_manager` - Mutable reference to the rewarder manager
     /// * `amount` - Amount of tokens to withdraw
     /// 
     /// # Returns
-    /// Balance of withdrawn reward tokens
+    /// The balance of the withdrawn reward tokens
     public(package) fun withdraw_reward<RewardCoinType>(
         rewarder_manager: &mut RewarderManager,
         amount: u64
@@ -303,7 +269,7 @@ module vault::reward_manager {
     /// 
     /// # Returns
     /// Balance of withdrawn reward tokens
-    public fun emergent_withdraw<RewardCoinType>(
+    public(package) fun emergent_withdraw<RewardCoinType>(
         rewarder_manager: &mut RewarderManager,
         withdraw_amount: u64,
         total_volume: u64,
@@ -411,27 +377,5 @@ module vault::reward_manager {
             i = i + 1;
         };
         (types, emissions_per_second, growth_global)
-    }
-
-    #[test_only]
-    public fun test_init(ctx: &mut sui::tx_context::TxContext) {
-        init(ctx);
-    }
-
-    #[test]
-    fun test_init_fun() {
-        let admin = @0x123;
-        let mut scenario = sui::test_scenario::begin(admin);
-        {
-            init(scenario.ctx());
-        };
-
-        // scenario.next_tx(admin);
-        // {
-        //     let vault = scenario.take_shared<RewarderManager>();
-        //     assert!(sui::bag::is_empty(&rewarder_manager.balances), EMaxRewardersExceeded);
-        //     sui::test_scenario::return_shared(rewarder_manager);
-        // };
-        scenario.end();
     }
 }
