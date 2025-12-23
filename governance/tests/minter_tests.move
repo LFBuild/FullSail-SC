@@ -4594,6 +4594,7 @@ fun test_get_position_reward_with_cooldown_zero_reward() {
         let distribution_config = scenario.take_shared<DistributionConfig>();
         let mut pool = scenario.take_shared<Pool<USD_TESTS, AUSD>>();
         let staked_position = scenario.take_from_sender<StakedPosition>();
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
         
         let reward_balance = gauge::get_pool_reward<USD_TESTS, AUSD, USD_TESTS>(
             &global_config,
@@ -4611,13 +4612,160 @@ fun test_get_position_reward_with_cooldown_zero_reward() {
         
         let reward_coin = coin::from_balance(reward_balance, scenario.ctx());
         sui::transfer::public_transfer(reward_coin, scenario.ctx().sender());
+
+        let osail_reward = minter.get_position_reward<USD_TESTS, AUSD, SAIL, OSAIL1>(
+            &distribution_config,
+            &mut gauge,
+            &mut pool,
+            &staked_position,
+            &clock,
+            scenario.ctx()
+        );
+        sui::transfer::public_transfer(osail_reward, scenario.ctx().sender());
+
+        let position = gauge.withdraw_position<USD_TESTS, AUSD>(
+            &distribution_config,
+            &mut pool,
+            staked_position,
+            &clock,
+            scenario.ctx()
+        );
+        transfer::public_transfer(position, scenario.ctx().sender());
         
         test_scenario::return_shared(global_config);
         test_scenario::return_shared(vault);
         test_scenario::return_shared(gauge);
         test_scenario::return_shared(distribution_config);
         test_scenario::return_shared(pool);
+        test_scenario::return_shared(minter);
+    };
+
+    // decrease liquidity to update the second position counter
+    scenario.next_tx(user);
+    {
+        let mut gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let global_config = scenario.take_shared<clmm_pool::config::GlobalConfig>();
+        let mut vault = scenario.take_shared<clmm_pool::rewarder::RewarderGlobalVault>();
+        let mut pool = scenario.take_shared<Pool<USD_TESTS, AUSD>>();
+        let staked_position = scenario.take_from_sender<StakedPosition>();
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+
+        let osail_reward = minter.get_position_reward<USD_TESTS, AUSD, SAIL, OSAIL1>(
+            &distribution_config,
+            &mut gauge,
+            &mut pool,
+            &staked_position,
+            &clock,
+            scenario.ctx()
+        );
+        sui::transfer::public_transfer(osail_reward, scenario.ctx().sender());
+        
+        let liquidity_to_remove = 1000000/5; 
+        let (balance_a, balance_b) = gauge::decrease_liquidity<USD_TESTS, AUSD>(
+            &mut gauge,
+            &distribution_config,
+            &global_config,
+            &mut vault,
+            &mut pool,
+            &staked_position,
+            liquidity_to_remove,
+            &clock,
+            scenario.ctx()
+        );
+
+        // destroy the returned balances
+        test_utils::destroy(balance_a);
+        test_utils::destroy(balance_b);
+
+        test_scenario::return_shared(gauge);
+        test_scenario::return_shared(distribution_config);
+        test_scenario::return_shared(global_config);
+        test_scenario::return_shared(vault);
+        test_scenario::return_shared(pool);
+        test_scenario::return_shared(minter);
         scenario.return_to_sender(staked_position);
+    };
+
+    clock.increment_for_testing(300 * 1000);
+
+    // closing position without rewards
+    scenario.next_tx(user);
+    {
+        let global_config = scenario.take_shared<clmm_pool::config::GlobalConfig>();
+        let mut vault = scenario.take_shared<clmm_pool::rewarder::RewarderGlobalVault>();
+        let mut gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let mut pool = scenario.take_shared<Pool<USD_TESTS, AUSD>>();
+        let staked_position = scenario.take_from_sender<StakedPosition>();
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        
+        let reward_balance = gauge::get_pool_reward<USD_TESTS, AUSD, USD_TESTS>(
+            &global_config,
+            &mut vault,
+            &mut gauge,
+            &distribution_config,
+            &mut pool,
+            &staked_position,
+            &clock
+        );
+        
+        // reward should be greater than zero now that cooldown has passed
+        let reward_value = sui::balance::value(&reward_balance);
+        assert!(reward_value == 0, 5);
+        
+        let reward_coin = coin::from_balance(reward_balance, scenario.ctx());
+        sui::transfer::public_transfer(reward_coin, scenario.ctx().sender());
+
+        let osail_reward = minter.get_position_reward<USD_TESTS, AUSD, SAIL, OSAIL1>(
+            &distribution_config,
+            &mut gauge,
+            &mut pool,
+            &staked_position,
+            &clock,
+            scenario.ctx()
+        );
+        sui::transfer::public_transfer(osail_reward, scenario.ctx().sender());
+
+        let position = gauge.withdraw_position<USD_TESTS, AUSD>(
+            &distribution_config,
+            &mut pool,
+            staked_position,
+            &clock,
+            scenario.ctx()
+        );
+        transfer::public_transfer(position, scenario.ctx().sender());
+        
+        test_scenario::return_shared(global_config);
+        test_scenario::return_shared(vault);
+        test_scenario::return_shared(gauge);
+        test_scenario::return_shared(distribution_config);
+        test_scenario::return_shared(pool);
+        test_scenario::return_shared(minter);
+    };
+
+    // claim unclaimed o_sail
+    scenario.next_tx(admin);
+    {
+        let mut gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        
+        let osail_reward = minter.claim_unclaimed_o_sail<USD_TESTS, AUSD, SAIL, OSAIL1>(
+            &distribution_config,
+            &admin_cap,
+            &mut gauge,
+            scenario.ctx()
+        );
+
+        assert!(osail_reward.value() == 496, 5);
+        sui::transfer::public_transfer(osail_reward, scenario.ctx().sender());
+
+        test_scenario::return_shared(gauge);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(admin_cap);
+        test_scenario::return_shared(minter);
     };
 
     transfer::public_transfer(usd_treasury_cap, admin);

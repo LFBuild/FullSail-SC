@@ -19,6 +19,8 @@ module governance::distribution_config {
     const ESetPackageVersionInvalidPublisher: u64 = 24442067766657028;
     const ESetPackageVersionInvalidVersion: u64 = 326963916733903800;
 
+    const LIQUIDITY_UPDATE_COOLDOWN_KEY: vector<u8> = b"liquidity_update_cooldown";
+
     public struct DISTRIBUTION_CONFIG has drop {}
 
     /// The main configuration object that tracks active gauges in the distribution system
@@ -181,8 +183,8 @@ module governance::distribution_config {
     /// # Returns
     /// The current liquidity_update_cooldown value in seconds (defaults to 0 if not set)
     public fun get_liquidity_update_cooldown(distribution_config: &DistributionConfig): u64 {
-        if (sui::bag::contains(&distribution_config.bag, b"liquidity_update_cooldown")) {
-            *sui::bag::borrow(&distribution_config.bag, b"liquidity_update_cooldown")
+        if (sui::bag::contains(&distribution_config.bag, LIQUIDITY_UPDATE_COOLDOWN_KEY)) {
+            *sui::bag::borrow(&distribution_config.bag, LIQUIDITY_UPDATE_COOLDOWN_KEY)
         } else {
             0
         }
@@ -198,10 +200,10 @@ module governance::distribution_config {
         distribution_config: &mut DistributionConfig,
         new_cooldown: u64,
     ) {
-        if (distribution_config.bag.contains(b"liquidity_update_cooldown")) {
-            distribution_config.bag.remove<vector<u8>, u64>(b"liquidity_update_cooldown");
+        if (distribution_config.bag.contains(LIQUIDITY_UPDATE_COOLDOWN_KEY)) {
+            distribution_config.bag.remove<vector<u8>, u64>(LIQUIDITY_UPDATE_COOLDOWN_KEY);
         };
-        distribution_config.bag.add(b"liquidity_update_cooldown", new_cooldown);
+        distribution_config.bag.add(LIQUIDITY_UPDATE_COOLDOWN_KEY, new_cooldown);
     }
 
     #[test_only]

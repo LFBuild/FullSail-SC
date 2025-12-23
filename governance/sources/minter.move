@@ -163,6 +163,7 @@ module governance::minter {
     const EGetMultiplePositionRewardInvalidRewardToken: u64 = 785363146605424900;
     const EGetMultiPosRewardDistributionConfInvalid: u64 = 695673975436220400;
     const EGetMultiPosRewardGaugeNotAlive: u64 = 993998734106655200;
+    const EClaimUnclaimedOsailInvalidEpochToken: u64 = 934963468982192254;
 
     const EEmissionStopped: u64 = 123456789012345678;
 
@@ -3070,7 +3071,7 @@ module governance::minter {
             EGetPosRewardGaugeNotAlive
         );
         
-        let reward_amount = get_position_reward_internal_v2<CoinTypeA, CoinTypeB, RewardCoinType>(
+        let reward_amount = get_position_reward_internal<CoinTypeA, CoinTypeB, RewardCoinType>(
             gauge,
             distribution_config,
             pool,
@@ -3108,7 +3109,7 @@ module governance::minter {
         let mut i = 0;
         let mut total_earned = 0;
         while (i < staked_positions.length()) {
-            let earned_i = get_position_reward_internal_v2<CoinTypeA, CoinTypeB, RewardCoinType>(
+            let earned_i = get_position_reward_internal<CoinTypeA, CoinTypeB, RewardCoinType>(
                 gauge,
                 distribution_config,
                 pool, 
@@ -3124,20 +3125,8 @@ module governance::minter {
         minter.mint_o_sail<SailCoinType, RewardCoinType>(total_earned, ctx)
     }
 
-    /// Internal function to get position reward (original version for backward compatibility).
-    fun get_position_reward_internal<CoinTypeA, CoinTypeB, SailCoinType, RewardCoinType>(
-        gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
-        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        position_id: ID,
-        clock: &sui::clock::Clock,
-        ctx: &mut TxContext
-    ): u64 {
-        0
-    }
-
-    /// Internal function to get position reward (v2 with liquidity update cooldown support).
-    /// This version includes liquidity update cooldown check.
-    fun get_position_reward_internal_v2<CoinTypeA, CoinTypeB, RewardCoinType>(
+    /// Internal function to get position reward.
+    fun get_position_reward_internal<CoinTypeA, CoinTypeB, RewardCoinType>(
         gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
         distribution_config: &DistributionConfig,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
@@ -3145,7 +3134,7 @@ module governance::minter {
         clock: &sui::clock::Clock,
         ctx: &TxContext
     ): u64 {
-        let (reward_amount, growth_inside) = gauge.update_reward_internal_v2<CoinTypeA, CoinTypeB>(
+        let (reward_amount, growth_inside) = gauge.update_reward_internal<CoinTypeA, CoinTypeB>(
             distribution_config,
             pool,
             position_id,
@@ -3606,5 +3595,24 @@ module governance::minter {
         };
 
         (price_validation_result.get_price_q64(), false)
+    }
+
+    public fun claim_unclaimed_o_sail<CoinTypeA, CoinTypeB, SailCoinType, OSailCoinType>(
+        minter: &mut Minter<SailCoinType>, 
+        distribution_config: &DistributionConfig, 
+        admin_cap: &AdminCap,
+        gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        ctx: &mut TxContext,
+    ): Coin<OSailCoinType> {
+        distribution_config.checked_package_version();
+        minter.check_admin(admin_cap);
+        assert!(minter.is_valid_epoch_token<SailCoinType, OSailCoinType>(), EClaimUnclaimedOsailInvalidEpochToken);
+
+        let unclaimed_o_sail = gauge.remove_unclaimed_o_sail();
+        if (unclaimed_o_sail == 0) {
+            return sui::coin::zero<OSailCoinType>(ctx)
+        };
+
+        minter.mint_o_sail<SailCoinType, OSailCoinType>(unclaimed_o_sail, ctx)
     }
 }
