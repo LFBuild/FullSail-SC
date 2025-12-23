@@ -39,6 +39,7 @@ module vault::port {
         managers: LinkedTable<address, bool>,
 
         rewarder: vault::reward_manager::RewarderManager,
+        bag: sui::bag::Bag,
     }
 
     public struct PortEntry has store, key {
@@ -466,6 +467,7 @@ module vault::port {
             last_update_osail_growth_time_ms: current_time,
             managers: linked_table::new<address, bool>(ctx),
             rewarder: vault::reward_manager::new(ctx),
+            bag: sui::bag::new(ctx),
         };
         new_port.managers.push_back(sui::tx_context::sender(ctx), true);
 
@@ -2206,8 +2208,9 @@ module vault::port {
         );
         let osail_coin_type = with_defining_ids<CurrentOsailCoinType>();
 
+        let port_id = sui::object::id<Port>(port);
         // assume that update_position_reward is called almost always
-        port.rewarder.settle(port.total_volume, clock.timestamp_ms() / 1000);
+        port.rewarder.settle(port_id, port.total_volume, clock.timestamp_ms() / 1000);
 
         let (amount_osail, new_growth) = if (!port.is_stopped()) {
             let mut osail_reward = port.vault.collect_position_reward<CoinTypeA, CoinTypeB, SailCoinType, CurrentOsailCoinType>(
@@ -3078,7 +3081,8 @@ module vault::port {
         assert!(port_entry.port_id == sui::object::id<Port>(port), vault::error::port_entry_port_id_not_match());
         let reward_coin_type = with_defining_ids<RewardCoinType>();
 
-        port.rewarder.settle(port.total_volume, clock.timestamp_ms() / 1000);
+        let port_id = sui::object::id<Port>(port);
+        port.rewarder.settle(port_id, port.total_volume, clock.timestamp_ms() / 1000);
         let current_incentive_reward_growth = port.rewarder.growth_global<RewardCoinType>();
         if (port_entry.volume == 0) {
             return (0, current_incentive_reward_growth)
@@ -3162,7 +3166,8 @@ module vault::port {
         sui::event::emit<IncentiveRewardClaimedEvent>(event);
 
         if (incentive_reward_amount > 0) {
-            sui::coin::from_balance<RewardCoinType>(port.rewarder.withdraw_reward<RewardCoinType>(incentive_reward_amount), ctx)
+            let port_id = sui::object::id<Port>(port);
+            sui::coin::from_balance<RewardCoinType>(port.rewarder.withdraw_reward<RewardCoinType>( port_id, incentive_reward_amount), ctx)
         } else {
             sui::coin::zero<RewardCoinType>(ctx)
         }
@@ -3546,7 +3551,8 @@ module vault::port {
         assert!(!port.is_pause, vault::error::port_is_pause());
         global_config.check_pool_manager_role(ctx.sender());
 
-        port.rewarder.deposit_reward<RewardCoinType>(reward_coin);
+        let port_id = sui::object::id<Port>(port);
+        port.rewarder.deposit_reward<RewardCoinType>( port_id, reward_coin);
     }
 
     public fun rewarder_update_emission<RewardCoinType>(
@@ -3560,7 +3566,9 @@ module vault::port {
         assert!(!port.is_pause, vault::error::port_is_pause());
         global_config.check_pool_manager_role(ctx.sender());
 
+        let port_id = sui::object::id<Port>(port);
         port.rewarder.update_emission<RewardCoinType>(
+            port_id,
             port.total_volume,
             new_emission_rate,
             clock.timestamp_ms() / 1000
@@ -3578,11 +3586,8 @@ module vault::port {
         assert!(!port.is_pause, vault::error::port_is_pause());
         global_config.check_protocol_fee_claim_role(ctx.sender());
 
-        port.rewarder.emergent_withdraw<RewardCoinType>(
-            withdraw_amount,
-            port.total_volume,
-            clock.timestamp_ms() / 1000
-        )
+        let port_id = sui::object::id<Port>(port);
+        port.rewarder.emergent_withdraw<RewardCoinType>(port_id, withdraw_amount, port.total_volume, clock.timestamp_ms() / 1000)
     }
 
     public fun rewarder_balance_of<RewardCoinType>(port: &Port): u64 {

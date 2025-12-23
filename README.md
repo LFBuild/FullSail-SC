@@ -80,8 +80,8 @@ You could also use some utility methods from [integrate package](integrate/sourc
 - governance original id: `0x03fcdcee11f485731170944af3acd26b17d1b96121ce6b756fe8517a95192b3a`
 - governance latest id: `0x1cde2f0d4a50700960a8062f4ed7b19258f2a8c5eb4dc798fbda5e8b8d8c0658`
 
-- vaults(beta) original id: `0xb9edebb239552dea0f88dc74a92ec79dbfc0f43c249d784bb5931e1f9b198359`
-- vaults(beta) latest id: `0x5bc44d23ddc8c9b690a51a685e10c312b9e6cb59fdcb1adfbb4bb0aab67f8609`
+- vaults(beta) original id: `0x81c2ae708afabfcf04ee68d8002ec33cf7a56bbc7dfeda57951f7ead43865508`
+- vaults(beta) latest id: `0x81c2ae708afabfcf04ee68d8002ec33cf7a56bbc7dfeda57951f7ead43865508`
 
 ### Objects
 
@@ -101,9 +101,9 @@ You could also use some utility methods from [integrate package](integrate/sourc
 
 Vaults (beta):
 
-- port::PortRegistry: `0x4af700bb6500f4192ee1f11bd9c4aa6d9f92d8b7d4b4817905fe2bbcbc2983a9`
-- port_oracle::PortOracle: `0x75425b221a170fc41f7fb2ac4719658e9dd0711a640a6ca18b05e9dc0502602c`
-- vault_config::GlobalConfig: `0xc866b37c66e26af8a88db2628baf27eeccec409a240a3b6267cdba7c06fce098`
+- port::PortRegistry: `0x432696df1ac906c9249115861e25a2293e3f6e5a55963e4db3746f78e393b1ee`
+- port_oracle::PortOracle: `0xe6477f0157a806515053f0c9de1e0b60d051716c117415012a6bcbca34d3d5df`
+- vault_config::GlobalConfig: `0x4e7736b1fd6fc1327bc76f1779d15ad10ea854f05d6262fbcf8e6b26315655b1`
 
 #### Publication transactions
 
