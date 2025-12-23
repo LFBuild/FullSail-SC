@@ -848,14 +848,25 @@ module governance::gauge {
         );
 
         let position = gauge.staked_positions.borrow(staked_position.position_id);
-        clmm_pool::pool::collect_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
+        let reward = clmm_pool::pool::collect_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
             global_config,
             pool,
             position,
             rewarder_vault,
             true,
             clock
-        )
+        );
+
+        let current_time = clock.timestamp_ms() / 1000;
+        let reward_profile = gauge.rewards.borrow(staked_position.position_id);
+        if (reward_profile.last_update_time > (current_time - distribution_config.get_liquidity_update_cooldown())) {
+            // return the reward to the rewarder vault
+            clmm_pool::rewarder::deposit_reward(global_config, rewarder_vault, reward);
+
+            return sui::balance::zero<RewardCoinType>()
+        };
+
+        reward
     }
 
     /// Sets current_epoch_token. Only current_epoch_token can be distributed in current epoch via Gauge.
@@ -1358,8 +1369,33 @@ module governance::gauge {
     /// Internal function to handle reward claiming for a specific position.
     /// Updates the reward accounting, calculates the earned amount and returns it.
     /// Does not consider the reward token.
+    /// This is the original version kept for backward compatibility.
     public(package) fun update_reward_internal<CoinTypeA, CoinTypeB>(
         gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        position_id: ID,
+        clock: &sui::clock::Clock
+    ): (u64, u128) {
+        (0, 0)
+    }
+
+    /// Internal function to handle reward claiming for a specific position (v2).
+    /// Updates the reward accounting, calculates the earned amount and returns it.
+    /// Does not consider the reward token.
+    /// This version includes liquidity update cooldown check.
+    /// 
+    /// # Arguments
+    /// * `gauge` - The gauge instance
+    /// * `distribution_config` - The distribution configuration containing cooldown settings
+    /// * `pool` - The associated pool
+    /// * `position_id` - ID of the position
+    /// * `clock` - The system clock
+    /// 
+    /// # Returns
+    /// A tuple of (amount_to_pay, growth_inside)
+    public(package) fun update_reward_internal_v2<CoinTypeA, CoinTypeB>(
+        gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
+        distribution_config: &DistributionConfig,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         position_id: ID,
         clock: &sui::clock::Clock
@@ -1373,7 +1409,6 @@ module governance::gauge {
 
         pool.update_fullsail_distribution_growth_global(gauge.gauge_cap.borrow(), clock);
 
-        reward_profile.last_update_time = current_time;
         reward_profile.amount = reward_profile.amount + amount_earned;
 
         let amount_to_pay = reward_profile.amount;
@@ -1386,6 +1421,11 @@ module governance::gauge {
             amount: reward_profile.amount,
         };
         sui::event::emit<EventUpdateRewardPosition>(update_reward_event);
+
+        // Check liquidity update cooldown
+        if (reward_profile.last_update_time > (current_time - distribution_config.get_liquidity_update_cooldown())) {
+            return (0, growth_inside)
+        };
 
         reward_profile.amount = 0;
 
