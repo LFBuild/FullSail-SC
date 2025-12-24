@@ -1812,7 +1812,7 @@ module governance::gauge {
         gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
         amount: u64,
     ) {
-        let current_amount = if (sui::bag::contains(&gauge.bag, UNCLAIMED_O_SAIL_KEY)) {
+        let current_amount = if (gauge.bag.contains(UNCLAIMED_O_SAIL_KEY)) {
             gauge.bag.remove<vector<u8>, u64>(UNCLAIMED_O_SAIL_KEY)
         } else {
             0
@@ -1838,7 +1838,7 @@ module governance::gauge {
     public(package) fun remove_unclaimed_o_sail<CoinTypeA, CoinTypeB>(
         gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
     ): u64 {
-        let amount = if (sui::bag::contains(&gauge.bag, UNCLAIMED_O_SAIL_KEY)) {
+        let amount = if (gauge.bag.contains(UNCLAIMED_O_SAIL_KEY)) {
             gauge.bag.remove<vector<u8>, u64>(UNCLAIMED_O_SAIL_KEY)
         } else {
             0
@@ -1851,5 +1851,15 @@ module governance::gauge {
         sui::event::emit<EventRemoveUnclaimedOsail>(event);
 
         amount
+    }
+
+    public fun get_unclaimed_o_sail<CoinTypeA, CoinTypeB>(
+        gauge: &Gauge<CoinTypeA, CoinTypeB>,
+    ): u64 {
+        if (gauge.bag.contains(UNCLAIMED_O_SAIL_KEY)) {
+            *gauge.bag.borrow<vector<u8>, u64>(UNCLAIMED_O_SAIL_KEY)
+        } else {
+            0
+        }
     }
 }
