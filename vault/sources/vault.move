@@ -256,6 +256,16 @@ module vault::vault {
         let (old_tick_lower, old_tick_upper) = clmm_pool::position::tick_range(&position);
         let liquidity = clmm_pool::position::liquidity(&position);
         if (liquidity > 0) {
+            let (collected_fee_a, collected_fee_b) = clmm_pool::pool::collect_fee<CoinTypeA, CoinTypeB>(
+                clmm_global_config,
+                pool,
+                &position,
+                true
+            );
+
+            balance_a.join(collected_fee_a); 
+            balance_b.join(collected_fee_b);
+
             let (removed_a, removed_b) = clmm_pool::pool::remove_liquidity<CoinTypeA, CoinTypeB>(
                 clmm_global_config,
                 clmm_vault,
@@ -264,6 +274,7 @@ module vault::vault {
                 liquidity, 
                 clock
             );
+
             balance_a.join(removed_a); 
             balance_b.join(removed_b);
         };
@@ -550,6 +561,16 @@ module vault::vault {
         let mut balance_b = sui::balance::zero<CoinTypeB>();
         let liquidity = clmm_pool::position::liquidity(&position);
         if (liquidity > 0) {
+            let (collected_fee_a, collected_fee_b) = clmm_pool::pool::collect_fee<CoinTypeA, CoinTypeB>(
+                clmm_global_config,
+                pool,
+                &position,
+                true
+            );
+
+            balance_a.join(collected_fee_a); 
+            balance_b.join(collected_fee_b);
+            
             let (removed_a, removed_b) = clmm_pool::pool::remove_liquidity<CoinTypeA, CoinTypeB>(
                 clmm_global_config,
                 clmm_vault,
@@ -737,10 +758,9 @@ module vault::vault {
         gauge: &governance::gauge::Gauge<CoinTypeA, CoinTypeB>
     ) : u128 {
         assert!(vault.wrapped_position.is_some(), vault::error::vault_stopped());
-        clmm_pool::position::liquidity(
-            gauge.borrow_position<CoinTypeA, CoinTypeB>(
-                std::option::borrow<governance::gauge::StakedPosition>(&vault.wrapped_position)
-            )
+
+        gauge.position_liquidity<CoinTypeA, CoinTypeB>(
+            std::option::borrow<governance::gauge::StakedPosition>(&vault.wrapped_position)
         )
     }
 
@@ -749,10 +769,9 @@ module vault::vault {
         gauge: &governance::gauge::Gauge<CoinTypeA, CoinTypeB>
     ) : (integer_mate::i32::I32, integer_mate::i32::I32) {
         assert!(vault.wrapped_position.is_some(), vault::error::vault_stopped());
-        clmm_pool::position::tick_range(
-            gauge.borrow_position<CoinTypeA, CoinTypeB>(
-                std::option::borrow<governance::gauge::StakedPosition>(&vault.wrapped_position)
-            )
+
+        gauge.position_tick_range<CoinTypeA, CoinTypeB>(
+            std::option::borrow<governance::gauge::StakedPosition>(&vault.wrapped_position)
         )
     }
     
@@ -763,16 +782,14 @@ module vault::vault {
     ) : (u64, u64) {
         assert!(vault.wrapped_position.is_some(), vault::error::vault_stopped());
 
-        let position = gauge.borrow_position<CoinTypeA, CoinTypeB>(
-            std::option::borrow<governance::gauge::StakedPosition>(&vault.wrapped_position)
-        );
-        let (tick_lower, tick_upper) = position.tick_range();
+        let staked_position = std::option::borrow<governance::gauge::StakedPosition>(&vault.wrapped_position);
+        let (tick_lower, tick_upper) = gauge.position_tick_range<CoinTypeA, CoinTypeB>(staked_position);
         clmm_pool::clmm_math::get_amount_by_liquidity(
             tick_lower, 
             tick_upper, 
             pool.current_tick_index<CoinTypeA, CoinTypeB>(), 
             pool.current_sqrt_price<CoinTypeA, CoinTypeB>(), 
-            position.liquidity(), 
+            gauge.position_liquidity<CoinTypeA, CoinTypeB>(staked_position), 
             false
         )
     }

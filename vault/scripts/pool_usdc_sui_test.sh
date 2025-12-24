@@ -1,8 +1,5 @@
-source ./export.sh
-
 export COIN_A=0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC
 export COIN_B=0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI
 export POOL=0xe455d2ce2e83bbe3b47615ee2727dc6c9ffbf022c98fd1c1bfc43535b79c13a2
-
-sui client ptb \
---move-call $PACKAGE::pool_script_v2::initialize_rewarder "<$COIN_A,$COIN_B,$REWARD_TOKEN_TYPE>" @$GLOBAL_CONFIG @$POOL
+export BASE_EMISSIONS_USD=604800
+export GAUGE=

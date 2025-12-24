@@ -84,6 +84,8 @@ module governance::gauge {
 
     const EInvalidLiquidity: u64 = 9934967927031223221;
 
+    const UNCLAIMED_O_SAIL_KEY: vector<u8> = b"unclaimed_o_sail";
+
     /// Witness type for gauge module initialization.
     /// Used to ensure proper module initialization and access control.
     public struct GAUGE has drop {}
@@ -167,6 +169,16 @@ module governance::gauge {
         gauge_id: ID,
         pool_id: ID,
         rewards_nulled_usd: u64,
+    }
+
+    public struct EventAddUnclaimedOsail has copy, drop, store {
+        gauge_id: ID,
+        amount: u64,
+    }
+
+    public struct EventRemoveUnclaimedOsail has copy, drop, store {
+        gauge_id: ID,
+        amount: u64,
     }
 
     public struct Locked has copy, drop, store {}
@@ -848,14 +860,25 @@ module governance::gauge {
         );
 
         let position = gauge.staked_positions.borrow(staked_position.position_id);
-        clmm_pool::pool::collect_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
+        let reward = clmm_pool::pool::collect_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
             global_config,
             pool,
             position,
             rewarder_vault,
             true,
             clock
-        )
+        );
+
+        let current_time = clock.timestamp_ms() / 1000;
+        let reward_profile = gauge.rewards.borrow(staked_position.position_id);
+        if (reward_profile.last_update_time > (current_time - distribution_config.get_liquidity_update_cooldown())) {
+            // return the reward to the rewarder vault
+            clmm_pool::rewarder::deposit_reward(global_config, rewarder_vault, reward);
+
+            return sui::balance::zero<RewardCoinType>()
+        };
+
+        reward
     }
 
     /// Sets current_epoch_token. Only current_epoch_token can be distributed in current epoch via Gauge.
@@ -1358,8 +1381,10 @@ module governance::gauge {
     /// Internal function to handle reward claiming for a specific position.
     /// Updates the reward accounting, calculates the earned amount and returns it.
     /// Does not consider the reward token.
+    /// This version includes liquidity update cooldown check.
     public(package) fun update_reward_internal<CoinTypeA, CoinTypeB>(
         gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
+        distribution_config: &DistributionConfig,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         position_id: ID,
         clock: &sui::clock::Clock
@@ -1373,7 +1398,6 @@ module governance::gauge {
 
         pool.update_fullsail_distribution_growth_global(gauge.gauge_cap.borrow(), clock);
 
-        reward_profile.last_update_time = current_time;
         reward_profile.amount = reward_profile.amount + amount_earned;
 
         let amount_to_pay = reward_profile.amount;
@@ -1386,6 +1410,11 @@ module governance::gauge {
             amount: reward_profile.amount,
         };
         sui::event::emit<EventUpdateRewardPosition>(update_reward_event);
+
+        // Check liquidity update cooldown
+        if (reward_profile.last_update_time > (current_time - distribution_config.get_liquidity_update_cooldown())) {
+            return (0, growth_inside)
+        };
 
         reward_profile.amount = 0;
 
@@ -1443,7 +1472,6 @@ module governance::gauge {
             staked_position,
             clock
         );
-
 
         position
     }
@@ -1515,6 +1543,11 @@ module governance::gauge {
 
         assert!(gauge.check_gauger_pool(pool), EWithdrawPositionInvalidPool);
         assert!(gauge.all_rewards_claimed<CoinTypeA, CoinTypeB>(pool, staked_position.position_id, clock), EWithdrawPositionNotAllRewardsClaimed);
+
+        let reward_profile = gauge.rewards.borrow_mut(staked_position.position_id);
+        if (reward_profile.amount > 0) {
+            gauge.add_unclaimed_o_sail(reward_profile.amount);
+        };
 
         let staked_position_id = object::id<StakedPosition>(&staked_position);
 
@@ -1751,6 +1784,82 @@ module governance::gauge {
         gauge: &Gauge<CoinTypeA, CoinTypeB>, 
         staked_position: &StakedPosition
     ): &clmm_pool::position::Position {
-        gauge.staked_positions.borrow(staked_position.position_id)
+        abort
+    }
+
+    public fun position_liquidity<CoinTypeA, CoinTypeB>(
+        gauge: &Gauge<CoinTypeA, CoinTypeB>, 
+        staked_position: &StakedPosition
+    ): u128 {
+        gauge.staked_positions.borrow(staked_position.position_id).liquidity()
+    }
+
+    public fun position_tick_range<CoinTypeA, CoinTypeB>(
+        gauge: &Gauge<CoinTypeA, CoinTypeB>, 
+        staked_position: &StakedPosition
+    ): (integer_mate::i32::I32, integer_mate::i32::I32) {
+        gauge.staked_positions.borrow(staked_position.position_id).tick_range()
+    }
+
+    /// Adds unclaimed o_sail amount to the gauge
+    /// If the value already exists in the bag, it will be added to the existing amount.
+    /// If it doesn't exist, a new entry will be created with the provided amount.
+    /// 
+    /// # Arguments
+    /// * `gauge` - Mutable reference to the gauge
+    /// * `amount` - The amount of unclaimed o_sail to add
+    public(package) fun add_unclaimed_o_sail<CoinTypeA, CoinTypeB>(
+        gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
+        amount: u64,
+    ) {
+        let current_amount = if (gauge.bag.contains(UNCLAIMED_O_SAIL_KEY)) {
+            gauge.bag.remove<vector<u8>, u64>(UNCLAIMED_O_SAIL_KEY)
+        } else {
+            0
+        };
+        
+        gauge.bag.add(UNCLAIMED_O_SAIL_KEY, current_amount + amount);
+
+        let event = EventAddUnclaimedOsail {
+            gauge_id: object::id<Gauge<CoinTypeA, CoinTypeB>>(gauge),
+            amount: amount,
+        };
+        sui::event::emit<EventAddUnclaimedOsail>(event);
+    }
+
+    /// Removes and returns the unclaimed o_sail amount from the gauge
+    /// This method removes the value from the bag and returns it.
+    /// 
+    /// # Arguments
+    /// * `gauge` - Mutable reference to the gauge
+    /// 
+    /// # Returns
+    /// The unclaimed o_sail amount (returns 0 if not set)
+    public(package) fun remove_unclaimed_o_sail<CoinTypeA, CoinTypeB>(
+        gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
+    ): u64 {
+        let amount = if (gauge.bag.contains(UNCLAIMED_O_SAIL_KEY)) {
+            gauge.bag.remove<vector<u8>, u64>(UNCLAIMED_O_SAIL_KEY)
+        } else {
+            0
+        };
+
+        let event = EventRemoveUnclaimedOsail {
+            gauge_id: object::id<Gauge<CoinTypeA, CoinTypeB>>(gauge),
+            amount: amount,
+        };
+        sui::event::emit<EventRemoveUnclaimedOsail>(event);
+
+        amount
+    }
+
+    public fun get_unclaimed_o_sail<CoinTypeA, CoinTypeB>(
+        gauge: &Gauge<CoinTypeA, CoinTypeB>,
+    ): u64 {
+        if (gauge.bag.contains(UNCLAIMED_O_SAIL_KEY)) {
+            *gauge.bag.borrow<vector<u8>, u64>(UNCLAIMED_O_SAIL_KEY)
+        } else {
+            0
+        }
     }
 }

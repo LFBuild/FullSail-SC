@@ -75,13 +75,13 @@ You could also use some utility methods from [integrate package](integrate/sourc
 - clmm_pool latest id: `0xf7ca99f9fd82da76083a52ab56d88aff15d039b76499b85db8b8bc4d4804584a`
 
 - voting_escrow original id: `0xe616397e503278d406e184d2258bcbe7a263d0192cc0848de2b54b518165f832`
-- voting_escrow latest id: `0xbb8767be468a72918bd4cefd66c49952dea98a18b8f7f4bf15ba6e1fd683ee5e`
+- voting_escrow latest id: `0xfc410c145e4a9ba8f4aa3cb266bf3e467c35ea39dc90788e9a34f85338b734b7`
 
 - governance original id: `0x03fcdcee11f485731170944af3acd26b17d1b96121ce6b756fe8517a95192b3a`
-- governance latest id: `0x6aaf1e9ecabf1a07516a3667538c740cb021b6ad95b57d7010b10eebc00eeb6d`
+- governance latest id: `0x1cde2f0d4a50700960a8062f4ed7b19258f2a8c5eb4dc798fbda5e8b8d8c0658`
 
-- vaults (beta) original id: `0xd37913bb6fd4669751ea4acb408a39a69214c38aebb88127577fde04b9f6e17c`
-- vaults (beta) latest id: `0xd37913bb6fd4669751ea4acb408a39a69214c38aebb88127577fde04b9f6e17c`
+- vaults(beta) original id: `0x81c2ae708afabfcf04ee68d8002ec33cf7a56bbc7dfeda57951f7ead43865508`
+- vaults(beta) latest id: `0x81c2ae708afabfcf04ee68d8002ec33cf7a56bbc7dfeda57951f7ead43865508`
 
 ### Objects
 
@@ -101,9 +101,9 @@ You could also use some utility methods from [integrate package](integrate/sourc
 
 Vaults (beta):
 
-- port::PortRegistry: `0x4925ac9f2b82168400cb3dc4ed45b79a41d89fb45a6583af316d5bf977c2cb56`
-- pyth_oracle::PythOracle: `0x64ec76c07949ff00783d7323a05da1717b90249877497e283950e3861fffaeb2`
-- vault_config::GlobalConfig: `0x7d935faa38042b17ff55c3e9910d4b2fef546d637d87025a714762d6bdcee957`
+- port::PortRegistry: `0x432696df1ac906c9249115861e25a2293e3f6e5a55963e4db3746f78e393b1ee`
+- port_oracle::PortOracle: `0xe6477f0157a806515053f0c9de1e0b60d051716c117415012a6bcbca34d3d5df`
+- vault_config::GlobalConfig: `0x4e7736b1fd6fc1327bc76f1779d15ad10ea854f05d6262fbcf8e6b26315655b1`
 
 #### Publication transactions
 
