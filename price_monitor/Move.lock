@@ -2,7 +2,7 @@
 
 [move]
 version = 3
-manifest_digest = "8313CF339791CC1333A85DD8705F5810BC71742DC201B19463DB183DAB91E1CD"
+manifest_digest = "3207F55CB556B2D1680736C38484845D342C9D1A08E4A69F18E188668D686C45"
 deps_digest = "F9B494B64F0615AED0E98FC12A85B85ECD2BC5185C22D30E7F67786BB52E507C"
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -33,7 +33,7 @@ dependencies = [
 
 [[move.package]]
 id = "clmm_pool"
-source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "dev", subdir = "clmm_pool" }
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "main", subdir = "clmm_pool" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -45,7 +45,7 @@ dependencies = [
 
 [[move.package]]
 id = "gauge_cap"
-source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "dev", subdir = "gauge_cap" }
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "main", subdir = "gauge_cap" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -53,7 +53,7 @@ dependencies = [
 
 [[move.package]]
 id = "integer_mate"
-source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "dev", subdir = "integer_mate" }
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "main", subdir = "integer_mate" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -61,7 +61,7 @@ dependencies = [
 
 [[move.package]]
 id = "move_stl"
-source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "dev", subdir = "move_stl" }
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "main", subdir = "move_stl" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -69,7 +69,7 @@ dependencies = [
 
 [[move.package]]
 id = "price_provider"
-source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "dev", subdir = "price_provider" }
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", rev = "main", subdir = "price_provider" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -113,6 +113,6 @@ override = true
 
 [env.mainnet]
 chain-id = "35834a8a"
-original-published-id = "0x932133ea33d895f55693eb0949fe25c9007f1af976683fcbb30c32126b2aa9fb"
-latest-published-id = "0x932133ea33d895f55693eb0949fe25c9007f1af976683fcbb30c32126b2aa9fb"
-published-version = "1"
+original-published-id = "0x82fd97f4ab360844693e9bfe655765a7bd1351f18e2a89b2a1eaf694b4390778"
+latest-published-id = "0x013b5d8c115e85396ba54523aaac4f31c4a146349b25d25ea658e3b02f117932"
+published-version = "4"
