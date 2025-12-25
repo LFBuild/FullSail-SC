@@ -2,8 +2,8 @@ source ./export.sh
 
 # select sum(voting_power) from voting_results where period =84;
 
-export EPOCH_START=1762387200
-export TOTAL_SUPPLY=482207078387180   
+export EPOCH_START=1766016000
+export TOTAL_SUPPLY=924905634751826   
 export DISTRIBUTE_GOVERNOR_CAP=0xf5f335807046541711fbb00021927baad8798944eceb0cd4986e229def484ab6
 
 sui client ptb \
