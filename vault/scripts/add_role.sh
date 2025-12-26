@@ -7,7 +7,7 @@ source ./export.sh
 # 3 = ROLE_POOL_MANAGER
 # 4 = ROLE_ORACLE_MANAGER
 
-export MEMBER_ADDRESS=0xe28ed0b47bc4561cf70b0a2b058c530320f6ed109eebe0e8b59196990751961c
+export MEMBER_ADDRESS=0xc2c7a6d112b07a68e6ecf8c5e6275c007589d40a87debbba155efc134ba2b6e1
 export ROLE=3
 
 sui client ptb \
