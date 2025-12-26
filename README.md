@@ -142,4 +142,4 @@ Vaults (beta):
 - [setup distribtuion tx](https://suiscan.xyz/mainnet/tx/21y91npsRHWgg5TPnFkFVSWgCFTLhTcvRfGL4bA4ut1p)
 - [activate minter tx](https://suiscan.xyz/mainnet/tx/A3bugfXoFzC5YfDEfDd1QBqqTu3dB1XJuT2mRLknKZr2)
 
-- [vaults (beta)](https://suiscan.xyz/mainnet/tx/4bSdwmDqK9T2D12RMbUa72yZzLZcaASMHrH9AsDGMikw)
+- [vaults (beta)](https://suiscan.xyz/mainnet/tx/6KWonZL3AzvQPjtHjpemSdahMNsdgKuEKEdiRvEYccQo)
