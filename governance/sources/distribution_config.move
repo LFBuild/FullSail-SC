@@ -20,6 +20,7 @@ module governance::distribution_config {
     const ESetPackageVersionInvalidVersion: u64 = 326963916733903800;
 
     const LIQUIDITY_UPDATE_COOLDOWN_KEY: vector<u8> = b"liquidity_update_cooldown";
+    const UNRESTRICTED_ADDRESSES_KEY: vector<u8> = b"unrestricted_addresses";
 
     public struct DISTRIBUTION_CONFIG has drop {}
 
@@ -204,6 +205,76 @@ module governance::distribution_config {
             distribution_config.bag.remove<vector<u8>, u64>(LIQUIDITY_UPDATE_COOLDOWN_KEY);
         };
         distribution_config.bag.add(LIQUIDITY_UPDATE_COOLDOWN_KEY, new_cooldown);
+    }
+
+    /// Checks if an address is in the unrestricted addresses list.
+    ///
+    /// # Arguments
+    /// * `distribution_config` - Reference to the distribution configuration
+    /// * `addr` - Address to check
+    ///
+    /// # Returns
+    /// true if the address is in the list, false otherwise
+    public fun contains_unrestricted_address(
+        distribution_config: &DistributionConfig,
+        addr: address
+    ): bool {
+        if (!distribution_config.bag.contains(UNRESTRICTED_ADDRESSES_KEY)) {
+            return false
+        };
+        distribution_config.bag.borrow<vector<u8>, vector<address>>(UNRESTRICTED_ADDRESSES_KEY).contains(&addr)
+    }
+
+    /// Adds an address to the unrestricted addresses list if it's not already present.
+    ///
+    /// # Arguments
+    /// * `distribution_config` - Mutable reference to the distribution configuration
+    /// * `addr` - Address to add
+    public fun add_unrestricted_address(
+        distribution_config: &mut DistributionConfig,
+        publisher: &sui::package::Publisher, 
+        addr: address
+    ) {
+        assert!(publisher.from_module<DISTRIBUTION_CONFIG>(), ESetPackageVersionInvalidPublisher);
+        let mut addresses = if (distribution_config.bag.contains(UNRESTRICTED_ADDRESSES_KEY)) {
+            distribution_config.bag.remove<vector<u8>, vector<address>>(UNRESTRICTED_ADDRESSES_KEY)
+        } else {
+            vector::empty<address>()
+        };
+        
+        if (!addresses.contains(&addr)) {
+            addresses.push_back(addr);
+        };
+        
+        distribution_config.bag.add(UNRESTRICTED_ADDRESSES_KEY, addresses);
+    }
+
+    /// Removes an address from the unrestricted addresses list if it exists.
+    ///
+    /// # Arguments
+    /// * `distribution_config` - Mutable reference to the distribution configuration
+    /// * `addr` - Address to remove
+    public fun remove_unrestricted_address(
+        distribution_config: &mut DistributionConfig,
+        publisher: &sui::package::Publisher, 
+        addr: address
+    ) {
+        assert!(publisher.from_module<DISTRIBUTION_CONFIG>(), ESetPackageVersionInvalidPublisher);
+        if (!distribution_config.bag.contains(UNRESTRICTED_ADDRESSES_KEY)) {
+            return
+        };
+        
+        let mut addresses = distribution_config.bag.remove<vector<u8>, vector<address>>(UNRESTRICTED_ADDRESSES_KEY);
+        let mut i = 0;
+        let length = addresses.length();
+        while (i < length) {
+            if (addresses.borrow(i) == addr) {
+                addresses.remove(i);
+                break
+            };
+            i = i + 1;
+        };
+        distribution_config.bag.add(UNRESTRICTED_ADDRESSES_KEY, addresses);
     }
 
     #[test_only]
