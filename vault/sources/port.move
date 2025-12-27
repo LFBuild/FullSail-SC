@@ -2212,7 +2212,10 @@ module vault::port {
         // assume that update_position_reward is called almost always
         port.rewarder.settle(port_id, port.total_volume, clock.timestamp_ms() / 1000);
 
-        let (amount_osail, new_growth) = if (!port.is_stopped()) {
+        let (amount_osail, new_growth) = if (
+            !port.is_stopped() && 
+            !port.vault.is_liquidity_update_cooldown_active<CoinTypeA, CoinTypeB>(gauge, distribution_config, clock)
+        ) {
             let mut osail_reward = port.vault.collect_position_reward<CoinTypeA, CoinTypeB, SailCoinType, CurrentOsailCoinType>(
                 minter,
                 distribution_config,
@@ -2806,7 +2809,10 @@ module vault::port {
         };
         assert!(existing_reward_type, vault::error::reward_types_not_match());
 
-        let (new_amount, new_growth) = if (!port.is_stopped()) {
+        let (new_amount, new_growth) = if (
+            !port.is_stopped() && 
+            !port.vault.is_liquidity_update_cooldown_active<CoinTypeA, CoinTypeB>(gauge, distribution_config, clock)
+        ) {
             let mut reward_balance = port.vault.collect_pool_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
                 distribution_config,
                 gauge,

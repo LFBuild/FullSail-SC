@@ -881,6 +881,25 @@ module governance::gauge {
         reward
     }
 
+    /// Checks if the liquidity update cooldown period is active for a staked_position.
+    /// Returns true if the last update was too recent (within the cooldown period).
+    ///
+    /// # Arguments
+    /// * `gauge` - The gauge instance
+    /// * `distribution_config` - Distribution configuration
+    /// * `staked_position` - The staked position to check
+    /// * `clock` - The system clock
+    public fun is_liquidity_update_cooldown_active<CoinTypeA, CoinTypeB>(
+        gauge: &Gauge<CoinTypeA, CoinTypeB>,
+        distribution_config: &DistributionConfig,
+        staked_position: &StakedPosition,
+        clock: &sui::clock::Clock
+    ): bool {
+        let current_time = clock.timestamp_ms() / 1000;
+        let reward_profile = gauge.rewards.borrow(staked_position.position_id);
+        reward_profile.last_update_time > (current_time - distribution_config.get_liquidity_update_cooldown())
+    }
+
     /// Sets current_epoch_token. Only current_epoch_token can be distributed in current epoch via Gauge.
     /// After this function is called all notify_reward calls will check that coin is allowed to be distributed.
     /// Returns undistributed reserves of previous epoch token.

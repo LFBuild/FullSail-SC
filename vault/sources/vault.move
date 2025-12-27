@@ -815,5 +815,23 @@ module vault::vault {
     public fun is_stopped(vault: &ClmmVault) : bool {
         vault.wrapped_position.is_none()
     }
+
+    /// Checks if the liquidity update cooldown period is active for the vault's staked position.
+    /// Returns true if the last update was too recent (within the cooldown period).
+    public fun is_liquidity_update_cooldown_active<CoinTypeA, CoinTypeB>(
+        vault: &ClmmVault,
+        gauge: &governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        distribution_config: &governance::distribution_config::DistributionConfig,
+        clock: &sui::clock::Clock
+    ): bool {
+        assert!(vault.wrapped_position.is_some(), vault::error::vault_stopped());
+        
+        governance::gauge::is_liquidity_update_cooldown_active<CoinTypeA, CoinTypeB>(
+            gauge,
+            distribution_config,
+            vault.wrapped_position.borrow(),
+            clock
+        )
+    }
 }
 
