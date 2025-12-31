@@ -1551,7 +1551,7 @@ module governance::gauge {
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         staked_position: StakedPosition,
         clock: &sui::clock::Clock,
-        _ctx: &TxContext
+        ctx: &TxContext
     ): clmm_pool::position::Position {
         distribution_config.checked_package_version();
         assert!(gauge.check_gauger_pool(pool), EUpdateRewardGaugeDoesNotMatchPool);
@@ -1567,7 +1567,8 @@ module governance::gauge {
             global_config,
             vault,
             staked_position,
-            clock
+            clock,
+            ctx
         );
 
         position
@@ -1612,7 +1613,7 @@ module governance::gauge {
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         staked_position: StakedPosition,
         clock: &sui::clock::Clock,
-        _ctx: &TxContext
+        ctx: &TxContext
     ): clmm_pool::position::Position {
         // this method is called by the locker package, so version control is solved by the locker package.
         distribution_config.checked_package_version();
@@ -1629,7 +1630,8 @@ module governance::gauge {
             global_config,
             vault,
             staked_position,
-            clock
+            clock,
+            ctx
         )
     }
 
@@ -1658,7 +1660,8 @@ module governance::gauge {
         global_config: &clmm_pool::config::GlobalConfig,
         vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         staked_position: StakedPosition,
-        clock: &sui::clock::Clock
+        clock: &sui::clock::Clock,
+        ctx: &TxContext
     ): clmm_pool::position::Position {
 
         assert!(gauge.check_gauger_pool(pool), EWithdrawPositionInvalidPool);
@@ -1686,7 +1689,8 @@ module governance::gauge {
             vault,
             pool,
             position,
-            clock
+            clock,
+            ctx
         );
 
         let withdraw_position_event = EventWithdrawPosition {
@@ -1708,11 +1712,15 @@ module governance::gauge {
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         mut position: clmm_pool::position::Position,
         clock: &sui::clock::Clock,
+        ctx: &TxContext
     ): clmm_pool::position::Position {
 
         let current_time = clock.timestamp_ms() / 1000;
         let reward_profile = gauge.rewards.borrow(object::id<clmm_pool::position::Position>(&position));
-        if (reward_profile.last_update_time <= (current_time - distribution_config.get_liquidity_update_cooldown())) {
+        if (
+            distribution_config.contains_unrestricted_address(ctx.sender()) ||
+            reward_profile.last_update_time <= (current_time - distribution_config.get_liquidity_update_cooldown())
+        ) {
             return position
         };
 

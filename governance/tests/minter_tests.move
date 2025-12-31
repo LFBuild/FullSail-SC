@@ -4730,8 +4730,10 @@ fun test_get_position_reward_with_cooldown_zero_reward() {
         );
         sui::transfer::public_transfer(osail_reward, scenario.ctx().sender());
 
-        let position = gauge.withdraw_position<USD_TESTS, AUSD>(
+        let position = gauge.withdraw_position_v2<USD_TESTS, AUSD>(
             &distribution_config,
+            &global_config,
+            &mut vault,
             &mut pool,
             staked_position,
             &clock,
@@ -4834,8 +4836,10 @@ fun test_get_position_reward_with_cooldown_zero_reward() {
         );
         sui::transfer::public_transfer(osail_reward, scenario.ctx().sender());
 
-        let position = gauge.withdraw_position<USD_TESTS, AUSD>(
+        let position = gauge.withdraw_position_v2<USD_TESTS, AUSD>(
             &distribution_config,
+            &global_config,
+            &mut vault,
             &mut pool,
             staked_position,
             &clock,
