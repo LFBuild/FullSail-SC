@@ -181,6 +181,16 @@ module governance::gauge {
         amount: u64,
     }
 
+    public struct EventCollectEarlyWithdrawalPenalty has copy, drop, store {
+        gauge_id: ID,
+        position_id: ID,
+        early_withdrawal_penalty: u128,
+        penalty_amount_a: u64,
+        penalty_amount_b: u64,
+        fee_a: u64,
+        fee_b: u64,
+        timestamp: u64,
+    }
     public struct Locked has copy, drop, store {}
 
     public struct Gauge<phantom CoinTypeA, phantom CoinTypeB> has store, key {
@@ -1460,7 +1470,21 @@ module governance::gauge {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): clmm_pool::position::Position {
+        abort
+    }
+
+    public fun withdraw_position_v2<CoinTypeA, CoinTypeB>(
+        gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
+        distribution_config: &DistributionConfig,
+        global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        staked_position: StakedPosition,
+        clock: &sui::clock::Clock,
+        _ctx: &TxContext
+    ): clmm_pool::position::Position {
         distribution_config.checked_package_version();
+        assert!(gauge.check_gauger_pool(pool), EUpdateRewardGaugeDoesNotMatchPool);
         assert!(
             gauge.staked_positions.contains(staked_position.position_id),
             EWithdrawPositionNotDepositedPosition
@@ -1469,6 +1493,9 @@ module governance::gauge {
 
         let position = gauge.withdraw_position_internal<CoinTypeA, CoinTypeB>(
             pool,
+            distribution_config,
+            global_config,
+            vault,
             staked_position,
             clock
         );
@@ -1503,14 +1530,34 @@ module governance::gauge {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
     ): clmm_pool::position::Position {
+        abort
+    }
+
+    public fun withdraw_position_by_locker_v2<CoinTypeA, CoinTypeB>(
+        gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
+        _locker_cap: &locker_cap::locker_cap::LockerCap,
+        distribution_config: &DistributionConfig,
+        global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        staked_position: StakedPosition,
+        clock: &sui::clock::Clock,
+        _ctx: &TxContext
+    ): clmm_pool::position::Position {
         // this method is called by the locker package, so version control is solved by the locker package.
+        distribution_config.checked_package_version();
+        assert!(gauge.check_gauger_pool(pool), EUpdateRewardGaugeDoesNotMatchPool);
         assert!(
             gauge.staked_positions.contains(staked_position.position_id),
             EWithdrawPositionNotDepositedPosition
         );
+        assert!(!gauge.locked_positions.contains(staked_position.position_id), EWithdrawPositionPositionIsLocked);
 
         gauge.withdraw_position_internal<CoinTypeA, CoinTypeB>(
             pool,
+            distribution_config,
+            global_config,
+            vault,
             staked_position,
             clock
         )
@@ -1537,6 +1584,9 @@ module governance::gauge {
    fun withdraw_position_internal<CoinTypeA, CoinTypeB>(
         gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        distribution_config: &DistributionConfig,
+        global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         staked_position: StakedPosition,
         clock: &sui::clock::Clock
     ): clmm_pool::position::Position {
@@ -1551,7 +1601,7 @@ module governance::gauge {
 
         let staked_position_id = object::id<StakedPosition>(&staked_position);
 
-        let position = gauge.staked_positions.remove(staked_position.position_id);
+        let mut position = gauge.staked_positions.remove(staked_position.position_id);
         pool.unstake_from_fullsail_distribution(
             gauge.gauge_cap.borrow(),
             &position,
@@ -1559,6 +1609,15 @@ module governance::gauge {
         );
 
         destroy_staked_positions(staked_position);
+
+        position = gauge.collect_early_withdrawal_penalty(
+            distribution_config,
+            global_config,
+            vault,
+            pool,
+            position,
+            clock
+        );
 
         let withdraw_position_event = EventWithdrawPosition {
             staked_position_id,
@@ -1569,6 +1628,71 @@ module governance::gauge {
         sui::event::emit<EventWithdrawPosition>(withdraw_position_event);
 
         position
+    }
+
+    fun collect_early_withdrawal_penalty<CoinTypeA, CoinTypeB>(
+        gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
+        distribution_config: &DistributionConfig,
+        global_config: &clmm_pool::config::GlobalConfig,
+        vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        mut position: clmm_pool::position::Position,
+        clock: &sui::clock::Clock,
+    ): clmm_pool::position::Position {
+
+        let current_time = clock.timestamp_ms() / 1000;
+        let reward_profile = gauge.rewards.borrow(object::id<clmm_pool::position::Position>(&position));
+        if (reward_profile.last_update_time <= (current_time - distribution_config.get_liquidity_update_cooldown())) {
+            return position
+        };
+
+        let liquidity = position.liquidity();
+        if (liquidity == 0) {
+            return position
+        };
+
+        let early_withdrawal_penalty_percentage = distribution_config.get_early_withdrawal_penalty_percentage();
+        if (early_withdrawal_penalty_percentage == 0) {
+            return position
+        };
+
+        let early_withdrawal_penalty = integer_mate::full_math_u128::mul_div_floor(
+            liquidity,
+            early_withdrawal_penalty_percentage as u128,
+            governance::distribution_config::get_early_withdrawal_penalty_multiplier() as u128
+        );
+        if (early_withdrawal_penalty == 0) {
+            return position
+        };
+
+        let (penalty_a, penalty_b) = clmm_pool::pool::remove_liquidity<CoinTypeA, CoinTypeB>(
+            global_config,
+            vault,
+            pool, 
+            &mut position, 
+            early_withdrawal_penalty, 
+            clock
+        );
+
+        let penalty_amount_a = penalty_a.value();
+        let penalty_amount_b = penalty_b.value();
+
+        let amount_a = gauge.fee_a.join<CoinTypeA>(penalty_a);
+        let amount_b = gauge.fee_b.join<CoinTypeB>(penalty_b);
+
+        let event = EventCollectEarlyWithdrawalPenalty {
+            gauge_id: object::id<Gauge<CoinTypeA, CoinTypeB>>(gauge),
+            position_id: object::id<clmm_pool::position::Position>(&position),
+            early_withdrawal_penalty: early_withdrawal_penalty,
+            penalty_amount_a: penalty_amount_a,
+            penalty_amount_b: penalty_amount_b,
+            fee_a: amount_a,
+            fee_b: amount_b,
+            timestamp: clock.timestamp_ms() / 1000,
+        };
+        sui::event::emit<EventCollectEarlyWithdrawalPenalty>(event);
+
+        return position
     }
     
     /// Mark a position as locked in the gauge

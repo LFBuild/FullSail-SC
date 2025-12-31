@@ -244,8 +244,10 @@ module vault::vault {
     ) : (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>, MigrateLiquidity) {
         assert!(vault.wrapped_position.is_some(), vault::error::vault_stopped());
         let staked_position = std::option::extract<governance::gauge::StakedPosition>(&mut vault.wrapped_position);
-        let mut position = gauge.withdraw_position<CoinTypeA, CoinTypeB>(
+        let mut position = gauge.withdraw_position_v2<CoinTypeA, CoinTypeB>(
             distribution_config,
+            clmm_global_config,
+            clmm_vault,
             pool,
             staked_position,
             clock,
@@ -421,8 +423,10 @@ module vault::vault {
         ctx: &mut TxContext
     ) : (u64, u64, u128) {
         assert!(vault.wrapped_position.is_some(), vault::error::vault_stopped());
-        let mut position = gauge.withdraw_position<CoinTypeA, CoinTypeB>(
+        let mut position = gauge.withdraw_position_v2<CoinTypeA, CoinTypeB>(
             distribution_config,
+            clmm_global_config,
+            clmm_vault,
             pool,
             vault.wrapped_position.extract(),
             clock,
@@ -549,8 +553,10 @@ module vault::vault {
 
         assert!(vault.wrapped_position.is_some(), vault::error::vault_stopped());
 
-        let mut position = gauge.withdraw_position<CoinTypeA, CoinTypeB>(
+        let mut position = gauge.withdraw_position_v2<CoinTypeA, CoinTypeB>(
             distribution_config,
+            clmm_global_config,
+            clmm_vault,
             pool,
             vault.wrapped_position.extract(),
             clock,
