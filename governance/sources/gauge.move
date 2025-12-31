@@ -891,6 +891,72 @@ module governance::gauge {
         reward
     }
 
+    public fun get_pool_reward_v2<CoinTypeA, CoinTypeB, RewardCoinType>(
+        global_config: &clmm_pool::config::GlobalConfig,
+        rewarder_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
+        gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
+        distribution_config: &DistributionConfig,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        staked_position: &StakedPosition,
+        clock: &sui::clock::Clock,
+        ctx: &TxContext
+    ): sui::balance::Balance<RewardCoinType> {
+        distribution_config.checked_package_version();
+        assert!(
+            gauge.check_gauger_pool(pool),
+            EGetPositionRewardGaugeDoesNotMatchPool
+        );
+
+        let position = gauge.staked_positions.borrow(staked_position.position_id);
+        let reward = clmm_pool::pool::collect_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
+            global_config,
+            pool,
+            position,
+            rewarder_vault,
+            true,
+            clock
+        );
+
+        let current_time = clock.timestamp_ms() / 1000;
+        let reward_profile = gauge.rewards.borrow(staked_position.position_id);
+        if (
+            !distribution_config.contains_unrestricted_address(ctx.sender()) &&
+            reward_profile.last_update_time > (current_time - distribution_config.get_liquidity_update_cooldown())
+        ) {
+            // return the reward to the rewarder vault
+            clmm_pool::rewarder::deposit_reward(global_config, rewarder_vault, reward);
+
+            return sui::balance::zero<RewardCoinType>()
+        };
+
+        reward
+    }
+
+    /// Checks if withdrawal restrictions are active for a staked_position.
+    /// Returns true if restrictions apply (e.g., cooldown period or other limitations).
+    ///
+    /// # Arguments
+    /// * `gauge` - The gauge instance
+    /// * `distribution_config` - Distribution configuration
+    /// * `staked_position` - The staked position to check
+    /// * `clock` - The system clock
+    /// * `ctx` - Transaction context
+    public fun is_withdrawal_restricted<CoinTypeA, CoinTypeB>(
+        gauge: &Gauge<CoinTypeA, CoinTypeB>,
+        distribution_config: &DistributionConfig,
+        staked_position: &StakedPosition,
+        clock: &sui::clock::Clock,
+        ctx: &TxContext
+    ): bool {
+        let current_time = clock.timestamp_ms() / 1000;
+        let reward_profile = gauge.rewards.borrow(staked_position.position_id);
+
+        (
+            !distribution_config.contains_unrestricted_address(ctx.sender()) &&
+            reward_profile.last_update_time > (current_time - distribution_config.get_liquidity_update_cooldown())
+        )
+    }
+
     /// Sets current_epoch_token. Only current_epoch_token can be distributed in current epoch via Gauge.
     /// After this function is called all notify_reward calls will check that coin is allowed to be distributed.
     /// Returns undistributed reserves of previous epoch token.
@@ -1397,7 +1463,8 @@ module governance::gauge {
         distribution_config: &DistributionConfig,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         position_id: ID,
-        clock: &sui::clock::Clock
+        clock: &sui::clock::Clock,
+        ctx: &TxContext
     ): (u64, u128) {
         assert!(gauge.check_gauger_pool(pool), EUpdateRewardGaugeDoesNotMatchPool);
         let gauge_id = object::id<Gauge<CoinTypeA, CoinTypeB>>(gauge);
@@ -1422,7 +1489,10 @@ module governance::gauge {
         sui::event::emit<EventUpdateRewardPosition>(update_reward_event);
 
         // Check liquidity update cooldown
-        if (reward_profile.last_update_time > (current_time - distribution_config.get_liquidity_update_cooldown())) {
+        if (
+            !distribution_config.contains_unrestricted_address(ctx.sender()) &&
+            reward_profile.last_update_time > (current_time - distribution_config.get_liquidity_update_cooldown())
+        ) {
             return (0, growth_inside)
         };
 
@@ -1985,5 +2055,15 @@ module governance::gauge {
         } else {
             0
         }
+    }
+
+    #[test_only]
+    public fun test_update_reward_profile<CoinTypeA, CoinTypeB>(
+        gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
+        staked_position: &StakedPosition,
+        last_update_time: u64
+    ){
+        let reward_profile = gauge.rewards.borrow_mut(staked_position.position_id);
+        reward_profile.last_update_time = last_update_time;
     }
 }

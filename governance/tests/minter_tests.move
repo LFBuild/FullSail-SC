@@ -4513,6 +4513,8 @@ fun test_get_position_reward_with_cooldown_zero_reward() {
         test_scenario::return_shared(pool);
     };
 
+    clock.increment_for_testing(100 * 1000);
+
     // Try to claim pool reward immediately after deposit - should return zero because cooldown hasn't passed
     scenario.next_tx(user);
     {
@@ -4522,6 +4524,8 @@ fun test_get_position_reward_with_cooldown_zero_reward() {
         let distribution_config = scenario.take_shared<DistributionConfig>();
         let mut pool = scenario.take_shared<Pool<USD_TESTS, AUSD>>();
         let staked_position = scenario.take_from_sender<StakedPosition>();
+
+        gauge.test_update_reward_profile(&staked_position, clock.timestamp_ms() / 1000);
         
         let reward_balance = gauge::get_pool_reward<USD_TESTS, AUSD, USD_TESTS>(
             &global_config,
@@ -4531,6 +4535,109 @@ fun test_get_position_reward_with_cooldown_zero_reward() {
             &mut pool,
             &staked_position,
             &clock
+        );
+        
+        // reward should be zero because cooldown hasn't passed
+        assert!(sui::balance::value(&reward_balance) == 0, 4);
+        
+        sui::balance::destroy_zero(reward_balance);
+        
+        test_scenario::return_shared(global_config);
+        test_scenario::return_shared(vault);
+        test_scenario::return_shared(gauge);
+        test_scenario::return_shared(distribution_config);
+        test_scenario::return_shared(pool);
+        scenario.return_to_sender(staked_position);
+    };
+
+    clock.increment_for_testing(100 * 1000);
+
+    // set unrestricted address to user
+    scenario.next_tx(admin);
+    {
+        let mut distribution_config = scenario.take_shared<DistributionConfig>();
+        let publisher = scenario.take_from_sender<Publisher>();
+        
+        distribution_config.add_unrestricted_address(&publisher,  user);
+
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(publisher);
+    };
+
+    // Try to claim pool reward after setting unrestricted address - should return non-zero reward
+    scenario.next_tx(user);
+    {
+        let global_config = scenario.take_shared<clmm_pool::config::GlobalConfig>();
+        let mut vault = scenario.take_shared<clmm_pool::rewarder::RewarderGlobalVault>();
+        let mut gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let mut pool = scenario.take_shared<Pool<USD_TESTS, AUSD>>();
+        let staked_position = scenario.take_from_sender<StakedPosition>();
+
+        gauge.test_update_reward_profile(&staked_position, clock.timestamp_ms() / 1000);
+
+        
+        let reward_balance = gauge::get_pool_reward_v2<USD_TESTS, AUSD, USD_TESTS>(
+            &global_config,
+            &mut vault,
+            &mut gauge,
+            &distribution_config,
+            &mut pool,
+            &staked_position,
+            &clock,
+            scenario.ctx()
+        );
+        
+        // reward should be non-zero because unrestricted address
+        assert!(sui::balance::value(&reward_balance) == 666, 4);
+        
+        let reward_coin = coin::from_balance(reward_balance, scenario.ctx());
+        sui::transfer::public_transfer(reward_coin, scenario.ctx().sender());
+
+        test_scenario::return_shared(global_config);
+        test_scenario::return_shared(vault);
+        test_scenario::return_shared(gauge);
+        test_scenario::return_shared(distribution_config);
+        test_scenario::return_shared(pool);
+        scenario.return_to_sender(staked_position);
+    };
+
+    // remove unrestricted address from user
+    scenario.next_tx(admin);
+    {
+        let mut distribution_config = scenario.take_shared<DistributionConfig>();
+        let publisher = scenario.take_from_sender<Publisher>();
+        
+        distribution_config.remove_unrestricted_address(&publisher,  user);
+
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(publisher);
+    };
+
+    clock.increment_for_testing(300 * 1000);
+
+    // Try to claim pool reward after removing unrestricted address - should return zero because cooldown hasn't passed
+    scenario.next_tx(user);
+    {
+        let global_config = scenario.take_shared<clmm_pool::config::GlobalConfig>();
+        let mut vault = scenario.take_shared<clmm_pool::rewarder::RewarderGlobalVault>();
+        let mut gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let mut pool = scenario.take_shared<Pool<USD_TESTS, AUSD>>();
+        let staked_position = scenario.take_from_sender<StakedPosition>();
+
+        gauge.test_update_reward_profile(&staked_position, clock.timestamp_ms() / 1000);
+
+        
+        let reward_balance = gauge::get_pool_reward_v2<USD_TESTS, AUSD, USD_TESTS>(
+            &global_config,
+            &mut vault,
+            &mut gauge,
+            &distribution_config,
+            &mut pool,
+            &staked_position,
+            &clock,
+            scenario.ctx()
         );
         
         // reward should be zero because cooldown hasn't passed

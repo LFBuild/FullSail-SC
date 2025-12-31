@@ -744,6 +744,30 @@ module vault::vault {
             clock
         )
     }
+
+    public fun collect_pool_reward_v2<CoinTypeA, CoinTypeB, RewardCoinType>(
+        vault: &ClmmVault, 
+        distribution_config: &governance::distribution_config::DistributionConfig,
+        gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        clmm_global_config: &clmm_pool::config::GlobalConfig,
+        rewarder_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        clock: &sui::clock::Clock,
+        ctx: &TxContext
+    ) : sui::balance::Balance<RewardCoinType> {
+        assert!(vault.wrapped_position.is_some(), vault::error::vault_stopped());
+
+        governance::gauge::get_pool_reward_v2<CoinTypeA, CoinTypeB, RewardCoinType>(
+            clmm_global_config,
+            rewarder_vault,
+            gauge,
+            distribution_config,
+            pool,
+            std::option::borrow<governance::gauge::StakedPosition>(&vault.wrapped_position),
+            clock,
+            ctx
+        )
+    }
     
     public fun borrow_staked_position(vault: &ClmmVault) : &governance::gauge::StakedPosition {
         assert!(vault.wrapped_position.is_some(), vault::error::vault_stopped());

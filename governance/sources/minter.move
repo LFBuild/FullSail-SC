@@ -3168,6 +3168,7 @@ module governance::minter {
             pool,
             position_id,
             clock,
+            ctx
         );
 
         let event = EventClaimPositionReward {
