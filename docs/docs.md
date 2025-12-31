@@ -1,8 +1,8 @@
-# Full Sail Security
+# Full Sail Docs
 
 ## Mechanics Summary
 
-This chapter provides a high-level description of the core mechanics of Full Sail to better assess its security. Full Sail is a ve(4,4) DEX. The ve(4,4) tokenomics is an extension of ve(3,3) with a novel volume prediction mechanic, option tokens, and a smart emission control model. The motivation behind these improvements is described in the [Full Sail Innovation Summary](https://docs.google.com/document/d/1nfJcrq7Dkkw6VLEhw57yb80_diD3XrBcRVsaMSCxQZo/edit?tab=t.0#heading=h.wj3skhaor12d).
+This chapter provides a high-level description of the core mechanics of Full Sail. Full Sail is a ve(4,4) DEX. The ve(4,4) tokenomics is an extension of ve(3,3) with a novel volume prediction mechanic, option tokens, and a smart emission control model. The motivation behind these improvements is described in the [Full Sail Innovation Summary](https://docs.google.com/document/d/1nfJcrq7Dkkw6VLEhw57yb80_diD3XrBcRVsaMSCxQZo/edit?tab=t.0#heading=h.wj3skhaor12d).
 
 ### Locks (veSAIL)
 
