@@ -21,8 +21,8 @@ module governance::distribution_config {
     const ESetEarlyWithdrawalPenaltyPercentageInvalid: u64 = 939476240623038622;
 
     const LIQUIDITY_UPDATE_COOLDOWN_KEY: vector<u8> = b"liquidity_update_cooldown";
-    const UNRESTRICTED_ADDRESSES_KEY: vector<u8> = b"unrestricted_addresses";
-    const EARLY_WITHDRAWAL_PENALTY_PERCENTAGE_KEY: vector<u8> = b"early_withdrawal_penalty_percentage";
+    const UNRESTRICTED_ADDRESSES_KEY: u8 = 1;
+    const EARLY_WITHDRAWAL_PENALTY_PERCENTAGE_KEY: u8 = 2;
     const EARLY_WITHDRAWAL_PENALTY_MULTIPLIER: u64 = 10000;
 
     public struct DISTRIBUTION_CONFIG has drop {}
@@ -225,7 +225,7 @@ module governance::distribution_config {
         if (!distribution_config.bag.contains(UNRESTRICTED_ADDRESSES_KEY)) {
             return false
         };
-        distribution_config.bag.borrow<vector<u8>, vector<address>>(UNRESTRICTED_ADDRESSES_KEY).contains(&addr)
+        distribution_config.bag.borrow<u8, vector<address>>(UNRESTRICTED_ADDRESSES_KEY).contains(&addr)
     }
 
     /// Adds an address to the unrestricted addresses list if it's not already present.
@@ -240,7 +240,7 @@ module governance::distribution_config {
     ) {
         assert!(publisher.from_module<DISTRIBUTION_CONFIG>(), ESetPackageVersionInvalidPublisher);
         let mut addresses = if (distribution_config.bag.contains(UNRESTRICTED_ADDRESSES_KEY)) {
-            distribution_config.bag.remove<vector<u8>, vector<address>>(UNRESTRICTED_ADDRESSES_KEY)
+            distribution_config.bag.remove<u8, vector<address>>(UNRESTRICTED_ADDRESSES_KEY)
         } else {
             vector::empty<address>()
         };
@@ -267,7 +267,7 @@ module governance::distribution_config {
             return
         };
         
-        let mut addresses = distribution_config.bag.remove<vector<u8>, vector<address>>(UNRESTRICTED_ADDRESSES_KEY);
+        let mut addresses = distribution_config.bag.remove<u8, vector<address>>(UNRESTRICTED_ADDRESSES_KEY);
         let mut i = 0;
         let length = addresses.length();
         while (i < length) {
@@ -315,7 +315,7 @@ module governance::distribution_config {
     ) {
         assert!(new_penalty_percentage <= EARLY_WITHDRAWAL_PENALTY_MULTIPLIER, ESetEarlyWithdrawalPenaltyPercentageInvalid);
         if (distribution_config.bag.contains(EARLY_WITHDRAWAL_PENALTY_PERCENTAGE_KEY)) {
-            distribution_config.bag.remove<vector<u8>, u64>(EARLY_WITHDRAWAL_PENALTY_PERCENTAGE_KEY);
+            distribution_config.bag.remove<u8, u64>(EARLY_WITHDRAWAL_PENALTY_PERCENTAGE_KEY);
         };
         distribution_config.bag.add(EARLY_WITHDRAWAL_PENALTY_PERCENTAGE_KEY, new_penalty_percentage);
     }
