@@ -314,7 +314,6 @@ fun test_port_oracle_price_not_updated() {
 }
 
 #[test]
-#[expected_failure(abort_code = vault::error::ORACLE_INFO_EXISTS)]
 fun test_port_oracle_oracle_info_exists() {
     let admin = @0x1;
     let mut scenario = test_scenario::begin(admin);

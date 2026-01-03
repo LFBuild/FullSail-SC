@@ -316,6 +316,18 @@ module price_monitor::price_monitor {
         token_a_decimals: u8,
         token_b_decimals: u8,
     ) {
+        abort
+    }
+
+    public fun update_pool_price_decimal_multiplier_v2(
+        monitor: &mut PriceMonitor,
+        pool_id: ID,
+        token_a_decimals: u8,
+        token_b_decimals: u8,
+        ctx: &mut TxContext,
+    ) {
+        checked_package_version(monitor);
+        check_admin(monitor, ctx.sender());
         if (!monitor.pool_price_decimal_multipliers.contains(pool_id)) {
             abort
         };

@@ -1920,8 +1920,10 @@ module vault::port {
         );
 
         let repay_type = with_defining_ids<CoinTypeIn>();
+        let loan_type = with_defining_ids<CoinTypeOut>();
         let (coin_type_a, coin_type_b) = port.vault.coin_types();
         assert!(repay_type == coin_type_a || repay_type == coin_type_b, vault::error::incorrect_repay_type());
+        assert!(loan_type != repay_type && (loan_type == coin_type_a || loan_type == coin_type_b), vault::error::incorrect_loan_type());
         let flash_loan_cert = FlashLoanCert{
             port_id      : sui::object::id<Port>(port),  
             repay_type   : repay_type,  
@@ -1929,7 +1931,7 @@ module vault::port {
         };
         let flash_loan_event = FlashLoanEvent{
             port_id             : sui::object::id<Port>(port), 
-            loan_type           : with_defining_ids<CoinTypeOut>(), 
+            loan_type           : loan_type, 
             repay_type          : repay_type, 
             loan_amount         : loan_amount, 
             repay_amount        : repay_amount, 
@@ -3247,10 +3249,26 @@ module vault::port {
         new_protocol_fee_rate: u64,
         ctx: &mut TxContext
     ) {
+        abort
+    }
+
+    public fun update_protocol_fee_v2<CoinTypeA, CoinTypeB>(
+        port: &mut Port,
+        pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        global_config: &vault::vault_config::GlobalConfig,
+        new_protocol_fee_rate: u64,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
         global_config.checked_package_version();
         global_config.check_pool_manager_role(sui::tx_context::sender(ctx));
         assert!(!port.is_pause, vault::error::port_is_pause());
-        assert!(new_protocol_fee_rate <= vault::vault_config::get_max_protocol_fee_rate(), vault::error::invalid_protocol_fee_rate()); 
+        assert!(
+            sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool) == port.vault.pool_id(),
+            vault::error::clmm_pool_not_match()
+        );
+        assert!(new_protocol_fee_rate <= vault::vault_config::get_max_protocol_fee_rate(), vault::error::invalid_protocol_fee_rate());
+        check_updated_rewards(port, pool, clock);
         let old_protocol_fee_rate = port.protocol_fee_rate;
         port.protocol_fee_rate = new_protocol_fee_rate;
         let event = UpdateProtocolFeeEvent{
