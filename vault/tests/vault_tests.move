@@ -5240,6 +5240,23 @@ module vault::vault_tests;
         {
             distribute_gauge<SailCoinType, OSAIL1>(scenario, usd_metadata, aggregator, clock);
         };
+
+        scenario.next_tx(admin);
+        {
+            let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
+            let mut distribution_config = scenario.take_shared<distribution_config::DistributionConfig>();
+            let admin_cap = scenario.take_from_sender<minter::AdminCap>();
+            
+            minter.set_liquidity_update_cooldown<SailCoinType>(
+                &admin_cap,
+                &mut distribution_config,
+                600 // 600 seconds cooldown
+            );
+
+            test_scenario::return_shared(minter);
+            test_scenario::return_shared(distribution_config);
+            scenario.return_to_sender(admin_cap);
+        };
     }
 
     #[test_only]

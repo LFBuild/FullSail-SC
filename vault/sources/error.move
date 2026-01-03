@@ -78,6 +78,7 @@ module vault::error {
     const AVAILABLE_BALANCE_OVERFLOW: u64 = 75;
     const INCORRECT_WITHDRAW_AMOUNT: u64 = 76;
     const INCENTIVE_REWARD_NOT_CLAIMED: u64 = 77;
+    const INCORRECT_LOAN_TYPE: u64 = 78;
 
     public fun amount_in_above_max_limit() : u64 {
         abort AMOUNT_IN_ABOVE_MAX_LIMIT
@@ -389,6 +390,10 @@ module vault::error {
 
     public fun incentive_reward_not_claimed() : u64 {
         abort INCENTIVE_REWARD_NOT_CLAIMED
+    }
+
+    public fun incorrect_loan_type() : u64 {
+        abort INCORRECT_LOAN_TYPE
     }
 }
 

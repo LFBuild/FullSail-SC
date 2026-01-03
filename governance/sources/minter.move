@@ -386,6 +386,10 @@ module governance::minter {
         new_cooldown: u64,
     }
 
+    public struct EventSetEarlyWithdrawalPenaltyPercentage has copy, drop, store {
+        new_penalty_percentage: u64,
+    }
+
     public struct EventScheduleTimeLockedMint has copy, drop, store {
         amount: u64,
         unlock_time: u64,
@@ -2949,6 +2953,31 @@ module governance::minter {
         sui::event::emit<EventSetLiquidityUpdateCooldown>(event);
     }
 
+    /// Sets the early withdrawal penalty percentage.
+    /// The percentage should be provided multiplied by EARLY_WITHDRAWAL_PENALTY_MULTIPLIER (e.g., 500 for 5.00%).
+    ///
+    /// # Arguments
+    /// * `minter` - The minter instance
+    /// * `admin_cap` - The admin capability
+    /// * `distribution_config` - The distribution configuration
+    /// * `new_penalty_percentage` - The new penalty percentage multiplied by multiplier (e.g., 500 for 5.00%)
+    public fun set_early_withdrawal_penalty_percentage<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        admin_cap: &AdminCap,
+        distribution_config: &mut DistributionConfig,
+        new_penalty_percentage: u64,
+    ) {
+        distribution_config.checked_package_version();
+        minter.check_admin(admin_cap);
+        assert!(minter.is_valid_distribution_config(distribution_config), ESetSailPriceAggregatorInvalidDistrConfig);
+        distribution_config.set_early_withdrawal_penalty_percentage(new_penalty_percentage);
+
+        let event = EventSetEarlyWithdrawalPenaltyPercentage {
+            new_penalty_percentage: new_penalty_percentage,
+        };
+        sui::event::emit<EventSetEarlyWithdrawalPenaltyPercentage>(event);
+    }
+
     /// Calculates the rewards in RewardCoinType earned by all staked positions.
     /// Successfull only when previous coin rewards are claimed.
     ///
@@ -3139,6 +3168,7 @@ module governance::minter {
             pool,
             position_id,
             clock,
+            ctx
         );
 
         let event = EventClaimPositionReward {
