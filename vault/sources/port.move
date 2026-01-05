@@ -1910,7 +1910,7 @@ module vault::port {
     ) : (Coin<CoinTypeOut>, FlashLoanCert) {
         let (price_coin_out_in_quote, _) = vault::port_oracle::calculate_prices(&price_coin_out, &price_coin_in);
         let repay_amount = integer_mate::full_math_u64::mul_div_ceil(
-            integer_mate::full_math_u64::mul_div_floor(
+            integer_mate::full_math_u64::mul_div_ceil(
                 price_coin_out_in_quote, 
                 loan_amount, 
                 std::u64::pow(10, vault::port_oracle::price_multiplier_decimal())
