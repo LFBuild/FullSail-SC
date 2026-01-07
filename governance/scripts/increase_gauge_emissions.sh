@@ -2,7 +2,7 @@
 
 source ./export.sh
 
-source ./pools/pool_usdt_usdc.sh
+source ./pools/pool_wbtc_usdc.sh
 
 # Save gauge pool variables first
 export GAUGE_POOL=$POOL
