@@ -698,7 +698,7 @@ module vault::port {
             gauge,
             pool.tick_spacing(), 
             pool.current_tick_index(), 
-            1
+            port.vault.rebalance_threshold()
         );
         if (need_rebalance && !port.vault.is_stopped()) {
             rebalance_internal<CoinTypeA, CoinTypeB>(
@@ -1649,7 +1649,7 @@ module vault::port {
         if (last_aum == 0) {
             abort vault::error::invalid_last_aum()
         };
-        integer_mate::full_math_u128::mul_div_round((total_volume as u128), tvl, last_aum)
+        integer_mate::full_math_u128::mul_div_floor((total_volume as u128), tvl, last_aum)
     }
 
     /// Stops the CLMM vault and buffers the withdrawn assets.
@@ -2817,9 +2817,10 @@ module vault::port {
                 pool, 
                 clock
             );
-            let amount = reward_balance.value();
-            if (amount > 0) {
+            if (reward_balance.value() > 0) {
                 merge_protocol_asset<RewardCoinType>(port, &mut reward_balance); 
+                
+                let amount = reward_balance.value();
                 port.buffer_assets.join<RewardCoinType>(reward_balance);
 
                 let total_volume = port.total_volume;
@@ -3280,7 +3281,7 @@ module vault::port {
     }
 
     fun get_user_share_by_volume(total_volume: u64, volume: u64, total_amount: u128) : u128 {
-        integer_mate::full_math_u128::mul_div_round((volume as u128), total_amount, (total_volume as u128))
+        integer_mate::full_math_u128::mul_div_floor((volume as u128), total_amount, (total_volume as u128))
     }
 
     public fun pause(port: &mut Port, global_config: &vault::vault_config::GlobalConfig, ctx: &mut TxContext) {
@@ -3585,6 +3586,8 @@ module vault::port {
         global_config.check_pool_manager_role(ctx.sender());
 
         let port_id = sui::object::id<Port>(port);
+        port.rewarder.settle(port_id, port.total_volume, clock.timestamp_ms() / 1000);
+
         port.rewarder.update_emission<RewardCoinType>(
             port_id,
             port.total_volume,
