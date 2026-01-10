@@ -305,7 +305,8 @@ module vault::vault_config {
     /// * If package version is deprecated
     public fun update_max_price_deviation_bps(global_config: &mut GlobalConfig, new_max_price_deviation_bps: u64, ctx: &mut sui::tx_context::TxContext) {
         checked_package_version(global_config); 
-        check_pool_manager_role(global_config, sui::tx_context::sender(ctx)); 
+        check_pool_manager_role(global_config, sui::tx_context::sender(ctx));
+        assert!(new_max_price_deviation_bps <= get_protocol_fee_denominator(), vault::error::invalid_max_price_deviation_bps());
         let old_max_price_deviation_bps = global_config.max_price_deviation_bps;
         global_config.max_price_deviation_bps = new_max_price_deviation_bps;
         let event = UpdateMaxPriceDeviationEvent{

@@ -5,8 +5,6 @@ module voting_escrow::reward_distributor {
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
     const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
 
-    const ELockedVotingEscrowCannotClaim: u64 = 361242829129750700;
-
     use sui::coin::{Self, Coin};
     use sui::table::{Self, Table};
     use sui::balance::{Self, Balance};

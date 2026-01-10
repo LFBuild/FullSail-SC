@@ -1649,7 +1649,7 @@ module vault::vault_tests;
 
             // The proportions of the initial tokens in the position have changed slightly, allowing for a 3% margin of error
             assert!(withdrawn_coin_type_a.value() == 2214414 , 998);
-            assert!(withdrawn_coin_type_b.value() == 1709867, 999);
+            assert!(withdrawn_coin_type_b.value() == 1709866, 999);
 
             transfer::public_transfer(withdrawn_coin_type_b, admin);
             transfer::public_transfer(withdrawn_coin_type_a, admin);

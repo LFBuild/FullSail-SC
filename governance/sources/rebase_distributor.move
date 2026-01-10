@@ -139,6 +139,7 @@ public fun checkpoint_token<SailCoinType>(
     coin: Coin<SailCoinType>,
     clock: &Clock
 ) {
+    rebase_distributor_cap.validate(object::id(self));
     // is called by minter so version control is handled by minter
     reward_distributor::checkpoint_token(
         &mut self.reward_distributor,

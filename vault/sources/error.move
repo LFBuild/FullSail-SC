@@ -79,6 +79,7 @@ module vault::error {
     const INCORRECT_WITHDRAW_AMOUNT: u64 = 76;
     const INCENTIVE_REWARD_NOT_CLAIMED: u64 = 77;
     const INCORRECT_LOAN_TYPE: u64 = 78;
+    const INVALID_MAX_PRICE_DEVIATION_BPS: u64 = 79;
 
     public fun amount_in_above_max_limit() : u64 {
         abort AMOUNT_IN_ABOVE_MAX_LIMIT
@@ -394,6 +395,10 @@ module vault::error {
 
     public fun incorrect_loan_type() : u64 {
         abort INCORRECT_LOAN_TYPE
+    }
+
+    public fun invalid_max_price_deviation_bps() : u64 {
+        abort INVALID_MAX_PRICE_DEVIATION_BPS
     }
 }
 

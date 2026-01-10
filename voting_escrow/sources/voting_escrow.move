@@ -15,16 +15,12 @@ module voting_escrow::voting_escrow {
     const ECreateVotingEscrowInvalidPublisher: u64 = 184812403570428600;
     const ESetPackageVersionInvalidPublisher: u64 = 985992160729703800;
     const ESetPackageVersionInvalidVersion: u64 = 624107400921495900;
-    const ESplitOwnerNotFound: u64 = 922337599252162153;
     const ESplitNulledLock: u64 = 285443173276424000;
     const ESplitNotAllowed: u64 = 922337600111090075;
     const ESplitNotNormalEscrow: u64 = 922337600540613020; 
     const ESplitPositionVoted: u64 = 922337600970122857;
     const ESplitAmountZero: u64 = 922337603117462323;
     const ESplitAmountExceedsLocked: u64 = 922337603547116342;
-    const ETransferInvalidEscrow: u64 = 922337686439801651;
-    const ETransferLockedPosition: u64 = 922337688587377051;
-    const ETransferNotOwner: u64 = 922337689875775487;
     const EWithdrawPositionVoted: u64 = 922337640483821980;
     const EWithdrawNulledLock: u64 = 251507383857110900;
     const EAddAllowedManagerInvalidPublisher: u64 = 277556739040212930;
@@ -378,9 +374,8 @@ module voting_escrow::voting_escrow {
         voting_escrow.checked_package_version();
         voting_escrow.validate_lock(lock);
         let lock_id = object::id<Lock>(lock);
-        let owner_of_lock = voting_escrow.owner_of(lock_id, ctx);
         assert!(
-            voting_escrow.is_split_allowed(owner_of_lock),
+            voting_escrow.is_split_allowed(ctx.sender()),
             ESplitNotAllowed
         );
         let is_normal_escrow = if (!voting_escrow.escrow_type.contains(lock_id)) {
@@ -405,7 +400,7 @@ module voting_escrow::voting_escrow {
         voting_escrow.null_lock_internal(lock, locked_balance, clock, ctx);
 
         let split_lock_a = voting_escrow.create_split_internal(
-            owner_of_lock,
+            ctx.sender(),
             lock_escrow_id,
             lock_start,
             lock_end,
@@ -420,7 +415,7 @@ module voting_escrow::voting_escrow {
         );
 
         let split_lock_b = voting_escrow.create_split_internal(
-            owner_of_lock,
+            ctx.sender(),
             lock_escrow_id,
             lock_start,
             lock_end,
@@ -446,62 +441,6 @@ module voting_escrow::voting_escrow {
 
         (split_lock_a, split_lock_b)
     }
-
-    /// Transfer a lock to a different address. This allows users to sell or gift their lock positions.
-    /// The lock must be a NORMAL or MANAGED type - LOCKED types cannot be transferred.
-    ///
-    /// # Arguments
-    /// * `lock` - The lock object to transfer
-    /// * `voting_escrow` - The voting escrow instance
-    /// * `recipient` - The address of the recipient
-    /// * `clock` - The system clock
-    /// * `ctx` - The transaction context
-    ///
-    /// # Aborts
-    /// * If the lock does not belong to the voting escrow
-    /// * If the lock is a LOCKED type
-    /// * If the sender is not the owner of the lock
-    // public fun transfer<SailCoinType>(
-    //     lock: Lock,
-    //     voting_escrow: &mut VotingEscrow<SailCoinType>,
-    //     recipient: address,
-    //     clock: &sui::clock::Clock,
-    //     ctx: &mut TxContext
-    // ) {
-    //     voting_escrow.checked_package_version();
-    //     assert!(lock.escrow == object::id<VotingEscrow<SailCoinType>>(voting_escrow), ETransferInvalidEscrow);
-    //     let lock_id = object::id<Lock>(&lock);
-    //     let owner_of_lock = voting_escrow.owner_of(lock_id, ctx);
-    //     if (recipient == owner_of_lock && recipient == tx_context::sender(ctx)) {
-    //         transfer::public_transfer<Lock>(lock, recipient);
-    //     } else {
-    //         assert!(voting_escrow.escrow_type(lock_id) != EscrowType::LOCKED, ETransferLockedPosition);
-    //         if (voting_escrow.owner_of.contains(lock_id)) {
-    //             voting_escrow.owner_of.remove(lock_id);
-    //         }
-    //         assert!(owner_of_lock == tx_context::sender(ctx), ETransferNotOwner);
-    //         voting_escrow.voting_dao.checkpoint_delegator(
-    //             lock_id,
-    //             0,
-    //             object::id_from_address(@0x0),
-    //             recipient,
-    //             clock,
-    //             ctx
-    //         );
-    //         voting_escrow.owner_of.add(lock_id, recipient);
-    //         if (voting_escrow.ownership_change_at.contains(lock_id)) {
-    //             voting_escrow.ownership_change_at.remove(lock_id);
-    //         };
-    //         voting_escrow.ownership_change_at.add(lock_id, clock.timestamp_ms());
-    //         transfer::transfer<Lock>(lock, recipient);
-    //         let transfer_event = EventTransfer {
-    //             from: owner_of_lock,
-    //             to: recipient,
-    //             lock: lock_id,
-    //         };
-    //         sui::event::emit<EventTransfer>(transfer_event);
-    //     };
-    // }
 
     /// Creates a new VotingEscrow instance. This is the main container that manages all locked tokens
     /// and voting power calculations.
@@ -1567,9 +1506,6 @@ module voting_escrow::voting_escrow {
         };
         let lock_id = object::id<Lock>(&lock);
         voting_escrow.locked.add(lock_id, current_locked_balance);
-        if (owner != tx_context::sender(ctx)) {
-            voting_escrow.owner_of.add(lock_id, owner);
-        };
         voting_escrow.ownership_change_at.add(lock_id, clock.timestamp_ms());
         voting_escrow.voting_dao.checkpoint_delegator(
             lock_id,
@@ -3112,7 +3048,10 @@ module voting_escrow::voting_escrow {
         // this function has already been written in a way that is never returns permanent locks.
         // This is the reason why we create permanent locked balance only if it is already perpetual.
         let is_new_lock_permanent = lock.perpetual;
-        let new_lock_balance = locked_balance(new_managed_weight, lock_end_time, is_new_lock_permanent, lock.perpetual);
+        if (is_new_lock_permanent) {
+            lock.end = 0;
+        };
+        let new_lock_balance = locked_balance(new_managed_weight, lock.end, is_new_lock_permanent, lock.perpetual);
         voting_escrow.checkpoint_internal(option::some<ID>(lock_id), lock_balance, new_lock_balance, clock, ctx);
         voting_escrow.locked.add(lock_id, new_lock_balance);
         let mut managed_lock_balance = *voting_escrow.locked.borrow(managed_lock_id);
