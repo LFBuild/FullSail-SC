@@ -8,7 +8,7 @@ use clmm_pool::pool::{Self, Pool};
 use clmm_pool::factory::{Self, Pools};
 use clmm_pool::config::{Self, GlobalConfig};
 use clmm_pool::position::{Self, Position};
-use clmm_pool::price_provider::{Self, PriceProvider};
+use price_provider::price_provider::{Self, PriceProvider};
 use clmm_pool::stats::{Self, Stats};
 use governance::minter::{Self, Minter};
 use governance::voter::{Self, Voter};
@@ -1013,14 +1013,10 @@ public fun withdraw_position<CoinTypeA, CoinTypeB>(
     let mut gauge = scenario.take_shared<Gauge<CoinTypeA, CoinTypeB>>();
     let staked_position = scenario.take_from_sender<StakedPosition>();
     let distribution_config = scenario.take_shared<DistributionConfig>();
-    let global_config = scenario.take_shared<GlobalConfig>();
-    let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
 
-    let position = gauge::withdraw_position_v2<CoinTypeA, CoinTypeB>(
+    let position = gauge::withdraw_position<CoinTypeA, CoinTypeB>(
         &mut gauge,
         &distribution_config,
-        &global_config,
-        &mut vault,
         &mut pool,
         staked_position, // Consumes position object
         clock,
@@ -1032,8 +1028,6 @@ public fun withdraw_position<CoinTypeA, CoinTypeB>(
     test_scenario::return_shared(distribution_config);
     test_scenario::return_shared(pool);
     test_scenario::return_shared(gauge);
-    test_scenario::return_shared(global_config);
-    test_scenario::return_shared(vault);
 }
 
 public fun get_staked_position_reward<CoinTypeA, CoinTypeB, SAIL, RewardCoinType>(

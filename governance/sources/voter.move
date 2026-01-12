@@ -326,8 +326,8 @@ module governance::voter {
         };
         voter.last_voted.add(lock_id, current_time);
         voting_escrow.deposit_managed(voter.voting_escrow_cap.borrow(), lock, managed_lock, clock, ctx);
-        let balance = voting_escrow.balance_of_nft_at(lock_id.id, current_time);
         let managed_lock_id = into_lock_id(object::id(managed_lock));
+        let balance = voting_escrow.balance_of_nft_at(managed_lock_id.id, current_time);
         voter.poke_internal(voting_escrow, distribution_config, managed_lock_id, balance, clock, ctx);
     }
 
@@ -1260,8 +1260,6 @@ module governance::voter {
     ): bool {
         let coin_type = type_name::get<RewardCoinType>();
 
-        let pool_id = object::id(voter);
-
         voter.current_epoch_token.borrow() == coin_type
     }
 
@@ -1669,7 +1667,6 @@ module governance::voter {
     /// * `ctx` - The transaction context
     ///
     /// # Aborts
-    /// * If the voter has already voted in the current epoch
     /// * If the voting escrow is deactivated
     /// * If the epoch vote has ended and the NFT is not whitelisted
     /// * If the lock has no voting power

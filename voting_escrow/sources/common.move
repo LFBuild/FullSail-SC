@@ -165,7 +165,7 @@ module voting_escrow::common {
         EPOCH_DURATION * 4
     }
 
-    /// Discount that oSAIL grants. Currently it's the only option,
+    /// Discount that oSAIL grants. The amount of SAIL that is received for free. Currently it's the only option,
     /// but there is a possibility that different percents will be implemented.
     public fun o_sail_discount(): u64 {
         return MIN_DISCOUNT
