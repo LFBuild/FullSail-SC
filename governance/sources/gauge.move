@@ -181,6 +181,15 @@ module governance::gauge {
         amount: u64,
     }
 
+    public struct EventPoolRewardRedeposited has copy, drop, store {
+        gauge_id: ID,
+        pool_id: ID,
+        position_id: ID,
+        staked_position_id: ID,
+        reward_token: TypeName,
+        amount: u64,
+    }
+
     public struct Locked has copy, drop, store {}
 
     public struct Gauge<phantom CoinTypeA, phantom CoinTypeB> has store, key {
@@ -871,9 +880,20 @@ module governance::gauge {
 
         let current_time = clock.timestamp_ms() / 1000;
         let reward_profile = gauge.rewards.borrow(staked_position.position_id);
-        if (reward_profile.last_update_time > (current_time - distribution_config.get_liquidity_update_cooldown())) {
+        let reward_amount = reward.value();
+        if (reward_profile.last_update_time > (current_time - distribution_config.get_liquidity_update_cooldown()) && reward_amount > 0) {
             // return the reward to the rewarder vault
             clmm_pool::rewarder::deposit_reward(global_config, rewarder_vault, reward);
+
+            let event = EventPoolRewardRedeposited {
+                gauge_id: object::id(gauge),
+                pool_id: object::id(pool),
+                position_id: staked_position.position_id,
+                staked_position_id: object::id(staked_position),
+                reward_token: type_name::get<RewardCoinType>(),
+                amount: reward_amount,
+            };
+            sui::event::emit<EventPoolRewardRedeposited>(event);
 
             return sui::balance::zero<RewardCoinType>()
         };
