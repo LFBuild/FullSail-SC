@@ -338,12 +338,12 @@ module governance::gauge {
         if (fee_a.value<CoinTypeA>() > 0 || fee_b.value<CoinTypeB>() > 0) {
             let amount_a = gauge.fee_a.join<CoinTypeA>(fee_a);
             let amount_b = gauge.fee_b.join<CoinTypeB>(fee_b);
-            let withdrawn_a = if (amount_a > 0 && (epochCoinPerSecond / amount_a) > 0) { // amount per second is greater than 0
+            let withdrawn_a = if (epochCoinPerSecond > 0 && (amount_a / epochCoinPerSecond) > 0) { // amount per second is greater than 0
                 gauge.fee_a.withdraw_all<CoinTypeA>()
             } else {
                 balance::zero<CoinTypeA>()
             };
-            let withdraw_b = if (amount_b > 0 && (epochCoinPerSecond / amount_b) > 0) {
+            let withdraw_b = if (epochCoinPerSecond > 0 && (amount_b / epochCoinPerSecond) > 0) {
                 gauge.fee_b.withdraw_all<CoinTypeB>()
             } else {
                 balance::zero<CoinTypeB>()
