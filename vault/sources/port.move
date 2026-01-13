@@ -875,6 +875,11 @@ module vault::port {
         while (i < buffer_balances.length()) {
             let (type_name_ptr, amount_ptr) = buffer_balances.get_entry_by_idx(i);
             let type_name = *type_name_ptr;
+            // Only include pool tokens (CoinTypeA and CoinTypeB) in AUM calculation
+            if (type_name != coin_a_type && type_name != coin_b_type) {
+                i = i + 1;
+                continue
+            };
             let amount = *amount_ptr;
             let mut pool_coin_amount = amount;
             if (coin_a_type == type_name) {
