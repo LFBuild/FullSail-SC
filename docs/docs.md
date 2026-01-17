@@ -225,18 +225,6 @@ public fun update_period<SailCoinType, EpochOSail>(
 )
 ```
 
-Internally, the [update_o_sail_token](https://github.com/LFBuild/FullSail-SC/blob/0a7136fe481ed0dc2595868f54d28f51bc4f11ec/governance/sources/minter.move#L1236) function performs the transition:
-
-1. Stores the new oSAIL type in `current_epoch_o_sail`
-2. Adds the `TreasuryCap` to the `o_sail_caps` Bag for later minting
-3. Calculates and stores the expiration date (5 weeks from the epoch start) in `o_sail_expiry_dates`
-
-The `Minter` maintains several data structures for oSAIL management:
-
-- `current_epoch_o_sail: Option<TypeName>` — the active oSAIL type for the current epoch
-- `o_sail_caps: Bag` — stores all `TreasuryCap` objects, keyed by `TypeName`
-- `o_sail_expiry_dates: Table<TypeName, u64>` — maps oSAIL types to their expiration timestamps
-
 #### Obtaining the Current oSAIL Type
 
 To claim LP rewards, you need to know the current epoch's oSAIL type. There are two approaches:
@@ -267,7 +255,7 @@ Call `GET https://app.fullsail.finance/api/config` to retrieve all oSAIL token i
 
 #### Historical oSAIL Types
 
-All historical oSAIL types remain valid for exercising until their expiration date. The `o_sail_expiry_dates` table tracks all registered oSAIL tokens and their expiration timestamps. Use [is_valid_o_sail_type](https://github.com/LFBuild/FullSail-SC/blob/0a7136fe481ed0dc2595868f54d28f51bc4f11ec/governance/sources/minter.move#L2239) to check if an oSAIL type is recognized by the minter:
+All historical oSAIL types remain valid for exercising or locking depending on the expiry date. The `o_sail_expiry_dates` table tracks all registered oSAIL tokens and their expiration timestamps. Use [is_valid_o_sail_type](https://github.com/LFBuild/FullSail-SC/blob/0a7136fe481ed0dc2595868f54d28f51bc4f11ec/governance/sources/minter.move#L2239) to check if an oSAIL type is recognized by the minter:
 
 ```move
 public fun is_valid_o_sail_type<SailCoinType, OSailCoinType>(
@@ -290,37 +278,9 @@ You can index on-chain events to build a complete history of oSAIL tokens and th
 - `EventActivateMinter` (from `governance::minter`) — Emitted once when the minter is first activated. Contains the initial `epoch_o_sail_type: TypeName`.
 - `EventNotifyEpochToken` (from `governance::gauge`) — Emitted per gauge when the epoch token changes. Contains `token: TypeName` (the new oSAIL) and `prev_token: Option<TypeName>` (the previous oSAIL, with `growth_global_prev_token` for calculating unclaimed rewards).
 
-**oSAIL Minting and Distribution Events**
-
-- `EventMint` (from `governance::minter`) — Emitted when oSAIL is minted. Check `is_osail: bool` to filter oSAIL mints. Contains `amount: u64` and `token_type: TypeName`.
-- `EventDistributeGauge` (from `governance::minter`) — Emitted when emissions are distributed to a gauge. Contains `o_sail_type: TypeName` and `next_epoch_emissions_usd: u64`.
-- `EventClaimPositionReward` (from `governance::minter`) — Emitted when an LP claims oSAIL rewards. Contains `amount: u64`, `position_id: ID`, and `token: TypeName`.
-
-**oSAIL Exercise Events**
-
-- `EventExerciseOSailFree` (from `governance::minter`) — Emitted when oSAIL is exercised via free exercise. Contains `o_sail_amount_in`, `sail_amount_out`, and `o_sail_type`.
-- `EventExerciseOSail` (from `governance::minter`) — Deprecated. Was emitted when oSAIL was exercised with a fee payment.
-- `EventCreateLockFromOSail` (from `governance::minter`) — Emitted when oSAIL is converted to veSAIL. Contains `o_sail_amount_in`, `o_sail_type`, `sail_amount_to_lock`, `duration`, and `permanent`.
-- `EventDepositOSailIntoLock` (from `governance::minter`) — Emitted when oSAIL is deposited into an existing lock. Contains `o_sail_amount_in`, `o_sail_type`, `sail_amount_to_lock`, and `lock_id`.
-- `EventBurn` (from `governance::minter`) — Emitted when oSAIL is burned. Check `is_osail: bool` to filter.
-
-By indexing `EventUpdateEpoch` and `EventActivateMinter`, you can reconstruct the complete timeline of oSAIL tokens deployed by the protocol.
-
 #### Claiming oSAIL Rewards
 
 oSAIL is not minted at the time of emission distribution. Instead, the minter tracks how much oSAIL each LP position is entitled to. Minting occurs only when a user claims their rewards using [get_position_reward](https://github.com/LFBuild/FullSail-SC/blob/0a7136fe481ed0dc2595868f54d28f51bc4f11ec/governance/sources/minter.move#L3094):
-
-```move
-public fun get_position_reward<CoinTypeA, CoinTypeB, SailCoinType, RewardCoinType>(
-    minter: &mut Minter<SailCoinType>,
-    distribution_config: &DistributionConfig,
-    gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
-    pool: &mut Pool<CoinTypeA, CoinTypeB>,
-    staked_position: &StakedPosition,
-    clock: &Clock,
-    ctx: &mut TxContext
-): Coin<RewardCoinType>
-```
 
 The `RewardCoinType` must match the current epoch oSAIL. Rewards are calculated based on the position's liquidity share and time staked, then freshly minted.
 
@@ -332,15 +292,6 @@ oSAIL can be converted to SAIL or veSAIL through several mechanisms:
 
 Use [exercise_o_sail_free](https://github.com/LFBuild/FullSail-SC/blob/0a7136fe481ed0dc2595868f54d28f51bc4f11ec/governance/sources/minter.move#L2580) to receive liquid SAIL at a 50% conversion rate:
 
-```move
-public fun exercise_o_sail_free<SailCoinType, OSailCoinType>(
-    minter: &mut Minter<SailCoinType>,
-    distribution_config: &DistributionConfig,
-    o_sail: Coin<OSailCoinType>,
-    clock: &Clock,
-    ctx: &mut TxContext,
-): Coin<SailCoinType>
-```
 
 This burns the oSAIL and mints 50% of the equivalent SAIL amount. No fee payment is required.
 
