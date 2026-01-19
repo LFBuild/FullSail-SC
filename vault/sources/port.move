@@ -2019,6 +2019,8 @@ module vault::port {
     /// * `pool` – CLMM pool from which liquidity is withdrawn
     /// * `port_entry` – depositor’s entry being reduced
     /// * `volume_withdraw` – amount of volume to withdraw
+    /// * `min_amount_a` – minimum acceptable amount of token A to withdraw from the position (required only if the port is not stopped)
+    /// * `min_amount_b` – minimum acceptable amount of token B to withdraw from the position (required only if the port is not stopped)
     /// * `clock` – clock object used in reward checks
     /// * `ctx` – transaction context
     ///
@@ -2042,6 +2044,8 @@ module vault::port {
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         port_entry: &mut PortEntry,
         volume_withdraw: u64,
+        min_amount_a: u64,
+        min_amount_b: u64,
         clock: &sui::clock::Clock, 
         ctx: &mut TxContext
     ) : (Coin<CoinTypeA>, Coin<CoinTypeB>) {
@@ -2095,6 +2099,8 @@ module vault::port {
             } else {
                 (sui::balance::zero<CoinTypeA>(), sui::balance::zero<CoinTypeB>())
             };
+            assert!(liquidity_balance_a.value<CoinTypeA>() >= min_amount_a, vault::error::token_amount_not_enough());
+            assert!(liquidity_balance_b.value<CoinTypeB>() >= min_amount_b, vault::error::token_amount_not_enough());
             coin_a_balance.join(liquidity_balance_a);
             coin_b_balance.join(liquidity_balance_b);
 
