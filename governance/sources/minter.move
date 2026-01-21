@@ -15,6 +15,7 @@ module governance::minter {
     use switchboard::decimal::{Self, Decimal};
     use switchboard::aggregator::{Aggregator};
     use governance::distribution_config::{DistributionConfig};
+    use std::unit_test::assert_eq;
 
     const ECreateMinterInvalidPublisher: u64 = 695309471293028100;
     const ECreateMinterInvalidSailDecimals: u64 = 744215000566210300;
@@ -129,9 +130,11 @@ module governance::minter {
     const EResetGaugeGaugePaused: u64 = 961444105364833700;
     const EResetGaugeAlreadyDistributed: u64 = 97456931979148290;
 
+    const EKillGaugeGaugeDoesNotMatchPool: u64 = 435068472641034750;
     const EKillGaugeDistributionConfigInvalid: u64 = 401018599948013600;
     const EKillGaugeAlreadyKilled: u64 = 812297136203523100;
     const EKillGaugeAlreadyPaused: u64 = 630946245455940700;
+    const EKillGaugeUnstakedFeeRateNotZero: u64 = 456637970011596540;
 
     const EPauseGaugeDistributionConfigInvalid: u64 = 440852511239727200;
     const EPauseGaugeAlreadyPaused: u64 = 183938828687429060;
@@ -145,11 +148,6 @@ module governance::minter {
     const ESettleKilledGaugeMinterPaused: u64 = 940519593113543700;
     const ESettleKilledGaugeMinterNotActive: u64 = 417539538110257340;
     const ESettleKilledGaugeInvalidSailPool: u64 = 448503483536864450;
-
-    const EReviveGaugeDistributionConfigInvalid: u64 = 211832148784139800;
-    const EReviveGaugeAlreadyAlive: u64 = 533150247921935500;
-    const EReviveGaugeGaugePaused: u64 = 279297456655250180;
-    const EReviveGaugeNotKilledInCurrentEpoch: u64 = 295306155667221200;
 
     const EWhitelistPoolMinterPaused: u64 = 316161888154524900;
 
@@ -2031,6 +2029,16 @@ module governance::minter {
         gauge
     }
 
+    /// Deprecated. Use kill_gauge_v2 instead.
+    public fun kill_gauge<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        distribution_config: &mut DistributionConfig,
+        emergency_council_cap: &voting_escrow::emergency_council::EmergencyCouncilCap,
+        gauge_id: ID,
+    ) {
+        abort 0
+    }
+
     /// Kills (deactivates) a gauge in the system.
     /// This should be used in emergency situations when a gauge needs to be disabled.
     /// Only the emergency council can perform this operation.
@@ -2042,18 +2050,21 @@ module governance::minter {
     /// * `emergency_council_cap` - The emergency council capability
     /// * `gauge_id` - The ID of the gauge to kill
     /// * `ctx` - The transaction context
-    public fun kill_gauge<SailCoinType>(
+    public fun kill_gauge_v2<SailCoinType, CoinTypeA, CoinTypeB>(
         minter: &mut Minter<SailCoinType>,
         distribution_config: &mut DistributionConfig,
-        emergency_council_cap: &voting_escrow::emergency_council::EmergencyCouncilCap,
-        gauge_id: ID,
+        admin_cap: &AdminCap,
+        gauge: &governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
     ) {
         distribution_config.checked_package_version();
-        emergency_council_cap.validate_emergency_council_minter_id(object::id(minter));
+        minter.check_admin(admin_cap);
+        assert!(gauge.check_gauger_pool(pool), EKillGaugeGaugeDoesNotMatchPool);
         assert!(
             minter.is_valid_distribution_config(distribution_config),
             EKillGaugeDistributionConfigInvalid
         );
+        let gauge_id = object::id(gauge);
         assert!(
             distribution_config.is_gauge_alive(gauge_id),
             EKillGaugeAlreadyKilled
@@ -2062,6 +2073,12 @@ module governance::minter {
         assert!(
             !distribution_config.is_gauge_paused(gauge_id),
             EKillGaugeAlreadyPaused
+        );
+        let unstaked_liquidity_fee_rate = pool.unstaked_liquidity_fee_rate(); 
+        // check unstaked fee rate to prevent us from forgetting to set it to zero when killing a gauge.
+        assert!(
+            unstaked_liquidity_fee_rate == 0 || unstaked_liquidity_fee_rate == clmm_pool::config::default_unstaked_fee_rate(),
+            EKillGaugeUnstakedFeeRateNotZero
         );
         distribution_config.update_gauge_liveness(vector<ID>[gauge_id], false);
         let kill_gauge_event = EventKillGauge { id: gauge_id };
@@ -2278,43 +2295,16 @@ module governance::minter {
     }
 
 
-    /// Revives a previously killed gauge, making it active again.
-    /// Only the emergency council can perform this operation.
-    /// You could revive a gauge only in the same epoch it was killed.
-    /// Otherwise you need to reset the gauge to bootstrap it again
-    /// with new emissions.
-    /// 
-    /// # Arguments
-    /// * `voter` - The voter contract reference
-    /// * `distribution_config` - The distribution configuration
-    /// * `emergency_council_cap` - The emergency council capability
-    /// * `gauge_id` - The ID of the gauge to revive
-    /// * `ctx` - The transaction context
+    /// Deprecated. Use reset_gauge_v2 instead.
     public fun revive_gauge<SailCoinType>(
         minter: &mut Minter<SailCoinType>,
         distribution_config: &mut DistributionConfig,
         emergency_council_cap: &voting_escrow::emergency_council::EmergencyCouncilCap,
         gauge_id: ID,
     ) {
-        distribution_config.checked_package_version();
-        emergency_council_cap.validate_emergency_council_minter_id(object::id(minter));
-        assert!(
-            minter.is_valid_distribution_config(distribution_config),
-            EReviveGaugeDistributionConfigInvalid
-        );
-        assert!(
-            !distribution_config.is_gauge_alive(gauge_id),
-            EReviveGaugeAlreadyAlive
-        );
-        // paused gauges are not allowed to be revived cos pause means an emergency situation.
-        assert!(!distribution_config.is_gauge_paused(gauge_id), EReviveGaugeGaugePaused);
-        // gauge was distributed in the same epoch it was killed
-        // if not use reset_gauge instead
-        assert!(
-            minter.gauge_active_period.contains(gauge_id) && *minter.gauge_active_period.borrow(gauge_id) == minter.active_period,
-            EReviveGaugeNotKilledInCurrentEpoch,
-        );
-        revive_gauge_internal(distribution_config, gauge_id);
+        // there is no reason to revive a gauge that was killed in the same epoch.
+        // In case of emergency you are supposed to pause the gauge and unpause it once the emergency situation is over.
+        abort 0
     }
 
     fun revive_gauge_internal(
@@ -2326,6 +2316,17 @@ module governance::minter {
         sui::event::emit<EventReviveGauge>(revieve_gauge_event);
     }
 
+    /// Deprecated. Use reset_gauge_v2 instead.
+    public fun reset_gauge<CoinTypeA, CoinTypeB, SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        distribution_config: &mut DistributionConfig,
+        emergency_council_cap: &voting_escrow::emergency_council::EmergencyCouncilCap,
+        gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        gauge_base_emissions: u64,
+        clock: &sui::clock::Clock
+    ) {
+        abort 0;
+    }
 
     // Emergency function to reset a gauge to bootstrap it again.
     // Used when we were not able to revive the gauge in the same epoch it was killed.
@@ -2335,16 +2336,16 @@ module governance::minter {
     // * `minter` - The minter instance managing token emissions
     // * `voter` - The voter instance managing gauge voting
     // * `distribution_config` - Configuration for token distribution
-    public fun reset_gauge<CoinTypeA, CoinTypeB, SailCoinType>(
+    public fun reset_gauge_v2<CoinTypeA, CoinTypeB, SailCoinType>(
         minter: &mut Minter<SailCoinType>,
         distribution_config: &mut DistributionConfig,
-        emergency_council_cap: &voting_escrow::emergency_council::EmergencyCouncilCap,
+        admin_cap: &AdminCap,
         gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
         gauge_base_emissions: u64,
         clock: &sui::clock::Clock
     ) {
         distribution_config.checked_package_version();
-        voting_escrow::emergency_council::validate_emergency_council_minter_id(emergency_council_cap, object::id(minter));
+        minter.check_admin(admin_cap);
         assert!(!minter.is_paused(), EResetGaugeMinterPaused);
         assert!(minter.is_active(clock), EResetGaugeMinterNotActive);
         assert!(gauge_base_emissions > 0, EResetGaugeZeroBaseEmissions);
@@ -2360,7 +2361,8 @@ module governance::minter {
         assert!(!distribution_config.is_gauge_paused(gauge_id), EResetGaugeGaugePaused);
 
         // gauge should not be distributed this epoch
-        // if so use revive_gauge instead
+        // There is no reason to revive a gauge that was killed in the same epoch.
+        // In case of emergency you are supposed to pause the gauge and unpause it once the emergency situation is over.
         assert!(
             !minter.gauge_active_period.contains(gauge_id) || *minter.gauge_active_period.borrow(gauge_id) < minter.active_period,
              EResetGaugeAlreadyDistributed
