@@ -15,7 +15,6 @@ module governance::minter {
     use switchboard::decimal::{Self, Decimal};
     use switchboard::aggregator::{Aggregator};
     use governance::distribution_config::{DistributionConfig};
-    use std::unit_test::assert_eq;
 
     const ECreateMinterInvalidPublisher: u64 = 695309471293028100;
     const ECreateMinterInvalidSailDecimals: u64 = 744215000566210300;
@@ -2161,7 +2160,7 @@ module governance::minter {
     public fun settle_killed_gauge<CoinTypeA, CoinTypeB, SailPoolCoinTypeA, SailPoolCoinTypeB, SailCoinType>(
         minter: &mut Minter<SailCoinType>,
         distribution_config: &DistributionConfig,
-        emergency_council_cap: &voting_escrow::emergency_council::EmergencyCouncilCap,
+        admin_cap: &AdminCap,
         gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         price_monitor: &mut PriceMonitor,
@@ -2170,7 +2169,7 @@ module governance::minter {
         clock: &sui::clock::Clock
     ) {
         distribution_config.checked_package_version();
-        emergency_council_cap.validate_emergency_council_minter_id(object::id(minter));
+        minter.check_admin(admin_cap);
         assert!(!minter.is_paused(), ESettleKilledGaugeMinterPaused);
         assert!(minter.is_active(clock), ESettleKilledGaugeMinterNotActive);
         assert!(minter.is_valid_distribution_config(distribution_config), ESettleKilledGaugeDistributionConfigInvalid);
