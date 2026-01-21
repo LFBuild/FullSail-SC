@@ -126,13 +126,21 @@ module governance::minter {
     const EResetGaugeZeroBaseEmissions: u64 = 777730412186606000;
     const EResetGaugeDistributionConfigInvalid: u64 = 726258387105137800;
     const EResetGaugeGaugeAlreadyAlive: u64 = 452133119942522700;
+    const EResetGaugeGaugePaused: u64 = 961444105364833700;
     const EResetGaugeAlreadyDistributed: u64 = 97456931979148290;
 
     const EKillGaugeDistributionConfigInvalid: u64 = 401018599948013600;
     const EKillGaugeAlreadyKilled: u64 = 812297136203523100;
+    const EKillGaugeAlreadyPaused: u64 = 630946245455940700;
+
+    const EPauseGaugeDistributionConfigInvalid: u64 = 440852511239727200;
+    const EPauseGaugeAlreadyPaused: u64 = 183938828687429060;
+    const EUnpauseGaugeDistributionConfigInvalid: u64 = 222183394791539940;
+    const EUnpauseGaugeNotPaused: u64 = 805756312652419800;
 
     const ESettleKilledGaugeDistributionConfigInvalid: u64 = 980526521444534400;
     const ESettleKilledGaugeGaugeNotKilled: u64 = 774570594676845700;
+    const ESettleKilledGaugeGaugePaused: u64 = 27796803820661076;
     const ESettleKilledGaugeInvalidAggregator: u64 = 95130341629355410;
     const ESettleKilledGaugeMinterPaused: u64 = 940519593113543700;
     const ESettleKilledGaugeMinterNotActive: u64 = 417539538110257340;
@@ -140,6 +148,7 @@ module governance::minter {
 
     const EReviveGaugeDistributionConfigInvalid: u64 = 211832148784139800;
     const EReviveGaugeAlreadyAlive: u64 = 533150247921935500;
+    const EReviveGaugeGaugePaused: u64 = 279297456655250180;
     const EReviveGaugeNotKilledInCurrentEpoch: u64 = 295306155667221200;
 
     const EWhitelistPoolMinterPaused: u64 = 316161888154524900;
@@ -167,9 +176,11 @@ module governance::minter {
     const EGetPositionRewardInvalidRewardToken: u64 = 779306294896264600;
     const EGetPosDistributionConfInvalid: u64 = 695673975436220400;
     const EGetPosRewardGaugeNotAlive: u64 = 993998734106655200;
+    const EGetPosRewardGaugePaused: u64 = 826495068705045200;
     const EGetMultiplePositionRewardInvalidRewardToken: u64 = 785363146605424900;
     const EGetMultiPosRewardDistributionConfInvalid: u64 = 695673975436220400;
     const EGetMultiPosRewardGaugeNotAlive: u64 = 993998734106655200;
+    const EGetMultiPosRewardGaugePaused: u64 = 190132400718876700;
     const EClaimUnclaimedOsailInvalidEpochToken: u64 = 934963468982192254;
 
     const EEmissionStopped: u64 = 123456789012345678;
@@ -244,6 +255,14 @@ module governance::minter {
         pool_id: ID,
         fee_a_amount: u64,
         fee_b_amount: u64,
+    }
+
+    public struct EventPauseGauge has copy, drop, store {
+        id: ID,
+    }
+
+    public struct EventUnpauseGauge has copy, drop, store {
+        id: ID,
     }
 
     public struct EventPauseEmission has copy, drop, store {}
@@ -2039,9 +2058,72 @@ module governance::minter {
             distribution_config.is_gauge_alive(gauge_id),
             EKillGaugeAlreadyKilled
         );
+        // paused gauges are not allowed to be killed cos pause means an emergency situation.
+        assert!(
+            !distribution_config.is_gauge_paused(gauge_id),
+            EKillGaugeAlreadyPaused
+        );
         distribution_config.update_gauge_liveness(vector<ID>[gauge_id], false);
         let kill_gauge_event = EventKillGauge { id: gauge_id };
         sui::event::emit<EventKillGauge>(kill_gauge_event);
+    }
+
+    /// Pauses a gauge temporarily. Disables all interactions with the gauge.
+    /// Supposed to be used in emergency situations when a gauge needs to be disabled.
+    ///
+    /// # Arguments
+    /// * `minter` - The minter instance (used for authorization)
+    /// * `distribution_config` - The distribution configuration
+    /// * `emergency_council_cap` - The emergency council capability
+    /// * `gauge_id` - The ID of the gauge to pause
+    public fun pause_gauge<SailCoinType>(
+        minter: &Minter<SailCoinType>,
+        distribution_config: &mut DistributionConfig,
+        emergency_council_cap: &voting_escrow::emergency_council::EmergencyCouncilCap,
+        gauge_id: ID,
+    ) {
+        distribution_config.checked_package_version();
+        emergency_council_cap.validate_emergency_council_minter_id(object::id(minter));
+        assert!(
+            minter.is_valid_distribution_config(distribution_config),
+            EPauseGaugeDistributionConfigInvalid
+        );
+        assert!(
+            !distribution_config.is_gauge_paused(gauge_id),
+            EPauseGaugeAlreadyPaused
+        );
+        distribution_config.pause_gauge(gauge_id);
+        let pause_gauge_event = EventPauseGauge { id: gauge_id };
+        sui::event::emit<EventPauseGauge>(pause_gauge_event);
+    }
+
+    /// Unpauses a previously paused gauge.
+    /// Only the emergency council can perform this operation.
+    ///
+    /// # Arguments
+    /// * `minter` - The minter instance (used for authorization)
+    /// * `distribution_config` - The distribution configuration
+    /// * `emergency_council_cap` - The emergency council capability
+    /// * `gauge_id` - The ID of the gauge to unpause
+    public fun unpause_gauge<SailCoinType>(
+        minter: &Minter<SailCoinType>,
+        distribution_config: &mut DistributionConfig,
+        emergency_council_cap: &voting_escrow::emergency_council::EmergencyCouncilCap,
+        gauge_id: ID,
+    ) {
+        distribution_config.checked_package_version();
+        emergency_council_cap.validate_emergency_council_minter_id(object::id(minter));
+        assert!(
+            minter.is_valid_distribution_config(distribution_config),
+            EUnpauseGaugeDistributionConfigInvalid
+        );
+        assert!(
+            distribution_config.is_gauge_paused(gauge_id),
+            EUnpauseGaugeNotPaused
+        );
+        distribution_config.unpause_gauge(gauge_id);
+        let unpause_gauge_event = EventUnpauseGauge { id: gauge_id };
+        sui::event::emit<EventUnpauseGauge>(unpause_gauge_event);
     }
 
     /// Claims fees from a killed gauge redirecting them to the fee voting rewards.
@@ -2076,6 +2158,8 @@ module governance::minter {
         assert!(minter.is_active(clock), ESettleKilledGaugeMinterNotActive);
         assert!(minter.is_valid_distribution_config(distribution_config), ESettleKilledGaugeDistributionConfigInvalid);
         assert!(!distribution_config.is_gauge_alive(object::id(gauge)), ESettleKilledGaugeGaugeNotKilled);
+        // paused gauges are not allowed to be settled cos pause means an emergency situation.
+        assert!(!distribution_config.is_gauge_paused(object::id(gauge)), ESettleKilledGaugeGaugePaused);
         assert!(distribution_config.is_valid_sail_price_aggregator(aggregator), ESettleKilledGaugeInvalidAggregator);
 
         assert!(type_name::get<SailPoolCoinTypeA>() == type_name::get<SailCoinType>() || 
@@ -2129,6 +2213,8 @@ module governance::minter {
         assert!(minter.is_active(clock), ESettleKilledGaugeMinterNotActive);
         assert!(minter.is_valid_distribution_config(distribution_config), ESettleKilledGaugeDistributionConfigInvalid);
         assert!(!distribution_config.is_gauge_alive(object::id(gauge)), ESettleKilledGaugeGaugeNotKilled);
+        // paused gauges are not allowed to be settled cos pause means an emergency situation.
+        assert!(!distribution_config.is_gauge_paused(object::id(gauge)), ESettleKilledGaugeGaugePaused);
         assert!(distribution_config.is_valid_sail_price_aggregator(aggregator), ESettleKilledGaugeInvalidAggregator);
 
         assert!(type_name::get<CoinTypeA>() == type_name::get<SailCoinType>() || 
@@ -2220,6 +2306,8 @@ module governance::minter {
             !distribution_config.is_gauge_alive(gauge_id),
             EReviveGaugeAlreadyAlive
         );
+        // paused gauges are not allowed to be revived cos pause means an emergency situation.
+        assert!(!distribution_config.is_gauge_paused(gauge_id), EReviveGaugeGaugePaused);
         // gauge was distributed in the same epoch it was killed
         // if not use reset_gauge instead
         assert!(
@@ -2269,6 +2357,7 @@ module governance::minter {
             !distribution_config.is_gauge_alive(gauge_id),
             EResetGaugeGaugeAlreadyAlive
         );
+        assert!(!distribution_config.is_gauge_paused(gauge_id), EResetGaugeGaugePaused);
 
         // gauge should not be distributed this epoch
         // if so use revive_gauge instead
@@ -3271,6 +3360,10 @@ module governance::minter {
         ctx: &mut TxContext
     ): Coin<RewardCoinType> {
         distribution_config.checked_package_version();
+        assert!(
+            !distribution_config.is_gauge_paused(object::id(gauge)),
+            EGetPosRewardGaugePaused
+        );
         assert!(minter.is_valid_epoch_token<SailCoinType, RewardCoinType>(), EGetPositionRewardInvalidRewardToken);
         assert!(
             object::id(distribution_config) == minter.distribution_config,
@@ -3304,6 +3397,10 @@ module governance::minter {
         ctx: &mut TxContext
     ): Coin<RewardCoinType> {
         distribution_config.checked_package_version();
+        assert!(
+            !distribution_config.is_gauge_paused(object::id(gauge)),
+            EGetMultiPosRewardGaugePaused
+        );
         assert!(minter.is_valid_epoch_token<SailCoinType, RewardCoinType>(), EGetMultiplePositionRewardInvalidRewardToken);
         assert!(
             object::id(distribution_config) == minter.distribution_config,

@@ -28,12 +28,14 @@ module governance::gauge {
     const ENotifyEpochTokenInvalidPool: u64 = 4672810119034640000;
     const ENotifyEpochTokenDistributionConfInvalid: u64 = 218800936909496100;
     const ENotifyEpochTokenGaugeNotAlive: u64 = 213816814886850880;
+    const ENotifyEpochTokenGaugePaused: u64 = 976193917387744300;
     const ENotifyEpochTokenAlreadyNotifiedThisEpoch: u64 = 776925370166021200;
     const ENotifyEpochTokenEpochAlreadyStarted: u64 = 4159845750300726000;
     const ENotifyEpochTokenPrevRewardsNotFinished: u64 = 3254849085073565700;
     const ENotifyEpochTokenAlreadyNotifiedToken: u64 = 4041460742273430500;
 
     const ENotifyRewardGaugeNotAlive: u64 = 927999301192928000;
+    const ENotifyRewardGaugePaused: u64 = 754601601697991000;
     const ENotifyRewardDistributionConfInvalid: u64 = 311080855434061200;
     const ENotifyRewardInvalidPool: u64 = 5832633373805671000;
     const ENotifyRewardInvalidAmount: u64 = 9223373716188102674;
@@ -45,6 +47,7 @@ module governance::gauge {
 
     const EDepositPositionDistributionConfInvalid: u64 = 9223373183611043839;
     const EDepositPositionGaugeNotAlive: u64 = 9223373157842747416;
+    const EDepositPositionGaugePaused: u64 = 543618285971711100;
     const EDepositPositionGaugeDoesNotMatchPool: u64 = 9223373162136666120;
     const EDepositPositionPositionDoesNotMatchPool: u64 = 9223373166431764490;
     const EDepositPositionPositionAlreadyStaked: u64 = 9223373175021174786;
@@ -57,10 +60,14 @@ module governance::gauge {
 
     const EUpdateRewardGaugeDoesNotMatchPool: u64 = 922337345419444224;
     const EGetPositionRewardGaugeDoesNotMatchPool: u64 = 73727195005154130;
+    const EGetPoolRewardGaugePaused: u64 = 266213185215138140;
+
+    const EDecreaseLiquidityGaugePaused: u64 = 252715892968864860;
 
     const EAllRewardsClaimedGaugeDoesNotMatchPool: u64 = 577203795438525600;
 
     const ENotifyRewardWithoutClaimGaugeNotAlive: u64 = 388157577581832000;
+    const ENotifyRewardWithoutClaimGaugePaused: u64 = 689128363966604200;
     const ENotifyRewardWithoutClaimDistributionConfInvalid: u64 = 921517595696832600;
     const ENotifyRewardAmountRewardRateZero: u64 = 9223373952411435028;
     const ENotifyRewardWithoutClaimInvalidPool: u64 = 6794499896215460000;
@@ -69,11 +76,13 @@ module governance::gauge {
     const ESyncFullsailDistributionPriceInvalidEpoch: u64 = 524842288068695600;
     const ESyncOsailDistributionPriceDistributionConfInvalid: u64 = 490749102979896500;
     const ESyncOsailDistributionPriceGaugeNotAlive: u64 = 298752582283296830;
+    const ESyncOsailDistributionPriceGaugePaused: u64 = 613016774975398800;
     const ESyncOsailDistributionPriceInvalidPool: u64 = 485510326827034900;
 
     const EReceiveGaugeCapGaugeDoesNotMatch: u64 = 9223373119186534399;
 
     const EWithdrawPositionNotDepositedPosition: u64 = 9223373570158297092;
+    const EWithdrawPositionGaugePaused: u64 = 568694560355628600;
     const EWithdrawPositionPositionIsLocked: u64 = 922337373443534534;
     const EWithdrawPositionNotAllRewardsClaimed: u64 = 51536857596176540;
     const EWithdrawPositionInvalidPool: u64 = 496532944256373500;
@@ -451,6 +460,10 @@ module governance::gauge {
             EDepositPositionGaugeNotAlive
         );
         assert!(
+            !distribution_config.is_gauge_paused(object::id(gauge)),
+            EDepositPositionGaugePaused
+        );
+        assert!(
             gauge.check_gauger_pool(pool),
             EDepositPositionGaugeDoesNotMatchPool
         );
@@ -517,6 +530,10 @@ module governance::gauge {
         assert!(
             distribution_config.is_gauge_alive(object::id(gauge)),
             EDepositPositionGaugeNotAlive
+        );
+        assert!(
+            !distribution_config.is_gauge_paused(object::id(gauge)),
+            EDepositPositionGaugePaused
         );
         let pool_id = object::id(pool);
         assert!(position.liquidity() > 0, EDepositPositionHasNoLiquidity);
@@ -864,6 +881,10 @@ module governance::gauge {
     ): sui::balance::Balance<RewardCoinType> {
         distribution_config.checked_package_version();
         assert!(
+            !distribution_config.is_gauge_paused(object::id(gauge)),
+            EGetPoolRewardGaugePaused
+        );
+        assert!(
             gauge.check_gauger_pool(pool),
             EGetPositionRewardGaugeDoesNotMatchPool
         );
@@ -931,6 +952,10 @@ module governance::gauge {
         assert!(
             distribution_config.is_gauge_alive(object::id(gauge)),
             ENotifyEpochTokenGaugeNotAlive
+        );
+        assert!(
+            !distribution_config.is_gauge_paused(object::id(gauge)),
+            ENotifyEpochTokenGaugePaused
         );
         // cannot update to the same token
         assert!(
@@ -1030,6 +1055,7 @@ module governance::gauge {
             ENotifyRewardWithoutClaimDistributionConfInvalid
         );
         assert!(distribution_config.is_gauge_alive(object::id(gauge)), ENotifyRewardWithoutClaimGaugeNotAlive);
+        assert!(!distribution_config.is_gauge_paused(object::id(gauge)), ENotifyRewardWithoutClaimGaugePaused);
         assert!(gauge.check_gauger_pool(pool), ENotifyRewardWithoutClaimInvalidPool);
 
         assert!(usd_amount > 0, ENotifyRewardWithoutClaimInvalidAmount);
@@ -1071,6 +1097,7 @@ module governance::gauge {
             ENotifyRewardDistributionConfInvalid
         );
         assert!(distribution_config.is_gauge_alive(object::id(gauge)), ENotifyRewardGaugeNotAlive);
+        assert!(!distribution_config.is_gauge_paused(object::id(gauge)), ENotifyRewardGaugePaused);
         assert!(gauge.check_gauger_pool(pool), ENotifyRewardInvalidPool);
         assert!(usd_amount > 0, ENotifyRewardInvalidAmount);
         let current_time = clock.timestamp_ms() / 1000;
@@ -1280,6 +1307,10 @@ module governance::gauge {
             ESyncOsailDistributionPriceDistributionConfInvalid
         );
         // we don't check if the gauge is alive cos rewards can continue to be distributed after the gauge is killed.
+        assert!(
+            !distribution_config.is_gauge_paused(object::id(gauge)),
+            ESyncOsailDistributionPriceGaugePaused
+        );
         assert!(gauge.check_gauger_pool(pool), ESyncOsailDistributionPriceInvalidPool);
 
         gauge.sync_o_sail_distribution_price_internal(pool, o_sail_price_q64, false, clock);
@@ -1485,6 +1516,10 @@ module governance::gauge {
     ): clmm_pool::position::Position {
         distribution_config.checked_package_version();
         assert!(
+            !distribution_config.is_gauge_paused(object::id(gauge)),
+            EWithdrawPositionGaugePaused
+        );
+        assert!(
             gauge.staked_positions.contains(staked_position.position_id),
             EWithdrawPositionNotDepositedPosition
         );
@@ -1499,25 +1534,7 @@ module governance::gauge {
         position
     }
 
-    /// Withdraws a position from the gauge through the locker.
-    /// This function allows the locker to withdraw a position from the gauge, collecting any earned rewards
-    /// and unstaking the position from the pool's distribution system.
-    /// 
-    /// # Arguments
-    /// * `gauge` - Mutable reference to the gauge contract managing rewards
-    /// * `_locker_cap` - Capability proving locker authorization
-    /// * `pool` - Mutable reference to the CLMM pool where the position exists
-    /// * `staked_position` - The staked position to withdraw
-    /// * `clock` - System clock for time-based operations
-    /// * `ctx` - Transaction context
-    /// 
-    /// # Returns
-    /// The withdrawn position
-    /// 
-    /// # Aborts
-    /// * If the position is not staked in the gauge
-    /// * If the reward token type is not valid for the current epoch
-    /// * If the position has not been properly received
+    /// Deprecated. We don't have a locker anymore
     public fun withdraw_position_by_locker<CoinTypeA, CoinTypeB>(
         gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
         _locker_cap: &locker_cap::locker_cap::LockerCap,
@@ -1526,17 +1543,9 @@ module governance::gauge {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
     ): clmm_pool::position::Position {
-        // this method is called by the locker package, so version control is solved by the locker package.
-        assert!(
-            gauge.staked_positions.contains(staked_position.position_id),
-            EWithdrawPositionNotDepositedPosition
-        );
-
-        gauge.withdraw_position_internal<CoinTypeA, CoinTypeB>(
-            pool,
-            staked_position,
-            clock
-        )
+        // If we want to introduce liquidity locker again, we need to check if gauge is paused. 
+        // For now we don't need this method at all, so I am removing it.
+        abort 0
     }
 
     /// Internal function to withdraw a staked position from the gauge.
@@ -1670,6 +1679,10 @@ module governance::gauge {
             EDepositPositionDistributionConfInvalid
         );
         distribution_config.checked_package_version();
+        assert!(
+            !distribution_config.is_gauge_paused(object::id(gauge)),
+            EDecreaseLiquidityGaugePaused
+        );
         assert!(
             gauge.check_gauger_pool(pool),
             EDepositPositionGaugeDoesNotMatchPool
