@@ -212,6 +212,7 @@ module voting_escrow::reward_distributor {
         lock_id: ID,
         ctx: &mut TxContext
     ): Coin<RewardCoinType> {
+        reward_distributor_cap.validate(object::id<RewardDistributor<RewardCoinType>>(reward_distributor));
         let period = voting_escrow::common::to_period(reward_distributor.last_token_time);
         let reward = reward_distributor.claim_internal(voting_escrow, lock_id, period);
 
