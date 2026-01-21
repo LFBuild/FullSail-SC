@@ -1279,7 +1279,7 @@ module governance::gauge {
             object::id(distribution_config) == gauge.distribution_config,
             ESyncOsailDistributionPriceDistributionConfInvalid
         );
-        assert!(distribution_config.is_gauge_alive(object::id(gauge)), ESyncOsailDistributionPriceGaugeNotAlive);
+        // we don't check if the gauge is alive cos rewards can continue to be distributed after the gauge is killed.
         assert!(gauge.check_gauger_pool(pool), ESyncOsailDistributionPriceInvalidPool);
 
         gauge.sync_o_sail_distribution_price_internal(pool, o_sail_price_q64, false, clock);
