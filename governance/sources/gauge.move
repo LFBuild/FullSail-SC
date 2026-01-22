@@ -46,7 +46,7 @@ module governance::gauge {
     const ENullRewardEpochFinished: u64 = 453228670707964700;
 
     const EDepositPositionDistributionConfInvalid: u64 = 9223373183611043839;
-    const EDepositPositionGaugeNotAlive: u64 = 9223373157842747416;
+    const EDepositPositionGaugeNotAlive: u64 = 647757079824953500;
     const EDepositPositionGaugePaused: u64 = 543618285971711100;
     const EDepositPositionGaugeDoesNotMatchPool: u64 = 9223373162136666120;
     const EDepositPositionPositionDoesNotMatchPool: u64 = 9223373166431764490;
