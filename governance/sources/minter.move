@@ -143,10 +143,9 @@ module governance::minter {
     const ESettleKilledGaugeDistributionConfigInvalid: u64 = 980526521444534400;
     const ESettleKilledGaugeGaugeNotKilled: u64 = 774570594676845700;
     const ESettleKilledGaugeGaugePaused: u64 = 27796803820661076;
-    const ESettleKilledGaugeInvalidAggregator: u64 = 95130341629355410;
     const ESettleKilledGaugeMinterPaused: u64 = 940519593113543700;
     const ESettleKilledGaugeMinterNotActive: u64 = 417539538110257340;
-    const ESettleKilledGaugeInvalidSailPool: u64 = 448503483536864450;
+    const ESettleKilledGaugeAlreadyDistributed: u64 = 916506255647727900;
 
     const EWhitelistPoolMinterPaused: u64 = 316161888154524900;
 
@@ -252,6 +251,7 @@ module governance::minter {
         pool_id: ID,
         fee_a_amount: u64,
         fee_b_amount: u64,
+        ended_epoch_o_sail_emission: u64,
     }
 
     public struct EventPauseGauge has copy, drop, store {
@@ -2142,9 +2142,9 @@ module governance::minter {
         sui::event::emit<EventUnpauseGauge>(unpause_gauge_event);
     }
 
+    /// Supposed to be called instead of distribute_gauge for killed gauges.
     /// Claims fees from a killed gauge redirecting them to the fee voting rewards.
-    /// Synchronizes the oSAIL distribution price for the gauge, essentially explicitly nulling the emissions.
-    /// This function should be called after a gauge is killed to clean up remaining fees and emissions.
+    /// Synchronizes the oSAIL distribution end and o_sail emission counters for the gauge.
     /// Can be called multiple times cos remaining staked positions are still generating fees.
     ///
     /// # Arguments
@@ -2157,15 +2157,12 @@ module governance::minter {
     /// * `sail_stablecoin_pool` - The pool of SAIL token with a stablecoin
     /// * `aggregator` - The aggregator of oSAIL price to fetch the price from
     /// * `clock` - The system clock
-    public fun settle_killed_gauge<CoinTypeA, CoinTypeB, SailPoolCoinTypeA, SailPoolCoinTypeB, SailCoinType>(
+    public fun settle_killed_gauge<CoinTypeA, CoinTypeB, SailCoinType>(
         minter: &mut Minter<SailCoinType>,
         distribution_config: &DistributionConfig,
         admin_cap: &AdminCap,
         gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        price_monitor: &mut PriceMonitor,
-        sail_stablecoin_pool: &clmm_pool::pool::Pool<SailPoolCoinTypeA, SailPoolCoinTypeB>,
-        aggregator: &Aggregator,
         clock: &sui::clock::Clock
     ) {
         distribution_config.checked_package_version();
@@ -2176,95 +2173,13 @@ module governance::minter {
         assert!(!distribution_config.is_gauge_alive(object::id(gauge)), ESettleKilledGaugeGaugeNotKilled);
         // paused gauges are not allowed to be settled cos pause means an emergency situation.
         assert!(!distribution_config.is_gauge_paused(object::id(gauge)), ESettleKilledGaugeGaugePaused);
-        assert!(distribution_config.is_valid_sail_price_aggregator(aggregator), ESettleKilledGaugeInvalidAggregator);
 
-        assert!(type_name::get<SailPoolCoinTypeA>() == type_name::get<SailCoinType>() || 
-            type_name::get<SailPoolCoinTypeB>() == type_name::get<SailCoinType>(), ESettleKilledGaugeInvalidSailPool);
-
-        let (o_sail_price_q64, is_price_invalid) = minter.get_aggregator_price_without_decimals<SailPoolCoinTypeA, SailPoolCoinTypeB, SailCoinType>(
-            price_monitor,
-            sail_stablecoin_pool,
-            aggregator,
-            clock
-        );
-
-        if (is_price_invalid) {
-            return
-        };
-
-        minter.settle_killed_gauge_internal<CoinTypeA, CoinTypeB, SailCoinType>(
-            distribution_config,
-            gauge,
-            pool,
-            o_sail_price_q64,
-            clock
-        );
-    }
-
-    /// Settles a killed gauge when the gauge's pool is the same as the SAIL stablecoin pool.
-    /// This variant is needed when pool and sail_stablecoin_pool are the same.
-    ///
-    /// # Arguments
-    /// * `minter` - The minter instance managing token emissions
-    /// * `distribution_config` - Configuration for token distribution
-    /// * `emergency_council_cap` - The emergency council capability for authorization
-    /// * `gauge` - The killed gauge to settle
-    /// * `sail_pool` - The pool associated with the gauge (also used for price feed)
-    /// * `price_monitor` - The price monitor to validate the price
-    /// * `aggregator` - The aggregator of oSAIL price to fetch the price from
-    /// * `clock` - The system clock
-    public fun settle_killed_gauge_for_sail_pool<CoinTypeA, CoinTypeB, SailCoinType>(
-        minter: &mut Minter<SailCoinType>,
-        distribution_config: &DistributionConfig,
-        emergency_council_cap: &voting_escrow::emergency_council::EmergencyCouncilCap,
-        gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
-        sail_pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        price_monitor: &mut PriceMonitor,
-        aggregator: &Aggregator,
-        clock: &sui::clock::Clock
-    ) {
-        distribution_config.checked_package_version();
-        emergency_council_cap.validate_emergency_council_minter_id(object::id(minter));
-        assert!(!minter.is_paused(), ESettleKilledGaugeMinterPaused);
-        assert!(minter.is_active(clock), ESettleKilledGaugeMinterNotActive);
-        assert!(minter.is_valid_distribution_config(distribution_config), ESettleKilledGaugeDistributionConfigInvalid);
-        assert!(!distribution_config.is_gauge_alive(object::id(gauge)), ESettleKilledGaugeGaugeNotKilled);
-        // paused gauges are not allowed to be settled cos pause means an emergency situation.
-        assert!(!distribution_config.is_gauge_paused(object::id(gauge)), ESettleKilledGaugeGaugePaused);
-        assert!(distribution_config.is_valid_sail_price_aggregator(aggregator), ESettleKilledGaugeInvalidAggregator);
-
-        assert!(type_name::get<CoinTypeA>() == type_name::get<SailCoinType>() || 
-            type_name::get<CoinTypeB>() == type_name::get<SailCoinType>(), ESettleKilledGaugeInvalidSailPool);
-
-        let (o_sail_price_q64, is_price_invalid) = minter.get_aggregator_price_without_decimals<CoinTypeA, CoinTypeB, SailCoinType>(
-            price_monitor,
-            sail_pool,
-            aggregator,
-            clock
-        );
-
-        if (is_price_invalid) {
-            return
-        };
-
-        minter.settle_killed_gauge_internal<CoinTypeA, CoinTypeB, SailCoinType>(
-            distribution_config,
-            gauge,
-            sail_pool,
-            o_sail_price_q64,
-            clock
-        );
-    }
-
-    fun settle_killed_gauge_internal<CoinTypeA, CoinTypeB, SailCoinType>(
-        minter: &mut Minter<SailCoinType>,
-        distribution_config: &DistributionConfig,
-        gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
-        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        o_sail_price_q64: u128,
-        clock: &sui::clock::Clock,
-    ) {
         let gauge_id = object::id(gauge);
+        assert!(
+            !minter.gauge_active_period.contains(gauge_id) || *minter.gauge_active_period.borrow(gauge_id) < minter.active_period,
+             ESettleKilledGaugeAlreadyDistributed
+        );
+
         let pool_id = object::id(pool);
         let distribute_cap = minter.distribute_cap.borrow();
 
@@ -2277,18 +2192,34 @@ module governance::minter {
         minter.deposit_protocol_fee(fee_b);
 
         // Sync the oSAIL distribution price to update emissions accounting
-        gauge.sync_o_sail_distribution_price(
-            distribution_config,
+        let ended_epoch_o_sail_emission = gauge.sync_o_sail_distribution_finish(
             pool,
-            o_sail_price_q64,
             clock
         );
+
+        let prev_active_period = if (minter.gauge_active_period.contains(gauge_id)) {
+            minter.gauge_active_period.remove(gauge_id)
+        } else {
+            0
+        };
+
+        // only works for the first call of this function for the gauge
+        // next time prev active period is zero and total emissions already updated
+        if (prev_active_period > 0) {
+            let total_o_sail_emissions = if (minter.total_epoch_o_sail_emissions.contains(prev_active_period)) {
+                minter.total_epoch_o_sail_emissions.remove(prev_active_period)
+            } else {
+                0
+            };
+            minter.total_epoch_o_sail_emissions.add(prev_active_period, total_o_sail_emissions + ended_epoch_o_sail_emission);
+        };
 
         let event = EventSettleKilledGauge {
             gauge_id,
             pool_id,
             fee_a_amount,
             fee_b_amount,
+            ended_epoch_o_sail_emission,
         };
         sui::event::emit<EventSettleKilledGauge>(event);
     }

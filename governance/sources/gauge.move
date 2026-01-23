@@ -73,9 +73,11 @@ module governance::gauge {
     const ENotifyRewardWithoutClaimInvalidPool: u64 = 6794499896215460000;
     const ENotifyRewardWithoutClaimInvalidAmount: u64 = 9223373819267317778;
 
+    const ESyncOsailDistributionFinishInvalidTime: u64 = 905941490554673900;
+    const ESyncOsailDistributionFinishInvalidReserve: u64 = 877996288127818900;
+
     const ESyncFullsailDistributionPriceInvalidEpoch: u64 = 524842288068695600;
     const ESyncOsailDistributionPriceDistributionConfInvalid: u64 = 490749102979896500;
-    const ESyncOsailDistributionPriceGaugeNotAlive: u64 = 298752582283296830;
     const ESyncOsailDistributionPriceGaugePaused: u64 = 613016774975398800;
     const ESyncOsailDistributionPriceInvalidPool: u64 = 485510326827034900;
 
@@ -133,6 +135,16 @@ module governance::gauge {
         price_q64: u128,
         remaining_o_sail_q64: u128,
         remaining_usd_q64: u128,
+    }
+
+    // Could be fired multiple times, if period_finish is reached multiple times
+    public struct EventSyncOSailDistributionFinish has copy, drop, store {
+        gauge_id: ID,
+        pool_id: ID,
+        period_finish: u64,
+        // 0 for explicity, cos that's what event means
+        usd_reward_rate: u128,
+        o_sail_reward_rate: u128,
     }
 
     public struct EventClaimFees has copy, drop, store {
@@ -197,6 +209,16 @@ module governance::gauge {
         staked_position_id: ID,
         reward_token: TypeName,
         amount: u64,
+    }
+
+    public struct EventUpdateOsailDistribution has copy, drop, store {
+        gauge_id: ID,
+        pool_id: ID,
+        epoch_start: u64,
+        // o_sail emission from the start of last notified epoch until now
+        o_sail_emission: u64,
+        // distribution_reserve until the end of the epoch
+        o_sail_distribution_reserve: u64,
     }
 
     public struct Locked has copy, drop, store {}
@@ -976,29 +998,15 @@ module governance::gauge {
         let next_epoch_time = common::epoch_next(current_time);
 
         // update distribution. All rewards from previous epoch should be either distributed or burnt
-        let gauge_cap = gauge.gauge_cap.borrow();
-        pool.update_fullsail_distribution_growth_global(gauge_cap, clock);
-        let fullsail_distribution_reserves = pool.get_fullsail_distribution_reserve();
+        let (ended_epoch_o_sail_emission, fullsail_distribution_reserves) = gauge.update_o_sail_distribution(pool, clock);
         assert!(fullsail_distribution_reserves == 0, ENotifyEpochTokenPrevRewardsNotFinished);
-        gauge.period_finish = next_epoch_time;
         // New token distribution starts from scratch, so we are nulling all the rates.
         // You may notice that pool reward rates are not 0 yet, but reserve is zero, so reward rates are not applied.
         // We will set the reward rates and reserves to the new values and will start applying them
         // when we call sync_fullsail_distribution_reward.
         gauge.usd_reward_rate = 0;
         gauge.o_sail_reward_rate = 0;
-
-        // Since fullsail_distribution_reserves == 0 by assertion above, we do not subtract it from last_distribution_reserve.
-        let distribution_reserve_delta = gauge.last_distribution_reserve;
-        let current_emission = if (gauge.o_sail_emission_by_epoch.contains(last_notified_period)) {
-            gauge.o_sail_emission_by_epoch.remove(last_notified_period)
-        } else {
-            0
-        };
-        // Here, last_distribution_reserve needs to be updated to fullsail_distribution_reserves (currently zero).
-        gauge.last_distribution_reserve = 0;
-        let ended_epoch_o_sail_emission = current_emission + distribution_reserve_delta;
-        gauge.o_sail_emission_by_epoch.add(last_notified_period, ended_epoch_o_sail_emission);
+        gauge.period_finish = next_epoch_time;
 
         let coin_type = type_name::get<NextRewardCoinType>();
         let mut event = EventNotifyEpochToken {
@@ -1063,7 +1071,7 @@ module governance::gauge {
         assert!(current_time < gauge.period_finish, ENotifyRewardEpochFinished);
         gauge.notify_reward_amount_internal<CoinTypeA, CoinTypeB>(usd_amount, clock);
 
-        gauge.sync_o_sail_distribution_price_internal(pool, o_sail_price_q64, false, clock);
+        gauge.sync_o_sail_distribution_price_internal(pool, o_sail_price_q64, clock);
     }
 
     /// Adds new rewards to the gauge, claims accumulated fees, and updates reward rates.
@@ -1106,7 +1114,7 @@ module governance::gauge {
         let (fee_a, fee_b) = gauge.claim_fees_internal(pool);
         gauge.notify_reward_amount_internal<CoinTypeA, CoinTypeB>(usd_amount, clock);
 
-        gauge.sync_o_sail_distribution_price_internal(pool, o_sail_price_q64, false, clock);
+        gauge.sync_o_sail_distribution_price_internal(pool, o_sail_price_q64, clock);
         (fee_a, fee_b)
     }
 
@@ -1142,15 +1150,11 @@ module governance::gauge {
         let current_time = clock.timestamp_ms() / 1000;
         assert!(current_time < gauge.period_finish, ENullRewardEpochFinished);
 
-        // First: sync oSAIL price to update remaining amounts and distributed amounts.
-        // no event is emitted to not confuse indexers with double events.
-        gauge.sync_o_sail_distribution_price_internal(pool, o_sail_price_q64, true, clock);
-
         let (future_rewards, _) = calc_future_rewards(gauge, current_time);
 
         gauge.usd_reward_rate = 0;
 
-        gauge.sync_o_sail_distribution_price_internal(pool, o_sail_price_q64, false, clock);
+        gauge.sync_o_sail_distribution_price_internal(pool, o_sail_price_q64, clock);
 
         let event = EventNullRewards {
             gauge_id: object::id(gauge),
@@ -1215,6 +1219,91 @@ module governance::gauge {
         sui::event::emit<EventNotifyReward>(notify_reward_event);
     }
 
+    
+    /// Updates oSAIL emission/distribution tracking for this gauge. 
+    /// Resets reward rates to zero and emits an event if the reserve has been depleted.
+    ///
+    /// # Arguments
+    /// * `gauge` - Mutable reference to the gauge instance.
+    /// * `pool`  - Mutable reference to the pool containing the oSAIL distribution reserve.
+    /// * `clock` - System clock used for time-based calculations.
+    ///
+    /// # Returns
+    /// * (Total oSAIL emission from the start of the epoch until now, current distribution reserve)
+    public(package) fun update_o_sail_distribution<CoinTypeA, CoinTypeB>(
+        gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        clock: &sui::clock::Clock,
+    ): (u64, u64) {
+        let epoch_to_update = common::to_period(gauge.epoch_token_last_notified);
+        pool.update_fullsail_distribution_growth_global(gauge.gauge_cap.borrow(), clock);
+
+        let current_distribution_reserve = pool.get_fullsail_distribution_reserve();
+        let mut current_o_sail_emission = if (gauge.o_sail_emission_by_epoch.contains(epoch_to_update)) {
+            gauge.o_sail_emission_by_epoch.remove(epoch_to_update)
+        } else {
+            0
+        };
+        if (gauge.last_distribution_reserve > 0) {
+            let distributed_amount = gauge.last_distribution_reserve - current_distribution_reserve;
+            current_o_sail_emission = current_o_sail_emission + distributed_amount;
+        };
+        gauge.o_sail_emission_by_epoch.add(epoch_to_update, current_o_sail_emission);
+        gauge.last_distribution_reserve = current_distribution_reserve;
+        let gauge_id = object::id(gauge);
+        let pool_id = object::id(pool);
+
+        let event_update_distribution = EventUpdateOsailDistribution {
+            gauge_id,
+            pool_id,
+            epoch_start: epoch_to_update,
+            o_sail_emission: current_o_sail_emission,
+            o_sail_distribution_reserve: current_distribution_reserve,
+        };
+        sui::event::emit(event_update_distribution);
+
+        (current_o_sail_emission, current_distribution_reserve)
+    }
+    /// Finalizes the oSAIL distribution for a gauge at the end of the reward period.
+    ///
+    /// # Arguments
+    /// * `gauge` - Mutable reference to the gauge whose oSAIL distribution is being finalized.
+    /// * `pool` - Mutable reference to the pool associated with the gauge.
+    /// * `clock` - Current system clock.
+    ///
+    /// # Returns
+    /// * `u64` - The total oSAIL emissions counted for this epoch.
+    public(package) fun sync_o_sail_distribution_finish<CoinTypeA, CoinTypeB>(
+        gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        clock: &sui::clock::Clock,
+    ): u64 {
+        let (o_sail_emissions, current_distribution_reserve) = gauge.update_o_sail_distribution(pool, clock);
+        let current_time = clock.timestamp_ms() / 1000;
+        assert!(current_time >= gauge.period_finish, ESyncOsailDistributionFinishInvalidTime);
+        assert!(current_distribution_reserve == 0, ESyncOsailDistributionFinishInvalidReserve);
+        gauge.usd_reward_rate = 0;
+        gauge.o_sail_reward_rate = 0;
+        pool.sync_fullsail_distribution_reward(
+            gauge.gauge_cap.borrow(),
+            0, 
+            0,
+            gauge.period_finish,
+            clock
+        );
+
+        let event = EventSyncOSailDistributionFinish {
+            gauge_id: object::id(gauge),
+            pool_id: object::id(pool),
+            period_finish: gauge.period_finish,
+            usd_reward_rate: 0,
+            o_sail_reward_rate: 0,
+        };
+        sui::event::emit(event);
+
+        o_sail_emissions
+    }
+
 
     /// Updates the oSAIL distribution rate based on the current price of the oSAIL token
     ///
@@ -1228,26 +1317,11 @@ module governance::gauge {
         gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         price_q64: u128,
-        no_emit: bool,
         clock: &sui::clock::Clock,
     ) {
         let current_time = clock.timestamp_ms() / 1000;
         assert!(current_time < gauge.period_finish, ESyncFullsailDistributionPriceInvalidEpoch);
-        pool.update_fullsail_distribution_growth_global(gauge.gauge_cap.borrow(), clock);
-        let current_distribution_reserve = pool.get_fullsail_distribution_reserve();
-
-        let current_epoch = common::to_period(gauge.epoch_token_last_notified);
-
-        // Update emissions using distribution reserve delta
-        if (gauge.last_distribution_reserve > 0) {
-            let distributed_amount = gauge.last_distribution_reserve - current_distribution_reserve;
-            let current_emission = if (gauge.o_sail_emission_by_epoch.contains(current_epoch)) {
-                gauge.o_sail_emission_by_epoch.remove(current_epoch)
-            } else {
-                0
-            };
-            gauge.o_sail_emission_by_epoch.add(current_epoch, current_emission + distributed_amount);
-        };
+        gauge.update_o_sail_distribution(pool, clock);
 
         let next_epoch_time = common::epoch_next(current_time);
         let time_until_next_epoch = next_epoch_time - current_time;
@@ -1267,16 +1341,14 @@ module governance::gauge {
             clock
         );
 
-        if (!no_emit) {
-            let sync_o_sail_distribution_price_event = EventSyncOSailDistributionPrice {
-                gauge_id: object::id<Gauge<CoinTypeA, CoinTypeB>>(gauge),
-                pool_id: object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool),
-                price_q64,
-                remaining_o_sail_q64: remaining_o_sail_amount_q64,
-                remaining_usd_q64: remaining_usd_amount_q64,
-            };
-            sui::event::emit<EventSyncOSailDistributionPrice>(sync_o_sail_distribution_price_event);
-        }
+        let sync_o_sail_distribution_price_event = EventSyncOSailDistributionPrice {
+            gauge_id: object::id(gauge),
+            pool_id: object::id(pool),
+            price_q64,
+            remaining_o_sail_q64: remaining_o_sail_amount_q64,
+            remaining_usd_q64: remaining_usd_amount_q64,
+        };
+        sui::event::emit<EventSyncOSailDistributionPrice>(sync_o_sail_distribution_price_event);
     }
 
     /// Updates the oSAIL distribution rate based on the current price of the oSAIL token.
@@ -1306,14 +1378,13 @@ module governance::gauge {
             object::id(distribution_config) == gauge.distribution_config,
             ESyncOsailDistributionPriceDistributionConfInvalid
         );
-        // we don't check if the gauge is alive cos rewards can continue to be distributed after the gauge is killed.
         assert!(
             !distribution_config.is_gauge_paused(object::id(gauge)),
             ESyncOsailDistributionPriceGaugePaused
         );
         assert!(gauge.check_gauger_pool(pool), ESyncOsailDistributionPriceInvalidPool);
 
-        gauge.sync_o_sail_distribution_price_internal(pool, o_sail_price_q64, false, clock);
+        gauge.sync_o_sail_distribution_price_internal(pool, o_sail_price_q64, clock);
     }
 
     public fun o_sail_emission_by_epoch<CoinTypeA, CoinTypeB>(
