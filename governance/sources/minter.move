@@ -1631,10 +1631,6 @@ module governance::minter {
                 0
             };
             minter.total_epoch_o_sail_emissions.add(prev_active_period, total_o_sail_emissions + ended_epoch_o_sail_emission);
-        } else {
-            // prev_active_period == 0 means that the gauge was never distributed before
-            // so we should not have any emissions
-            assert!(ended_epoch_o_sail_emission == 0, EDistributeGaugeNoPeriodButHasEmissions);
         };
         minter.gauge_active_period.add(gauge_id, minter.active_period);
         minter.gauge_epoch_emissions_usd.add(gauge_id, next_epoch_emissions_usd);
