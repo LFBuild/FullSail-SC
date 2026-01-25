@@ -293,6 +293,48 @@ module price_monitor::price_monitor {
         monitor.bag.contains(POOL_PRICE_DECIMAL_MULTIPLIERS_KEY)
     }
 
+    /// Get decimal multiplier for a specific pool from bag
+    /// 
+    /// # Arguments
+    /// * `monitor` - The price monitor object
+    /// * `pool_id` - The pool ID to get multiplier for
+    /// 
+    /// # Returns
+    /// The decimal multiplier in Q64 format, or 0 if pool not found or table doesn't exist
+    public fun get_pool_decimal_multiplier(
+        monitor: &PriceMonitor,
+        pool_id: ID,
+    ): u128 {
+        checked_package_version(monitor);
+        if (has_pool_price_decimal_multipliers_table(monitor)) {
+            let table = get_pool_price_decimal_multipliers_table(monitor);
+            if (table.contains(pool_id)) {
+                return *table.borrow(pool_id)
+            }
+        };
+        0 // Default to no adjustment if pool not found
+    }
+
+    /// Check if decimal multiplier exists for a specific pool in bag
+    /// 
+    /// # Arguments
+    /// * `monitor` - The price monitor object
+    /// * `pool_id` - The pool ID to check
+    /// 
+    /// # Returns
+    /// true if multiplier exists for the pool, false otherwise
+    public fun has_pool_decimal_multiplier(
+        monitor: &PriceMonitor,
+        pool_id: ID,
+    ): bool {
+        checked_package_version(monitor);
+        if (has_pool_price_decimal_multipliers_table(monitor)) {
+            let table = get_pool_price_decimal_multipliers_table(monitor);
+            return table.contains(pool_id)
+        };
+        false
+    }
+
     /// Calculate decimal multiplier in Q64 format for price adjustment
     /// If token_a_decimals == token_b_decimals, multiplier = 0 (no adjustment needed)
     /// If token_a_decimals > token_b_decimals, multiplier = 10^(token_a_decimals - token_b_decimals) in Q64
@@ -334,19 +376,13 @@ module price_monitor::price_monitor {
 
     /// Get decimal multiplier for a specific pool
     public fun get_pool_price_decimal_multiplier(monitor: &PriceMonitor, pool_id: ID): u128 {
-        // Try to get from bag first
         if (has_pool_price_decimal_multipliers_table(monitor)) {
             let table = get_pool_price_decimal_multipliers_table(monitor);
             if (table.contains(pool_id)) {
                 return *table.borrow(pool_id)
             }
         };
-        // Fallback to old field for backward compatibility
-        if (monitor.pool_price_decimal_multipliers.contains(pool_id)) {
-            *monitor.pool_price_decimal_multipliers.borrow(pool_id)
-        } else {
-            0 // Default to no adjustment if pool not found
-        }
+        0 // Default to no adjustment if pool not found
     }
 
     /// DEPRECATED: Use update_pool_price_decimal_multiplier_v2 instead
@@ -447,10 +483,6 @@ module price_monitor::price_monitor {
                     table.remove(pool_id);
                 }
             };
-            // Also remove from old field for backward compatibility
-            if (monitor.pool_price_decimal_multipliers.contains(pool_id)) {
-                monitor.pool_price_decimal_multipliers.remove(pool_id);
-            };
             i = i + 1;
         };
     }
@@ -505,10 +537,6 @@ module price_monitor::price_monitor {
                 table.remove(pool_id);
             }
         };
-        // Also remove from old field for backward compatibility
-        if (monitor.pool_price_decimal_multipliers.contains(pool_id)) {
-            monitor.pool_price_decimal_multipliers.remove(pool_id);
-        };
     }
 
     // ===== CORE PRICE MONITORING FUNCTIONS =====
@@ -548,7 +576,7 @@ module price_monitor::price_monitor {
             clock
         );
 
-        // Try to get from bag first
+        // Get from bag
         let pool_price_decimal_multiplier_q64 = if (has_pool_price_decimal_multipliers_table(monitor)) {
             let table = get_pool_price_decimal_multipliers_table(monitor);
             if (table.contains(pool_id)) {
@@ -556,9 +584,6 @@ module price_monitor::price_monitor {
             } else {
                 0
             }
-        } else if (monitor.pool_price_decimal_multipliers.contains(pool_id)) {
-            // Fallback to old field for backward compatibility
-            *monitor.pool_price_decimal_multipliers.borrow(pool_id)
         } else {
             0
         };
