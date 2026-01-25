@@ -21,6 +21,7 @@ module price_monitor::price_monitor {
     use sui::clock::{Self, Clock};
     use sui::event;
     use sui::vec_set::{Self, VecSet};
+    use sui::bag;
     use std::type_name::{Self};
 
     use switchboard::decimal::{Self};
@@ -43,6 +44,9 @@ module price_monitor::price_monitor {
 
     // Maximum value for u64 type to prevent overflow
     const MAX_U64: u128 = 0xffffffffffffffff;
+
+    // Key for storing pool_price_decimal_multipliers table in bag
+    const POOL_PRICE_DECIMAL_MULTIPLIERS_KEY: u64 = 1;
 
     // ===== STRUCTURES =====
 
@@ -107,6 +111,7 @@ module price_monitor::price_monitor {
         
         // Pool decimal multipliers mapping (pool_id -> decimal_multiplier_q64)
         // This multiplier is used to adjust prices when token decimals differ
+        // DEPRECATED: Use bag with POOL_PRICE_DECIMAL_MULTIPLIERS_KEY instead
         pool_price_decimal_multipliers: Table<ID, u128>,
         
         // Price history as a linked table for efficient FIFO operations
@@ -262,6 +267,32 @@ module price_monitor::price_monitor {
 
     // ===== DECIMAL MULTIPLIER FUNCTIONS =====
 
+    /// Get or create the pool_price_decimal_multipliers table from bag
+    fun get_or_create_pool_price_decimal_multipliers_table(
+        monitor: &mut PriceMonitor,
+        ctx: &mut TxContext,
+    ): &mut Table<ID, u128> {
+        if (!monitor.bag.contains(POOL_PRICE_DECIMAL_MULTIPLIERS_KEY)) {
+            let table = table::new<ID, u128>(ctx);
+            monitor.bag.add(POOL_PRICE_DECIMAL_MULTIPLIERS_KEY, table);
+        };
+        monitor.bag.borrow_mut(POOL_PRICE_DECIMAL_MULTIPLIERS_KEY)
+    }
+
+    /// Get the pool_price_decimal_multipliers table from bag (read-only)
+    fun get_pool_price_decimal_multipliers_table(
+        monitor: &PriceMonitor,
+    ): &Table<ID, u128> {
+        monitor.bag.borrow(POOL_PRICE_DECIMAL_MULTIPLIERS_KEY)
+    }
+
+    /// Check if pool_price_decimal_multipliers table exists in bag
+    fun has_pool_price_decimal_multipliers_table(
+        monitor: &PriceMonitor,
+    ): bool {
+        monitor.bag.contains(POOL_PRICE_DECIMAL_MULTIPLIERS_KEY)
+    }
+
     /// Calculate decimal multiplier in Q64 format for price adjustment
     /// If token_a_decimals == token_b_decimals, multiplier = 0 (no adjustment needed)
     /// If token_a_decimals > token_b_decimals, multiplier = 10^(token_a_decimals - token_b_decimals) in Q64
@@ -303,6 +334,14 @@ module price_monitor::price_monitor {
 
     /// Get decimal multiplier for a specific pool
     public fun get_pool_price_decimal_multiplier(monitor: &PriceMonitor, pool_id: ID): u128 {
+        // Try to get from bag first
+        if (has_pool_price_decimal_multipliers_table(monitor)) {
+            let table = get_pool_price_decimal_multipliers_table(monitor);
+            if (table.contains(pool_id)) {
+                return *table.borrow(pool_id)
+            }
+        };
+        // Fallback to old field for backward compatibility
         if (monitor.pool_price_decimal_multipliers.contains(pool_id)) {
             *monitor.pool_price_decimal_multipliers.borrow(pool_id)
         } else {
@@ -310,6 +349,7 @@ module price_monitor::price_monitor {
         }
     }
 
+    /// DEPRECATED: Use update_pool_price_decimal_multiplier_v2 instead
     public fun update_pool_price_decimal_multiplier(
         monitor: &mut PriceMonitor,
         pool_id: ID,
@@ -328,11 +368,12 @@ module price_monitor::price_monitor {
     ) {
         checked_package_version(monitor);
         check_admin(monitor, ctx.sender());
-        if (!monitor.pool_price_decimal_multipliers.contains(pool_id)) {
+        let table = get_or_create_pool_price_decimal_multipliers_table(monitor, ctx);
+        if (!table.contains(pool_id)) {
             abort
         };
         let decimal_multiplier = calculate_decimal_multiplier(token_a_decimals, token_b_decimals);
-        monitor.pool_price_decimal_multipliers.add(pool_id, decimal_multiplier);
+        table.add(pool_id, decimal_multiplier);
     }
 
     // ===== AGGREGATOR MANAGEMENT =====
@@ -372,11 +413,12 @@ module price_monitor::price_monitor {
             // Calculate decimal multiplier for this pool
             let decimal_multiplier = calculate_decimal_multiplier(token_a_dec, token_b_dec);
             
-            // Store the multiplier for this pool
-            if (monitor.pool_price_decimal_multipliers.contains(pool_id)) {
-                assert!(monitor.pool_price_decimal_multipliers.borrow(pool_id) == decimal_multiplier, EInvalidPoolDecimal);
+            // Store the multiplier for this pool in bag
+            let table = get_or_create_pool_price_decimal_multipliers_table(monitor, ctx);
+            if (table.contains(pool_id)) {
+                assert!(table.borrow(pool_id) == decimal_multiplier, EInvalidPoolDecimal);
             } else {
-                monitor.pool_price_decimal_multipliers.add(pool_id, decimal_multiplier);
+                table.add(pool_id, decimal_multiplier);
             };
             
             current_pool_ids.push_back<ID>(pool_id);
@@ -397,7 +439,18 @@ module price_monitor::price_monitor {
         let pools = monitor.aggregator_to_pools.remove(aggregator_id);
         let mut i = 0;
         while (i < pools.length()) {
-            monitor.pool_price_decimal_multipliers.remove(pools[i]);
+            let pool_id = pools[i];
+            // Remove from bag if exists
+            if (has_pool_price_decimal_multipliers_table(monitor)) {
+                let table = get_or_create_pool_price_decimal_multipliers_table(monitor, ctx);
+                if (table.contains(pool_id)) {
+                    table.remove(pool_id);
+                }
+            };
+            // Also remove from old field for backward compatibility
+            if (monitor.pool_price_decimal_multipliers.contains(pool_id)) {
+                monitor.pool_price_decimal_multipliers.remove(pool_id);
+            };
             i = i + 1;
         };
     }
@@ -420,7 +473,7 @@ module price_monitor::price_monitor {
         pools.push_back(pool_id);
 
         let decimal_multiplier = calculate_decimal_multiplier(token_a_decimals, token_b_decimals);
-        monitor.pool_price_decimal_multipliers.add(pool_id, decimal_multiplier);
+        get_or_create_pool_price_decimal_multipliers_table(monitor, ctx).add(pool_id, decimal_multiplier);
     }
 
     /// Remove a pool from an aggregator
@@ -445,7 +498,17 @@ module price_monitor::price_monitor {
             i = i + 1;
         };
 
-        monitor.pool_price_decimal_multipliers.remove(pool_id);
+        // Remove from bag if exists
+        if (has_pool_price_decimal_multipliers_table(monitor)) {
+            let table = get_or_create_pool_price_decimal_multipliers_table(monitor, ctx);
+            if (table.contains(pool_id)) {
+                table.remove(pool_id);
+            }
+        };
+        // Also remove from old field for backward compatibility
+        if (monitor.pool_price_decimal_multipliers.contains(pool_id)) {
+            monitor.pool_price_decimal_multipliers.remove(pool_id);
+        };
     }
 
     // ===== CORE PRICE MONITORING FUNCTIONS =====
@@ -485,7 +548,16 @@ module price_monitor::price_monitor {
             clock
         );
 
-        let pool_price_decimal_multiplier_q64 = if(monitor.pool_price_decimal_multipliers.contains(pool_id)) {
+        // Try to get from bag first
+        let pool_price_decimal_multiplier_q64 = if (has_pool_price_decimal_multipliers_table(monitor)) {
+            let table = get_pool_price_decimal_multipliers_table(monitor);
+            if (table.contains(pool_id)) {
+                *table.borrow(pool_id)
+            } else {
+                0
+            }
+        } else if (monitor.pool_price_decimal_multipliers.contains(pool_id)) {
+            // Fallback to old field for backward compatibility
             *monitor.pool_price_decimal_multipliers.borrow(pool_id)
         } else {
             0
