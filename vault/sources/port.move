@@ -875,6 +875,11 @@ module vault::port {
         while (i < buffer_balances.length()) {
             let (type_name_ptr, amount_ptr) = buffer_balances.get_entry_by_idx(i);
             let type_name = *type_name_ptr;
+            // Only include pool tokens (CoinTypeA and CoinTypeB) in AUM calculation
+            if (type_name != coin_a_type && type_name != coin_b_type) {
+                i = i + 1;
+                continue
+            };
             let amount = *amount_ptr;
             let mut pool_coin_amount = amount;
             if (coin_a_type == type_name) {
@@ -1471,6 +1476,8 @@ module vault::port {
     /// * `gauge` – gauge managing the CLMM stake
     /// * `pool` – CLMM pool where liquidity is provided
     /// * `port_oracle` – oracle providing prices for valuation
+    /// * `expected_amount_a` – expected maximum amount of coin A to be used
+    /// * `expected_amount_b` – expected maximum amount of coin B to be used
     /// * `clock` – clock object ensuring price freshness
     /// * `ctx` – transaction context
     ///
@@ -1491,10 +1498,18 @@ module vault::port {
         gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         port_oracle: &vault::port_oracle::PortOracle,
+        expected_amount_a: u64,
+        expected_amount_b: u64,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
         global_config.checked_package_version();
+        assert!(
+            global_config.is_operation_manager_role(sui::tx_context::sender(ctx))
+            ||
+            port.managers.contains(sui::tx_context::sender(ctx)),
+            vault::error::no_operation_manager_permission()
+        );
         assert!(!port.is_pause, vault::error::port_is_pause());
         assert!(!port.vault.is_stopped(), vault::error::vault_is_stopped());
         assert!(sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool) == port.vault.pool_id(), vault::error::clmm_pool_not_match());
@@ -1502,7 +1517,7 @@ module vault::port {
         let price_a = port_oracle.get_price<CoinTypeA>(clock);
         let price_b = port_oracle.get_price<CoinTypeB>(clock);
 
-        port.add_liquidity_internal<CoinTypeA, CoinTypeB>(
+        let (actual_pay_amount_a, actual_pay_amount_b) = port.add_liquidity_internal<CoinTypeA, CoinTypeB>(
             global_config, 
             clmm_global_config, 
             clmm_vault,
@@ -1516,6 +1531,9 @@ module vault::port {
             clock,
             ctx
         );
+
+        // Verify that actual amounts are less than or equal to expected amounts
+        assert!(actual_pay_amount_a <= expected_amount_a && actual_pay_amount_b <= expected_amount_b, vault::error::token_amount_not_enough());
     }
 
     #[test_only]
@@ -1537,7 +1555,7 @@ module vault::port {
         assert!(!port.vault.is_stopped(), vault::error::vault_is_stopped());
         assert!(sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool) == port.vault.pool_id(), vault::error::clmm_pool_not_match());
 
-        port.add_liquidity_internal<CoinTypeA, CoinTypeB>(
+        let (_amount_a, _amount_b) = port.add_liquidity_internal<CoinTypeA, CoinTypeB>(
             global_config, 
             clmm_global_config, 
             clmm_vault,
@@ -1567,7 +1585,7 @@ module vault::port {
         coin_b_decimal: u8,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
-    ) {
+    ) : (u64, u64) {
         let diff_price = integer_mate::full_math_u64::mul_div_floor(
             price_a, 
             std::u64::pow(10, vault::port_oracle::price_multiplier_decimal()),
@@ -1588,7 +1606,7 @@ module vault::port {
                 (vault::vault_config::get_max_price_deviation_bps(global_config) as u128)
             )
         ) {
-            return
+            return (0, 0)
         };
         let mut balance_a = port.buffer_assets.withdraw_all<CoinTypeA>();
         let mut balance_b = port.buffer_assets.withdraw_all<CoinTypeB>();
@@ -1617,6 +1635,8 @@ module vault::port {
             remained_b         : port.buffer_assets.value<CoinTypeB>(),
         };
         sui::event::emit<AddLiquidityEvent>(event);
+
+        (amount_a, amount_b)
     }
 
     fun get_volume_by_tvl(total_volume: u64, tvl: u128, last_aum: u128) : u128 {
@@ -1999,6 +2019,8 @@ module vault::port {
     /// * `pool` – CLMM pool from which liquidity is withdrawn
     /// * `port_entry` – depositor’s entry being reduced
     /// * `volume_withdraw` – amount of volume to withdraw
+    /// * `min_amount_a` – minimum acceptable amount of token A to withdraw from the position (required only if the port is not stopped)
+    /// * `min_amount_b` – minimum acceptable amount of token B to withdraw from the position (required only if the port is not stopped)
     /// * `clock` – clock object used in reward checks
     /// * `ctx` – transaction context
     ///
@@ -2022,6 +2044,8 @@ module vault::port {
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         port_entry: &mut PortEntry,
         volume_withdraw: u64,
+        min_amount_a: u64,
+        min_amount_b: u64,
         clock: &sui::clock::Clock, 
         ctx: &mut TxContext
     ) : (Coin<CoinTypeA>, Coin<CoinTypeB>) {
@@ -2075,6 +2099,8 @@ module vault::port {
             } else {
                 (sui::balance::zero<CoinTypeA>(), sui::balance::zero<CoinTypeB>())
             };
+            assert!(liquidity_balance_a.value<CoinTypeA>() >= min_amount_a, vault::error::token_amount_not_enough());
+            assert!(liquidity_balance_b.value<CoinTypeB>() >= min_amount_b, vault::error::token_amount_not_enough());
             coin_a_balance.join(liquidity_balance_a);
             coin_b_balance.join(liquidity_balance_b);
 

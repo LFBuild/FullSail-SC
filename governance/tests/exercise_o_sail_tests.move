@@ -3155,3 +3155,1068 @@ fun test_exercise_fee_reward_usd_claim_succeed() {
     clock::destroy_for_testing(clock);
     scenario.end();
 }
+
+// ===================================================================================
+// exercise_o_sail_free Tests
+// ===================================================================================
+
+/// Test successful exercise of oSAIL with the free (50% discount) path.
+/// User receives 50% of oSAIL value as SAIL.
+#[test]
+fun test_exercise_o_sail_free_success() {
+    let admin = @0xE01;
+    let user = @0xE02;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Tx 1: Setup Distribution
+    {
+        config::test_init(scenario.ctx());
+        setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    };
+
+    // Tx 2: Activate Minter for Epoch 1 (OSAIL1)
+    let initial_o_sail_amount = 1_000_000;
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, initial_o_sail_amount, &mut clock);
+        transfer::public_transfer(o_sail_coin, user);
+    };
+
+    // Tx 3: User exercises oSAIL free
+    scenario.next_tx(user);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let mut o_sail_coin = scenario.take_from_sender<Coin<OSAIL1>>();
+
+        let o_sail_to_exercise_amount = 100_000;
+        let o_sail_to_exercise = o_sail_coin.split(o_sail_to_exercise_amount, scenario.ctx());
+
+        // Calculate expected SAIL: 50% of oSAIL amount
+        let expected_sail_amount = 50_000;
+        
+        // Record supply before
+        let supply_before = minter.sail_total_supply();
+        let o_sail_supply_before = minter.o_sail_minted_supply();
+
+        let sail_received = minter::exercise_o_sail_free<SAIL, OSAIL1>(
+            &mut minter,
+            &distribution_config,
+            o_sail_to_exercise,
+            &clock,
+            scenario.ctx()
+        );
+
+        // Assertions
+        assert!(sail_received.value() == expected_sail_amount, 1);
+        assert!(minter.sail_total_supply() == supply_before + expected_sail_amount, 2);
+        assert!(minter.o_sail_minted_supply() == o_sail_supply_before - o_sail_to_exercise_amount, 3);
+
+        // Cleanup
+        transfer::public_transfer(sail_received, user);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(o_sail_coin);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+/// Test exercising oSAIL free with zero amount - should return zero SAIL.
+#[test]
+fun test_exercise_o_sail_free_zero_amount() {
+    let admin = @0xE03;
+    let user = @0xE04;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Tx 1: Setup Distribution
+    {
+        config::test_init(scenario.ctx());
+        setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    };
+
+    // Tx 2: Activate Minter for Epoch 1 (OSAIL1)
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
+        transfer::public_transfer(o_sail_coin, user);
+    };
+
+    // Tx 3: User exercises zero oSAIL
+    scenario.next_tx(user);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+
+        // Create zero oSAIL coin
+        let zero_o_sail = coin::zero<OSAIL1>(scenario.ctx());
+
+        let supply_before = minter.sail_total_supply();
+        let o_sail_supply_before = minter.o_sail_minted_supply();
+
+        let sail_received = minter::exercise_o_sail_free<SAIL, OSAIL1>(
+            &mut minter,
+            &distribution_config,
+            zero_o_sail,
+            &clock,
+            scenario.ctx()
+        );
+
+        // Should receive zero SAIL
+        assert!(sail_received.value() == 0, 1);
+        assert!(minter.sail_total_supply() == supply_before, 2);
+        assert!(minter.o_sail_minted_supply() == o_sail_supply_before, 3);
+
+        // Cleanup
+        coin::destroy_zero(sail_received);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+/// Test exercising large amount of oSAIL.
+#[test]
+fun test_exercise_o_sail_free_large_amount() {
+    let admin = @0xE05;
+    let user = @0xE06;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Tx 1: Setup Distribution
+    {
+        config::test_init(scenario.ctx());
+        setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    };
+
+    // Tx 2: Activate Minter with large oSAIL supply
+    let large_o_sail_amount: u64 = 1_000_000_000_000_000_000; // 1_000_000 trillion
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, large_o_sail_amount, &mut clock);
+        transfer::public_transfer(o_sail_coin, user);
+    };
+
+    // Tx 3: User exercises large oSAIL amount
+    scenario.next_tx(user);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let o_sail_coin = scenario.take_from_sender<Coin<OSAIL1>>();
+
+        let o_sail_to_exercise_amount = o_sail_coin.value();
+
+        let o_sail_supply_before = minter.o_sail_minted_supply();
+        let sail_supply_before = minter.sail_total_supply();    
+
+        // Calculate expected SAIL: 50% of oSAIL amount
+        let expected_sail_amount = 500_000_000_000_000_000;
+
+        let sail_received = minter::exercise_o_sail_free<SAIL, OSAIL1>(
+            &mut minter,
+            &distribution_config,
+            o_sail_coin,
+            &clock,
+            scenario.ctx()
+        );
+
+        // Assertions
+        assert!(sail_received.value() == expected_sail_amount, 1);
+        assert!(minter.o_sail_minted_supply() == o_sail_supply_before - o_sail_to_exercise_amount, 2);
+        assert!(minter.sail_total_supply() == sail_supply_before + expected_sail_amount, 3);
+        // Cleanup
+        transfer::public_transfer(sail_received, user);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+/// Test multiple sequential exercises of oSAIL free.
+#[test]
+fun test_exercise_o_sail_free_multiple_exercises() {
+    let admin = @0xE07;
+    let user = @0xE08;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Tx 1: Setup Distribution
+    {
+        config::test_init(scenario.ctx());
+        setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    };
+
+    // Tx 2: Activate Minter
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
+        transfer::public_transfer(o_sail_coin, user);
+    };
+
+    // Tx 3: First exercise
+    let first_exercise_amount = 100_000;
+    scenario.next_tx(user);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let mut o_sail_coin = scenario.take_from_sender<Coin<OSAIL1>>();
+
+        let o_sail_to_exercise = o_sail_coin.split(first_exercise_amount, scenario.ctx());
+        let expected_sail = 50_000;
+        let o_sail_supply_before = minter.o_sail_minted_supply();
+        let sail_supply_before = minter.sail_total_supply();
+
+        let sail_received = minter::exercise_o_sail_free<SAIL, OSAIL1>(
+            &mut minter,
+            &distribution_config,
+            o_sail_to_exercise,
+            &clock,
+            scenario.ctx()
+        );
+
+        assert!(sail_received.value() == expected_sail, 1);
+        assert!(minter.o_sail_minted_supply() == o_sail_supply_before - first_exercise_amount, 2);
+        assert!(minter.sail_total_supply() == sail_supply_before + expected_sail, 3);
+
+        transfer::public_transfer(sail_received, user);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(o_sail_coin);
+    };
+
+    // Tx 4: Second exercise
+    let second_exercise_amount = 200_000;
+    scenario.next_tx(user);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let mut o_sail_coin = scenario.take_from_sender<Coin<OSAIL1>>();
+
+        let o_sail_to_exercise = o_sail_coin.split(second_exercise_amount, scenario.ctx());
+        let expected_sail = 100_000;
+
+        let o_sail_supply_before = minter.o_sail_minted_supply();
+        let sail_supply_before = minter.sail_total_supply();
+
+        let sail_received = minter::exercise_o_sail_free<SAIL, OSAIL1>(
+            &mut minter,
+            &distribution_config,
+            o_sail_to_exercise,
+            &clock,
+            scenario.ctx()
+        );
+
+        assert!(sail_received.value() == expected_sail, 2);
+        assert!(minter.o_sail_minted_supply() == o_sail_supply_before - second_exercise_amount, 3);
+        assert!(minter.sail_total_supply() == sail_supply_before + expected_sail, 4);
+
+
+        transfer::public_transfer(sail_received, user);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(o_sail_coin);
+    };
+
+    // Tx 5: Third exercise - remaining balance (700_000 remaining after 100_000 + 200_000)
+    scenario.next_tx(user);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let o_sail_coin = scenario.take_from_sender<Coin<OSAIL1>>();
+
+        let o_sail_supply_before = minter.o_sail_minted_supply();
+        let sail_supply_before = minter.sail_total_supply();
+
+        let sail_received = minter::exercise_o_sail_free<SAIL, OSAIL1>(
+            &mut minter,
+            &distribution_config,
+            o_sail_coin,
+            &clock,
+            scenario.ctx()
+        );
+
+        // 700_000 * 50 / 100 = 350_000
+        assert!(sail_received.value() == 350_000, 3);
+        assert!(minter.o_sail_minted_supply() == o_sail_supply_before - 700_000, 4);
+        assert!(minter.sail_total_supply() == sail_supply_before + 350_000, 5);
+
+        transfer::public_transfer(sail_received, user);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+/// Test that exercise_o_sail_free fails when minter is paused.
+#[test]
+#[expected_failure(abort_code = minter::EExerciseOSailMinterPaused)]
+fun test_exercise_o_sail_free_fail_minter_paused() {
+    let admin = @0xE09;
+    let user = @0xE0A;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Tx 1: Setup Distribution
+    {
+        config::test_init(scenario.ctx());
+        setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    };
+
+    // Tx 2: Activate Minter
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
+        transfer::public_transfer(o_sail_coin, user);
+    };
+
+    // Tx 3: Admin pauses the minter
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let admin_cap = scenario.take_from_sender<minter::AdminCap>();
+
+        minter::pause<SAIL>(&mut minter, &distribution_config, &admin_cap);
+
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(admin_cap);
+    };
+
+    // Tx 4: User tries to exercise oSAIL - should fail
+    scenario.next_tx(user);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let mut o_sail_coin = scenario.take_from_sender<Coin<OSAIL1>>();
+
+        let o_sail_to_exercise = o_sail_coin.split(100_000, scenario.ctx());
+
+        // This should abort with EExerciseOSailMinterPaused
+        let sail_received = minter::exercise_o_sail_free<SAIL, OSAIL1>(
+            &mut minter,
+            &distribution_config,
+            o_sail_to_exercise,
+            &clock,
+            scenario.ctx()
+        );
+
+        // Won't reach here
+        transfer::public_transfer(sail_received, user);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(o_sail_coin);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+/// Test that exercise_o_sail_free fails when emission is stopped.
+#[test]
+#[expected_failure(abort_code = minter::EEmissionStopped)]
+fun test_exercise_o_sail_free_fail_emission_stopped() {
+    let admin = @0xE0B;
+    let user = @0xE0C;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Tx 1: Setup Distribution
+    {
+        config::test_init(scenario.ctx());
+        setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    };
+
+    // Tx 2: Activate Minter
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
+        transfer::public_transfer(o_sail_coin, user);
+    };
+
+    // Tx 3: Admin stops emission
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let admin_cap = scenario.take_from_sender<minter::AdminCap>();
+
+        minter::stop_emission<SAIL>(&mut minter, &distribution_config, &admin_cap);
+
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(admin_cap);
+    };
+
+    // Tx 4: User tries to exercise oSAIL - should fail
+    scenario.next_tx(user);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let mut o_sail_coin = scenario.take_from_sender<Coin<OSAIL1>>();
+
+        let o_sail_to_exercise = o_sail_coin.split(100_000, scenario.ctx());
+
+        // This should abort with EEmissionStopped
+        let sail_received = minter::exercise_o_sail_free<SAIL, OSAIL1>(
+            &mut minter,
+            &distribution_config,
+            o_sail_to_exercise,
+            &clock,
+            scenario.ctx()
+        );
+
+        // Won't reach here
+        transfer::public_transfer(sail_received, user);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(o_sail_coin);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+/// Test that exercise_o_sail_free fails with invalid oSAIL type.
+#[test]
+#[expected_failure(abort_code = minter::EExerciseOSailInvalidOSail)]
+fun test_exercise_o_sail_free_fail_invalid_osail_type() {
+    let admin = @0xE0D;
+    let user = @0xE0E;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Tx 1: Setup Distribution
+    {
+        config::test_init(scenario.ctx());
+        setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    };
+
+    // Tx 2: Activate Minter with OSAIL1
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
+        o_sail_coin.burn_for_testing();
+    };
+
+    // Tx 3: User tries to exercise with OSAIL2 (not registered) - should fail
+    scenario.next_tx(user);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+
+        // Create OSAIL2 coin (which was never registered with the minter)
+        let invalid_o_sail = coin::mint_for_testing<OSAIL2>(100_000, scenario.ctx());
+
+        // This should abort with EExerciseOSailInvalidOSail
+        let sail_received = minter::exercise_o_sail_free<SAIL, OSAIL2>(
+            &mut minter,
+            &distribution_config,
+            invalid_o_sail,
+            &clock,
+            scenario.ctx()
+        );
+
+        // Won't reach here
+        transfer::public_transfer(sail_received, user);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+/// Test that exercise_o_sail_free fails when oSAIL has expired.
+#[test]
+#[expected_failure(abort_code = minter::EExerciseOSailExpired)]
+fun test_exercise_o_sail_free_fail_expired() {
+    let admin = @0xE0F;
+    let user = @0xE10;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Tx 1: Setup Distribution
+    {
+        config::test_init(scenario.ctx());
+        setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    };
+
+    // Tx 2: Activate Minter
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
+        transfer::public_transfer(o_sail_coin, user);
+    };
+
+    // Tx 3: Fast forward time past oSAIL expiry (4 epochs + buffer)
+    scenario.next_tx(user);
+    {
+        // oSAIL duration is 4 epochs + 1 epoch buffer = 5 epochs
+        // Each epoch is 1 week = 7 * 24 * 60 * 60 * 1000 ms
+        let expiry_time_ms = 6 * WEEK; // 6 weeks to be safely past expiry
+        clock.increment_for_testing(expiry_time_ms);
+    };
+
+    // Tx 4: User tries to exercise expired oSAIL - should fail
+    scenario.next_tx(user);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let mut o_sail_coin = scenario.take_from_sender<Coin<OSAIL1>>();
+
+        let o_sail_to_exercise = o_sail_coin.split(100_000, scenario.ctx());
+
+        // This should abort with EExerciseOSailExpired
+        let sail_received = minter::exercise_o_sail_free<SAIL, OSAIL1>(
+            &mut minter,
+            &distribution_config,
+            o_sail_to_exercise,
+            &clock,
+            scenario.ctx()
+        );
+
+        // Won't reach here
+        transfer::public_transfer(sail_received, user);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(o_sail_coin);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+/// Test that exercise_o_sail_free fails with invalid distribution config.
+#[test]
+#[expected_failure(abort_code = minter::EExerciseOSailInvalidDistrConfig)]
+fun test_exercise_o_sail_free_fail_invalid_distribution_config() {
+    let admin = @0xE11;
+    let user = @0xE12;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Tx 1: Setup Distribution
+    {
+        config::test_init(scenario.ctx());
+        setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    };
+
+    // Tx 2: Activate Minter
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
+        transfer::public_transfer(o_sail_coin, user);
+    };
+
+    // Tx 3: Create a new distribution config (invalid one)
+    scenario.next_tx(admin);
+    {
+        distribution_config::test_init(scenario.ctx());
+    };
+
+    // Tx 4: User tries to exercise with wrong distribution config - should fail
+    scenario.next_tx(user);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        // Take the wrong (newly created) distribution config
+        let wrong_distribution_config = scenario.take_shared<DistributionConfig>();
+        let mut o_sail_coin = scenario.take_from_sender<Coin<OSAIL1>>();
+
+        let o_sail_to_exercise = o_sail_coin.split(100_000, scenario.ctx());
+
+        // This should abort with EExerciseOSailInvalidDistrConfig
+        let sail_received = minter::exercise_o_sail_free<SAIL, OSAIL1>(
+            &mut minter,
+            &wrong_distribution_config,
+            o_sail_to_exercise,
+            &clock,
+            scenario.ctx()
+        );
+
+        // Won't reach here
+        transfer::public_transfer(sail_received, user);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(wrong_distribution_config);
+        scenario.return_to_sender(o_sail_coin);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+/// Test that oSAIL supply tracking is correct after exercise_o_sail_free.
+#[test]
+fun test_exercise_o_sail_free_supply_tracking() {
+    let admin = @0xE13;
+    let user = @0xE14;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Tx 1: Setup Distribution
+    {
+        config::test_init(scenario.ctx());
+        setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    };
+
+    // Tx 2: Activate Minter
+    let initial_o_sail_amount = 1_000_000;
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, initial_o_sail_amount, &mut clock);
+        transfer::public_transfer(o_sail_coin, user);
+    };
+
+    // Tx 3: Check initial supply and exercise
+    scenario.next_tx(user);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let mut o_sail_coin = scenario.take_from_sender<Coin<OSAIL1>>();
+
+        // Check initial supply states
+        let initial_sail_supply = minter.sail_total_supply();
+        let initial_o_sail_minted = minter.o_sail_minted_supply();
+        let initial_total = minter.total_supply();
+
+        assert!(initial_sail_supply == 0, 1); // No SAIL minted yet
+        assert!(initial_o_sail_minted == initial_o_sail_amount, 2); // oSAIL was minted
+        assert!(initial_total == initial_o_sail_amount, 3); // Total = oSAIL minted
+
+        let o_sail_to_exercise = o_sail_coin.split(400_000, scenario.ctx());
+
+        let sail_received = minter::exercise_o_sail_free<SAIL, OSAIL1>(
+            &mut minter,
+            &distribution_config,
+            o_sail_to_exercise,
+            &clock,
+            scenario.ctx()
+        );
+
+        // Check supply after exercise
+        let sail_supply_after = minter.sail_total_supply();
+        let o_sail_minted_after = minter.o_sail_minted_supply();
+        let total_after = minter.total_supply();
+
+        // SAIL supply increases by minted amount (400_000 * 50 / 100 = 200_000)
+        assert!(sail_supply_after == 200_000, 4);
+        // oSAIL minted supply decreases by burned amount
+        assert!(o_sail_minted_after == initial_o_sail_minted - 400_000, 5);
+        // Total supply = SAIL + oSAIL
+        assert!(total_after == 200_000 + (initial_o_sail_minted - 400_000), 6);
+
+        transfer::public_transfer(sail_received, user);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(o_sail_coin);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+/// Test exercise_o_sail_free just before expiry - should succeed.
+#[test]
+fun test_exercise_o_sail_free_just_before_expiry() {
+    let admin = @0xE15;
+    let user = @0xE16;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Tx 1: Setup Distribution
+    {
+        config::test_init(scenario.ctx());
+        setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    };
+
+    // Tx 2: Activate Minter
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
+        transfer::public_transfer(o_sail_coin, user);
+    };
+
+    // Tx 3: Fast forward time to just before expiry
+    scenario.next_tx(user);
+    {
+        // oSAIL duration is 4 epochs + 1 epoch buffer = 5 epochs
+        // Go to 4.9 weeks (just before 5 weeks)
+        let almost_expired_time_ms = 4 * WEEK + (WEEK * 9 / 10); // 4.9 weeks
+        clock.increment_for_testing(almost_expired_time_ms);
+    };
+
+    // Tx 4: User exercises oSAIL - should succeed
+    scenario.next_tx(user);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let mut o_sail_coin = scenario.take_from_sender<Coin<OSAIL1>>();
+
+        let o_sail_to_exercise = o_sail_coin.split(100_000, scenario.ctx());
+
+        let sail_received = minter::exercise_o_sail_free<SAIL, OSAIL1>(
+            &mut minter,
+            &distribution_config,
+            o_sail_to_exercise,
+            &clock,
+            scenario.ctx()
+        );
+
+        // 100_000 * 50 / 100 = 50_000
+        assert!(sail_received.value() == 50_000, 1);
+
+        transfer::public_transfer(sail_received, user);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(o_sail_coin);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+/// Test that exercise_o_sail_free works after emission is resumed.
+#[test]
+fun test_exercise_o_sail_free_after_emission_resumed() {
+    let admin = @0xE17;
+    let user = @0xE18;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Tx 1: Setup Distribution
+    {
+        config::test_init(scenario.ctx());
+        setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    };
+
+    // Tx 2: Activate Minter
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
+        transfer::public_transfer(o_sail_coin, user);
+    };
+
+    // Tx 3: Admin stops emission
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let admin_cap = scenario.take_from_sender<minter::AdminCap>();
+
+        minter::stop_emission<SAIL>(&mut minter, &distribution_config, &admin_cap);
+
+        // Verify emission is stopped
+        assert!(minter.is_emission_stopped(), 1);
+
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(admin_cap);
+    };
+
+    // Tx 4: Admin resumes emission
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let admin_cap = scenario.take_from_sender<minter::AdminCap>();
+
+        minter::resume_emission<SAIL>(&mut minter, &distribution_config, &admin_cap);
+
+        // Verify emission is resumed
+        assert!(!minter.is_emission_stopped(), 2);
+
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(admin_cap);
+    };
+
+    // Tx 5: User exercises oSAIL - should succeed now
+    scenario.next_tx(user);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let mut o_sail_coin = scenario.take_from_sender<Coin<OSAIL1>>();
+
+        let o_sail_to_exercise = o_sail_coin.split(100_000, scenario.ctx());
+
+        let sail_received = minter::exercise_o_sail_free<SAIL, OSAIL1>(
+            &mut minter,
+            &distribution_config,
+            o_sail_to_exercise,
+            &clock,
+            scenario.ctx()
+        );
+
+        // 100_000 * 50 / 100 = 50_000
+        assert!(sail_received.value() == 50_000, 3);
+
+        transfer::public_transfer(sail_received, user);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(o_sail_coin);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+/// Test that exercise_o_sail_free works after minter is unpaused.
+#[test]
+fun test_exercise_o_sail_free_after_unpause() {
+    let admin = @0xE19;
+    let user = @0xE1A;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Tx 1: Setup Distribution
+    {
+        config::test_init(scenario.ctx());
+        setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    };
+
+    // Tx 2: Activate Minter
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 1_000_000, &mut clock);
+        transfer::public_transfer(o_sail_coin, user);
+    };
+
+    // Tx 3: Admin pauses the minter
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let admin_cap = scenario.take_from_sender<minter::AdminCap>();
+
+        minter::pause<SAIL>(&mut minter, &distribution_config, &admin_cap);
+        assert!(minter.is_paused(), 1);
+
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(admin_cap);
+    };
+
+    // Tx 4: Admin unpauses the minter
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let admin_cap = scenario.take_from_sender<minter::AdminCap>();
+
+        minter::unpause<SAIL>(&mut minter, &distribution_config, &admin_cap);
+        assert!(!minter.is_paused(), 2);
+
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(admin_cap);
+    };
+
+    // Tx 5: User exercises oSAIL - should succeed
+    scenario.next_tx(user);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let mut o_sail_coin = scenario.take_from_sender<Coin<OSAIL1>>();
+
+        let o_sail_to_exercise = o_sail_coin.split(100_000, scenario.ctx());
+
+        let sail_received = minter::exercise_o_sail_free<SAIL, OSAIL1>(
+            &mut minter,
+            &distribution_config,
+            o_sail_to_exercise,
+            &clock,
+            scenario.ctx()
+        );
+
+        // 100_000 * 50 / 100 = 50_000
+        assert!(sail_received.value() == 50_000, 3);
+
+        transfer::public_transfer(sail_received, user);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(o_sail_coin);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+/// Test exercise_o_sail_free with different oSAIL epoch tokens.
+/// Exercises OSAIL1, then after period update, exercises OSAIL2.
+#[test]
+fun test_exercise_o_sail_free_different_epochs() {
+    let admin = @0xE1B;
+    let user = @0xE1C;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Tx 1: Setup Distribution
+    {
+        config::test_init(scenario.ctx());
+        setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    };
+
+    // Tx 2: Activate Minter with OSAIL1
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, 500_000, &mut clock);
+        transfer::public_transfer(o_sail_coin, user);
+    };
+
+    // Tx 3: User exercises OSAIL1
+    scenario.next_tx(user);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let mut o_sail_coin = scenario.take_from_sender<Coin<OSAIL1>>();
+
+        let o_sail_to_exercise = o_sail_coin.split(100_000, scenario.ctx());
+
+        let sail_received = minter::exercise_o_sail_free<SAIL, OSAIL1>(
+            &mut minter,
+            &distribution_config,
+            o_sail_to_exercise,
+            &clock,
+            scenario.ctx()
+        );
+
+        // 100_000 * 50 / 100 = 50_000
+        assert!(sail_received.value() == 50_000, 1);
+
+        transfer::public_transfer(sail_received, user);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(o_sail_coin);
+    };
+
+    // Tx 4: Advance time and update period with OSAIL2
+    clock.increment_for_testing(WEEK + 1000); // Move to next epoch
+    scenario.next_tx(admin);
+    {
+        let o_sail2_coin = setup::update_minter_period<SAIL, OSAIL2>(&mut scenario, 500_000, &clock);
+        transfer::public_transfer(o_sail2_coin, user);
+    };
+
+    // Tx 5: User exercises OSAIL2
+    scenario.next_tx(user);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let mut o_sail2_coin = scenario.take_from_sender<Coin<OSAIL2>>();
+
+        let o_sail_to_exercise = o_sail2_coin.split(200_000, scenario.ctx());
+
+        let sail_received = minter::exercise_o_sail_free<SAIL, OSAIL2>(
+            &mut minter,
+            &distribution_config,
+            o_sail_to_exercise,
+            &clock,
+            scenario.ctx()
+        );
+
+        // 200_000 * 50 / 100 = 100_000
+        assert!(sail_received.value() == 100_000, 2);
+
+        transfer::public_transfer(sail_received, user);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(o_sail2_coin);
+    };
+
+    // Tx 6: User can still exercise OSAIL1 (not expired yet)
+    // Remaining OSAIL1: 500_000 - 100_000 = 400_000
+    scenario.next_tx(user);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let o_sail1_coin = scenario.take_from_sender<Coin<OSAIL1>>();
+
+        let sail_received = minter::exercise_o_sail_free<SAIL, OSAIL1>(
+            &mut minter,
+            &distribution_config,
+            o_sail1_coin,
+            &clock,
+            scenario.ctx()
+        );
+
+        // 400_000 * 50 / 100 = 200_000
+        assert!(sail_received.value() == 200_000, 3);
+
+        transfer::public_transfer(sail_received, user);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+/// Test exercising exactly 1 oSAIL - edge case for minimum amount.
+/// With 50% discount, 1 oSAIL should yield 0 SAIL (integer division truncation).
+#[test]
+fun test_exercise_o_sail_free_exactly_one() {
+    let admin = @0xE30;
+    let user = @0xE31;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    // Tx 1: Setup Distribution
+    {
+        config::test_init(scenario.ctx());
+        setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    };
+
+    // Tx 2: Activate Minter for Epoch 1 (OSAIL1)
+    let initial_o_sail_amount = 1_000_000;
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin = setup::activate_minter<SAIL, OSAIL1>(&mut scenario, initial_o_sail_amount, &mut clock);
+        transfer::public_transfer(o_sail_coin, user);
+    };
+
+    // Tx 3: User exercises exactly 1 oSAIL
+    scenario.next_tx(user);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let mut o_sail_coin = scenario.take_from_sender<Coin<OSAIL1>>();
+
+        // Exercise exactly 1 oSAIL
+        let o_sail_to_exercise = o_sail_coin.split(1, scenario.ctx());
+
+        // Record supply before
+        let supply_before = minter.sail_total_supply();
+        let o_sail_supply_before = minter.o_sail_minted_supply();
+
+        let sail_received = minter::exercise_o_sail_free<SAIL, OSAIL1>(
+            &mut minter,
+            &distribution_config,
+            o_sail_to_exercise,
+            &clock,
+            scenario.ctx()
+        );
+
+        // Assertions - with 1 oSAIL at 50% discount, we get 0 SAIL due to integer division (1 * 50 / 100 = 0)
+        assert!(sail_received.value() == 0, 1);
+        assert!(minter.sail_total_supply() == supply_before, 2);
+        assert!(minter.o_sail_minted_supply() == o_sail_supply_before - 1, 3);
+
+        // Cleanup
+        transfer::public_transfer(sail_received, user);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(o_sail_coin);
+    };
+
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}

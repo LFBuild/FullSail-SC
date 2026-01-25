@@ -369,6 +369,12 @@ module governance::minter {
         fee_to_distribute: u64,
     }
 
+    public struct EventExerciseOSailFree has copy, drop, store {
+        o_sail_amount_in: u64,
+        sail_amount_out: u64,
+        o_sail_type: TypeName,
+    }
+
     public struct EventWhitelistUSD has copy, drop, store {
         usd_type: TypeName,
         whitelisted: bool,
@@ -2573,6 +2579,40 @@ module governance::minter {
             clock,
             ctx,
         )
+    }
+
+    public fun exercise_o_sail_free<SailCoinType, OSailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        distribution_config: &DistributionConfig,
+        o_sail: Coin<OSailCoinType>,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext,
+    ): Coin<SailCoinType> {
+        distribution_config.checked_package_version();
+        assert!(!minter.is_paused(), EExerciseOSailMinterPaused);
+        assert!(!minter.is_emission_stopped(), EEmissionStopped);
+        assert!(minter.is_valid_o_sail_type<SailCoinType, OSailCoinType>(), EExerciseOSailInvalidOSail);
+        let o_sail_type = type_name::get<OSailCoinType>();
+        let expiry_date: u64 = *minter.o_sail_expiry_dates.borrow(o_sail_type);
+        let current_time = voting_escrow::common::current_timestamp(clock);
+        assert!(current_time < expiry_date, EExerciseOSailExpired);
+        // check distribution config
+        assert!(minter.is_valid_distribution_config(distribution_config), EExerciseOSailInvalidDistrConfig);
+
+        // the amount of oSAIL to receive for free
+        let percent_to_receive = voting_escrow::common::o_sail_discount();
+
+        let o_sail_amount_in = o_sail.value();
+        let sail_out = exercise_o_sail_free_internal(minter, o_sail, percent_to_receive, clock, ctx);
+
+        let event = EventExerciseOSailFree {
+            o_sail_amount_in,
+            sail_amount_out: sail_out.value(),
+            o_sail_type,
+        };
+        sui::event::emit<EventExerciseOSailFree>(event);
+
+        sail_out
     }
 
     /// withdraws SAIL from storage and burns oSAIL
