@@ -18,8 +18,10 @@ module governance::distribution_config {
     const EInvalidPackageVersion: u64 = 458466182903521300;
     const ESetPackageVersionInvalidPublisher: u64 = 24442067766657028;
     const ESetPackageVersionInvalidVersion: u64 = 326963916733903800;
+    const ESetLiquidityUpdateCooldownInvalidCooldown: u64 = 923963282602342111;
 
     const LIQUIDITY_UPDATE_COOLDOWN_KEY: vector<u8> = b"liquidity_update_cooldown";
+    const MAX_LIQUIDITY_UPDATE_COOLDOWN: u64 = 12 * 60 * 60; // 12 hours
 
     public struct DISTRIBUTION_CONFIG has drop {}
 
@@ -200,6 +202,7 @@ module governance::distribution_config {
         distribution_config: &mut DistributionConfig,
         new_cooldown: u64,
     ) {
+        assert!(new_cooldown <= MAX_LIQUIDITY_UPDATE_COOLDOWN, ESetLiquidityUpdateCooldownInvalidCooldown);
         if (distribution_config.bag.contains(LIQUIDITY_UPDATE_COOLDOWN_KEY)) {
             distribution_config.bag.remove<vector<u8>, u64>(LIQUIDITY_UPDATE_COOLDOWN_KEY);
         };

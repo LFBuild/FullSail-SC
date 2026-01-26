@@ -99,7 +99,7 @@ module voting_escrow::whitelisted_tokens {
     public fun is_whitelisted_token<CoinToCheckType>(manager: &WhitelistManager): bool {
         let coin_type_name = std::type_name::get<CoinToCheckType>();
         
-        manager.is_whitelisted_token.contains(coin_type_name)
+        manager.is_whitelisted_token.contains(coin_type_name) && *manager.is_whitelisted_token.borrow(coin_type_name)
     }
 
     /// Proves that a specific token is whitelisted in the system.

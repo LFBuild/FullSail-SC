@@ -8,7 +8,7 @@ use clmm_pool::pool::{Self, Pool};
 use clmm_pool::factory::{Self, Pools};
 use clmm_pool::config::{Self, GlobalConfig};
 use clmm_pool::position::{Self, Position};
-use clmm_pool::price_provider::{Self, PriceProvider};
+use price_provider::price_provider::{Self, PriceProvider};
 use clmm_pool::stats::{Self, Stats};
 use governance::minter::{Self, Minter};
 use governance::voter::{Self, Voter};

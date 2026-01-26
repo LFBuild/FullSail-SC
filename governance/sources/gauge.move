@@ -181,6 +181,15 @@ module governance::gauge {
         amount: u64,
     }
 
+    public struct EventPoolRewardRedeposited has copy, drop, store {
+        gauge_id: ID,
+        pool_id: ID,
+        position_id: ID,
+        staked_position_id: ID,
+        reward_token: TypeName,
+        amount: u64,
+    }
+
     public struct Locked has copy, drop, store {}
 
     public struct Gauge<phantom CoinTypeA, phantom CoinTypeB> has store, key {
@@ -329,12 +338,12 @@ module governance::gauge {
         if (fee_a.value<CoinTypeA>() > 0 || fee_b.value<CoinTypeB>() > 0) {
             let amount_a = gauge.fee_a.join<CoinTypeA>(fee_a);
             let amount_b = gauge.fee_b.join<CoinTypeB>(fee_b);
-            let withdrawn_a = if (amount_a > epochCoinPerSecond) {
+            let withdrawn_a = if (epochCoinPerSecond > 0 && (amount_a / epochCoinPerSecond) > 0) { // amount per second is greater than 0
                 gauge.fee_a.withdraw_all<CoinTypeA>()
             } else {
                 balance::zero<CoinTypeA>()
             };
-            let withdraw_b = if (amount_b > epochCoinPerSecond) {
+            let withdraw_b = if (epochCoinPerSecond > 0 && (amount_b / epochCoinPerSecond) > 0) {
                 gauge.fee_b.withdraw_all<CoinTypeB>()
             } else {
                 balance::zero<CoinTypeB>()
@@ -871,9 +880,20 @@ module governance::gauge {
 
         let current_time = clock.timestamp_ms() / 1000;
         let reward_profile = gauge.rewards.borrow(staked_position.position_id);
-        if (reward_profile.last_update_time > (current_time - distribution_config.get_liquidity_update_cooldown())) {
+        let reward_amount = reward.value();
+        if (reward_profile.last_update_time > (current_time - distribution_config.get_liquidity_update_cooldown()) && reward_amount > 0) {
             // return the reward to the rewarder vault
             clmm_pool::rewarder::deposit_reward(global_config, rewarder_vault, reward);
+
+            let event = EventPoolRewardRedeposited {
+                gauge_id: object::id(gauge),
+                pool_id: object::id(pool),
+                position_id: staked_position.position_id,
+                staked_position_id: object::id(staked_position),
+                reward_token: type_name::get<RewardCoinType>(),
+                amount: reward_amount,
+            };
+            sui::event::emit<EventPoolRewardRedeposited>(event);
 
             return sui::balance::zero<RewardCoinType>()
         };
@@ -943,14 +963,15 @@ module governance::gauge {
         gauge.usd_reward_rate = 0;
         gauge.o_sail_reward_rate = 0;
 
-        let distribution_reserve_delta = gauge.last_distribution_reserve - fullsail_distribution_reserves;
+        // Since fullsail_distribution_reserves == 0 by assertion above, we do not subtract it from last_distribution_reserve.
+        let distribution_reserve_delta = gauge.last_distribution_reserve;
         let current_emission = if (gauge.o_sail_emission_by_epoch.contains(last_notified_period)) {
             gauge.o_sail_emission_by_epoch.remove(last_notified_period)
         } else {
             0
         };
-        // essentially = 0
-        gauge.last_distribution_reserve = fullsail_distribution_reserves;
+        // Here, last_distribution_reserve needs to be updated to fullsail_distribution_reserves (currently zero).
+        gauge.last_distribution_reserve = 0;
         let ended_epoch_o_sail_emission = current_emission + distribution_reserve_delta;
         gauge.o_sail_emission_by_epoch.add(last_notified_period, ended_epoch_o_sail_emission);
 
@@ -1012,6 +1033,8 @@ module governance::gauge {
         assert!(gauge.check_gauger_pool(pool), ENotifyRewardWithoutClaimInvalidPool);
 
         assert!(usd_amount > 0, ENotifyRewardWithoutClaimInvalidAmount);
+        let current_time = clock.timestamp_ms() / 1000;
+        assert!(current_time < gauge.period_finish, ENotifyRewardEpochFinished);
         gauge.notify_reward_amount_internal<CoinTypeA, CoinTypeB>(usd_amount, clock);
 
         gauge.sync_o_sail_distribution_price_internal(pool, o_sail_price_q64, false, clock);
@@ -1605,6 +1628,32 @@ module governance::gauge {
         }
     }
 
+    /// Decreases liquidity from a staked position while keeping it staked in the gauge.
+    /// This function allows partial withdrawal of liquidity from a position without fully withdrawing it.
+    /// The position remains staked and continues to earn rewards on the remaining liquidity.
+    /// For complete withdrawal of the position, use `withdraw_position` instead.
+    ///
+    /// # Arguments
+    /// * `gauge` - The gauge instance managing the staked position
+    /// * `distribution_config` - The distribution configuration
+    /// * `global_config` - The CLMM pool global configuration
+    /// * `vault` - The rewarder global vault
+    /// * `pool` - The associated CLMM pool
+    /// * `staked_position` - The staked position to decrease liquidity from
+    /// * `liquidity` - The amount of liquidity to remove (must be less than current position liquidity)
+    /// * `clock` - The system clock
+    /// * `ctx` - Transaction context
+    ///
+    /// # Returns
+    /// A tuple containing the balances of CoinTypeA and CoinTypeB removed from the position
+    ///
+    /// # Aborts
+    /// * If the distribution config does not match the gauge's distribution config
+    /// * If the pool does not match the gauge's associated pool
+    /// * If the position is not staked in the gauge
+    /// * If the position is locked
+    /// * If there are unclaimed rewards from previous epochs
+    /// * If the requested liquidity amount is greater than or equal to the position's current liquidity
     public fun decrease_liquidity<CoinTypeA, CoinTypeB>(
         gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
         distribution_config: &DistributionConfig,
