@@ -1541,20 +1541,9 @@ module governance::gauge {
         earned == 0
     }
 
-    /// Withdraws a staked position from the gauge and returns it to its owner.
-    /// Only claims rewards in last coin. Fails if there are unclaimed rewards from previous epochs.
-    ///
-    /// # Arguments
-    /// * `gauge` - The gauge instance
-    /// * `pool` - The associated pool
-    /// * `staked_position` - The staked position to withdraw
-    /// * `clock` - The system clock
-    /// * `ctx` - Transaction context
-    ///
-    /// # Aborts
-    /// * If the position is not deposited in the gauge
-    /// * If the position hasn't been properly received by the gauge
-    /// * If the sender is not the owner of the position
+
+    /// DEPRECATED: This function is deprecated
+    /// Use withdraw_position_v2 instead.
     public fun withdraw_position<CoinTypeA, CoinTypeB>(
         gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
         distribution_config: &DistributionConfig,
@@ -1563,21 +1552,7 @@ module governance::gauge {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ): clmm_pool::position::Position {
-        distribution_config.checked_package_version();
-        assert!(gauge.check_gauger_pool(pool), EUpdateRewardGaugeDoesNotMatchPool);
-        assert!(
-            gauge.staked_positions.contains(staked_position.position_id),
-            EWithdrawPositionNotDepositedPosition
-        );
-        assert!(!gauge.locked_positions.contains(staked_position.position_id), EWithdrawPositionPositionIsLocked);
-
-        let position = gauge.withdraw_position_internal_old<CoinTypeA, CoinTypeB>(
-            pool,
-            staked_position,
-            clock,
-        );
-
-        position
+        abort
     }
 
     public fun withdraw_position_v2<CoinTypeA, CoinTypeB>(
@@ -1698,43 +1673,6 @@ module governance::gauge {
             clock,
             ctx
         );
-
-        let withdraw_position_event = EventWithdrawPosition {
-            staked_position_id,
-            position_id: object::id<clmm_pool::position::Position>(&position),
-            gauger_id: object::id<Gauge<CoinTypeA, CoinTypeB>>(gauge),
-            pool_id:  object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool),
-        };
-        sui::event::emit<EventWithdrawPosition>(withdraw_position_event);
-
-        position
-    }
-
-    fun withdraw_position_internal_old<CoinTypeA, CoinTypeB>(
-        gauge: &mut Gauge<CoinTypeA, CoinTypeB>,
-        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        staked_position: StakedPosition,
-        clock: &sui::clock::Clock,
-    ): clmm_pool::position::Position {
-
-        assert!(gauge.check_gauger_pool(pool), EWithdrawPositionInvalidPool);
-        assert!(gauge.all_rewards_claimed<CoinTypeA, CoinTypeB>(pool, staked_position.position_id, clock), EWithdrawPositionNotAllRewardsClaimed);
-
-        let reward_profile = gauge.rewards.borrow_mut(staked_position.position_id);
-        if (reward_profile.amount > 0) {
-            gauge.add_unclaimed_o_sail(reward_profile.amount);
-        };
-
-        let staked_position_id = object::id<StakedPosition>(&staked_position);
-
-        let position = gauge.staked_positions.remove(staked_position.position_id);
-        pool.unstake_from_fullsail_distribution(
-            gauge.gauge_cap.borrow(),
-            &position,
-            clock
-        );
-
-        destroy_staked_positions(staked_position);
 
         let withdraw_position_event = EventWithdrawPosition {
             staked_position_id,
