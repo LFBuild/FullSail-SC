@@ -73,9 +73,11 @@ module integrate::staked_position_script_v2 {
             ctx
         );
 
-        let mut position = governance::gauge::withdraw_position<CoinTypeA, CoinTypeB>(
+        let mut position = governance::gauge::withdraw_position_v2<CoinTypeA, CoinTypeB>(
             gauge,
             distribution_config,
+            global_config,
+            vault,
             pool,
             staked_position,
             clock,
@@ -134,9 +136,11 @@ module integrate::staked_position_script_v2 {
             ctx
         );
 
-        let mut position = governance::gauge::withdraw_position<CoinTypeA, CoinTypeB>(
+        let mut position = governance::gauge::withdraw_position_v2<CoinTypeA, CoinTypeB>(
             gauge,
             distribution_config,
+            global_config,
+            vault,
             pool,
             staked_position,
             clock,
@@ -192,9 +196,11 @@ module integrate::staked_position_script_v2 {
             ctx
         );
 
-        let mut position = governance::gauge::withdraw_position<CoinTypeA, CoinTypeB>(
+        let mut position = governance::gauge::withdraw_position_v2<CoinTypeA, CoinTypeB>(
             gauge,
             distribution_config,
+            global_config,
+            vault,
             pool,
             staked_position,
             clock,
