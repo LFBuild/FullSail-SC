@@ -20,8 +20,11 @@ module governance::distribution_config {
     const ESetPackageVersionInvalidVersion: u64 = 326963916733903800;
     const ESetEarlyWithdrawalPenaltyPercentageInvalid: u64 = 939476240623038622;
     const ESetLiquidityUpdateCooldownInvalidCooldown: u64 = 923963282602342111;
+    const EGaugePaused: u64 = 894955395329867300;
 
     const LIQUIDITY_UPDATE_COOLDOWN_KEY: vector<u8> = b"liquidity_update_cooldown";
+    /// Key for paused gauges set stored in the bag (using u8 key as requested)
+    const PAUSED_GAUGES_KEY: u8 = 10;
     const MAX_LIQUIDITY_UPDATE_COOLDOWN: u64 = 12 * 60 * 60; // 12 hours
     const UNRESTRICTED_ADDRESSES_KEY: u8 = 1;
     const EARLY_WITHDRAWAL_PENALTY_PERCENTAGE_KEY: u8 = 2;
@@ -211,6 +214,61 @@ module governance::distribution_config {
             distribution_config.bag.remove<vector<u8>, u64>(LIQUIDITY_UPDATE_COOLDOWN_KEY);
         };
         distribution_config.bag.add(LIQUIDITY_UPDATE_COOLDOWN_KEY, new_cooldown);
+    }
+
+    /// Checks if a gauge is currently paused
+    /// 
+    /// # Arguments
+    /// * `distribution_config` - Reference to the distribution configuration
+    /// * `gauge_id` - The ID of the gauge to check
+    /// 
+    /// # Returns
+    /// True if the gauge is paused, false otherwise
+    public fun is_gauge_paused(distribution_config: &DistributionConfig, gauge_id: ID): bool {
+        if (!distribution_config.bag.contains(PAUSED_GAUGES_KEY)) {
+            return false
+        };
+        let paused_gauges = distribution_config.bag.borrow<u8, sui::vec_set::VecSet<ID>>(PAUSED_GAUGES_KEY);
+        paused_gauges.contains(&gauge_id)
+    }
+
+    /// Pauses a gauge. Paused gauges cannot have new positions deposited, 
+    /// rewards distributed, or positions withdrawn.
+    /// Only callable by the emergency council.
+    /// 
+    /// # Arguments
+    /// * `distribution_config` - Mutable reference to the distribution configuration
+    /// * `gauge_id` - The ID of the gauge to pause
+    public(package) fun pause_gauge(
+        distribution_config: &mut DistributionConfig,
+        gauge_id: ID,
+    ) {
+        if (!distribution_config.bag.contains(PAUSED_GAUGES_KEY)) {
+            distribution_config.bag.add(PAUSED_GAUGES_KEY, sui::vec_set::empty<ID>());
+        };
+        let paused_gauges = distribution_config.bag.borrow_mut<u8, sui::vec_set::VecSet<ID>>(PAUSED_GAUGES_KEY);
+        if (!paused_gauges.contains(&gauge_id)) {
+            paused_gauges.insert(gauge_id);
+        };
+    }
+
+    /// Unpauses a previously paused gauge.
+    /// Only callable by the emergency council.
+    /// 
+    /// # Arguments
+    /// * `distribution_config` - Mutable reference to the distribution configuration
+    /// * `gauge_id` - The ID of the gauge to unpause
+    public(package) fun unpause_gauge(
+        distribution_config: &mut DistributionConfig,
+        gauge_id: ID,
+    ) {
+        if (!distribution_config.bag.contains(PAUSED_GAUGES_KEY)) {
+            return
+        };
+        let paused_gauges = distribution_config.bag.borrow_mut<u8, sui::vec_set::VecSet<ID>>(PAUSED_GAUGES_KEY);
+        if (paused_gauges.contains(&gauge_id)) {
+            paused_gauges.remove(&gauge_id);
+        };
     }
 
     /// Checks if an address is in the unrestricted addresses list.
