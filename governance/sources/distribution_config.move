@@ -18,10 +18,14 @@ module governance::distribution_config {
     const EInvalidPackageVersion: u64 = 458466182903521300;
     const ESetPackageVersionInvalidPublisher: u64 = 24442067766657028;
     const ESetPackageVersionInvalidVersion: u64 = 326963916733903800;
+    const ESetEarlyWithdrawalPenaltyPercentageInvalid: u64 = 939476240623038622;
     const ESetLiquidityUpdateCooldownInvalidCooldown: u64 = 923963282602342111;
 
     const LIQUIDITY_UPDATE_COOLDOWN_KEY: vector<u8> = b"liquidity_update_cooldown";
     const MAX_LIQUIDITY_UPDATE_COOLDOWN: u64 = 12 * 60 * 60; // 12 hours
+    const UNRESTRICTED_ADDRESSES_KEY: u8 = 1;
+    const EARLY_WITHDRAWAL_PENALTY_PERCENTAGE_KEY: u8 = 2;
+    const EARLY_WITHDRAWAL_PENALTY_MULTIPLIER: u64 = 10000;
 
     public struct DISTRIBUTION_CONFIG has drop {}
 
@@ -207,6 +211,116 @@ module governance::distribution_config {
             distribution_config.bag.remove<vector<u8>, u64>(LIQUIDITY_UPDATE_COOLDOWN_KEY);
         };
         distribution_config.bag.add(LIQUIDITY_UPDATE_COOLDOWN_KEY, new_cooldown);
+    }
+
+    /// Checks if an address is in the unrestricted addresses list.
+    ///
+    /// # Arguments
+    /// * `distribution_config` - Reference to the distribution configuration
+    /// * `addr` - Address to check
+    ///
+    /// # Returns
+    /// true if the address is in the list, false otherwise
+    public fun contains_unrestricted_address(
+        distribution_config: &DistributionConfig,
+        addr: address
+    ): bool {
+        if (!distribution_config.bag.contains(UNRESTRICTED_ADDRESSES_KEY)) {
+            return false
+        };
+        distribution_config.bag.borrow<u8, vector<address>>(UNRESTRICTED_ADDRESSES_KEY).contains(&addr)
+    }
+
+    /// Adds an address to the unrestricted addresses list if it's not already present.
+    ///
+    /// # Arguments
+    /// * `distribution_config` - Mutable reference to the distribution configuration
+    /// * `addr` - Address to add
+    public fun add_unrestricted_address(
+        distribution_config: &mut DistributionConfig,
+        publisher: &sui::package::Publisher, 
+        addr: address
+    ) {
+        assert!(publisher.from_module<DISTRIBUTION_CONFIG>(), ESetPackageVersionInvalidPublisher);
+        let mut addresses = if (distribution_config.bag.contains(UNRESTRICTED_ADDRESSES_KEY)) {
+            distribution_config.bag.remove<u8, vector<address>>(UNRESTRICTED_ADDRESSES_KEY)
+        } else {
+            vector::empty<address>()
+        };
+        
+        if (!addresses.contains(&addr)) {
+            addresses.push_back(addr);
+        };
+        
+        distribution_config.bag.add(UNRESTRICTED_ADDRESSES_KEY, addresses);
+    }
+
+    /// Removes an address from the unrestricted addresses list if it exists.
+    ///
+    /// # Arguments
+    /// * `distribution_config` - Mutable reference to the distribution configuration
+    /// * `addr` - Address to remove
+    public fun remove_unrestricted_address(
+        distribution_config: &mut DistributionConfig,
+        publisher: &sui::package::Publisher, 
+        addr: address
+    ) {
+        assert!(publisher.from_module<DISTRIBUTION_CONFIG>(), ESetPackageVersionInvalidPublisher);
+        if (!distribution_config.bag.contains(UNRESTRICTED_ADDRESSES_KEY)) {
+            return
+        };
+        
+        let mut addresses = distribution_config.bag.remove<u8, vector<address>>(UNRESTRICTED_ADDRESSES_KEY);
+        let mut i = 0;
+        let length = addresses.length();
+        while (i < length) {
+            if (addresses.borrow(i) == addr) {
+                addresses.remove(i);
+                break
+            };
+            i = i + 1;
+        };
+        distribution_config.bag.add(UNRESTRICTED_ADDRESSES_KEY, addresses);
+    }
+
+    /// Returns the current early withdrawal penalty percentage value
+    /// This is the percentage penalty applied when withdrawing liquidity before the lock period expires.
+    /// The value is stored in bag for backward compatibility during package upgrades.
+    /// The percentage is stored as a value multiplied by EARLY_WITHDRAWAL_PENALTY_MULTIPLIER (e.g., 500 = 5.00%)
+    /// 
+    /// # Arguments
+    /// * `distribution_config` - Reference to the distribution configuration
+    /// 
+    /// # Returns
+    /// The current early withdrawal penalty percentage multiplied by multiplier (defaults to 0 if not set)
+    public fun get_early_withdrawal_penalty_percentage(distribution_config: &DistributionConfig): u64 {
+        if (distribution_config.bag.contains(EARLY_WITHDRAWAL_PENALTY_PERCENTAGE_KEY)) {
+            *distribution_config.bag.borrow(EARLY_WITHDRAWAL_PENALTY_PERCENTAGE_KEY)
+        } else {
+            0
+        }
+    }
+
+    public fun get_early_withdrawal_penalty_multiplier(): u64 {
+        EARLY_WITHDRAWAL_PENALTY_MULTIPLIER
+    }
+
+    /// Updates the early withdrawal penalty percentage value
+    /// This sets the percentage penalty applied when withdrawing liquidity before the lock period expires.
+    /// The percentage should be provided multiplied by EARLY_WITHDRAWAL_PENALTY_MULTIPLIER (e.g., 500 for 5.00%)
+    /// 
+    /// # Arguments
+    /// * `distribution_config` - Mutable reference to the distribution configuration
+    /// * `new_penalty_percentage` - New penalty percentage multiplied by multiplier (e.g., 500 for 5.00%)
+    public(package) fun set_early_withdrawal_penalty_percentage(
+        distribution_config: &mut DistributionConfig,
+        new_penalty_percentage: u64,
+    ) {
+        assert!(new_penalty_percentage <= EARLY_WITHDRAWAL_PENALTY_MULTIPLIER, ESetEarlyWithdrawalPenaltyPercentageInvalid);
+        if (distribution_config.bag.contains(EARLY_WITHDRAWAL_PENALTY_PERCENTAGE_KEY)) {
+            distribution_config.bag.remove<u8, u64>(EARLY_WITHDRAWAL_PENALTY_PERCENTAGE_KEY);
+        };
+        distribution_config.bag.add(EARLY_WITHDRAWAL_PENALTY_PERCENTAGE_KEY, new_penalty_percentage);
     }
 
     #[test_only]
