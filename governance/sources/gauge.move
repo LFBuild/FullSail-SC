@@ -230,17 +230,6 @@ module governance::gauge {
         fee_b: u64,
         timestamp: u64,
     }
-
-    public struct EventCollectEarlyWithdrawalPenalty has copy, drop, store {
-        gauge_id: ID,
-        position_id: ID,
-        early_withdrawal_penalty: u128,
-        penalty_amount_a: u64,
-        penalty_amount_b: u64,
-        fee_a: u64,
-        fee_b: u64,
-        timestamp: u64,
-    }
     public struct Locked has copy, drop, store {}
 
     public struct Gauge<phantom CoinTypeA, phantom CoinTypeB> has store, key {

@@ -23,21 +23,13 @@ manifest_digest = "BA49968BFF7C4A4D9F013B59535CF8B89D935A7C6D63C121606B1FE844829
 deps = { Sui = "Sui" }
 
 [pinned.mainnet.clmm_pool]
-<<<<<<< HEAD
 source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "clmm_pool", rev = "c7c6d685fcfa4ab34657d9baef994e68719f654e" }
-=======
-source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "clmm_pool", rev = "48ddee998cdf208d6c0f5f8c11f1a36e814bc396" }
->>>>>>> main_to_dev2
 use_environment = "mainnet"
 manifest_digest = "F1066BE7B4DA34945E01D4DB64EABAB0426F6F53536F290F3EF521EBDF445DDE"
 deps = { Sui = "Sui", gauge_cap = "gauge_cap", integer_mate = "integer_mate", move_stl = "move_stl", price_provider = "price_provider" }
 
 [pinned.mainnet.gauge_cap]
-<<<<<<< HEAD
 source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "gauge_cap", rev = "c7c6d685fcfa4ab34657d9baef994e68719f654e" }
-=======
-source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "gauge_cap", rev = "48ddee998cdf208d6c0f5f8c11f1a36e814bc396" }
->>>>>>> main_to_dev2
 use_environment = "mainnet"
 manifest_digest = "D6E02FF878B6E388BCC877260575EA7E9B50C7F248C6E0661C4359AA60F75475"
 deps = { Sui = "Sui" }
