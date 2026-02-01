@@ -68,13 +68,16 @@ module governance::voter {
     const EVoteInternalVotingEscrowCapNotSet: u64 = 120698940230993040;
     const EVoteInternalGaugeDoesNotExist: u64 = 922337479851920589;
     const EVoteInternalGaugeNotAlive: u64 = 922337480710992693;
+    const EVoteInternalGaugePaused: u64 = 718487707238781200;
     const EVoteInternalPoolAreadyVoted: u64 = 922337483288104144;
     const EVoteInternalWeightResultedInZeroVotes: u64 = 922337484147110711;
 
     const EDistributeGaugeInvalidToken: u64 = 727114932399146200;
     const EDistributeGaugeInvalidPool: u64 = 922337598392972083;
     const EDistributeGaugeGaugeIsKilled: u64 = 519025590138764600;
+    const EDistributeGaugeGaugePaused: u64 = 759099828165679600;
     const EAdjustGaugeGaugeIsKilled: u64 = 855951837524523600;
+    const EAdjustGaugeGaugePaused: u64 = 856259665702033800;
 
     const EWhitelistNftGovernorInvalid: u64 = 922337395670666447;
 
@@ -893,6 +896,7 @@ module governance::voter {
         // is called by minter so version control is handled by minter
         assert!(voter.is_valid_epoch_token<NextEpochOSail>(), EDistributeGaugeInvalidToken);
         assert!(distribution_config.is_gauge_alive(object::id(gauge)), EDistributeGaugeGaugeIsKilled);
+        assert!(!distribution_config.is_gauge_paused(object::id(gauge)), EDistributeGaugeGaugePaused);
         assert!(gauge.check_gauger_pool(pool), EDistributeGaugeInvalidPool);
 
         let gauge_id = into_gauge_id(object::id(gauge));
@@ -964,6 +968,7 @@ module governance::voter {
     ) {
         // is called by minter so version control is handled by minter
         assert!(distribution_config.is_gauge_alive(object::id(gauge)), EAdjustGaugeGaugeIsKilled);
+        assert!(!distribution_config.is_gauge_paused(object::id(gauge)), EAdjustGaugeGaugePaused);
 
         gauge.notify_reward_without_claim(
             distribution_config,
@@ -1772,6 +1777,10 @@ module governance::voter {
             assert!(
                 distribution_config.is_gauge_alive(gauge_id.id),
                 EVoteInternalGaugeNotAlive
+            );
+            assert!(
+                !distribution_config.is_gauge_paused(gauge_id.id),
+                EVoteInternalGaugePaused
             );
             let votes_for_pool = if (weights[i] == 0) {
                 0

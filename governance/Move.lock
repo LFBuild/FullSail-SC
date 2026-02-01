@@ -5,13 +5,13 @@
 version = 4
 
 [pinned.mainnet.MoveStdlib]
-source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "1073a8fbf6cfa0d4a4d2bf34b2494a212116089c" }
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "c7566e601c9a64154850c1cb074a90d7fc11bba4" }
 use_environment = "mainnet"
 manifest_digest = "C4FE4C91DE74CBF223B2E380AE40F592177D21870DC2D7EB6227D2D694E05363"
 deps = {}
 
 [pinned.mainnet.Sui]
-source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "1073a8fbf6cfa0d4a4d2bf34b2494a212116089c" }
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "c7566e601c9a64154850c1cb074a90d7fc11bba4" }
 use_environment = "mainnet"
 manifest_digest = "CD547CB1ACCE0880C835DAED2D8FFCB91D56C833AE5240D3AA5B918398263195"
 deps = { MoveStdlib = "MoveStdlib" }
@@ -23,13 +23,21 @@ manifest_digest = "BA49968BFF7C4A4D9F013B59535CF8B89D935A7C6D63C121606B1FE844829
 deps = { Sui = "Sui" }
 
 [pinned.mainnet.clmm_pool]
+<<<<<<< HEAD
 source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "clmm_pool", rev = "c7c6d685fcfa4ab34657d9baef994e68719f654e" }
+=======
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "clmm_pool", rev = "48ddee998cdf208d6c0f5f8c11f1a36e814bc396" }
+>>>>>>> main_to_dev2
 use_environment = "mainnet"
 manifest_digest = "F1066BE7B4DA34945E01D4DB64EABAB0426F6F53536F290F3EF521EBDF445DDE"
 deps = { Sui = "Sui", gauge_cap = "gauge_cap", integer_mate = "integer_mate", move_stl = "move_stl", price_provider = "price_provider" }
 
 [pinned.mainnet.gauge_cap]
+<<<<<<< HEAD
 source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "gauge_cap", rev = "c7c6d685fcfa4ab34657d9baef994e68719f654e" }
+=======
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "gauge_cap", rev = "48ddee998cdf208d6c0f5f8c11f1a36e814bc396" }
+>>>>>>> main_to_dev2
 use_environment = "mainnet"
 manifest_digest = "D6E02FF878B6E388BCC877260575EA7E9B50C7F248C6E0661C4359AA60F75475"
 deps = { Sui = "Sui" }
@@ -41,7 +49,11 @@ manifest_digest = "7E36F428FB1D54423612A388ED514D69EC5DC24ED0F464EE9FF9888F9B809
 deps = { Sui = "Sui", Switchboard = "Switchboard", clmm_pool = "clmm_pool", gauge_cap = "gauge_cap", integer_mate = "integer_mate", locker_cap = "locker_cap", price_monitor = "price_monitor", price_provider = "price_provider", voting_escrow = "voting_escrow" }
 
 [pinned.mainnet.integer_mate]
+<<<<<<< HEAD
 source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "integer_mate", rev = "c7c6d685fcfa4ab34657d9baef994e68719f654e" }
+=======
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "integer_mate", rev = "48ddee998cdf208d6c0f5f8c11f1a36e814bc396" }
+>>>>>>> main_to_dev2
 use_environment = "mainnet"
 manifest_digest = "D6E02FF878B6E388BCC877260575EA7E9B50C7F248C6E0661C4359AA60F75475"
 deps = { Sui = "Sui" }
@@ -53,7 +65,11 @@ manifest_digest = "D6E02FF878B6E388BCC877260575EA7E9B50C7F248C6E0661C4359AA60F75
 deps = { Sui = "Sui" }
 
 [pinned.mainnet.move_stl]
+<<<<<<< HEAD
 source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "move_stl", rev = "c7c6d685fcfa4ab34657d9baef994e68719f654e" }
+=======
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "move_stl", rev = "48ddee998cdf208d6c0f5f8c11f1a36e814bc396" }
+>>>>>>> main_to_dev2
 use_environment = "mainnet"
 manifest_digest = "D6E02FF878B6E388BCC877260575EA7E9B50C7F248C6E0661C4359AA60F75475"
 deps = { Sui = "Sui" }
@@ -65,7 +81,11 @@ manifest_digest = "7DA625F191424A698CD6E9E0F24248E3DD367D26D16DAA0CFC8ADF1520DF3
 deps = { Sui = "Sui", Switchboard = "Switchboard", clmm_pool = "clmm_pool", integer_mate = "integer_mate" }
 
 [pinned.mainnet.price_provider]
+<<<<<<< HEAD
 source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "price_provider", rev = "c7c6d685fcfa4ab34657d9baef994e68719f654e" }
+=======
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "price_provider", rev = "48ddee998cdf208d6c0f5f8c11f1a36e814bc396" }
+>>>>>>> main_to_dev2
 use_environment = "mainnet"
 manifest_digest = "D6E02FF878B6E388BCC877260575EA7E9B50C7F248C6E0661C4359AA60F75475"
 deps = { Sui = "Sui" }
@@ -77,13 +97,13 @@ manifest_digest = "E873971DBD03BB36A4A6282885BD1D255C5F806492183A3C7007C72397CAF
 deps = { Sui = "Sui", integer_mate = "integer_mate" }
 
 [pinned.testnet.MoveStdlib]
-source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "1073a8fbf6cfa0d4a4d2bf34b2494a212116089c" }
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "c7566e601c9a64154850c1cb074a90d7fc11bba4" }
 use_environment = "testnet"
 manifest_digest = "C4FE4C91DE74CBF223B2E380AE40F592177D21870DC2D7EB6227D2D694E05363"
 deps = {}
 
 [pinned.testnet.Sui]
-source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "1073a8fbf6cfa0d4a4d2bf34b2494a212116089c" }
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "c7566e601c9a64154850c1cb074a90d7fc11bba4" }
 use_environment = "testnet"
 manifest_digest = "7AFB66695545775FBFBB2D3078ADFD084244D5002392E837FDE21D9EA1C6D01C"
 deps = { MoveStdlib = "MoveStdlib" }

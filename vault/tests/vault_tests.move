@@ -9,7 +9,7 @@ module vault::vault_tests;
     use clmm_pool::config::{Self as config, GlobalConfig};
     use clmm_pool::stats;
     use clmm_pool::rewarder;
-    use price_provider::price_provider;
+    use price_provider::price_provider::{Self, PriceProvider};
     use governance::distribution_config;
     use governance::voter;
     use voting_escrow::voting_escrow;
@@ -787,6 +787,8 @@ module vault::vault_tests;
 
             let volume = port_entry.get_volume();
 
+            let (amount_a, amount_b) = port.get_position_amounts<TestCoinB, TestCoinA>(&pool);
+
             // withdraw half of the liquidity
             let (withdrawn_coin_type_b, withdrawn_coin_type_a) = port.withdraw<TestCoinB, TestCoinA>(
                 &vault_global_config,
@@ -797,6 +799,8 @@ module vault::vault_tests;
                 &mut pool,
                 &mut port_entry,
                 volume/2,
+                amount_a*40/140/2-5,
+                amount_b*40/140/2-5,
                 &clock,
                 scenario.ctx()
             );
@@ -1062,6 +1066,8 @@ module vault::vault_tests;
 
             let volume = port_entry.get_volume();
 
+            let (amount_a, amount_b) = port.get_position_amounts<TestCoinB, TestCoinA>(&pool);
+
             // withdraw all of the liquidity
             let (withdrawn_coin_type_b, withdrawn_coin_type_a) = port.withdraw<TestCoinB, TestCoinA>(
                 &vault_global_config,
@@ -1072,6 +1078,8 @@ module vault::vault_tests;
                 &mut pool,
                 &mut port_entry,
                 volume,
+                amount_a*40/140/2*20/120-5,
+                amount_b*40/140/2*20/120-5,
                 &clock,
                 scenario.ctx()
             );
@@ -1563,6 +1571,8 @@ module vault::vault_tests;
                 &mut pool,
                 &mut port_entry,
                 volume/2,
+                2214414,
+                1709866,
                 &clock,
                 scenario.ctx()
             );
@@ -1644,6 +1654,8 @@ module vault::vault_tests;
                 &mut pool,
                 &mut port_entry,
                 volume,
+                2214414,
+                1709866,
                 &clock,
                 scenario.ctx()
             );
@@ -2285,6 +2297,9 @@ module vault::vault_tests;
 
             let volume = port_entry.get_volume();
 
+            let (amount_a, amount_b) = port.get_position_amounts<TestCoinB, TestCoinA>(&pool);
+            let total_volume = port.total_volume();
+
             // withdraw half of the liquidity
             let (withdrawn_coin_type_b, withdrawn_coin_type_a) = port.withdraw<TestCoinB, TestCoinA>(
                 &vault_global_config,
@@ -2295,6 +2310,8 @@ module vault::vault_tests;
                 &mut pool,
                 &mut port_entry,
                 volume/2,
+                amount_a*volume/2/total_volume-5,
+                amount_b*volume/2/total_volume-5,
                 &clock,
                 scenario.ctx()
             );
@@ -2573,6 +2590,8 @@ module vault::vault_tests;
                 &mut pool,
                 &mut port_entry2,
                 volume,
+                999_999_999,
+                999_999_999,
                 &clock,
                 scenario.ctx()
             );
@@ -2768,6 +2787,9 @@ module vault::vault_tests;
             let volume = port_entry2.get_volume();
             assert!(volume == 24, 3463453);
 
+            let (amount_a, amount_b) = port.get_position_amounts<TestCoinB, TestCoinA>(&pool);
+            let total_volume = port.total_volume();
+
             // withdraw half of the liquidity
             let (withdrawn_coin_type_b, withdrawn_coin_type_a) = port.withdraw<TestCoinB, TestCoinA>(
                 &vault_global_config,
@@ -2778,6 +2800,8 @@ module vault::vault_tests;
                 &mut pool,
                 &mut port_entry2,
                 volume,
+                amount_a*volume/total_volume-5,
+                amount_b*volume/total_volume-5,
                 &clock,
                 scenario.ctx()
             );
@@ -4391,6 +4415,8 @@ module vault::vault_tests;
                 &mut pool,
                 &mut port_entry,
                 volume,
+                999_999_999,
+                999_999_999,
                 &clock,
                 scenario.ctx()
             );
@@ -4629,6 +4655,8 @@ module vault::vault_tests;
                 &mut pool,
                 &mut port_entry,
                 volume,
+                999_999_999,
+                999_999_999,
                 &clock,
                 scenario.ctx()
             );
@@ -4877,6 +4905,8 @@ module vault::vault_tests;
                 &mut pool,
                 &mut port_entry,
                 volume,
+                999_999_999,
+                999_999_999,
                 &clock,
                 scenario.ctx()
             );
@@ -5139,6 +5169,8 @@ module vault::vault_tests;
                 &mut pool,
                 &mut port_entry,
                 volume,
+                999_999_999,
+                999_999_999,
                 &clock,
                 scenario.ctx()
             );
@@ -5912,7 +5944,7 @@ module vault::vault_tests;
         let global_config = scenario.take_shared<config::GlobalConfig>();
         let mut vault = scenario.take_shared<rewarder::RewarderGlobalVault>();
         let mut pool = scenario.take_from_sender<pool::Pool<CoinTypeA, CoinTypeB>>();
-        let price_provider = scenario.take_shared<clmm_pool::price_provider::PriceProvider>();
+        let price_provider = scenario.take_shared<PriceProvider>();
         let mut stats = scenario.take_shared<clmm_pool::stats::Stats>();
 
         let (coin_a_out, coin_b_out, receipt) = clmm_pool::pool::flash_swap<CoinTypeA, CoinTypeB>(
