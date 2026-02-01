@@ -405,8 +405,8 @@ module price_monitor::price_monitor {
         checked_package_version(monitor);
         check_admin(monitor, ctx.sender());
         let table = get_or_create_pool_price_decimal_multipliers_table(monitor, ctx);
-        if (!table.contains(pool_id)) {
-            abort
+        if (table.contains(pool_id)) {
+            table.remove(pool_id);
         };
         let decimal_multiplier = calculate_decimal_multiplier(token_a_decimals, token_b_decimals);
         table.add(pool_id, decimal_multiplier);
