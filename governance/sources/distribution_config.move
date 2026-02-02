@@ -23,7 +23,6 @@ module governance::distribution_config {
     const EGaugePaused: u64 = 894955395329867300;
 
     const LIQUIDITY_UPDATE_COOLDOWN_KEY: vector<u8> = b"liquidity_update_cooldown";
-    /// Key for paused gauges set stored in the bag (using u8 key as requested)
     const PAUSED_GAUGES_KEY: u8 = 10;
     const MAX_LIQUIDITY_UPDATE_COOLDOWN: u64 = 12 * 60 * 60; // 12 hours
     const UNRESTRICTED_ADDRESSES_KEY: u8 = 1;

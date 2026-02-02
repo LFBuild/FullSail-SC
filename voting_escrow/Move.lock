@@ -27,3 +27,27 @@ source = { root = true }
 use_environment = "mainnet"
 manifest_digest = "6306843ED13AAB289B48852DC9EA0F65B51DCCADC8EA53F211E300F5291D0938"
 deps = { Sui = "Sui", integer_mate = "integer_mate" }
+
+[pinned.testnet.MoveStdlib]
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "c7566e601c9a64154850c1cb074a90d7fc11bba4" }
+use_environment = "testnet"
+manifest_digest = "C4FE4C91DE74CBF223B2E380AE40F592177D21870DC2D7EB6227D2D694E05363"
+deps = {}
+
+[pinned.testnet.Sui]
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "c7566e601c9a64154850c1cb074a90d7fc11bba4" }
+use_environment = "testnet"
+manifest_digest = "7AFB66695545775FBFBB2D3078ADFD084244D5002392E837FDE21D9EA1C6D01C"
+deps = { MoveStdlib = "MoveStdlib" }
+
+[pinned.testnet.integer_mate]
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "integer_mate", rev = "48ddee998cdf208d6c0f5f8c11f1a36e814bc396" }
+use_environment = "testnet"
+manifest_digest = "04F2C2F24F6DB9EB7D6997D46697671E5F788525F59E0879718AB4D32008FD57"
+deps = { Sui = "Sui" }
+
+[pinned.testnet.voting_escrow]
+source = { root = true }
+use_environment = "testnet"
+manifest_digest = "26B2709BF169497F878B707EF4E15F2704E113213A4FF821F61B350885229220"
+deps = { Sui = "Sui", integer_mate = "integer_mate" }
