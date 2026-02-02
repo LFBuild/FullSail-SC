@@ -8,7 +8,7 @@ module governance::distribution_config {
     const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
 
     /// Incremental version of the package.
-    const VERSION: u64 = 5;
+    const VERSION: u64 = 6;
 
     use sui::vec_set::{Self, VecSet};
     use switchboard::aggregator::{Aggregator};
@@ -20,13 +20,13 @@ module governance::distribution_config {
     const ESetPackageVersionInvalidVersion: u64 = 326963916733903800;
     const ESetEarlyWithdrawalPenaltyPercentageInvalid: u64 = 939476240623038622;
     const ESetLiquidityUpdateCooldownInvalidCooldown: u64 = 923963282602342111;
-    const EGaugePaused: u64 = 894955395329867300;
 
     const LIQUIDITY_UPDATE_COOLDOWN_KEY: vector<u8> = b"liquidity_update_cooldown";
-    const PAUSED_GAUGES_KEY: u8 = 10;
     const MAX_LIQUIDITY_UPDATE_COOLDOWN: u64 = 12 * 60 * 60; // 12 hours
     const UNRESTRICTED_ADDRESSES_KEY: u8 = 1;
     const EARLY_WITHDRAWAL_PENALTY_PERCENTAGE_KEY: u8 = 2;
+    const PAUSED_GAUGES_KEY: u8 = 3;
+
     const EARLY_WITHDRAWAL_PENALTY_MULTIPLIER: u64 = 10000;
 
     public struct DISTRIBUTION_CONFIG has drop {}
