@@ -140,6 +140,7 @@ Vaults (beta):
 - [governance upgrade 10](https://suiscan.xyz/mainnet/tx/2BZtQMNsyFxPmSQtZBnZyK6sCxKfRDdfutosMCMo2mGV)
 - [integrate](https://suivision.xyz/txblock/EFraMXqGw3wEoAXrFtLLc5UdPwk8L6Wz5TgoniTBY3KF)
 - [integrate upgrade](https://suivision.xyz/txblock/BRo3N7KHqvoZZDqASBiCTqRci25xjdhjLdpseEWhuwjM)
+- [Vault](https://suivision.xyz/txblock/CWoQ8wKckn8AWGh8NfEyb8oVKkrqvYQro2j6B7tDTT6F)
 
 - [setup distribtuion tx](https://suiscan.xyz/mainnet/tx/21y91npsRHWgg5TPnFkFVSWgCFTLhTcvRfGL4bA4ut1p)
 - [activate minter tx](https://suiscan.xyz/mainnet/tx/A3bugfXoFzC5YfDEfDd1QBqqTu3dB1XJuT2mRLknKZr2)
