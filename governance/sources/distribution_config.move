@@ -27,6 +27,8 @@ module governance::distribution_config {
     const EARLY_WITHDRAWAL_PENALTY_PERCENTAGE_KEY: u8 = 2;
     const PAUSED_GAUGES_KEY: u8 = 3;
 
+    const EARLY_WITHDRAWAL_PENALTY_MULTIPLIER: u64 = 10000;
+
     public struct DISTRIBUTION_CONFIG has drop {}
 
     /// The main configuration object that tracks active gauges in the distribution system
