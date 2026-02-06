@@ -2886,6 +2886,119 @@ module vault::port {
         sui::event::emit<UpdatePoolRewardEvent>(event);
     }
 
+    public fun update_pool_reward_v2<CoinTypeA, CoinTypeB, RewardCoinType>(
+        port: &mut Port, 
+        global_config: &vault::vault_config::GlobalConfig,
+        distribution_config: &governance::distribution_config::DistributionConfig,
+        gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        clmm_global_config: &clmm_pool::config::GlobalConfig,
+        rewarder_vault: &mut clmm_pool::rewarder::RewarderGlobalVault, 
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>, 
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        global_config.checked_package_version();  
+        assert!(!port.is_pause, vault::error::port_is_pause());
+        assert!(
+            sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool) == port.vault.pool_id(), 
+            vault::error::clmm_pool_not_match()
+        );
+        let reward_type = with_defining_ids<RewardCoinType>();
+
+        let pool_rewarders = pool.rewarder_manager().rewarders();
+        let mut existing_reward_type = false;
+        let mut i = 0;
+        while (i < pool_rewarders.length()) {
+            let rewarder = pool_rewarders[i];
+            if (rewarder.reward_coin() == reward_type) {
+                existing_reward_type = true;
+                break
+            };
+
+            i = i + 1;
+        };
+        assert!(existing_reward_type, vault::error::reward_types_not_match());
+
+        let (new_amount, new_growth) = if (!port.is_stopped()) {
+            let mut reward_balance = port.vault.collect_pool_reward_v2<CoinTypeA, CoinTypeB, RewardCoinType>(
+                distribution_config,
+                gauge,
+                clmm_global_config, 
+                rewarder_vault,
+                pool, 
+                clock,
+                ctx
+            );
+            if (reward_balance.value() > 0) {
+                merge_protocol_asset<RewardCoinType>(port, &mut reward_balance); 
+                
+                let amount = reward_balance.value();
+                
+                // If reward type matches pool token A or B, store in separate balance bag
+                if (reward_type == with_defining_ids<CoinTypeA>() || reward_type == with_defining_ids<CoinTypeB>()) {
+                    port.pool_token_reward_balance.join<RewardCoinType>(reward_balance);
+                } else {
+                    port.buffer_assets.join<RewardCoinType>(reward_balance);
+                };
+
+                let total_volume = port.total_volume;
+                
+                let current_growth = if (port.reward_growth.contains(&reward_type)) {
+                    let (_, _current_growth) =  port.reward_growth.remove(&reward_type);
+                    _current_growth
+                } else {
+                    0
+                };
+                let (new_growth_calc, overflow) = integer_mate::math_u128::overflowing_add(
+                    current_growth,
+                    integer_mate::full_math_u128::mul_div_floor(
+                        (amount as u128), 
+                        1 << 64, 
+                        (total_volume as u128)
+                    )
+                );
+                assert!(!overflow, vault::error::growth_overflow());
+
+                (amount, new_growth_calc)
+            } else {
+                reward_balance.destroy_zero();
+                let current_growth = if (port.reward_growth.contains(&reward_type)) {
+                    let (_, _current_growth) =  port.reward_growth.remove(&reward_type);
+                    _current_growth
+                } else {
+                    0
+                };
+
+                (0, current_growth)
+            }
+        } else {
+            let current_growth = if (port.reward_growth.contains(&reward_type)) {
+                    let (_, _current_growth) =  port.reward_growth.remove(&reward_type);
+                    _current_growth
+                } else {
+                    0
+                };
+
+                (0, current_growth)
+        };
+
+        port.reward_growth.insert(reward_type, new_growth);
+    
+        if (port.last_update_growth_time_ms.contains(&reward_type)) {
+            port.last_update_growth_time_ms.remove(&reward_type);
+        };
+        port.last_update_growth_time_ms.insert(reward_type, clock.timestamp_ms());
+    
+        let event = UpdatePoolRewardEvent{
+            port_id     : sui::object::id<Port>(port),
+            reward_type : with_defining_ids<RewardCoinType>(), 
+            amount      : new_amount, 
+            new_growth  : new_growth,
+            update_time : sui::clock::timestamp_ms(clock),
+        };
+        sui::event::emit<UpdatePoolRewardEvent>(event);
+    }
+
     /// Computes the claimable pool reward amount for a port entry.
     ///
     /// Confirms rewards were refreshed, verifies growth ordering, calculates the
@@ -2939,6 +3052,72 @@ module vault::port {
                 rewarder_vault,
                 pool,
                 clock
+            );
+        };
+
+        if (port_entry.volume == 0) {
+            let current_growth = if (port.reward_growth.contains(&reward_coin_type)) {
+                *port.reward_growth.get(&reward_coin_type)
+            } else {
+                0
+            };
+
+            return (0, current_growth)
+        };
+        
+        let start_growth = if (port_entry.entry_reward_growth.contains(&reward_coin_type)) {
+            *port_entry.entry_reward_growth.get(&reward_coin_type)
+        } else {
+            0
+        };
+        
+        let current_growth = if (port.reward_growth.contains(&reward_coin_type)) {
+            *port.reward_growth.get(&reward_coin_type)
+        } else {
+            0
+        };
+        if (current_growth <= start_growth) {
+            return (0, current_growth)
+        };
+
+        let accumulated_growth_reward = current_growth - start_growth;
+        let reward_amount =integer_mate::full_math_u128::mul_div_floor(
+            (port_entry.volume as u128),
+            accumulated_growth_reward,
+            1 << 64
+        ) as u64;
+
+        (reward_amount, current_growth)
+    }
+
+    public fun get_pool_reward_amount_to_claim_v2<CoinTypeA, CoinTypeB, RewardCoinType>(
+        global_config: &vault::vault_config::GlobalConfig,
+        port: &mut Port,
+        port_entry: &mut PortEntry,
+        distribution_config: &governance::distribution_config::DistributionConfig,
+        gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        clmm_global_config: &clmm_pool::config::GlobalConfig,
+        rewarder_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) : (u64, u128) {
+        global_config.checked_package_version();
+        assert!(!port.is_pause, vault::error::port_is_pause());
+        assert!(port_entry.port_id == sui::object::id<Port>(port), vault::error::port_entry_port_id_not_match());
+        let reward_coin_type = with_defining_ids<RewardCoinType>();
+
+        if (!port.last_update_growth_time_ms.contains(&reward_coin_type) || *port.last_update_growth_time_ms.get(&reward_coin_type) != clock.timestamp_ms()) {
+            update_pool_reward_v2<CoinTypeA, CoinTypeB, RewardCoinType>(
+                port,
+                global_config,
+                distribution_config,
+                gauge,
+                clmm_global_config,
+                rewarder_vault,
+                pool,
+                clock,
+                ctx
             );
         };
 
