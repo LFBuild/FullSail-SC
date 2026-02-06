@@ -380,14 +380,15 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            port.update_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
+            port.update_pool_reward_v2<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
                 &clmm_global_config,
                 &mut clmm_vault,
                 &mut pool,
-                &clock
+                &clock,
+                scenario.ctx()
             );
 
             port.rebalance<TestCoinB, TestCoinA>(
@@ -472,14 +473,15 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            port.update_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
+            port.update_pool_reward_v2<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
                 &clmm_global_config,
                 &mut clmm_vault,
                 &mut pool,
-                &clock
+                &clock,
+                scenario.ctx()
             );
 
             test_scenario::return_shared(vault_global_config);
@@ -610,14 +612,15 @@ module vault::vault_tests;
 
             transfer::public_transfer(osail_reward, admin);
 
-            port.update_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
+            port.update_pool_reward_v2<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
                 &clmm_global_config,
                 &mut clmm_vault,
                 &mut pool,
-                &clock
+                &clock,
+                scenario.ctx()
             );
 
             let pool_reward = port::claim_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
@@ -649,14 +652,15 @@ module vault::vault_tests;
             transfer::public_transfer(pool_reward, admin);
             transfer::public_transfer(pool_reward_2, admin);
 
-            port.update_pool_reward<TestCoinB, TestCoinA, TestCoinB>(
+            port.update_pool_reward_v2<TestCoinB, TestCoinA, TestCoinB>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
                 &clmm_global_config,
                 &mut clmm_vault,
                 &mut pool,
-                &clock
+                &clock,
+                scenario.ctx()
             );
 
             port::test_calculate_aum<TestCoinB, TestCoinA>(
@@ -715,23 +719,25 @@ module vault::vault_tests;
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut port_entry = scenario.take_from_sender<port::PortEntry>();
 
-            port.update_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
+            port.update_pool_reward_v2<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
                 &clmm_global_config,
                 &mut clmm_vault,
                 &mut pool,
-                &clock
+                &clock,
+                scenario.ctx()
             );
-            port.update_pool_reward<TestCoinB, TestCoinA, TestCoinB>(
+            port.update_pool_reward_v2<TestCoinB, TestCoinA, TestCoinB>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
                 &clmm_global_config,
                 &mut clmm_vault,
                 &mut pool,
-                &clock
+                &clock,
+                scenario.ctx()
             );
             port.update_position_reward<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &vault_global_config,
@@ -1014,24 +1020,26 @@ module vault::vault_tests;
 
             assert!(osail2_reward_amount_zero == 0, 12362);
 
-            port.update_pool_reward<TestCoinB, TestCoinA, TestCoinB>(
+            port.update_pool_reward_v2<TestCoinB, TestCoinA, TestCoinB>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
                 &clmm_global_config,
                 &mut clmm_vault,
                 &mut pool,
-                &clock
+                &clock,
+                scenario.ctx()
             );
 
-            port.update_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
+            port.update_pool_reward_v2<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
                 &clmm_global_config,
                 &mut clmm_vault,
                 &mut pool,
-                &clock
+                &clock,
+                scenario.ctx()
             );
 
             let pool_reward = port::claim_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
@@ -1260,14 +1268,15 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            port.update_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
+            port.update_pool_reward_v2<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
                 &clmm_global_config,
                 &mut clmm_vault,
                 &mut pool,
-                &clock
+                &clock,
+                scenario.ctx()
             );
 
             let coin_a = sui::coin::mint_for_testing<TestCoinB>(2_000_000, scenario.ctx());
@@ -1334,14 +1343,15 @@ module vault::vault_tests;
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
 
-            port.update_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
+            port.update_pool_reward_v2<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
                 &clmm_global_config,
                 &mut clmm_vault,
                 &mut pool,
-                &clock
+                &clock,
+                scenario.ctx()
             );
 
             port.update_position_reward<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
@@ -1454,7 +1464,7 @@ module vault::vault_tests;
 
             transfer::public_transfer(osail_reward, admin);
 
-            let (pool_reward_amount, _) = port::get_pool_reward_amount_to_claim<TestCoinB, TestCoinA, RewardCoinType1>(
+            let (pool_reward_amount, _) = port::get_pool_reward_amount_to_claim_v2<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &mut port,
                 &mut port_entry,
@@ -1463,7 +1473,8 @@ module vault::vault_tests;
                 &clmm_global_config,
                 &mut clmm_vault,
                 &mut pool,
-                &clock
+                &clock,
+                scenario.ctx()
             );
             assert!(pool_reward_amount == 14399, 7457445);
 
@@ -1540,14 +1551,15 @@ module vault::vault_tests;
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut port_entry = scenario.take_from_sender<port::PortEntry>();
 
-            port.update_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
+            port.update_pool_reward_v2<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
                 &clmm_global_config,
                 &mut clmm_vault,
                 &mut pool,
-                &clock
+                &clock,
+                scenario.ctx()
             );
             port.update_position_reward<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
                 &vault_global_config,
@@ -1705,14 +1717,15 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            port.update_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
+            port.update_pool_reward_v2<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
                 &clmm_global_config,
                 &mut clmm_vault,
                 &mut pool,
-                &clock
+                &clock,
+                scenario.ctx()
             );
 
             let coin_a = sui::coin::mint_for_testing<TestCoinB>(2_000_000, scenario.ctx());
@@ -1790,14 +1803,15 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            port.update_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
+            port.update_pool_reward_v2<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
                 &clmm_global_config,
                 &mut clmm_vault,
                 &mut pool,
-                &clock
+                &clock,
+                scenario.ctx()
             );
 
             // // check how many unused assets are left in the buffer
@@ -2023,14 +2037,15 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            port.update_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
+            port.update_pool_reward_v2<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
                 &clmm_global_config,
                 &mut clmm_vault,
                 &mut pool,
-                &clock
+                &clock,
+                scenario.ctx()
             );
 
             let coin_a = sui::coin::mint_for_testing<TestCoinB>(2_000_000, scenario.ctx());
@@ -2345,14 +2360,15 @@ module vault::vault_tests;
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
 
-            port.update_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
+            port.update_pool_reward_v2<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
                 &clmm_global_config,
                 &mut clmm_vault,
                 &mut pool,
-                &clock
+                &clock,
+                scenario.ctx()
             );
 
             port.update_position_reward<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
@@ -2451,14 +2467,15 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            port.update_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
+            port.update_pool_reward_v2<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
                 &clmm_global_config,
                 &mut clmm_vault,
                 &mut pool,
-                &clock
+                &clock,
+                scenario.ctx()
             );
 
             let coin_a = sui::coin::mint_for_testing<TestCoinB>(2_000_000, scenario.ctx());
@@ -2979,14 +2996,15 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            port.update_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
+            port.update_pool_reward_v2<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
                 &clmm_global_config,
                 &mut clmm_vault,
                 &mut pool,
-                &clock
+                &clock,
+                scenario.ctx()
             );
 
             // with rebalance
@@ -3125,14 +3143,15 @@ module vault::vault_tests;
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut minter = scenario.take_shared<minter::Minter<SailCoinType>>();
 
-            port.update_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
+            port.update_pool_reward_v2<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
                 &clmm_global_config,
                 &mut clmm_vault,
                 &mut pool,
-                &clock
+                &clock,
+                scenario.ctx()
             );
 
             port.update_position_reward<TestCoinB, TestCoinA, SailCoinType, OSAIL1>(
@@ -4101,14 +4120,15 @@ module vault::vault_tests;
             let mut pool = scenario.take_from_sender<pool::Pool<TestCoinB, TestCoinA>>();
             let mut port_entry = scenario.take_from_sender<port::PortEntry>();
 
-            port.update_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
+            port.update_pool_reward_v2<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
                 &clmm_global_config,
                 &mut clmm_vault,
                 &mut pool,
-                &clock
+                &clock,
+                scenario.ctx()
             );
 
             let pool_reward = port::claim_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
@@ -4334,14 +4354,15 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            port.update_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
+            port.update_pool_reward_v2<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
                 &clmm_global_config,
                 &mut clmm_vault,
                 &mut pool,
-                &clock
+                &clock,
+                scenario.ctx()
             );
 
             let coin_a = sui::coin::mint_for_testing<TestCoinB>(2_000_000, scenario.ctx());
@@ -4564,14 +4585,15 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            port.update_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
+            port.update_pool_reward_v2<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
                 &clmm_global_config,
                 &mut clmm_vault,
                 &mut pool,
-                &clock
+                &clock,
+                scenario.ctx()
             );
 
             let coin_a = sui::coin::mint_for_testing<TestCoinB>(2_000_000, scenario.ctx());
@@ -4804,14 +4826,15 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            port.update_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
+            port.update_pool_reward_v2<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
                 &clmm_global_config,
                 &mut clmm_vault,
                 &mut pool,
-                &clock
+                &clock,
+                scenario.ctx()
             );
 
             let coin_a = sui::coin::mint_for_testing<TestCoinB>(2_000_000, scenario.ctx());
@@ -4883,14 +4906,15 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            port.update_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
+            port.update_pool_reward_v2<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
                 &clmm_global_config,
                 &mut clmm_vault,
                 &mut pool,
-                &clock
+                &clock,
+                scenario.ctx()
             );
 
             let volume = port_entry.get_volume();
@@ -5054,14 +5078,15 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            port.update_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
+            port.update_pool_reward_v2<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
                 &clmm_global_config,
                 &mut clmm_vault,
                 &mut pool,
-                &clock
+                &clock,
+                scenario.ctx()
             );
 
             let coin_a = sui::coin::mint_for_testing<TestCoinB>(2_000_000, scenario.ctx());
@@ -5133,14 +5158,15 @@ module vault::vault_tests;
                 scenario.ctx()
             );
 
-            port.update_pool_reward<TestCoinB, TestCoinA, RewardCoinType1>(
+            port.update_pool_reward_v2<TestCoinB, TestCoinA, RewardCoinType1>(
                 &vault_global_config,
                 &distribution_config,
                 &mut gauge,
                 &clmm_global_config,
                 &mut clmm_vault,
                 &mut pool,
-                &clock
+                &clock,
+                scenario.ctx()
             );
 
             let osail_reward = port::claim_position_reward<TestCoinB, TestCoinA, SailCoinType, OSAIL1, OSAIL1>(
