@@ -183,6 +183,11 @@ module governance::minter {
 
     const EInvalidSailPool: u64 = 939179427939211244;
 
+    const ESetPassiveVoterFeeRateMinterPaused: u64 = 30404305134543064;
+    const ESetPassiveVoterFeeRateTooBig: u64 = 33300079580685040;
+
+    const BAG_KEY_PASSIVE_VOTER_FEE_RATE: u8 = 1;
+
     const DAYS_IN_WEEK: u64 = 7;
 
     /// Possible lock duration available be oSAIL expiry date
@@ -424,6 +429,11 @@ module governance::minter {
 
     public struct EventSetEarlyWithdrawalPenaltyPercentage has copy, drop, store {
         new_penalty_percentage: u64,
+    }
+
+    public struct EventSetPassiveVoterFeeRate has copy, drop, store {
+        admin_cap: ID,
+        passive_voter_fee_rate: u64,
     }
 
     public struct EventScheduleTimeLockedMint has copy, drop, store {
@@ -3203,6 +3213,52 @@ module governance::minter {
             new_penalty_percentage: new_penalty_percentage,
         };
         sui::event::emit<EventSetEarlyWithdrawalPenaltyPercentage>(event);
+    }
+
+    /// Sets the passive voter fee rate — the ratio of trading fees redirected to passive voters.
+    /// The rate uses `RATE_DENOM` as the denominator (i.e. RATE_DENOM = 100%).
+    ///
+    /// # Arguments
+    /// * `minter` - The minter instance
+    /// * `admin_cap` - The admin capability
+    /// * `distribution_config` - The distribution configuration
+    /// * `passive_voter_fee_rate` - The new passive voter fee rate (must be <= RATE_DENOM)
+    public fun set_passive_voter_fee_rate<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        admin_cap: &AdminCap,
+        distribution_config: &DistributionConfig,
+        passive_voter_fee_rate: u64,
+    ) {
+        distribution_config.checked_package_version();
+        minter.check_admin(admin_cap);
+        assert!(!minter.is_paused(), ESetPassiveVoterFeeRateMinterPaused);
+        assert!(
+            passive_voter_fee_rate <= RATE_DENOM,
+            ESetPassiveVoterFeeRateTooBig
+        );
+
+        if (minter.bag.contains<u8>(BAG_KEY_PASSIVE_VOTER_FEE_RATE)) {
+            let existing: &mut u64 = minter.bag.borrow_mut<u8, u64>(BAG_KEY_PASSIVE_VOTER_FEE_RATE);
+            *existing = passive_voter_fee_rate;
+        } else {
+            minter.bag.add<u8, u64>(BAG_KEY_PASSIVE_VOTER_FEE_RATE, passive_voter_fee_rate);
+        };
+
+        sui::event::emit<EventSetPassiveVoterFeeRate>(EventSetPassiveVoterFeeRate {
+            admin_cap: object::id(admin_cap),
+            passive_voter_fee_rate,
+        });
+    }
+
+    /// Returns the passive voter fee rate stored in the minter's bag.
+    /// Returns 0 if the value has not been set yet.
+    /// The denominator is `RATE_DENOM`.
+    public fun passive_voter_fee_rate<SailCoinType>(minter: &Minter<SailCoinType>): u64 {
+        if (minter.bag.contains<u8>(BAG_KEY_PASSIVE_VOTER_FEE_RATE)) {
+            *minter.bag.borrow<u8, u64>(BAG_KEY_PASSIVE_VOTER_FEE_RATE)
+        } else {
+            0
+        }
     }
 
     /// Calculates the rewards in RewardCoinType earned by all staked positions.
