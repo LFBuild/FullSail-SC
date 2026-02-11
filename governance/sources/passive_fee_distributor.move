@@ -6,7 +6,6 @@ use sui::coin::Coin;
 use voting_escrow::reward_distributor::{Self, RewardDistributor};
 use voting_escrow::voting_escrow;
 use voting_escrow::reward_distributor_cap::RewardDistributorCap;
-use sui::coin;
 use governance::distribution_config::{DistributionConfig};
 
 const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
@@ -14,6 +13,8 @@ const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No.
 
 const ELockedVotingEscrowCannotClaim: u64 = 54894326219497416;
 
+/// Supposed to be a shared object. Distributes a portion of trading fees to passive voters according 
+/// to the voting power.
 public struct PassiveFeeDistributor<phantom FeeCoinType> has key, store {
     id: UID,
     reward_distributor: RewardDistributor<FeeCoinType>,

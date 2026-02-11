@@ -862,7 +862,7 @@ module governance::voter {
         gauge
     }
 
-    /// Distributes accumulated rewards to a gauge.
+    /// Allocates a fresh portion of oSAIL emission to a gauge. Gathers fees from the pool and let's caller orchestrate the distribution of fees to the voters.
     /// This is a key function in the reward distribution flow.
     ///
     /// # Arguments
@@ -876,11 +876,7 @@ module governance::voter {
     /// * `ctx` - The transaction context
     ///
     /// # Returns
-    /// (amount of distributed rewards, balance containing rewards from previous epoch that were not distributed)
-    ///
-    /// # Aborts
-    /// * If the gauge representation is invalid
-    ///
+    /// (claimed fee coin type A, claimed fee coin type B, ended epoch oSAIL emission)
     /// # Emits
     /// * `EventDistributeGauge` with information about distributed rewards
     public(package) fun distribute_gauge<CoinTypeA, CoinTypeB, NextEpochOSail>(
@@ -892,7 +888,7 @@ module governance::voter {
         o_sail_price_q64: u128,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
-    ): u64 {
+    ): (Balance<CoinTypeA>, Balance<CoinTypeB>, u64) {
         // is called by minter so version control is handled by minter
         assert!(voter.is_valid_epoch_token<NextEpochOSail>(), EDistributeGaugeInvalidToken);
         assert!(distribution_config.is_gauge_alive(object::id(gauge)), EDistributeGaugeGaugeIsKilled);
@@ -917,19 +913,19 @@ module governance::voter {
         );
         let fee_a_amount = fee_reward_a.value<CoinTypeA>();
         let fee_b_amount = fee_reward_b.value<CoinTypeB>();
-        let fee_voting_reward = voter.gauge_to_fee.borrow_mut(gauge_id);
-        fee_voting_reward.notify_reward_amount(
-            &voter.voter_cap,
-            coin::from_balance<CoinTypeA>(fee_reward_a, ctx),
-            clock,
-            ctx
-        );
-        fee_voting_reward.notify_reward_amount(
-            &voter.voter_cap,
-            coin::from_balance<CoinTypeB>(fee_reward_b, ctx),
-            clock,
-            ctx
-        );
+        // let fee_voting_reward = voter.gauge_to_fee.borrow_mut(gauge_id);
+        // fee_voting_reward.notify_reward_amount(
+        //     &voter.voter_cap,
+        //     coin::from_balance<CoinTypeA>(fee_reward_a, ctx),
+        //     clock,
+        //     ctx
+        // );
+        // fee_voting_reward.notify_reward_amount(
+        //     &voter.voter_cap,
+        //     coin::from_balance<CoinTypeB>(fee_reward_b, ctx),
+        //     clock,
+        //     ctx
+        // );
         let distribute_gauge_event = EventDistributeGauge {
             pool: object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool),
             gauge: gauge_id.id,
@@ -940,7 +936,7 @@ module governance::voter {
         };
         sui::event::emit<EventDistributeGauge>(distribute_gauge_event);
 
-        ended_epoch_o_sail_emission
+        (fee_reward_a, fee_reward_b, ended_epoch_o_sail_emission)
     }
 
     /// Notifies additional reward amount to the gauge without claiming accumulated fees.

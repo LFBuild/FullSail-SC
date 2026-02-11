@@ -171,11 +171,9 @@ module governance::minter {
 
     const EGetPositionRewardInvalidRewardToken: u64 = 779306294896264600;
     const EGetPosDistributionConfInvalid: u64 = 695673975436220400;
-    const EGetPosRewardGaugeNotAlive: u64 = 993998734106655200;
     const EGetPosRewardGaugePaused: u64 = 826495068705045200;
     const EGetMultiplePositionRewardInvalidRewardToken: u64 = 785363146605424900;
     const EGetMultiPosRewardDistributionConfInvalid: u64 = 695673975436220400;
-    const EGetMultiPosRewardGaugeNotAlive: u64 = 993998734106655200;
     const EGetMultiPosRewardGaugePaused: u64 = 190132400718876700;
     const EClaimUnclaimedOsailInvalidEpochToken: u64 = 934963468982192254;
 
@@ -185,6 +183,9 @@ module governance::minter {
 
     const ESetPassiveVoterFeeRateMinterPaused: u64 = 30404305134543064;
     const ESetPassiveVoterFeeRateTooBig: u64 = 33300079580685040;
+    const ECreatePassiveFeeDistributorMinterPaused: u64 = 790683210711862100;
+    const ENotifyPassiveFeeMinterPaused: u64 = 844085871921421700;
+    const ENotifyPassiveFeeMinterNotActive: u64 = 118762856398482380;
 
     const BAG_KEY_PASSIVE_VOTER_FEE_RATE: u8 = 1;
 
@@ -362,6 +363,16 @@ module governance::minter {
         ended_epoch_o_sail_emission: u64,
     }
 
+    public struct EventDistributeGaugeV2 has copy, drop, store {
+        gauge_id: ID,
+        pool_id: ID,
+        o_sail_type: TypeName,
+        next_epoch_emissions_usd: u64,
+        ended_epoch_o_sail_emission: u64,
+        active_voting_fee_a: u64,
+        active_voting_fee_b: u64,
+    }
+
     public struct EventIncreaseGaugeEmissions has copy, drop, store {
         gauge_id: ID,
         pool_id: ID,
@@ -434,6 +445,18 @@ module governance::minter {
     public struct EventSetPassiveVoterFeeRate has copy, drop, store {
         admin_cap: ID,
         passive_voter_fee_rate: u64,
+    }
+
+    public struct EventCreatePassiveFeeDistributor has copy, drop, store {
+        admin_cap: ID,
+        passive_fee_distributor: ID,
+        fee_coin_type: TypeName,
+    }
+
+    public struct EventNotifyPassiveFee has copy, drop, store {
+        passive_fee_distributor: ID,
+        fee_coin_type: TypeName,
+        amount: u64,
     }
 
     public struct EventScheduleTimeLockedMint has copy, drop, store {
@@ -1453,6 +1476,24 @@ module governance::minter {
     }
 
 
+    /// Deprecated, use distribute_gauge_v2 instead
+    public fun distribute_gauge<CoinTypeA, CoinTypeB, SailPoolCoinTypeA, SailPoolCoinTypeB, SailCoinType, CurrentEpochOSail>(
+        minter: &mut Minter<SailCoinType>,
+        voter: &mut governance::voter::Voter,
+        distribute_governor_cap: &DistributeGovernorCap,
+        distribution_config: &DistributionConfig,
+        gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        next_epoch_emissions_usd: u64,
+        price_monitor: &mut PriceMonitor,
+        sail_stablecoin_pool: &clmm_pool::pool::Pool<SailPoolCoinTypeA, SailPoolCoinTypeB>,
+        aggregator: &Aggregator,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext,
+    ) {
+        abort 0
+    }
+
     /// Distributes oSAIL tokens to a gauge based on pool performance metrics.
     /// Calculates and distributes the next epoch's emissions based on current pool metrics
     /// and historical data. For new pools, uses base emissions without performance adjustments.
@@ -1473,13 +1514,13 @@ module governance::minter {
     /// * `ctx` - Transaction context
     ///
     /// # Returns
-    /// The amount of tokens that can be claimed from the distribution
+    /// Portion of the fees that should be allocated to passive voters.
     ///
     /// # Aborts
     /// * If the gauge has already been distributed for the current period
     /// * If the gauge has no base supply
     /// * If pool metrics are invalid for non-initial epochs
-    public fun distribute_gauge<CoinTypeA, CoinTypeB, SailPoolCoinTypeA, SailPoolCoinTypeB, SailCoinType, CurrentEpochOSail>(
+    public fun distribute_gauge_v2<CoinTypeA, CoinTypeB, SailPoolCoinTypeA, SailPoolCoinTypeB, SailCoinType, CurrentEpochOSail>(
         minter: &mut Minter<SailCoinType>,
         voter: &mut governance::voter::Voter,
         distribute_governor_cap: &DistributeGovernorCap,
@@ -1492,7 +1533,7 @@ module governance::minter {
         aggregator: &Aggregator,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
-    ) {
+    ): (Balance<CoinTypeA>, Balance<CoinTypeB>) {
         distribution_config.checked_package_version();
         assert!(!minter.is_paused(), EDistributeGaugeMinterPaused);
         assert!(!minter.is_emission_stopped(), EEmissionStopped);
@@ -1512,7 +1553,7 @@ module governance::minter {
         );
 
         if (is_price_invalid) {
-            return;
+            return (balance::zero<CoinTypeA>(), balance::zero<CoinTypeB>());
         };
         
         minter.distribute_gauge_internal<CoinTypeA, CoinTypeB, SailCoinType, CurrentEpochOSail>(
@@ -1524,11 +1565,11 @@ module governance::minter {
             o_sail_price_q64,
             clock,
             ctx
-        );
+        )
     }
 
-    /// we need this method if pool and sail_stablecoin_pool are the same pool
-    public fun distribute_gauge_for_sail_pool<CoinTypeA, CoinTypeB, SailCoinType, CurrentEpochOSail>(
+    /// deprecated, 
+    public fun distribute_gauge_for_sail_pool_v2<CoinTypeA, CoinTypeB, SailCoinType, CurrentEpochOSail>(
         minter: &mut Minter<SailCoinType>,
         voter: &mut governance::voter::Voter,
         distribute_governor_cap: &DistributeGovernorCap,
@@ -1541,6 +1582,24 @@ module governance::minter {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
     ) {
+        abort 0
+    }
+
+
+    // we need this method if pool and sail_stablecoin_pool are the same pool
+    public fun distribute_gauge_for_sail_pool<CoinTypeA, CoinTypeB, SailCoinType, CurrentEpochOSail>(
+        minter: &mut Minter<SailCoinType>,
+        voter: &mut governance::voter::Voter,
+        distribute_governor_cap: &DistributeGovernorCap,
+        distribution_config: &DistributionConfig,
+        gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        sail_pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        next_epoch_emissions_usd: u64,
+        price_monitor: &mut PriceMonitor,
+        aggregator: &Aggregator,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext,
+    ): (Balance<CoinTypeA>, Balance<CoinTypeB>) {
         distribution_config.checked_package_version();
         assert!(!minter.is_paused(), EDistributeGaugeMinterPaused);
         assert!(!minter.is_emission_stopped(), EEmissionStopped);
@@ -1563,7 +1622,7 @@ module governance::minter {
         );
 
         if (is_price_invalid) {
-            return;
+            return (balance::zero<CoinTypeA>(), balance::zero<CoinTypeB>());
         };
 
         minter.distribute_gauge_internal<CoinTypeA, CoinTypeB, SailCoinType, CurrentEpochOSail>(
@@ -1575,7 +1634,7 @@ module governance::minter {
             o_sail_price_q64,
             clock,
             ctx
-        );
+        )
     }
 
     fun distribute_gauge_internal<CoinTypeA, CoinTypeB, SailCoinType, CurrentEpochOSail>(
@@ -1588,7 +1647,7 @@ module governance::minter {
         o_sail_price_q64: u128,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
-    ) {
+    ): (Balance<CoinTypeA>, Balance<CoinTypeB>) {
         let current_epoch_o_sail_type = type_name::get<CurrentEpochOSail>();
         assert!(minter.current_epoch_o_sail.borrow() == current_epoch_o_sail_type, EDistributeGaugeInvalidToken);
         
@@ -1622,7 +1681,7 @@ module governance::minter {
                 assert!(next_epoch_emissions_usd <= minter.max_emission_change_ratio * prev_epoch_emissions_usd, EDistributeGaugeEmissionsChangeTooBig);
             }
         };
-        let ended_epoch_o_sail_emission = voter.distribute_gauge<CoinTypeA, CoinTypeB, CurrentEpochOSail>(
+        let (mut fee_a, mut fee_b, ended_epoch_o_sail_emission) = voter.distribute_gauge<CoinTypeA, CoinTypeB, CurrentEpochOSail>(
             distribution_config,
             gauge,
             pool,
@@ -1631,6 +1690,17 @@ module governance::minter {
             clock,
             ctx
         );
+        let passive_fee_rate = minter.passive_voter_fee_rate();
+        let passive_fee_amount_a = integer_mate::full_math_u64::mul_div_floor(fee_a.value(), passive_fee_rate, RATE_DENOM);
+        let passive_fee_amount_b = integer_mate::full_math_u64::mul_div_floor(fee_b.value(), passive_fee_rate, RATE_DENOM);
+        let passive_fee_a = fee_a.split(passive_fee_amount_a);
+        let passive_fee_b = fee_b.split(passive_fee_amount_b);
+        let active_voting_fee_a = fee_a.value();
+        let active_voting_fee_b = fee_b.value();
+
+        // redirect voting fees to active voters
+        voter.inject_voting_fee_reward(distribute_cap, gauge_id, coin::from_balance<CoinTypeA>(fee_a, ctx), clock, ctx);
+        voter.inject_voting_fee_reward(distribute_cap, gauge_id, coin::from_balance<CoinTypeB>(fee_b, ctx), clock, ctx);
 
         // update records related to gauge
         let prev_active_period = if (minter.gauge_active_period.contains(gauge_id)) {
@@ -1656,14 +1726,27 @@ module governance::minter {
         };
         minter.total_epoch_emissions_usd.add(minter.active_period, total_epoch_emissions + next_epoch_emissions_usd);
 
+        let pool_id = object::id(pool);
         let event = EventDistributeGauge {
             gauge_id,
-            pool_id: object::id(pool),
+            pool_id,
             o_sail_type: current_epoch_o_sail_type,
             next_epoch_emissions_usd,
             ended_epoch_o_sail_emission,
         };
         sui::event::emit<EventDistributeGauge>(event);
+        let eventV2 = EventDistributeGaugeV2 {
+            gauge_id,
+            pool_id,
+            o_sail_type: current_epoch_o_sail_type,
+            next_epoch_emissions_usd,
+            ended_epoch_o_sail_emission,
+            active_voting_fee_a,
+            active_voting_fee_b,
+        };
+        sui::event::emit<EventDistributeGaugeV2>(eventV2);
+
+        (passive_fee_a, passive_fee_b)
     }
 
     public fun gauge_distributed<SailCoinType>(
@@ -3261,6 +3344,73 @@ module governance::minter {
         }
     }
 
+    /// Creates a new PassiveFeeDistributor.
+    /// The distributor is used to redirect a portion of trading fees to passive voters.
+    ///
+    /// # Arguments
+    /// * `minter` - The minter instance
+    /// * `admin_cap` - The admin capability
+    /// * `distribution_config` - The distribution configuration
+    /// * `clock` - The system clock
+    /// * `ctx` - Transaction context
+    ///
+    /// # Returns
+    /// The newly created PassiveFeeDistributor
+    public fun create_passive_fee_distributor<SailCoinType, FeeCoinType>(
+        minter: &Minter<SailCoinType>,
+        admin_cap: &AdminCap,
+        distribution_config: &DistributionConfig,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext,
+    ): governance::passive_fee_distributor::PassiveFeeDistributor<FeeCoinType> {
+        distribution_config.checked_package_version();
+        minter.check_admin(admin_cap);
+        assert!(!minter.is_paused(), ECreatePassiveFeeDistributorMinterPaused);
+
+        let distributor = governance::passive_fee_distributor::create<FeeCoinType>(clock, ctx);
+
+        sui::event::emit<EventCreatePassiveFeeDistributor>(EventCreatePassiveFeeDistributor {
+            admin_cap: object::id(admin_cap),
+            passive_fee_distributor: object::id(&distributor),
+            fee_coin_type: type_name::get<FeeCoinType>(),
+        });
+
+        distributor
+    }
+
+    /// Notifies the passive fee distributor of collected trading fees.
+    /// Checkpoints the fee coin into the distributor so it becomes claimable by passive voters.
+    /// Distribute governor is supposed to swap different passive fee tokens into the target fee coin.
+    ///
+    /// # Arguments
+    /// * `minter` - The minter instance
+    /// * `distribute_governor_cap` - Capability authorizing distribution
+    /// * `distribution_config` - Configuration for token distribution
+    /// * `passive_fee_distributor` - The passive fee distributor to notify
+    /// * `fee_coin` - The fee coin to distribute
+    /// * `clock` - The system clock
+    public fun notify_passive_fee<SailCoinType, FeeCoinType>(
+        minter: &Minter<SailCoinType>,
+        distribute_governor_cap: &DistributeGovernorCap,
+        distribution_config: &DistributionConfig,
+        passive_fee_distributor: &mut governance::passive_fee_distributor::PassiveFeeDistributor<FeeCoinType>,
+        fee_coin: Coin<FeeCoinType>,
+        clock: &sui::clock::Clock,
+    ) {
+        distribution_config.checked_package_version();
+        assert!(!minter.is_paused(), ENotifyPassiveFeeMinterPaused);
+        minter.check_distribute_governor(distribute_governor_cap);
+        assert!(minter.is_active(clock), ENotifyPassiveFeeMinterNotActive);
+
+        sui::event::emit<EventNotifyPassiveFee>(EventNotifyPassiveFee {
+            passive_fee_distributor: object::id(passive_fee_distributor),
+            fee_coin_type: type_name::get<FeeCoinType>(),
+            amount: fee_coin.value(),
+        });
+
+        passive_fee_distributor.checkpoint_token(fee_coin, clock);
+    }
+
     /// Calculates the rewards in RewardCoinType earned by all staked positions.
     /// Successfull only when previous coin rewards are claimed.
     ///
@@ -3792,6 +3942,8 @@ module governance::minter {
             ctx,
         );
     }
+
+    
 
     public fun exercise_fee_protocol_balance<SailCoinType, ExerciseFeeCoinType>(
         minter: &Minter<SailCoinType>,
