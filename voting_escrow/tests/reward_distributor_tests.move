@@ -4,10 +4,11 @@ module voting_escrow::reward_distributor_tests;
 use sui::test_scenario;
 use sui::clock;
 use sui::coin;
-use sui::test_utils;
+use std::unit_test;
 
 use voting_escrow::reward_distributor;
 use voting_escrow::common;
+use integer_mate::full_math_u64;
 
 public struct REWARD_COIN has drop {}
 
@@ -36,8 +37,8 @@ fun test_create_initializes_fields() {
     // cap validates against this distributor (would abort if mismatched)
     cap.validate(object::id(&rd));
 
-    test_utils::destroy(rd);
-    test_utils::destroy(cap);
+    unit_test::destroy(rd);
+    unit_test::destroy(cap);
     clock::destroy_for_testing(clock);
     scenario.end();
 }
@@ -64,10 +65,10 @@ fun test_create_cap_validates_only_its_distributor() {
     cap_a.validate(object::id(&rd_b));
 
     // Cleanup (unreachable due to expected failure)
-    test_utils::destroy(rd_a);
-    test_utils::destroy(rd_b);
-    test_utils::destroy(cap_a);
-    test_utils::destroy(cap_b);
+    unit_test::destroy(rd_a);
+    unit_test::destroy(rd_b);
+    unit_test::destroy(cap_a);
+    unit_test::destroy(cap_b);
     clock::destroy_for_testing(clock);
     scenario.end();
 }
@@ -101,8 +102,8 @@ fun test_start_resets_timestamps() {
     assert!(rd.start_time() == new_time, 4);
     assert!(reward_distributor::last_token_time(&rd) == new_time, 5);
 
-    test_utils::destroy(rd);
-    test_utils::destroy(cap);
+    unit_test::destroy(rd);
+    unit_test::destroy(cap);
     clock::destroy_for_testing(clock);
     scenario.end();
 }
@@ -129,10 +130,38 @@ fun test_start_with_wrong_cap_aborts() {
     reward_distributor::start(&mut rd_a, &cap_b, &clock);
 
     // Cleanup (unreachable due to expected failure)
-    test_utils::destroy(rd_a);
-    test_utils::destroy(rd_b);
-    test_utils::destroy(cap_a);
-    test_utils::destroy(cap_b);
+    unit_test::destroy(rd_a);
+    unit_test::destroy(rd_b);
+    unit_test::destroy(cap_a);
+    unit_test::destroy(cap_b);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+#[expected_failure(abort_code = voting_escrow::reward_distributor::ETokensAlreadyCheckpointed)]
+fun test_start_after_checkpoint_aborts() {
+    let admin = @0xD1;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
+        object::id_from_address(@0x1),
+        &clock,
+        scenario.ctx()
+    );
+
+    // Checkpoint some tokens
+    let coin = coin::mint_for_testing<REWARD_COIN>(1_000, scenario.ctx());
+    reward_distributor::checkpoint_token(&mut rd, &cap, coin, &clock);
+
+    // Advance time and try to start — should abort
+    clock::increment_for_testing(&mut clock, 5_000_000);
+    reward_distributor::start(&mut rd, &cap, &clock);
+
+    // Cleanup (unreachable due to expected failure)
+    unit_test::destroy(rd);
+    unit_test::destroy(cap);
     clock::destroy_for_testing(clock);
     scenario.end();
 }
@@ -160,8 +189,8 @@ fun test_checkpoint_token_single_deposit_within_epoch() {
     let current_period = common::to_period(common::current_timestamp(&clock));
     assert!(reward_distributor::tokens_per_period(&rd, current_period) == deposit_amount, 1);
 
-    test_utils::destroy(rd);
-    test_utils::destroy(cap);
+    unit_test::destroy(rd);
+    unit_test::destroy(cap);
     clock::destroy_for_testing(clock);
     scenario.end();
 }
@@ -186,8 +215,8 @@ fun test_checkpoint_token_updates_balance() {
 
     assert!(reward_distributor::balance(&rd) == deposit_amount, 2);
 
-    test_utils::destroy(rd);
-    test_utils::destroy(cap);
+    unit_test::destroy(rd);
+    unit_test::destroy(cap);
     clock::destroy_for_testing(clock);
     scenario.end();
 }
@@ -215,10 +244,10 @@ fun test_checkpoint_token_with_wrong_cap_aborts() {
     reward_distributor::checkpoint_token(&mut rd_a, &cap_b, coin, &clock);
 
     // Cleanup (unreachable due to expected failure)
-    test_utils::destroy(rd_a);
-    test_utils::destroy(rd_b);
-    test_utils::destroy(cap_a);
-    test_utils::destroy(cap_b);
+    unit_test::destroy(rd_a);
+    unit_test::destroy(rd_b);
+    unit_test::destroy(cap_a);
+    unit_test::destroy(cap_b);
     clock::destroy_for_testing(clock);
     scenario.end();
 }
@@ -244,8 +273,521 @@ fun test_checkpoint_token_zero_value_coin() {
     let current_period = common::to_period(common::current_timestamp(&clock));
     assert!(reward_distributor::tokens_per_period(&rd, current_period) == 0, 2);
 
-    test_utils::destroy(rd);
-    test_utils::destroy(cap);
+    unit_test::destroy(rd);
+    unit_test::destroy(cap);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_tokens_per_period_returns_zero_for_empty_periods() {
+    let admin = @0x23;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
+        object::id_from_address(@0x1),
+        &clock,
+        scenario.ctx()
+    );
+
+    // Before any checkpoint, all periods return 0
+    assert!(reward_distributor::tokens_per_period(&rd, 0) == 0, 1);
+    assert!(reward_distributor::tokens_per_period(&rd, common::epoch()) == 0, 2);
+    assert!(reward_distributor::tokens_per_period(&rd, common::epoch() * 100) == 0, 3);
+
+    // Checkpoint tokens in period 0
+    let coin = coin::mint_for_testing<REWARD_COIN>(5_000, scenario.ctx());
+    reward_distributor::checkpoint_token(&mut rd, &cap, coin, &clock);
+
+    // Period 0 has tokens, neighboring periods still return 0
+    assert!(reward_distributor::tokens_per_period(&rd, 0) == 5_000, 4);
+    assert!(reward_distributor::tokens_per_period(&rd, common::epoch()) == 0, 5);
+    assert!(reward_distributor::tokens_per_period(&rd, common::epoch() * 2) == 0, 6);
+
+    unit_test::destroy(rd);
+    unit_test::destroy(cap);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+// ========= Group 4 — checkpoint_token_internal (time distribution logic) =========
+
+#[test]
+fun test_checkpoint_at_exact_epoch_boundary() {
+    let admin = @0x33;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
+        object::id_from_address(@0x1),
+        &clock,
+        scenario.ctx()
+    );
+
+    // Advance exactly 1 epoch
+    clock::increment_for_testing(&mut clock, common::epoch() * 1000);
+
+    // Start resets last_token_time to current time (epoch boundary)
+    reward_distributor::start(&mut rd, &cap, &clock);
+
+    let deposit = 10_000u64;
+    let coin = coin::mint_for_testing<REWARD_COIN>(deposit, scenario.ctx());
+    reward_distributor::checkpoint_token(&mut rd, &cap, coin, &clock);
+    let current_period = common::current_period(&clock);
+
+    // token_time_delta == 0, so all tokens land in the current period
+    assert!(reward_distributor::tokens_per_period(&rd, current_period) == deposit, 1);
+
+    unit_test::destroy(rd);
+    unit_test::destroy(cap);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_checkpoint_mid_epoch_then_at_boundary() {
+    let admin = @0x34;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
+        object::id_from_address(@0x1),
+        &clock,
+        scenario.ctx()
+    );
+
+    // Start at time 0
+    reward_distributor::start(&mut rd, &cap, &clock);
+
+    // Advance to mid-epoch and checkpoint first deposit
+    clock::increment_for_testing(&mut clock, common::epoch() / 2 * 1000);
+    let coin1 = coin::mint_for_testing<REWARD_COIN>(5_000, scenario.ctx());
+    reward_distributor::checkpoint_token(&mut rd, &cap, coin1, &clock);
+
+    let first_period = common::current_period(&clock); // period 0
+
+    // Advance to exact epoch boundary and checkpoint second deposit
+    clock::increment_for_testing(&mut clock, common::epoch() / 2 * 1000);
+    let coin2 = coin::mint_for_testing<REWARD_COIN>(3_000, scenario.ctx());
+    reward_distributor::checkpoint_token(&mut rd, &cap, coin2, &clock);
+
+    let second_period = common::current_period(&clock); // period 604800
+
+    // Time span 302400→604800 falls entirely within period 0,
+    // so all second-checkpoint tokens go to the old period
+    assert!(reward_distributor::tokens_per_period(&rd, first_period) == 5_000 + 3_000, 1);
+    // New period is written but gets 0
+    assert!(reward_distributor::tokens_per_period(&rd, second_period) == 0, 2);
+
+    unit_test::destroy(rd);
+    unit_test::destroy(cap);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_start_mid_epoch_checkpoint_next_epoch() {
+    let admin = @0x35;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
+        object::id_from_address(@0x1),
+        &clock,
+        scenario.ctx()
+    );
+
+    // Start at 1/4 of epoch (151200s)
+    let start_offset = common::epoch() / 4;
+    clock::increment_for_testing(&mut clock, start_offset * 1000);
+    reward_distributor::start(&mut rd, &cap, &clock);
+
+    // Advance to 1/4 of the next epoch (756000s)
+    let end_offset = common::epoch() + common::epoch() / 4;
+    clock::increment_for_testing(&mut clock, (end_offset - start_offset) * 1000);
+
+    let deposit = 12_000u64;
+    let coin = coin::mint_for_testing<REWARD_COIN>(deposit, scenario.ctx());
+    reward_distributor::checkpoint_token(&mut rd, &cap, coin, &clock);
+
+    let time_delta = end_offset - start_offset; // 604800
+    // Period 0 gets 3/4 (time from 151200 to 604800)
+    let expected_p0 = full_math_u64::mul_div_floor(
+        deposit, common::epoch() - start_offset, time_delta
+    );
+    // Period 604800 gets 1/4 (time from 604800 to 756000)
+    let expected_p1 = full_math_u64::mul_div_floor(
+        deposit, common::epoch() / 4, time_delta
+    );
+    assert!(expected_p0 == 9_000, 1);
+    assert!(expected_p1 == 3_000, 2);
+    assert!(reward_distributor::tokens_per_period(&rd, 0) == expected_p0, 3);
+    assert!(reward_distributor::tokens_per_period(&rd, common::epoch()) == expected_p1, 4);
+    assert!(expected_p0 + expected_p1 == deposit, 5);
+
+    unit_test::destroy(rd);
+    unit_test::destroy(cap);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_checkpoint_spanning_two_epochs() {
+    let admin = @0x44;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
+        object::id_from_address(@0x1),
+        &clock,
+        scenario.ctx()
+    );
+
+    // Advance 1.5 epochs = 907200 seconds
+    let advance = common::epoch() + common::epoch() / 2;
+    clock::increment_for_testing(&mut clock, advance * 1000);
+
+    let deposit = 900_000u64;
+    let coin = coin::mint_for_testing<REWARD_COIN>(deposit, scenario.ctx());
+    reward_distributor::checkpoint_token(&mut rd, &cap, coin, &clock);
+
+    // Period 0 gets 2/3 of tokens
+    let expected_p0 = full_math_u64::mul_div_floor(deposit, common::epoch(), advance);
+    assert!(reward_distributor::tokens_per_period(&rd, 0) == expected_p0, 1);
+    // Period 604800 gets 1/3 of tokens
+    let expected_p1 = full_math_u64::mul_div_floor(deposit, common::epoch() / 2, advance);
+    assert!(reward_distributor::tokens_per_period(&rd, common::epoch()) == expected_p1, 2);
+    // Verify sum
+    assert!(expected_p0 + expected_p1 == deposit, 3);
+
+    unit_test::destroy(rd);
+    unit_test::destroy(cap);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_checkpoint_spanning_many_epochs() {
+    let admin = @0x55;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
+        object::id_from_address(@0x1),
+        &clock,
+        scenario.ctx()
+    );
+
+    // Advance exactly 10 epochs
+    let num_epochs = 10u64;
+    clock::increment_for_testing(&mut clock, common::epoch() * num_epochs * 1000);
+
+    let deposit = 10_000u64;
+    let coin = coin::mint_for_testing<REWARD_COIN>(deposit, scenario.ctx());
+    reward_distributor::checkpoint_token(&mut rd, &cap, coin, &clock);
+
+    // Each of 10 periods gets equal share
+    let per_period = deposit / num_epochs;
+    let mut total = 0u64;
+    let mut i = 0u64;
+    while (i < num_epochs) {
+        let period = common::epoch() * i;
+        let tokens = reward_distributor::tokens_per_period(&rd, period);
+        assert!(tokens == per_period, i + 1);
+        total = total + tokens;
+        i = i + 1;
+    };
+    assert!(total == deposit, 100);
+
+    unit_test::destroy(rd);
+    unit_test::destroy(cap);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_checkpoint_spanning_20_plus_epochs_capped() {
+    let admin = @0x66;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
+        object::id_from_address(@0x1),
+        &clock,
+        scenario.ctx()
+    );
+
+    let num_epochs = 25u64;
+    clock::increment_for_testing(&mut clock, common::epoch() * num_epochs * 1000);
+
+    let deposit = 25_000u64;
+    let coin = coin::mint_for_testing<REWARD_COIN>(deposit, scenario.ctx());
+    reward_distributor::checkpoint_token(&mut rd, &cap, coin, &clock);
+
+    // Only first 20 periods get tokens (loop capped at 20 iterations)
+    let per_period = full_math_u64::mul_div_floor(
+        deposit, common::epoch(), common::epoch() * num_epochs
+    );
+    let mut total = 0u64;
+    let mut i = 0u64;
+    // iterate over all epochs to make sure there are no side effects on neighboring periods
+    while (i < 30) {
+        let period = common::epoch() * i;
+        let tokens = reward_distributor::tokens_per_period(&rd, period);
+        if (i < 20) {
+            assert!(tokens == per_period, i + 1);
+        } else {
+            assert!(tokens == 0, i + 1);
+        };
+        total = total + tokens;
+        i = i + 1;
+    };
+    // only 20/25 epochs are distributed, so only 20/25 of the tokens are distributed
+    assert!(total == 20000, 100);
+    // Balance still holds all deposited tokens
+    assert!(reward_distributor::balance(&rd) == deposit, 101);
+
+    unit_test::destroy(rd);
+    unit_test::destroy(cap);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_checkpoint_right_before_epoch_boundary() {
+    let admin = @0x77;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
+        object::id_from_address(@0x1),
+        &clock,
+        scenario.ctx()
+    );
+
+    // Advance to 1 second before epoch boundary
+    clock::increment_for_testing(&mut clock, (common::epoch() - 1) * 1000);
+
+    let deposit = 10_000u64;
+    let coin = coin::mint_for_testing<REWARD_COIN>(deposit, scenario.ctx());
+    reward_distributor::checkpoint_token(&mut rd, &cap, coin, &clock);
+
+    // All tokens stay in period 0
+    assert!(reward_distributor::tokens_per_period(&rd, 0) == deposit, 1);
+
+    unit_test::destroy(rd);
+    unit_test::destroy(cap);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_checkpoint_right_after_epoch_boundary() {
+    let admin = @0x88;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
+        object::id_from_address(@0x1),
+        &clock,
+        scenario.ctx()
+    );
+
+    // Advance to 1 second after epoch boundary
+    let advance = common::epoch() + 1;
+    clock::increment_for_testing(&mut clock, advance * 1000);
+
+    let deposit = 604_801u64;
+    let coin = coin::mint_for_testing<REWARD_COIN>(deposit, scenario.ctx());
+    reward_distributor::checkpoint_token(&mut rd, &cap, coin, &clock);
+
+    // Almost all tokens in period 0
+    let expected_p0 = 604_800;
+    assert!(reward_distributor::tokens_per_period(&rd, 0) == expected_p0, 1);
+    // Tiny fraction in next period
+    let expected_p1 = 1;
+    assert!(reward_distributor::tokens_per_period(&rd, common::epoch()) == expected_p1, 2);
+
+    unit_test::destroy(rd);
+    unit_test::destroy(cap);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_two_checkpoints_same_timestamp() {
+    let admin = @0x99;
+    let mut scenario = test_scenario::begin(admin);
+    let clock = clock::create_for_testing(scenario.ctx());
+
+    let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
+        object::id_from_address(@0x1),
+        &clock,
+        scenario.ctx()
+    );
+
+    // First deposit
+    let coin1 = coin::mint_for_testing<REWARD_COIN>(5_000, scenario.ctx());
+    reward_distributor::checkpoint_token(&mut rd, &cap, coin1, &clock);
+    assert!(reward_distributor::tokens_per_period(&rd, 0) == 5_000, 1);
+
+    // Second deposit at same time — accumulates
+    let coin2 = coin::mint_for_testing<REWARD_COIN>(3_000, scenario.ctx());
+    reward_distributor::checkpoint_token(&mut rd, &cap, coin2, &clock);
+    assert!(reward_distributor::tokens_per_period(&rd, 0) == 8_000, 2);
+
+    // next period should be 0
+    assert!(reward_distributor::tokens_per_period(&rd, common::epoch()) == 0, 3);
+
+    // Balance reflects total
+    assert!(reward_distributor::balance(&rd) == 8_000, 3);
+
+    unit_test::destroy(rd);
+    unit_test::destroy(cap);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_two_checkpoints_same_epoch_different_times() {
+    let admin = @0xAB;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
+        object::id_from_address(@0x1),
+        &clock,
+        scenario.ctx()
+    );
+
+    // First deposit at time 0
+    let coin1 = coin::mint_for_testing<REWARD_COIN>(6_000, scenario.ctx());
+    reward_distributor::checkpoint_token(&mut rd, &cap, coin1, &clock);
+    assert!(reward_distributor::tokens_per_period(&rd, 0) == 6_000, 1);
+
+    // Advance half an epoch
+    clock::increment_for_testing(&mut clock, common::epoch() / 2 * 1000);
+
+    // Second deposit — still within epoch 0
+    let coin2 = coin::mint_for_testing<REWARD_COIN>(4_000, scenario.ctx());
+    reward_distributor::checkpoint_token(&mut rd, &cap, coin2, &clock);
+
+    // All tokens remain in period 0
+    assert!(reward_distributor::tokens_per_period(&rd, 0) == 10_000, 2);
+    assert!(reward_distributor::balance(&rd) == 10_000, 3);
+
+    unit_test::destroy(rd);
+    unit_test::destroy(cap);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_multiple_small_checkpoints_vs_one_large() {
+    let admin = @0xBC;
+    let mut scenario = test_scenario::begin(admin);
+    let clock = clock::create_for_testing(scenario.ctx());
+
+    // Distributor A: 5 deposits of 2000 at same time
+    let (mut rd_a, cap_a) = reward_distributor::create<REWARD_COIN>(
+        object::id_from_address(@0x1),
+        &clock,
+        scenario.ctx()
+    );
+    let mut i = 0;
+    while (i < 5) {
+        let coin = coin::mint_for_testing<REWARD_COIN>(2_000, scenario.ctx());
+        reward_distributor::checkpoint_token(&mut rd_a, &cap_a, coin, &clock);
+        i = i + 1;
+    };
+
+    // Distributor B: 1 deposit of 10000 at same time
+    let (mut rd_b, cap_b) = reward_distributor::create<REWARD_COIN>(
+        object::id_from_address(@0x2),
+        &clock,
+        scenario.ctx()
+    );
+    let coin = coin::mint_for_testing<REWARD_COIN>(10_000, scenario.ctx());
+    reward_distributor::checkpoint_token(&mut rd_b, &cap_b, coin, &clock);
+
+    // Both should have identical tokens_per_period
+    assert!(
+        reward_distributor::tokens_per_period(&rd_a, 0) ==
+        reward_distributor::tokens_per_period(&rd_b, 0),
+        1
+    );
+    assert!(reward_distributor::tokens_per_period(&rd_a, 0) == 10_000, 2);
+
+    unit_test::destroy(rd_a);
+    unit_test::destroy(rd_b);
+    unit_test::destroy(cap_a);
+    unit_test::destroy(cap_b);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_checkpoint_large_token_amount() {
+    let admin = @0xCD;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
+        object::id_from_address(@0x1),
+        &clock,
+        scenario.ctx()
+    );
+
+    // Advance 1.5 epochs to force proportional math with large values
+    let advance = common::epoch() + common::epoch() / 2;
+    clock::increment_for_testing(&mut clock, advance * 1000);
+
+    let deposit = 9223372036854775808u64; // u64::MAX / 2
+    let coin = coin::mint_for_testing<REWARD_COIN>(deposit, scenario.ctx());
+    reward_distributor::checkpoint_token(&mut rd, &cap, coin, &clock);
+
+    // Verify proportional split doesn't overflow (mul_div_floor uses u128 internally)
+    let expected_p0 = full_math_u64::mul_div_floor(deposit, common::epoch(), advance);
+    let expected_p1 = full_math_u64::mul_div_floor(deposit, common::epoch() / 2, advance);
+    assert!(reward_distributor::tokens_per_period(&rd, 0) == expected_p0, 1);
+    assert!(reward_distributor::tokens_per_period(&rd, common::epoch()) == expected_p1, 2);
+    // Sum may be less than deposit due to floor rounding
+    assert!(expected_p0 + expected_p1 <= deposit, 3);
+
+    unit_test::destroy(rd);
+    unit_test::destroy(cap);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_checkpoint_dust_amount() {
+    let admin = @0xDE;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
+        object::id_from_address(@0x1),
+        &clock,
+        scenario.ctx()
+    );
+
+    // Advance 1.5 epochs
+    let advance = common::epoch() + common::epoch() / 2;
+    clock::increment_for_testing(&mut clock, advance * 1000);
+
+    let coin = coin::mint_for_testing<REWARD_COIN>(1, scenario.ctx());
+    reward_distributor::checkpoint_token(&mut rd, &cap, coin, &clock);
+
+    // Both periods get 0 due to floor rounding: 1 * 604800 / 907200 = 0
+    assert!(reward_distributor::tokens_per_period(&rd, 0) == 0, 1);
+    assert!(reward_distributor::tokens_per_period(&rd, common::epoch()) == 0, 2);
+    // Balance still holds the token
+    assert!(reward_distributor::balance(&rd) == 1, 3);
+
+    unit_test::destroy(rd);
+    unit_test::destroy(cap);
     clock::destroy_for_testing(clock);
     scenario.end();
 }

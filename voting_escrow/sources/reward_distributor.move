@@ -5,6 +5,8 @@ module voting_escrow::reward_distributor {
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
     const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
 
+    const ETokensAlreadyCheckpointed: u64 = 83171767535347600;
+
     use sui::coin::{Self, Coin};
     use sui::table::{Self, Table};
     use sui::balance::{Self, Balance};
@@ -377,6 +379,7 @@ module voting_escrow::reward_distributor {
         clock: &sui::clock::Clock
     ) {
         reward_distributor_cap.validate(object::id<RewardDistributor<RewardCoinType>>(reward_distributor));
+        assert!(reward_distributor.tokens_per_period.is_empty(), ETokensAlreadyCheckpointed);
         let current_time = voting_escrow::common::current_timestamp(clock);
         reward_distributor.start_time = current_time;
         reward_distributor.last_token_time = current_time;
@@ -396,7 +399,11 @@ module voting_escrow::reward_distributor {
         reward_distributor: &RewardDistributor<RewardCoinType>,
         period_start_time: u64
     ): u64 {
-        *reward_distributor.tokens_per_period.borrow(period_start_time)
+        if (reward_distributor.tokens_per_period.contains(period_start_time)) {
+            *reward_distributor.tokens_per_period.borrow(period_start_time)
+        } else {
+            0
+        }
     }
 
     public fun start_time<RewardCoinType>(
