@@ -45,7 +45,7 @@ module voting_escrow::reward_distributor {
         last_token_time: u64,
         /// Maps periods to the amount of tokens to distribute in that period
         tokens_per_period: Table<u64, u64>,
-        /// The balance of tokens at the last checkpoint
+        /// deprecated. Not used anymore
         token_last_balance: u64,
         /// The current balance of reward tokens
         balance: Balance<RewardCoinType>,
@@ -399,6 +399,12 @@ module voting_escrow::reward_distributor {
         *reward_distributor.tokens_per_period.borrow(period_start_time)
     }
 
+    public fun start_time<RewardCoinType>(
+        reward_distributor: &RewardDistributor<RewardCoinType>
+    ): u64 {
+        reward_distributor.start_time
+    }
+
     #[test_only]
     public fun test_create_reward_distributor_cap<RewardCoinType>(
         self: &RewardDistributor<RewardCoinType>,
@@ -416,5 +422,6 @@ module voting_escrow::reward_distributor {
         reward_distributor.tokens_per_period.length() +
         reward_distributor.bag.length()
     }
+
 }
 
