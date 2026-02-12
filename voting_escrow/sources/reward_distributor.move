@@ -413,6 +413,18 @@ module voting_escrow::reward_distributor {
     }
 
     #[test_only]
+    public fun test_time_cursor_of<RewardCoinType>(
+        reward_distributor: &RewardDistributor<RewardCoinType>,
+        lock_id: ID
+    ): u64 {
+        if (reward_distributor.time_cursor_of.contains(lock_id)) {
+            *reward_distributor.time_cursor_of.borrow(lock_id)
+        } else {
+            0
+        }
+    }
+
+    #[test_only]
     public fun test_create_reward_distributor_cap<RewardCoinType>(
         self: &RewardDistributor<RewardCoinType>,
         ctx: &mut TxContext

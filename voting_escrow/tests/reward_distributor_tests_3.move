@@ -141,6 +141,14 @@ fun test_claim_updates_time_cursor() {
         scenario.return_to_sender(cap);
     };
 
+    // Before any claim, time_cursor_of should be 0 (not set)
+    scenario.next_tx(admin);
+    {
+        let rd = scenario.take_shared<reward_distributor::RewardDistributor<REWARD_COIN>>();
+        assert!(reward_distributor::test_time_cursor_of(&rd, lock_id) == 0, 1);
+        test_scenario::return_shared(rd);
+    };
+
     // Claim epoch 0
     scenario.next_tx(admin);
     {
@@ -151,14 +159,12 @@ fun test_claim_updates_time_cursor() {
         let claimed = reward_distributor::claim<SAIL, REWARD_COIN>(
             &mut rd, &cap, &ve, lock_id, scenario.ctx()
         );
-        assert!(claimed.value() == 100_000, 1);
+        assert!(claimed.value() == 100_000, 2);
         unit_test::destroy(claimed);
 
-        // After claiming, claimable should be 0 — cursor advanced past epoch 0
-        let claimable_after = reward_distributor::claimable<SAIL, REWARD_COIN>(
-            &rd, &ve, lock_id
-        );
-        assert!(claimable_after == 0, 2);
+        // After claiming epoch 0, cursor should advance to epoch (start of next epoch)
+        let cursor_after_first = reward_distributor::test_time_cursor_of(&rd, lock_id);
+        assert!(cursor_after_first == common::epoch(), 3);
 
         test_scenario::return_shared(ve);
         test_scenario::return_shared(rd);
@@ -177,19 +183,31 @@ fun test_claim_updates_time_cursor() {
         scenario.return_to_sender(cap);
     };
 
-    // Verify claimable only covers the new epoch (epoch 1), not epoch 0 again
+    // Claim epoch 1 and verify cursor advances again
     scenario.next_tx(admin);
     {
         let ve = scenario.take_shared<VotingEscrow<SAIL>>();
-        let rd = scenario.take_shared<reward_distributor::RewardDistributor<REWARD_COIN>>();
+        let mut rd = scenario.take_shared<reward_distributor::RewardDistributor<REWARD_COIN>>();
+        let cap = scenario.take_from_sender<RewardDistributorCap>();
 
         let claimable = reward_distributor::claimable<SAIL, REWARD_COIN>(
             &rd, &ve, lock_id
         );
-        assert!(claimable == 50_000, 3);
+        assert!(claimable == 50_000, 4);
+
+        let claimed = reward_distributor::claim<SAIL, REWARD_COIN>(
+            &mut rd, &cap, &ve, lock_id, scenario.ctx()
+        );
+        assert!(claimed.value() == 50_000, 5);
+        unit_test::destroy(claimed);
+
+        // After claiming epoch 1, cursor should advance to 2*epoch
+        let cursor_after_second = reward_distributor::test_time_cursor_of(&rd, lock_id);
+        assert!(cursor_after_second == common::epoch() * 2, 6);
 
         test_scenario::return_shared(ve);
         test_scenario::return_shared(rd);
+        scenario.return_to_sender(cap);
     };
 
     clock::destroy_for_testing(clock);
@@ -530,7 +548,7 @@ fun test_claim_with_wrong_cap_aborts() {
 // ========= 42. test_claim_zero_reward_no_event =========
 
 #[test]
-fun test_claim_zero_reward_no_event() {
+fun test_claim_zero_reward() {
     let admin = @0xAD;
     let user1 = @0xC7;
     let mut scenario = test_scenario::begin(admin);
