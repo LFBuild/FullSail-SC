@@ -2896,7 +2896,11 @@ module voting_escrow::voting_escrow {
     }
 
     public fun user_point_epoch<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>, lock_id: ID): u64 {
-        *voting_escrow.user_point_epoch.borrow(lock_id)
+        if (voting_escrow.user_point_epoch.contains(lock_id)) {
+            *voting_escrow.user_point_epoch.borrow(lock_id)
+        } else {
+            0
+        }
     }
 
     public fun user_point_history<SailCoinType>(voting_escrow: &VotingEscrow<SailCoinType>, lock_id: ID, epoch: u64): UserPoint {
