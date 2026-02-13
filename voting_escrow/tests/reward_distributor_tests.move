@@ -25,8 +25,8 @@ fun test_create_initializes_fields() {
     let current_time = common::current_timestamp(&clock);
 
     let wrapper_id = object::id_from_address(@0x1);
-    let (rd, cap) = reward_distributor::create<REWARD_COIN>(
-        wrapper_id,
+    let (rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+        wrapper_id, object::id_from_address(@0x0),
         &clock,
         scenario.ctx()
     );
@@ -53,13 +53,13 @@ fun test_create_cap_validates_only_its_distributor() {
     let mut scenario = test_scenario::begin(admin);
     let clock = clock::create_for_testing(scenario.ctx());
 
-    let (rd_a, cap_a) = reward_distributor::create<REWARD_COIN>(
-        object::id_from_address(@0x1),
+    let (rd_a, cap_a) = reward_distributor::create_v2<REWARD_COIN>(
+        object::id_from_address(@0x1), object::id_from_address(@0x0),
         &clock,
         scenario.ctx()
     );
-    let (rd_b, cap_b) = reward_distributor::create<REWARD_COIN>(
-        object::id_from_address(@0x2),
+    let (rd_b, cap_b) = reward_distributor::create_v2<REWARD_COIN>(
+        object::id_from_address(@0x2), object::id_from_address(@0x0),
         &clock,
         scenario.ctx()
     );
@@ -84,8 +84,8 @@ fun test_start_resets_timestamps() {
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
-        object::id_from_address(@0x1),
+    let (mut rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+        object::id_from_address(@0x1), object::id_from_address(@0x0),
         &clock,
         scenario.ctx()
     );
@@ -118,13 +118,13 @@ fun test_start_with_wrong_cap_aborts() {
     let mut scenario = test_scenario::begin(admin);
     let clock = clock::create_for_testing(scenario.ctx());
 
-    let (mut rd_a, cap_a) = reward_distributor::create<REWARD_COIN>(
-        object::id_from_address(@0x1),
+    let (mut rd_a, cap_a) = reward_distributor::create_v2<REWARD_COIN>(
+        object::id_from_address(@0x1), object::id_from_address(@0x0),
         &clock,
         scenario.ctx()
     );
-    let (rd_b, cap_b) = reward_distributor::create<REWARD_COIN>(
-        object::id_from_address(@0x2),
+    let (rd_b, cap_b) = reward_distributor::create_v2<REWARD_COIN>(
+        object::id_from_address(@0x2), object::id_from_address(@0x0),
         &clock,
         scenario.ctx()
     );
@@ -148,8 +148,8 @@ fun test_start_after_checkpoint_aborts() {
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
-        object::id_from_address(@0x1),
+    let (mut rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+        object::id_from_address(@0x1), object::id_from_address(@0x0),
         &clock,
         scenario.ctx()
     );
@@ -177,8 +177,8 @@ fun test_checkpoint_token_single_deposit_within_epoch() {
     let mut scenario = test_scenario::begin(admin);
     let clock = clock::create_for_testing(scenario.ctx());
 
-    let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
-        object::id_from_address(@0x1),
+    let (mut rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+        object::id_from_address(@0x1), object::id_from_address(@0x0),
         &clock,
         scenario.ctx()
     );
@@ -204,8 +204,8 @@ fun test_checkpoint_token_updates_balance() {
     let mut scenario = test_scenario::begin(admin);
     let clock = clock::create_for_testing(scenario.ctx());
 
-    let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
-        object::id_from_address(@0x1),
+    let (mut rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+        object::id_from_address(@0x1), object::id_from_address(@0x0),
         &clock,
         scenario.ctx()
     );
@@ -231,13 +231,13 @@ fun test_checkpoint_token_with_wrong_cap_aborts() {
     let mut scenario = test_scenario::begin(admin);
     let clock = clock::create_for_testing(scenario.ctx());
 
-    let (mut rd_a, cap_a) = reward_distributor::create<REWARD_COIN>(
-        object::id_from_address(@0x1),
+    let (mut rd_a, cap_a) = reward_distributor::create_v2<REWARD_COIN>(
+        object::id_from_address(@0x1), object::id_from_address(@0x0),
         &clock,
         scenario.ctx()
     );
-    let (rd_b, cap_b) = reward_distributor::create<REWARD_COIN>(
-        object::id_from_address(@0x2),
+    let (rd_b, cap_b) = reward_distributor::create_v2<REWARD_COIN>(
+        object::id_from_address(@0x2), object::id_from_address(@0x0),
         &clock,
         scenario.ctx()
     );
@@ -261,8 +261,8 @@ fun test_checkpoint_token_zero_value_coin() {
     let mut scenario = test_scenario::begin(admin);
     let clock = clock::create_for_testing(scenario.ctx());
 
-    let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
-        object::id_from_address(@0x1),
+    let (mut rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+        object::id_from_address(@0x1), object::id_from_address(@0x0),
         &clock,
         scenario.ctx()
     );
@@ -288,8 +288,8 @@ fun test_tokens_per_period_returns_zero_for_empty_periods() {
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
-        object::id_from_address(@0x1),
+    let (mut rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+        object::id_from_address(@0x1), object::id_from_address(@0x0),
         &clock,
         scenario.ctx()
     );
@@ -322,8 +322,8 @@ fun test_checkpoint_at_exact_epoch_boundary() {
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
-        object::id_from_address(@0x1),
+    let (mut rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+        object::id_from_address(@0x1), object::id_from_address(@0x0),
         &clock,
         scenario.ctx()
     );
@@ -355,8 +355,8 @@ fun test_checkpoint_at_epoch_boundary_lands_in_previous_epoch() {
     let mut clock = clock::create_for_testing(scenario.ctx());
 
     // RD created at time 0 — last_token_time = 0
-    let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
-        object::id_from_address(@0x1),
+    let (mut rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+        object::id_from_address(@0x1), object::id_from_address(@0x0),
         &clock,
         scenario.ctx()
     );
@@ -384,8 +384,8 @@ fun test_checkpoint_mid_epoch_then_at_boundary() {
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
-        object::id_from_address(@0x1),
+    let (mut rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+        object::id_from_address(@0x1), object::id_from_address(@0x0),
         &clock,
         scenario.ctx()
     );
@@ -425,8 +425,8 @@ fun test_start_mid_epoch_checkpoint_next_epoch() {
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
-        object::id_from_address(@0x1),
+    let (mut rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+        object::id_from_address(@0x1), object::id_from_address(@0x0),
         &clock,
         scenario.ctx()
     );
@@ -471,8 +471,8 @@ fun test_checkpoint_spanning_two_epochs() {
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
-        object::id_from_address(@0x1),
+    let (mut rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+        object::id_from_address(@0x1), object::id_from_address(@0x0),
         &clock,
         scenario.ctx()
     );
@@ -506,8 +506,8 @@ fun test_checkpoint_spanning_many_epochs() {
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
-        object::id_from_address(@0x1),
+    let (mut rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+        object::id_from_address(@0x1), object::id_from_address(@0x0),
         &clock,
         scenario.ctx()
     );
@@ -545,8 +545,8 @@ fun test_checkpoint_spanning_20_plus_epochs_capped() {
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
-        object::id_from_address(@0x1),
+    let (mut rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+        object::id_from_address(@0x1), object::id_from_address(@0x0),
         &clock,
         scenario.ctx()
     );
@@ -593,8 +593,8 @@ fun test_checkpoint_right_before_epoch_boundary() {
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
-        object::id_from_address(@0x1),
+    let (mut rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+        object::id_from_address(@0x1), object::id_from_address(@0x0),
         &clock,
         scenario.ctx()
     );
@@ -621,8 +621,8 @@ fun test_checkpoint_right_after_epoch_boundary() {
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
-        object::id_from_address(@0x1),
+    let (mut rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+        object::id_from_address(@0x1), object::id_from_address(@0x0),
         &clock,
         scenario.ctx()
     );
@@ -654,8 +654,8 @@ fun test_two_checkpoints_same_timestamp() {
     let mut scenario = test_scenario::begin(admin);
     let clock = clock::create_for_testing(scenario.ctx());
 
-    let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
-        object::id_from_address(@0x1),
+    let (mut rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+        object::id_from_address(@0x1), object::id_from_address(@0x0),
         &clock,
         scenario.ctx()
     );
@@ -688,8 +688,8 @@ fun test_two_checkpoints_same_epoch_different_times() {
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
-        object::id_from_address(@0x1),
+    let (mut rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+        object::id_from_address(@0x1), object::id_from_address(@0x0),
         &clock,
         scenario.ctx()
     );
@@ -723,8 +723,8 @@ fun test_multiple_small_checkpoints_vs_one_large() {
     let clock = clock::create_for_testing(scenario.ctx());
 
     // Distributor A: 5 deposits of 2000 at same time
-    let (mut rd_a, cap_a) = reward_distributor::create<REWARD_COIN>(
-        object::id_from_address(@0x1),
+    let (mut rd_a, cap_a) = reward_distributor::create_v2<REWARD_COIN>(
+        object::id_from_address(@0x1), object::id_from_address(@0x0),
         &clock,
         scenario.ctx()
     );
@@ -736,8 +736,8 @@ fun test_multiple_small_checkpoints_vs_one_large() {
     };
 
     // Distributor B: 1 deposit of 10000 at same time
-    let (mut rd_b, cap_b) = reward_distributor::create<REWARD_COIN>(
-        object::id_from_address(@0x2),
+    let (mut rd_b, cap_b) = reward_distributor::create_v2<REWARD_COIN>(
+        object::id_from_address(@0x2), object::id_from_address(@0x0),
         &clock,
         scenario.ctx()
     );
@@ -766,8 +766,8 @@ fun test_checkpoint_large_token_amount() {
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
-        object::id_from_address(@0x1),
+    let (mut rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+        object::id_from_address(@0x1), object::id_from_address(@0x0),
         &clock,
         scenario.ctx()
     );
@@ -800,8 +800,8 @@ fun test_checkpoint_dust_amount() {
     let mut scenario = test_scenario::begin(admin);
     let mut clock = clock::create_for_testing(scenario.ctx());
 
-    let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
-        object::id_from_address(@0x1),
+    let (mut rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+        object::id_from_address(@0x1), object::id_from_address(@0x0),
         &clock,
         scenario.ctx()
     );
@@ -831,7 +831,7 @@ fun test_checkpoint_dust_amount() {
 fun test_claimable_before_epoch_fully_checkpointed() {
     let admin = @0xAD;
     let mut scenario = test_scenario::begin(admin);
-    let mut clock = setup::setup<SAIL>(&mut scenario, admin);
+    let (mut clock, ve_id) = setup::setup_v2<SAIL>(&mut scenario, admin);
 
     // Create a permanent lock (voting power = locked amount, no decay)
     scenario.next_tx(admin);
@@ -856,8 +856,8 @@ fun test_claimable_before_epoch_fully_checkpointed() {
         let lock_id = object::id(&lock);
 
         // Create and start reward distributor
-        let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
-            object::id_from_address(@0x1),
+        let (mut rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+            object::id_from_address(@0x1), ve_id,
             &clock,
             scenario.ctx()
         );
@@ -909,7 +909,7 @@ fun test_claimable_before_epoch_fully_checkpointed() {
 fun test_claimable_after_epoch_end_checkpoint() {
     let admin = @0xAD;
     let mut scenario = test_scenario::begin(admin);
-    let mut clock = setup::setup<SAIL>(&mut scenario, admin);
+    let (mut clock, ve_id) = setup::setup_v2<SAIL>(&mut scenario, admin);
 
     // Create a permanent lock
     scenario.next_tx(admin);
@@ -933,8 +933,8 @@ fun test_claimable_after_epoch_end_checkpoint() {
         let lock = scenario.take_from_sender<Lock>();
         let lock_id = object::id(&lock);
 
-        let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
-            object::id_from_address(@0x1),
+        let (mut rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+            object::id_from_address(@0x1), ve_id,
             &clock,
             scenario.ctx()
         );
@@ -966,15 +966,15 @@ fun test_claimable_after_epoch_end_checkpoint() {
 fun test_claimable_no_locks_returns_zero() {
     let admin = @0xAD;
     let mut scenario = test_scenario::begin(admin);
-    let mut clock = setup::setup<SAIL>(&mut scenario, admin);
+    let (mut clock, ve_id) = setup::setup_v2<SAIL>(&mut scenario, admin);
 
     scenario.next_tx(admin);
     {
         let ve = scenario.take_shared<VotingEscrow<SAIL>>();
         let fake_lock_id = object::id_from_address(@0xDEAD);
 
-        let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
-            object::id_from_address(@0x1),
+        let (mut rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+            object::id_from_address(@0x1), ve_id,
             &clock,
             scenario.ctx()
         );
@@ -1013,7 +1013,7 @@ fun test_claimable_no_locks_returns_zero() {
 fun test_claimable_lock_with_zero_voting_power() {
     let admin = @0xAD;
     let mut scenario = test_scenario::begin(admin);
-    let mut clock = setup::setup<SAIL>(&mut scenario, admin);
+    let (mut clock, ve_id) = setup::setup_v2<SAIL>(&mut scenario, admin);
 
     // Create a 1-week lock (minimum duration, non-permanent)
     scenario.next_tx(admin);
@@ -1037,8 +1037,8 @@ fun test_claimable_lock_with_zero_voting_power() {
         let lock = scenario.take_from_sender<Lock>();
         let lock_id = object::id(&lock);
 
-        let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
-            object::id_from_address(@0x1),
+        let (mut rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+            object::id_from_address(@0x1), ve_id,
             &clock,
             scenario.ctx()
         );
@@ -1086,7 +1086,7 @@ fun test_claimable_lock_with_zero_voting_power() {
 fun test_claimable_single_user_gets_all_rewards() {
     let admin = @0xAD;
     let mut scenario = test_scenario::begin(admin);
-    let mut clock = setup::setup<SAIL>(&mut scenario, admin);
+    let (mut clock, ve_id) = setup::setup_v2<SAIL>(&mut scenario, admin);
 
     // Create a permanent lock — 100% of voting power
     scenario.next_tx(admin);
@@ -1110,8 +1110,8 @@ fun test_claimable_single_user_gets_all_rewards() {
         let lock = scenario.take_from_sender<Lock>();
         let lock_id = object::id(&lock);
 
-        let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
-            object::id_from_address(@0x1),
+        let (mut rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+            object::id_from_address(@0x1), ve_id,
             &clock,
             scenario.ctx()
         );
@@ -1149,7 +1149,7 @@ fun test_claimable_two_users_equal_power() {
     let user1 = @0xA1;
     let user2 = @0xA2;
     let mut scenario = test_scenario::begin(admin);
-    let mut clock = setup::setup<SAIL>(&mut scenario, admin);
+    let (mut clock, ve_id) = setup::setup_v2<SAIL>(&mut scenario, admin);
 
     // User 1 creates a permanent lock of 1M
     scenario.next_tx(user1);
@@ -1191,8 +1191,8 @@ fun test_claimable_two_users_equal_power() {
     {
         let ve = scenario.take_shared<VotingEscrow<SAIL>>();
 
-        let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
-            object::id_from_address(@0x1),
+        let (mut rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+            object::id_from_address(@0x1), ve_id,
             &clock,
             scenario.ctx()
         );
@@ -1229,7 +1229,7 @@ fun test_claimable_two_users_unequal_power() {
     let user1 = @0xB1;
     let user2 = @0xB2;
     let mut scenario = test_scenario::begin(admin);
-    let mut clock = setup::setup<SAIL>(&mut scenario, admin);
+    let (mut clock, ve_id) = setup::setup_v2<SAIL>(&mut scenario, admin);
 
     // User 1 creates a permanent lock of 3M (75% of voting power)
     scenario.next_tx(user1);
@@ -1271,8 +1271,8 @@ fun test_claimable_two_users_unequal_power() {
     {
         let ve = scenario.take_shared<VotingEscrow<SAIL>>();
 
-        let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
-            object::id_from_address(@0x1),
+        let (mut rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+            object::id_from_address(@0x1), ve_id,
             &clock,
             scenario.ctx()
         );
@@ -1310,7 +1310,7 @@ fun test_claimable_user_created_lock_mid_epoch() {
     let user1 = @0xC1;
     let user2 = @0xC2;
     let mut scenario = test_scenario::begin(admin);
-    let mut clock = setup::setup<SAIL>(&mut scenario, admin);
+    let (mut clock, ve_id) = setup::setup_v2<SAIL>(&mut scenario, admin);
 
     // User 1 creates a permanent lock of 1M at time 0
     scenario.next_tx(user1);
@@ -1354,8 +1354,8 @@ fun test_claimable_user_created_lock_mid_epoch() {
     {
         let ve = scenario.take_shared<VotingEscrow<SAIL>>();
 
-        let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
-            object::id_from_address(@0x1),
+        let (mut rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+            object::id_from_address(@0x1), ve_id,
             &clock,
             scenario.ctx()
         );
@@ -1397,7 +1397,7 @@ fun test_claimable_user_created_lock_mid_distribution() {
     let user1 = @0xC1;
     let user2 = @0xC2;
     let mut scenario = test_scenario::begin(admin);
-    let mut clock = setup::setup<SAIL>(&mut scenario, admin);
+    let (mut clock, ve_id) = setup::setup_v2<SAIL>(&mut scenario, admin);
 
     // User 1 creates a permanent lock of 1M at time 0
     scenario.next_tx(user1);
@@ -1420,8 +1420,8 @@ fun test_claimable_user_created_lock_mid_distribution() {
     // Admin creates RD at time 0, shares it and transfers cap
     scenario.next_tx(admin);
     {
-        let (rd, cap) = reward_distributor::create<REWARD_COIN>(
-            object::id_from_address(@0x1),
+        let (rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+            object::id_from_address(@0x1), ve_id,
             &clock,
             scenario.ctx()
         );
@@ -1512,13 +1512,13 @@ fun test_claimable_lock_created_at_checkpoint_epoch_boundary() {
     let admin = @0xAD;
     let user1 = @0xD1;
     let mut scenario = test_scenario::begin(admin);
-    let mut clock = setup::setup<SAIL>(&mut scenario, admin);
+    let (mut clock, ve_id) = setup::setup_v2<SAIL>(&mut scenario, admin);
 
     // Admin creates RD at time 0, shares it and transfers cap
     scenario.next_tx(admin);
     {
-        let (rd, cap) = reward_distributor::create<REWARD_COIN>(
-            object::id_from_address(@0x1),
+        let (rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+            object::id_from_address(@0x1), ve_id,
             &clock,
             scenario.ctx()
         );
@@ -1579,7 +1579,7 @@ fun test_claimable_lock_created_one_second_before_epoch_end() {
     let user1 = @0xE1;
     let user2 = @0xE2;
     let mut scenario = test_scenario::begin(admin);
-    let mut clock = setup::setup<SAIL>(&mut scenario, admin);
+    let (mut clock, ve_id) = setup::setup_v2<SAIL>(&mut scenario, admin);
 
     // User 1 creates a permanent lock of 1M at time 0
     scenario.next_tx(user1);
@@ -1593,8 +1593,8 @@ fun test_claimable_lock_created_one_second_before_epoch_end() {
     // Admin creates RD at time 0, shares it and transfers cap
     scenario.next_tx(admin);
     {
-        let (rd, cap) = reward_distributor::create<REWARD_COIN>(
-            object::id_from_address(@0x1),
+        let (rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+            object::id_from_address(@0x1), ve_id,
             &clock,
             scenario.ctx()
         );

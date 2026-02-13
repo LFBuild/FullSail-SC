@@ -26,7 +26,7 @@ fun test_rounding_does_not_create_tokens() {
     let user2 = @0x1002;
     let user3 = @0x1003;
     let mut scenario = test_scenario::begin(admin);
-    let mut clock = setup::setup<SAIL>(&mut scenario, admin);
+    let (mut clock, ve_id) = setup::setup_v2<SAIL>(&mut scenario, admin);
 
     // Create 3 permanent locks with non-round amounts
     // Total: 666
@@ -81,8 +81,8 @@ fun test_rounding_does_not_create_tokens() {
     // Create RD
     scenario.next_tx(admin);
     {
-        let (rd, cap) = reward_distributor::create<REWARD_COIN>(
-            object::id_from_address(@0x1), &clock, scenario.ctx()
+        let (rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+            object::id_from_address(@0x1), ve_id, &clock, scenario.ctx()
         );
         sui::transfer::public_share_object(rd);
         sui::transfer::public_transfer(cap, admin);
@@ -163,7 +163,7 @@ fun test_checkpoint_then_claim_same_epoch() {
     let admin = @0xAD;
     let user1 = @0x1004;
     let mut scenario = test_scenario::begin(admin);
-    let mut clock = setup::setup<SAIL>(&mut scenario, admin);
+    let (mut clock, ve_id) = setup::setup_v2<SAIL>(&mut scenario, admin);
 
     // Create permanent lock
     scenario.next_tx(user1);
@@ -185,8 +185,8 @@ fun test_checkpoint_then_claim_same_epoch() {
     // Create RD
     scenario.next_tx(admin);
     {
-        let (rd, cap) = reward_distributor::create<REWARD_COIN>(
-            object::id_from_address(@0x1), &clock, scenario.ctx()
+        let (rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+            object::id_from_address(@0x1), ve_id, &clock, scenario.ctx()
         );
         sui::transfer::public_share_object(rd);
         sui::transfer::public_transfer(cap, admin);
@@ -253,7 +253,7 @@ fun test_claimable_idempotent() {
     let admin = @0xAD;
     let user1 = @0x1005;
     let mut scenario = test_scenario::begin(admin);
-    let mut clock = setup::setup<SAIL>(&mut scenario, admin);
+    let (mut clock, ve_id) = setup::setup_v2<SAIL>(&mut scenario, admin);
 
     // Create permanent lock
     scenario.next_tx(user1);
@@ -275,8 +275,8 @@ fun test_claimable_idempotent() {
     // Create RD
     scenario.next_tx(admin);
     {
-        let (rd, cap) = reward_distributor::create<REWARD_COIN>(
-            object::id_from_address(@0x1), &clock, scenario.ctx()
+        let (rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+            object::id_from_address(@0x1), ve_id, &clock, scenario.ctx()
         );
         sui::transfer::public_share_object(rd);
         sui::transfer::public_transfer(cap, admin);
@@ -327,7 +327,7 @@ fun test_first_claim_uses_lock_creation_period() {
     let user1 = @0x1007;
     let user2 = @0x1008;
     let mut scenario = test_scenario::begin(admin);
-    let mut clock = setup::setup<SAIL>(&mut scenario, admin);
+    let (mut clock, ve_id) = setup::setup_v2<SAIL>(&mut scenario, admin);
 
     // User 1: permanent lock created at time 0 (exists for all epochs)
     scenario.next_tx(user1);
@@ -349,8 +349,8 @@ fun test_first_claim_uses_lock_creation_period() {
     // Create RD at time 0
     scenario.next_tx(admin);
     {
-        let (rd, cap) = reward_distributor::create<REWARD_COIN>(
-            object::id_from_address(@0x1), &clock, scenario.ctx()
+        let (rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+            object::id_from_address(@0x1), ve_id, &clock, scenario.ctx()
         );
         sui::transfer::public_share_object(rd);
         sui::transfer::public_transfer(cap, admin);
@@ -445,13 +445,13 @@ fun test_first_claim_uses_lock_creation_period() {
 fun test_last_token_time_accessor() {
     let admin = @0xAD;
     let mut scenario = test_scenario::begin(admin);
-    let mut clock = setup::setup<SAIL>(&mut scenario, admin);
+    let (mut clock, ve_id) = setup::setup_v2<SAIL>(&mut scenario, admin);
 
     // Create RD at time 0
     scenario.next_tx(admin);
     {
-        let (rd, cap) = reward_distributor::create<REWARD_COIN>(
-            object::id_from_address(@0x1), &clock, scenario.ctx()
+        let (rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+            object::id_from_address(@0x1), ve_id, &clock, scenario.ctx()
         );
         // Initial last_token_time = 0 (creation time)
         assert!(reward_distributor::last_token_time(&rd) == 0, 1);
@@ -514,7 +514,7 @@ fun test_distributor_with_multiple_checkpoint_token_across_many_epochs() {
     let user2 = @0x100A;
     let user3 = @0x100B;
     let mut scenario = test_scenario::begin(admin);
-    let mut clock = setup::setup<SAIL>(&mut scenario, admin);
+    let (mut clock, ve_id) = setup::setup_v2<SAIL>(&mut scenario, admin);
 
     // 3 permanent locks: 100K, 300K, 600K (total 1M)
     // Shares: 10%, 30%, 60%
@@ -569,8 +569,8 @@ fun test_distributor_with_multiple_checkpoint_token_across_many_epochs() {
     // Create RD
     scenario.next_tx(admin);
     {
-        let (rd, cap) = reward_distributor::create<REWARD_COIN>(
-            object::id_from_address(@0x1), &clock, scenario.ctx()
+        let (rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+            object::id_from_address(@0x1), ve_id, &clock, scenario.ctx()
         );
         sui::transfer::public_share_object(rd);
         sui::transfer::public_transfer(cap, admin);
@@ -660,7 +660,7 @@ fun test_claiming_with_wrong_voting_escrow_object() {
     let admin = @0xAD;
     let user1 = @0x100C;
     let mut scenario = test_scenario::begin(admin);
-    let mut clock = setup::setup<SAIL>(&mut scenario, admin);
+    let (mut clock, ve_id) = setup::setup_v2<SAIL>(&mut scenario, admin);
 
     // Create lock in the main VE (VE1, shared by setup)
     scenario.next_tx(user1);

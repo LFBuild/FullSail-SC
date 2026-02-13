@@ -27,7 +27,7 @@ fun test_claim_after_lock_split() {
     let admin = @0xAD;
     let user1 = @0xE1;
     let mut scenario = test_scenario::begin(admin);
-    let mut clock = setup::setup<SAIL>(&mut scenario, admin);
+    let (mut clock, ve_id) = setup::setup_v2<SAIL>(&mut scenario, admin);
 
     // Enable split for user1
     scenario.next_tx(admin);
@@ -61,8 +61,9 @@ fun test_claim_after_lock_split() {
     // Create RD, share it
     scenario.next_tx(admin);
     {
-        let (rd, cap) = reward_distributor::create<REWARD_COIN>(
+        let (rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
             object::id_from_address(@0x1),
+            ve_id,
             &clock,
             scenario.ctx()
         );
@@ -227,7 +228,7 @@ fun test_claim_after_deposit_for_increases_future_rewards() {
     let user1 = @0xE2;
     let user2 = @0xE3;
     let mut scenario = test_scenario::begin(admin);
-    let mut clock = setup::setup<SAIL>(&mut scenario, admin);
+    let (mut clock, ve_id) = setup::setup_v2<SAIL>(&mut scenario, admin);
 
     // User 1: permanent lock of 1M
     scenario.next_tx(user1);
@@ -266,8 +267,9 @@ fun test_claim_after_deposit_for_increases_future_rewards() {
     // Create RD, share it
     scenario.next_tx(admin);
     {
-        let (rd, cap) = reward_distributor::create<REWARD_COIN>(
+        let (rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
             object::id_from_address(@0x1),
+            ve_id,
             &clock,
             scenario.ctx()
         );
@@ -361,7 +363,7 @@ fun test_claim_after_extend_lock_duration() {
     let user1 = @0xE4;
     let user2 = @0xE5;
     let mut scenario = test_scenario::begin(admin);
-    let mut clock = setup::setup<SAIL>(&mut scenario, admin);
+    let (mut clock, ve_id) = setup::setup_v2<SAIL>(&mut scenario, admin);
 
     // User 1: non-permanent lock of 1M, 182 days (= 26 weeks = 1/8 of max_lock_time)
     scenario.next_tx(user1);
@@ -400,8 +402,9 @@ fun test_claim_after_extend_lock_duration() {
     // Create RD, share it
     scenario.next_tx(admin);
     {
-        let (rd, cap) = reward_distributor::create<REWARD_COIN>(
+        let (rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
             object::id_from_address(@0x1),
+            ve_id,
             &clock,
             scenario.ctx()
         );
@@ -516,7 +519,7 @@ fun test_claim_after_lock_permanent_toggle() {
     let user1 = @0xE6;
     let user2 = @0xE7;
     let mut scenario = test_scenario::begin(admin);
-    let mut clock = setup::setup<SAIL>(&mut scenario, admin);
+    let (mut clock, ve_id) = setup::setup_v2<SAIL>(&mut scenario, admin);
 
     // User 1: non-permanent lock of 1M, max duration (1456 days)
     scenario.next_tx(user1);
@@ -555,8 +558,9 @@ fun test_claim_after_lock_permanent_toggle() {
     // Create RD, share it
     scenario.next_tx(admin);
     {
-        let (rd, cap) = reward_distributor::create<REWARD_COIN>(
+        let (rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
             object::id_from_address(@0x1),
+            ve_id,
             &clock,
             scenario.ctx()
         );
@@ -710,7 +714,7 @@ fun test_claim_after_lock_permanent_off() {
     let user1 = @0xE8;
     let user2 = @0xE9;
     let mut scenario = test_scenario::begin(admin);
-    let mut clock = setup::setup<SAIL>(&mut scenario, admin);
+    let (mut clock, ve_id) = setup::setup_v2<SAIL>(&mut scenario, admin);
 
     // User 1: permanent lock of 1M
     scenario.next_tx(user1);
@@ -749,8 +753,9 @@ fun test_claim_after_lock_permanent_off() {
     // Create RD, share it
     scenario.next_tx(admin);
     {
-        let (rd, cap) = reward_distributor::create<REWARD_COIN>(
+        let (rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
             object::id_from_address(@0x1),
+            ve_id,
             &clock,
             scenario.ctx()
         );
@@ -910,7 +915,7 @@ fun test_claim_with_merge() {
     let admin = @0xAD;
     let user1 = @0xEA;
     let mut scenario = test_scenario::begin(admin);
-    let mut clock = setup::setup<SAIL>(&mut scenario, admin);
+    let (mut clock, ve_id) = setup::setup_v2<SAIL>(&mut scenario, admin);
 
     // Create two permanent locks: A = 400K (non-permanent, source for merge),
     // B = 600K (permanent, target for merge)
@@ -950,8 +955,9 @@ fun test_claim_with_merge() {
     // Create RD, share it
     scenario.next_tx(admin);
     {
-        let (rd, cap) = reward_distributor::create<REWARD_COIN>(
+        let (rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
             object::id_from_address(@0x1),
+            ve_id,
             &clock,
             scenario.ctx()
         );
@@ -1083,7 +1089,7 @@ fun test_merge_one_second_before_epoch_change() {
     let admin = @0xAD;
     let user1 = @0xEB;
     let mut scenario = test_scenario::begin(admin);
-    let mut clock = setup::setup<SAIL>(&mut scenario, admin);
+    let (mut clock, ve_id) = setup::setup_v2<SAIL>(&mut scenario, admin);
 
     // Create two locks:
     // lock_a: 500K non-permanent (source for merge)
@@ -1123,8 +1129,9 @@ fun test_merge_one_second_before_epoch_change() {
     // Create RD, share it
     scenario.next_tx(admin);
     {
-        let (rd, cap) = reward_distributor::create<REWARD_COIN>(
+        let (rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
             object::id_from_address(@0x1),
+            ve_id,
             &clock,
             scenario.ctx()
         );

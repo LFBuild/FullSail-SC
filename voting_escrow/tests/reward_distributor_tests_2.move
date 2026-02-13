@@ -21,7 +21,7 @@ fun test_claimable_after_lock_expires() {
     let admin = @0xAD;
     let user1 = @0xF1;
     let mut scenario = test_scenario::begin(admin);
-    let mut clock = setup::setup<SAIL>(&mut scenario, admin);
+    let (mut clock, ve_id) = setup::setup_v2<SAIL>(&mut scenario, admin);
 
     // Create a 14-day non-permanent lock (expires at 2*epoch)
     scenario.next_tx(user1);
@@ -44,8 +44,9 @@ fun test_claimable_after_lock_expires() {
     {
         let ve = scenario.take_shared<VotingEscrow<SAIL>>();
 
-        let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
+        let (mut rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
             object::id_from_address(@0x1),
+            ve_id,
             &clock,
             scenario.ctx()
         );
@@ -80,7 +81,7 @@ fun test_claimable_permanent_lock_constant_power_non_permanent_decay() {
     let user1 = @0xF2;
     let user2 = @0xF3;
     let mut scenario = test_scenario::begin(admin);
-    let mut clock = setup::setup<SAIL>(&mut scenario, admin);
+    let (mut clock, ve_id) = setup::setup_v2<SAIL>(&mut scenario, admin);
 
     // User 1: permanent lock of 1M (constant voting power)
     scenario.next_tx(user1);
@@ -120,8 +121,9 @@ fun test_claimable_permanent_lock_constant_power_non_permanent_decay() {
     // Create RD at time 0, share it for multi-tx claim pattern
     scenario.next_tx(admin);
     {
-        let (rd, cap) = reward_distributor::create<REWARD_COIN>(
+        let (rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
             object::id_from_address(@0x1),
+            ve_id,
             &clock,
             scenario.ctx()
         );
@@ -278,7 +280,7 @@ fun test_claimable_respects_start_time() {
     let admin = @0xAD;
     let user1 = @0xF3;
     let mut scenario = test_scenario::begin(admin);
-    let mut clock = setup::setup<SAIL>(&mut scenario, admin);
+    let (mut clock, ve_id) = setup::setup_v2<SAIL>(&mut scenario, admin);
 
     // Create permanent lock at time 0
     scenario.next_tx(user1);
@@ -300,8 +302,9 @@ fun test_claimable_respects_start_time() {
     // Create RD at time 0, share it
     scenario.next_tx(admin);
     {
-        let (rd, cap) = reward_distributor::create<REWARD_COIN>(
+        let (rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
             object::id_from_address(@0x1),
+            ve_id,
             &clock,
             scenario.ctx()
         );
@@ -356,7 +359,7 @@ fun test_claimable_with_no_tokens_distributed() {
     let admin = @0xAD;
     let user1 = @0xF4;
     let mut scenario = test_scenario::begin(admin);
-    let mut clock = setup::setup<SAIL>(&mut scenario, admin);
+    let (mut clock, ve_id) = setup::setup_v2<SAIL>(&mut scenario, admin);
 
     scenario.next_tx(user1);
     {
@@ -378,8 +381,9 @@ fun test_claimable_with_no_tokens_distributed() {
     {
         let ve = scenario.take_shared<VotingEscrow<SAIL>>();
 
-        let (rd, cap) = reward_distributor::create<REWARD_COIN>(
+        let (rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
             object::id_from_address(@0x1),
+            ve_id,
             &clock,
             scenario.ctx()
         );
@@ -406,7 +410,7 @@ fun test_claimable_zero_total_supply_epoch() {
     let admin = @0xAD;
     let user1 = @0xF5;
     let mut scenario = test_scenario::begin(admin);
-    let mut clock = setup::setup<SAIL>(&mut scenario, admin);
+    let (mut clock, ve_id) = setup::setup_v2<SAIL>(&mut scenario, admin);
 
     // Create a 7-day non-permanent lock (expires at epoch)
     scenario.next_tx(user1);
@@ -432,8 +436,9 @@ fun test_claimable_zero_total_supply_epoch() {
     {
         let ve = scenario.take_shared<VotingEscrow<SAIL>>();
 
-        let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
+        let (mut rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
             object::id_from_address(@0x1),
+            ve_id,
             &clock,
             scenario.ctx()
         );
@@ -471,7 +476,7 @@ fun test_claimable_partial_period_tokens() {
     let admin = @0xAD;
     let user1 = @0xF6;
     let mut scenario = test_scenario::begin(admin);
-    let mut clock = setup::setup<SAIL>(&mut scenario, admin);
+    let (mut clock, ve_id) = setup::setup_v2<SAIL>(&mut scenario, admin);
 
     // Create a permanent lock (sole lock)
     scenario.next_tx(user1);
@@ -494,8 +499,9 @@ fun test_claimable_partial_period_tokens() {
     {
         let ve = scenario.take_shared<VotingEscrow<SAIL>>();
 
-        let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
+        let (mut rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
             object::id_from_address(@0x1),
+            ve_id,
             &clock,
             scenario.ctx()
         );
@@ -534,7 +540,7 @@ fun test_claimable_50_epoch_iteration_limit() {
     let admin = @0xAD;
     let user1 = @0xF7;
     let mut scenario = test_scenario::begin(admin);
-    let mut clock = setup::setup<SAIL>(&mut scenario, admin);
+    let (mut clock, ve_id) = setup::setup_v2<SAIL>(&mut scenario, admin);
 
     // Create a permanent lock (sole lock)
     scenario.next_tx(user1);
@@ -556,8 +562,9 @@ fun test_claimable_50_epoch_iteration_limit() {
     // Create RD at time 0, share it (need claim to advance cursor)
     scenario.next_tx(admin);
     {
-        let (rd, cap) = reward_distributor::create<REWARD_COIN>(
+        let (rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
             object::id_from_address(@0x1),
+            ve_id,
             &clock,
             scenario.ctx()
         );
@@ -642,7 +649,7 @@ fun test_claimable_reads_voting_power_at_epoch_end() {
     let user1 = @0xF8;
     let user2 = @0xF9;
     let mut scenario = test_scenario::begin(admin);
-    let mut clock = setup::setup<SAIL>(&mut scenario, admin);
+    let (mut clock, ve_id) = setup::setup_v2<SAIL>(&mut scenario, admin);
 
     // User 1: 7-day non-permanent lock (expires exactly at epoch boundary)
     scenario.next_tx(user1);
@@ -682,8 +689,9 @@ fun test_claimable_reads_voting_power_at_epoch_end() {
     {
         let ve = scenario.take_shared<VotingEscrow<SAIL>>();
 
-        let (mut rd, cap) = reward_distributor::create<REWARD_COIN>(
+        let (mut rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
             object::id_from_address(@0x1),
+            ve_id,
             &clock,
             scenario.ctx()
         );

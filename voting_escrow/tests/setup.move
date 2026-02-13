@@ -9,11 +9,16 @@ use sui::test_utils;
 public struct SAIL has drop, store {}
 
 public fun setup<SailCoinType>(scenario: &mut ts::Scenario, sender: address): Clock {
+    let (clock, _) = setup_v2<SailCoinType>(scenario, sender);
+    clock
+}
+
+public fun setup_v2<SailCoinType>(scenario: &mut ts::Scenario, sender: address): (Clock, ID) {
     let clock = clock::create_for_testing(scenario.ctx());
     let voter_id = object::id_from_address(@0xABCD1337);
 
     scenario.next_tx(sender);
-    {
+    let ve_id = {
         let ve_publisher = voting_escrow::test_init(scenario.ctx());
         let (ve, ve_cap) = voting_escrow::create<SailCoinType>(
             &ve_publisher,
@@ -21,10 +26,12 @@ public fun setup<SailCoinType>(scenario: &mut ts::Scenario, sender: address): Cl
             &clock,
             scenario.ctx()
         );
+        let id = object::id(&ve);
         transfer::public_share_object(ve);
         transfer::public_transfer(ve_cap, sender);
         test_utils::destroy(ve_publisher);
+        id
     };
 
-    clock
+    (clock, ve_id)
 }
