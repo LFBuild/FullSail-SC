@@ -28,13 +28,14 @@ public fun notices(): (vector<u8>, vector<u8>) {
 }
 
 public(package) fun create<FeeCoinType>(
+    voting_escrow_id: ID,
     clock: &Clock,
     ctx: &mut TxContext
 ): PassiveFeeDistributor<FeeCoinType> {
     let id = object::new(ctx);
     let inner_id = id.uid_to_inner();
     let (reward_distributor, reward_distributor_cap) =
-        reward_distributor::create<FeeCoinType>(inner_id, clock, ctx);
+        reward_distributor::create_v2<FeeCoinType>(inner_id, voting_escrow_id, clock, ctx);
 
     PassiveFeeDistributor {
         id,

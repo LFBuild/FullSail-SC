@@ -650,11 +650,12 @@ fun test_distributor_with_multiple_checkpoint_token_across_many_epochs() {
 }
 
 // ========= 58. test_claiming_with_wrong_voting_escrow_object =========
-// Claiming with a wrong VotingEscrow object should fail — the lock_id
-// doesn't exist in the wrong VE, so user_point_epoch returns 0 and the
-// claim produces 0 rewards.
+// Claiming with a wrong VotingEscrow object should fail — after the first
+// claim locks in the correct VE, using a different VE aborts with
+// EVotingEscrowMismatch.
 
 #[test]
+#[expected_failure(abort_code = voting_escrow::reward_distributor::EVotingEscrowMismatch)]
 fun test_claiming_with_wrong_voting_escrow_object() {
     let admin = @0xAD;
     let user1 = @0x100C;
@@ -713,11 +714,11 @@ fun test_claiming_with_wrong_voting_escrow_object() {
         id
     };
 
-    // Create RD, checkpoint tokens
+    // Create RD with VE1 identity, checkpoint tokens
     scenario.next_tx(admin);
     {
-        let (rd, cap) = reward_distributor::create<REWARD_COIN>(
-            object::id_from_address(@0x1), &clock, scenario.ctx()
+        let (rd, cap) = reward_distributor::create_v2<REWARD_COIN>(
+            object::id_from_address(@0x1), ve1_id, &clock, scenario.ctx()
         );
         sui::transfer::public_share_object(rd);
         sui::transfer::public_transfer(cap, admin);
@@ -749,43 +750,19 @@ fun test_claiming_with_wrong_voting_escrow_object() {
         test_scenario::return_shared(rd);
     };
 
-    // Try claiming with wrong VE2 using the VE1 lock_id
+    // Try claimable with wrong VE2 — should abort because RD is bound to VE1
     scenario.next_tx(admin);
     {
         let ve2 = scenario.take_shared_by_id<VotingEscrow<SAIL>>(ve2_id);
-        let mut rd = scenario.take_shared<reward_distributor::RewardDistributor<REWARD_COIN>>();
-        let cap = scenario.take_from_sender<RewardDistributorCap>();
+        let rd = scenario.take_shared<reward_distributor::RewardDistributor<REWARD_COIN>>();
 
-        // Using wrong VE2 with VE1's lock_id: claimable should be 0
-        let wrong_claimable = reward_distributor::claimable<SAIL, REWARD_COIN>(
-            &rd, &ve2, lock_id
-        );
-        assert!(wrong_claimable == 0, 2);
-
-        // Claiming with wrong VE2 and VE1's lock_id should return 0
-        let claimed = reward_distributor::claim<SAIL, REWARD_COIN>(
-            &mut rd, &cap, &ve2, lock_id, scenario.ctx()
-        );
-        assert!(claimed.value() == 0, 3);
-        unit_test::destroy(claimed);
-
-        // Using wrong VE2 with VE2's own lock_id: claimable should also be 0
-        // because the RD is associated with VE1, not VE2
-        let wrong_claimable2 = reward_distributor::claimable<SAIL, REWARD_COIN>(
+        // This should abort with EVotingEscrowMismatch
+        let _wrong_claimable = reward_distributor::claimable<SAIL, REWARD_COIN>(
             &rd, &ve2, ve2_lock_id
         );
-        assert!(wrong_claimable2 == 0, 4);
-
-        // Claiming with VE2's own lock should also return 0
-        let claimed2 = reward_distributor::claim<SAIL, REWARD_COIN>(
-            &mut rd, &cap, &ve2, ve2_lock_id, scenario.ctx()
-        );
-        assert!(claimed2.value() == 0, 5);
-        unit_test::destroy(claimed2);
 
         test_scenario::return_shared(ve2);
         test_scenario::return_shared(rd);
-        scenario.return_to_sender(cap);
     };
 
     clock::destroy_for_testing(clock);
