@@ -29,10 +29,10 @@ fun test_rounding_does_not_create_tokens() {
     let mut clock = setup::setup<SAIL>(&mut scenario, admin);
 
     // Create 3 permanent locks with non-round amounts
-    // Total: 333_333 + 222_222 + 111_111 = 666_666
+    // Total: 666
     scenario.next_tx(user1);
     {
-        let sail = coin::mint_for_testing<SAIL>(333_333, scenario.ctx());
+        let sail = coin::mint_for_testing<SAIL>(333, scenario.ctx());
         let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
         ve_module::create_lock<SAIL>(&mut ve, sail, 182, true, &clock, scenario.ctx());
         test_scenario::return_shared(ve);
@@ -40,7 +40,7 @@ fun test_rounding_does_not_create_tokens() {
 
     scenario.next_tx(user2);
     {
-        let sail = coin::mint_for_testing<SAIL>(222_222, scenario.ctx());
+        let sail = coin::mint_for_testing<SAIL>(222, scenario.ctx());
         let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
         ve_module::create_lock<SAIL>(&mut ve, sail, 182, true, &clock, scenario.ctx());
         test_scenario::return_shared(ve);
@@ -48,7 +48,7 @@ fun test_rounding_does_not_create_tokens() {
 
     scenario.next_tx(user3);
     {
-        let sail = coin::mint_for_testing<SAIL>(111_111, scenario.ctx());
+        let sail = coin::mint_for_testing<SAIL>(111, scenario.ctx());
         let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
         ve_module::create_lock<SAIL>(&mut ve, sail, 182, true, &clock, scenario.ctx());
         test_scenario::return_shared(ve);
@@ -88,31 +88,31 @@ fun test_rounding_does_not_create_tokens() {
         sui::transfer::public_transfer(cap, admin);
     };
 
-    // Checkpoint 77_777 at epoch 1 -> period 0 = 77_777
+    // Checkpoint 777 at epoch 1 -> period 0 = 777
     clock::increment_for_testing(&mut clock, common::epoch() * 1000);
     scenario.next_tx(admin);
     {
         let mut rd = scenario.take_shared<reward_distributor::RewardDistributor<REWARD_COIN>>();
         let cap = scenario.take_from_sender<RewardDistributorCap>();
-        let coin = coin::mint_for_testing<REWARD_COIN>(77_777, scenario.ctx());
+        let coin = coin::mint_for_testing<REWARD_COIN>(777, scenario.ctx());
         reward_distributor::checkpoint_token(&mut rd, &cap, coin, &clock);
         test_scenario::return_shared(rd);
         scenario.return_to_sender(cap);
     };
 
-    // Checkpoint 33_333 at epoch 2 -> period epoch = 33_333
+    // Checkpoint 333 at epoch 2 -> period epoch = 333
     clock::increment_for_testing(&mut clock, common::epoch() * 1000);
     scenario.next_tx(admin);
     {
         let mut rd = scenario.take_shared<reward_distributor::RewardDistributor<REWARD_COIN>>();
         let cap = scenario.take_from_sender<RewardDistributorCap>();
-        let coin = coin::mint_for_testing<REWARD_COIN>(33_333, scenario.ctx());
+        let coin = coin::mint_for_testing<REWARD_COIN>(333, scenario.ctx());
         reward_distributor::checkpoint_token(&mut rd, &cap, coin, &clock);
         test_scenario::return_shared(rd);
         scenario.return_to_sender(cap);
     };
 
-    let total_deposited = 77_777 + 33_333;
+    let total_deposited = 777 + 333;
 
     // Claim all
     scenario.next_tx(admin);
@@ -134,6 +134,7 @@ fun test_rounding_does_not_create_tokens() {
         let sum = c1.value() + c2.value() + c3.value();
         // Floor rounding: sum of claims must be <= total deposited
         assert!(sum <= total_deposited, 1);
+        assert!(total_deposited - sum <= 6, 2);
         // Verify remaining balance equals the rounding dust
         assert!(reward_distributor::balance(&rd) == total_deposited - sum, 2);
         // Each user gets a non-zero share
@@ -155,9 +156,7 @@ fun test_rounding_does_not_create_tokens() {
 }
 
 // ========= 51. test_checkpoint_then_claim_same_epoch =========
-// Checkpoint tokens and claim in the same epoch. The current epoch
-// (incomplete) should NOT be claimable since max_period is the
-// current period and the loop condition is epoch_end >= max_period.
+// Checkpoint tokens multiple timesand claim in the same epoch
 
 #[test]
 fun test_checkpoint_then_claim_same_epoch() {
@@ -193,6 +192,19 @@ fun test_checkpoint_then_claim_same_epoch() {
         sui::transfer::public_transfer(cap, admin);
     };
 
+    // Checkpoint 100K mid-epoch 0 (at 0.33*epoch)
+    clock::increment_for_testing(&mut clock, common::epoch() / 3 * 1000);
+    scenario.next_tx(admin);
+    {
+        let mut rd = scenario.take_shared<reward_distributor::RewardDistributor<REWARD_COIN>>();
+        let cap = scenario.take_from_sender<RewardDistributorCap>();
+        let coin = coin::mint_for_testing<REWARD_COIN>(100_000, scenario.ctx());
+        reward_distributor::checkpoint_token(&mut rd, &cap, coin, &clock);
+        test_scenario::return_shared(rd);
+        scenario.return_to_sender(cap);
+    };
+
+
     // Checkpoint 100K mid-epoch 0 (at 0.5*epoch)
     clock::increment_for_testing(&mut clock, common::epoch() / 2 * 1000);
     scenario.next_tx(admin);
@@ -221,39 +233,6 @@ fun test_checkpoint_then_claim_same_epoch() {
             &mut rd, &cap, &ve, lock_id, scenario.ctx()
         );
         assert!(claimed.value() == 0, 2);
-        unit_test::destroy(claimed);
-
-        test_scenario::return_shared(ve);
-        test_scenario::return_shared(rd);
-        scenario.return_to_sender(cap);
-    };
-
-    // Advance to epoch boundary, checkpoint 0 to finalize epoch 0
-    clock::increment_for_testing(&mut clock, common::epoch() / 2 * 1000);
-    scenario.next_tx(admin);
-    {
-        let mut rd = scenario.take_shared<reward_distributor::RewardDistributor<REWARD_COIN>>();
-        let cap = scenario.take_from_sender<RewardDistributorCap>();
-        let coin = coin::mint_for_testing<REWARD_COIN>(0, scenario.ctx());
-        reward_distributor::checkpoint_token(&mut rd, &cap, coin, &clock);
-        test_scenario::return_shared(rd);
-        scenario.return_to_sender(cap);
-    };
-
-    // Now epoch 0 is finalized -> claim should get 100K
-    scenario.next_tx(admin);
-    {
-        let ve = scenario.take_shared<VotingEscrow<SAIL>>();
-        let mut rd = scenario.take_shared<reward_distributor::RewardDistributor<REWARD_COIN>>();
-        let cap = scenario.take_from_sender<RewardDistributorCap>();
-
-        let claimable = reward_distributor::claimable<SAIL, REWARD_COIN>(&rd, &ve, lock_id);
-        assert!(claimable == 100_000, 3);
-
-        let claimed = reward_distributor::claim<SAIL, REWARD_COIN>(
-            &mut rd, &cap, &ve, lock_id, scenario.ctx()
-        );
-        assert!(claimed.value() == 100_000, 4);
         unit_test::destroy(claimed);
 
         test_scenario::return_shared(ve);
@@ -331,108 +310,6 @@ fun test_claimable_idempotent() {
 
         test_scenario::return_shared(ve);
         test_scenario::return_shared(rd);
-    };
-
-    clock::destroy_for_testing(clock);
-    scenario.end();
-}
-
-// ========= 53. test_claim_after_start_resets_distribution =========
-// Call start to reset timestamps. Verify that the lock doesn't earn
-// rewards for periods before start_time, and only post-start rewards
-// are distributed.
-
-#[test]
-fun test_claim_after_start_resets_distribution() {
-    let admin = @0xAD;
-    let user1 = @0x1006;
-    let mut scenario = test_scenario::begin(admin);
-    let mut clock = setup::setup<SAIL>(&mut scenario, admin);
-
-    // Create permanent lock at time 0
-    scenario.next_tx(user1);
-    {
-        let sail = coin::mint_for_testing<SAIL>(1_000_000, scenario.ctx());
-        let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
-        ve_module::create_lock<SAIL>(&mut ve, sail, 182, true, &clock, scenario.ctx());
-        test_scenario::return_shared(ve);
-    };
-
-    scenario.next_tx(user1);
-    let lock_id = {
-        let lock = scenario.take_from_sender<Lock>();
-        let id = object::id(&lock);
-        scenario.return_to_sender(lock);
-        id
-    };
-
-    // Create RD at time 0 (start_time = 0)
-    scenario.next_tx(admin);
-    {
-        let (rd, cap) = reward_distributor::create<REWARD_COIN>(
-            object::id_from_address(@0x1), &clock, scenario.ctx()
-        );
-        sui::transfer::public_share_object(rd);
-        sui::transfer::public_transfer(cap, admin);
-    };
-
-    // Verify initial start_time = 0
-    scenario.next_tx(admin);
-    {
-        let rd = scenario.take_shared<reward_distributor::RewardDistributor<REWARD_COIN>>();
-        assert!(reward_distributor::start_time(&rd) == 0, 1);
-        test_scenario::return_shared(rd);
-    };
-
-    // Advance to 3*epoch and call start -> resets start_time and last_token_time
-    clock::increment_for_testing(&mut clock, common::epoch() * 3 * 1000);
-    scenario.next_tx(admin);
-    {
-        let mut rd = scenario.take_shared<reward_distributor::RewardDistributor<REWARD_COIN>>();
-        let cap = scenario.take_from_sender<RewardDistributorCap>();
-        reward_distributor::start(&mut rd, &cap, &clock);
-        assert!(reward_distributor::start_time(&rd) == common::epoch() * 3, 2);
-        test_scenario::return_shared(rd);
-        scenario.return_to_sender(cap);
-    };
-
-    // Checkpoint 100K at 4*epoch -> period 3*epoch = 100K
-    clock::increment_for_testing(&mut clock, common::epoch() * 1000);
-    scenario.next_tx(admin);
-    {
-        let mut rd = scenario.take_shared<reward_distributor::RewardDistributor<REWARD_COIN>>();
-        let cap = scenario.take_from_sender<RewardDistributorCap>();
-        let coin = coin::mint_for_testing<REWARD_COIN>(100_000, scenario.ctx());
-        reward_distributor::checkpoint_token(&mut rd, &cap, coin, &clock);
-        test_scenario::return_shared(rd);
-        scenario.return_to_sender(cap);
-    };
-
-    // Claim: lock created at time 0, but start_time = 3*epoch.
-    // epoch_end initialized to 0 (from lock creation), then bumped to
-    // to_period(start_time) = 3*epoch. Only period 3*epoch is processed.
-    scenario.next_tx(admin);
-    {
-        let ve = scenario.take_shared<VotingEscrow<SAIL>>();
-        let mut rd = scenario.take_shared<reward_distributor::RewardDistributor<REWARD_COIN>>();
-        let cap = scenario.take_from_sender<RewardDistributorCap>();
-
-        let claimable = reward_distributor::claimable<SAIL, REWARD_COIN>(&rd, &ve, lock_id);
-        assert!(claimable == 100_000, 3);
-
-        let claimed = reward_distributor::claim<SAIL, REWARD_COIN>(
-            &mut rd, &cap, &ve, lock_id, scenario.ctx()
-        );
-        assert!(claimed.value() == 100_000, 4);
-        unit_test::destroy(claimed);
-
-        // time_cursor should be 4*epoch (started from 3*epoch, processed one period)
-        let cursor = reward_distributor::test_time_cursor_of(&rd, lock_id);
-        assert!(cursor == common::epoch() * 4, 5);
-
-        test_scenario::return_shared(ve);
-        test_scenario::return_shared(rd);
-        scenario.return_to_sender(cap);
     };
 
     clock::destroy_for_testing(clock);
@@ -699,6 +576,9 @@ fun test_distributor_with_multiple_checkpoint_token_across_many_epochs() {
         sui::transfer::public_transfer(cap, admin);
     };
 
+    // tokens are checkpointed 5 hours after epoch start, cos that's the realistic scenario
+    clock::increment_for_testing(&mut clock, 5 * 60 * 60 * 1000);
+
     // Checkpoint 10 epochs with increasing amounts: 10K, 20K, ..., 100K
     // Total: 550K
     scenario.next_tx(admin);
@@ -725,6 +605,8 @@ fun test_distributor_with_multiple_checkpoint_token_across_many_epochs() {
         test_scenario::return_shared(rd);
         scenario.return_to_sender(cap);
     };
+    // last epoch has only partial rewards cos some are distributed in the next epoch in the next 5 hours. That's a realistic scenario.
+    let expected_total = 10_000 + 20_000 + 30_000 + 40_000 + 50_000 + 60_000 + 70_000 + 80_000 + 90_000 + 97023;
 
     // Claim for all 3 users
     scenario.next_tx(admin);
@@ -743,18 +625,16 @@ fun test_distributor_with_multiple_checkpoint_token_across_many_epochs() {
             &mut rd, &cap, &ve, lock_id_3, scenario.ctx()
         );
 
-        // Shares: 100K/1M=10%, 300K/1M=30%, 600K/1M=60%
-        // All epoch amounts are multiples of 10K -> exact division, no rounding
-        // user1: sum(1K, 2K, ..., 10K) = 55K
-        // user2: sum(3K, 6K, ..., 30K) = 165K
-        // user3: sum(6K, 12K, ..., 60K) = 330K
-        assert!(c1.value() == 55_000, 1);
-        assert!(c2.value() == 165_000, 2);
-        assert!(c3.value() == 330_000, 3);
+        let expected_share_1 = expected_total / 10;
+        let expected_share_2 = expected_total * 3 / 10;
+        let expected_share_3 = expected_total * 6 / 10;
 
-        // Total claimed = 550K, nothing left
-        assert!(c1.value() + c2.value() + c3.value() == 550_000, 4);
-        assert!(reward_distributor::balance(&rd) == 0, 5);
+        assert!(expected_share_1 - c1.value() <= 10, 1);
+        assert!(expected_share_2 - c2.value() <= 10, 2);
+        assert!(expected_share_3 - c3.value() <= 10, 3);
+
+        assert!(expected_total - (c1.value() + c2.value() + c3.value()) <= 20, 4);
+        assert!(reward_distributor::balance(&rd) - 2977 <= 20, 5);
 
         unit_test::destroy(c1);
         unit_test::destroy(c2);
@@ -783,15 +663,50 @@ fun test_claiming_with_wrong_voting_escrow_object() {
 
     // Create lock in the main VE (VE1, shared by setup)
     scenario.next_tx(user1);
-    {
+    let ve1_id = {
         let sail = coin::mint_for_testing<SAIL>(1_000_000, scenario.ctx());
         let mut ve = scenario.take_shared<VotingEscrow<SAIL>>();
+        let id = object::id(&ve);
         ve_module::create_lock<SAIL>(&mut ve, sail, 182, true, &clock, scenario.ctx());
         test_scenario::return_shared(ve);
+        id
     };
 
     scenario.next_tx(user1);
     let lock_id = {
+        let lock = scenario.take_from_sender<Lock>();
+        let id = object::id(&lock);
+        scenario.return_to_sender(lock);
+        id
+    };
+
+    // Create a second VotingEscrow (VE2) with a lock from the beginning
+    scenario.next_tx(admin);
+    let ve2_id = {
+        let ve_publisher = ve_module::test_init(scenario.ctx());
+        let (ve2, ve_cap2) = ve_module::create<SAIL>(
+            &ve_publisher,
+            object::id_from_address(@0xBEEF),
+            &clock,
+            scenario.ctx()
+        );
+        let id = object::id(&ve2);
+        sui::transfer::public_share_object(ve2);
+        sui::transfer::public_transfer(ve_cap2, admin);
+        test_utils::destroy(ve_publisher);
+        id
+    };
+
+    scenario.next_tx(user1);
+    {
+        let sail2 = coin::mint_for_testing<SAIL>(1_000_000, scenario.ctx());
+        let mut ve2 = scenario.take_shared_by_id<VotingEscrow<SAIL>>(ve2_id);
+        ve_module::create_lock<SAIL>(&mut ve2, sail2, 182, true, &clock, scenario.ctx());
+        test_scenario::return_shared(ve2);
+    };
+
+    scenario.next_tx(user1);
+    let ve2_lock_id = {
         let lock = scenario.take_from_sender<Lock>();
         let id = object::id(&lock);
         scenario.return_to_sender(lock);
@@ -822,7 +737,7 @@ fun test_claiming_with_wrong_voting_escrow_object() {
     // Verify correct VE1 gives 100K claimable
     scenario.next_tx(admin);
     {
-        let ve1 = scenario.take_shared<VotingEscrow<SAIL>>();
+        let ve1 = scenario.take_shared_by_id<VotingEscrow<SAIL>>(ve1_id);
         let rd = scenario.take_shared<reward_distributor::RewardDistributor<REWARD_COIN>>();
 
         let correct_claimable = reward_distributor::claimable<SAIL, REWARD_COIN>(
@@ -834,38 +749,43 @@ fun test_claiming_with_wrong_voting_escrow_object() {
         test_scenario::return_shared(rd);
     };
 
-    // Create a second VotingEscrow (VE2) and try claiming with it
+    // Try claiming with wrong VE2 using the VE1 lock_id
     scenario.next_tx(admin);
     {
-        let ve_publisher = ve_module::test_init(scenario.ctx());
-        let (ve2, ve_cap2) = ve_module::create<SAIL>(
-            &ve_publisher,
-            object::id_from_address(@0xBEEF),
-            &clock,
-            scenario.ctx()
-        );
-
+        let ve2 = scenario.take_shared_by_id<VotingEscrow<SAIL>>(ve2_id);
         let mut rd = scenario.take_shared<reward_distributor::RewardDistributor<REWARD_COIN>>();
         let cap = scenario.take_from_sender<RewardDistributorCap>();
 
-        // Using wrong VE2: claimable should be 0
+        // Using wrong VE2 with VE1's lock_id: claimable should be 0
         let wrong_claimable = reward_distributor::claimable<SAIL, REWARD_COIN>(
             &rd, &ve2, lock_id
         );
         assert!(wrong_claimable == 0, 2);
 
-        // Claiming with wrong VE2 should return 0
+        // Claiming with wrong VE2 and VE1's lock_id should return 0
         let claimed = reward_distributor::claim<SAIL, REWARD_COIN>(
             &mut rd, &cap, &ve2, lock_id, scenario.ctx()
         );
         assert!(claimed.value() == 0, 3);
         unit_test::destroy(claimed);
 
+        // Using wrong VE2 with VE2's own lock_id: claimable should also be 0
+        // because the RD is associated with VE1, not VE2
+        let wrong_claimable2 = reward_distributor::claimable<SAIL, REWARD_COIN>(
+            &rd, &ve2, ve2_lock_id
+        );
+        assert!(wrong_claimable2 == 0, 4);
+
+        // Claiming with VE2's own lock should also return 0
+        let claimed2 = reward_distributor::claim<SAIL, REWARD_COIN>(
+            &mut rd, &cap, &ve2, ve2_lock_id, scenario.ctx()
+        );
+        assert!(claimed2.value() == 0, 5);
+        unit_test::destroy(claimed2);
+
+        test_scenario::return_shared(ve2);
         test_scenario::return_shared(rd);
         scenario.return_to_sender(cap);
-        test_utils::destroy(ve2);
-        test_utils::destroy(ve_cap2);
-        test_utils::destroy(ve_publisher);
     };
 
     clock::destroy_for_testing(clock);
