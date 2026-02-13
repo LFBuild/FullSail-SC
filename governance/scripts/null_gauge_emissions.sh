@@ -2,7 +2,7 @@
 
 source ./export.sh
 
-source ./pools/pool_tknk_tknj.sh
+source ./pools/pool_l0wbtc_usdc.sh
 
 # Source SAIL pool for price monitoring
 # Save gauge pool variables first
@@ -11,7 +11,7 @@ export GAUGE_COIN_A=$COIN_A
 export GAUGE_COIN_B=$COIN_B
 export GAUGE_ID=$GAUGE
 
-source ./pools/pool_sail_tkna.sh
+source ./pools/pool_sail_usdc.sh
 export SAIL_POOL=$POOL
 export SAIL_POOL_COIN_A=$COIN_A
 export SAIL_POOL_COIN_B=$COIN_B
