@@ -3356,7 +3356,7 @@ module governance::minter {
     ///
     /// # Returns
     /// The newly created PassiveFeeDistributor
-    public fun create_passive_fee_distributor<SailCoinType, FeeCoinType>(
+    public fun create_and_start_passive_fee_distributor<SailCoinType, FeeCoinType>(
         minter: &Minter<SailCoinType>,
         admin_cap: &AdminCap,
         voting_escrow: &voting_escrow::voting_escrow::VotingEscrow<SailCoinType>,
@@ -3368,7 +3368,9 @@ module governance::minter {
         minter.check_admin(admin_cap);
         assert!(!minter.is_paused(), ECreatePassiveFeeDistributorMinterPaused);
 
-        let distributor = governance::passive_fee_distributor::create<FeeCoinType>(object::id(voting_escrow), clock, ctx);
+        let mut distributor = governance::passive_fee_distributor::create<FeeCoinType>(object::id(voting_escrow), clock, ctx);
+
+        distributor.start(clock);
 
         sui::event::emit<EventCreatePassiveFeeDistributor>(EventCreatePassiveFeeDistributor {
             admin_cap: object::id(admin_cap),
