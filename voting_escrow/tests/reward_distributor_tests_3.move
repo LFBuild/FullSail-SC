@@ -1,5 +1,5 @@
 #[test_only]
-module voting_escrow::reward_distributor_tests_4;
+module voting_escrow::reward_distributor_tests_3;
 
 use sui::test_scenario;
 use sui::clock;
