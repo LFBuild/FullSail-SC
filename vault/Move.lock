@@ -131,7 +131,7 @@ manifest_digest = "C4FE4C91DE74CBF223B2E380AE40F592177D21870DC2D7EB6227D2D694E05
 deps = {}
 
 [pinned.testnet.MoveStdlib_2]
-source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "c7566e601c9a64154850c1cb074a90d7fc11bba4" }
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "072a2111619715c3348d1b83c0526c3bcfa5cdd1" }
 use_environment = "testnet"
 manifest_digest = "C4FE4C91DE74CBF223B2E380AE40F592177D21870DC2D7EB6227D2D694E05363"
 deps = {}
@@ -155,7 +155,7 @@ manifest_digest = "7AFB66695545775FBFBB2D3078ADFD084244D5002392E837FDE21D9EA1C6D
 deps = { MoveStdlib = "MoveStdlib_1" }
 
 [pinned.testnet.Sui_2]
-source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "c7566e601c9a64154850c1cb074a90d7fc11bba4" }
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "072a2111619715c3348d1b83c0526c3bcfa5cdd1" }
 use_environment = "testnet"
 manifest_digest = "7AFB66695545775FBFBB2D3078ADFD084244D5002392E837FDE21D9EA1C6D01C"
 deps = { MoveStdlib = "MoveStdlib_2" }
@@ -173,13 +173,13 @@ manifest_digest = "6996F1AB8CD448FFBA142C085C488FE8A46B485E61E38A1891EFA52B30D9C
 deps = { Sui = "Sui_1" }
 
 [pinned.testnet.clmm_pool]
-source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "clmm_pool", rev = "977b80414a6a51a80051ae2a5c554cbe9f1af428" }
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "clmm_pool", rev = "c7c6d685fcfa4ab34657d9baef994e68719f654e" }
 use_environment = "testnet"
 manifest_digest = "24EA586AD053C0C6DE39C7A22EE75E8AA84EBF08AFFC4A4A3BD263B2AF5FDEC0"
 deps = { Sui = "Sui_2", gauge_cap = "gauge_cap", integer_mate = "integer_mate", move_stl = "move_stl", price_provider = "price_provider" }
 
 [pinned.testnet.gauge_cap]
-source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "gauge_cap", rev = "977b80414a6a51a80051ae2a5c554cbe9f1af428" }
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "gauge_cap", rev = "c7c6d685fcfa4ab34657d9baef994e68719f654e" }
 use_environment = "testnet"
 manifest_digest = "04F2C2F24F6DB9EB7D6997D46697671E5F788525F59E0879718AB4D32008FD57"
 deps = { Sui = "Sui_2" }
@@ -187,11 +187,17 @@ deps = { Sui = "Sui_2" }
 [pinned.testnet.governance]
 source = { local = "../governance" }
 use_environment = "testnet"
-manifest_digest = "7AEAC88D783CBD1A1858125587E04BFB0359B68977E67292BC1F6B7293FCCEC8"
+manifest_digest = "FFFBBFF454584E0ED3166A95AC85B28768346762E1F157F7D181AA5DB6A3EFB0"
 deps = { Sui = "Sui_2", Switchboard = "Switchboard", clmm_pool = "clmm_pool", gauge_cap = "gauge_cap", integer_mate = "integer_mate", locker_cap = "locker_cap", price_monitor = "price_monitor", price_provider = "price_provider", voting_escrow = "voting_escrow" }
 
 [pinned.testnet.integer_mate]
-source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "integer_mate", rev = "977b80414a6a51a80051ae2a5c554cbe9f1af428" }
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "integer_mate", rev = "c7c6d685fcfa4ab34657d9baef994e68719f654e" }
+use_environment = "testnet"
+manifest_digest = "04F2C2F24F6DB9EB7D6997D46697671E5F788525F59E0879718AB4D32008FD57"
+deps = { Sui = "Sui_2" }
+
+[pinned.testnet.integer_mate_1]
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "integer_mate", rev = "6c9ac70ea35026f1762723dea263248741cdcaf6" }
 use_environment = "testnet"
 manifest_digest = "04F2C2F24F6DB9EB7D6997D46697671E5F788525F59E0879718AB4D32008FD57"
 deps = { Sui = "Sui_2" }
@@ -203,7 +209,7 @@ manifest_digest = "04F2C2F24F6DB9EB7D6997D46697671E5F788525F59E0879718AB4D32008F
 deps = { Sui = "Sui_2" }
 
 [pinned.testnet.move_stl]
-source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "move_stl", rev = "977b80414a6a51a80051ae2a5c554cbe9f1af428" }
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "move_stl", rev = "c7c6d685fcfa4ab34657d9baef994e68719f654e" }
 use_environment = "testnet"
 manifest_digest = "04F2C2F24F6DB9EB7D6997D46697671E5F788525F59E0879718AB4D32008FD57"
 deps = { Sui = "Sui_2" }
@@ -211,11 +217,11 @@ deps = { Sui = "Sui_2" }
 [pinned.testnet.price_monitor]
 source = { local = "../price_monitor" }
 use_environment = "testnet"
-manifest_digest = "344C2676AAEF3CDB212C0D10A9061B6A3C91D5505F843AA4C7CB6E76C494073C"
+manifest_digest = "8FEE31E69864FCD233C50923F852E5E5221754122DA783F68673C5F1F3F5A868"
 deps = { Sui = "Sui_2", Switchboard = "Switchboard", clmm_pool = "clmm_pool", integer_mate = "integer_mate" }
 
 [pinned.testnet.price_provider]
-source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "price_provider", rev = "977b80414a6a51a80051ae2a5c554cbe9f1af428" }
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "price_provider", rev = "c7c6d685fcfa4ab34657d9baef994e68719f654e" }
 use_environment = "testnet"
 manifest_digest = "04F2C2F24F6DB9EB7D6997D46697671E5F788525F59E0879718AB4D32008FD57"
 deps = { Sui = "Sui_2" }
@@ -223,11 +229,11 @@ deps = { Sui = "Sui_2" }
 [pinned.testnet.vault]
 source = { root = true }
 use_environment = "testnet"
-manifest_digest = "3561B6F56EBEEB4FB7F5A6373061C6FC352E119BA0938ECC098DA31B5137E953"
+manifest_digest = "3ADE258FEC199BA430263B53A0F0C97DEC819CC6EEE35E6397FE957AE85B894D"
 deps = { Pyth = "Pyth", Switchboard = "Switchboard", clmm_pool = "clmm_pool", gauge_cap = "gauge_cap", governance = "governance", integer_mate = "integer_mate", locker_cap = "locker_cap", move_stl = "move_stl", price_monitor = "price_monitor", price_provider = "price_provider", std = "MoveStdlib", sui = "Sui", voting_escrow = "voting_escrow" }
 
 [pinned.testnet.voting_escrow]
 source = { local = "../voting_escrow" }
 use_environment = "testnet"
 manifest_digest = "26B2709BF169497F878B707EF4E15F2704E113213A4FF821F61B350885229220"
-deps = { Sui = "Sui_2", integer_mate = "integer_mate" }
+deps = { Sui = "Sui_2", integer_mate = "integer_mate_1" }

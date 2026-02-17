@@ -1,7 +1,8 @@
 #[test_only]
 module governance::passive_fee_tests;
 
-use governance::minter::{Self, Minter, AdminCap};
+use governance::minter::{Self, Minter, AdminCap, DistributeGovernorCap};
+use governance::passive_fee_distributor;
 use sui::coin;
 use sui::clock;
 use sui::test_scenario;
@@ -27,6 +28,14 @@ public struct OSAIL3 has drop, store {}
 public struct OSAIL4 has drop, store {}
 public struct OSAIL5 has drop, store {}
 public struct OSAIL6 has drop, store {}
+public struct OSAIL7 has drop, store {}
+public struct OSAIL8 has drop, store {}
+public struct OSAIL9 has drop, store {}
+public struct OSAIL10 has drop, store {}
+public struct OSAIL11 has drop, store {}
+public struct OSAIL12 has drop, store {}
+public struct OSAIL13 has drop, store {}
+public struct OSAIL14 has drop, store {}
 
 // ──────────────────────────────────────────────────────────
 // A1. Create & start passive fee distributor
@@ -751,6 +760,624 @@ fun test_passive_fee_hundred_percent() {
         test_scenario::return_shared(minter);
         test_scenario::return_shared(voter);
         test_scenario::return_shared(pool);
+    };
+
+    test_utils::destroy(usd_treasury_cap);
+    test_utils::destroy(usd_metadata);
+    test_utils::destroy(aggregator);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+// ──────────────────────────────────────────────────────────
+// C1. notify_passive_fee — minter paused
+// ──────────────────────────────────────────────────────────
+
+#[test]
+#[expected_failure(abort_code = minter::ENotifyPassiveFeeMinterPaused)]
+fun test_notify_passive_fee_minter_paused() {
+    let admin = @0xD;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+    setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    clock.increment_for_testing(WEEK + 1000);
+
+    // Create passive fee distributor
+    scenario.next_tx(admin);
+    let mut distributor = {
+        let minter = scenario.take_shared<Minter<SAIL>>();
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let d = minter::create_and_start_passive_fee_distributor<SAIL, USD_TESTS>(
+            &minter, &admin_cap, &voting_escrow, &distribution_config, &clock, scenario.ctx(),
+        );
+        scenario.return_to_sender(admin_cap);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(voting_escrow);
+        test_scenario::return_shared(distribution_config);
+        d
+    };
+
+    // Pause minter
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        minter::pause(&mut minter, &distribution_config, &admin_cap);
+        scenario.return_to_sender(admin_cap);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+    };
+
+    // Try to notify — should abort
+    scenario.next_tx(admin);
+    {
+        let minter = scenario.take_shared<Minter<SAIL>>();
+        let distribute_governor_cap = scenario.take_from_sender<DistributeGovernorCap>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let fee_coin = coin::mint_for_testing<USD_TESTS>(100, scenario.ctx());
+
+        minter::notify_passive_fee<SAIL, USD_TESTS>(
+            &minter, &distribute_governor_cap, &distribution_config,
+            &mut distributor, fee_coin, &clock,
+        );
+
+        scenario.return_to_sender(distribute_governor_cap);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+    };
+
+    test_utils::destroy(distributor);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+// ──────────────────────────────────────────────────────────
+// C2. notify_passive_fee — minter not active
+// ──────────────────────────────────────────────────────────
+
+#[test]
+#[expected_failure(abort_code = minter::ENotifyPassiveFeeMinterNotActive)]
+fun test_notify_passive_fee_minter_not_active() {
+    let admin = @0xD;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+    setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    clock.increment_for_testing(WEEK + 1000);
+
+    // Create passive fee distributor (minter not activated, is_active = false)
+    scenario.next_tx(admin);
+    let mut distributor = {
+        let minter = scenario.take_shared<Minter<SAIL>>();
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let d = minter::create_and_start_passive_fee_distributor<SAIL, USD_TESTS>(
+            &minter, &admin_cap, &voting_escrow, &distribution_config, &clock, scenario.ctx(),
+        );
+        scenario.return_to_sender(admin_cap);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(voting_escrow);
+        test_scenario::return_shared(distribution_config);
+        d
+    };
+
+    // Try to notify — should abort because minter not active (activated_at == 0)
+    scenario.next_tx(admin);
+    {
+        let minter = scenario.take_shared<Minter<SAIL>>();
+        let distribute_governor_cap = scenario.take_from_sender<DistributeGovernorCap>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let fee_coin = coin::mint_for_testing<USD_TESTS>(100, scenario.ctx());
+
+        minter::notify_passive_fee<SAIL, USD_TESTS>(
+            &minter, &distribute_governor_cap, &distribution_config,
+            &mut distributor, fee_coin, &clock,
+        );
+
+        scenario.return_to_sender(distribute_governor_cap);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+    };
+
+    test_utils::destroy(distributor);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+// ──────────────────────────────────────────────────────────
+// C3. notify_passive_fee — distribute governor cap revoked
+// ──────────────────────────────────────────────────────────
+
+#[test]
+#[expected_failure(abort_code = minter::ECheckDistributeGovernorRevoked)]
+fun test_notify_passive_fee_governor_revoked() {
+    let admin = @0xD;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    setup::setup_clmm_factory_with_fee_tier(&mut scenario, admin, 1, 1000);
+    setup::setup_distribution<SAIL>(&mut scenario, admin, &clock);
+    clock.increment_for_testing(WEEK + 1000);
+
+    // Create passive fee distributor
+    scenario.next_tx(admin);
+    let mut distributor = {
+        let minter = scenario.take_shared<Minter<SAIL>>();
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let d = minter::create_and_start_passive_fee_distributor<SAIL, USD_TESTS>(
+            &minter, &admin_cap, &voting_escrow, &distribution_config, &clock, scenario.ctx(),
+        );
+        scenario.return_to_sender(admin_cap);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(voting_escrow);
+        test_scenario::return_shared(distribution_config);
+        d
+    };
+
+    // Revoke both distribute governor caps (setup_distribution grants 2)
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let publisher = minter::test_init(scenario.ctx());
+        let cap_a = scenario.take_from_sender<DistributeGovernorCap>();
+        let cap_b = scenario.take_from_sender<DistributeGovernorCap>();
+
+        minter::revoke_distribute_governor(&mut minter, &publisher, object::id(&cap_a));
+        minter::revoke_distribute_governor(&mut minter, &publisher, object::id(&cap_b));
+
+        test_utils::destroy(publisher);
+        scenario.return_to_sender(cap_a);
+        scenario.return_to_sender(cap_b);
+        test_scenario::return_shared(minter);
+    };
+
+    // Try to notify with revoked cap — should abort
+    scenario.next_tx(admin);
+    {
+        let minter = scenario.take_shared<Minter<SAIL>>();
+        let distribute_governor_cap = scenario.take_from_sender<DistributeGovernorCap>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let fee_coin = coin::mint_for_testing<USD_TESTS>(100, scenario.ctx());
+
+        minter::notify_passive_fee<SAIL, USD_TESTS>(
+            &minter, &distribute_governor_cap, &distribution_config,
+            &mut distributor, fee_coin, &clock,
+        );
+
+        scenario.return_to_sender(distribute_governor_cap);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+    };
+
+    test_utils::destroy(distributor);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+// ──────────────────────────────────────────────────────────
+// D1. Notify passive fee at epoch boundary — all tokens in one epoch
+// ──────────────────────────────────────────────────────────
+
+#[test]
+fun test_notify_passive_fee_tokens_in_first_epoch() {
+    let admin = @0xA;
+    let user = @0xB;
+    let lp = @0xC;
+    let swapper = @0xE;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+    let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+
+    let gauge_base_emissions = 1_000_000;
+    let lock_amount = 1_000_000;
+
+    // 1. Full setup (epoch 1, clock = WEEK + 1000 ms after this)
+    let mut aggregator = setup::full_setup_with_lock<USD_TESTS, AUSD, SAIL, OSAIL7, USD_TESTS>(
+        &mut scenario, admin, user, &mut clock,
+        lock_amount, 182, gauge_base_emissions, 0,
+    );
+
+    // 2. Set passive fee rate to 100%
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        minter::set_passive_voter_fee_rate(&mut minter, &admin_cap, &distribution_config, RATE_DENOM);
+        scenario.return_to_sender(admin_cap);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+    };
+
+    // 3. LP creates position and deposits
+    scenario.next_tx(lp);
+    {
+        setup::create_position_with_liquidity<USD_TESTS, AUSD>(
+            &mut scenario, lp,
+            tick_math::min_tick().as_u32(),
+            tick_math::max_tick().as_u32(),
+            100_000_000_000u128, &clock,
+        );
+    };
+    scenario.next_tx(lp);
+    {
+        setup::deposit_position<USD_TESTS, AUSD>(&mut scenario, &clock);
+    };
+
+    // 4. Distribute gauge epoch 1 (initial)
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL7, USD_TESTS>(
+            &mut scenario, &usd_metadata, &mut aggregator, &clock,
+        );
+    };
+
+    // 5. Compute expected fees & wash trade
+    let swap_amount: u64 = 1_000_000_000;
+    let trade_rounds: u64 = 5;
+    let total_fee_per_token = compute_total_fee_per_token<USD_TESTS, AUSD>(
+        &mut scenario, admin, swap_amount, trade_rounds,
+    );
+    let wash_interval = WEEK / 10;
+    wash_trade<USD_TESTS, AUSD>(
+        &mut scenario, &mut clock, swapper, swap_amount, trade_rounds, wash_interval,
+    );
+
+    // 6. Advance to epoch 2 (clock = 2*WEEK + 1000 ms, current_time = 1209601)
+    let remaining_time = WEEK - wash_interval * trade_rounds;
+    clock.increment_for_testing(remaining_time);
+
+    // 7. Update minter period for epoch 2
+    scenario.next_tx(admin);
+    {
+        let o = setup::update_minter_period<SAIL, OSAIL8>(&mut scenario, 0, &clock);
+        o.burn_for_testing();
+    };
+
+    // 8. Distribute gauge epoch 2 (collects fees from wash trades)
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL8, USD_TESTS>(
+            &mut scenario, &usd_metadata, &mut aggregator, &clock,
+        );
+    };
+
+    // 9. Create distributor, withdraw, and notify at the SAME timestamp.
+    //    token_time_delta = 0 → all tokens go to the current period (epoch 2).
+    scenario.next_tx(admin);
+    let mut distributor = {
+        let minter = scenario.take_shared<Minter<SAIL>>();
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let d = minter::create_and_start_passive_fee_distributor<SAIL, USD_TESTS>(
+            &minter, &admin_cap, &voting_escrow, &distribution_config, &clock, scenario.ctx(),
+        );
+        scenario.return_to_sender(admin_cap);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(voting_escrow);
+        test_scenario::return_shared(distribution_config);
+        d
+    };
+
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribute_governor_cap = scenario.take_from_sender<DistributeGovernorCap>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+
+        let fee_coin = minter::withdraw_passive_fee<SAIL, USD_TESTS>(
+            &mut minter, &distribute_governor_cap, &distribution_config, scenario.ctx(),
+        );
+        let fee_amount = fee_coin.value();
+        assert!(fee_amount == total_fee_per_token, 0);
+
+        minter::notify_passive_fee<SAIL, USD_TESTS>(
+            &minter, &distribute_governor_cap, &distribution_config,
+            &mut distributor, fee_coin, &clock,
+        );
+
+        scenario.return_to_sender(distribute_governor_cap);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+    };
+
+    // 10. Verify: all tokens in epoch 2's period
+    let epoch_2_period = 2 * WEEK / 1000;
+    assert!(distributor.tokens_per_period(epoch_2_period) == total_fee_per_token, 1);
+
+    test_utils::destroy(distributor);
+    test_utils::destroy(usd_treasury_cap);
+    test_utils::destroy(usd_metadata);
+    test_utils::destroy(aggregator);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+// ──────────────────────────────────────────────────────────
+// D2. Notify passive fee mid-epoch — 50/50 split between two epochs
+// ──────────────────────────────────────────────────────────
+
+#[test]
+fun test_notify_passive_fee_mid_epoch_split() {
+    let admin = @0xA;
+    let user = @0xB;
+    let lp = @0xC;
+    let swapper = @0xE;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+    let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+
+    let gauge_base_emissions = 1_000_000;
+    let lock_amount = 1_000_000;
+
+    // 1. Full setup (epoch 1, clock = WEEK + 1000 ms after this)
+    let mut aggregator = setup::full_setup_with_lock<USD_TESTS, AUSD, SAIL, OSAIL10, USD_TESTS>(
+        &mut scenario, admin, user, &mut clock,
+        lock_amount, 182, gauge_base_emissions, 0,
+    );
+
+    // 2. Advance past epoch 2 boundary (clock = 2*WEEK + 1000 ms)
+    clock.increment_for_testing(WEEK);
+
+    // 3. Update minter period for epoch 2
+    scenario.next_tx(admin);
+    {
+        let o = setup::update_minter_period<SAIL, OSAIL11>(&mut scenario, 0, &clock);
+        o.burn_for_testing();
+    };
+
+    // 4. Advance to mid-epoch 2 (clock = 2.5*WEEK ms)
+    clock.increment_for_testing(WEEK / 2 - 1000);
+
+    // 5. Create passive fee distributor at mid-epoch 2
+    //    last_token_time = 2.5*WEEK/1000 = 1512000 (mid-epoch 2)
+    scenario.next_tx(admin);
+    let mut distributor = {
+        let minter = scenario.take_shared<Minter<SAIL>>();
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let d = minter::create_and_start_passive_fee_distributor<SAIL, USD_TESTS>(
+            &minter, &admin_cap, &voting_escrow, &distribution_config, &clock, scenario.ctx(),
+        );
+        scenario.return_to_sender(admin_cap);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(voting_escrow);
+        test_scenario::return_shared(distribution_config);
+        d
+    };
+
+    // 6. Set passive fee rate to 100%
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        minter::set_passive_voter_fee_rate(&mut minter, &admin_cap, &distribution_config, RATE_DENOM);
+        scenario.return_to_sender(admin_cap);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+    };
+
+    // 7. LP creates position and deposits
+    scenario.next_tx(lp);
+    {
+        setup::create_position_with_liquidity<USD_TESTS, AUSD>(
+            &mut scenario, lp,
+            tick_math::min_tick().as_u32(),
+            tick_math::max_tick().as_u32(),
+            100_000_000_000u128, &clock,
+        );
+    };
+    scenario.next_tx(lp);
+    {
+        setup::deposit_position<USD_TESTS, AUSD>(&mut scenario, &clock);
+    };
+
+    // 8. Distribute gauge epoch 2 (initial, at 2.5*WEEK)
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL11, USD_TESTS>(
+            &mut scenario, &usd_metadata, &mut aggregator, &clock,
+        );
+    };
+
+    // 9. Compute expected fees & wash trade (shorter interval to fit in remaining time)
+    let swap_amount: u64 = 1_000_000_000;
+    let trade_rounds: u64 = 5;
+    let total_fee_per_token = compute_total_fee_per_token<USD_TESTS, AUSD>(
+        &mut scenario, admin, swap_amount, trade_rounds,
+    );
+    let wash_interval = WEEK / 20;
+    wash_trade<USD_TESTS, AUSD>(
+        &mut scenario, &mut clock, swapper, swap_amount, trade_rounds, wash_interval,
+    );
+    // After wash: clock = 2.5*WEEK + 5*(WEEK/20) = 2.5*WEEK + WEEK/4 = 2.75*WEEK
+
+    // 10. Advance past epoch 3 boundary (clock = 3*WEEK + 1000 ms)
+    let remaining_to_epoch_3 = WEEK / 2 - trade_rounds * wash_interval + 1000;
+    clock.increment_for_testing(remaining_to_epoch_3);
+
+    // 11. Update minter period for epoch 3
+    scenario.next_tx(admin);
+    {
+        let o = setup::update_minter_period<SAIL, OSAIL12>(&mut scenario, 0, &clock);
+        o.burn_for_testing();
+    };
+
+    // 12. Advance to mid-epoch 3 (clock = 3.5*WEEK ms)
+    clock.increment_for_testing(WEEK / 2 - 1000);
+
+    // 13. Distribute gauge epoch 3 (collects fees, at mid-epoch 3)
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL12, USD_TESTS>(
+            &mut scenario, &usd_metadata, &mut aggregator, &clock,
+        );
+    };
+
+    // 14. Withdraw passive fee and notify at mid-epoch 3
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribute_governor_cap = scenario.take_from_sender<DistributeGovernorCap>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+
+        let fee_coin = minter::withdraw_passive_fee<SAIL, USD_TESTS>(
+            &mut minter, &distribute_governor_cap, &distribution_config, scenario.ctx(),
+        );
+        let fee_amount = fee_coin.value();
+        assert!(fee_amount == total_fee_per_token, 0);
+
+        minter::notify_passive_fee<SAIL, USD_TESTS>(
+            &minter, &distribute_governor_cap, &distribution_config,
+            &mut distributor, fee_coin, &clock,
+        );
+
+        scenario.return_to_sender(distribute_governor_cap);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+    };
+
+    // 15. Verify 50/50 split between epoch 2 and epoch 3
+    //     Distributor started at mid-epoch 2 (1512000s), notified at mid-epoch 3 (2116800s).
+    //     Time span = 604800s (1 WEEK). Half in epoch 2, half in epoch 3.
+    let epoch_2_period = 2 * WEEK / 1000;
+    let epoch_3_period = 3 * WEEK / 1000;
+    let expected_per_epoch = total_fee_per_token / 2;
+    assert!(distributor.tokens_per_period(epoch_2_period) == expected_per_epoch, 1);
+    assert!(distributor.tokens_per_period(epoch_3_period) == expected_per_epoch, 2);
+
+    test_utils::destroy(distributor);
+    test_utils::destroy(usd_treasury_cap);
+    test_utils::destroy(usd_metadata);
+    test_utils::destroy(aggregator);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+// ──────────────────────────────────────────────────────────
+// E1. Withdraw passive fee without notifying — just withdraw and discard
+// ──────────────────────────────────────────────────────────
+
+#[test]
+fun test_withdraw_passive_fee_without_notify() {
+    let admin = @0xA;
+    let user = @0xB;
+    let lp = @0xC;
+    let swapper = @0xE;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+    let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+
+    let gauge_base_emissions = 1_000_000;
+    let lock_amount = 1_000_000;
+    let passive_rate: u64 = 8000; // 80%
+
+    // 1. Full setup
+    let mut aggregator = setup::full_setup_with_lock<USD_TESTS, AUSD, SAIL, OSAIL13, USD_TESTS>(
+        &mut scenario, admin, user, &mut clock,
+        lock_amount, 182, gauge_base_emissions, 0,
+    );
+
+    // 2. Set passive fee rate to 80%
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        minter::set_passive_voter_fee_rate(&mut minter, &admin_cap, &distribution_config, passive_rate);
+        scenario.return_to_sender(admin_cap);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+    };
+
+    // 3. LP creates position and deposits
+    scenario.next_tx(lp);
+    {
+        setup::create_position_with_liquidity<USD_TESTS, AUSD>(
+            &mut scenario, lp,
+            tick_math::min_tick().as_u32(),
+            tick_math::max_tick().as_u32(),
+            100_000_000_000u128, &clock,
+        );
+    };
+    scenario.next_tx(lp);
+    {
+        setup::deposit_position<USD_TESTS, AUSD>(&mut scenario, &clock);
+    };
+
+    // 4. Distribute gauge epoch 1 (initial)
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL13, USD_TESTS>(
+            &mut scenario, &usd_metadata, &mut aggregator, &clock,
+        );
+    };
+
+    // 5. Compute expected fees & wash trade
+    let swap_amount: u64 = 1_000_000_000;
+    let trade_rounds: u64 = 5;
+    let total_fee_per_token = compute_total_fee_per_token<USD_TESTS, AUSD>(
+        &mut scenario, admin, swap_amount, trade_rounds,
+    );
+    let expected_passive_per_token = total_fee_per_token * 8 / 10;
+    let wash_interval = WEEK / 10;
+    wash_trade<USD_TESTS, AUSD>(
+        &mut scenario, &mut clock, swapper, swap_amount, trade_rounds, wash_interval,
+    );
+
+    // 6. Advance to epoch 2
+    let remaining_time = WEEK - wash_interval * trade_rounds;
+    clock.increment_for_testing(remaining_time);
+    scenario.next_tx(admin);
+    {
+        let o = setup::update_minter_period<SAIL, OSAIL14>(&mut scenario, 0, &clock);
+        o.burn_for_testing();
+    };
+
+    // 7. Distribute gauge epoch 2 (collects fees, splits 80/20)
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL14, USD_TESTS>(
+            &mut scenario, &usd_metadata, &mut aggregator, &clock,
+        );
+    };
+
+    // 8. Withdraw passive fee — don't notify to any distributor
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let distribute_governor_cap = scenario.take_from_sender<DistributeGovernorCap>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+
+        let fee_coin_a = minter::withdraw_passive_fee<SAIL, USD_TESTS>(
+            &mut minter, &distribute_governor_cap, &distribution_config, scenario.ctx(),
+        );
+        let fee_coin_b = minter::withdraw_passive_fee<SAIL, AUSD>(
+            &mut minter, &distribute_governor_cap, &distribution_config, scenario.ctx(),
+        );
+
+        assert!(fee_coin_a.value() == expected_passive_per_token, 1);
+        assert!(fee_coin_b.value() == expected_passive_per_token, 2);
+
+        // Just discard — no notify
+        coin::burn_for_testing(fee_coin_a);
+        coin::burn_for_testing(fee_coin_b);
+
+        scenario.return_to_sender(distribute_governor_cap);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
     };
 
     test_utils::destroy(usd_treasury_cap);
