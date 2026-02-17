@@ -998,6 +998,24 @@ fun test_notify_passive_fee_tokens_in_first_epoch() {
         test_scenario::return_shared(distribution_config);
     };
 
+        // 9. Create distributor, withdraw, and notify at the SAME timestamp.
+    //    token_time_delta = 0 → all tokens go to the current period (epoch 2).
+    scenario.next_tx(admin);
+    let mut distributor = {
+        let minter = scenario.take_shared<Minter<SAIL>>();
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let d = minter::create_and_start_passive_fee_distributor<SAIL, USD_TESTS>(
+            &minter, &admin_cap, &voting_escrow, &distribution_config, &clock, scenario.ctx(),
+        );
+        scenario.return_to_sender(admin_cap);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(voting_escrow);
+        test_scenario::return_shared(distribution_config);
+        d
+    };
+
     // 3. LP creates position and deposits
     scenario.next_tx(lp);
     {
@@ -1032,7 +1050,7 @@ fun test_notify_passive_fee_tokens_in_first_epoch() {
         &mut scenario, &mut clock, swapper, swap_amount, trade_rounds, wash_interval,
     );
 
-    // 6. Advance to epoch 2 (clock = 2*WEEK + 1000 ms, current_time = 1209601)
+    // 6. Advance to epoch 2 (clock = 2*WEEK + 1000 ms, current_time = 1209600)
     let remaining_time = WEEK - wash_interval * trade_rounds;
     clock.increment_for_testing(remaining_time);
 
@@ -1049,24 +1067,6 @@ fun test_notify_passive_fee_tokens_in_first_epoch() {
         setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL8, USD_TESTS>(
             &mut scenario, &usd_metadata, &mut aggregator, &clock,
         );
-    };
-
-    // 9. Create distributor, withdraw, and notify at the SAME timestamp.
-    //    token_time_delta = 0 → all tokens go to the current period (epoch 2).
-    scenario.next_tx(admin);
-    let mut distributor = {
-        let minter = scenario.take_shared<Minter<SAIL>>();
-        let admin_cap = scenario.take_from_sender<AdminCap>();
-        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
-        let distribution_config = scenario.take_shared<DistributionConfig>();
-        let d = minter::create_and_start_passive_fee_distributor<SAIL, USD_TESTS>(
-            &minter, &admin_cap, &voting_escrow, &distribution_config, &clock, scenario.ctx(),
-        );
-        scenario.return_to_sender(admin_cap);
-        test_scenario::return_shared(minter);
-        test_scenario::return_shared(voting_escrow);
-        test_scenario::return_shared(distribution_config);
-        d
     };
 
     scenario.next_tx(admin);
@@ -1091,9 +1091,11 @@ fun test_notify_passive_fee_tokens_in_first_epoch() {
         test_scenario::return_shared(distribution_config);
     };
 
-    // 10. Verify: all tokens in epoch 2's period
-    let epoch_2_period = 2 * WEEK / 1000;
-    assert!(distributor.tokens_per_period(epoch_2_period) == total_fee_per_token, 1);
+    // 10. Verify: all tokens in epoch 0 period
+    let epoch_1_period = 1 * WEEK / 1000;
+    // the period is 1 second short cos distribution happens 1 second after the end of the epoch
+    let expected_epoch_1_fee = total_fee_per_token * 604799 / 604800;
+    assert!(expected_epoch_1_fee - distributor.tokens_per_period(epoch_1_period) <= 1, 1);
 
     test_utils::destroy(distributor);
     test_utils::destroy(usd_treasury_cap);
