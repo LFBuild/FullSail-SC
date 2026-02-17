@@ -47,9 +47,9 @@ public(package) fun create<FeeCoinType>(
 
 public fun claim<SailCoinType, FeeCoinType>(
     self: &mut PassiveFeeDistributor<FeeCoinType>,
-    voting_escrow: &mut voting_escrow::VotingEscrow<SailCoinType>,
+    voting_escrow: &voting_escrow::VotingEscrow<SailCoinType>,
     distribution_config: &DistributionConfig,
-    lock: &mut voting_escrow::Lock,
+    lock: &voting_escrow::Lock,
     ctx: &mut TxContext
 ): Coin<FeeCoinType> {
     distribution_config.checked_package_version();
