@@ -375,6 +375,8 @@ module governance::minter {
         ended_epoch_o_sail_emission: u64,
         active_voting_fee_a: u64,
         active_voting_fee_b: u64,
+        passive_fee_a: u64,
+        passive_fee_b: u64,
     }
 
     public struct EventIncreaseGaugeEmissions has copy, drop, store {
@@ -1486,27 +1488,8 @@ module governance::minter {
     }
 
 
-    /// Deprecated, use distribute_gauge_v2 instead
-    public fun distribute_gauge<CoinTypeA, CoinTypeB, SailPoolCoinTypeA, SailPoolCoinTypeB, SailCoinType, CurrentEpochOSail>(
-        minter: &mut Minter<SailCoinType>,
-        voter: &mut governance::voter::Voter,
-        distribute_governor_cap: &DistributeGovernorCap,
-        distribution_config: &DistributionConfig,
-        gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
-        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        next_epoch_emissions_usd: u64,
-        price_monitor: &mut PriceMonitor,
-        sail_stablecoin_pool: &clmm_pool::pool::Pool<SailPoolCoinTypeA, SailPoolCoinTypeB>,
-        aggregator: &Aggregator,
-        clock: &sui::clock::Clock,
-        ctx: &mut TxContext,
-    ) {
-        abort 0
-    }
-
     /// Distributes oSAIL tokens to a gauge based on pool performance metrics.
-    /// Calculates and distributes the next epoch's emissions based on current pool metrics
-    /// and historical data. For new pools, uses base emissions without performance adjustments.
+    /// Distributes the next epoch's emissions. For new pools, uses base emissions.
     /// IMPORTANT: For all USD values we use 6 decimals.
     ///
     /// # Arguments
@@ -1523,14 +1506,11 @@ module governance::minter {
     /// * `clock` - The system clock
     /// * `ctx` - Transaction context
     ///
-    /// # Returns
-    /// Portion of the fees that should be allocated to passive voters.
-    ///
     /// # Aborts
     /// * If the gauge has already been distributed for the current period
     /// * If the gauge has no base supply
     /// * If pool metrics are invalid for non-initial epochs
-    public fun distribute_gauge_v2<CoinTypeA, CoinTypeB, SailPoolCoinTypeA, SailPoolCoinTypeB, SailCoinType, CurrentEpochOSail>(
+    public fun distribute_gauge<CoinTypeA, CoinTypeB, SailPoolCoinTypeA, SailPoolCoinTypeB, SailCoinType, CurrentEpochOSail>(
         minter: &mut Minter<SailCoinType>,
         voter: &mut governance::voter::Voter,
         distribute_governor_cap: &DistributeGovernorCap,
@@ -1543,7 +1523,7 @@ module governance::minter {
         aggregator: &Aggregator,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
-    ): (Balance<CoinTypeA>, Balance<CoinTypeB>) {
+    ) {
         distribution_config.checked_package_version();
         assert!(!minter.is_paused(), EDistributeGaugeMinterPaused);
         assert!(!minter.is_emission_stopped(), EEmissionStopped);
@@ -1563,7 +1543,7 @@ module governance::minter {
         );
 
         if (is_price_invalid) {
-            return (balance::zero<CoinTypeA>(), balance::zero<CoinTypeB>());
+            return;
         };
         
         minter.distribute_gauge_internal<CoinTypeA, CoinTypeB, SailCoinType, CurrentEpochOSail>(
@@ -1576,23 +1556,6 @@ module governance::minter {
             clock,
             ctx
         )
-    }
-
-    /// deprecated, 
-    public fun distribute_gauge_for_sail_pool_v2<CoinTypeA, CoinTypeB, SailCoinType, CurrentEpochOSail>(
-        minter: &mut Minter<SailCoinType>,
-        voter: &mut governance::voter::Voter,
-        distribute_governor_cap: &DistributeGovernorCap,
-        distribution_config: &DistributionConfig,
-        gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
-        sail_pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
-        next_epoch_emissions_usd: u64,
-        price_monitor: &mut PriceMonitor,
-        aggregator: &Aggregator,
-        clock: &sui::clock::Clock,
-        ctx: &mut TxContext,
-    ) {
-        abort 0
     }
 
 
@@ -1609,7 +1572,7 @@ module governance::minter {
         aggregator: &Aggregator,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
-    ): (Balance<CoinTypeA>, Balance<CoinTypeB>) {
+    ) {
         distribution_config.checked_package_version();
         assert!(!minter.is_paused(), EDistributeGaugeMinterPaused);
         assert!(!minter.is_emission_stopped(), EEmissionStopped);
@@ -1632,7 +1595,7 @@ module governance::minter {
         );
 
         if (is_price_invalid) {
-            return (balance::zero<CoinTypeA>(), balance::zero<CoinTypeB>());
+            return;
         };
 
         minter.distribute_gauge_internal<CoinTypeA, CoinTypeB, SailCoinType, CurrentEpochOSail>(
@@ -1657,7 +1620,7 @@ module governance::minter {
         o_sail_price_q64: u128,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
-    ): (Balance<CoinTypeA>, Balance<CoinTypeB>) {
+    ) {
         let current_epoch_o_sail_type = type_name::get<CurrentEpochOSail>();
         assert!(minter.current_epoch_o_sail.borrow() == current_epoch_o_sail_type, EDistributeGaugeInvalidToken);
         
@@ -1712,6 +1675,9 @@ module governance::minter {
         voter.inject_voting_fee_reward(distribute_cap, gauge_id, coin::from_balance<CoinTypeA>(fee_a, ctx), clock, ctx);
         voter.inject_voting_fee_reward(distribute_cap, gauge_id, coin::from_balance<CoinTypeB>(fee_b, ctx), clock, ctx);
 
+        minter.deposit_passive_fee(passive_fee_a, ctx);
+        minter.deposit_passive_fee(passive_fee_b, ctx);
+
         // update records related to gauge
         let prev_active_period = if (minter.gauge_active_period.contains(gauge_id)) {
             minter.gauge_active_period.remove(gauge_id)
@@ -1753,10 +1719,10 @@ module governance::minter {
             ended_epoch_o_sail_emission,
             active_voting_fee_a,
             active_voting_fee_b,
+            passive_fee_a: passive_fee_amount_a,
+            passive_fee_b: passive_fee_amount_b,
         };
         sui::event::emit<EventDistributeGaugeV2>(eventV2);
-
-        (passive_fee_a, passive_fee_b)
     }
 
     public fun gauge_distributed<SailCoinType>(
