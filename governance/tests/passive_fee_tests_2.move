@@ -30,6 +30,8 @@ public struct OSAIL6 has drop, store {}
 public struct OSAIL7 has drop, store {}
 public struct OSAIL8 has drop, store {}
 public struct OSAIL9 has drop, store {}
+public struct OSAIL10 has drop, store {}
+public struct OSAIL12 has drop, store {}
 
 // ── Utility functions ───────────────────────────────────
 
@@ -796,6 +798,265 @@ fun test_claim_passive_fee_sail_token_liquid() {
     };
 
     test_utils::destroy(distributor);
+    test_utils::destroy(usd_treasury_cap);
+    test_utils::destroy(usd_metadata);
+    test_utils::destroy(aggregator);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+// ──────────────────────────────────────────────────────────
+// F5. Multiple fee coin types — USD_TESTS and AUSD distributors
+// ──────────────────────────────────────────────────────────
+
+#[test]
+fun test_multiple_fee_coin_types() {
+    let admin = @0xA;
+    let user = @0xB;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+    let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+
+    let gauge_base_emissions = 1_000_000;
+    let lock_amount = 1_000_000;
+
+    // 1. Full setup (epoch 1, clock = WEEK + 1000 ms)
+    let aggregator = setup::full_setup_with_lock<USD_TESTS, AUSD, SAIL, OSAIL10, USD_TESTS>(
+        &mut scenario, admin, user, &mut clock,
+        lock_amount, 182, gauge_base_emissions, 0,
+    );
+
+    // 2. Create PassiveFeeDistributor<USD_TESTS>
+    scenario.next_tx(admin);
+    let mut distributor_usd = {
+        let minter = scenario.take_shared<Minter<SAIL>>();
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let d = minter::create_and_start_passive_fee_distributor<SAIL, USD_TESTS>(
+            &minter, &admin_cap, &voting_escrow, &distribution_config, &clock, scenario.ctx(),
+        );
+        scenario.return_to_sender(admin_cap);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(voting_escrow);
+        test_scenario::return_shared(distribution_config);
+        d
+    };
+
+    // 3. Create PassiveFeeDistributor<AUSD>
+    scenario.next_tx(admin);
+    let mut distributor_ausd = {
+        let minter = scenario.take_shared<Minter<SAIL>>();
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let d = minter::create_and_start_passive_fee_distributor<SAIL, AUSD>(
+            &minter, &admin_cap, &voting_escrow, &distribution_config, &clock, scenario.ctx(),
+        );
+        scenario.return_to_sender(admin_cap);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(voting_escrow);
+        test_scenario::return_shared(distribution_config);
+        d
+    };
+
+    // 4. Advance to epoch 2 (clock = 2*WEEK + 1000 ms)
+    clock.increment_for_testing(WEEK);
+
+    // 5. Mint fee coins and notify each distributor
+    let fee_amount: u64 = 4_000_000;
+
+    scenario.next_tx(admin);
+    {
+        let minter = scenario.take_shared<Minter<SAIL>>();
+        let distribute_governor_cap = scenario.take_from_sender<DistributeGovernorCap>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+
+        let fee_usd = coin::mint_for_testing<USD_TESTS>(fee_amount, scenario.ctx());
+        minter::notify_passive_fee<SAIL, USD_TESTS>(
+            &minter, &distribute_governor_cap, &distribution_config,
+            &mut distributor_usd, fee_usd, &clock,
+        );
+
+        let fee_ausd = coin::mint_for_testing<AUSD>(fee_amount, scenario.ctx());
+        minter::notify_passive_fee<SAIL, AUSD>(
+            &minter, &distribute_governor_cap, &distribution_config,
+            &mut distributor_ausd, fee_ausd, &clock,
+        );
+
+        scenario.return_to_sender(distribute_governor_cap);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+    };
+
+    // 6. User claims from both distributors
+    // Distributors started at 604801, notified at 1209601
+    // Epoch 1 period (604800) gets fee_amount * 604799 / 604800
+    let expected_fee = fee_amount * 604799 / 604800;
+
+    scenario.next_tx(user);
+    {
+        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let lock = scenario.take_from_sender<Lock>();
+        let lock_id = object::id(&lock);
+
+        // Check and claim USD_TESTS
+        let claimable_usd = passive_fee_distributor::claimable<SAIL, USD_TESTS>(
+            &distributor_usd, &voting_escrow, lock_id,
+        );
+        assert!(expected_fee - claimable_usd <= 1, 1);
+
+        let reward_usd = passive_fee_distributor::claim<SAIL, USD_TESTS>(
+            &mut distributor_usd, &voting_escrow, &distribution_config, &lock, scenario.ctx(),
+        );
+        assert!(expected_fee - reward_usd.value() <= 1, 2);
+
+        // Check and claim AUSD
+        let claimable_ausd = passive_fee_distributor::claimable<SAIL, AUSD>(
+            &distributor_ausd, &voting_escrow, lock_id,
+        );
+        assert!(expected_fee - claimable_ausd <= 1, 3);
+
+        let reward_ausd = passive_fee_distributor::claim<SAIL, AUSD>(
+            &mut distributor_ausd, &voting_escrow, &distribution_config, &lock, scenario.ctx(),
+        );
+        assert!(expected_fee - reward_ausd.value() <= 1, 4);
+
+        coin::burn_for_testing(reward_usd);
+        coin::burn_for_testing(reward_ausd);
+        scenario.return_to_sender(lock);
+        test_scenario::return_shared(voting_escrow);
+        test_scenario::return_shared(distribution_config);
+    };
+
+    test_utils::destroy(distributor_usd);
+    test_utils::destroy(distributor_ausd);
+    test_utils::destroy(usd_treasury_cap);
+    test_utils::destroy(usd_metadata);
+    test_utils::destroy(aggregator);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+// ──────────────────────────────────────────────────────────
+// F6. Independent distributor accounting — two same-type distributors
+// ──────────────────────────────────────────────────────────
+
+#[test]
+fun test_independent_distributor_accounting() {
+    let admin = @0xA;
+    let user = @0xB;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+    let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+
+    let gauge_base_emissions = 1_000_000;
+    let lock_amount = 1_000_000;
+
+    // 1. Full setup (epoch 1, clock = WEEK + 1000 ms)
+    let aggregator = setup::full_setup_with_lock<USD_TESTS, AUSD, SAIL, OSAIL12, USD_TESTS>(
+        &mut scenario, admin, user, &mut clock,
+        lock_amount, 182, gauge_base_emissions, 0,
+    );
+
+    // 2. Create distributor_1 at epoch 1
+    scenario.next_tx(admin);
+    let mut distributor_1 = {
+        let minter = scenario.take_shared<Minter<SAIL>>();
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let d = minter::create_and_start_passive_fee_distributor<SAIL, USD_TESTS>(
+            &minter, &admin_cap, &voting_escrow, &distribution_config, &clock, scenario.ctx(),
+        );
+        scenario.return_to_sender(admin_cap);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(voting_escrow);
+        test_scenario::return_shared(distribution_config);
+        d
+    };
+
+    // 3. Advance to epoch 2 (clock = 2*WEEK + 1000 ms)
+    clock.increment_for_testing(WEEK);
+
+    // 4. Create distributor_2 at epoch 2 (different time than distributor_1)
+    scenario.next_tx(admin);
+    let distributor_2 = {
+        let minter = scenario.take_shared<Minter<SAIL>>();
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let d = minter::create_and_start_passive_fee_distributor<SAIL, USD_TESTS>(
+            &minter, &admin_cap, &voting_escrow, &distribution_config, &clock, scenario.ctx(),
+        );
+        scenario.return_to_sender(admin_cap);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(voting_escrow);
+        test_scenario::return_shared(distribution_config);
+        d
+    };
+
+    // 5. Mint fee coins and notify ONLY distributor_1
+    let fee_amount: u64 = 4_000_000;
+
+    scenario.next_tx(admin);
+    {
+        let minter = scenario.take_shared<Minter<SAIL>>();
+        let distribute_governor_cap = scenario.take_from_sender<DistributeGovernorCap>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+
+        let fee_coin = coin::mint_for_testing<USD_TESTS>(fee_amount, scenario.ctx());
+        minter::notify_passive_fee<SAIL, USD_TESTS>(
+            &minter, &distribute_governor_cap, &distribution_config,
+            &mut distributor_1, fee_coin, &clock,
+        );
+
+        scenario.return_to_sender(distribute_governor_cap);
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+    };
+
+    // 6. Verify distributor_1 has balance, distributor_2 is empty
+    assert!(passive_fee_distributor::balance<USD_TESTS>(&distributor_1) > 0, 1);
+    assert!(passive_fee_distributor::balance<USD_TESTS>(&distributor_2) == 0, 2);
+
+    // 7. Verify user can claim from distributor_1 but not from distributor_2
+    let expected_fee = fee_amount * 604799 / 604800;
+
+    scenario.next_tx(user);
+    {
+        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let lock = scenario.take_from_sender<Lock>();
+        let lock_id = object::id(&lock);
+
+        // distributor_1: claimable > 0
+        let claimable_1 = passive_fee_distributor::claimable<SAIL, USD_TESTS>(
+            &distributor_1, &voting_escrow, lock_id,
+        );
+        assert!(expected_fee - claimable_1 <= 1, 3);
+
+        // distributor_2: claimable == 0
+        let claimable_2 = passive_fee_distributor::claimable<SAIL, USD_TESTS>(
+            &distributor_2, &voting_escrow, lock_id,
+        );
+        assert!(claimable_2 == 0, 4);
+
+        // Claim from distributor_1 to confirm
+        let reward_coin = passive_fee_distributor::claim<SAIL, USD_TESTS>(
+            &mut distributor_1, &voting_escrow, &distribution_config, &lock, scenario.ctx(),
+        );
+        assert!(expected_fee - reward_coin.value() <= 1, 5);
+
+        coin::burn_for_testing(reward_coin);
+        scenario.return_to_sender(lock);
+        test_scenario::return_shared(voting_escrow);
+        test_scenario::return_shared(distribution_config);
+    };
+
+    test_utils::destroy(distributor_1);
+    test_utils::destroy(distributor_2);
     test_utils::destroy(usd_treasury_cap);
     test_utils::destroy(usd_metadata);
     test_utils::destroy(aggregator);
