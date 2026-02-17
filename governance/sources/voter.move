@@ -913,19 +913,6 @@ module governance::voter {
         );
         let fee_a_amount = fee_reward_a.value<CoinTypeA>();
         let fee_b_amount = fee_reward_b.value<CoinTypeB>();
-        // let fee_voting_reward = voter.gauge_to_fee.borrow_mut(gauge_id);
-        // fee_voting_reward.notify_reward_amount(
-        //     &voter.voter_cap,
-        //     coin::from_balance<CoinTypeA>(fee_reward_a, ctx),
-        //     clock,
-        //     ctx
-        // );
-        // fee_voting_reward.notify_reward_amount(
-        //     &voter.voter_cap,
-        //     coin::from_balance<CoinTypeB>(fee_reward_b, ctx),
-        //     clock,
-        //     ctx
-        // );
         let distribute_gauge_event = EventDistributeGauge {
             pool: object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool),
             gauge: gauge_id.id,
