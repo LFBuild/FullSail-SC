@@ -187,7 +187,11 @@ module governance::minter {
     const ENotifyPassiveFeeMinterPaused: u64 = 844085871921421700;
     const ENotifyPassiveFeeMinterNotActive: u64 = 118762856398482380;
 
+    const EWithdrawPassiveFeeMinterPaused: u64 = 625411062294594000;
+    const EWithdrawPassiveFeeTokenNotFound: u64 = 152347212472896830;
+
     const BAG_KEY_PASSIVE_VOTER_FEE_RATE: u8 = 1;
+    const BAG_KEY_PASSIVE_FEE_BALANCES: u8 = 2;
 
     const DAYS_IN_WEEK: u64 = 7;
 
@@ -455,6 +459,12 @@ module governance::minter {
 
     public struct EventNotifyPassiveFee has copy, drop, store {
         passive_fee_distributor: ID,
+        fee_coin_type: TypeName,
+        amount: u64,
+    }
+
+    public struct EventWithdrawPassiveFee has copy, drop, store {
+        governor_cap: ID,
         fee_coin_type: TypeName,
         amount: u64,
     }
@@ -3412,6 +3422,66 @@ module governance::minter {
         });
 
         passive_fee_distributor.checkpoint_token(fee_coin, clock);
+    }
+
+    fun deposit_passive_fee<SailCoinType, FeeCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        fee: Balance<FeeCoinType>,
+        ctx: &mut TxContext,
+    ) {
+        if (!minter.bag.contains<u8>(BAG_KEY_PASSIVE_FEE_BALANCES)) {
+            minter.bag.add<u8, Bag>(BAG_KEY_PASSIVE_FEE_BALANCES, bag::new(ctx));
+        };
+        let fee_coin_type = type_name::get<FeeCoinType>();
+        let balances_bag = minter.bag.borrow_mut<u8, Bag>(BAG_KEY_PASSIVE_FEE_BALANCES);
+        if (!balances_bag.contains<TypeName>(fee_coin_type)) {
+            balances_bag.add(fee_coin_type, balance::zero<FeeCoinType>());
+        };
+        let existing_balance = balances_bag.borrow_mut<TypeName, Balance<FeeCoinType>>(fee_coin_type);
+        existing_balance.join(fee);
+    }
+
+    public fun passive_fee_balance<SailCoinType, FeeCoinType>(
+        minter: &Minter<SailCoinType>,
+    ): u64 {
+        if (!minter.bag.contains<u8>(BAG_KEY_PASSIVE_FEE_BALANCES)) {
+            return 0
+        };
+        let fee_coin_type = type_name::get<FeeCoinType>();
+        let balances_bag = minter.bag.borrow<u8, Bag>(BAG_KEY_PASSIVE_FEE_BALANCES);
+        if (!balances_bag.contains<TypeName>(fee_coin_type)) {
+            return 0
+        };
+        balances_bag.borrow<TypeName, Balance<FeeCoinType>>(fee_coin_type).value()
+    }
+
+    public fun withdraw_passive_fee<SailCoinType, FeeCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        distribute_governor_cap: &DistributeGovernorCap,
+        distribution_config: &DistributionConfig,
+        ctx: &mut TxContext,
+    ): Coin<FeeCoinType> {
+        distribution_config.checked_package_version();
+        assert!(!minter.is_paused(), EWithdrawPassiveFeeMinterPaused);
+        minter.check_distribute_governor(distribute_governor_cap);
+        let fee_coin_type = type_name::get<FeeCoinType>();
+        assert!(
+            minter.bag.contains<u8>(BAG_KEY_PASSIVE_FEE_BALANCES),
+            EWithdrawPassiveFeeTokenNotFound
+        );
+        let balances_bag = minter.bag.borrow_mut<u8, Bag>(BAG_KEY_PASSIVE_FEE_BALANCES);
+        assert!(
+            balances_bag.contains<TypeName>(fee_coin_type),
+            EWithdrawPassiveFeeTokenNotFound
+        );
+        let balance = balances_bag.remove<TypeName, Balance<FeeCoinType>>(fee_coin_type);
+        let amount = balance.value();
+        sui::event::emit<EventWithdrawPassiveFee>(EventWithdrawPassiveFee {
+            governor_cap: object::id(distribute_governor_cap),
+            fee_coin_type,
+            amount,
+        });
+        coin::from_balance(balance, ctx)
     }
 
     /// Calculates the rewards in RewardCoinType earned by all staked positions.
