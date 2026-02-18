@@ -230,7 +230,6 @@ module governance::gauge {
         fee_b: u64,
         timestamp: u64,
     }
-
     public struct Locked has copy, drop, store {}
 
     public struct Gauge<phantom CoinTypeA, phantom CoinTypeB> has store, key {
