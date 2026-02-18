@@ -15,6 +15,7 @@ module governance::minter {
     use switchboard::decimal::{Self, Decimal};
     use switchboard::aggregator::{Aggregator};
     use governance::distribution_config::{DistributionConfig};
+    use penalty_cap::penalty_cap::{PenaltyCap};
 
     const ECreateMinterInvalidPublisher: u64 = 695309471293028100;
     const ECreateMinterInvalidSailDecimals: u64 = 744215000566210300;
@@ -3334,6 +3335,41 @@ module governance::minter {
             distribution_config,
             pool,
             staked_position.position_id(),
+            true,
+            clock,
+            ctx
+        );
+
+        minter.mint_o_sail<SailCoinType, RewardCoinType>(reward_amount, ctx)
+    }
+
+    public fun get_position_reward_without_penalty<CoinTypeA, CoinTypeB, SailCoinType, RewardCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        distribution_config: &DistributionConfig,
+        gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        staked_position: &governance::gauge::StakedPosition,
+        _: &PenaltyCap,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ): Coin<RewardCoinType> {
+        distribution_config.checked_package_version();
+        assert!(
+            !distribution_config.is_gauge_paused(object::id(gauge)),
+            EGetPosRewardGaugePaused
+        );
+        assert!(minter.is_valid_epoch_token<SailCoinType, RewardCoinType>(), EGetPositionRewardInvalidRewardToken);
+        assert!(
+            object::id(distribution_config) == minter.distribution_config,
+            EGetPosDistributionConfInvalid
+        );
+        
+        let reward_amount = get_position_reward_internal<CoinTypeA, CoinTypeB, RewardCoinType>(
+            gauge,
+            distribution_config,
+            pool,
+            staked_position.position_id(),
+            false,
             clock,
             ctx
         );
@@ -3373,7 +3409,51 @@ module governance::minter {
                 gauge,
                 distribution_config,
                 pool, 
+                staked_positions[i].position_id(),
+                true,
+                clock,
+                ctx
+            );
+            total_earned = total_earned + earned_i;
+
+            i = i + 1;
+        };
+
+        minter.mint_o_sail<SailCoinType, RewardCoinType>(total_earned, ctx)
+    }
+
+    public fun get_multiple_position_rewards_without_penalty<CoinTypeA, CoinTypeB, SailCoinType, RewardCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        distribution_config: &DistributionConfig,
+        gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        staked_positions: &vector<governance::gauge::StakedPosition>,
+        _: &PenaltyCap,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ): Coin<RewardCoinType> {
+        distribution_config.checked_package_version();
+        assert!(
+            !distribution_config.is_gauge_paused(object::id(gauge)),
+            EGetMultiPosRewardGaugePaused
+        );
+        assert!(minter.is_valid_epoch_token<SailCoinType, RewardCoinType>(), EGetMultiplePositionRewardInvalidRewardToken);
+        assert!(
+            object::id(distribution_config) == minter.distribution_config,
+            EGetMultiPosRewardDistributionConfInvalid
+        );
+        // we allow to claim rewards for killed gauges, cos position may have earnings before 
+        // the gauge is killed.
+
+        let mut i = 0;
+        let mut total_earned = 0;
+        while (i < staked_positions.length()) {
+            let earned_i = get_position_reward_internal<CoinTypeA, CoinTypeB, RewardCoinType>(
+                gauge,
+                distribution_config,
+                pool, 
                 staked_positions[i].position_id(), 
+                false,
                 clock,
                 ctx
             );
@@ -3391,6 +3471,7 @@ module governance::minter {
         distribution_config: &DistributionConfig,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         position_id: ID,
+        collect_penalty: bool,
         clock: &sui::clock::Clock,
         ctx: &TxContext
     ): u64 {
@@ -3398,6 +3479,7 @@ module governance::minter {
             distribution_config,
             pool,
             position_id,
+            collect_penalty,
             clock,
             ctx
         );

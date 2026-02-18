@@ -3,6 +3,8 @@ module vault::vault {
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
     const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
 
+    use penalty_cap::penalty_cap::{PenaltyCap};
+
     public struct LiquidityRange has drop, store {
         lower_offset: u32,
         upper_offset: u32,
@@ -198,6 +200,23 @@ module vault::vault {
         }
     }
 
+    public fun rebalance<CoinTypeA, CoinTypeB>(
+        vault: &mut ClmmVault, 
+        distribution_config: &governance::distribution_config::DistributionConfig,
+        gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        clmm_global_config: &clmm_pool::config::GlobalConfig,
+        clmm_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>, 
+        mut balance_a: sui::balance::Balance<CoinTypeA>, 
+        mut balance_b: sui::balance::Balance<CoinTypeB>, 
+        tick_lower: integer_mate::i32::I32, 
+        tick_upper: integer_mate::i32::I32, 
+        clock: &sui::clock::Clock, 
+        ctx: &mut TxContext
+    ) : (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>, MigrateLiquidity) {
+        abort
+    }
+
     /// Rebalances the vault position to a new tick range and returns leftover balances.
     ///
     /// Withdraws the staked position from the gauge, removes existing liquidity,
@@ -228,7 +247,7 @@ module vault::vault {
     ///
     /// # Aborts
     /// * if removing or adding liquidity, or staking operations abort internally
-    public fun rebalance<CoinTypeA, CoinTypeB>(
+    public fun rebalance_v2<CoinTypeA, CoinTypeB>(
         vault: &mut ClmmVault, 
         distribution_config: &governance::distribution_config::DistributionConfig,
         gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
@@ -238,21 +257,36 @@ module vault::vault {
         mut balance_a: sui::balance::Balance<CoinTypeA>, 
         mut balance_b: sui::balance::Balance<CoinTypeB>, 
         tick_lower: integer_mate::i32::I32, 
-        tick_upper: integer_mate::i32::I32, 
+        tick_upper: integer_mate::i32::I32,
+        penalty_cap_opt: &Option<PenaltyCap>,
         clock: &sui::clock::Clock, 
         ctx: &mut TxContext
     ) : (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>, MigrateLiquidity) {
         assert!(vault.wrapped_position.is_some(), vault::error::vault_stopped());
         let staked_position = std::option::extract<governance::gauge::StakedPosition>(&mut vault.wrapped_position);
-        let mut position = gauge.withdraw_position_v2<CoinTypeA, CoinTypeB>(
-            distribution_config,
-            clmm_global_config,
-            clmm_vault,
-            pool,
-            staked_position,
-            clock,
-            ctx,
-        );
+        let mut position = if (penalty_cap_opt.is_some()) {
+            governance::gauge::withdraw_position_without_penalty<CoinTypeA, CoinTypeB>(
+                gauge,
+                distribution_config,
+                clmm_global_config,
+                clmm_vault,
+                pool,
+                staked_position,
+                penalty_cap_opt.borrow(),
+                clock,
+                ctx,
+            )
+        } else {
+            gauge.withdraw_position_v2<CoinTypeA, CoinTypeB>(
+                distribution_config,
+                clmm_global_config,
+                clmm_vault,
+                pool,
+                staked_position,
+                clock,
+                ctx,
+            )
+        };
 
         let old_position_id = sui::object::id<clmm_pool::position::Position>(&position);
         let (old_tick_lower, old_tick_upper) = clmm_pool::position::tick_range(&position);
@@ -384,6 +418,20 @@ module vault::vault {
         )
     }
 
+    public fun increase_liquidity<CoinTypeA, CoinTypeB>(
+        vault: &mut ClmmVault,
+        clmm_global_config: &clmm_pool::config::GlobalConfig,
+        clmm_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
+        distribution_config: &governance::distribution_config::DistributionConfig,
+        gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        balance_a: &mut sui::balance::Balance<CoinTypeA>, 
+        balance_b: &mut sui::balance::Balance<CoinTypeB>, 
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) : (u64, u64, u128) {
+        abort
+    }
     /// Adds liquidity to the staked position using buffered balances.
     ///
     /// Temporarily withdraws the position from the gauge, increases liquidity with the
@@ -410,7 +458,7 @@ module vault::vault {
     ///
     /// # Aborts
     /// * if gauge or CLMM operations abort internally
-    public fun increase_liquidity<CoinTypeA, CoinTypeB>(
+    public fun increase_liquidity_v2<CoinTypeA, CoinTypeB>(
         vault: &mut ClmmVault,
         clmm_global_config: &clmm_pool::config::GlobalConfig,
         clmm_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
@@ -418,20 +466,35 @@ module vault::vault {
         gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         balance_a: &mut sui::balance::Balance<CoinTypeA>, 
-        balance_b: &mut sui::balance::Balance<CoinTypeB>, 
+        balance_b: &mut sui::balance::Balance<CoinTypeB>,
+        penalty_cap: &Option<PenaltyCap>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) : (u64, u64, u128) {
         assert!(vault.wrapped_position.is_some(), vault::error::vault_stopped());
-        let mut position = gauge.withdraw_position_v2<CoinTypeA, CoinTypeB>(
-            distribution_config,
-            clmm_global_config,
-            clmm_vault,
-            pool,
-            vault.wrapped_position.extract(),
-            clock,
-            ctx
-        );
+        let mut position = if (penalty_cap.is_some()) {
+            governance::gauge::withdraw_position_without_penalty<CoinTypeA, CoinTypeB>(
+                gauge,
+                distribution_config,
+                clmm_global_config,
+                clmm_vault,
+                pool,
+                vault.wrapped_position.extract(),
+                penalty_cap.borrow(),
+                clock,
+                ctx
+            )
+        } else {
+            gauge.withdraw_position_v2<CoinTypeA, CoinTypeB>(
+                distribution_config,
+                clmm_global_config,
+                clmm_vault,
+                pool,
+                vault.wrapped_position.extract(),
+                clock,
+                ctx
+            )
+        };
 
         let (pay_amount_a, pay_amount_b, liqudity_calc_finish) = increase_liquidity_internal<CoinTypeA, CoinTypeB>(
             clmm_global_config, 
@@ -517,6 +580,18 @@ module vault::vault {
         (pay_amount_a, pay_amount_b, liqudity_calc_finish)
     }
 
+    public fun stop_vault<CoinTypeA, CoinTypeB>(
+        vault: &mut ClmmVault,
+        clmm_global_config: &clmm_pool::config::GlobalConfig,
+        clmm_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
+        distribution_config: &governance::distribution_config::DistributionConfig,
+        gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext,
+    ) : (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>) {
+        abort
+    }
     /// Halts the CLMM vault by withdrawing the entire staked position’s liquidity,
     /// closing the position, and returning the extracted balances.
     ///
@@ -540,28 +615,43 @@ module vault::vault {
     ///
     /// # Returns
     /// * tuple containing the balances withdrawn from the position
-    public fun stop_vault<CoinTypeA, CoinTypeB>(
+    public fun stop_vault_v2<CoinTypeA, CoinTypeB>(
         vault: &mut ClmmVault,
         clmm_global_config: &clmm_pool::config::GlobalConfig,
         clmm_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
         distribution_config: &governance::distribution_config::DistributionConfig,
         gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        penalty_cap_opt: &Option<PenaltyCap>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
     ) : (sui::balance::Balance<CoinTypeA>, sui::balance::Balance<CoinTypeB>) {
 
         assert!(vault.wrapped_position.is_some(), vault::error::vault_stopped());
 
-        let mut position = gauge.withdraw_position_v2<CoinTypeA, CoinTypeB>(
-            distribution_config,
-            clmm_global_config,
-            clmm_vault,
-            pool,
-            vault.wrapped_position.extract(),
-            clock,
-            ctx
-        );
+        let mut position = if (penalty_cap_opt.is_some()) {
+            governance::gauge::withdraw_position_without_penalty<CoinTypeA, CoinTypeB>(
+                gauge,
+                distribution_config,
+                clmm_global_config,
+                clmm_vault,
+                pool,
+                vault.wrapped_position.extract(),
+                penalty_cap_opt.borrow(),
+                clock,
+                ctx
+            )
+        } else {
+            gauge.withdraw_position_v2<CoinTypeA, CoinTypeB>(
+                distribution_config,
+                clmm_global_config,
+                clmm_vault,
+                pool,
+                vault.wrapped_position.extract(),
+                clock,
+                ctx
+            )
+        };
 
         let mut balance_a = sui::balance::zero<CoinTypeA>();
         let mut balance_b = sui::balance::zero<CoinTypeB>();
@@ -656,6 +746,17 @@ module vault::vault {
         (start_balance_a, start_balance_b)
     }
 
+    public fun collect_position_reward<CoinTypeA, CoinTypeB, SailCoinType, OsailCoinType>(
+        vault: &ClmmVault,
+        minter: &mut governance::minter::Minter<SailCoinType>,
+        distribution_config: &governance::distribution_config::DistributionConfig,
+        gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) : sui::balance::Balance<OsailCoinType> {
+        abort
+    }
     /// Collects OSAIL rewards earned by the vault’s staked position.
     ///
     /// Delegates reward retrieval to the minter via the gauge and returns the result as
@@ -678,28 +779,43 @@ module vault::vault {
     ///
     /// # Returns
     /// * balance of OSAIL rewards collected for the position
-    public fun collect_position_reward<CoinTypeA, CoinTypeB, SailCoinType, OsailCoinType>(
+    public fun collect_position_reward_v2<CoinTypeA, CoinTypeB, SailCoinType, OsailCoinType>(
         vault: &ClmmVault,
         minter: &mut governance::minter::Minter<SailCoinType>,
         distribution_config: &governance::distribution_config::DistributionConfig,
         gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        penalty_cap_opt: &Option<PenaltyCap>,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) : sui::balance::Balance<OsailCoinType> {
         assert!(vault.wrapped_position.is_some(), vault::error::vault_stopped());
 
-        sui::coin::into_balance<OsailCoinType>(
-            governance::minter::get_position_reward<CoinTypeA, CoinTypeB, SailCoinType, OsailCoinType>(
-                minter,
-                distribution_config,
-                gauge,
-                pool,
-                std::option::borrow<governance::gauge::StakedPosition>(&vault.wrapped_position),
-                clock,
-                ctx
+        if (penalty_cap_opt.is_some()) {
+            sui::coin::into_balance<OsailCoinType>(
+                minter.get_position_reward_without_penalty<CoinTypeA, CoinTypeB, SailCoinType, OsailCoinType>(
+                    distribution_config,
+                    gauge,
+                    pool,
+                    std::option::borrow<governance::gauge::StakedPosition>(&vault.wrapped_position),
+                    penalty_cap_opt.borrow(),
+                    clock,
+                    ctx
+                )
             )
-        )
+        } else {
+            sui::coin::into_balance<OsailCoinType>(
+                governance::minter::get_position_reward<CoinTypeA, CoinTypeB, SailCoinType, OsailCoinType>(
+                    minter,
+                    distribution_config,
+                    gauge,
+                    pool,
+                    std::option::borrow<governance::gauge::StakedPosition>(&vault.wrapped_position),
+                    clock,
+                    ctx
+                )
+            )
+        }
     }
     
     /// Collects pool reward balances earned by the staked position.
@@ -732,17 +848,7 @@ module vault::vault {
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         clock: &sui::clock::Clock
     ) : sui::balance::Balance<RewardCoinType> {
-        assert!(vault.wrapped_position.is_some(), vault::error::vault_stopped());
-
-        governance::gauge::get_pool_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
-            clmm_global_config,
-            rewarder_vault,
-            gauge,
-            distribution_config,
-            pool,
-            std::option::borrow<governance::gauge::StakedPosition>(&vault.wrapped_position),
-            clock
-        )
+        abort
     }
 
     public fun collect_pool_reward_v2<CoinTypeA, CoinTypeB, RewardCoinType>(
@@ -755,18 +861,46 @@ module vault::vault {
         clock: &sui::clock::Clock,
         ctx: &TxContext
     ) : sui::balance::Balance<RewardCoinType> {
+        abort
+    }
+
+    public fun collect_pool_reward_v3<CoinTypeA, CoinTypeB, RewardCoinType>(
+        vault: &ClmmVault, 
+        distribution_config: &governance::distribution_config::DistributionConfig,
+        gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        clmm_global_config: &clmm_pool::config::GlobalConfig,
+        rewarder_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        penalty_cap_opt: &Option<PenaltyCap>,
+        clock: &sui::clock::Clock,
+        ctx: &TxContext
+    ) : sui::balance::Balance<RewardCoinType> {
         assert!(vault.wrapped_position.is_some(), vault::error::vault_stopped());
 
-        governance::gauge::get_pool_reward_v2<CoinTypeA, CoinTypeB, RewardCoinType>(
-            clmm_global_config,
-            rewarder_vault,
-            gauge,
-            distribution_config,
-            pool,
-            std::option::borrow<governance::gauge::StakedPosition>(&vault.wrapped_position),
-            clock,
-            ctx
-        )
+        if (penalty_cap_opt.is_some()) {
+            governance::gauge::get_pool_reward_without_penalty<CoinTypeA, CoinTypeB, RewardCoinType>(
+                clmm_global_config,
+                rewarder_vault,
+                gauge,
+                distribution_config,
+                pool,
+                std::option::borrow<governance::gauge::StakedPosition>(&vault.wrapped_position),
+                penalty_cap_opt.borrow(),
+                clock,
+                ctx
+            )
+        } else {
+            governance::gauge::get_pool_reward_v2<CoinTypeA, CoinTypeB, RewardCoinType>(
+                clmm_global_config,
+                rewarder_vault,
+                gauge,
+                distribution_config,
+                pool,
+                std::option::borrow<governance::gauge::StakedPosition>(&vault.wrapped_position),
+                clock,
+                ctx
+            )
+        }
     }
     
     public fun borrow_staked_position(vault: &ClmmVault) : &governance::gauge::StakedPosition {
