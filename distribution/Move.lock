@@ -23,7 +23,7 @@ manifest_digest = "BA49968BFF7C4A4D9F013B59535CF8B89D935A7C6D63C121606B1FE844829
 deps = { Sui = "Sui" }
 
 [pinned.mainnet.clmm_pool]
-source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "clmm_pool", rev = "48ddee998cdf208d6c0f5f8c11f1a36e814bc396" }
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "clmm_pool", rev = "c7c6d685fcfa4ab34657d9baef994e68719f654e" }
 use_environment = "mainnet"
 manifest_digest = "F1066BE7B4DA34945E01D4DB64EABAB0426F6F53536F290F3EF521EBDF445DDE"
 deps = { Sui = "Sui", gauge_cap = "gauge_cap", integer_mate = "integer_mate", move_stl = "move_stl", price_provider = "price_provider" }
@@ -31,11 +31,11 @@ deps = { Sui = "Sui", gauge_cap = "gauge_cap", integer_mate = "integer_mate", mo
 [pinned.mainnet.distribution]
 source = { root = true }
 use_environment = "mainnet"
-manifest_digest = "441256E486432793FF69628C9E506DD16AA01A607BA16F01C73DEE56609B4A9D"
+manifest_digest = "28A9FE87218D2BD17563A64A0ACEA56560C1974221623C5270DFFD9D673ECBA2"
 deps = { Sui = "Sui", Switchboard = "Switchboard", clmm_pool = "clmm_pool", gauge_cap = "gauge_cap", governance = "governance", integer_mate = "integer_mate", locker_cap = "locker_cap", price_monitor = "price_monitor", price_provider = "price_provider", ve = "ve" }
 
 [pinned.mainnet.gauge_cap]
-source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "gauge_cap", rev = "48ddee998cdf208d6c0f5f8c11f1a36e814bc396" }
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "gauge_cap", rev = "c7c6d685fcfa4ab34657d9baef994e68719f654e" }
 use_environment = "mainnet"
 manifest_digest = "D6E02FF878B6E388BCC877260575EA7E9B50C7F248C6E0661C4359AA60F75475"
 deps = { Sui = "Sui" }
@@ -43,11 +43,11 @@ deps = { Sui = "Sui" }
 [pinned.mainnet.governance]
 source = { local = "../governance" }
 use_environment = "mainnet"
-manifest_digest = "4F8CF39941223DFF7F33104B7D047D9B4B6A8636EA7D0840B4721DA2145D021B"
+manifest_digest = "7E36F428FB1D54423612A388ED514D69EC5DC24ED0F464EE9FF9888F9B809CDA"
 deps = { Sui = "Sui", Switchboard = "Switchboard", clmm_pool = "clmm_pool", gauge_cap = "gauge_cap", integer_mate = "integer_mate", locker_cap = "locker_cap", price_monitor = "price_monitor", price_provider = "price_provider", voting_escrow = "voting_escrow" }
 
 [pinned.mainnet.integer_mate]
-source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "integer_mate", rev = "48ddee998cdf208d6c0f5f8c11f1a36e814bc396" }
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "integer_mate", rev = "c7c6d685fcfa4ab34657d9baef994e68719f654e" }
 use_environment = "mainnet"
 manifest_digest = "D6E02FF878B6E388BCC877260575EA7E9B50C7F248C6E0661C4359AA60F75475"
 deps = { Sui = "Sui" }
@@ -59,7 +59,7 @@ manifest_digest = "D6E02FF878B6E388BCC877260575EA7E9B50C7F248C6E0661C4359AA60F75
 deps = { Sui = "Sui" }
 
 [pinned.mainnet.move_stl]
-source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "move_stl", rev = "48ddee998cdf208d6c0f5f8c11f1a36e814bc396" }
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "move_stl", rev = "c7c6d685fcfa4ab34657d9baef994e68719f654e" }
 use_environment = "mainnet"
 manifest_digest = "D6E02FF878B6E388BCC877260575EA7E9B50C7F248C6E0661C4359AA60F75475"
 deps = { Sui = "Sui" }
@@ -67,11 +67,11 @@ deps = { Sui = "Sui" }
 [pinned.mainnet.price_monitor]
 source = { local = "../price_monitor" }
 use_environment = "mainnet"
-manifest_digest = "DE3B4B21BEB8CF6B042C704102752A5DD6FF7C0FB24D5CA0442B845322B38C66"
+manifest_digest = "7DA625F191424A698CD6E9E0F24248E3DD367D26D16DAA0CFC8ADF1520DF3EAD"
 deps = { Sui = "Sui", Switchboard = "Switchboard", clmm_pool = "clmm_pool", integer_mate = "integer_mate" }
 
 [pinned.mainnet.price_provider]
-source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "price_provider", rev = "48ddee998cdf208d6c0f5f8c11f1a36e814bc396" }
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "price_provider", rev = "c7c6d685fcfa4ab34657d9baef994e68719f654e" }
 use_environment = "mainnet"
 manifest_digest = "D6E02FF878B6E388BCC877260575EA7E9B50C7F248C6E0661C4359AA60F75475"
 deps = { Sui = "Sui" }
@@ -79,11 +79,11 @@ deps = { Sui = "Sui" }
 [pinned.mainnet.ve]
 source = { local = "../legacy/ve" }
 use_environment = "mainnet"
-manifest_digest = "07CA07044B0B2DFE181E93DBEF984C07DA69246F761AD19AE7C18D2290AB7617"
+manifest_digest = "36A1F81E57585C238D5743D03C1157E6648A71647FBF5BD842FC7B84A1367A18"
 deps = { Sui = "Sui", integer_mate = "integer_mate", voting_escrow = "voting_escrow" }
 
 [pinned.mainnet.voting_escrow]
 source = { local = "../voting_escrow" }
 use_environment = "mainnet"
-manifest_digest = "6306843ED13AAB289B48852DC9EA0F65B51DCCADC8EA53F211E300F5291D0938"
+manifest_digest = "E873971DBD03BB36A4A6282885BD1D255C5F806492183A3C7007C72397CAFA48"
 deps = { Sui = "Sui", integer_mate = "integer_mate" }

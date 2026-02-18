@@ -1,11 +1,11 @@
 [package]
-name = "locker_cap"
+name = "penalty_cap"
 edition = "2024.beta"
 
 [dependencies]
 
 [addresses]
-locker_cap = "0x0"
+penalty_cap = "0x0"
 
 [dev-dependencies]
 
@@ -16,4 +16,3 @@ git = "https://github.com/MystenLabs/sui.git"
 subdir = "crates/sui-framework/packages/sui-framework"
 rev = "framework/mainnet"
 override = true
-
