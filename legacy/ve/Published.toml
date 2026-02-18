@@ -4,6 +4,6 @@
 
 [published.mainnet]
 chain-id = "35834a8a"
-published-at = "0x015e5929cf1236cb4ccb32245cb23091588f55fa540e78d13b452766b0b60f47"
-original-id = "0xd5c34bb087893fec8faf905a1259c008776aaaae84e2d2d46deb1a6b9f95e358"
-version = 2
+published-at = "0x65a0317036d4b666a15c8f56ec2d58e1c617566bedd50b4677fb31d2e49b12d2"
+original-id = "0x65a0317036d4b666a15c8f56ec2d58e1c617566bedd50b4677fb31d2e49b12d2"
+version = 1
