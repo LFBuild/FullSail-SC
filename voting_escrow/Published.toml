@@ -4,6 +4,8 @@
 
 [published.mainnet]
 chain-id = "35834a8a"
-published-at = "0x2df363a431b9213620bf2fbd00592093b9c44ec95fabfcdd249c1db0e9307804"
+published-at = "0x3cd5e5509d89cc24cee2896c9bb4f61dc8ddfa31a239ae129a7a6e6b3cbf12b8"
 original-id = "0x61d3c07c67f6ebcc46c950a731dd263a0325fdfe03382e1bd50e4aba964f9e1c"
-version = 2
+version = 4
+toolchain-version = "1.66.1"
+build-config = { flavor = "sui", edition = "2024" }
