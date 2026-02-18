@@ -1,6 +1,7 @@
 module vault::port {
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
     const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
+    const PENALTY_CAP_FIELD_NAME: vector<u8> = b"penalty_cap";
 
     use std::type_name::{TypeName, with_defining_ids};
     use sui::object::ID;
@@ -8,6 +9,7 @@ module vault::port {
     use sui::balance::Balance;
     use sui::linked_table::{Self, LinkedTable};
     use sui::tx_context::TxContext;
+    use sui::dynamic_field;
 
     public struct PORT has drop {}
 
@@ -612,7 +614,8 @@ module vault::port {
     ) {
         check_updated_rewards(port, pool, clock);
 
-        let (balance_a, balance_b, migrate_liquidity) = port.vault.rebalance<CoinTypeA, CoinTypeB>(
+        let mut penalty_cap_ref = port.get_penalty_cap();
+        let (balance_a, balance_b, migrate_liquidity) = port.vault.rebalance_v2<CoinTypeA, CoinTypeB>(
             distribution_config,
             gauge,
             clmm_global_config,
@@ -621,10 +624,17 @@ module vault::port {
             port.buffer_assets.withdraw_all<CoinTypeA>(),
             port.buffer_assets.withdraw_all<CoinTypeB>(), 
             tick_lower, 
-            tick_upper, 
+            tick_upper,
+            &penalty_cap_ref,
             clock, 
             ctx
         );
+
+        if (penalty_cap_ref.is_some()) {
+            port.add_penalty_cap_internal(penalty_cap_ref.extract());
+        };
+        penalty_cap_ref.destroy_none();
+        
 
         port.buffer_assets.join<CoinTypeA>(balance_a);
         port.buffer_assets.join<CoinTypeB>(balance_b);
@@ -1610,18 +1620,25 @@ module vault::port {
         };
         let mut balance_a = port.buffer_assets.withdraw_all<CoinTypeA>();
         let mut balance_b = port.buffer_assets.withdraw_all<CoinTypeB>();
+        let mut penalty_cap_ref = port.get_penalty_cap();
 
-        let (amount_a, amount_b, delta_liquidity) = port.vault.increase_liquidity<CoinTypeA, CoinTypeB>(
+        let (amount_a, amount_b, delta_liquidity) = port.vault.increase_liquidity_v2<CoinTypeA, CoinTypeB>(
             clmm_global_config, 
             clmm_vault,
             distribution_config,
             gauge,
             pool, 
             &mut balance_a, 
-            &mut balance_b, 
+            &mut balance_b,
+            &penalty_cap_ref,
             clock,
             ctx
         );
+        if (penalty_cap_ref.is_some()) {
+            port.add_penalty_cap_internal(penalty_cap_ref.extract());
+        };
+        penalty_cap_ref.destroy_none(); 
+        
         port.buffer_assets.join<CoinTypeA>(balance_a);
         port.buffer_assets.join<CoinTypeB>(balance_b);
         let event = AddLiquidityEvent{
@@ -1699,15 +1716,22 @@ module vault::port {
         assert!(!port.vault.is_stopped(), vault::error::vault_is_stopped());
         assert!(sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool) == port.vault.pool_id(), vault::error::clmm_pool_not_match());
 
-        let (balance_a, balance_b) = port.vault.stop_vault(
+        let mut penalty_cap_ref = port.get_penalty_cap();
+        let (balance_a, balance_b) = port.vault.stop_vault_v2(
             clmm_global_config,
             clmm_vault,
             distribution_config,
             gauge,
             pool,
+            &penalty_cap_ref,
             clock,
             ctx
         );
+
+        if (penalty_cap_ref.is_some()) {
+            port.add_penalty_cap_internal(penalty_cap_ref.extract());
+        };
+        penalty_cap_ref.destroy_none();
 
         port.buffer_assets.join<CoinTypeA>(balance_a);
         port.buffer_assets.join<CoinTypeB>(balance_b);
@@ -2219,14 +2243,21 @@ module vault::port {
         port.rewarder.settle(port_id, port.total_volume, clock.timestamp_ms() / 1000);
 
         let (amount_osail, new_growth) = if (!port.is_stopped()) {
-            let mut osail_reward = port.vault.collect_position_reward<CoinTypeA, CoinTypeB, SailCoinType, CurrentOsailCoinType>(
+            let mut penalty_cap_ref = port.get_penalty_cap();
+            let mut osail_reward = port.vault.collect_position_reward_v2<CoinTypeA, CoinTypeB, SailCoinType, CurrentOsailCoinType>(
                 minter,
                 distribution_config,
                 gauge,
                 pool,
+                &penalty_cap_ref,
                 clock,
                 ctx
             );
+            if (penalty_cap_ref.is_some()) {
+                port.add_penalty_cap_internal(penalty_cap_ref.extract());
+            };
+            penalty_cap_ref.destroy_none();
+
             merge_protocol_asset<CurrentOsailCoinType>(port, &mut osail_reward); 
             let amount_osail = sui::balance::value<CurrentOsailCoinType>(&osail_reward);
 
@@ -2785,105 +2816,7 @@ module vault::port {
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>, 
         clock: &sui::clock::Clock
     ) {
-        global_config.checked_package_version();  
-        assert!(!port.is_pause, vault::error::port_is_pause());
-        assert!(
-            sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool) == port.vault.pool_id(), 
-            vault::error::clmm_pool_not_match()
-        );
-        let reward_type = with_defining_ids<RewardCoinType>();
-
-        let pool_rewarders = pool.rewarder_manager().rewarders();
-        let mut existing_reward_type = false;
-        let mut i = 0;
-        while (i < pool_rewarders.length()) {
-            let rewarder = pool_rewarders[i];
-            if (rewarder.reward_coin() == reward_type) {
-                existing_reward_type = true;
-                break
-            };
-
-            i = i + 1;
-        };
-        assert!(existing_reward_type, vault::error::reward_types_not_match());
-
-        let (new_amount, new_growth) = if (!port.is_stopped()) {
-            let mut reward_balance = port.vault.collect_pool_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
-                distribution_config,
-                gauge,
-                clmm_global_config, 
-                rewarder_vault,
-                pool, 
-                clock
-            );
-            if (reward_balance.value() > 0) {
-                merge_protocol_asset<RewardCoinType>(port, &mut reward_balance); 
-                
-                let amount = reward_balance.value();
-                
-                // If reward type matches pool token A or B, store in separate balance bag
-                if (reward_type == with_defining_ids<CoinTypeA>() || reward_type == with_defining_ids<CoinTypeB>()) {
-                    port.pool_token_reward_balance.join<RewardCoinType>(reward_balance);
-                } else {
-                    port.buffer_assets.join<RewardCoinType>(reward_balance);
-                };
-
-                let total_volume = port.total_volume;
-                
-                let current_growth = if (port.reward_growth.contains(&reward_type)) {
-                    let (_, _current_growth) =  port.reward_growth.remove(&reward_type);
-                    _current_growth
-                } else {
-                    0
-                };
-                let (new_growth_calc, overflow) = integer_mate::math_u128::overflowing_add(
-                    current_growth,
-                    integer_mate::full_math_u128::mul_div_floor(
-                        (amount as u128), 
-                        1 << 64, 
-                        (total_volume as u128)
-                    )
-                );
-                assert!(!overflow, vault::error::growth_overflow());
-
-                (amount, new_growth_calc)
-            } else {
-                reward_balance.destroy_zero();
-                let current_growth = if (port.reward_growth.contains(&reward_type)) {
-                    let (_, _current_growth) =  port.reward_growth.remove(&reward_type);
-                    _current_growth
-                } else {
-                    0
-                };
-
-                (0, current_growth)
-            }
-        } else {
-            let current_growth = if (port.reward_growth.contains(&reward_type)) {
-                    let (_, _current_growth) =  port.reward_growth.remove(&reward_type);
-                    _current_growth
-                } else {
-                    0
-                };
-
-                (0, current_growth)
-        };
-
-        port.reward_growth.insert(reward_type, new_growth);
-    
-        if (port.last_update_growth_time_ms.contains(&reward_type)) {
-            port.last_update_growth_time_ms.remove(&reward_type);
-        };
-        port.last_update_growth_time_ms.insert(reward_type, clock.timestamp_ms());
-    
-        let event = UpdatePoolRewardEvent{
-            port_id     : sui::object::id<Port>(port),
-            reward_type : with_defining_ids<RewardCoinType>(), 
-            amount      : new_amount, 
-            new_growth  : new_growth,
-            update_time : sui::clock::timestamp_ms(clock),
-        };
-        sui::event::emit<UpdatePoolRewardEvent>(event);
+       abort
     }
 
     public fun update_pool_reward_v2<CoinTypeA, CoinTypeB, RewardCoinType>(
@@ -2920,15 +2853,22 @@ module vault::port {
         assert!(existing_reward_type, vault::error::reward_types_not_match());
 
         let (new_amount, new_growth) = if (!port.is_stopped()) {
-            let mut reward_balance = port.vault.collect_pool_reward_v2<CoinTypeA, CoinTypeB, RewardCoinType>(
+            let mut penalty_cap_ref = port.get_penalty_cap();
+            let mut reward_balance = port.vault.collect_pool_reward_v3<CoinTypeA, CoinTypeB, RewardCoinType>(
                 distribution_config,
                 gauge,
                 clmm_global_config, 
                 rewarder_vault,
                 pool, 
+                &penalty_cap_ref,
                 clock,
                 ctx
             );
+            if (penalty_cap_ref.is_some()) {
+                port.add_penalty_cap_internal(penalty_cap_ref.extract());
+            };
+            penalty_cap_ref.destroy_none();
+
             if (reward_balance.value() > 0) {
                 merge_protocol_asset<RewardCoinType>(port, &mut reward_balance); 
                 
@@ -3037,57 +2977,7 @@ module vault::port {
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         clock: &sui::clock::Clock
     ) : (u64, u128) {
-        global_config.checked_package_version();
-        assert!(!port.is_pause, vault::error::port_is_pause());
-        assert!(port_entry.port_id == sui::object::id<Port>(port), vault::error::port_entry_port_id_not_match());
-        let reward_coin_type = with_defining_ids<RewardCoinType>();
-
-        if (!port.last_update_growth_time_ms.contains(&reward_coin_type) || *port.last_update_growth_time_ms.get(&reward_coin_type) != clock.timestamp_ms()) {
-            update_pool_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
-                port,
-                global_config,
-                distribution_config,
-                gauge,
-                clmm_global_config,
-                rewarder_vault,
-                pool,
-                clock
-            );
-        };
-
-        if (port_entry.volume == 0) {
-            let current_growth = if (port.reward_growth.contains(&reward_coin_type)) {
-                *port.reward_growth.get(&reward_coin_type)
-            } else {
-                0
-            };
-
-            return (0, current_growth)
-        };
-        
-        let start_growth = if (port_entry.entry_reward_growth.contains(&reward_coin_type)) {
-            *port_entry.entry_reward_growth.get(&reward_coin_type)
-        } else {
-            0
-        };
-        
-        let current_growth = if (port.reward_growth.contains(&reward_coin_type)) {
-            *port.reward_growth.get(&reward_coin_type)
-        } else {
-            0
-        };
-        if (current_growth <= start_growth) {
-            return (0, current_growth)
-        };
-
-        let accumulated_growth_reward = current_growth - start_growth;
-        let reward_amount =integer_mate::full_math_u128::mul_div_floor(
-            (port_entry.volume as u128),
-            accumulated_growth_reward,
-            1 << 64
-        ) as u64;
-
-        (reward_amount, current_growth)
+        abort
     }
 
     public fun get_pool_reward_amount_to_claim_v2<CoinTypeA, CoinTypeB, RewardCoinType>(
@@ -3206,7 +3096,7 @@ module vault::port {
 
         let reward_coin_type = with_defining_ids<RewardCoinType>();
 
-        let (reward_amount, current_growth) = get_pool_reward_amount_to_claim<CoinTypeA, CoinTypeB, RewardCoinType>(
+        let (reward_amount, current_growth) = get_pool_reward_amount_to_claim_v2<CoinTypeA, CoinTypeB, RewardCoinType>(
             global_config,
             port,
             port_entry,
@@ -3215,7 +3105,8 @@ module vault::port {
             clmm_global_config,
             rewarder_vault,
             pool, 
-            clock
+            clock,
+            ctx
         );
         
         if (port_entry.entry_reward_growth.contains(&reward_coin_type)) {
@@ -3823,5 +3714,51 @@ module vault::port {
 
     public fun rewarder_growth_global<RewardCoinType>(port: &Port): u128 {
         port.rewarder.growth_global<RewardCoinType>()
+    }
+
+    public fun add_penalty_cap(
+        port: &mut Port, 
+        global_config: &vault::vault_config::GlobalConfig,
+        penalty_cap: penalty_cap::penalty_cap::PenaltyCap,
+        ctx: &mut TxContext
+    ) {
+        global_config.checked_package_version();
+        assert!(!port.is_pause, vault::error::port_is_pause());
+
+        port.add_penalty_cap_internal(penalty_cap);
+    }
+
+    fun add_penalty_cap_internal(
+        port: &mut Port, 
+        penalty_cap: penalty_cap::penalty_cap::PenaltyCap,
+    ) {
+        dynamic_field::add(&mut port.id, PENALTY_CAP_FIELD_NAME, penalty_cap);
+    }
+
+    public fun remove_penalty_cap(
+        port: &mut Port, 
+        global_config: &vault::vault_config::GlobalConfig,
+        ctx: &mut TxContext
+    ) {
+        global_config.checked_package_version();
+        assert!(!port.is_pause, vault::error::port_is_pause());
+
+        let mut pc = dynamic_field::remove_if_exists<vector<u8>, penalty_cap::penalty_cap::PenaltyCap>(&mut port.id, PENALTY_CAP_FIELD_NAME);
+        // penalty_cap will be automatically dropped at the end of the function
+        if (pc.is_some()) {
+            sui::transfer::public_transfer<penalty_cap::penalty_cap::PenaltyCap>(pc.extract(), sui::tx_context::sender(ctx));
+        };
+        
+        pc.destroy_none();
+    }
+
+    public fun exists_penalty_cap(
+        port: &Port
+    ) : bool {
+        dynamic_field::exists_(&port.id, PENALTY_CAP_FIELD_NAME)
+    }
+
+    fun get_penalty_cap(port: &mut Port): Option<penalty_cap::penalty_cap::PenaltyCap> {
+        dynamic_field::remove_if_exists(&mut port.id, PENALTY_CAP_FIELD_NAME)
     }
 }
