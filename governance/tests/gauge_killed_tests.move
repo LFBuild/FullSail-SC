@@ -1426,8 +1426,6 @@ fun test_settle_killed_gauge_after_epoch_end_stops_rewards() {
             &clock
         );
 
-        std::debug::print(&earned_at_end);
-
         assert!(gauge_base_emissions - earned_at_end <= 5, 1);
 
         test_scenario::return_shared(gauge);
