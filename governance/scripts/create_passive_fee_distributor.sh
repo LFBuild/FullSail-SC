@@ -1,7 +1,7 @@
 source ./export.sh
 
 # Example fee token for passive-fee distribution (update as needed).
-export PASSIVE_FEE_COIN=0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC
+export PASSIVE_FEE_COIN=0x1018b0843a724fd966b37f018bbc489918b6594144451cf4b481d392c9a0a463::token_a::TOKEN_A
 
 sui client ptb \
 --move-call $PACKAGE::minter::create_and_start_passive_fee_distributor "<$FULLSAIL_TOKEN_TYPE,$PASSIVE_FEE_COIN>" @$MINTER @$MINTER_ADMIN_CAP @$VOTING_ESCROW @$DISTRIBUTION_CONFIG @$CLOCK \
