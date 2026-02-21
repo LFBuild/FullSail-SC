@@ -68,13 +68,16 @@ module governance::voter {
     const EVoteInternalVotingEscrowCapNotSet: u64 = 120698940230993040;
     const EVoteInternalGaugeDoesNotExist: u64 = 922337479851920589;
     const EVoteInternalGaugeNotAlive: u64 = 922337480710992693;
+    const EVoteInternalGaugePaused: u64 = 718487707238781200;
     const EVoteInternalPoolAreadyVoted: u64 = 922337483288104144;
     const EVoteInternalWeightResultedInZeroVotes: u64 = 922337484147110711;
 
     const EDistributeGaugeInvalidToken: u64 = 727114932399146200;
     const EDistributeGaugeInvalidPool: u64 = 922337598392972083;
     const EDistributeGaugeGaugeIsKilled: u64 = 519025590138764600;
+    const EDistributeGaugeGaugePaused: u64 = 759099828165679600;
     const EAdjustGaugeGaugeIsKilled: u64 = 855951837524523600;
+    const EAdjustGaugeGaugePaused: u64 = 856259665702033800;
 
     const EWhitelistNftGovernorInvalid: u64 = 922337395670666447;
 
@@ -326,8 +329,8 @@ module governance::voter {
         };
         voter.last_voted.add(lock_id, current_time);
         voting_escrow.deposit_managed(voter.voting_escrow_cap.borrow(), lock, managed_lock, clock, ctx);
-        let balance = voting_escrow.balance_of_nft_at(lock_id.id, current_time);
         let managed_lock_id = into_lock_id(object::id(managed_lock));
+        let balance = voting_escrow.balance_of_nft_at(managed_lock_id.id, current_time);
         voter.poke_internal(voting_escrow, distribution_config, managed_lock_id, balance, clock, ctx);
     }
 
@@ -859,7 +862,7 @@ module governance::voter {
         gauge
     }
 
-    /// Distributes accumulated rewards to a gauge.
+    /// Allocates a fresh portion of oSAIL emission to a gauge. Gathers fees from the pool and let's caller orchestrate the distribution of fees to the voters.
     /// This is a key function in the reward distribution flow.
     ///
     /// # Arguments
@@ -873,11 +876,7 @@ module governance::voter {
     /// * `ctx` - The transaction context
     ///
     /// # Returns
-    /// (amount of distributed rewards, balance containing rewards from previous epoch that were not distributed)
-    ///
-    /// # Aborts
-    /// * If the gauge representation is invalid
-    ///
+    /// (claimed fee coin type A, claimed fee coin type B, ended epoch oSAIL emission)
     /// # Emits
     /// * `EventDistributeGauge` with information about distributed rewards
     public(package) fun distribute_gauge<CoinTypeA, CoinTypeB, NextEpochOSail>(
@@ -889,10 +888,11 @@ module governance::voter {
         o_sail_price_q64: u128,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
-    ): u64 {
+    ): (Balance<CoinTypeA>, Balance<CoinTypeB>, u64) {
         // is called by minter so version control is handled by minter
         assert!(voter.is_valid_epoch_token<NextEpochOSail>(), EDistributeGaugeInvalidToken);
         assert!(distribution_config.is_gauge_alive(object::id(gauge)), EDistributeGaugeGaugeIsKilled);
+        assert!(!distribution_config.is_gauge_paused(object::id(gauge)), EDistributeGaugeGaugePaused);
         assert!(gauge.check_gauger_pool(pool), EDistributeGaugeInvalidPool);
 
         let gauge_id = into_gauge_id(object::id(gauge));
@@ -913,19 +913,6 @@ module governance::voter {
         );
         let fee_a_amount = fee_reward_a.value<CoinTypeA>();
         let fee_b_amount = fee_reward_b.value<CoinTypeB>();
-        let fee_voting_reward = voter.gauge_to_fee.borrow_mut(gauge_id);
-        fee_voting_reward.notify_reward_amount(
-            &voter.voter_cap,
-            coin::from_balance<CoinTypeA>(fee_reward_a, ctx),
-            clock,
-            ctx
-        );
-        fee_voting_reward.notify_reward_amount(
-            &voter.voter_cap,
-            coin::from_balance<CoinTypeB>(fee_reward_b, ctx),
-            clock,
-            ctx
-        );
         let distribute_gauge_event = EventDistributeGauge {
             pool: object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool),
             gauge: gauge_id.id,
@@ -936,7 +923,7 @@ module governance::voter {
         };
         sui::event::emit<EventDistributeGauge>(distribute_gauge_event);
 
-        ended_epoch_o_sail_emission
+        (fee_reward_a, fee_reward_b, ended_epoch_o_sail_emission)
     }
 
     /// Notifies additional reward amount to the gauge without claiming accumulated fees.
@@ -964,6 +951,7 @@ module governance::voter {
     ) {
         // is called by minter so version control is handled by minter
         assert!(distribution_config.is_gauge_alive(object::id(gauge)), EAdjustGaugeGaugeIsKilled);
+        assert!(!distribution_config.is_gauge_paused(object::id(gauge)), EAdjustGaugeGaugePaused);
 
         gauge.notify_reward_without_claim(
             distribution_config,
@@ -1259,8 +1247,6 @@ module governance::voter {
         voter: &Voter,
     ): bool {
         let coin_type = type_name::get<RewardCoinType>();
-
-        let pool_id = object::id(voter);
 
         voter.current_epoch_token.borrow() == coin_type
     }
@@ -1669,7 +1655,6 @@ module governance::voter {
     /// * `ctx` - The transaction context
     ///
     /// # Aborts
-    /// * If the voter has already voted in the current epoch
     /// * If the voting escrow is deactivated
     /// * If the epoch vote has ended and the NFT is not whitelisted
     /// * If the lock has no voting power
@@ -1775,6 +1760,10 @@ module governance::voter {
             assert!(
                 distribution_config.is_gauge_alive(gauge_id.id),
                 EVoteInternalGaugeNotAlive
+            );
+            assert!(
+                !distribution_config.is_gauge_paused(gauge_id.id),
+                EVoteInternalGaugePaused
             );
             let votes_for_pool = if (weights[i] == 0) {
                 0

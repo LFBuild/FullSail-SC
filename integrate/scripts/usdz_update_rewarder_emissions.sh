@@ -5,10 +5,10 @@ export CLOCK=0x6
 
 export COIN_A_1=0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC
 export COIN_B_1=0x7fd8aba1652c58b6397c799fd375e748e5053145cb7e126d303e0a1545fd1fec::usdz::USDZ
-export POOL1=0xe676d09899c8a4f4ecd3e4b9adac181f3f2e1e439db19454cacce1b4ea5b40f4
+export POOL1=0x64292b3a6c8da6fb28d1f1a3e347434b5a4b57057a0b89c043e95ee8770ac69c
 
-export TOTAL_REWARD_AMOUNT_SUI=562500000000 # set the total reward amount for the pool
-export DISTRIBUTION_PERIOD_SECONDS=604800 # set the distribution period in seconds
+export TOTAL_REWARD_AMOUNT_SUI=594219737407 # set the total reward amount for the pool
+export DISTRIBUTION_PERIOD_SECONDS=632090 # set the distribution period in seconds
 
 
 sui client ptb \

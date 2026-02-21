@@ -8,7 +8,7 @@ module voting_escrow::common {
     const HOUR: u64 = 3600;
     const DAY: u64 = 24 * HOUR;
     const WEEK: u64 = 7 * DAY;
-    const EPOCH_DURATION: u64 = DAY / 2;
+    const EPOCH_DURATION: u64 = WEEK;
 
     // OSail params
     const MAX_DISCOUNT: u64 = 100000000;
@@ -165,7 +165,7 @@ module voting_escrow::common {
         EPOCH_DURATION * 4
     }
 
-    /// Discount that oSAIL grants. Currently it's the only option,
+    /// Discount that oSAIL grants. The amount of SAIL that is received for free. Currently it's the only option,
     /// but there is a possibility that different percents will be implemented.
     public fun o_sail_discount(): u64 {
         return MIN_DISCOUNT

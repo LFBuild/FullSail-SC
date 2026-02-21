@@ -15,6 +15,7 @@ module governance::minter {
     use switchboard::decimal::{Self, Decimal};
     use switchboard::aggregator::{Aggregator};
     use governance::distribution_config::{DistributionConfig};
+    use penalty_cap::penalty_cap::{PenaltyCap};
 
     const ECreateMinterInvalidPublisher: u64 = 695309471293028100;
     const ECreateMinterInvalidSailDecimals: u64 = 744215000566210300;
@@ -126,14 +127,26 @@ module governance::minter {
     const EResetGaugeZeroBaseEmissions: u64 = 777730412186606000;
     const EResetGaugeDistributionConfigInvalid: u64 = 726258387105137800;
     const EResetGaugeGaugeAlreadyAlive: u64 = 452133119942522700;
+    const EResetGaugeGaugePaused: u64 = 961444105364833700;
     const EResetGaugeAlreadyDistributed: u64 = 97456931979148290;
 
+    const EKillGaugeGaugeDoesNotMatchPool: u64 = 435068472641034750;
     const EKillGaugeDistributionConfigInvalid: u64 = 401018599948013600;
     const EKillGaugeAlreadyKilled: u64 = 812297136203523100;
+    const EKillGaugeAlreadyPaused: u64 = 630946245455940700;
+    const EKillGaugeUnstakedFeeRateNotZero: u64 = 456637970011596540;
 
-    const EReviveGaugeDistributionConfigInvalid: u64 = 211832148784139800;
-    const EReviveGaugeAlreadyAlive: u64 = 533150247921935500;
-    const EReviveGaugeNotKilledInCurrentEpoch: u64 = 295306155667221200;
+    const EPauseGaugeDistributionConfigInvalid: u64 = 440852511239727200;
+    const EPauseGaugeAlreadyPaused: u64 = 183938828687429060;
+    const EUnpauseGaugeDistributionConfigInvalid: u64 = 222183394791539940;
+    const EUnpauseGaugeNotPaused: u64 = 805756312652419800;
+
+    const ESettleKilledGaugeDistributionConfigInvalid: u64 = 980526521444534400;
+    const ESettleKilledGaugeGaugeNotKilled: u64 = 774570594676845700;
+    const ESettleKilledGaugeGaugePaused: u64 = 27796803820661076;
+    const ESettleKilledGaugeMinterPaused: u64 = 940519593113543700;
+    const ESettleKilledGaugeMinterNotActive: u64 = 417539538110257340;
+    const ESettleKilledGaugeAlreadyDistributed: u64 = 916506255647727900;
 
     const EWhitelistPoolMinterPaused: u64 = 316161888154524900;
 
@@ -159,15 +172,27 @@ module governance::minter {
 
     const EGetPositionRewardInvalidRewardToken: u64 = 779306294896264600;
     const EGetPosDistributionConfInvalid: u64 = 695673975436220400;
-    const EGetPosRewardGaugeNotAlive: u64 = 993998734106655200;
+    const EGetPosRewardGaugePaused: u64 = 826495068705045200;
     const EGetMultiplePositionRewardInvalidRewardToken: u64 = 785363146605424900;
     const EGetMultiPosRewardDistributionConfInvalid: u64 = 695673975436220400;
-    const EGetMultiPosRewardGaugeNotAlive: u64 = 993998734106655200;
+    const EGetMultiPosRewardGaugePaused: u64 = 190132400718876700;
     const EClaimUnclaimedOsailInvalidEpochToken: u64 = 934963468982192254;
 
     const EEmissionStopped: u64 = 123456789012345678;
 
     const EInvalidSailPool: u64 = 939179427939211244;
+
+    const ESetPassiveVoterFeeRateMinterPaused: u64 = 30404305134543064;
+    const ESetPassiveVoterFeeRateTooBig: u64 = 33300079580685040;
+    const ECreatePassiveFeeDistributorMinterPaused: u64 = 790683210711862100;
+    const ENotifyPassiveFeeMinterPaused: u64 = 844085871921421700;
+    const ENotifyPassiveFeeMinterNotActive: u64 = 118762856398482380;
+
+    const EWithdrawPassiveFeeMinterPaused: u64 = 625411062294594000;
+    const EWithdrawPassiveFeeTokenNotFound: u64 = 152347212472896830;
+
+    const BAG_KEY_PASSIVE_VOTER_FEE_RATE: u8 = 1;
+    const BAG_KEY_PASSIVE_FEE_BALANCES: u8 = 2;
 
     const DAYS_IN_WEEK: u64 = 7;
 
@@ -229,6 +254,22 @@ module governance::minter {
     }
 
     public struct EventKillGauge has copy, drop, store {
+        id: ID,
+    }
+
+    public struct EventSettleKilledGauge has copy, drop, store {
+        gauge_id: ID,
+        pool_id: ID,
+        fee_a_amount: u64,
+        fee_b_amount: u64,
+        ended_epoch_o_sail_emission: u64,
+    }
+
+    public struct EventPauseGauge has copy, drop, store {
+        id: ID,
+    }
+
+    public struct EventUnpauseGauge has copy, drop, store {
         id: ID,
     }
 
@@ -327,6 +368,18 @@ module governance::minter {
         ended_epoch_o_sail_emission: u64,
     }
 
+    public struct EventDistributeGaugeV2 has copy, drop, store {
+        gauge_id: ID,
+        pool_id: ID,
+        o_sail_type: TypeName,
+        next_epoch_emissions_usd: u64,
+        ended_epoch_o_sail_emission: u64,
+        active_voting_fee_a: u64,
+        active_voting_fee_b: u64,
+        passive_fee_a: u64,
+        passive_fee_b: u64,
+    }
+
     public struct EventIncreaseGaugeEmissions has copy, drop, store {
         gauge_id: ID,
         pool_id: ID,
@@ -369,6 +422,12 @@ module governance::minter {
         fee_to_distribute: u64,
     }
 
+    public struct EventExerciseOSailFree has copy, drop, store {
+        o_sail_amount_in: u64,
+        sail_amount_out: u64,
+        o_sail_type: TypeName,
+    }
+
     public struct EventWhitelistUSD has copy, drop, store {
         usd_type: TypeName,
         whitelisted: bool,
@@ -384,6 +443,33 @@ module governance::minter {
 
     public struct EventSetLiquidityUpdateCooldown has copy, drop, store {
         new_cooldown: u64,
+    }
+
+    public struct EventSetEarlyWithdrawalPenaltyPercentage has copy, drop, store {
+        new_penalty_percentage: u64,
+    }
+
+    public struct EventSetPassiveVoterFeeRate has copy, drop, store {
+        admin_cap: ID,
+        passive_voter_fee_rate: u64,
+    }
+
+    public struct EventCreatePassiveFeeDistributor has copy, drop, store {
+        admin_cap: ID,
+        passive_fee_distributor: ID,
+        fee_coin_type: TypeName,
+    }
+
+    public struct EventNotifyPassiveFee has copy, drop, store {
+        passive_fee_distributor: ID,
+        fee_coin_type: TypeName,
+        amount: u64,
+    }
+
+    public struct EventWithdrawPassiveFee has copy, drop, store {
+        governor_cap: ID,
+        fee_coin_type: TypeName,
+        amount: u64,
     }
 
     public struct EventScheduleTimeLockedMint has copy, drop, store {
@@ -466,8 +552,8 @@ module governance::minter {
         // we don't need whitelisted tokens, cos
         // pool whitelist also determines token whitelist composed of the pools tokens.
         whitelisted_usd: VecSet<TypeName>,
-        // these balances are dedicated to the team wallet
-        // They can latter be used to buyback SAIL on the mass unlock event in 4 years.
+        // Despite the name this is all kind of protocol fees, including
+        // both exercise fee and killed gauge fees.
         exercise_fee_protocol_balances: Bag,
         // these balances are supposed to be used to buyback SAIL on a regualar basis
         exercise_fee_operations_balances: Bag,
@@ -1049,7 +1135,24 @@ module governance::minter {
         sui::event::emit<EventSetOperationsWallet>(set_operations_wallet_event);
     }
 
-    public fun distribute_protocol<SailCoinType, ExerciseFeeCoinType>(
+    fun deposit_protocol_fee<SailCoinType, ProtocolFeeCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        protocol_fee: Balance<ProtocolFeeCoinType>,
+    ) {
+        // using deprecated type_name::get<TypeName> cos we already used it in this module, therefore
+        // this bag already contains deprecated keys.
+        let protocol_fee_coin_type = type_name::get<ProtocolFeeCoinType>();
+        if (!minter.exercise_fee_protocol_balances.contains<TypeName>(protocol_fee_coin_type)) {
+            minter.exercise_fee_protocol_balances.add(protocol_fee_coin_type, balance::zero<ProtocolFeeCoinType>());
+        };
+        let protocol_fee_balance = minter
+            .exercise_fee_protocol_balances
+            .borrow_mut<TypeName, Balance<ProtocolFeeCoinType>>(protocol_fee_coin_type);
+
+        protocol_fee_balance.join(protocol_fee);
+    }
+
+    public fun distribute_protocol<SailCoinType, ProtocolFeeCoinType>(
         minter: &mut Minter<SailCoinType>,
         admin_cap: &AdminCap,
         distribution_config: &DistributionConfig,
@@ -1060,11 +1163,11 @@ module governance::minter {
         minter.check_admin(admin_cap);
         assert!(minter.protocol_wallet != @0x0, EDistributeProtocolWalletNotSet);
 
-        let coin_type = type_name::get<ExerciseFeeCoinType>();
+        let coin_type = type_name::get<ProtocolFeeCoinType>();
         assert!(minter.exercise_fee_protocol_balances.contains(coin_type), EDistributeProtocolTokenNotFound);
-        let balance = minter.exercise_fee_protocol_balances.remove<TypeName, Balance<ExerciseFeeCoinType>>(coin_type);
+        let balance = minter.exercise_fee_protocol_balances.remove<TypeName, Balance<ProtocolFeeCoinType>>(coin_type);
         let amount = balance.value();
-        transfer::public_transfer<Coin<ExerciseFeeCoinType>>(
+        transfer::public_transfer<Coin<ProtocolFeeCoinType>>(
             coin::from_balance(balance, ctx), 
             minter.protocol_wallet
         );
@@ -1387,8 +1490,7 @@ module governance::minter {
 
 
     /// Distributes oSAIL tokens to a gauge based on pool performance metrics.
-    /// Calculates and distributes the next epoch's emissions based on current pool metrics
-    /// and historical data. For new pools, uses base emissions without performance adjustments.
+    /// Distributes the next epoch's emissions. For new pools, uses base emissions.
     /// IMPORTANT: For all USD values we use 6 decimals.
     ///
     /// # Arguments
@@ -1404,9 +1506,6 @@ module governance::minter {
     /// * `aggregator` - The aggregator of oSAIL price to fetch the price from
     /// * `clock` - The system clock
     /// * `ctx` - Transaction context
-    ///
-    /// # Returns
-    /// The amount of tokens that can be claimed from the distribution
     ///
     /// # Aborts
     /// * If the gauge has already been distributed for the current period
@@ -1457,10 +1556,11 @@ module governance::minter {
             o_sail_price_q64,
             clock,
             ctx
-        );
+        )
     }
 
-    /// we need this method if pool and sail_stablecoin_pool are the same pool
+
+    // we need this method if pool and sail_stablecoin_pool are the same pool
     public fun distribute_gauge_for_sail_pool<CoinTypeA, CoinTypeB, SailCoinType, CurrentEpochOSail>(
         minter: &mut Minter<SailCoinType>,
         voter: &mut governance::voter::Voter,
@@ -1508,7 +1608,7 @@ module governance::minter {
             o_sail_price_q64,
             clock,
             ctx
-        );
+        )
     }
 
     fun distribute_gauge_internal<CoinTypeA, CoinTypeB, SailCoinType, CurrentEpochOSail>(
@@ -1555,7 +1655,7 @@ module governance::minter {
                 assert!(next_epoch_emissions_usd <= minter.max_emission_change_ratio * prev_epoch_emissions_usd, EDistributeGaugeEmissionsChangeTooBig);
             }
         };
-        let ended_epoch_o_sail_emission = voter.distribute_gauge<CoinTypeA, CoinTypeB, CurrentEpochOSail>(
+        let (mut fee_a, mut fee_b, ended_epoch_o_sail_emission) = voter.distribute_gauge<CoinTypeA, CoinTypeB, CurrentEpochOSail>(
             distribution_config,
             gauge,
             pool,
@@ -1564,6 +1664,20 @@ module governance::minter {
             clock,
             ctx
         );
+        let passive_fee_rate = minter.passive_voter_fee_rate();
+        let passive_fee_amount_a = integer_mate::full_math_u64::mul_div_floor(fee_a.value(), passive_fee_rate, RATE_DENOM);
+        let passive_fee_amount_b = integer_mate::full_math_u64::mul_div_floor(fee_b.value(), passive_fee_rate, RATE_DENOM);
+        let passive_fee_a = fee_a.split(passive_fee_amount_a);
+        let passive_fee_b = fee_b.split(passive_fee_amount_b);
+        let active_voting_fee_a = fee_a.value();
+        let active_voting_fee_b = fee_b.value();
+
+        // redirect voting fees to active voters
+        voter.inject_voting_fee_reward(distribute_cap, gauge_id, coin::from_balance<CoinTypeA>(fee_a, ctx), clock, ctx);
+        voter.inject_voting_fee_reward(distribute_cap, gauge_id, coin::from_balance<CoinTypeB>(fee_b, ctx), clock, ctx);
+
+        minter.deposit_passive_fee(passive_fee_a, ctx);
+        minter.deposit_passive_fee(passive_fee_b, ctx);
 
         // update records related to gauge
         let prev_active_period = if (minter.gauge_active_period.contains(gauge_id)) {
@@ -1578,10 +1692,6 @@ module governance::minter {
                 0
             };
             minter.total_epoch_o_sail_emissions.add(prev_active_period, total_o_sail_emissions + ended_epoch_o_sail_emission);
-        } else {
-            // prev_active_period == 0 means that the gauge was never distributed before
-            // so we should not have any emissions
-            assert!(ended_epoch_o_sail_emission == 0, EDistributeGaugeNoPeriodButHasEmissions);
         };
         minter.gauge_active_period.add(gauge_id, minter.active_period);
         minter.gauge_epoch_emissions_usd.add(gauge_id, next_epoch_emissions_usd);
@@ -1593,14 +1703,27 @@ module governance::minter {
         };
         minter.total_epoch_emissions_usd.add(minter.active_period, total_epoch_emissions + next_epoch_emissions_usd);
 
+        let pool_id = object::id(pool);
         let event = EventDistributeGauge {
             gauge_id,
-            pool_id: object::id(pool),
+            pool_id,
             o_sail_type: current_epoch_o_sail_type,
             next_epoch_emissions_usd,
             ended_epoch_o_sail_emission,
         };
         sui::event::emit<EventDistributeGauge>(event);
+        let eventV2 = EventDistributeGaugeV2 {
+            gauge_id,
+            pool_id,
+            o_sail_type: current_epoch_o_sail_type,
+            next_epoch_emissions_usd,
+            ended_epoch_o_sail_emission,
+            active_voting_fee_a,
+            active_voting_fee_b,
+            passive_fee_a: passive_fee_amount_a,
+            passive_fee_b: passive_fee_amount_b,
+        };
+        sui::event::emit<EventDistributeGaugeV2>(eventV2);
     }
 
     public fun gauge_distributed<SailCoinType>(
@@ -1975,6 +2098,16 @@ module governance::minter {
         gauge
     }
 
+    /// Deprecated. Use kill_gauge_v2 instead.
+    public fun kill_gauge<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        distribution_config: &mut DistributionConfig,
+        emergency_council_cap: &voting_escrow::emergency_council::EmergencyCouncilCap,
+        gauge_id: ID,
+    ) {
+        abort 0
+    }
+
     /// Kills (deactivates) a gauge in the system.
     /// This should be used in emergency situations when a gauge needs to be disabled.
     /// Only the emergency council can perform this operation.
@@ -1986,42 +2119,51 @@ module governance::minter {
     /// * `emergency_council_cap` - The emergency council capability
     /// * `gauge_id` - The ID of the gauge to kill
     /// * `ctx` - The transaction context
-    public fun kill_gauge<SailCoinType>(
+    public fun kill_gauge_v2<SailCoinType, CoinTypeA, CoinTypeB>(
         minter: &mut Minter<SailCoinType>,
         distribution_config: &mut DistributionConfig,
-        emergency_council_cap: &voting_escrow::emergency_council::EmergencyCouncilCap,
-        gauge_id: ID,
+        admin_cap: &AdminCap,
+        gauge: &governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
     ) {
         distribution_config.checked_package_version();
-        emergency_council_cap.validate_emergency_council_minter_id(object::id(minter));
+        minter.check_admin(admin_cap);
+        assert!(gauge.check_gauger_pool(pool), EKillGaugeGaugeDoesNotMatchPool);
         assert!(
             minter.is_valid_distribution_config(distribution_config),
             EKillGaugeDistributionConfigInvalid
         );
+        let gauge_id = object::id(gauge);
         assert!(
             distribution_config.is_gauge_alive(gauge_id),
             EKillGaugeAlreadyKilled
+        );
+        // paused gauges are not allowed to be killed cos pause means an emergency situation.
+        assert!(
+            !distribution_config.is_gauge_paused(gauge_id),
+            EKillGaugeAlreadyPaused
+        );
+        let unstaked_liquidity_fee_rate = pool.unstaked_liquidity_fee_rate(); 
+        // check unstaked fee rate to prevent us from forgetting to set it to zero when killing a gauge.
+        assert!(
+            unstaked_liquidity_fee_rate == 0 || unstaked_liquidity_fee_rate == clmm_pool::config::default_unstaked_fee_rate(),
+            EKillGaugeUnstakedFeeRateNotZero
         );
         distribution_config.update_gauge_liveness(vector<ID>[gauge_id], false);
         let kill_gauge_event = EventKillGauge { id: gauge_id };
         sui::event::emit<EventKillGauge>(kill_gauge_event);
     }
 
-
-    /// Revives a previously killed gauge, making it active again.
-    /// Only the emergency council can perform this operation.
-    /// You could revive a gauge only in the same epoch it was killed.
-    /// Otherwise you need to reset the gauge to bootstrap it again
-    /// with new emissions.
-    /// 
+    /// Pauses a gauge temporarily. Disables all interactions with the gauge.
+    /// Supposed to be used in emergency situations when a gauge needs to be disabled.
+    ///
     /// # Arguments
-    /// * `voter` - The voter contract reference
+    /// * `minter` - The minter instance (used for authorization)
     /// * `distribution_config` - The distribution configuration
     /// * `emergency_council_cap` - The emergency council capability
-    /// * `gauge_id` - The ID of the gauge to revive
-    /// * `ctx` - The transaction context
-    public fun revive_gauge<SailCoinType>(
-        minter: &mut Minter<SailCoinType>,
+    /// * `gauge_id` - The ID of the gauge to pause
+    public fun pause_gauge<SailCoinType>(
+        minter: &Minter<SailCoinType>,
         distribution_config: &mut DistributionConfig,
         emergency_council_cap: &voting_escrow::emergency_council::EmergencyCouncilCap,
         gauge_id: ID,
@@ -2030,19 +2172,139 @@ module governance::minter {
         emergency_council_cap.validate_emergency_council_minter_id(object::id(minter));
         assert!(
             minter.is_valid_distribution_config(distribution_config),
-            EReviveGaugeDistributionConfigInvalid
+            EPauseGaugeDistributionConfigInvalid
         );
         assert!(
-            !distribution_config.is_gauge_alive(gauge_id),
-            EReviveGaugeAlreadyAlive
+            !distribution_config.is_gauge_paused(gauge_id),
+            EPauseGaugeAlreadyPaused
         );
-        // gauge was distributed in the same epoch it was killed
-        // if not use reset_gauge instead
+        distribution_config.pause_gauge(gauge_id);
+        let pause_gauge_event = EventPauseGauge { id: gauge_id };
+        sui::event::emit<EventPauseGauge>(pause_gauge_event);
+    }
+
+    /// Unpauses a previously paused gauge.
+    /// Only the emergency council can perform this operation.
+    ///
+    /// # Arguments
+    /// * `minter` - The minter instance (used for authorization)
+    /// * `distribution_config` - The distribution configuration
+    /// * `emergency_council_cap` - The emergency council capability
+    /// * `gauge_id` - The ID of the gauge to unpause
+    public fun unpause_gauge<SailCoinType>(
+        minter: &Minter<SailCoinType>,
+        distribution_config: &mut DistributionConfig,
+        emergency_council_cap: &voting_escrow::emergency_council::EmergencyCouncilCap,
+        gauge_id: ID,
+    ) {
+        distribution_config.checked_package_version();
+        emergency_council_cap.validate_emergency_council_minter_id(object::id(minter));
         assert!(
-            minter.gauge_active_period.contains(gauge_id) && *minter.gauge_active_period.borrow(gauge_id) == minter.active_period,
-            EReviveGaugeNotKilledInCurrentEpoch,
+            minter.is_valid_distribution_config(distribution_config),
+            EUnpauseGaugeDistributionConfigInvalid
         );
-        revive_gauge_internal(distribution_config, gauge_id);
+        assert!(
+            distribution_config.is_gauge_paused(gauge_id),
+            EUnpauseGaugeNotPaused
+        );
+        distribution_config.unpause_gauge(gauge_id);
+        let unpause_gauge_event = EventUnpauseGauge { id: gauge_id };
+        sui::event::emit<EventUnpauseGauge>(unpause_gauge_event);
+    }
+
+    /// Supposed to be called instead of distribute_gauge for killed gauges.
+    /// Claims fees from a killed gauge redirecting them to the fee voting rewards.
+    /// Synchronizes the oSAIL distribution end and o_sail emission counters for the gauge.
+    /// Can be called multiple times cos remaining staked positions are still generating fees.
+    ///
+    /// # Arguments
+    /// * `minter` - The minter instance managing token emissions
+    /// * `distribution_config` - Configuration for token distribution
+    /// * `emergency_council_cap` - The emergency council capability for authorization
+    /// * `gauge` - The killed gauge to settle
+    /// * `pool` - The pool associated with the gauge
+    /// * `price_monitor` - The price monitor to validate the price
+    /// * `sail_stablecoin_pool` - The pool of SAIL token with a stablecoin
+    /// * `aggregator` - The aggregator of oSAIL price to fetch the price from
+    /// * `clock` - The system clock
+    public fun settle_killed_gauge<CoinTypeA, CoinTypeB, SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        distribution_config: &DistributionConfig,
+        admin_cap: &AdminCap,
+        gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        clock: &sui::clock::Clock
+    ) {
+        distribution_config.checked_package_version();
+        minter.check_admin(admin_cap);
+        assert!(!minter.is_paused(), ESettleKilledGaugeMinterPaused);
+        assert!(minter.is_active(clock), ESettleKilledGaugeMinterNotActive);
+        assert!(minter.is_valid_distribution_config(distribution_config), ESettleKilledGaugeDistributionConfigInvalid);
+        assert!(!distribution_config.is_gauge_alive(object::id(gauge)), ESettleKilledGaugeGaugeNotKilled);
+        // paused gauges are not allowed to be settled cos pause means an emergency situation.
+        assert!(!distribution_config.is_gauge_paused(object::id(gauge)), ESettleKilledGaugeGaugePaused);
+
+        let gauge_id = object::id(gauge);
+        assert!(
+            !minter.gauge_active_period.contains(gauge_id) || *minter.gauge_active_period.borrow(gauge_id) < minter.active_period,
+             ESettleKilledGaugeAlreadyDistributed
+        );
+
+        let pool_id = object::id(pool);
+        let distribute_cap = minter.distribute_cap.borrow();
+
+        // Claim fees from the killed gauge
+        let (fee_a, fee_b) = gauge.claim_fees(distribute_cap, pool);
+        let fee_a_amount = fee_a.value();
+        let fee_b_amount = fee_b.value();
+
+        minter.deposit_protocol_fee(fee_a);
+        minter.deposit_protocol_fee(fee_b);
+
+        // Sync the oSAIL distribution price to update emissions accounting
+        let ended_epoch_o_sail_emission = gauge.sync_o_sail_distribution_finish(
+            pool,
+            clock
+        );
+
+        let prev_active_period = if (minter.gauge_active_period.contains(gauge_id)) {
+            minter.gauge_active_period.remove(gauge_id)
+        } else {
+            0
+        };
+
+        // only works for the first call of this function for the gauge
+        // next time prev active period is zero and total emissions already updated
+        if (prev_active_period > 0) {
+            let total_o_sail_emissions = if (minter.total_epoch_o_sail_emissions.contains(prev_active_period)) {
+                minter.total_epoch_o_sail_emissions.remove(prev_active_period)
+            } else {
+                0
+            };
+            minter.total_epoch_o_sail_emissions.add(prev_active_period, total_o_sail_emissions + ended_epoch_o_sail_emission);
+        };
+
+        let event = EventSettleKilledGauge {
+            gauge_id,
+            pool_id,
+            fee_a_amount,
+            fee_b_amount,
+            ended_epoch_o_sail_emission,
+        };
+        sui::event::emit<EventSettleKilledGauge>(event);
+    }
+
+
+    /// Deprecated. Use reset_gauge_v2 instead.
+    public fun revive_gauge<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        distribution_config: &mut DistributionConfig,
+        emergency_council_cap: &voting_escrow::emergency_council::EmergencyCouncilCap,
+        gauge_id: ID,
+    ) {
+        // there is no reason to revive a gauge that was killed in the same epoch.
+        // In case of emergency you are supposed to pause the gauge and unpause it once the emergency situation is over.
+        abort 0
     }
 
     fun revive_gauge_internal(
@@ -2054,6 +2316,17 @@ module governance::minter {
         sui::event::emit<EventReviveGauge>(revieve_gauge_event);
     }
 
+    /// Deprecated. Use reset_gauge_v2 instead.
+    public fun reset_gauge<CoinTypeA, CoinTypeB, SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        distribution_config: &mut DistributionConfig,
+        emergency_council_cap: &voting_escrow::emergency_council::EmergencyCouncilCap,
+        gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        gauge_base_emissions: u64,
+        clock: &sui::clock::Clock
+    ) {
+        abort 0;
+    }
 
     // Emergency function to reset a gauge to bootstrap it again.
     // Used when we were not able to revive the gauge in the same epoch it was killed.
@@ -2063,16 +2336,16 @@ module governance::minter {
     // * `minter` - The minter instance managing token emissions
     // * `voter` - The voter instance managing gauge voting
     // * `distribution_config` - Configuration for token distribution
-    public fun reset_gauge<CoinTypeA, CoinTypeB, SailCoinType>(
+    public fun reset_gauge_v2<CoinTypeA, CoinTypeB, SailCoinType>(
         minter: &mut Minter<SailCoinType>,
         distribution_config: &mut DistributionConfig,
-        emergency_council_cap: &voting_escrow::emergency_council::EmergencyCouncilCap,
+        admin_cap: &AdminCap,
         gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
         gauge_base_emissions: u64,
         clock: &sui::clock::Clock
     ) {
         distribution_config.checked_package_version();
-        voting_escrow::emergency_council::validate_emergency_council_minter_id(emergency_council_cap, object::id(minter));
+        minter.check_admin(admin_cap);
         assert!(!minter.is_paused(), EResetGaugeMinterPaused);
         assert!(minter.is_active(clock), EResetGaugeMinterNotActive);
         assert!(gauge_base_emissions > 0, EResetGaugeZeroBaseEmissions);
@@ -2085,9 +2358,11 @@ module governance::minter {
             !distribution_config.is_gauge_alive(gauge_id),
             EResetGaugeGaugeAlreadyAlive
         );
+        assert!(!distribution_config.is_gauge_paused(gauge_id), EResetGaugeGaugePaused);
 
         // gauge should not be distributed this epoch
-        // if so use revive_gauge instead
+        // There is no reason to revive a gauge that was killed in the same epoch.
+        // In case of emergency you are supposed to pause the gauge and unpause it once the emergency situation is over.
         assert!(
             !minter.gauge_active_period.contains(gauge_id) || *minter.gauge_active_period.borrow(gauge_id) < minter.active_period,
              EResetGaugeAlreadyDistributed
@@ -2571,6 +2846,40 @@ module governance::minter {
         )
     }
 
+    public fun exercise_o_sail_free<SailCoinType, OSailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        distribution_config: &DistributionConfig,
+        o_sail: Coin<OSailCoinType>,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext,
+    ): Coin<SailCoinType> {
+        distribution_config.checked_package_version();
+        assert!(!minter.is_paused(), EExerciseOSailMinterPaused);
+        assert!(!minter.is_emission_stopped(), EEmissionStopped);
+        assert!(minter.is_valid_o_sail_type<SailCoinType, OSailCoinType>(), EExerciseOSailInvalidOSail);
+        let o_sail_type = type_name::get<OSailCoinType>();
+        let expiry_date: u64 = *minter.o_sail_expiry_dates.borrow(o_sail_type);
+        let current_time = voting_escrow::common::current_timestamp(clock);
+        assert!(current_time < expiry_date, EExerciseOSailExpired);
+        // check distribution config
+        assert!(minter.is_valid_distribution_config(distribution_config), EExerciseOSailInvalidDistrConfig);
+
+        // the amount of oSAIL to receive for free
+        let percent_to_receive = voting_escrow::common::o_sail_discount();
+
+        let o_sail_amount_in = o_sail.value();
+        let sail_out = exercise_o_sail_free_internal(minter, o_sail, percent_to_receive, clock, ctx);
+
+        let event = EventExerciseOSailFree {
+            o_sail_amount_in,
+            sail_amount_out: sail_out.value(),
+            o_sail_type,
+        };
+        sui::event::emit<EventExerciseOSailFree>(event);
+
+        sail_out
+    }
+
     /// withdraws SAIL from storage and burns oSAIL
     fun exercise_o_sail_process_payment<SailCoinType, USDCoinType, OSailCoinType>(
         minter: &mut Minter<SailCoinType>,
@@ -2593,15 +2902,7 @@ module governance::minter {
                 RATE_DENOM,
             );
             let protocol_fee = usd_to_pay.split(protocol_fee_amount, ctx);
-
-            if (!minter.exercise_fee_protocol_balances.contains<TypeName>(usd_coin_type)) {
-                minter.exercise_fee_protocol_balances.add(usd_coin_type, balance::zero<USDCoinType>());
-            };
-            let protocol_fee_balance = minter
-                .exercise_fee_protocol_balances
-                .borrow_mut<TypeName, Balance<USDCoinType>>(usd_coin_type);
-
-            protocol_fee_balance.join(protocol_fee.into_balance());
+            minter.deposit_protocol_fee(protocol_fee.into_balance());
         };
         
         let fee_to_distribute = usd_to_pay.value();
@@ -2949,6 +3250,207 @@ module governance::minter {
         sui::event::emit<EventSetLiquidityUpdateCooldown>(event);
     }
 
+    /// Sets the early withdrawal penalty percentage.
+    /// The percentage should be provided multiplied by EARLY_WITHDRAWAL_PENALTY_MULTIPLIER (e.g., 500 for 5.00%).
+    ///
+    /// # Arguments
+    /// * `minter` - The minter instance
+    /// * `admin_cap` - The admin capability
+    /// * `distribution_config` - The distribution configuration
+    /// * `new_penalty_percentage` - The new penalty percentage multiplied by multiplier (e.g., 500 for 5.00%)
+    public fun set_early_withdrawal_penalty_percentage<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        admin_cap: &AdminCap,
+        distribution_config: &mut DistributionConfig,
+        new_penalty_percentage: u64,
+    ) {
+        distribution_config.checked_package_version();
+        minter.check_admin(admin_cap);
+        assert!(minter.is_valid_distribution_config(distribution_config), ESetSailPriceAggregatorInvalidDistrConfig);
+        distribution_config.set_early_withdrawal_penalty_percentage(new_penalty_percentage);
+
+        let event = EventSetEarlyWithdrawalPenaltyPercentage {
+            new_penalty_percentage: new_penalty_percentage,
+        };
+        sui::event::emit<EventSetEarlyWithdrawalPenaltyPercentage>(event);
+    }
+
+    /// Sets the passive voter fee rate — the ratio of trading fees redirected to passive voters.
+    /// The rate uses `RATE_DENOM` as the denominator (i.e. RATE_DENOM = 100%).
+    ///
+    /// # Arguments
+    /// * `minter` - The minter instance
+    /// * `admin_cap` - The admin capability
+    /// * `distribution_config` - The distribution configuration
+    /// * `passive_voter_fee_rate` - The new passive voter fee rate (must be <= RATE_DENOM)
+    public fun set_passive_voter_fee_rate<SailCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        admin_cap: &AdminCap,
+        distribution_config: &DistributionConfig,
+        passive_voter_fee_rate: u64,
+    ) {
+        distribution_config.checked_package_version();
+        minter.check_admin(admin_cap);
+        assert!(!minter.is_paused(), ESetPassiveVoterFeeRateMinterPaused);
+        assert!(
+            passive_voter_fee_rate <= RATE_DENOM,
+            ESetPassiveVoterFeeRateTooBig
+        );
+
+        if (minter.bag.contains<u8>(BAG_KEY_PASSIVE_VOTER_FEE_RATE)) {
+            let existing: &mut u64 = minter.bag.borrow_mut<u8, u64>(BAG_KEY_PASSIVE_VOTER_FEE_RATE);
+            *existing = passive_voter_fee_rate;
+        } else {
+            minter.bag.add<u8, u64>(BAG_KEY_PASSIVE_VOTER_FEE_RATE, passive_voter_fee_rate);
+        };
+
+        sui::event::emit<EventSetPassiveVoterFeeRate>(EventSetPassiveVoterFeeRate {
+            admin_cap: object::id(admin_cap),
+            passive_voter_fee_rate,
+        });
+    }
+
+    /// Returns the passive voter fee rate stored in the minter's bag.
+    /// Returns 0 if the value has not been set yet.
+    /// The denominator is `RATE_DENOM`.
+    public fun passive_voter_fee_rate<SailCoinType>(minter: &Minter<SailCoinType>): u64 {
+        if (minter.bag.contains<u8>(BAG_KEY_PASSIVE_VOTER_FEE_RATE)) {
+            *minter.bag.borrow<u8, u64>(BAG_KEY_PASSIVE_VOTER_FEE_RATE)
+        } else {
+            0
+        }
+    }
+
+    /// Creates a new PassiveFeeDistributor.
+    /// The distributor is used to redirect a portion of trading fees to passive voters.
+    ///
+    /// # Arguments
+    /// * `minter` - The minter instance
+    /// * `admin_cap` - The admin capability
+    /// * `distribution_config` - The distribution configuration
+    /// * `clock` - The system clock
+    /// * `ctx` - Transaction context
+    ///
+    /// # Returns
+    /// The newly created PassiveFeeDistributor
+    public fun create_and_start_passive_fee_distributor<SailCoinType, FeeCoinType>(
+        minter: &Minter<SailCoinType>,
+        admin_cap: &AdminCap,
+        voting_escrow: &voting_escrow::voting_escrow::VotingEscrow<SailCoinType>,
+        distribution_config: &DistributionConfig,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext,
+    ): governance::passive_fee_distributor::PassiveFeeDistributor<FeeCoinType> {
+        distribution_config.checked_package_version();
+        minter.check_admin(admin_cap);
+        assert!(!minter.is_paused(), ECreatePassiveFeeDistributorMinterPaused);
+
+        let mut distributor = governance::passive_fee_distributor::create<FeeCoinType>(object::id(voting_escrow), clock, ctx);
+
+        distributor.start(clock);
+
+        sui::event::emit<EventCreatePassiveFeeDistributor>(EventCreatePassiveFeeDistributor {
+            admin_cap: object::id(admin_cap),
+            passive_fee_distributor: object::id(&distributor),
+            fee_coin_type: type_name::get<FeeCoinType>(),
+        });
+
+        distributor
+    }
+
+    /// Notifies the passive fee distributor of collected trading fees.
+    /// Checkpoints the fee coin into the distributor so it becomes claimable by passive voters.
+    /// Distribute governor is supposed to swap different passive fee tokens into the target fee coin.
+    ///
+    /// # Arguments
+    /// * `minter` - The minter instance
+    /// * `distribute_governor_cap` - Capability authorizing distribution
+    /// * `distribution_config` - Configuration for token distribution
+    /// * `passive_fee_distributor` - The passive fee distributor to notify
+    /// * `fee_coin` - The fee coin to distribute
+    /// * `clock` - The system clock
+    public fun notify_passive_fee<SailCoinType, FeeCoinType>(
+        minter: &Minter<SailCoinType>,
+        distribute_governor_cap: &DistributeGovernorCap,
+        distribution_config: &DistributionConfig,
+        passive_fee_distributor: &mut governance::passive_fee_distributor::PassiveFeeDistributor<FeeCoinType>,
+        fee_coin: Coin<FeeCoinType>,
+        clock: &sui::clock::Clock,
+    ) {
+        distribution_config.checked_package_version();
+        assert!(!minter.is_paused(), ENotifyPassiveFeeMinterPaused);
+        minter.check_distribute_governor(distribute_governor_cap);
+        assert!(minter.is_active(clock), ENotifyPassiveFeeMinterNotActive);
+
+        sui::event::emit<EventNotifyPassiveFee>(EventNotifyPassiveFee {
+            passive_fee_distributor: object::id(passive_fee_distributor),
+            fee_coin_type: type_name::get<FeeCoinType>(),
+            amount: fee_coin.value(),
+        });
+
+        passive_fee_distributor.checkpoint_token(fee_coin, clock);
+    }
+
+    fun deposit_passive_fee<SailCoinType, FeeCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        fee: Balance<FeeCoinType>,
+        ctx: &mut TxContext,
+    ) {
+        if (!minter.bag.contains<u8>(BAG_KEY_PASSIVE_FEE_BALANCES)) {
+            minter.bag.add<u8, Bag>(BAG_KEY_PASSIVE_FEE_BALANCES, bag::new(ctx));
+        };
+        let fee_coin_type = type_name::get<FeeCoinType>();
+        let balances_bag = minter.bag.borrow_mut<u8, Bag>(BAG_KEY_PASSIVE_FEE_BALANCES);
+        if (!balances_bag.contains<TypeName>(fee_coin_type)) {
+            balances_bag.add(fee_coin_type, balance::zero<FeeCoinType>());
+        };
+        let existing_balance = balances_bag.borrow_mut<TypeName, Balance<FeeCoinType>>(fee_coin_type);
+        existing_balance.join(fee);
+    }
+
+    public fun passive_fee_balance<SailCoinType, FeeCoinType>(
+        minter: &Minter<SailCoinType>,
+    ): u64 {
+        if (!minter.bag.contains<u8>(BAG_KEY_PASSIVE_FEE_BALANCES)) {
+            return 0
+        };
+        let fee_coin_type = type_name::get<FeeCoinType>();
+        let balances_bag = minter.bag.borrow<u8, Bag>(BAG_KEY_PASSIVE_FEE_BALANCES);
+        if (!balances_bag.contains<TypeName>(fee_coin_type)) {
+            return 0
+        };
+        balances_bag.borrow<TypeName, Balance<FeeCoinType>>(fee_coin_type).value()
+    }
+
+    public fun withdraw_passive_fee<SailCoinType, FeeCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        distribute_governor_cap: &DistributeGovernorCap,
+        distribution_config: &DistributionConfig,
+        ctx: &mut TxContext,
+    ): Coin<FeeCoinType> {
+        distribution_config.checked_package_version();
+        assert!(!minter.is_paused(), EWithdrawPassiveFeeMinterPaused);
+        minter.check_distribute_governor(distribute_governor_cap);
+        let fee_coin_type = type_name::get<FeeCoinType>();
+        assert!(
+            minter.bag.contains<u8>(BAG_KEY_PASSIVE_FEE_BALANCES),
+            EWithdrawPassiveFeeTokenNotFound
+        );
+        let balances_bag = minter.bag.borrow_mut<u8, Bag>(BAG_KEY_PASSIVE_FEE_BALANCES);
+        assert!(
+            balances_bag.contains<TypeName>(fee_coin_type),
+            EWithdrawPassiveFeeTokenNotFound
+        );
+        let balance = balances_bag.remove<TypeName, Balance<FeeCoinType>>(fee_coin_type);
+        let amount = balance.value();
+        sui::event::emit<EventWithdrawPassiveFee>(EventWithdrawPassiveFee {
+            governor_cap: object::id(distribute_governor_cap),
+            fee_coin_type,
+            amount,
+        });
+        coin::from_balance(balance, ctx)
+    }
+
     /// Calculates the rewards in RewardCoinType earned by all staked positions.
     /// Successfull only when previous coin rewards are claimed.
     ///
@@ -3061,14 +3563,50 @@ module governance::minter {
         ctx: &mut TxContext
     ): Coin<RewardCoinType> {
         distribution_config.checked_package_version();
+        assert!(
+            !distribution_config.is_gauge_paused(object::id(gauge)),
+            EGetPosRewardGaugePaused
+        );
         assert!(minter.is_valid_epoch_token<SailCoinType, RewardCoinType>(), EGetPositionRewardInvalidRewardToken);
         assert!(
             object::id(distribution_config) == minter.distribution_config,
             EGetPosDistributionConfInvalid
         );
+        // we allow to claim rewards for killed gauges, cos position may have earnings before 
+        // the gauge is killed.
+        
+        let reward_amount = get_position_reward_internal<CoinTypeA, CoinTypeB, RewardCoinType>(
+            gauge,
+            distribution_config,
+            pool,
+            staked_position.position_id(),
+            true,
+            clock,
+            ctx
+        );
+
+        minter.mint_o_sail<SailCoinType, RewardCoinType>(reward_amount, ctx)
+    }
+
+    public fun get_position_reward_without_penalty<CoinTypeA, CoinTypeB, SailCoinType, RewardCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        distribution_config: &DistributionConfig,
+        gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        staked_position: &governance::gauge::StakedPosition,
+        _: &PenaltyCap,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ): Coin<RewardCoinType> {
+        distribution_config.checked_package_version();
         assert!(
-            distribution_config.is_gauge_alive(object::id(gauge)),
-            EGetPosRewardGaugeNotAlive
+            !distribution_config.is_gauge_paused(object::id(gauge)),
+            EGetPosRewardGaugePaused
+        );
+        assert!(minter.is_valid_epoch_token<SailCoinType, RewardCoinType>(), EGetPositionRewardInvalidRewardToken);
+        assert!(
+            object::id(distribution_config) == minter.distribution_config,
+            EGetPosDistributionConfInvalid
         );
         
         let reward_amount = get_position_reward_internal<CoinTypeA, CoinTypeB, RewardCoinType>(
@@ -3076,6 +3614,7 @@ module governance::minter {
             distribution_config,
             pool,
             staked_position.position_id(),
+            false,
             clock,
             ctx
         );
@@ -3096,15 +3635,60 @@ module governance::minter {
         ctx: &mut TxContext
     ): Coin<RewardCoinType> {
         distribution_config.checked_package_version();
+        assert!(
+            !distribution_config.is_gauge_paused(object::id(gauge)),
+            EGetMultiPosRewardGaugePaused
+        );
         assert!(minter.is_valid_epoch_token<SailCoinType, RewardCoinType>(), EGetMultiplePositionRewardInvalidRewardToken);
         assert!(
             object::id(distribution_config) == minter.distribution_config,
             EGetMultiPosRewardDistributionConfInvalid
         );
+        // we allow to claim rewards for killed gauges, cos position may have earnings before 
+        // the gauge is killed.
+
+        let mut i = 0;
+        let mut total_earned = 0;
+        while (i < staked_positions.length()) {
+            let earned_i = get_position_reward_internal<CoinTypeA, CoinTypeB, RewardCoinType>(
+                gauge,
+                distribution_config,
+                pool, 
+                staked_positions[i].position_id(),
+                true,
+                clock,
+                ctx
+            );
+            total_earned = total_earned + earned_i;
+
+            i = i + 1;
+        };
+
+        minter.mint_o_sail<SailCoinType, RewardCoinType>(total_earned, ctx)
+    }
+
+    public fun get_multiple_position_rewards_without_penalty<CoinTypeA, CoinTypeB, SailCoinType, RewardCoinType>(
+        minter: &mut Minter<SailCoinType>,
+        distribution_config: &DistributionConfig,
+        gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        staked_positions: &vector<governance::gauge::StakedPosition>,
+        _: &PenaltyCap,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ): Coin<RewardCoinType> {
+        distribution_config.checked_package_version();
         assert!(
-            distribution_config.is_gauge_alive(object::id(gauge)),
-            EGetMultiPosRewardGaugeNotAlive
+            !distribution_config.is_gauge_paused(object::id(gauge)),
+            EGetMultiPosRewardGaugePaused
         );
+        assert!(minter.is_valid_epoch_token<SailCoinType, RewardCoinType>(), EGetMultiplePositionRewardInvalidRewardToken);
+        assert!(
+            object::id(distribution_config) == minter.distribution_config,
+            EGetMultiPosRewardDistributionConfInvalid
+        );
+        // we allow to claim rewards for killed gauges, cos position may have earnings before 
+        // the gauge is killed.
 
         let mut i = 0;
         let mut total_earned = 0;
@@ -3114,6 +3698,7 @@ module governance::minter {
                 distribution_config,
                 pool, 
                 staked_positions[i].position_id(), 
+                false,
                 clock,
                 ctx
             );
@@ -3131,6 +3716,7 @@ module governance::minter {
         distribution_config: &DistributionConfig,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         position_id: ID,
+        collect_penalty: bool,
         clock: &sui::clock::Clock,
         ctx: &TxContext
     ): u64 {
@@ -3138,7 +3724,9 @@ module governance::minter {
             distribution_config,
             pool,
             position_id,
+            collect_penalty,
             clock,
+            ctx
         );
 
         let event = EventClaimPositionReward {
@@ -3475,6 +4063,8 @@ module governance::minter {
             ctx,
         );
     }
+
+    
 
     public fun exercise_fee_protocol_balance<SailCoinType, ExerciseFeeCoinType>(
         minter: &Minter<SailCoinType>,

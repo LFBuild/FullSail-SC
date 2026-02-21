@@ -24,122 +24,122 @@ module voting_escrow::voting_dao {
         (COPYRIGHT_NOTICE, PATENT_NOTICE)
     }
 
-    public(package) fun checkpoint_delegatee(
-        arg0: &mut VotingDAO,
-        arg1: ID,
-        arg2: u64,
-        arg3: bool,
-        arg4: &sui::clock::Clock,
-        arg5: &mut TxContext
-    ) {
-        if (arg1 == object::id_from_address(@0x0)) {
-            return
-        };
-        let v0 = if (arg0.num_checkpoints.contains(arg1)) {
-            *arg0.num_checkpoints.borrow(arg1)
-        } else {
-            0
-        };
-        let v1 = if (v0 > 0) {
-            *arg0.checkpoints.borrow(arg1).borrow(v0 - 1)
-        } else {
-            if (!arg0.checkpoints.contains(arg1)) {
-                arg0.checkpoints.add(arg1, sui::table::new<u64, Checkpoint>(arg5));
-            };
-            arg0.checkpoints.borrow_mut(arg1).add(0, create_checkpoint());
-            *arg0.checkpoints.borrow(arg1).borrow(0)
-        };
-        let v2 = v1;
-        let mut v3 = create_checkpoint();
-        v3.from_timestamp = get_block_timestamp(arg4);
-        v3.owner = v2.owner;
-        let v4 = if (arg3) {
-            v2.delegated_balance + arg2
-        } else {
-            let v5 = if (arg2 < v2.delegated_balance) {
-                v2.delegated_balance - arg2
-            } else {
-                0
-            };
-            v5
-        };
-        v3.delegated_balance = v4;
-        v3.delegatee = v2.delegatee;
-        if (arg0.is_checkpoint_in_new_block(arg1, get_block_timestamp(arg4))) {
-            let v6 = if (arg0.num_checkpoints.contains(arg1)) {
-                arg0.num_checkpoints.remove(arg1)
-            } else {
-                0
-            };
-            let v7 = v6 + 1;
-            arg0.num_checkpoints.add(arg1, v7);
-            if (!arg0.checkpoints.contains(arg1)) {
-                arg0.checkpoints.add(arg1, sui::table::new<u64, Checkpoint>(arg5));
-            };
-            arg0.checkpoints.borrow_mut(arg1).add(v7, v3);
-        } else {
-            let v8 = arg0.checkpoints.borrow_mut(arg1);
-            v8.remove(v0 - 1);
-            v8.add(v0 - 1, v3);
-        };
-    }
-
     public(package) fun checkpoint_delegator(
-        arg0: &mut VotingDAO,
-        arg1: ID,
-        arg2: u64,
-        arg3: ID,
-        arg4: address,
-        arg5: &sui::clock::Clock,
-        arg6: &mut TxContext
+        voting_dao: &mut VotingDAO,
+        lock_id: ID,
+        balance_amount: u64,
+        delegatee: ID,
+        owner_of_lock: address,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
     ) {
-        let v0 = if (arg0.num_checkpoints.contains(arg1)) {
-            *arg0.num_checkpoints.borrow(arg1)
+        let num_checkpoint = if (voting_dao.num_checkpoints.contains(lock_id)) {
+            *voting_dao.num_checkpoints.borrow(lock_id)
         } else {
-            arg0.num_checkpoints.add(arg1, 0);
+            voting_dao.num_checkpoints.add(lock_id, 0);
             0
         };
-        let v1 = if (v0 > 0) {
-            *arg0.checkpoints.borrow(arg1).borrow(v0 - 1)
+        let _checkpoint = if (num_checkpoint > 0) {
+            *voting_dao.checkpoints.borrow(lock_id).borrow(num_checkpoint - 1)
         } else {
-            if (!arg0.checkpoints.contains(arg1)) {
-                arg0.checkpoints.add(arg1, sui::table::new<u64, Checkpoint>(arg6));
+            if (!voting_dao.checkpoints.contains(lock_id)) {
+                voting_dao.checkpoints.add(lock_id, sui::table::new<u64, Checkpoint>(ctx));
             };
             create_checkpoint()
         };
-        let v2 = v1;
+        let checkpoint = _checkpoint;
         assert!(
-            arg0.checkpoints.borrow(arg1).length() == v0,
+            voting_dao.checkpoints.borrow(lock_id).length() == num_checkpoint,
             9223372642445164543
         );
-        arg0.checkpoint_delegatee(v2.delegatee, arg2, false, arg5, arg6);
-        let mut v3 = create_checkpoint();
-        v3.from_timestamp = get_block_timestamp(arg5);
-        v3.delegated_balance = v2.delegated_balance;
-        v3.delegatee = arg3;
-        v3.owner = arg4;
-        if (arg0.is_checkpoint_in_new_block(arg1, get_block_timestamp(arg5))) {
-            let num_checkpoints_new = arg0.num_checkpoints.remove(arg1) + 1;
-            arg0.num_checkpoints.add(arg1, num_checkpoints_new);
-            arg0.checkpoints.borrow_mut(arg1).add(v0, v3);
+        voting_dao.checkpoint_delegatee(checkpoint.delegatee, balance_amount, false, clock, ctx);
+        let mut new_checkpoint = create_checkpoint();
+        new_checkpoint.from_timestamp = get_block_timestamp(clock);
+        new_checkpoint.delegated_balance = checkpoint.delegated_balance;
+        new_checkpoint.delegatee = delegatee;
+        new_checkpoint.owner = owner_of_lock;
+        if (voting_dao.is_checkpoint_in_new_block(lock_id, get_block_timestamp(clock))) {
+            let num_checkpoints_new = voting_dao.num_checkpoints.remove(lock_id) + 1;
+            voting_dao.num_checkpoints.add(lock_id, num_checkpoints_new);
+            voting_dao.checkpoints.borrow_mut(lock_id).add(num_checkpoint, new_checkpoint);
         } else {
-            arg0.checkpoints.borrow_mut(arg1).remove(v0 - 1);
-            arg0.checkpoints.borrow_mut(arg1).add(v0 - 1, v3);
+            voting_dao.checkpoints.borrow_mut(lock_id).remove(num_checkpoint - 1);
+            voting_dao.checkpoints.borrow_mut(lock_id).add(num_checkpoint - 1, new_checkpoint);
         };
-        if (arg0.delegates.contains(arg1)) {
-            arg0.delegates.remove(arg1);
+        if (voting_dao.delegates.contains(lock_id)) {
+            voting_dao.delegates.remove(lock_id);
         };
-        arg0.delegates.add(arg1, arg3);
+        voting_dao.delegates.add(lock_id, delegatee);
     }
 
-    public(package) fun create(arg0: &mut TxContext): VotingDAO {
+    public(package) fun checkpoint_delegatee(
+        voting_dao: &mut VotingDAO,
+        delegatee: ID,
+        balance_amount: u64,
+        is_increase: bool,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
+        if (delegatee == object::id_from_address(@0x0)) {
+            return
+        };
+        let num_checkpoint = if (voting_dao.num_checkpoints.contains(delegatee)) {
+            *voting_dao.num_checkpoints.borrow(delegatee)
+        } else {
+            0
+        };
+        let _checkpoint = if (num_checkpoint > 0) {
+            *voting_dao.checkpoints.borrow(delegatee).borrow(num_checkpoint - 1)
+        } else {
+            if (!voting_dao.checkpoints.contains(delegatee)) {
+                voting_dao.checkpoints.add(delegatee, sui::table::new<u64, Checkpoint>(ctx));
+            };
+            voting_dao.checkpoints.borrow_mut(delegatee).add(0, create_checkpoint());
+            *voting_dao.checkpoints.borrow(delegatee).borrow(0)
+        };
+        let checkpoint = _checkpoint;
+        let mut new_checkpoint = create_checkpoint();
+        new_checkpoint.from_timestamp = get_block_timestamp(clock);
+        new_checkpoint.owner = checkpoint.owner;
+        let new_delegated_balance = if (is_increase) {
+            checkpoint.delegated_balance + balance_amount
+        } else {
+            let remaining_balance = if (balance_amount < checkpoint.delegated_balance) {
+                checkpoint.delegated_balance - balance_amount
+            } else {
+                0
+            };
+            remaining_balance
+        };
+        new_checkpoint.delegated_balance = new_delegated_balance;
+        new_checkpoint.delegatee = checkpoint.delegatee;
+        if (voting_dao.is_checkpoint_in_new_block(delegatee, get_block_timestamp(clock))) {
+            let num_checkpoints_new = if (voting_dao.num_checkpoints.contains(delegatee)) {
+                voting_dao.num_checkpoints.remove(delegatee)
+            } else {
+                0
+            };
+            let num_checkpoints_new_next = num_checkpoints_new + 1;
+            voting_dao.num_checkpoints.add(delegatee, num_checkpoints_new_next);
+            if (!voting_dao.checkpoints.contains(delegatee)) {
+                voting_dao.checkpoints.add(delegatee, sui::table::new<u64, Checkpoint>(ctx));
+            };
+            voting_dao.checkpoints.borrow_mut(delegatee).add(num_checkpoints_new_next, new_checkpoint);
+        } else {
+            let checkpoints = voting_dao.checkpoints.borrow_mut(delegatee);
+            checkpoints.remove(num_checkpoint - 1);
+            checkpoints.add(num_checkpoint - 1, new_checkpoint);
+        };
+    }
+
+    public(package) fun create(ctx: &mut TxContext): VotingDAO {
         VotingDAO {
-            delegates: sui::table::new<ID, ID>(arg0),
-            nonces: sui::table::new<address, u64>(arg0),
-            num_checkpoints: sui::table::new<ID, u64>(arg0),
-            checkpoints: sui::table::new<ID, sui::table::Table<u64, Checkpoint>>(arg0),
+            delegates: sui::table::new<ID, ID>(ctx),
+            nonces: sui::table::new<address, u64>(ctx),
+            num_checkpoints: sui::table::new<ID, u64>(ctx),
+            checkpoints: sui::table::new<ID, sui::table::Table<u64, Checkpoint>>(ctx),
             // bag to be preapred for future updates
-            bag: sui::bag::new(arg0),
+            bag: sui::bag::new(ctx),
         }
     }
 
@@ -152,24 +152,24 @@ module voting_escrow::voting_dao {
         }
     }
 
-    public(package) fun delegatee(arg0: &VotingDAO, arg1: ID): ID {
-        *arg0.delegates.borrow(arg1)
+    public(package) fun delegatee(voting_dao: &VotingDAO, lock_id: ID): ID {
+        *voting_dao.delegates.borrow(lock_id)
     }
 
-    public fun get_block_timestamp(arg0: &sui::clock::Clock): u64 {
-        arg0.timestamp_ms()
+    public fun get_block_timestamp(clock: &sui::clock::Clock): u64 {
+        clock.timestamp_ms()
     }
 
-    fun is_checkpoint_in_new_block(arg0: &VotingDAO, arg1: ID, arg2: u64): bool {
-        let v0 = if (arg0.num_checkpoints.contains(arg1)) {
-            *arg0.num_checkpoints.borrow(arg1)
+    fun is_checkpoint_in_new_block(voting_dao: &VotingDAO, delegatee: ID, timestamp: u64): bool {
+        let num_checkpoint = if (voting_dao.num_checkpoints.contains(delegatee)) {
+            *voting_dao.num_checkpoints.borrow(delegatee)
         } else {
             0
         };
-        let v1 = v0 > 0 && arg2 - arg0.checkpoints.borrow(arg1).borrow(
-            v0 - 1
+        let is_checkpoint_in_new_block = num_checkpoint > 0 && timestamp - voting_dao.checkpoints.borrow(delegatee).borrow(
+            num_checkpoint - 1
         ).from_timestamp < voting_escrow::common::get_time_to_finality_ms();
-        !v1
+        !is_checkpoint_in_new_block
     }
 }
 

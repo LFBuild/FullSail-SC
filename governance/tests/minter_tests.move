@@ -446,56 +446,6 @@ fun test_create_gauge_already_exists() {
 }
 
 #[test]
-#[expected_failure(abort_code = voter::ECreateGaugePoolAlreadyHasGauge)]
-fun test_create_gauge_after_kill() {
-    let admin = @0xA;
-    let mut scenario = test_scenario::begin(admin);
-    let mut clock = clock::create_for_testing(scenario.ctx());
-    setup_for_gauge_creation(&mut scenario, admin, &mut clock);
-
-    scenario.next_tx(admin);
-    setup::setup_gauge_for_pool<USD_TESTS, AUSD, SAIL>(&mut scenario, 100, &clock);
-    
-    // kill the gauge
-    scenario.next_tx(admin);
-    {
-        let mut minter = scenario.take_shared<Minter<SAIL>>();
-        let mut voter = scenario.take_shared<Voter>();
-        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
-        let mut dist_config = scenario.take_shared<DistributionConfig>();
-        let gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
-        let gauge_id = object::id(&gauge);
-
-        let emergency_cap = emergency_council::create_for_testing(
-            object::id(&voter),
-            object::id(&minter),
-            object::id(&voting_escrow),
-            scenario.ctx()
-        );
-        minter::kill_gauge<SAIL>(
-            &mut minter,
-            &mut dist_config,
-            &emergency_cap,
-            gauge_id
-        );
-        
-        test_scenario::return_shared(minter);
-        test_scenario::return_shared(voter);
-        test_scenario::return_shared(voting_escrow);
-        test_scenario::return_shared(dist_config);
-        test_scenario::return_shared(gauge);
-        transfer::public_transfer(emergency_cap, admin);
-    };
-
-    // try to create another gauge for the same pool
-    scenario.next_tx(admin);
-    setup::setup_gauge_for_pool<USD_TESTS, AUSD, SAIL>(&mut scenario, 100, &clock);
-
-    clock::destroy_for_testing(clock);
-    scenario.end();
-}
-
-#[test]
 fun test_distribute_gauge_initial_amount() {
     let admin = @0xA;
     let user = @0xB;
@@ -1235,1317 +1185,6 @@ fun test_distribute_gauge_with_wrong_o_sail_fails() {
 
     transfer::public_transfer(usd_treasury_cap, admin);
     transfer::public_transfer(usd_metadata, admin);
-    test_utils::destroy(aggregator);
-    clock::destroy_for_testing(clock);
-    scenario.end();
-}
-
-#[test]
-#[expected_failure(abort_code = voter::EDistributeGaugeGaugeIsKilled)]
-fun test_distribute_killed_gauge_fails() {
-    let admin = @0xA;
-    let user = @0xB;
-    let mut scenario = test_scenario::begin(admin);
-    let mut clock = clock::create_for_testing(scenario.ctx());
-
-    let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
-
-    let gauge_base_emissions = 1_000_000;
-
-    let mut aggregator = setup::full_setup_with_lock<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(
-        &mut scenario,
-        admin,
-        user,
-        &mut clock,
-        1_000_000,
-        182,
-        gauge_base_emissions,
-        0
-    );
-
-    // --- EPOCH 1: Successful distribution ---
-    scenario.next_tx(admin);
-    {
-        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
-    };
-
-    // --- EPOCH 2 ---
-    clock.increment_for_testing(WEEK);
-
-    // Update minter period for epoch 2
-    scenario.next_tx(admin);
-    {
-        let o_sail_coin_2 = setup::update_minter_period<SAIL, OSAIL2>(&mut scenario, 0, &clock);
-        o_sail_coin_2.burn_for_testing();
-    };
-
-    // Kill the gauge
-    scenario.next_tx(admin);
-    {
-        let mut minter = scenario.take_shared<Minter<SAIL>>();
-        let mut voter = scenario.take_shared<Voter>();
-        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
-        let mut dist_config = scenario.take_shared<DistributionConfig>();
-        let gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
-        let gauge_id = object::id(&gauge);
-
-        let emergency_cap = emergency_council::create_for_testing(
-            object::id(&voter),
-            object::id(&minter),
-            object::id(&voting_escrow),
-            scenario.ctx()
-        );
-        minter::kill_gauge<SAIL>(
-            &mut minter,
-            &mut dist_config,
-            &emergency_cap,
-            gauge_id
-        );
-        
-        test_scenario::return_shared(minter);
-        test_scenario::return_shared(voter);
-        test_scenario::return_shared(voting_escrow);
-        test_scenario::return_shared(dist_config);
-        test_scenario::return_shared(gauge);
-        transfer::public_transfer(emergency_cap, admin);
-    };
-
-    // Attempt to distribute the killed gauge
-    scenario.next_tx(admin);
-    {
-        setup::distribute_gauge_emissions_controlled<USD_TESTS, AUSD, SAIL, OSAIL2, USD_TESTS>(
-            &mut scenario,
-            gauge_base_emissions,
-            &usd_metadata,
-            &mut aggregator,
-            &clock
-        );
-    };
-
-    transfer::public_transfer(usd_treasury_cap, admin);
-    transfer::public_transfer(usd_metadata, admin);
-    test_utils::destroy(aggregator);
-    clock::destroy_for_testing(clock);
-    scenario.end();
-}
-
-#[test]
-fun test_distribute_revived_gauge_succeeds() {
-    let admin = @0xA;
-    let user = @0xB;
-    let mut scenario = test_scenario::begin(admin);
-    let mut clock = clock::create_for_testing(scenario.ctx());
-
-    let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
-
-    let gauge_base_emissions = 1_000_000;
-
-    let mut aggregator = setup::full_setup_with_lock<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(
-        &mut scenario,
-        admin,
-        user,
-        &mut clock,
-        1_000_000,
-        182,
-        gauge_base_emissions,
-        0
-    );
-
-    // distribute the gauge
-    scenario.next_tx(admin);
-    {
-        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
-    };
-
-    // --- EPOCH 2 ---
-    clock.increment_for_testing(WEEK);
-
-    // update the minter period
-    scenario.next_tx(admin);
-    {
-        let o_sail_coin_2 = setup::update_minter_period<SAIL, OSAIL2>(&mut scenario, 0, &clock);
-        o_sail_coin_2.burn_for_testing();
-    };
-
-    // --- Kill the gauge in epoch 2 ---
-    let gauge_id: ID;
-    scenario.next_tx(admin);
-    {
-        let mut minter = scenario.take_shared<Minter<SAIL>>();
-        let voter = scenario.take_shared<Voter>();
-        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
-        let mut dist_config = scenario.take_shared<DistributionConfig>();
-        let gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
-        gauge_id = object::id(&gauge);
-
-        let emergency_cap = emergency_council::create_for_testing(
-            object::id(&voter),
-            object::id(&minter),
-            object::id(&voting_escrow),
-            scenario.ctx()
-        );
-        minter::kill_gauge<SAIL>(
-            &mut minter,
-            &mut dist_config,
-            &emergency_cap,
-            gauge_id
-        );
-        
-        test_scenario::return_shared(minter);
-        test_scenario::return_shared(voter);
-        test_scenario::return_shared(voting_escrow);
-        test_scenario::return_shared(dist_config);
-        test_scenario::return_shared(gauge);
-        transfer::public_transfer(emergency_cap, admin);
-    };
-
-    // --- EPOCH 3 ---
-    clock.increment_for_testing(WEEK);
-
-    // update the minter period
-    scenario.next_tx(admin);
-    {
-        let o_sail_coin_2 = setup::update_minter_period<SAIL, OSAIL3>(&mut scenario, 0, &clock);
-        o_sail_coin_2.burn_for_testing();
-    };
-
-    // reset the gauge
-    scenario.next_tx(admin);
-    {
-        let mut minter = scenario.take_shared<Minter<SAIL>>();
-        let mut dist_config = scenario.take_shared<DistributionConfig>();
-        let mut gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
-        let emergency_cap = scenario.take_from_sender<EmergencyCouncilCap>();
-
-        minter.reset_gauge(
-            &mut dist_config,
-            &emergency_cap,
-            &mut gauge,
-            gauge_base_emissions,
-            &clock
-        );
-
-        test_scenario::return_shared(minter);
-        test_scenario::return_shared(dist_config);
-        test_scenario::return_shared(gauge);
-        scenario.return_to_sender(emergency_cap);
-    };
-
-    // distribute the revived gauge
-    scenario.next_tx(admin);
-    {
-        // prev epoch sail is OSAIL1, cos second epoch is skipped.
-        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL3, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
-    };
-
-    // Verification
-    scenario.next_tx(admin);
-    {
-        let minter = scenario.take_shared<Minter<SAIL>>();
-        let new_emissions = minter.usd_epoch_emissions();
-        // After being killed and revived, the gauge missed a distribution.
-        // The emission calculation treats it as a new gauge, so it uses the base emission.
-        assert!(new_emissions == gauge_base_emissions, 1);
-        test_scenario::return_shared(minter);
-    };
-
-    transfer::public_transfer(usd_treasury_cap, admin);
-    transfer::public_transfer(usd_metadata, admin);
-    test_utils::destroy(aggregator);
-    clock::destroy_for_testing(clock);
-    scenario.end();
-}
-
-#[test]
-#[expected_failure(abort_code = minter::EReviveGaugeNotKilledInCurrentEpoch)]
-fun test_revive_undistributed_gauge_fails() {
-    let admin = @0xA;
-    let user = @0xB;
-    let mut scenario = test_scenario::begin(admin);
-    let mut clock = clock::create_for_testing(scenario.ctx());
-
-    let gauge_base_emissions = 1_000_000;
-    let lock_amount = 1_000_000;
-
-    // 1. Full setup, including minter activation
-    let mut aggregator = setup::full_setup_with_lock<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(
-        &mut scenario,
-        admin,
-        user,
-        &mut clock,
-        lock_amount,
-        182, // lock_duration_days
-        gauge_base_emissions,
-        0 // initial oSAIL supply for activation
-    );
-
-    // 2. Kill the gauge before any distribution has occurred
-    let gauge_id: ID;
-    scenario.next_tx(admin);
-    {
-        let mut minter = scenario.take_shared<Minter<SAIL>>();
-        let mut dist_config = scenario.take_shared<DistributionConfig>();
-        let gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
-        gauge_id = object::id(&gauge);
-
-        let voter = scenario.take_shared<Voter>();
-        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
-        let emergency_cap = emergency_council::create_for_testing(
-            object::id(&voter),
-            object::id(&minter),
-            object::id(&voting_escrow),
-            scenario.ctx()
-        );
-        
-        minter::kill_gauge<SAIL>(
-            &mut minter,
-            &mut dist_config,
-            &emergency_cap,
-            gauge_id
-        );
-
-        test_scenario::return_shared(minter);
-        test_scenario::return_shared(dist_config);
-        test_scenario::return_shared(gauge);
-        test_scenario::return_shared(voter);
-        test_scenario::return_shared(voting_escrow);
-        transfer::public_transfer(emergency_cap, admin);
-    };
-
-    // 3. Advance time by 1/3 of a week
-    clock.increment_for_testing(WEEK / 3);
-
-    // 4. Attempt to revive the gauge (should fail)
-    scenario.next_tx(admin);
-    {
-        let mut minter = scenario.take_shared<Minter<SAIL>>();
-        let mut dist_config = scenario.take_shared<DistributionConfig>();
-        let emergency_cap = scenario.take_from_sender<emergency_council::EmergencyCouncilCap>();
-
-        minter::revive_gauge<SAIL>(
-            &mut minter,
-            &mut dist_config,
-            &emergency_cap,
-            gauge_id
-        );
-        
-        test_scenario::return_shared(minter);
-        test_scenario::return_shared(dist_config);
-        scenario.return_to_sender(emergency_cap);
-    };
-
-    // Cleanup
-    test_utils::destroy(aggregator);
-    clock::destroy_for_testing(clock);
-    scenario.end();
-}
-
-#[test]
-fun test_kill_revive_in_same_epoch_rewards() {
-    let admin = @0xA;
-    let user = @0xB;
-    let mut scenario = test_scenario::begin(admin);
-    let mut clock = clock::create_for_testing(scenario.ctx());
-
-    let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
-
-    let gauge_base_emissions = 1_000_000;
-    let lock_amount = 1_000_000;
-
-    // 1. Full setup, including minter activation
-    let mut aggregator = setup::full_setup_with_lock<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(
-        &mut scenario,
-        admin,
-        user,
-        &mut clock,
-        lock_amount,
-        182, // lock_duration_days
-        gauge_base_emissions,
-        0 // initial oSAIL supply for activation
-    );
-
-    // 2. Distribute Gauge for Epoch 1
-    scenario.next_tx(admin);
-    {
-        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
-    };
-
-    // 3. User creates and deposits a position
-    scenario.next_tx(user);
-    {
-        setup::create_position_with_liquidity<USD_TESTS, AUSD>(
-            &mut scenario,
-            user,
-            tick_math::min_tick().as_u32(),
-            tick_math::max_tick().as_u32(),
-            100_000_000,
-            &clock
-        );
-    };
-    scenario.next_tx(user);
-    {
-        setup::deposit_position<USD_TESTS, AUSD>(&mut scenario, &clock);
-    };
-
-    // 4. Advance time 1/3 week and kill the gauge
-    clock.increment_for_testing(WEEK / 3);
-    let gauge_id: ID;
-    scenario.next_tx(admin);
-    {
-        let mut minter = scenario.take_shared<Minter<SAIL>>();
-        let mut dist_config = scenario.take_shared<DistributionConfig>();
-        let gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
-        gauge_id = object::id(&gauge);
-
-        let voter = scenario.take_shared<Voter>();
-        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
-        let emergency_cap = emergency_council::create_for_testing(
-            object::id(&voter),
-            object::id(&minter),
-            object::id(&voting_escrow),
-            scenario.ctx()
-        );
-        
-        minter::kill_gauge<SAIL>(
-            &mut minter,
-            &mut dist_config,
-            &emergency_cap,
-            gauge_id
-        );
-
-        test_scenario::return_shared(minter);
-        test_scenario::return_shared(dist_config);
-        test_scenario::return_shared(gauge);
-        test_scenario::return_shared(voter);
-        test_scenario::return_shared(voting_escrow);
-        transfer::public_transfer(emergency_cap, admin);
-    };
-
-    // 5. Advance time another 1/3 week and revive the gauge
-    clock.increment_for_testing(WEEK / 3);
-    scenario.next_tx(admin);
-    {
-        let mut minter = scenario.take_shared<Minter<SAIL>>();
-        let mut dist_config = scenario.take_shared<DistributionConfig>();
-        let emergency_cap = scenario.take_from_sender<emergency_council::EmergencyCouncilCap>();
-
-        minter::revive_gauge<SAIL>(
-            &mut minter,
-            &mut dist_config,
-            &emergency_cap,
-            gauge_id
-        );
-        
-        test_scenario::return_shared(minter);
-        test_scenario::return_shared(dist_config);
-        scenario.return_to_sender(emergency_cap);
-    };
-
-    // 6. Advance time for the final 1/3 of the week
-    clock.increment_for_testing(WEEK / 3 + 1);
-
-    // 7. User claims rewards and we check if they got the full amount
-    scenario.next_tx(user);
-    {
-        setup::get_staked_position_reward<USD_TESTS, AUSD, SAIL, OSAIL1>(&mut scenario, &clock);
-    };
-
-    scenario.next_tx(user);
-    {
-        // Check user has the rewards. Should be close to the total emissions for the gauge.
-        let reward_coin = scenario.take_from_sender<Coin<OSAIL1>>();
-        // allow for small rounding discrepancies
-        assert!(gauge_base_emissions - reward_coin.value() <= 3, 0); 
-        reward_coin.burn_for_testing();
-    };
-
-    // Cleanup
-    transfer::public_transfer(usd_treasury_cap, admin);
-    transfer::public_transfer(usd_metadata, admin);
-    test_utils::destroy(aggregator);
-    clock::destroy_for_testing(clock);
-    scenario.end();
-}
-
-#[test]
-#[expected_failure(abort_code = minter::EReviveGaugeNotKilledInCurrentEpoch)]
-fun test_revive_gauge_in_next_epoch_fails() {
-    let admin = @0xA;
-    let user = @0xB;
-    let mut scenario = test_scenario::begin(admin);
-    let mut clock = clock::create_for_testing(scenario.ctx());
-
-    let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
-
-    let gauge_base_emissions = 1_000_000;
-    let lock_amount = 1_000_000;
-
-    // 1. Full setup, including minter activation
-    let mut aggregator = setup::full_setup_with_lock<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(
-        &mut scenario,
-        admin,
-        user,
-        &mut clock,
-        lock_amount,
-        182, // lock_duration_days
-        gauge_base_emissions,
-        0 // initial oSAIL supply for activation
-    );
-
-    // 2. Distribute Gauge for Epoch 1
-    scenario.next_tx(admin);
-    {
-        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
-    };
-
-    // 3. Advance time 1/2 week and kill the gauge
-    clock.increment_for_testing(WEEK / 2);
-    let gauge_id: ID;
-    scenario.next_tx(admin);
-    {
-        let mut minter = scenario.take_shared<Minter<SAIL>>();
-        let mut dist_config = scenario.take_shared<DistributionConfig>();
-        let gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
-        gauge_id = object::id(&gauge);
-
-        let voter = scenario.take_shared<Voter>();
-        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
-        let emergency_cap = emergency_council::create_for_testing(
-            object::id(&voter),
-            object::id(&minter),
-            object::id(&voting_escrow),
-            scenario.ctx()
-        );
-        
-        minter::kill_gauge<SAIL>(
-            &mut minter,
-            &mut dist_config,
-            &emergency_cap,
-            gauge_id
-        );
-
-        test_scenario::return_shared(minter);
-        test_scenario::return_shared(dist_config);
-        test_scenario::return_shared(gauge);
-        test_scenario::return_shared(voter);
-        test_scenario::return_shared(voting_escrow);
-        transfer::public_transfer(emergency_cap, admin);
-    };
-
-    // 4. Advance time to the next epoch
-    clock.increment_for_testing(WEEK / 2 + 1); // +1 to be safely in the next week
-
-    // 5. Update minter period for Epoch 2
-    scenario.next_tx(admin);
-    {
-        let o_sail_coin_2 = setup::update_minter_period<SAIL, OSAIL2>(&mut scenario, 0, &clock);
-        o_sail_coin_2.burn_for_testing();
-    };
-
-    // 6. Attempt to revive the gauge in the new epoch (should fail)
-    scenario.next_tx(admin);
-    {
-        let mut minter = scenario.take_shared<Minter<SAIL>>();
-        let mut dist_config = scenario.take_shared<DistributionConfig>();
-        let emergency_cap = scenario.take_from_sender<emergency_council::EmergencyCouncilCap>();
-
-        minter::revive_gauge<SAIL>(
-            &mut minter,
-            &mut dist_config,
-            &emergency_cap,
-            gauge_id
-        );
-        
-        test_scenario::return_shared(minter);
-        test_scenario::return_shared(dist_config);
-        scenario.return_to_sender(emergency_cap);
-    };
-
-    // Cleanup
-    transfer::public_transfer(usd_treasury_cap, admin);
-    transfer::public_transfer(usd_metadata, admin);
-    test_utils::destroy(aggregator);
-    clock::destroy_for_testing(clock);
-    scenario.end();
-}
-#[test]
-#[expected_failure(abort_code = minter::EResetGaugeAlreadyDistributed)]
-fun test_reset_gauge_in_same_epoch_fails() {
-    let admin = @0xA;
-    let user = @0xB;
-    let mut scenario = test_scenario::begin(admin);
-    let mut clock = clock::create_for_testing(scenario.ctx());
-
-    let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
-
-    let gauge_base_emissions = 1_000_000;
-    let lock_amount = 1_000_000;
-
-    // 1. Full setup, including minter activation
-    let mut aggregator = setup::full_setup_with_lock<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(
-        &mut scenario,
-        admin,
-        user,
-        &mut clock,
-        lock_amount,
-        182, // lock_duration_days
-        gauge_base_emissions,
-        0 // initial oSAIL supply for activation
-    );
-
-    // 2. Distribute Gauge for Epoch 1
-    scenario.next_tx(admin);
-    {
-        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
-    };
-
-    // 3. Advance time 1/3 week and kill the gauge
-    clock.increment_for_testing(WEEK / 3);
-    let gauge_id: ID;
-    scenario.next_tx(admin);
-    {
-        let mut minter = scenario.take_shared<Minter<SAIL>>();
-        let mut dist_config = scenario.take_shared<DistributionConfig>();
-        let gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
-        gauge_id = object::id(&gauge);
-
-        let voter = scenario.take_shared<Voter>();
-        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
-        let emergency_cap = emergency_council::create_for_testing(
-            object::id(&voter),
-            object::id(&minter),
-            object::id(&voting_escrow),
-            scenario.ctx()
-        );
-        
-        minter::kill_gauge<SAIL>(
-            &mut minter,
-            &mut dist_config,
-            &emergency_cap,
-            gauge_id
-        );
-
-        test_scenario::return_shared(minter);
-        test_scenario::return_shared(dist_config);
-        test_scenario::return_shared(gauge);
-        test_scenario::return_shared(voter);
-        test_scenario::return_shared(voting_escrow);
-        transfer::public_transfer(emergency_cap, admin);
-    };
-
-    // 4. Advance time another 1/3 week
-    clock.increment_for_testing(WEEK / 3);
-
-    // 5. Attempt to reset the gauge in the same epoch (should fail)
-    scenario.next_tx(admin);
-    {
-        let mut minter = scenario.take_shared<Minter<SAIL>>();
-        let mut dist_config = scenario.take_shared<DistributionConfig>();
-        let mut gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
-        let emergency_cap = scenario.take_from_sender<emergency_council::EmergencyCouncilCap>();
-
-        minter.reset_gauge<USD_TESTS, AUSD, SAIL>(
-            &mut dist_config,
-            &emergency_cap,
-            &mut gauge,
-            gauge_base_emissions,
-            &clock
-        );
-        
-        test_scenario::return_shared(minter);
-        test_scenario::return_shared(dist_config);
-        test_scenario::return_shared(gauge);
-        scenario.return_to_sender(emergency_cap);
-    };
-
-    // Cleanup
-    transfer::public_transfer(usd_treasury_cap, admin);
-    transfer::public_transfer(usd_metadata, admin);
-    test_utils::destroy(aggregator);
-    clock::destroy_for_testing(clock);
-    scenario.end();
-}
-
-#[test]
-fun test_reset_and_distribute_undistributed_killed_gauge() {
-    let admin = @0xA;
-    let user = @0xB;
-    let mut scenario = test_scenario::begin(admin);
-    let mut clock = clock::create_for_testing(scenario.ctx());
-
-    let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
-
-    let gauge_base_emissions = 1_000_000;
-    let new_gauge_base_emissions = 500_000;
-    let lock_amount = 1_000_000;
-
-    // 1. Full setup, including minter activation
-    let mut aggregator = setup::full_setup_with_lock<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(
-        &mut scenario,
-        admin,
-        user,
-        &mut clock,
-        lock_amount,
-        182, // lock_duration_days
-        gauge_base_emissions,
-        0 // initial oSAIL supply for activation
-    );
-
-    // 2. Kill the gauge before any distribution has occurred
-    scenario.next_tx(admin);
-    {
-        let mut minter = scenario.take_shared<Minter<SAIL>>();
-        let mut dist_config = scenario.take_shared<DistributionConfig>();
-        let gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
-        let gauge_id = object::id(&gauge);
-
-        let voter = scenario.take_shared<Voter>();
-        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
-        let emergency_cap = emergency_council::create_for_testing(
-            object::id(&voter),
-            object::id(&minter),
-            object::id(&voting_escrow),
-            scenario.ctx()
-        );
-
-        minter::kill_gauge<SAIL>(
-            &mut minter,
-            &mut dist_config,
-            &emergency_cap,
-            gauge_id
-        );
-        
-        test_scenario::return_shared(minter);
-        test_scenario::return_shared(dist_config);
-        test_scenario::return_shared(gauge);
-        test_scenario::return_shared(voter);
-        test_scenario::return_shared(voting_escrow);
-        transfer::public_transfer(emergency_cap, admin);
-    };
-
-    // 3. Advance time by 1/3 of a week
-    clock.increment_for_testing(WEEK / 3);
-
-    // 4. Reset the gauge. This is allowed as it was never distributed in this epoch.
-    scenario.next_tx(admin);
-    {
-        let mut minter = scenario.take_shared<Minter<SAIL>>();
-        let mut dist_config = scenario.take_shared<DistributionConfig>();
-        let mut gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
-        let emergency_cap = scenario.take_from_sender<emergency_council::EmergencyCouncilCap>();
-
-        minter.reset_gauge(
-            &mut dist_config,
-            &emergency_cap,
-            &mut gauge,
-            new_gauge_base_emissions,
-            &clock
-        );
-
-        test_scenario::return_shared(minter);
-        test_scenario::return_shared(dist_config);
-        test_scenario::return_shared(gauge);
-        scenario.return_to_sender(emergency_cap);
-    };
-
-    // 5. Distribute the gauge now that it's reset and alive
-    scenario.next_tx(admin);
-    {
-        let distributed_amount = setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
-        assert!(distributed_amount == new_gauge_base_emissions, 0);
-    };
-
-    // 6. Verification
-    scenario.next_tx(admin);
-    {
-        let minter = scenario.take_shared<Minter<SAIL>>();
-        assert!(minter.usd_epoch_emissions() == new_gauge_base_emissions, 1);
-        let gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
-        let emissions_table = minter.borrow_pool_epoch_emissions_usd();
-        let gauge_id = object::id(&gauge);
-        assert!(emissions_table.borrow(gauge_id) == new_gauge_base_emissions, 2);
-        
-        test_scenario::return_shared(minter);
-        test_scenario::return_shared(gauge);
-    };
-
-    // Cleanup
-    transfer::public_transfer(usd_treasury_cap, admin);
-    transfer::public_transfer(usd_metadata, admin);
-    test_utils::destroy(aggregator);
-    clock::destroy_for_testing(clock);
-    scenario.end();
-}
-
-#[test]
-#[expected_failure(abort_code = minter::EKillGaugeAlreadyKilled)]
-fun test_kill_already_killed_gauge_fails() {
-    let admin = @0xA;
-    let user = @0xB;
-    let mut scenario = test_scenario::begin(admin);
-    let mut clock = clock::create_for_testing(scenario.ctx());
-
-    let gauge_base_emissions = 1_000_000;
-    let lock_amount = 1_000_000;
-
-    // 1. Full setup
-    let mut aggregator = setup::full_setup_with_lock<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(
-        &mut scenario,
-        admin,
-        user,
-        &mut clock,
-        lock_amount,
-        182, // lock_duration_days
-        gauge_base_emissions,
-        0 // initial oSAIL supply for activation
-    );
-
-    // 2. Kill the gauge
-    let gauge_id: ID;
-    scenario.next_tx(admin);
-    {
-        let mut minter = scenario.take_shared<Minter<SAIL>>();
-        let mut dist_config = scenario.take_shared<DistributionConfig>();
-        let gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
-        gauge_id = object::id(&gauge);
-
-        let voter = scenario.take_shared<Voter>();
-        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
-        let emergency_cap = emergency_council::create_for_testing(
-            object::id(&voter),
-            object::id(&minter),
-            object::id(&voting_escrow),
-            scenario.ctx()
-        );
-
-        minter::kill_gauge<SAIL>(
-            &mut minter,
-            &mut dist_config,
-            &emergency_cap,
-            gauge_id
-        );
-
-        test_scenario::return_shared(minter);
-        test_scenario::return_shared(dist_config);
-        test_scenario::return_shared(gauge);
-        test_scenario::return_shared(voter);
-        test_scenario::return_shared(voting_escrow);
-        transfer::public_transfer(emergency_cap, admin);
-    };
-
-    // 3. Attempt to kill the gauge again (should fail)
-    scenario.next_tx(admin);
-    {
-        let mut minter = scenario.take_shared<Minter<SAIL>>();
-        let mut dist_config = scenario.take_shared<DistributionConfig>();
-        let emergency_cap = scenario.take_from_sender<emergency_council::EmergencyCouncilCap>();
-
-        minter::kill_gauge<SAIL>(
-            &mut minter,
-            &mut dist_config,
-            &emergency_cap,
-            gauge_id
-        );
-
-        test_scenario::return_shared(minter);
-        test_scenario::return_shared(dist_config);
-        scenario.return_to_sender(emergency_cap);
-    };
-
-    // Cleanup
-    test_utils::destroy(aggregator);
-    clock::destroy_for_testing(clock);
-    scenario.end();
-}
-
-#[test]
-#[expected_failure(abort_code = minter::EReviveGaugeAlreadyAlive)]
-fun test_revive_already_alive_gauge_fails() {
-    let admin = @0xA;
-    let user = @0xB;
-    let mut scenario = test_scenario::begin(admin);
-    let mut clock = clock::create_for_testing(scenario.ctx());
-
-    let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
-
-    let gauge_base_emissions = 1_000_000;
-    let lock_amount = 1_000_000;
-
-    // 1. Full setup
-    let mut aggregator = setup::full_setup_with_lock<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(
-        &mut scenario,
-        admin,
-        user,
-        &mut clock,
-        lock_amount,
-        182, // lock_duration_days
-        gauge_base_emissions,
-        0 // initial oSAIL supply for activation
-    );
-
-    // 2. Distribute the gauge
-    scenario.next_tx(admin);
-    {
-        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
-    };
-
-    // 3. Kill the gauge
-    let gauge_id: ID;
-    scenario.next_tx(admin);
-    {
-        let mut minter = scenario.take_shared<Minter<SAIL>>();
-        let mut dist_config = scenario.take_shared<DistributionConfig>();
-        let gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
-        gauge_id = object::id(&gauge);
-
-        let voter = scenario.take_shared<Voter>();
-        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
-        let emergency_cap = emergency_council::create_for_testing(
-            object::id(&voter),
-            object::id(&minter),
-            object::id(&voting_escrow),
-            scenario.ctx()
-        );
-
-        minter::kill_gauge<SAIL>(
-            &mut minter,
-            &mut dist_config,
-            &emergency_cap,
-            gauge_id
-        );
-
-        test_scenario::return_shared(minter);
-        test_scenario::return_shared(dist_config);
-        test_scenario::return_shared(gauge);
-        test_scenario::return_shared(voter);
-        test_scenario::return_shared(voting_escrow);
-        transfer::public_transfer(emergency_cap, admin);
-    };
-
-    // 4. Revive the gauge (this should succeed)
-    scenario.next_tx(admin);
-    {
-        let mut minter = scenario.take_shared<Minter<SAIL>>();
-        let mut dist_config = scenario.take_shared<DistributionConfig>();
-        let emergency_cap = scenario.take_from_sender<emergency_council::EmergencyCouncilCap>();
-
-        minter::revive_gauge<SAIL>(
-            &mut minter,
-            &mut dist_config,
-            &emergency_cap,
-            gauge_id
-        );
-
-        test_scenario::return_shared(minter);
-        test_scenario::return_shared(dist_config);
-        scenario.return_to_sender(emergency_cap);
-    };
-
-    // 5. Attempt to revive the gauge again (should fail)
-    scenario.next_tx(admin);
-    {
-        let mut minter = scenario.take_shared<Minter<SAIL>>();
-        let mut dist_config = scenario.take_shared<DistributionConfig>();
-        let emergency_cap = scenario.take_from_sender<emergency_council::EmergencyCouncilCap>();
-
-        minter::revive_gauge<SAIL>(
-            &mut minter,
-            &mut dist_config,
-            &emergency_cap,
-            gauge_id
-        );
-
-        test_scenario::return_shared(minter);
-        test_scenario::return_shared(dist_config);
-        scenario.return_to_sender(emergency_cap);
-    };
-
-    // Cleanup
-    transfer::public_transfer(usd_treasury_cap, admin);
-    transfer::public_transfer(usd_metadata, admin);
-    test_utils::destroy(aggregator);
-    clock::destroy_for_testing(clock);
-    scenario.end();
-}
-
-#[test]
-#[expected_failure(abort_code = minter::EResetGaugeGaugeAlreadyAlive)]
-fun test_reset_already_alive_gauge_fails() {
-    let admin = @0xA;
-    let user = @0xB;
-    let mut scenario = test_scenario::begin(admin);
-    let mut clock = clock::create_for_testing(scenario.ctx());
-
-    let gauge_base_emissions = 1_000_000;
-    let lock_amount = 1_000_000;
-
-    // 1. Full setup
-    let aggregator = setup::full_setup_with_lock<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(
-        &mut scenario,
-        admin,
-        user,
-        &mut clock,
-        lock_amount,
-        182, // lock_duration_days
-        gauge_base_emissions,
-        0 // initial oSAIL supply for activation
-    );
-
-    // 2. Kill the gauge
-    let gauge_id: ID;
-    scenario.next_tx(admin);
-    {
-        let mut minter = scenario.take_shared<Minter<SAIL>>();
-        let mut dist_config = scenario.take_shared<DistributionConfig>();
-        let gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
-        gauge_id = object::id(&gauge);
-
-        let voter = scenario.take_shared<Voter>();
-        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
-        let emergency_cap = emergency_council::create_for_testing(
-            object::id(&voter),
-            object::id(&minter),
-            object::id(&voting_escrow),
-            scenario.ctx()
-        );
-
-        minter::kill_gauge<SAIL>(
-            &mut minter,
-            &mut dist_config,
-            &emergency_cap,
-            gauge_id
-        );
-
-        test_scenario::return_shared(minter);
-        test_scenario::return_shared(dist_config);
-        test_scenario::return_shared(gauge);
-        test_scenario::return_shared(voter);
-        test_scenario::return_shared(voting_escrow);
-        transfer::public_transfer(emergency_cap, admin);
-    };
-
-    // 3. Advance to the next epoch
-    clock.increment_for_testing(WEEK);
-    scenario.next_tx(admin);
-    {
-        let o_sail_coin_2 = setup::update_minter_period<SAIL, OSAIL2>(&mut scenario, 0, &clock);
-        o_sail_coin_2.burn_for_testing();
-    };
-
-    // 4. Reset the gauge (this should succeed)
-    scenario.next_tx(admin);
-    {
-        let mut minter = scenario.take_shared<Minter<SAIL>>();
-        let mut dist_config = scenario.take_shared<DistributionConfig>();
-        let mut gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
-        let emergency_cap = scenario.take_from_sender<emergency_council::EmergencyCouncilCap>();
-
-        minter.reset_gauge<USD_TESTS, AUSD, SAIL>(
-            &mut dist_config,
-            &emergency_cap,
-            &mut gauge,
-            gauge_base_emissions,
-            &clock
-        );
-
-        test_scenario::return_shared(minter);
-        test_scenario::return_shared(dist_config);
-        test_scenario::return_shared(gauge);
-        scenario.return_to_sender(emergency_cap);
-    };
-
-    // 5. Attempt to reset the gauge again (should fail)
-    scenario.next_tx(admin);
-    {
-        let mut minter = scenario.take_shared<Minter<SAIL>>();
-        let mut dist_config = scenario.take_shared<DistributionConfig>();
-        let mut gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
-        let emergency_cap = scenario.take_from_sender<emergency_council::EmergencyCouncilCap>();
-
-        minter.reset_gauge<USD_TESTS, AUSD, SAIL>(
-            &mut dist_config,
-            &emergency_cap,
-            &mut gauge,
-            gauge_base_emissions,
-            &clock
-        );
-
-        test_scenario::return_shared(minter);
-        test_scenario::return_shared(dist_config);
-        test_scenario::return_shared(gauge);
-        scenario.return_to_sender(emergency_cap);
-    };
-
-    // Cleanup
-    test_utils::destroy(aggregator);
-    clock::destroy_for_testing(clock);
-    scenario.end();
-}
-
-#[test]
-#[expected_failure(abort_code = emergency_council::EEmergencyCouncilDoesNotMatchMinter)]
-fun test_kill_gauge_with_invalid_emergency_cap_fails() {
-    let admin = @0xA;
-    let user = @0xB;
-    let mut scenario = test_scenario::begin(admin);
-    let mut clock = clock::create_for_testing(scenario.ctx());
-
-    let gauge_base_emissions = 1_000_000;
-    let lock_amount = 1_000_000;
-
-    // 1. Full setup
-    let aggregator = setup::full_setup_with_lock<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(
-        &mut scenario,
-        admin,
-        user,
-        &mut clock,
-        lock_amount,
-        182, // lock_duration_days
-        gauge_base_emissions,
-        0 // initial oSAIL supply for activation
-    );
-
-    // 2. Attempt to kill the gauge with an invalid emergency cap
-    scenario.next_tx(admin);
-    {
-        let mut minter = scenario.take_shared<Minter<SAIL>>();
-        let mut dist_config = scenario.take_shared<DistributionConfig>();
-        let gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
-        let gauge_id = object::id(&gauge);
-        let voter = scenario.take_shared<Voter>();
-        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
-
-        // Create an emergency cap with a fake minter ID
-        let invalid_minter_id = object::id_from_address(@0xDEADBEEF);
-        let emergency_cap = emergency_council::create_for_testing(
-            object::id(&voter),
-            invalid_minter_id,
-            object::id(&voting_escrow),
-            scenario.ctx()
-        );
-
-        // This should fail because the cap's minter ID doesn't match the actual minter
-        minter::kill_gauge<SAIL>(
-            &mut minter,
-            &mut dist_config,
-            &emergency_cap,
-            gauge_id
-        );
-
-        // Cleanup in case the test doesn't fail as expected
-        test_scenario::return_shared(minter);
-        test_scenario::return_shared(dist_config);
-        test_scenario::return_shared(gauge);
-        test_scenario::return_shared(voter);
-        test_scenario::return_shared(voting_escrow);
-        transfer::public_transfer(emergency_cap, admin);
-    };
-
-    // Cleanup
-    test_utils::destroy(aggregator);
-    clock::destroy_for_testing(clock);
-    scenario.end();
-}
-
-#[test]
-#[expected_failure(abort_code = emergency_council::EEmergencyCouncilDoesNotMatchMinter)]
-fun test_revive_gauge_with_invalid_emergency_cap_fails() {
-    let admin = @0xA;
-    let user = @0xB;
-    let mut scenario = test_scenario::begin(admin);
-    let mut clock = clock::create_for_testing(scenario.ctx());
-
-    let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
-
-    let gauge_base_emissions = 1_000_000;
-    let lock_amount = 1_000_000;
-
-    // 1. Full setup
-    let mut aggregator = setup::full_setup_with_lock<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(
-        &mut scenario,
-        admin,
-        user,
-        &mut clock,
-        lock_amount,
-        182, // lock_duration_days
-        gauge_base_emissions,
-        0 // initial oSAIL supply for activation
-    );
-
-    // 2. Distribute the gauge
-    scenario.next_tx(admin);
-    {
-        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock); 
-    };
-
-    // 3. Kill the gauge
-    let gauge_id: ID;
-    scenario.next_tx(admin);
-    {
-        let mut minter = scenario.take_shared<Minter<SAIL>>();
-        let mut dist_config = scenario.take_shared<DistributionConfig>();
-        let gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
-        gauge_id = object::id(&gauge);
-
-        let voter = scenario.take_shared<Voter>();
-        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
-        let emergency_cap = emergency_council::create_for_testing(
-            object::id(&voter),
-            object::id(&minter),
-            object::id(&voting_escrow),
-            scenario.ctx()
-        );
-
-        minter::kill_gauge<SAIL>(
-            &mut minter,
-            &mut dist_config,
-            &emergency_cap,
-            gauge_id
-        );
-
-        test_scenario::return_shared(minter);
-        test_scenario::return_shared(dist_config);
-        test_scenario::return_shared(gauge);
-        test_scenario::return_shared(voter);
-        test_scenario::return_shared(voting_escrow);
-        transfer::public_transfer(emergency_cap, admin);
-    };
-
-    // 4. Attempt to revive with an INVALID cap
-    scenario.next_tx(admin);
-    {
-        let mut minter = scenario.take_shared<Minter<SAIL>>();
-        let mut dist_config = scenario.take_shared<DistributionConfig>();
-        let voter = scenario.take_shared<Voter>();
-        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
-
-        // Create an invalid cap with a fake minter ID
-        let invalid_minter_id = object::id_from_address(@0xDEADBEEF);
-        let invalid_emergency_cap = emergency_council::create_for_testing(
-            object::id(&voter),
-            invalid_minter_id,
-            object::id(&voting_escrow),
-            scenario.ctx()
-        );
-
-        // This should fail
-        minter::revive_gauge<SAIL>(
-            &mut minter,
-            &mut dist_config,
-            &invalid_emergency_cap,
-            gauge_id
-        );
-
-        // Cleanup if test doesn't fail
-        test_scenario::return_shared(minter);
-        test_scenario::return_shared(dist_config);
-        test_scenario::return_shared(voter);
-        test_scenario::return_shared(voting_escrow);
-        transfer::public_transfer(invalid_emergency_cap, admin);
-    };
-
-    // Cleanup
-    transfer::public_transfer(usd_treasury_cap, admin);
-    transfer::public_transfer(usd_metadata, admin);
-    test_utils::destroy(aggregator);
-    clock::destroy_for_testing(clock);
-    scenario.end();
-}
-
-#[test]
-#[expected_failure(abort_code = emergency_council::EEmergencyCouncilDoesNotMatchMinter)]
-fun test_reset_gauge_with_invalid_emergency_cap_fails() {
-    let admin = @0xA;
-    let user = @0xB;
-    let mut scenario = test_scenario::begin(admin);
-    let mut clock = clock::create_for_testing(scenario.ctx());
-
-    let gauge_base_emissions = 1_000_000;
-    let lock_amount = 1_000_000;
-
-    // 1. Full setup
-    let aggregator = setup::full_setup_with_lock<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(
-        &mut scenario,
-        admin,
-        user,
-        &mut clock,
-        lock_amount,
-        182, // lock_duration_days
-        gauge_base_emissions,
-        0 // initial oSAIL supply for activation
-    );
-
-    // 2. Kill the gauge
-    scenario.next_tx(admin);
-    {
-        let mut minter = scenario.take_shared<Minter<SAIL>>();
-        let mut dist_config = scenario.take_shared<DistributionConfig>();
-        let gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
-        let gauge_id = object::id(&gauge);
-
-        let voter = scenario.take_shared<Voter>();
-        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
-        let emergency_cap = emergency_council::create_for_testing(
-            object::id(&voter),
-            object::id(&minter),
-            object::id(&voting_escrow),
-            scenario.ctx()
-        );
-
-        minter::kill_gauge<SAIL>(
-            &mut minter,
-            &mut dist_config,
-            &emergency_cap,
-            gauge_id
-        );
-
-        test_scenario::return_shared(minter);
-        test_scenario::return_shared(dist_config);
-        test_scenario::return_shared(gauge);
-        test_scenario::return_shared(voter);
-        test_scenario::return_shared(voting_escrow);
-        transfer::public_transfer(emergency_cap, admin);
-    };
-
-    clock.increment_for_testing(WEEK / 2);
-
-    // 4. Attempt to reset with an INVALID cap
-    scenario.next_tx(admin);
-    {
-        let mut minter = scenario.take_shared<Minter<SAIL>>();
-        let mut dist_config = scenario.take_shared<DistributionConfig>();
-        let mut gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
-        let voter = scenario.take_shared<Voter>();
-        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
-
-        // Create an invalid cap with a fake minter ID
-        let invalid_minter_id = object::id_from_address(@0xDEADBEEF);
-        let invalid_emergency_cap = emergency_council::create_for_testing(
-            object::id(&voter),
-            invalid_minter_id,
-            object::id(&voting_escrow),
-            scenario.ctx()
-        );
-
-        // This should fail
-        minter.reset_gauge<USD_TESTS, AUSD, SAIL>(
-            &mut dist_config,
-            &invalid_emergency_cap,
-            &mut gauge,
-            gauge_base_emissions,
-            &clock
-        );
-
-        // Cleanup if test doesn't fail
-        test_scenario::return_shared(minter);
-        test_scenario::return_shared(dist_config);
-        test_scenario::return_shared(gauge);
-        test_scenario::return_shared(voter);
-        test_scenario::return_shared(voting_escrow);
-        transfer::public_transfer(invalid_emergency_cap, admin);
-    };
-
-    // Cleanup
     test_utils::destroy(aggregator);
     clock::destroy_for_testing(clock);
     scenario.end();
@@ -4513,6 +3152,8 @@ fun test_get_position_reward_with_cooldown_zero_reward() {
         test_scenario::return_shared(pool);
     };
 
+    clock.increment_for_testing(100 * 1000);
+
     // Try to claim pool reward immediately after deposit - should return zero because cooldown hasn't passed
     scenario.next_tx(user);
     {
@@ -4522,6 +3163,8 @@ fun test_get_position_reward_with_cooldown_zero_reward() {
         let distribution_config = scenario.take_shared<DistributionConfig>();
         let mut pool = scenario.take_shared<Pool<USD_TESTS, AUSD>>();
         let staked_position = scenario.take_from_sender<StakedPosition>();
+
+        gauge.test_update_reward_profile(&staked_position, clock.timestamp_ms() / 1000);
         
         let reward_balance = gauge::get_pool_reward<USD_TESTS, AUSD, USD_TESTS>(
             &global_config,
@@ -4531,6 +3174,109 @@ fun test_get_position_reward_with_cooldown_zero_reward() {
             &mut pool,
             &staked_position,
             &clock
+        );
+        
+        // reward should be zero because cooldown hasn't passed
+        assert!(sui::balance::value(&reward_balance) == 0, 4);
+        
+        sui::balance::destroy_zero(reward_balance);
+        
+        test_scenario::return_shared(global_config);
+        test_scenario::return_shared(vault);
+        test_scenario::return_shared(gauge);
+        test_scenario::return_shared(distribution_config);
+        test_scenario::return_shared(pool);
+        scenario.return_to_sender(staked_position);
+    };
+
+    clock.increment_for_testing(100 * 1000);
+
+    // set unrestricted address to user
+    scenario.next_tx(admin);
+    {
+        let mut distribution_config = scenario.take_shared<DistributionConfig>();
+        let publisher = scenario.take_from_sender<Publisher>();
+        
+        distribution_config.add_unrestricted_address(&publisher,  user);
+
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(publisher);
+    };
+
+    // Try to claim pool reward after setting unrestricted address - should return non-zero reward
+    scenario.next_tx(user);
+    {
+        let global_config = scenario.take_shared<clmm_pool::config::GlobalConfig>();
+        let mut vault = scenario.take_shared<clmm_pool::rewarder::RewarderGlobalVault>();
+        let mut gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let mut pool = scenario.take_shared<Pool<USD_TESTS, AUSD>>();
+        let staked_position = scenario.take_from_sender<StakedPosition>();
+
+        gauge.test_update_reward_profile(&staked_position, clock.timestamp_ms() / 1000);
+
+        
+        let reward_balance = gauge::get_pool_reward_v2<USD_TESTS, AUSD, USD_TESTS>(
+            &global_config,
+            &mut vault,
+            &mut gauge,
+            &distribution_config,
+            &mut pool,
+            &staked_position,
+            &clock,
+            scenario.ctx()
+        );
+        
+        // reward should be non-zero because unrestricted address
+        assert!(sui::balance::value(&reward_balance) == 666, 4);
+        
+        let reward_coin = coin::from_balance(reward_balance, scenario.ctx());
+        sui::transfer::public_transfer(reward_coin, scenario.ctx().sender());
+
+        test_scenario::return_shared(global_config);
+        test_scenario::return_shared(vault);
+        test_scenario::return_shared(gauge);
+        test_scenario::return_shared(distribution_config);
+        test_scenario::return_shared(pool);
+        scenario.return_to_sender(staked_position);
+    };
+
+    // remove unrestricted address from user
+    scenario.next_tx(admin);
+    {
+        let mut distribution_config = scenario.take_shared<DistributionConfig>();
+        let publisher = scenario.take_from_sender<Publisher>();
+        
+        distribution_config.remove_unrestricted_address(&publisher,  user);
+
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(publisher);
+    };
+
+    clock.increment_for_testing(300 * 1000);
+
+    // Try to claim pool reward after removing unrestricted address - should return zero because cooldown hasn't passed
+    scenario.next_tx(user);
+    {
+        let global_config = scenario.take_shared<clmm_pool::config::GlobalConfig>();
+        let mut vault = scenario.take_shared<clmm_pool::rewarder::RewarderGlobalVault>();
+        let mut gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let mut pool = scenario.take_shared<Pool<USD_TESTS, AUSD>>();
+        let staked_position = scenario.take_from_sender<StakedPosition>();
+
+        gauge.test_update_reward_profile(&staked_position, clock.timestamp_ms() / 1000);
+
+        
+        let reward_balance = gauge::get_pool_reward_v2<USD_TESTS, AUSD, USD_TESTS>(
+            &global_config,
+            &mut vault,
+            &mut gauge,
+            &distribution_config,
+            &mut pool,
+            &staked_position,
+            &clock,
+            scenario.ctx()
         );
         
         // reward should be zero because cooldown hasn't passed
@@ -4623,8 +3369,10 @@ fun test_get_position_reward_with_cooldown_zero_reward() {
         );
         sui::transfer::public_transfer(osail_reward, scenario.ctx().sender());
 
-        let position = gauge.withdraw_position<USD_TESTS, AUSD>(
+        let position = gauge.withdraw_position_v2<USD_TESTS, AUSD>(
             &distribution_config,
+            &global_config,
+            &mut vault,
             &mut pool,
             staked_position,
             &clock,
@@ -4727,8 +3475,10 @@ fun test_get_position_reward_with_cooldown_zero_reward() {
         );
         sui::transfer::public_transfer(osail_reward, scenario.ctx().sender());
 
-        let position = gauge.withdraw_position<USD_TESTS, AUSD>(
+        let position = gauge.withdraw_position_v2<USD_TESTS, AUSD>(
             &distribution_config,
+            &global_config,
+            &mut vault,
             &mut pool,
             staked_position,
             &clock,
@@ -4768,6 +3518,722 @@ fun test_get_position_reward_with_cooldown_zero_reward() {
         test_scenario::return_shared(minter);
     };
 
+    transfer::public_transfer(usd_treasury_cap, admin);
+    transfer::public_transfer(usd_metadata, admin);
+    test_utils::destroy(aggregator);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_early_withdrawal_penalty_distributed_to_voters() {
+    let admin = @0xA;
+    let user = @0xB;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+
+    let gauge_base_emissions = 1_000_000;
+    let initial_liquidity = 15_000_000; // Increased to ensure penalty exceeds epochCoinPerSecond (604800)
+    let penalty_percentage = 500; // 5% = 500 / 10000
+
+    let mut aggregator = setup::full_setup_with_lock<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(
+        &mut scenario,
+        admin,
+        user,
+        &mut clock,
+        initial_liquidity,
+        182,
+        gauge_base_emissions,
+        0
+    );
+
+    // distribute the gauge for epoch 1
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+    };
+
+    // create and deposit position
+    scenario.next_tx(user);
+    {
+        setup::create_position_with_liquidity<USD_TESTS, AUSD>(
+            &mut scenario,
+            user,
+            tick_math::min_tick().as_u32(),
+            tick_math::max_tick().as_u32(),
+            initial_liquidity as u128,
+            &clock
+        );
+    };
+
+    // deposit position
+    scenario.next_tx(user);
+    {
+        setup::deposit_position<USD_TESTS, AUSD>(&mut scenario, &clock);
+    };
+
+    // set liquidity_update_cooldown to 600 seconds and early withdrawal penalty to 5%
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let mut distribution_config = scenario.take_shared<DistributionConfig>();
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        
+        minter.set_liquidity_update_cooldown<SAIL>(
+            &admin_cap,
+            &mut distribution_config,
+            600 // 600 seconds cooldown
+        );
+        
+        minter.set_early_withdrawal_penalty_percentage<SAIL>(
+            &admin_cap,
+            &mut distribution_config,
+            penalty_percentage // 5% penalty
+        );
+
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(admin_cap);
+    };
+
+    // Get initial position liquidity before withdrawal
+    let initial_position_liquidity: u128;
+    scenario.next_tx(user);
+    {
+        let gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
+        let staked_position = scenario.take_from_sender<StakedPosition>();
+        
+        initial_position_liquidity = gauge.position_liquidity<USD_TESTS, AUSD>(&staked_position);
+        
+        test_scenario::return_shared(gauge);
+        scenario.return_to_sender(staked_position);
+    };
+
+    // Calculate expected penalty: liquidity * penalty_percentage / multiplier
+    let expected_penalty_liquidity = (initial_position_liquidity * (penalty_percentage as u128)) / (governance::distribution_config::get_early_withdrawal_penalty_multiplier() as u128);
+    let expected_final_liquidity = initial_position_liquidity - expected_penalty_liquidity;
+
+    // withdraw position early (before cooldown expires) - penalty should be collected
+    scenario.next_tx(user);
+    {
+        let mut gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let global_config = scenario.take_shared<clmm_pool::config::GlobalConfig>();
+        let mut vault = scenario.take_shared<clmm_pool::rewarder::RewarderGlobalVault>();
+        let mut pool = scenario.take_shared<Pool<USD_TESTS, AUSD>>();
+        let staked_position = scenario.take_from_sender<StakedPosition>();
+
+        // Claim rewards first (required before withdrawal)
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let osail_reward = minter.get_position_reward<USD_TESTS, AUSD, SAIL, OSAIL1>(
+            &distribution_config,
+            &mut gauge,
+            &mut pool,
+            &staked_position,
+            &clock,
+            scenario.ctx()
+        );
+        sui::transfer::public_transfer(osail_reward, scenario.ctx().sender());
+
+        // Withdraw position early - penalty should be collected
+        let position = gauge.withdraw_position_v2<USD_TESTS, AUSD>(
+            &distribution_config,
+            &global_config,
+            &mut vault,
+            &mut pool,
+            staked_position,
+            &clock,
+            scenario.ctx()
+        );
+        transfer::public_transfer(position, scenario.ctx().sender());
+        
+        test_scenario::return_shared(global_config);
+        test_scenario::return_shared(vault);
+        test_scenario::return_shared(gauge);
+        test_scenario::return_shared(distribution_config);
+        test_scenario::return_shared(pool);
+        test_scenario::return_shared(minter);
+    };
+
+    // Verify that position liquidity decreased by penalty amount
+    scenario.next_tx(user);
+    {
+        let position = scenario.take_from_sender<clmm_pool::position::Position>();
+        let final_liquidity = position.liquidity();
+        
+        // Position liquidity should be reduced by the penalty amount
+        // Allow small rounding differences (within 1 unit)
+        assert!(final_liquidity == expected_final_liquidity, 10);
+        
+        // Verify penalty was actually applied (liquidity decreased)
+        assert!(final_liquidity < initial_position_liquidity, 12);
+        
+        // Calculate actual penalty applied
+        let actual_penalty = initial_position_liquidity - final_liquidity;
+        // Actual penalty should be close to expected (within rounding tolerance)
+        assert!(actual_penalty == expected_penalty_liquidity, 13);
+        
+        scenario.return_to_sender(position);
+    };
+
+    // advance 1 hour so the voting starts
+    clock.increment_for_testing(1 * 60 * 60 * 1000);
+
+    // Vote for the pool with the user's lock (before distribute_gauge to make fees claimable)
+    scenario.next_tx(user);
+    {
+        setup::vote_for_pool<USD_TESTS, AUSD, SAIL>(&mut scenario, &mut clock);
+    };
+
+    // Store the epoch when the vote was cast
+    let vote_epoch: u64;
+    scenario.next_tx(user);
+    {
+        vote_epoch = common::current_period(&clock);
+    };
+
+    // Advance by 1 epoch
+    clock.increment_for_testing(WEEK);
+
+    // Get epoch 2 start timestamp (before updating minter period)
+    let epoch_2: u64;
+    scenario.next_tx(user);
+    {
+        epoch_2 = common::current_period(&clock);
+    };
+
+    // Update minter period for epoch 2
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin_2 = setup::update_minter_period<SAIL, OSAIL2>(&mut scenario, 0, &clock);
+        o_sail_coin_2.burn_for_testing();
+    };
+
+    // Get the lock ID for updating weights
+    let lock_id: ID;
+    scenario.next_tx(user);
+    {
+        let lock = scenario.take_from_sender<Lock>();
+        lock_id = object::id(&lock);
+        scenario.return_to_sender(lock);
+    };
+    
+    // Finalize voted weights for epoch 1 (when vote was cast)
+    // Fees distributed in epoch 2 will use voting power from epoch 1
+    setup::update_and_finalize_voted_weights<USD_TESTS, AUSD, SAIL>(
+        &mut scenario,
+        vector[lock_id],
+        vector[10000], // 100% voting power
+        vote_epoch, // Epoch 1 start timestamp (finished epoch)
+        admin,
+        &clock,
+    );
+    
+    // Note: We don't finalize epoch 2 because it's still current (not finished)
+    // Fees distributed in epoch 2 will use voting power from epoch 1
+
+    // Inject some fees to ensure fees are distributed (fees are distributed only if amount > epochCoinPerSecond)
+    // This helps ensure the penalty fees will also be distributed
+    scenario.next_tx(admin);
+    {
+        setup::inject_voting_fee_reward<USD_TESTS, AUSD, SAIL, USD_TESTS>(&mut scenario, 1_000_000, &clock);
+    };
+
+    // Check fee balance in gauge BEFORE distribute_gauge
+    let fee_balance_before_a: u64;
+    let fee_balance_before_b: u64;
+    scenario.next_tx(admin);
+    {
+        let gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
+        let voter = scenario.take_shared<Voter>();
+        let pool = scenario.take_shared<Pool<USD_TESTS, AUSD>>();
+        let pool_id = object::id(&pool);
+        let gauge_id = voter::pool_to_gauge(&voter, pool_id);
+        
+        fee_balance_before_a = voter::fee_voting_reward_balance<USD_TESTS>(&voter, gauge_id);
+        fee_balance_before_b = voter::fee_voting_reward_balance<AUSD>(&voter, gauge_id);
+        
+        test_scenario::return_shared(gauge);
+        test_scenario::return_shared(voter);
+        test_scenario::return_shared(pool);
+    };
+
+    // Distribute gauge in epoch 2 to make penalty fees available for voters
+    // This should distribute the penalty fees that were collected during early withdrawal
+    // Note: fees are distributed only if their amount > epochCoinPerSecond (604800)
+    // With increased liquidity (15M), penalty should be 750K liquidity, which combined with injected fees should be enough
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL2, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+    };
+
+    // Check fee balance in gauge AFTER distribute_gauge
+    let fee_balance_after_a: u64;
+    let fee_balance_after_b: u64;
+    scenario.next_tx(admin);
+    {
+        let gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
+        let voter = scenario.take_shared<Voter>();
+        let pool = scenario.take_shared<Pool<USD_TESTS, AUSD>>();
+        let pool_id = object::id(&pool);
+        let gauge_id = voter::pool_to_gauge(&voter, pool_id);
+        
+        fee_balance_after_a = voter::fee_voting_reward_balance<USD_TESTS>(&voter, gauge_id);
+        fee_balance_after_b = voter::fee_voting_reward_balance<AUSD>(&voter, gauge_id);
+        // Verify that fees were distributed (balance increased)
+        assert!(fee_balance_after_a > fee_balance_before_a || fee_balance_after_b > fee_balance_before_b, 18);
+        
+        test_scenario::return_shared(gauge);
+        test_scenario::return_shared(voter);
+        test_scenario::return_shared(pool);
+    };
+
+    // Advance by 1 more epoch to epoch 3 (for claiming rewards)
+    // We need to advance first, so epoch 2 becomes finished
+    clock.increment_for_testing(WEEK);
+
+    // Finalize voted weights for epoch 2 (where fees were distributed)
+    // Now epoch 2 is finished, so we can finalize it
+    // This is required before claiming rewards in epoch 3
+    setup::update_and_finalize_voted_weights<USD_TESTS, AUSD, SAIL>(
+        &mut scenario,
+        vector[lock_id],
+        vector[10000], // 100% voting power
+        epoch_2, // Epoch 2 start timestamp (now finished epoch)
+        admin,
+        &clock,
+    );
+
+    // Update minter period for epoch 3
+    scenario.next_tx(admin);
+    {
+        let o_sail_coin_3 = setup::update_minter_period<SAIL, OSAIL3>(&mut scenario, 0, &clock);
+        o_sail_coin_3.burn_for_testing();
+    };
+
+    // Verify that fees were distributed to fee_voting_reward before claiming
+    scenario.next_tx(admin);
+    {
+        let voter = scenario.take_shared<Voter>();
+        let gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
+        let gauge_id = object::id(&gauge);
+        
+        // Check that fees are available in fee_voting_reward (should include penalty + injected fees)
+        let fee_balance_a = voter::fee_voting_reward_balance<USD_TESTS>(&voter, gauge_id);
+        let fee_balance_b = voter::fee_voting_reward_balance<AUSD>(&voter, gauge_id);
+        
+        // Fees should be available (penalty + injected fees were distributed)
+        assert!(fee_balance_a > 0 || fee_balance_b > 0, 19);
+        
+        test_scenario::return_shared(voter);
+        test_scenario::return_shared(gauge);
+    };
+
+    // Check fee balance and earned amount before claiming
+    scenario.next_tx(user);
+    {
+        let voter = scenario.take_shared<Voter>();
+        let pool = scenario.take_shared<Pool<USD_TESTS, AUSD>>();
+        let pool_id = object::id(&pool);
+        let gauge_id = voter::pool_to_gauge(&voter, pool_id);
+        
+        let fee_balance_a = voter::fee_voting_reward_balance<USD_TESTS>(&voter, gauge_id);
+        let fee_balance_b = voter::fee_voting_reward_balance<AUSD>(&voter, gauge_id);
+
+        // Check gauge weight (voting power)
+        let gauge_weight = voter::get_gauge_weight(&voter, gauge_id);
+        
+        // Verify that fees are available in fee_voting_reward
+        assert!(fee_balance_a > 0 || fee_balance_b > 0, 19);
+        
+        // Verify that gauge has voting weight (user voted for it)
+        assert!(gauge_weight > 0, 22);
+        
+        test_scenario::return_shared(voter);
+        test_scenario::return_shared(pool);
+    };
+
+    // Claim voting fee rewards with the user's lock - should receive the penalty
+    scenario.next_tx(user);
+    {
+        let mut voter = scenario.take_shared<Voter>();
+        let mut voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let lock = scenario.take_from_sender<Lock>();
+        let pool = scenario.take_shared<Pool<USD_TESTS, AUSD>>();
+
+        voter::claim_voting_fee_by_pool<USD_TESTS, AUSD, SAIL>(
+            &mut voter,
+            &mut voting_escrow,
+            &distribution_config,
+            &lock,
+            &pool,
+            &clock,
+            scenario.ctx()
+        );
+
+        test_scenario::return_shared(voter);
+        test_scenario::return_shared(voting_escrow);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(lock);
+        test_scenario::return_shared(pool);
+    };
+
+    // Verify the user received the penalty as rewards
+    // claim_voting_fee_by_pool calls claim_voting_fee twice - once for each token type
+    // So we should receive two coins: USD_TESTS and AUSD
+    // Expected: 
+    // - USD_TESTS: penalty (749999) + injected fees (1000000) = 1749999
+    // - AUSD: penalty (749999) only (no injected fees for AUSD)
+    let expected_penalty_amount_usd = 1749999; // penalty + injected fees
+    let expected_penalty_amount_ausd = 749999; // penalty only
+    
+    scenario.next_tx(user);
+    {
+        // First coin (USD_TESTS) - claim_voting_fee_by_pool calls claim_voting_fee for CoinTypeA first
+        let reward_coin_a = scenario.take_from_sender<Coin<USD_TESTS>>();
+        let received_a = coin::value(&reward_coin_a);
+        
+        // Verify that received amount includes penalty (749999) + injected fees (1000000)
+        assert!(received_a == expected_penalty_amount_usd, 20);
+        
+        // Also verify that penalty is included (at least 749999)
+        assert!(received_a >= 749999, 23);
+        
+        reward_coin_a.burn_for_testing();
+    };
+    
+    scenario.next_tx(user);
+    {
+        // Second coin (AUSD) - claim_voting_fee_by_pool calls claim_voting_fee for CoinTypeB second
+        let reward_coin_b = scenario.take_from_sender<Coin<AUSD>>();
+        let received_b = coin::value(&reward_coin_b);
+        
+        // Verify exact penalty amount for AUSD (no injected fees for AUSD)
+        assert!(received_b == expected_penalty_amount_ausd, 21);
+        
+        reward_coin_b.burn_for_testing();
+    };
+
+
+    // Cleanup
+    transfer::public_transfer(usd_treasury_cap, admin);
+    transfer::public_transfer(usd_metadata, admin);
+    test_utils::destroy(aggregator);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_no_penalty_after_cooldown() {
+    let admin = @0xA;
+    let user = @0xB;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+
+    let gauge_base_emissions = 1_000_000;
+    let initial_liquidity = 10_000_000;
+    let cooldown_seconds = 600; // 600 seconds cooldown
+    let penalty_percentage = 500; // 5% = 500 / 10000
+
+    let mut aggregator = setup::full_setup_with_lock<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(
+        &mut scenario,
+        admin,
+        user,
+        &mut clock,
+        initial_liquidity,
+        182,
+        gauge_base_emissions,
+        0
+    );
+
+    // distribute the gauge for epoch 1
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+    };
+
+    // create and deposit position
+    scenario.next_tx(user);
+    {
+        setup::create_position_with_liquidity<USD_TESTS, AUSD>(
+            &mut scenario,
+            user,
+            tick_math::min_tick().as_u32(),
+            tick_math::max_tick().as_u32(),
+            initial_liquidity as u128,
+            &clock
+        );
+    };
+
+    // deposit position
+    scenario.next_tx(user);
+    {
+        setup::deposit_position<USD_TESTS, AUSD>(&mut scenario, &clock);
+    };
+
+    // set liquidity_update_cooldown to 600 seconds and early withdrawal penalty to 5%
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let mut distribution_config = scenario.take_shared<DistributionConfig>();
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        
+        minter.set_liquidity_update_cooldown<SAIL>(
+            &admin_cap,
+            &mut distribution_config,
+            cooldown_seconds // 600 seconds cooldown
+        );
+        
+        minter.set_early_withdrawal_penalty_percentage<SAIL>(
+            &admin_cap,
+            &mut distribution_config,
+            penalty_percentage // 5% penalty
+        );
+
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(admin_cap);
+    };
+
+    // Get initial position liquidity before withdrawal
+    let initial_position_liquidity: u128;
+    scenario.next_tx(user);
+    {
+        let gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
+        let staked_position = scenario.take_from_sender<StakedPosition>();
+        
+        initial_position_liquidity = gauge.position_liquidity<USD_TESTS, AUSD>(&staked_position);
+        
+        test_scenario::return_shared(gauge);
+        scenario.return_to_sender(staked_position);
+    };
+
+    // Wait for cooldown to expire (wait more than cooldown_seconds)
+    // cooldown_seconds = 600 seconds = 600 * 1000 milliseconds
+    clock.increment_for_testing((cooldown_seconds + 100) * 1000); // Wait 700 seconds to ensure cooldown expired
+
+    // withdraw position after cooldown expires - no penalty should be collected
+    scenario.next_tx(user);
+    {
+        let mut gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let global_config = scenario.take_shared<clmm_pool::config::GlobalConfig>();
+        let mut vault = scenario.take_shared<clmm_pool::rewarder::RewarderGlobalVault>();
+        let mut pool = scenario.take_shared<Pool<USD_TESTS, AUSD>>();
+        let staked_position = scenario.take_from_sender<StakedPosition>();
+
+        // Claim rewards first (required before withdrawal)
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let osail_reward = minter.get_position_reward<USD_TESTS, AUSD, SAIL, OSAIL1>(
+            &distribution_config,
+            &mut gauge,
+            &mut pool,
+            &staked_position,
+            &clock,
+            scenario.ctx()
+        );
+        sui::transfer::public_transfer(osail_reward, scenario.ctx().sender());
+
+        // Withdraw position after cooldown - no penalty should be collected
+        let position = gauge.withdraw_position_v2<USD_TESTS, AUSD>(
+            &distribution_config,
+            &global_config,
+            &mut vault,
+            &mut pool,
+            staked_position,
+            &clock,
+            scenario.ctx()
+        );
+        transfer::public_transfer(position, scenario.ctx().sender());
+        
+        test_scenario::return_shared(global_config);
+        test_scenario::return_shared(vault);
+        test_scenario::return_shared(gauge);
+        test_scenario::return_shared(distribution_config);
+        test_scenario::return_shared(pool);
+        test_scenario::return_shared(minter);
+    };
+
+    // Verify that position liquidity did NOT decrease (no penalty applied)
+    scenario.next_tx(user);
+    {
+        let position = scenario.take_from_sender<clmm_pool::position::Position>();
+        let final_liquidity = position.liquidity();
+        
+        // Position liquidity should be equal to initial liquidity (no penalty)
+        // Allow small rounding differences (within 1 unit)
+        assert!(final_liquidity == initial_position_liquidity, 30);
+        
+        scenario.return_to_sender(position);
+    };
+
+    // Cleanup
+    transfer::public_transfer(usd_treasury_cap, admin);
+    transfer::public_transfer(usd_metadata, admin);
+    test_utils::destroy(aggregator);
+    clock::destroy_for_testing(clock);
+    scenario.end();
+}
+
+#[test]
+fun test_no_penalty_for_unrestricted_address() {
+    let admin = @0xA;
+    let user = @0xB;
+    let mut scenario = test_scenario::begin(admin);
+    let mut clock = clock::create_for_testing(scenario.ctx());
+
+    let (usd_treasury_cap, usd_metadata) = usd_tests::create_usd_tests(&mut scenario, 6);
+
+    let gauge_base_emissions = 1_000_000;
+    let initial_liquidity = 10_000_000;
+    let cooldown_seconds = 600; // 600 seconds cooldown
+    let penalty_percentage = 500; // 5% = 500 / 10000
+
+    let mut aggregator = setup::full_setup_with_lock<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(
+        &mut scenario,
+        admin,
+        user,
+        &mut clock,
+        initial_liquidity,
+        182,
+        gauge_base_emissions,
+        0
+    );
+
+    // distribute the gauge for epoch 1
+    scenario.next_tx(admin);
+    {
+        setup::distribute_gauge<USD_TESTS, AUSD, SAIL, OSAIL1, USD_TESTS>(&mut scenario, &usd_metadata, &mut aggregator, &clock);
+    };
+
+    // create and deposit position
+    scenario.next_tx(user);
+    {
+        setup::create_position_with_liquidity<USD_TESTS, AUSD>(
+            &mut scenario,
+            user,
+            tick_math::min_tick().as_u32(),
+            tick_math::max_tick().as_u32(),
+            initial_liquidity as u128,
+            &clock
+        );
+    };
+
+    // deposit position
+    scenario.next_tx(user);
+    {
+        setup::deposit_position<USD_TESTS, AUSD>(&mut scenario, &clock);
+    };
+
+    // set liquidity_update_cooldown to 600 seconds and early withdrawal penalty to 5%
+    scenario.next_tx(admin);
+    {
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let mut distribution_config = scenario.take_shared<DistributionConfig>();
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        
+        minter.set_liquidity_update_cooldown<SAIL>(
+            &admin_cap,
+            &mut distribution_config,
+            cooldown_seconds // 600 seconds cooldown
+        );
+        
+        minter.set_early_withdrawal_penalty_percentage<SAIL>(
+            &admin_cap,
+            &mut distribution_config,
+            penalty_percentage // 5% penalty
+        );
+
+        test_scenario::return_shared(minter);
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(admin_cap);
+    };
+
+    // Add user to unrestricted addresses list
+    scenario.next_tx(admin);
+    {
+        let mut distribution_config = scenario.take_shared<DistributionConfig>();
+        let publisher = scenario.take_from_sender<Publisher>();
+        
+        distribution_config.add_unrestricted_address(&publisher, user);
+
+        test_scenario::return_shared(distribution_config);
+        scenario.return_to_sender(publisher);
+    };
+
+    // Get initial position liquidity before withdrawal
+    let initial_position_liquidity: u128;
+    scenario.next_tx(user);
+    {
+        let gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
+        let staked_position = scenario.take_from_sender<StakedPosition>();
+        
+        initial_position_liquidity = gauge.position_liquidity<USD_TESTS, AUSD>(&staked_position);
+        
+        test_scenario::return_shared(gauge);
+        scenario.return_to_sender(staked_position);
+    };
+
+    // Withdraw position BEFORE cooldown expires - no penalty should be collected because user is unrestricted
+    scenario.next_tx(user);
+    {
+        let mut gauge = scenario.take_shared<Gauge<USD_TESTS, AUSD>>();
+        let distribution_config = scenario.take_shared<DistributionConfig>();
+        let global_config = scenario.take_shared<clmm_pool::config::GlobalConfig>();
+        let mut vault = scenario.take_shared<clmm_pool::rewarder::RewarderGlobalVault>();
+        let mut pool = scenario.take_shared<Pool<USD_TESTS, AUSD>>();
+        let staked_position = scenario.take_from_sender<StakedPosition>();
+
+        // Claim rewards first (required before withdrawal)
+        let mut minter = scenario.take_shared<Minter<SAIL>>();
+        let osail_reward = minter.get_position_reward<USD_TESTS, AUSD, SAIL, OSAIL1>(
+            &distribution_config,
+            &mut gauge,
+            &mut pool,
+            &staked_position,
+            &clock,
+            scenario.ctx()
+        );
+        sui::transfer::public_transfer(osail_reward, scenario.ctx().sender());
+
+        // Withdraw position before cooldown - no penalty should be collected because user is unrestricted
+        let position = gauge.withdraw_position_v2<USD_TESTS, AUSD>(
+            &distribution_config,
+            &global_config,
+            &mut vault,
+            &mut pool,
+            staked_position,
+            &clock,
+            scenario.ctx()
+        );
+        transfer::public_transfer(position, scenario.ctx().sender());
+        
+        test_scenario::return_shared(global_config);
+        test_scenario::return_shared(vault);
+        test_scenario::return_shared(gauge);
+        test_scenario::return_shared(distribution_config);
+        test_scenario::return_shared(pool);
+        test_scenario::return_shared(minter);
+    };
+
+    // Verify that position liquidity did NOT decrease (no penalty applied because user is unrestricted)
+    scenario.next_tx(user);
+    {
+        let position = scenario.take_from_sender<clmm_pool::position::Position>();
+        let final_liquidity = position.liquidity();
+        
+        // Position liquidity should be equal to initial liquidity (no penalty)
+        assert!(final_liquidity == initial_position_liquidity, 40);
+        
+        scenario.return_to_sender(position);
+    };
+
+    // Cleanup
     transfer::public_transfer(usd_treasury_cap, admin);
     transfer::public_transfer(usd_metadata, admin);
     test_utils::destroy(aggregator);

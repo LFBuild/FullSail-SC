@@ -5,7 +5,10 @@ module voting_escrow::reward_distributor {
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
     const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
 
-    const ELockedVotingEscrowCannotClaim: u64 = 361242829129750700;
+    const ETokensAlreadyCheckpointed: u64 = 83171767535347600;
+    const EVotingEscrowMismatch: u64 = 579201231184384600;
+
+    const VOTING_ESCROW_ID_KEY: u8 = 1;
 
     use sui::coin::{Self, Coin};
     use sui::table::{Self, Table};
@@ -47,7 +50,7 @@ module voting_escrow::reward_distributor {
         last_token_time: u64,
         /// Maps periods to the amount of tokens to distribute in that period
         tokens_per_period: Table<u64, u64>,
-        /// The balance of tokens at the last checkpoint
+        /// deprecated. Not used anymore
         token_last_balance: u64,
         /// The current balance of reward tokens
         balance: Balance<RewardCoinType>,
@@ -94,8 +97,31 @@ module voting_escrow::reward_distributor {
             tokens_per_period: table::new<u64, u64>(ctx),
             token_last_balance: 0,
             balance: balance::zero<RewardCoinType>(),
-            // bag to be preapred for future updates
             bag: sui::bag::new(ctx),
+        };
+        let id = *object::uid_as_inner(&reward_distributor.id);
+        (reward_distributor, voting_escrow::reward_distributor_cap::create(id, ctx))
+    }
+
+    public fun create_v2<RewardCoinType>(
+        wrapper_distributor_id: ID,
+        voting_escrow_id: ID,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ): (RewardDistributor<RewardCoinType>, voting_escrow::reward_distributor_cap::RewardDistributorCap) {
+        let uid = object::new(ctx);
+        let mut bag = sui::bag::new(ctx);
+        bag.add(VOTING_ESCROW_ID_KEY, voting_escrow_id);
+        let reward_distributor = RewardDistributor<RewardCoinType> {
+            id: uid,
+            wrapper_distributor_id,
+            start_time: voting_escrow::common::current_timestamp(clock),
+            time_cursor_of: table::new<ID, u64>(ctx),
+            last_token_time: voting_escrow::common::current_timestamp(clock),
+            tokens_per_period: table::new<u64, u64>(ctx),
+            token_last_balance: 0,
+            balance: balance::zero<RewardCoinType>(),
+            bag,
         };
         let id = *object::uid_as_inner(&reward_distributor.id);
         (reward_distributor, voting_escrow::reward_distributor_cap::create(id, ctx))
@@ -214,6 +240,8 @@ module voting_escrow::reward_distributor {
         lock_id: ID,
         ctx: &mut TxContext
     ): Coin<RewardCoinType> {
+        reward_distributor_cap.validate(object::id<RewardDistributor<RewardCoinType>>(reward_distributor));
+        reward_distributor.check_voting_escrow_id(object::id(voting_escrow));
         let period = voting_escrow::common::to_period(reward_distributor.last_token_time);
         let reward = reward_distributor.claim_internal(voting_escrow, lock_id, period);
 
@@ -275,6 +303,7 @@ module voting_escrow::reward_distributor {
         voting_escrow: &voting_escrow::voting_escrow::VotingEscrow<SailCoinType>,
         lock_id: ID
     ): u64 {
+        reward_distributor.check_voting_escrow_id(object::id(voting_escrow));
         let (claimable_amount, _, _) = reward_distributor.claimable_internal(
             voting_escrow,
             lock_id,
@@ -378,6 +407,7 @@ module voting_escrow::reward_distributor {
         clock: &sui::clock::Clock
     ) {
         reward_distributor_cap.validate(object::id<RewardDistributor<RewardCoinType>>(reward_distributor));
+        assert!(reward_distributor.tokens_per_period.is_empty(), ETokensAlreadyCheckpointed);
         let current_time = voting_escrow::common::current_timestamp(clock);
         reward_distributor.start_time = current_time;
         reward_distributor.last_token_time = current_time;
@@ -397,7 +427,29 @@ module voting_escrow::reward_distributor {
         reward_distributor: &RewardDistributor<RewardCoinType>,
         period_start_time: u64
     ): u64 {
-        *reward_distributor.tokens_per_period.borrow(period_start_time)
+        if (reward_distributor.tokens_per_period.contains(period_start_time)) {
+            *reward_distributor.tokens_per_period.borrow(period_start_time)
+        } else {
+            0
+        }
+    }
+
+    public fun start_time<RewardCoinType>(
+        reward_distributor: &RewardDistributor<RewardCoinType>
+    ): u64 {
+        reward_distributor.start_time
+    }
+
+    #[test_only]
+    public fun test_time_cursor_of<RewardCoinType>(
+        reward_distributor: &RewardDistributor<RewardCoinType>,
+        lock_id: ID
+    ): u64 {
+        if (reward_distributor.time_cursor_of.contains(lock_id)) {
+            *reward_distributor.time_cursor_of.borrow(lock_id)
+        } else {
+            0
+        }
     }
 
     #[test_only]
@@ -409,6 +461,16 @@ module voting_escrow::reward_distributor {
         voting_escrow::reward_distributor_cap::create(reward_distributor_id, ctx)
     }
 
+    fun check_voting_escrow_id<RewardCoinType>(
+        reward_distributor: &RewardDistributor<RewardCoinType>,
+        voting_escrow_id: ID
+    ) {
+        if (reward_distributor.bag.contains(VOTING_ESCROW_ID_KEY)) {
+            let expected_ve_id: &ID = reward_distributor.bag.borrow(VOTING_ESCROW_ID_KEY);
+            assert!(*expected_ve_id == voting_escrow_id, EVotingEscrowMismatch);
+        };
+    }
+
     #[test_only]
     public fun total_length<RewardCoinType>(
         reward_distributor: &RewardDistributor<RewardCoinType>
@@ -417,5 +479,6 @@ module voting_escrow::reward_distributor {
         reward_distributor.tokens_per_period.length() +
         reward_distributor.bag.length()
     }
+
 }
 
