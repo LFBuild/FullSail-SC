@@ -27,11 +27,13 @@ At the end of each voting epoch, an emissions formula is applied to the aggregat
 
 ### Voting Rewards
 
-Trading fees from each pool are redirected to the voters who voted for that pool's volume. The distribution depends on prediction accuracy, which can only be determined at the end of the epoch for which the volume was predicted. This is one week after voting for that epoch has closed and two weeks after it began.
+Trading fees from each pool are split between active voters and passive veSAIL holders. The current split is 20% to active voters and 80% to passive veSAIL holders. The active portion is redirected to the voters who voted for that pool's volume.
+
+The active reward distribution depends on prediction accuracy, which can only be determined at the end of the epoch for which the volume was predicted. This is one week after voting for that epoch has closed and two weeks after it began.
 
 For example, if the voting epoch was from December 4, 2025, to December 10, 2025, voters predicted volume for the epoch from December 11 to December 17. The accuracy (reward multiplier) and voting rewards are determined at the beginning of December 18, right after the epoch change.
 
-Rewards for each voter are allocated according to the formula:
+Rewards for each active voter are allocated according to the formula:
 
 `voterRewards = votingPower * voterRewardMultiplier * totalPoolVotingRewards / totalVotingPowerSubmittedForThePool`
 
@@ -41,6 +43,12 @@ The reward multiplier depends on how far the volume prediction was from the actu
 
 Where:
 `distance = if (predictedVolume > actualVolume) { predictedVolume / actualVolume - 1 } else { actualVolume / predictedVolume - 1 }`
+
+### Passive Fee
+
+A configurable portion of trading fees is distributed as passive revenue to all veSAIL holders, proportional to their voting power, regardless of whether they actively voted. This provides a baseline yield for all lockers and incentivizes locking SAIL even for users who do not participate in volume predictions.
+
+The current passive fee rate is 80%. The rate of 80% means that 80% of all collected trading fees go to passive distribution among all veSAIL holders, while the remaining 20% go to active voters based on their prediction accuracy.
 
 ### Liquidity
 
@@ -109,6 +117,7 @@ Modules in the `governance` package:
 8.  **rebase_distributor.move**: Manages the distribution of rebased SAIL tokens to voting escrow participants. It wraps the reward distributor to handle SAIL distribution based on voting power, with automatic locking into veSAIL.
 9.  **voter_cap.move**: Capability objects for voter authorization, including `VoterCap`, `GovernorCap`, and `EpochGovernorCap`. These provide different permission levels for voting and governance functions.
 10. **voter.move**: The core voting module, managing volume predictions, vote casting, gauge creation, and reward distribution. It handles the mechanism where veSAIL holders predict pool volumes and receive rewards based on accuracy.
+11. **passive_fee_distributor.move**: Distributes a portion of trading fees to all veSAIL holders based on their voting power, regardless of whether they actively voted.
 
 ### Locks
 
@@ -150,9 +159,11 @@ At the end of the epoch, a backend service aggregates predictions to calculate t
 
 ### Voting Rewards
 
+Trading fees collected from pools are split between active voters and passive fee recipients. The split ratio is controlled by the `passive_voter_fee_rate` parameter (see [Passive Fee Distribution](#passive-fee-distribution) below). The remaining portion after the passive split goes to active voters.
+
 Each lock that participates in voting is rewarded in two ways simultaneously:
 
-1.  **Trading Fees**: Distributed using the `FeeVotingReward` object from the `governance::fee_voting_reward` module.
+1.  **Trading Fees**: Distributed using the `FeeVotingReward` object from the `governance::fee_voting_reward` module. Only the active portion (after the passive fee split) is distributed here.
 2.  **oSAIL Redemption Fees**: The 50% fee charged when a user unlocks oSAIL into SAIL, distributed using the `ExerciseFeeReward` object from the `governance::exercise_fee_reward` module.
 
 Both of these contracts are wrappers around the `voting_escrow::reward::Reward` helper object.
@@ -188,6 +199,43 @@ This wrapper distributes oSAIL exercise fees (the 50% redemption fee) to voters.
 The actual weight of the lock is recorded when votes are cast. This weight is not updated later, as prediction accuracy does not affect exercise fee distribution. Balance updates are still enabled to nullify rewards for non-voters who may have inherited a non-zero weight from a previous epoch.
 
 `ExerciseFeeReward` rewards are available for claim immediately after the epoch ends.
+
+#### Passive Fee Distribution
+
+In addition to active voting rewards, a configurable portion of trading fees is distributed to all veSAIL holders based on their voting power, regardless of whether they actively voted. This is called the passive fee.
+
+**Fee Split**
+
+When gauge fees are collected during [distribute_gauge](https://github.com/LFBuild/FullSail-SC/blob/499332ea77384e8a3a752a7278c50b7d3569d20e/governance/sources/minter.move#L1667), the trading fees from each pool are split:
+
+- **Passive portion**: `fee × passive_voter_fee_rate / 10000` — stored in the `Minter` for later distribution. 
+- **Active portion**: The remainder — deposited into the `FeeVotingReward` for active voters.
+
+The `passive_voter_fee_rate` is expressed in basis points where 10,000 = 100%. For example, a rate of 8,000 means 80% of trading fees go to passive distribution and 20% to active voters. Right now the parameter is set to be **80%** however it might change in the future. It can be changed by the admin using [set_passive_voter_fee_rate](https://github.com/LFBuild/FullSail-SC/blob/499332ea77384e8a3a752a7278c50b7d3569d20e/governance/sources/minter.move#L3286).
+
+**PassiveFeeDistributor**
+
+The `PassiveFeeDistributor` ([sources](https://github.com/LFBuild/FullSail-SC/blob/499332ea77384e8a3a752a7278c50b7d3569d20e/governance/sources/passive_fee_distributor.move)) is a shared object that wraps the `voting_escrow::reward_distributor::RewardDistributor`. It distributes fee tokens proportionally to each lock's voting power over time.
+
+A separate `PassiveFeeDistributor` is created for each fee coin type using [create_and_start_passive_fee_distributor](https://github.com/LFBuild/FullSail-SC/blob/499332ea77384e8a3a752a7278c50b7d3569d20e/governance/sources/minter.move#L3336).
+
+**Distribution Flow**
+
+1. During `distribute_gauge`, the passive portion of each pool's fees is split off and accumulated in the `Minter` via `deposit_passive_fee`.
+2. Periodically, the distribute governor calls [withdraw_passive_fee](https://github.com/LFBuild/FullSail-SC/blob/499332ea77384e8a3a752a7278c50b7d3569d20e/governance/sources/minter.move#L3425) to extract the accumulated fees from the `Minter`. Since pools have different token pairs, the governor swaps the withdrawn tokens into the target fee coin type.
+3. The governor then calls [notify_passive_fee](https://github.com/LFBuild/FullSail-SC/blob/499332ea77384e8a3a752a7278c50b7d3569d20e/governance/sources/minter.move#L3372) to checkpoint the fee tokens into the `PassiveFeeDistributor`, making them available for claiming.
+
+**Claiming**
+
+Any veSAIL holder can claim their passive fee share using [passive_fee_distributor::claim](https://github.com/LFBuild/FullSail-SC/blob/499332ea77384e8a3a752a7278c50b7d3569d20e/governance/sources/passive_fee_distributor.move#L48). The claimable amount is proportional to the lock's voting power. Locks that are deposited into a managed lock (i.e., `escrow_type.is_locked() == true`) cannot claim passive fees.
+
+**Events**
+
+- `EventSetPassiveVoterFeeRate` — Emitted when the passive fee rate is changed.
+- `EventCreatePassiveFeeDistributor` — Emitted when a new distributor is created.
+- `EventNotifyPassiveFee` — Emitted when fees are checkpointed into the distributor.
+- `EventWithdrawPassiveFee` — Emitted when accumulated fees are withdrawn from the minter.
+- `EventDistributeGaugeV2` — Emitted during gauge distribution, includes `passive_fee_a` and `passive_fee_b` fields showing the passive split amounts.
 
 ### Emissions
 
