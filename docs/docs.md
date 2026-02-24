@@ -44,11 +44,11 @@ The reward multiplier depends on how far the volume prediction was from the actu
 Where:
 `distance = if (predictedVolume > actualVolume) { predictedVolume / actualVolume - 1 } else { actualVolume / predictedVolume - 1 }`
 
-### Passive Fee
+### Passive Revenue (Passive fee)
 
 A configurable portion of trading fees is distributed as passive revenue to all veSAIL holders, proportional to their voting power, regardless of whether they actively voted. This provides a baseline yield for all lockers and incentivizes locking SAIL even for users who do not participate in volume predictions.
 
-The current passive fee rate is 80%. The rate of 80% means that 80% of all collected trading fees go to passive distribution among all veSAIL holders, while the remaining 20% go to active voters based on their prediction accuracy.
+The current passive revenue rate is 80%. This means that 80% of all collected trading fees go to passive distribution among all veSAIL holders, while the remaining 20% go to active voters based on their prediction accuracy.
 
 ### Liquidity
 
