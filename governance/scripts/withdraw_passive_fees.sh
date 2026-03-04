@@ -4,7 +4,7 @@ set -e
 source ./export.sh
 
 # Address to receive withdrawn passive fees
-RECIPIENT=0xc1d8fbc5ee3426dc50eeafd25579212bfe8aa0169ebb5445d36abc68932339db
+RECIPIENT=0xc3c7b01f09bfb204f93de85afa0a271e5bfabac31e566f7e997b9a8685f18967
 
 # All listed token types (one per pool coin)
 TOKENS=(
@@ -36,4 +36,4 @@ for i in "${!TOKENS[@]}"; do
 done
 
 echo "Withdrawing passive fees for ${#TOKENS[@]} tokens in a single transaction..."
-eval sui client ptb $PTB_ARGS 
+eval sui client ptb $PTB_ARGS
