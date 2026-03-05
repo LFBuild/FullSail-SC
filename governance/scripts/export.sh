@@ -25,6 +25,8 @@ export DISTRIBUTE_GOVERNOR_CAP=0xf5f335807046541711fbb00021927baad8798944eceb0cd
 export TEAM_CAP=0x18852fe639f30f5385b4660a1a3625c00818ba906934cb5a9b188eead2dd7040
 export EMERGENCY_COUNCIL_CAP=
 export PRICE_MONITOR=0x1e2b11f45b7d059c55ebaf026b499114f7a4ed0c1fd9d9b4c76b4c759fb63900
+export PASSIVE_FEE_COIN=0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC
+export PASSIVE_FEE_DISTRIBUTOR=0xb54aa95754c9e15b6f08783c75d8516b054a1ee8ffe6551985cac95e3036134e
 
 export CLOCK=0x6
 # use setup_distribution.sh script in integrate directory to create minter, voter and voting_escrow.
