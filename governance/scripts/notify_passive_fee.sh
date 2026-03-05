@@ -1,0 +1,6 @@
+source ./export.sh
+
+export COIN=0x9fa5cd190b351e59024aa3a1be70bd01ce9c78db103a91f29d236589f9940d97
+
+sui client ptb \
+--move-call $PACKAGE::minter::notify_passive_fee "<$FULLSAIL_TOKEN_TYPE,$PASSIVE_FEE_COIN>" @$MINTER @$DISTRIBUTE_GOVERNOR_CAP @$DISTRIBUTION_CONFIG @$PASSIVE_FEE_DISTRIBUTOR @$COIN @$CLOCK
