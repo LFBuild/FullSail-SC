@@ -1241,29 +1241,22 @@ fun test_null_emissions_of_killed_gauge_succeeds() {
         let mut minter = scenario.take_shared<Minter<SAIL>>();
         let mut dist_config = scenario.take_shared<DistributionConfig>();
         let gauge = scenario.take_shared<Gauge<USD_TESTS, OTHER>>();
-        let voter = scenario.take_shared<Voter>();
-        let voting_escrow = scenario.take_shared<VotingEscrow<SAIL>>();
-        
-        let emergency_cap = voting_escrow::emergency_council::create_for_testing(
-            object::id(&voter),
-            object::id(&minter),
-            object::id(&voting_escrow),
-            scenario.ctx()
-        );
+        let pool = scenario.take_shared<clmm_pool::pool::Pool<USD_TESTS, OTHER>>();
+        let admin_cap = scenario.take_from_sender<minter::AdminCap>();
 
-        minter::kill_gauge<SAIL>(
+        minter::kill_gauge_v2<SAIL, USD_TESTS, OTHER>(
             &mut minter,
             &mut dist_config,
-            &emergency_cap,
-            object::id(&gauge)
+            &admin_cap,
+            &gauge,
+            &pool
         );
 
-        transfer::public_transfer(emergency_cap, admin);
+        scenario.return_to_sender(admin_cap);
         test_scenario::return_shared(minter);
         test_scenario::return_shared(dist_config);
         test_scenario::return_shared(gauge);
-        test_scenario::return_shared(voter);
-        test_scenario::return_shared(voting_escrow);
+        test_scenario::return_shared(pool);
     };
 
     // This should succeed even though the gauge is killed

@@ -1,6 +1,7 @@
 module vault::port {
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
     const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
+    const PENALTY_CAP_FIELD_NAME: vector<u8> = b"penalty_cap";
 
     use std::type_name::{TypeName, with_defining_ids};
     use sui::object::ID;
@@ -8,6 +9,7 @@ module vault::port {
     use sui::balance::Balance;
     use sui::linked_table::{Self, LinkedTable};
     use sui::tx_context::TxContext;
+    use sui::dynamic_field;
 
     public struct PORT has drop {}
 
@@ -35,6 +37,10 @@ module vault::port {
         osail_reward_balances: vault::balance_bag::BalanceBag,
         osail_growth_global: LinkedTable<TypeName, u128>, // Q64.64
         last_update_osail_growth_time_ms: u64,
+
+        // Separate balances for pool token rewards (incentives matching pool coin types)
+        // Stored separately from buffer_assets to avoid mixing them with pool liquidity
+        pool_token_reward_balance: vault::balance_bag::BalanceBag,
 
         managers: LinkedTable<address, bool>,
 
@@ -465,14 +471,19 @@ module vault::port {
             osail_reward_balances : vault::balance_bag::new_balance_bag(ctx),
             last_update_growth_time_ms: sui::vec_map::empty<TypeName, u64>(),
             last_update_osail_growth_time_ms: current_time,
+            pool_token_reward_balance: vault::balance_bag::new_balance_bag(ctx),
             managers: linked_table::new<address, bool>(ctx),
             rewarder: vault::reward_manager::new(ctx),
             bag: sui::bag::new(ctx),
         };
         new_port.managers.push_back(sui::tx_context::sender(ctx), true);
 
+        // initialization of pool token balances
         new_port.buffer_assets.join<CoinTypeA>(sui::balance::zero<CoinTypeA>()); 
         new_port.buffer_assets.join<CoinTypeB>(sui::balance::zero<CoinTypeB>());
+        new_port.pool_token_reward_balance.join<CoinTypeA>(sui::balance::zero<CoinTypeA>()); 
+        new_port.pool_token_reward_balance.join<CoinTypeB>(sui::balance::zero<CoinTypeB>());
+
         port_registry.ports.add<ID, ID>(
             sui::object::id<Port>(&new_port), 
             sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool)
@@ -603,7 +614,8 @@ module vault::port {
     ) {
         check_updated_rewards(port, pool, clock);
 
-        let (balance_a, balance_b, migrate_liquidity) = port.vault.rebalance<CoinTypeA, CoinTypeB>(
+        let mut penalty_cap_ref = port.get_penalty_cap();
+        let (balance_a, balance_b, migrate_liquidity) = port.vault.rebalance_v2<CoinTypeA, CoinTypeB>(
             distribution_config,
             gauge,
             clmm_global_config,
@@ -612,10 +624,17 @@ module vault::port {
             port.buffer_assets.withdraw_all<CoinTypeA>(),
             port.buffer_assets.withdraw_all<CoinTypeB>(), 
             tick_lower, 
-            tick_upper, 
+            tick_upper,
+            &penalty_cap_ref,
             clock, 
             ctx
         );
+
+        if (penalty_cap_ref.is_some()) {
+            port.add_penalty_cap_internal(penalty_cap_ref.extract());
+        };
+        penalty_cap_ref.destroy_none();
+        
 
         port.buffer_assets.join<CoinTypeA>(balance_a);
         port.buffer_assets.join<CoinTypeB>(balance_b);
@@ -698,7 +717,7 @@ module vault::port {
             gauge,
             pool.tick_spacing(), 
             pool.current_tick_index(), 
-            1
+            port.vault.rebalance_threshold()
         );
         if (need_rebalance && !port.vault.is_stopped()) {
             rebalance_internal<CoinTypeA, CoinTypeB>(
@@ -854,22 +873,6 @@ module vault::port {
 
         let coin_a_type = with_defining_ids<CoinTypeA>();
         let coin_b_type = with_defining_ids<CoinTypeB>();
-        if (port.reward_growth.contains(&coin_a_type)) {
-            assert!(
-                port.last_update_growth_time_ms.contains(&coin_a_type) 
-                &&
-                port.last_update_growth_time_ms.get(&coin_a_type) == clock.timestamp_ms(), 
-                vault::error::not_updated_reward_growth_time()
-            );
-        };
-        if (port.reward_growth.contains(&coin_b_type)) {
-            assert!(
-                port.last_update_growth_time_ms.contains(&coin_b_type) 
-                &&
-                port.last_update_growth_time_ms.get(&coin_b_type) == clock.timestamp_ms(), 
-                vault::error::not_updated_reward_growth_time()
-            );
-        };
 
         let (amount_a, amount_b) = if (!port.vault.is_stopped()) {
             port.vault.liquidity_value<CoinTypeA, CoinTypeB>(gauge, pool)
@@ -882,12 +885,17 @@ module vault::port {
         while (i < buffer_balances.length()) {
             let (type_name_ptr, amount_ptr) = buffer_balances.get_entry_by_idx(i);
             let type_name = *type_name_ptr;
+            // Only include pool tokens (CoinTypeA and CoinTypeB) in AUM calculation
+            if (type_name != coin_a_type && type_name != coin_b_type) {
+                i = i + 1;
+                continue
+            };
             let amount = *amount_ptr;
             let mut pool_coin_amount = amount;
-            if (with_defining_ids<CoinTypeA>() == type_name) {
+            if (coin_a_type == type_name) {
                 pool_coin_amount = amount + amount_a;
             } else {
-                if (with_defining_ids<CoinTypeB>() == type_name) {
+                if (coin_b_type == type_name) {
                     pool_coin_amount = amount + amount_b;
                 };
             };
@@ -920,22 +928,6 @@ module vault::port {
 
         let coin_a_type = with_defining_ids<CoinTypeA>();
         let coin_b_type = with_defining_ids<CoinTypeB>();
-        if (port.reward_growth.contains(&coin_a_type)) {
-            assert!(
-                port.last_update_growth_time_ms.contains(&coin_a_type) 
-                &&
-                port.last_update_growth_time_ms.get(&coin_a_type) == clock.timestamp_ms(), 
-                vault::error::not_updated_reward_growth_time()
-            );
-        };
-        if (port.reward_growth.contains(&coin_b_type)) {
-            assert!(
-                port.last_update_growth_time_ms.contains(&coin_b_type) 
-                &&
-                port.last_update_growth_time_ms.get(&coin_b_type) == clock.timestamp_ms(), 
-                vault::error::not_updated_reward_growth_time()
-            );
-        };
 
         let (amount_a, amount_b) = if (!port.vault.is_stopped()) {
             port.vault.liquidity_value<CoinTypeA, CoinTypeB>(gauge, pool)
@@ -950,10 +942,10 @@ module vault::port {
             let type_name = *type_name_ptr;
             let amount = *amount_ptr;
             let mut pool_coin_amount = amount;
-            if (with_defining_ids<CoinTypeA>() == type_name) {
+            if (coin_a_type == type_name) {
                 pool_coin_amount = amount + amount_a;
             } else {
-                if (with_defining_ids<CoinTypeB>() == type_name) {
+                if (coin_b_type == type_name) {
                     pool_coin_amount = amount + amount_b;
                 };
             };
@@ -1494,6 +1486,8 @@ module vault::port {
     /// * `gauge` – gauge managing the CLMM stake
     /// * `pool` – CLMM pool where liquidity is provided
     /// * `port_oracle` – oracle providing prices for valuation
+    /// * `expected_amount_a` – expected maximum amount of coin A to be used
+    /// * `expected_amount_b` – expected maximum amount of coin B to be used
     /// * `clock` – clock object ensuring price freshness
     /// * `ctx` – transaction context
     ///
@@ -1514,10 +1508,18 @@ module vault::port {
         gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         port_oracle: &vault::port_oracle::PortOracle,
+        expected_amount_a: u64,
+        expected_amount_b: u64,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
     ) {
         global_config.checked_package_version();
+        assert!(
+            global_config.is_operation_manager_role(sui::tx_context::sender(ctx))
+            ||
+            port.managers.contains(sui::tx_context::sender(ctx)),
+            vault::error::no_operation_manager_permission()
+        );
         assert!(!port.is_pause, vault::error::port_is_pause());
         assert!(!port.vault.is_stopped(), vault::error::vault_is_stopped());
         assert!(sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool) == port.vault.pool_id(), vault::error::clmm_pool_not_match());
@@ -1525,7 +1527,7 @@ module vault::port {
         let price_a = port_oracle.get_price<CoinTypeA>(clock);
         let price_b = port_oracle.get_price<CoinTypeB>(clock);
 
-        port.add_liquidity_internal<CoinTypeA, CoinTypeB>(
+        let (actual_pay_amount_a, actual_pay_amount_b) = port.add_liquidity_internal<CoinTypeA, CoinTypeB>(
             global_config, 
             clmm_global_config, 
             clmm_vault,
@@ -1539,6 +1541,9 @@ module vault::port {
             clock,
             ctx
         );
+
+        // Verify that actual amounts are less than or equal to expected amounts
+        assert!(actual_pay_amount_a <= expected_amount_a && actual_pay_amount_b <= expected_amount_b, vault::error::token_amount_not_enough());
     }
 
     #[test_only]
@@ -1560,7 +1565,7 @@ module vault::port {
         assert!(!port.vault.is_stopped(), vault::error::vault_is_stopped());
         assert!(sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool) == port.vault.pool_id(), vault::error::clmm_pool_not_match());
 
-        port.add_liquidity_internal<CoinTypeA, CoinTypeB>(
+        let (_amount_a, _amount_b) = port.add_liquidity_internal<CoinTypeA, CoinTypeB>(
             global_config, 
             clmm_global_config, 
             clmm_vault,
@@ -1590,7 +1595,7 @@ module vault::port {
         coin_b_decimal: u8,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext
-    ) {
+    ) : (u64, u64) {
         let diff_price = integer_mate::full_math_u64::mul_div_floor(
             price_a, 
             std::u64::pow(10, vault::port_oracle::price_multiplier_decimal()),
@@ -1611,22 +1616,29 @@ module vault::port {
                 (vault::vault_config::get_max_price_deviation_bps(global_config) as u128)
             )
         ) {
-            return
+            return (0, 0)
         };
         let mut balance_a = port.buffer_assets.withdraw_all<CoinTypeA>();
         let mut balance_b = port.buffer_assets.withdraw_all<CoinTypeB>();
+        let mut penalty_cap_ref = port.get_penalty_cap();
 
-        let (amount_a, amount_b, delta_liquidity) = port.vault.increase_liquidity<CoinTypeA, CoinTypeB>(
+        let (amount_a, amount_b, delta_liquidity) = port.vault.increase_liquidity_v2<CoinTypeA, CoinTypeB>(
             clmm_global_config, 
             clmm_vault,
             distribution_config,
             gauge,
             pool, 
             &mut balance_a, 
-            &mut balance_b, 
+            &mut balance_b,
+            &penalty_cap_ref,
             clock,
             ctx
         );
+        if (penalty_cap_ref.is_some()) {
+            port.add_penalty_cap_internal(penalty_cap_ref.extract());
+        };
+        penalty_cap_ref.destroy_none(); 
+        
         port.buffer_assets.join<CoinTypeA>(balance_a);
         port.buffer_assets.join<CoinTypeB>(balance_b);
         let event = AddLiquidityEvent{
@@ -1640,6 +1652,8 @@ module vault::port {
             remained_b         : port.buffer_assets.value<CoinTypeB>(),
         };
         sui::event::emit<AddLiquidityEvent>(event);
+
+        (amount_a, amount_b)
     }
 
     fun get_volume_by_tvl(total_volume: u64, tvl: u128, last_aum: u128) : u128 {
@@ -1649,7 +1663,7 @@ module vault::port {
         if (last_aum == 0) {
             abort vault::error::invalid_last_aum()
         };
-        integer_mate::full_math_u128::mul_div_round((total_volume as u128), tvl, last_aum)
+        integer_mate::full_math_u128::mul_div_floor((total_volume as u128), tvl, last_aum)
     }
 
     /// Stops the CLMM vault and buffers the withdrawn assets.
@@ -1702,15 +1716,22 @@ module vault::port {
         assert!(!port.vault.is_stopped(), vault::error::vault_is_stopped());
         assert!(sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool) == port.vault.pool_id(), vault::error::clmm_pool_not_match());
 
-        let (balance_a, balance_b) = port.vault.stop_vault(
+        let mut penalty_cap_ref = port.get_penalty_cap();
+        let (balance_a, balance_b) = port.vault.stop_vault_v2(
             clmm_global_config,
             clmm_vault,
             distribution_config,
             gauge,
             pool,
+            &penalty_cap_ref,
             clock,
             ctx
         );
+
+        if (penalty_cap_ref.is_some()) {
+            port.add_penalty_cap_internal(penalty_cap_ref.extract());
+        };
+        penalty_cap_ref.destroy_none();
 
         port.buffer_assets.join<CoinTypeA>(balance_a);
         port.buffer_assets.join<CoinTypeB>(balance_b);
@@ -1910,7 +1931,7 @@ module vault::port {
     ) : (Coin<CoinTypeOut>, FlashLoanCert) {
         let (price_coin_out_in_quote, _) = vault::port_oracle::calculate_prices(&price_coin_out, &price_coin_in);
         let repay_amount = integer_mate::full_math_u64::mul_div_ceil(
-            integer_mate::full_math_u64::mul_div_floor(
+            integer_mate::full_math_u64::mul_div_ceil(
                 price_coin_out_in_quote, 
                 loan_amount, 
                 std::u64::pow(10, vault::port_oracle::price_multiplier_decimal())
@@ -1920,8 +1941,11 @@ module vault::port {
         );
 
         let repay_type = with_defining_ids<CoinTypeIn>();
+        let loan_type = with_defining_ids<CoinTypeOut>();
         let (coin_type_a, coin_type_b) = port.vault.coin_types();
         assert!(repay_type == coin_type_a || repay_type == coin_type_b, vault::error::incorrect_repay_type());
+        assert!(loan_type != repay_type && (loan_type == coin_type_a || loan_type == coin_type_b), vault::error::incorrect_loan_type());
+        assert!(loan_amount <= port.buffer_assets.value<CoinTypeOut>(), vault::error::token_amount_not_enough());
         let flash_loan_cert = FlashLoanCert{
             port_id      : sui::object::id<Port>(port),  
             repay_type   : repay_type,  
@@ -1929,7 +1953,7 @@ module vault::port {
         };
         let flash_loan_event = FlashLoanEvent{
             port_id             : sui::object::id<Port>(port), 
-            loan_type           : with_defining_ids<CoinTypeOut>(), 
+            loan_type           : loan_type, 
             repay_type          : repay_type, 
             loan_amount         : loan_amount, 
             repay_amount        : repay_amount, 
@@ -2019,6 +2043,8 @@ module vault::port {
     /// * `pool` – CLMM pool from which liquidity is withdrawn
     /// * `port_entry` – depositor’s entry being reduced
     /// * `volume_withdraw` – amount of volume to withdraw
+    /// * `min_amount_a` – minimum acceptable amount of token A to withdraw from the position (required only if the port is not stopped)
+    /// * `min_amount_b` – minimum acceptable amount of token B to withdraw from the position (required only if the port is not stopped)
     /// * `clock` – clock object used in reward checks
     /// * `ctx` – transaction context
     ///
@@ -2042,6 +2068,8 @@ module vault::port {
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         port_entry: &mut PortEntry,
         volume_withdraw: u64,
+        min_amount_a: u64,
+        min_amount_b: u64,
         clock: &sui::clock::Clock, 
         ctx: &mut TxContext
     ) : (Coin<CoinTypeA>, Coin<CoinTypeB>) {
@@ -2095,6 +2123,8 @@ module vault::port {
             } else {
                 (sui::balance::zero<CoinTypeA>(), sui::balance::zero<CoinTypeB>())
             };
+            assert!(liquidity_balance_a.value<CoinTypeA>() >= min_amount_a, vault::error::token_amount_not_enough());
+            assert!(liquidity_balance_b.value<CoinTypeB>() >= min_amount_b, vault::error::token_amount_not_enough());
             coin_a_balance.join(liquidity_balance_a);
             coin_b_balance.join(liquidity_balance_b);
 
@@ -2213,14 +2243,21 @@ module vault::port {
         port.rewarder.settle(port_id, port.total_volume, clock.timestamp_ms() / 1000);
 
         let (amount_osail, new_growth) = if (!port.is_stopped()) {
-            let mut osail_reward = port.vault.collect_position_reward<CoinTypeA, CoinTypeB, SailCoinType, CurrentOsailCoinType>(
+            let mut penalty_cap_ref = port.get_penalty_cap();
+            let mut osail_reward = port.vault.collect_position_reward_v2<CoinTypeA, CoinTypeB, SailCoinType, CurrentOsailCoinType>(
                 minter,
                 distribution_config,
                 gauge,
                 pool,
+                &penalty_cap_ref,
                 clock,
                 ctx
             );
+            if (penalty_cap_ref.is_some()) {
+                port.add_penalty_cap_internal(penalty_cap_ref.extract());
+            };
+            penalty_cap_ref.destroy_none();
+
             merge_protocol_asset<CurrentOsailCoinType>(port, &mut osail_reward); 
             let amount_osail = sui::balance::value<CurrentOsailCoinType>(&osail_reward);
 
@@ -2307,8 +2344,6 @@ module vault::port {
             let rewarder = pool_rewarders[i];
             assert!(port.last_update_growth_time_ms.contains(&rewarder.reward_coin()), vault::error::reward_types_not_match());
             assert!(
-                port.last_update_growth_time_ms.contains(&rewarder.reward_coin())
-                &&
                 *port.last_update_growth_time_ms.get(&rewarder.reward_coin()) == current_time, 
                 vault::error::not_updated_reward_growth_time()
             );
@@ -2334,6 +2369,7 @@ module vault::port {
 
         check_updated_rewards(port, pool, clock);
 
+        // check osail rewards
         let last_osail_type_opt = port.osail_growth_global.back();
         if (last_osail_type_opt.is_some()) {
             let last_osail_type = last_osail_type_opt.borrow();
@@ -2342,29 +2378,25 @@ module vault::port {
             vault::error::osail_reward_not_claimed());
         };
 
-        let balances = *port.buffer_assets.balances();
-        let coin_a_type = with_defining_ids<CoinTypeA>();
-        let coin_b_type = with_defining_ids<CoinTypeB>();
+        // check pool token rewards
+        let pool_rewarders = pool.rewarder_manager().rewarders();
         let mut i = 0;
-        while (i < balances.length()) {
-            let (buffer_coin_type, _) = balances.get_entry_by_idx(i);
-            // pool coins have already been processed
-            if (*buffer_coin_type == coin_a_type || *buffer_coin_type == coin_b_type) {
-                i = i + 1;
-                continue
-            };
+        while (i < pool_rewarders.length()) {
+            let rewarder = pool_rewarders[i];
+            let reward_coin_type = rewarder.reward_coin();
             assert!(
-                port_entry.entry_reward_growth.contains(buffer_coin_type)
+                port_entry.entry_reward_growth.contains(&reward_coin_type)
                 &&
-                port.reward_growth.contains(buffer_coin_type)
+                port.reward_growth.contains(&reward_coin_type)
                 &&
-                *port_entry.entry_reward_growth.get(buffer_coin_type) == *port.reward_growth.get(buffer_coin_type),
+                *port_entry.entry_reward_growth.get(&reward_coin_type) == *port.reward_growth.get(&reward_coin_type),
                 vault::error::reward_growth_not_match()
             );
 
             i = i + 1;
         };
 
+        // check incentive port rewards
         let (incentive_types, _, growth_global_incentive) = port.rewarder.get_rewards_info();
         i = 0;
         while (i < incentive_types.length()) {
@@ -2784,6 +2816,20 @@ module vault::port {
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>, 
         clock: &sui::clock::Clock
     ) {
+       abort
+    }
+
+    public fun update_pool_reward_v2<CoinTypeA, CoinTypeB, RewardCoinType>(
+        port: &mut Port, 
+        global_config: &vault::vault_config::GlobalConfig,
+        distribution_config: &governance::distribution_config::DistributionConfig,
+        gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        clmm_global_config: &clmm_pool::config::GlobalConfig,
+        rewarder_vault: &mut clmm_pool::rewarder::RewarderGlobalVault, 
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>, 
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
         global_config.checked_package_version();  
         assert!(!port.is_pause, vault::error::port_is_pause());
         assert!(
@@ -2807,18 +2853,33 @@ module vault::port {
         assert!(existing_reward_type, vault::error::reward_types_not_match());
 
         let (new_amount, new_growth) = if (!port.is_stopped()) {
-            let mut reward_balance = port.vault.collect_pool_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
+            let mut penalty_cap_ref = port.get_penalty_cap();
+            let mut reward_balance = port.vault.collect_pool_reward_v3<CoinTypeA, CoinTypeB, RewardCoinType>(
                 distribution_config,
                 gauge,
                 clmm_global_config, 
                 rewarder_vault,
                 pool, 
-                clock
+                &penalty_cap_ref,
+                clock,
+                ctx
             );
-            let amount = reward_balance.value();
-            if (amount > 0) {
+            if (penalty_cap_ref.is_some()) {
+                port.add_penalty_cap_internal(penalty_cap_ref.extract());
+            };
+            penalty_cap_ref.destroy_none();
+
+            if (reward_balance.value() > 0) {
                 merge_protocol_asset<RewardCoinType>(port, &mut reward_balance); 
-                port.buffer_assets.join<RewardCoinType>(reward_balance);
+                
+                let amount = reward_balance.value();
+                
+                // If reward type matches pool token A or B, store in separate balance bag
+                if (reward_type == with_defining_ids<CoinTypeA>() || reward_type == with_defining_ids<CoinTypeB>()) {
+                    port.pool_token_reward_balance.join<RewardCoinType>(reward_balance);
+                } else {
+                    port.buffer_assets.join<RewardCoinType>(reward_balance);
+                };
 
                 let total_volume = port.total_volume;
                 
@@ -2837,13 +2898,13 @@ module vault::port {
                     )
                 );
                 assert!(!overflow, vault::error::growth_overflow());
-                port.reward_growth.insert(reward_type, new_growth_calc);
 
                 (amount, new_growth_calc)
             } else {
                 reward_balance.destroy_zero();
                 let current_growth = if (port.reward_growth.contains(&reward_type)) {
-                    *port.reward_growth.get(&reward_type)
+                    let (_, _current_growth) =  port.reward_growth.remove(&reward_type);
+                    _current_growth
                 } else {
                     0
                 };
@@ -2852,13 +2913,16 @@ module vault::port {
             }
         } else {
             let current_growth = if (port.reward_growth.contains(&reward_type)) {
-                    *port.reward_growth.get(&reward_type)
+                    let (_, _current_growth) =  port.reward_growth.remove(&reward_type);
+                    _current_growth
                 } else {
                     0
                 };
 
                 (0, current_growth)
         };
+
+        port.reward_growth.insert(reward_type, new_growth);
     
         if (port.last_update_growth_time_ms.contains(&reward_type)) {
             port.last_update_growth_time_ms.remove(&reward_type);
@@ -2913,13 +2977,28 @@ module vault::port {
         pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
         clock: &sui::clock::Clock
     ) : (u64, u128) {
+        abort
+    }
+
+    public fun get_pool_reward_amount_to_claim_v2<CoinTypeA, CoinTypeB, RewardCoinType>(
+        global_config: &vault::vault_config::GlobalConfig,
+        port: &mut Port,
+        port_entry: &mut PortEntry,
+        distribution_config: &governance::distribution_config::DistributionConfig,
+        gauge: &mut governance::gauge::Gauge<CoinTypeA, CoinTypeB>,
+        clmm_global_config: &clmm_pool::config::GlobalConfig,
+        rewarder_vault: &mut clmm_pool::rewarder::RewarderGlobalVault,
+        pool: &mut clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) : (u64, u128) {
         global_config.checked_package_version();
         assert!(!port.is_pause, vault::error::port_is_pause());
         assert!(port_entry.port_id == sui::object::id<Port>(port), vault::error::port_entry_port_id_not_match());
         let reward_coin_type = with_defining_ids<RewardCoinType>();
 
         if (!port.last_update_growth_time_ms.contains(&reward_coin_type) || *port.last_update_growth_time_ms.get(&reward_coin_type) != clock.timestamp_ms()) {
-            update_pool_reward<CoinTypeA, CoinTypeB, RewardCoinType>(
+            update_pool_reward_v2<CoinTypeA, CoinTypeB, RewardCoinType>(
                 port,
                 global_config,
                 distribution_config,
@@ -2927,7 +3006,8 @@ module vault::port {
                 clmm_global_config,
                 rewarder_vault,
                 pool,
-                clock
+                clock,
+                ctx
             );
         };
 
@@ -3016,7 +3096,7 @@ module vault::port {
 
         let reward_coin_type = with_defining_ids<RewardCoinType>();
 
-        let (reward_amount, current_growth) = get_pool_reward_amount_to_claim<CoinTypeA, CoinTypeB, RewardCoinType>(
+        let (reward_amount, current_growth) = get_pool_reward_amount_to_claim_v2<CoinTypeA, CoinTypeB, RewardCoinType>(
             global_config,
             port,
             port_entry,
@@ -3025,7 +3105,8 @@ module vault::port {
             clmm_global_config,
             rewarder_vault,
             pool, 
-            clock
+            clock,
+            ctx
         );
         
         if (port_entry.entry_reward_growth.contains(&reward_coin_type)) {
@@ -3045,7 +3126,13 @@ module vault::port {
         sui::event::emit<PoolRewardClaimedEvent>(event);
 
         if (reward_amount > 0) {
-            sui::coin::from_balance<RewardCoinType>(port.buffer_assets.split<RewardCoinType>(reward_amount), ctx)
+            // If reward type matches pool token A or B, claim from separate balance bag
+            let reward_balance = if (reward_coin_type == with_defining_ids<CoinTypeA>() || reward_coin_type == with_defining_ids<CoinTypeB>()) {
+                port.pool_token_reward_balance.split<RewardCoinType>(reward_amount)
+            } else {
+                port.buffer_assets.split<RewardCoinType>(reward_amount)
+            };
+            sui::coin::from_balance<RewardCoinType>(reward_balance, ctx)
         } else {
             sui::coin::zero<RewardCoinType>(ctx)
         }
@@ -3247,10 +3334,26 @@ module vault::port {
         new_protocol_fee_rate: u64,
         ctx: &mut TxContext
     ) {
+        abort
+    }
+
+    public fun update_protocol_fee_v2<CoinTypeA, CoinTypeB>(
+        port: &mut Port,
+        pool: &clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>,
+        global_config: &vault::vault_config::GlobalConfig,
+        new_protocol_fee_rate: u64,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext
+    ) {
         global_config.checked_package_version();
         global_config.check_pool_manager_role(sui::tx_context::sender(ctx));
         assert!(!port.is_pause, vault::error::port_is_pause());
-        assert!(new_protocol_fee_rate <= vault::vault_config::get_max_protocol_fee_rate(), vault::error::invalid_protocol_fee_rate()); 
+        assert!(
+            sui::object::id<clmm_pool::pool::Pool<CoinTypeA, CoinTypeB>>(pool) == port.vault.pool_id(),
+            vault::error::clmm_pool_not_match()
+        );
+        assert!(new_protocol_fee_rate <= vault::vault_config::get_max_protocol_fee_rate(), vault::error::invalid_protocol_fee_rate());
+        check_updated_rewards(port, pool, clock);
         let old_protocol_fee_rate = port.protocol_fee_rate;
         port.protocol_fee_rate = new_protocol_fee_rate;
         let event = UpdateProtocolFeeEvent{
@@ -3262,7 +3365,7 @@ module vault::port {
     }
 
     fun get_user_share_by_volume(total_volume: u64, volume: u64, total_amount: u128) : u128 {
-        integer_mate::full_math_u128::mul_div_round((volume as u128), total_amount, (total_volume as u128))
+        integer_mate::full_math_u128::mul_div_floor((volume as u128), total_amount, (total_volume as u128))
     }
 
     public fun pause(port: &mut Port, global_config: &vault::vault_config::GlobalConfig, ctx: &mut TxContext) {
@@ -3339,6 +3442,11 @@ module vault::port {
 
     public fun get_buffer_asset_value<CoinType>(port: &Port) : u64 {
         port.buffer_assets.value<CoinType>()
+    }
+
+    /// Gets the reward balance value (for reward types matching pool token types)
+    public fun get_pool_token_reward_balance_value<CoinType>(port: &Port) : u64 {
+        port.pool_token_reward_balance.value<CoinType>()
     }
 
     public fun get_protocol_fees_value<CoinType>(port: &Port) : u64 {
@@ -3567,6 +3675,8 @@ module vault::port {
         global_config.check_pool_manager_role(ctx.sender());
 
         let port_id = sui::object::id<Port>(port);
+        port.rewarder.settle(port_id, port.total_volume, clock.timestamp_ms() / 1000);
+
         port.rewarder.update_emission<RewardCoinType>(
             port_id,
             port.total_volume,
@@ -3604,5 +3714,51 @@ module vault::port {
 
     public fun rewarder_growth_global<RewardCoinType>(port: &Port): u128 {
         port.rewarder.growth_global<RewardCoinType>()
+    }
+
+    public fun add_penalty_cap(
+        port: &mut Port, 
+        global_config: &vault::vault_config::GlobalConfig,
+        penalty_cap: penalty_cap::penalty_cap::PenaltyCap,
+        ctx: &mut TxContext
+    ) {
+        global_config.checked_package_version();
+        assert!(!port.is_pause, vault::error::port_is_pause());
+
+        port.add_penalty_cap_internal(penalty_cap);
+    }
+
+    fun add_penalty_cap_internal(
+        port: &mut Port, 
+        penalty_cap: penalty_cap::penalty_cap::PenaltyCap,
+    ) {
+        dynamic_field::add(&mut port.id, PENALTY_CAP_FIELD_NAME, penalty_cap);
+    }
+
+    public fun remove_penalty_cap(
+        port: &mut Port, 
+        global_config: &vault::vault_config::GlobalConfig,
+        ctx: &mut TxContext
+    ) {
+        global_config.checked_package_version();
+        assert!(!port.is_pause, vault::error::port_is_pause());
+
+        let mut pc = dynamic_field::remove_if_exists<vector<u8>, penalty_cap::penalty_cap::PenaltyCap>(&mut port.id, PENALTY_CAP_FIELD_NAME);
+        // penalty_cap will be automatically dropped at the end of the function
+        if (pc.is_some()) {
+            sui::transfer::public_transfer<penalty_cap::penalty_cap::PenaltyCap>(pc.extract(), sui::tx_context::sender(ctx));
+        };
+        
+        pc.destroy_none();
+    }
+
+    public fun exists_penalty_cap(
+        port: &Port
+    ) : bool {
+        dynamic_field::exists_(&port.id, PENALTY_CAP_FIELD_NAME)
+    }
+
+    fun get_penalty_cap(port: &mut Port): Option<penalty_cap::penalty_cap::PenaltyCap> {
+        dynamic_field::remove_if_exists(&mut port.id, PENALTY_CAP_FIELD_NAME)
     }
 }

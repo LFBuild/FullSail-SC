@@ -1,6 +1,6 @@
 source ./export.sh
 
-export LOCK=0x3ba5c31ef7644073ca0f8d2d642e01123211df8a4e181fb70a1113d5865e0ab1
+export LOCK=0xa48f41649597deea8778feb428726ff8bce658555ac77cab0cd6ff3aa59fb7a7
 export RECIPIENT=$(sui client active-address)
 
 sui client ptb \

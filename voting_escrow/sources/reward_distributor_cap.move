@@ -4,7 +4,7 @@ module voting_escrow::reward_distributor_cap {
     const COPYRIGHT_NOTICE: vector<u8> = b"© 2025 Metabyte Labs, Inc.  All Rights Reserved.";
     const PATENT_NOTICE: vector<u8> = b"Patent pending - U.S. Patent Application No. 63/861,982";
 
-    const ERewardDistributorInvalid: u64 = 9223372105574252543;
+    const ERewardDistributorInvalid: u64 = 159517009221984420;
 
     public fun notices(): (vector<u8>, vector<u8>) {
         (COPYRIGHT_NOTICE, PATENT_NOTICE)
@@ -25,5 +25,6 @@ module voting_escrow::reward_distributor_cap {
     public fun validate(reward_distributor_cap: &RewardDistributorCap, reward_distributor_id: ID) {
         assert!(reward_distributor_cap.reward_distributor == reward_distributor_id, ERewardDistributorInvalid);
     }
+
 }
 
