@@ -138,9 +138,12 @@ Vaults (beta):
 - [governance upgrade 8](https://suiscan.xyz/mainnet/tx/AKtCptAcxMCZLeasnZAmzahodc1NvCrDtsCdjXQT6jMY)
 - [governance upgrade 9](https://suivision.xyz/txblock/EQmtTkJJ96Z6F2QpEgXZhdAxo3QZxoa49kMUgrTrU928)
 - [governance upgrade 10](https://suiscan.xyz/mainnet/tx/2BZtQMNsyFxPmSQtZBnZyK6sCxKfRDdfutosMCMo2mGV)
+- [governance upgrade 11](https://suiscan.xyz/mainnet/tx/74Q72AVKWi78EqSeVtUTpeD8wCf41hoDKXLpwzAmpCGB)
 - [integrate](https://suivision.xyz/txblock/EFraMXqGw3wEoAXrFtLLc5UdPwk8L6Wz5TgoniTBY3KF)
 - [integrate upgrade](https://suivision.xyz/txblock/BRo3N7KHqvoZZDqASBiCTqRci25xjdhjLdpseEWhuwjM)
+- [integrate upgrade 2](https://suivision.xyz/txblock/5pADtq4Dq1H1AUFSsiXiKJwnvnMTsYbDFH9vUxtdxMPp)
 - [Vault](https://suivision.xyz/txblock/CWoQ8wKckn8AWGh8NfEyb8oVKkrqvYQro2j6B7tDTT6F)
+- [Vault upgrade](https://suivision.xyz/GNiFXNHWmhKYS9t2E2zJugut3iHhgrDxPteWgWYW4vHF)
 
 - [setup distribtuion tx](https://suiscan.xyz/mainnet/tx/21y91npsRHWgg5TPnFkFVSWgCFTLhTcvRfGL4bA4ut1p)
 - [activate minter tx](https://suiscan.xyz/mainnet/tx/A3bugfXoFzC5YfDEfDd1QBqqTu3dB1XJuT2mRLknKZr2)
