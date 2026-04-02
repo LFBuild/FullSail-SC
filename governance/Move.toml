@@ -42,6 +42,9 @@ override = true
 [dependencies.locker_cap]
 local = "../locker_cap"
 
+[dependencies.penalty_cap]
+local = "../penalty_cap"
+
 [dependencies.voting_escrow]
 local = "../voting_escrow"
 

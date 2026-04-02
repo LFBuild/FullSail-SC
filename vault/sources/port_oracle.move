@@ -197,7 +197,6 @@ module vault::port_oracle {
         vault::vault_config::checked_package_version(global_config); 
         vault::vault_config::check_oracle_manager_role(global_config, sui::tx_context::sender(ctx));
         let type_name = std::type_name::with_defining_ids<CoinType>();
-        assert!(!port_oracle.oracle_infos.contains(type_name), vault::error::oracle_info_exists());
         let oracle_info = if (port_oracle.oracle_infos.contains(type_name)) {
 
             let mut _oracle_info = port_oracle.oracle_infos.remove(type_name);
@@ -427,6 +426,13 @@ module vault::port_oracle {
         ctx: &mut sui::tx_context::TxContext
     ) : HotPotatoVector<PriceInfo> {
         vault::vault_config::checked_package_version(global_config);
+        let price_info_vector_update = update_single_price_feed(
+            state, 
+            price_info_vector, 
+            price_info_object, 
+            sui::coin::from_balance<sui::sui::SUI>(split_fee(port_oracle, state.get_base_update_fee()), ctx), 
+            clock
+        );
         let type_name = std::type_name::with_defining_ids<CoinType>();
         if (port_oracle.oracle_infos.contains(type_name)) {
             let price = update_price_from_type<CoinType>(port_oracle, price_info_object, clock);
@@ -437,13 +443,8 @@ module vault::port_oracle {
             };
             sui::event::emit<UpdatePriceEvent>(event);
         };
-        update_single_price_feed(
-            state, 
-            price_info_vector, 
-            price_info_object, 
-            sui::coin::from_balance<sui::sui::SUI>(split_fee(port_oracle, state.get_base_update_fee()), ctx), 
-            clock
-        )
+
+        price_info_vector_update
     }
 
     /// Synchronises the cached price inside `PortOracle` when an off-chain updater

@@ -1195,8 +1195,6 @@ module distribution::voter {
     ): bool {
         let coin_type = type_name::get<RewardCoinType>();
 
-        let pool_id = object::id(voter);
-
         voter.current_epoch_token.borrow() == coin_type
     }
 
