@@ -69,3 +69,69 @@ source = { local = "../voting_escrow" }
 use_environment = "mainnet"
 manifest_digest = "E873971DBD03BB36A4A6282885BD1D255C5F806492183A3C7007C72397CAFA48"
 deps = { Sui = "Sui_2", integer_mate = "integer_mate" }
+
+[pinned.testnet.MoveStdlib]
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "c2428b3aaf9c24270b609001e56d96cb10c76d28" }
+use_environment = "testnet"
+manifest_digest = "C4FE4C91DE74CBF223B2E380AE40F592177D21870DC2D7EB6227D2D694E05363"
+deps = {}
+
+[pinned.testnet.MoveStdlib_1]
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "2e832ef3c2feeba06e1cf70444656841d8d88f34" }
+use_environment = "testnet"
+manifest_digest = "C4FE4C91DE74CBF223B2E380AE40F592177D21870DC2D7EB6227D2D694E05363"
+deps = {}
+
+[pinned.testnet.MoveStdlib_2]
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "6d4ec0b0621dd9555753c9ecd5be021b25a0d267" }
+use_environment = "testnet"
+manifest_digest = "C4FE4C91DE74CBF223B2E380AE40F592177D21870DC2D7EB6227D2D694E05363"
+deps = {}
+
+[pinned.testnet.Sui]
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "c2428b3aaf9c24270b609001e56d96cb10c76d28" }
+use_environment = "testnet"
+manifest_digest = "7AFB66695545775FBFBB2D3078ADFD084244D5002392E837FDE21D9EA1C6D01C"
+deps = { MoveStdlib = "MoveStdlib" }
+
+[pinned.testnet.SuiTears]
+source = { git = "https://github.com/LFBuild/suitears.git", subdir = "contracts", rev = "1aa77e19cdd7d6cbb5a9265c58b21396185d2d61" }
+use_environment = "testnet"
+manifest_digest = "C2772B976EC6A56C32071C116C869B6B810C731713A3E79642606E99AE1F55DA"
+deps = { Sui = "Sui_1" }
+
+[pinned.testnet.Sui_1]
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "2e832ef3c2feeba06e1cf70444656841d8d88f34" }
+use_environment = "testnet"
+manifest_digest = "7AFB66695545775FBFBB2D3078ADFD084244D5002392E837FDE21D9EA1C6D01C"
+deps = { MoveStdlib = "MoveStdlib_1" }
+
+[pinned.testnet.Sui_2]
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "6d4ec0b0621dd9555753c9ecd5be021b25a0d267" }
+use_environment = "testnet"
+manifest_digest = "7AFB66695545775FBFBB2D3078ADFD084244D5002392E837FDE21D9EA1C6D01C"
+deps = { MoveStdlib = "MoveStdlib_2" }
+
+[pinned.testnet.airdrop]
+source = { root = true }
+use_environment = "testnet"
+manifest_digest = "DDB634A0C00573DBA893D35732935C263DC3CF8CFEA9CE961370568505ACA14D"
+deps = { SuiTears = "SuiTears", std = "MoveStdlib", sui = "Sui", ve = "ve", voting_escrow = "voting_escrow" }
+
+[pinned.testnet.integer_mate]
+source = { git = "https://github.com/LFBuild/FullSail-CLMM-SC.git", subdir = "integer_mate", rev = "59c4849a1759714cebf331ec21496deb58aeb53e" }
+use_environment = "testnet"
+manifest_digest = "04F2C2F24F6DB9EB7D6997D46697671E5F788525F59E0879718AB4D32008FD57"
+deps = { Sui = "Sui_2" }
+
+[pinned.testnet.ve]
+source = { local = "../legacy/ve" }
+use_environment = "testnet"
+manifest_digest = "1E2553DC12CF9550FF5AD869A65376E10D04BAB299D669C9AC4BC072633E9B04"
+deps = { Sui = "Sui_2", integer_mate = "integer_mate", voting_escrow = "voting_escrow" }
+
+[pinned.testnet.voting_escrow]
+source = { local = "../voting_escrow" }
+use_environment = "testnet"
+manifest_digest = "639138B95954CB53189EFF383D7A869560C2DE0F4834DE6A6C5DE625A9D5C11B"
+deps = { Sui = "Sui_2", integer_mate = "integer_mate" }
