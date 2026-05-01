@@ -46,6 +46,21 @@ module airdrop::airdrop {
         map: Bitmap
     }
 
+    public struct EventAirdropCreated has copy, drop, store {
+        airdrop_id: ID,
+        amount: u64,
+        root: vector<u8>,
+        start: u64,
+        coin_type: std::type_name::TypeName,
+    }
+
+    public struct EventAirdropClaimed has copy, drop, store {
+        airdrop_id: ID,
+        amount: u64,
+        user: address,
+    }
+
+
     // === Public Create Function ===
 
     /*
@@ -70,13 +85,26 @@ module airdrop::airdrop {
     ): Airdrop<T> {
         assert!(start >= c.timestamp_ms(), EInvalidStartTime);
         assert!(!root.is_empty(), EInvalidRoot);
-        Airdrop {
-            id: object::new(ctx),
+        let id = object::new(ctx);
+        let inner_id = id.to_inner();
+        let amount = airdrop_coin.value();
+        let airdrop = Airdrop {
+            id,
             balance: airdrop_coin.into_balance(),
             root,
             start,
             map: bitmap::new(ctx),
-        }
+        };
+
+        sui::event::emit(EventAirdropCreated {
+            airdrop_id: inner_id,
+            amount,
+            root: airdrop.root,
+            start,
+            coin_type: std::type_name::with_defining_ids<T>(),
+        });
+
+        airdrop
     }
 
     // === Public View Functions ===
@@ -174,8 +202,15 @@ module airdrop::airdrop {
 
         self.map.set(index);
         let current_balance = self.balance.value();
+        let claim_amount = math64::min(amount, current_balance);
 
-        coin::take(&mut self.balance, math64::min(amount, current_balance), ctx)
+        sui::event::emit(EventAirdropClaimed {
+            airdrop_id: object::id(self),
+            amount: claim_amount,
+            user: ctx.sender(),
+        });
+
+        coin::take(&mut self.balance, claim_amount, ctx)
     }
 
     /*
